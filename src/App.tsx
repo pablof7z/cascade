@@ -20,6 +20,10 @@ import LandingPage from './LandingPage'
 import MarketDetail from './MarketDetail'
 import ThesisDetail from './ThesisDetail'
 import ThesisBuilder from './ThesisBuilder'
+import Portfolio from './Portfolio'
+import Profile from './Profile'
+import Leaderboard from './Leaderboard'
+import Activity from './Activity'
 import NavHeader from './NavHeader'
 
 type ToastTone = 'good' | 'warn' | 'neutral'
@@ -328,6 +332,10 @@ function AppContent() {
         <Route path="/market/:id" element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/thesis/:id" element={<ThesisDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/builder" element={<ThesisBuilder markets={state.markets} dispatch={handleDispatch} />} />
+        <Route path="/portfolio" element={<Portfolio />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/activity" element={<Activity />} />
       </Routes>
       {state.toast ? (
         <div className={`toast ${state.toast.tone}`}>

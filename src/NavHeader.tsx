@@ -37,6 +37,18 @@ export default function NavHeader() {
         >
           Leaderboard
         </Link>
+        <Link
+          to="/activity"
+          className={`nav-link ${path === '/activity' ? 'active' : ''}`}
+        >
+          Activity
+        </Link>
+        <Link
+          to="/profile"
+          className={`nav-link ${path === '/profile' ? 'active' : ''}`}
+        >
+          Profile
+        </Link>
       </nav>
 
       <div className="nav-actions">

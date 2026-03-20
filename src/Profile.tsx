@@ -59,52 +59,56 @@ export default function Profile() {
   }
 
   return (
-    <div className="shell shell-page">
-      <div className="page-header">
-        <h1>Profile</h1>
-        <p className="page-subtitle">Your identity and trading history</p>
+    <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white">Profile</h1>
+        <p className="text-gray-400 mt-1">Your identity and trading history</p>
       </div>
 
       {/* Nostr identity section */}
-      <div className="identity-card">
-        <div className="identity-avatar">
-          <div className="avatar-placeholder">👤</div>
+      <div className="flex items-center gap-4 p-4 bg-gray-800 border border-gray-700 rounded-lg mb-6">
+        <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center text-2xl">
+          👤
         </div>
-        <div className="identity-info">
-          <span className="identity-label">Nostr Identity</span>
-          <code className="identity-npub">{userStats.npub}</code>
+        <div>
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Nostr Identity</span>
+          <code className="block text-white font-mono mt-1">{userStats.npub}</code>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="stats-row">
-        <div className="stat-card">
-          <span className="stat-label">Total Trades</span>
-          <span className="stat-value">{userStats.totalTrades}</span>
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Total Trades</span>
+          <span className="block text-xl font-bold text-white mt-1">{userStats.totalTrades}</span>
         </div>
-        <div className="stat-card">
-          <span className="stat-label">Win Rate</span>
-          <span className="stat-value">{userStats.winRate}%</span>
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Win Rate</span>
+          <span className="block text-xl font-bold text-white mt-1">{userStats.winRate}%</span>
         </div>
-        <div className="stat-card">
-          <span className="stat-label">Total P&L</span>
-          <span className={`stat-value ${userStats.totalPnl >= 0 ? 'positive' : 'negative'}`}>
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Total P&L</span>
+          <span className={`block text-xl font-bold mt-1 ${userStats.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {formatCurrency(userStats.totalPnl)}
           </span>
         </div>
-        <div className="stat-card">
-          <span className="stat-label">Reputation</span>
-          <span className="stat-value">{userStats.reputationScore}</span>
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Reputation</span>
+          <span className="block text-xl font-bold text-white mt-1">{userStats.reputationScore}</span>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="page-tabs">
+      <div className="flex gap-1 mb-6 bg-gray-800 p-1 rounded-lg">
         {tabs.map((tab) => (
           <button
             key={tab}
             type="button"
-            className={`page-tab ${activeTab === tab ? 'active' : ''}`}
+            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              activeTab === tab
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
             onClick={() => setActiveTab(tab)}
           >
             {tab}
@@ -113,19 +117,27 @@ export default function Profile() {
       </div>
 
       {/* Tab content */}
-      <div className="tab-content">
+      <div>
         {activeTab === 'Positions' && (
-          <div className="positions-list compact">
+          <div className="space-y-2">
             {mockPositions.map((pos) => (
               <Link
                 key={pos.id}
                 to={pos.type === 'thesis' ? `/thesis/${pos.id}` : `/market/${pos.id}`}
-                className="position-row"
+                className="flex items-center gap-3 p-3 bg-gray-800 border border-gray-700 rounded-lg hover:border-gray-600 transition-colors"
               >
-                <span className={`position-badge ${pos.type}`}>{pos.type}</span>
-                <span className="position-name">{pos.name}</span>
-                <span className={`position-side ${pos.side.toLowerCase()}`}>{pos.side}</span>
-                <span className={`position-pnl ${pos.pnl >= 0 ? 'positive' : 'negative'}`}>
+                <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                  pos.type === 'thesis' ? 'bg-purple-900/50 text-purple-300' : 'bg-blue-900/50 text-blue-300'
+                }`}>
+                  {pos.type}
+                </span>
+                <span className="flex-1 text-white text-sm">{pos.name}</span>
+                <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                  pos.side === 'YES' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
+                }`}>
+                  {pos.side}
+                </span>
+                <span className={`text-sm font-medium ${pos.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {formatCurrency(pos.pnl)}
                 </span>
               </Link>
@@ -134,11 +146,15 @@ export default function Profile() {
         )}
 
         {activeTab === 'Created Modules' && (
-          <div className="created-list">
+          <div className="space-y-3">
             {mockCreatedModules.map((market) => (
-              <Link key={market.id} to={`/market/${market.id}`} className="created-card">
-                <h3 className="created-title">{market.title}</h3>
-                <div className="created-meta">
+              <Link
+                key={market.id}
+                to={`/market/${market.id}`}
+                className="block p-4 bg-gray-800 border border-gray-700 rounded-lg hover:border-gray-600 transition-colors"
+              >
+                <h3 className="text-white font-medium mb-2">{market.title}</h3>
+                <div className="flex gap-4 text-sm text-gray-400">
                   <span>Volume: {formatCurrency(market.totalVolume)}</span>
                   <span>{market.traders} traders</span>
                 </div>
@@ -148,12 +164,18 @@ export default function Profile() {
         )}
 
         {activeTab === 'Created Theses' && (
-          <div className="created-list">
+          <div className="space-y-3">
             {mockCreatedTheses.map((market) => (
-              <Link key={market.id} to={`/thesis/${market.id}`} className="created-card">
-                <span className="card-type-badge thesis-badge">Thesis</span>
-                <h3 className="created-title">{market.title}</h3>
-                <div className="created-meta">
+              <Link
+                key={market.id}
+                to={`/thesis/${market.id}`}
+                className="block p-4 bg-gray-800 border border-gray-700 rounded-lg hover:border-gray-600 transition-colors"
+              >
+                <span className="inline-block px-2 py-0.5 text-xs font-medium rounded bg-purple-900/50 text-purple-300 mb-2">
+                  Thesis
+                </span>
+                <h3 className="text-white font-medium mb-2">{market.title}</h3>
+                <div className="flex gap-4 text-sm text-gray-400">
                   <span>Volume: {formatCurrency(market.totalVolume)}</span>
                   <span>{market.traders} traders</span>
                 </div>

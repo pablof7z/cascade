@@ -107,41 +107,45 @@ export default function Portfolio() {
   const positions = activeTab === 'Module Positions' ? mockModulePositions : mockThesisPositions
 
   return (
-    <div className="shell shell-page">
-      <div className="page-header">
-        <h1>Portfolio</h1>
-        <p className="page-subtitle">Track your positions and performance</p>
+    <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white">Portfolio</h1>
+        <p className="text-gray-400 mt-1">Track your positions and performance</p>
       </div>
 
       {/* Summary stats */}
-      <div className="stats-row">
-        <div className="stat-card">
-          <span className="stat-label">Total Invested</span>
-          <span className="stat-value">{formatCurrency(totalInvested)}</span>
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Total Invested</span>
+          <span className="block text-xl font-bold text-white mt-1">{formatCurrency(totalInvested)}</span>
         </div>
-        <div className="stat-card">
-          <span className="stat-label">Current Value</span>
-          <span className="stat-value">{formatCurrency(currentValue)}</span>
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Current Value</span>
+          <span className="block text-xl font-bold text-white mt-1">{formatCurrency(currentValue)}</span>
         </div>
-        <div className="stat-card">
-          <span className="stat-label">Total P&L</span>
-          <span className={`stat-value ${totalPnl >= 0 ? 'positive' : 'negative'}`}>
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Total P&L</span>
+          <span className={`block text-xl font-bold mt-1 ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {formatCurrency(totalPnl)} ({formatPercent(totalPnlPercent)})
           </span>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="page-tabs">
+      <div className="flex gap-1 mb-6 bg-gray-800 p-1 rounded-lg">
         {tabs.map((tab) => (
           <button
             key={tab}
             type="button"
-            className={`page-tab ${activeTab === tab ? 'active' : ''}`}
+            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              activeTab === tab
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
             onClick={() => setActiveTab(tab)}
           >
             {tab}
-            <span className="tab-count">
+            <span className="ml-2 text-xs text-gray-500">
               {tab === 'Module Positions' ? mockModulePositions.length : mockThesisPositions.length}
             </span>
           </button>
@@ -149,34 +153,42 @@ export default function Portfolio() {
       </div>
 
       {/* Position cards */}
-      <div className="positions-list">
+      <div className="space-y-3">
         {positions.map((position) => (
           <Link
             key={position.id}
             to={position.type === 'thesis' ? `/thesis/${position.id}` : `/market/${position.id}`}
-            className="position-card"
+            className="block bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-gray-600 transition-colors"
           >
-            <div className="position-header">
-              <span className={`position-badge ${position.type}`}>{position.type}</span>
-              <span className={`position-side ${position.side.toLowerCase()}`}>{position.side}</span>
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                position.type === 'thesis' ? 'bg-purple-900/50 text-purple-300' : 'bg-blue-900/50 text-blue-300'
+              }`}>
+                {position.type}
+              </span>
+              <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                position.side === 'YES' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
+              }`}>
+                {position.side}
+              </span>
             </div>
-            <h3 className="position-title">{position.marketName}</h3>
-            <div className="position-details">
-              <div className="position-detail">
-                <span className="detail-label">Amount</span>
-                <span className="detail-value">{formatCurrency(position.amount)}</span>
+            <h3 className="text-white font-medium mb-3">{position.marketName}</h3>
+            <div className="grid grid-cols-4 gap-4">
+              <div>
+                <span className="text-xs text-gray-500 block">Amount</span>
+                <span className="text-sm text-white">{formatCurrency(position.amount)}</span>
               </div>
-              <div className="position-detail">
-                <span className="detail-label">Avg Price</span>
-                <span className="detail-value">{(position.avgPrice * 100).toFixed(0)}¢</span>
+              <div>
+                <span className="text-xs text-gray-500 block">Avg Price</span>
+                <span className="text-sm text-white">{(position.avgPrice * 100).toFixed(0)}¢</span>
               </div>
-              <div className="position-detail">
-                <span className="detail-label">Current</span>
-                <span className="detail-value">{(position.currentPrice * 100).toFixed(0)}¢</span>
+              <div>
+                <span className="text-xs text-gray-500 block">Current</span>
+                <span className="text-sm text-white">{(position.currentPrice * 100).toFixed(0)}¢</span>
               </div>
-              <div className="position-detail">
-                <span className="detail-label">P&L</span>
-                <span className={`detail-value ${position.pnl >= 0 ? 'positive' : 'negative'}`}>
+              <div>
+                <span className="text-xs text-gray-500 block">P&L</span>
+                <span className={`text-sm ${position.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {formatCurrency(position.pnl)} ({formatPercent(position.pnlPercent)})
                 </span>
               </div>

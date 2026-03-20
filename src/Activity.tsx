@@ -182,19 +182,23 @@ export default function Activity() {
   })
 
   return (
-    <div className="shell shell-page">
-      <div className="page-header">
-        <h1>Activity</h1>
-        <p className="page-subtitle">Recent activity across all markets</p>
+    <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white">Activity</h1>
+        <p className="text-gray-400 mt-1">Recent activity across all markets</p>
       </div>
 
       {/* Filter tabs */}
-      <div className="page-tabs">
+      <div className="flex gap-1 mb-6 bg-gray-800 p-1 rounded-lg">
         {filters.map((filter) => (
           <button
             key={filter}
             type="button"
-            className={`page-tab ${activeFilter === filter ? 'active' : ''}`}
+            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              activeFilter === filter
+                ? 'bg-gray-700 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
             onClick={() => setActiveFilter(filter)}
           >
             {filter}
@@ -203,26 +207,35 @@ export default function Activity() {
       </div>
 
       {/* Activity feed */}
-      <div className="activity-feed">
+      <div className="space-y-3">
         {filteredActivity.map((item) => (
-          <div key={item.id} className={`activity-item activity-${item.type}`}>
-            <div className="activity-icon">{getActivityIcon(item.type)}</div>
-            <div className="activity-content">
-              <div className="activity-header">
-                <span className="activity-actor">{item.actor}</span>
-                <code className="activity-npub">{item.actorNpub}</code>
-                <span className="activity-time">{formatTimestamp(item.timestamp)}</span>
+          <div
+            key={item.id}
+            className="flex gap-4 p-4 bg-gray-800 border border-gray-700 rounded-lg"
+          >
+            <div className="text-2xl">{getActivityIcon(item.type)}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="text-white font-medium">{item.actor}</span>
+                <code className="text-xs text-gray-500">{item.actorNpub}</code>
+                <span className="text-xs text-gray-500">{formatTimestamp(item.timestamp)}</span>
               </div>
-              <div className="activity-action">
-                <span className="action-text">{item.action}</span>
-                {item.details && <span className="action-details">{item.details}</span>}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-gray-300">{item.action}</span>
+                {item.details && (
+                  <span className="text-gray-500 text-sm">{item.details}</span>
+                )}
               </div>
               <Link
                 to={item.marketType === 'thesis' ? `/thesis/${item.marketId}` : `/market/${item.marketId}`}
-                className="activity-market"
+                className="inline-flex items-center gap-2 text-sm hover:opacity-80 transition-opacity"
               >
-                <span className={`market-type-badge ${item.marketType}`}>{item.marketType}</span>
-                <span className="market-name">{item.marketName}</span>
+                <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                  item.marketType === 'thesis' ? 'bg-purple-900/50 text-purple-300' : 'bg-blue-900/50 text-blue-300'
+                }`}>
+                  {item.marketType}
+                </span>
+                <span className="text-blue-400">{item.marketName}</span>
               </Link>
             </div>
           </div>

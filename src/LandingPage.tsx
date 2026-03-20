@@ -13,10 +13,9 @@ type SampleMarketSpec = {
   description: string
   category: string
   type: MarketType
-  supportingModules?: string[] // For theses, list of module titles they're based on
+  supportingModules?: string[]
 }
 
-// Modules — concrete, falsifiable predictions
 const sampleModules: SampleMarketSpec[] = [
   {
     title: 'AGI achieved by 2030',
@@ -62,7 +61,6 @@ const sampleModules: SampleMarketSpec[] = [
   },
 ]
 
-// Theses — longer-form structural claims about the future
 const sampleTheses: SampleMarketSpec[] = [
   {
     title: 'The Great Decoupling — AI productivity gains don\'t translate to wage growth',
@@ -107,7 +105,6 @@ const categories = [
   'Biotech & Health',
   'Energy & Climate',
   'Governance & Society',
-  'Existential Risk',
 ]
 
 const typeFilters = ['All', 'Modules', 'Theses'] as const
@@ -138,7 +135,6 @@ function shuffle<T>(items: T[]) {
 function buildAggregateReserve(entries: MarketEntry[]): { time: number; value: number }[] {
   if (entries.length === 0) return []
 
-  // Collect all timestamped reserve events tagged by market index
   const events: { time: number; marketIdx: number; reserve: number }[] = []
   for (let i = 0; i < entries.length; i++) {
     for (const point of entries[i].history) {
@@ -147,14 +143,12 @@ function buildAggregateReserve(entries: MarketEntry[]): { time: number; value: n
   }
   events.sort((a, b) => a.time - b.time)
 
-  // Walk events, tracking last known reserve per market
   const lastReserve = new Array<number>(entries.length).fill(0)
   const result: { time: number; value: number }[] = []
 
   for (const event of events) {
     lastReserve[event.marketIdx] = event.reserve
     const total = lastReserve.reduce((sum, v) => sum + v, 0)
-    // Deduplicate same-second entries: overwrite last if same time
     if (result.length > 0 && result[result.length - 1].time === event.time) {
       result[result.length - 1].value = total
     } else {
@@ -166,11 +160,9 @@ function buildAggregateReserve(entries: MarketEntry[]): { time: number; value: n
 }
 
 function computeAverageHorizon(): string {
-  // Mock: average years until resolution across sample markets
   return '8.4 years'
 }
 
-// Helper to get sample spec for a market (mock - in real app this would be stored)
 function getSampleSpec(title: string): SampleMarketSpec | undefined {
   return sampleMarketBank.find(spec => spec.title === title)
 }
@@ -192,11 +184,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
 
   const entries = Object.values(markets)
 
-  // Filter entries by type
   const filteredEntries = useMemo(() => {
     let filtered = entries
 
-    // Filter by type
     if (activeTypeFilter === 'Modules') {
       filtered = filtered.filter(e => {
         const spec = getSampleSpec(e.market.title)
@@ -209,7 +199,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
       })
     }
 
-    // Filter by category
     if (activeCategory !== 'All') {
       filtered = filtered.filter(e => {
         const spec = getSampleSpec(e.market.title)
@@ -263,126 +252,156 @@ export default function LandingPage({ markets, dispatch }: Props) {
   }
 
   const createForm = (
-    <form className="stacked-form" onSubmit={handleCreateMarket}>
-      <label>
-        <span>Title</span>
+    <form className="space-y-4" onSubmit={handleCreateMarket}>
+      <label className="block">
+        <span className="text-sm text-gray-400">Title</span>
         <input
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           placeholder="Will AGI emerge before 2030?"
+          className="mt-1 w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-500"
         />
       </label>
-      <label>
-        <span>Description</span>
+      <label className="block">
+        <span className="text-sm text-gray-400">Description</span>
         <textarea
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           rows={3}
           placeholder="Define the resolution criteria clearly. What evidence would settle this question?"
+          className="mt-1 w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 resize-y min-h-[88px]"
         />
       </label>
-      <div className="dual-row">
-        <label>
-          <span>Initial side</span>
+      <div className="grid grid-cols-2 gap-4">
+        <label className="block">
+          <span className="text-sm text-gray-400">Initial side</span>
           <select
             value={initialSide}
             onChange={(event) => setInitialSide(event.target.value as Side)}
+            className="mt-1 w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
           >
             <option value="LONG">LONG</option>
             <option value="SHORT">SHORT</option>
           </select>
         </label>
-        <label>
-          <span>Initial sats</span>
+        <label className="block">
+          <span className="text-sm text-gray-400">Initial sats</span>
           <input
             value={initialSats}
             onChange={(event) => setInitialSats(event.target.value)}
             inputMode="decimal"
+            className="mt-1 w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
           />
         </label>
       </div>
-      <div className="seed-actions">
-        <button className="primary-button" type="submit">
+      <div className="flex gap-3 pt-2">
+        <button
+          className="flex-1 px-4 py-3 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+          type="submit"
+        >
           Create + seed market
         </button>
-        <button className="ghost-button" type="button" onClick={handleLoadSampleMarket}>
+        <button
+          className="px-4 py-3 border border-gray-600 text-gray-300 font-medium rounded-lg hover:border-gray-500 hover:text-white transition-colors"
+          type="button"
+          onClick={handleLoadSampleMarket}
+        >
           Random market
         </button>
       </div>
     </form>
   )
 
-  // Empty state — show the form directly (no modal needed)
+  // Empty state
   if (entries.length === 0) {
     return (
-      <div className="shell shell-compact">
-        <section className="create-shell">
-          <div className="create-meta">
-            <p className="label">Prediction markets for long-term thinkers</p>
-          </div>
-          <div className="create-panel">
-            <h1>Map the future. Trade your beliefs.</h1>
-            <p className="hero-copy">
-              Create markets on the questions that matter in decades, not days.
-              AI timelines, space colonization, climate trajectories, civilizational risks.
-            </p>
-            <p className="muted">
-              Alice, Bob, and Carol start with cash only: zero LONG, zero SHORT,
-              no hidden allocations.
-            </p>
-            {createForm}
-          </div>
-        </section>
+      <div className="max-w-xl mx-auto px-6 py-24">
+        <div className="text-center mb-8">
+          <p className="text-xs uppercase tracking-widest text-gray-500 mb-4">
+            Prediction markets for long-term thinkers
+          </p>
+          <h1 className="text-3xl font-bold text-white mb-4">
+            Map the future. Trade your beliefs.
+          </h1>
+          <p className="text-gray-400 mb-2">
+            Create markets on the questions that matter in decades, not days.
+            AI timelines, space colonization, climate trajectories, civilizational risks.
+          </p>
+          <p className="text-sm text-gray-500">
+            Alice, Bob, and Carol start with cash only: zero LONG, zero SHORT,
+            no hidden allocations.
+          </p>
+        </div>
+        {createForm}
       </div>
     )
   }
 
   return (
-    <div className="shell shell-landing">
-      {/* Hero stats */}
-      <section className="landing-hero">
-        <div className="landing-hero-top">
+    <div className="max-w-5xl mx-auto px-6 py-8">
+      {/* Hero */}
+      <section className="mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
           <div>
-            <p className="label">Prediction markets for long-term thinkers</p>
-            <h1 className="landing-headline">Map the future. Trade your beliefs.</h1>
+            <p className="text-xs uppercase tracking-widest text-gray-500 mb-2">
+              Prediction markets for long-term thinkers
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">
+              Map the future. Trade your beliefs.
+            </h1>
           </div>
-          <div className="hero-actions">
+          <div className="flex gap-3">
             <button
               type="button"
-              className="primary-button"
+              className="px-4 py-2 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
               onClick={() => setShowCreateModal(true)}
             >
               New market
             </button>
-            <Link to="/builder" className="ghost-button">
+            <Link
+              to="/builder"
+              className="px-4 py-2 border border-gray-600 text-gray-300 font-medium rounded-lg hover:border-gray-500 hover:text-white transition-colors"
+            >
               Build thesis
             </Link>
           </div>
         </div>
 
-        {/* Type filter tabs (All | Modules | Theses) */}
-        <div className="type-tabs">
+        {/* Type filter tabs */}
+        <div className="flex gap-1 mb-4">
           {typeFilters.map((filter) => (
             <button
               key={filter}
               type="button"
-              className={`type-tab ${activeTypeFilter === filter ? 'active' : ''}`}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                activeTypeFilter === filter
+                  ? 'bg-gray-800 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+              }`}
               onClick={() => setActiveTypeFilter(filter)}
             >
               {filter}
-              {filter === 'Modules' && <span className="tab-count"> ({moduleCount})</span>}
-              {filter === 'Theses' && <span className="tab-count"> ({thesisCount})</span>}
+              {filter === 'Modules' && (
+                <span className="ml-1 text-gray-500">({moduleCount})</span>
+              )}
+              {filter === 'Theses' && (
+                <span className="ml-1 text-gray-500">({thesisCount})</span>
+              )}
             </button>
           ))}
         </div>
 
         {/* Category tabs */}
-        <div className="category-tabs">
+        <div className="flex flex-wrap gap-2 mb-6">
           {categories.map((cat) => (
             <button
               key={cat}
               type="button"
-              className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
+              className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                activeCategory === cat
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-400 hover:text-white'
+              }`}
               onClick={() => setActiveCategory(cat)}
             >
               {cat}
@@ -390,83 +409,97 @@ export default function LandingPage({ markets, dispatch }: Props) {
           ))}
         </div>
 
-        <div className="landing-stats">
-          <div className="landing-stat">
-            <span className="landing-stat-value">{entries.length}</span>
-            <span className="landing-stat-label">Active markets</span>
+        {/* Stats */}
+        <div className="flex flex-wrap gap-8 py-4 border-y border-gray-800">
+          <div>
+            <div className="text-2xl font-bold text-white">{entries.length}</div>
+            <div className="text-xs uppercase tracking-wider text-gray-500">Active markets</div>
           </div>
-          <div className="landing-stat">
-            <span className="landing-stat-value">{formatCurrency(totalReserve)}</span>
-            <span className="landing-stat-label">Total reserve</span>
+          <div>
+            <div className="text-2xl font-bold text-white">{formatCurrency(totalReserve)}</div>
+            <div className="text-xs uppercase tracking-wider text-gray-500">Total reserve</div>
           </div>
-          <div className="landing-stat">
-            <span className="landing-stat-value">{computeAverageHorizon()}</span>
-            <span className="landing-stat-label">Avg. resolution horizon</span>
+          <div>
+            <div className="text-2xl font-bold text-white">{computeAverageHorizon()}</div>
+            <div className="text-xs uppercase tracking-wider text-gray-500">Avg. resolution horizon</div>
           </div>
         </div>
 
-        {aggregateReserve.length >= 2 ? (
-          <div className="landing-chart">
-            <p className="label">Total reserve</p>
-            <ReserveChart data={aggregateReserve} height={140} />
+        {/* Reserve chart */}
+        {aggregateReserve.length >= 2 && (
+          <div className="mt-6">
+            <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Total reserve</p>
+            <div className="h-36 rounded-lg overflow-hidden">
+              <ReserveChart data={aggregateReserve} height={140} />
+            </div>
           </div>
-        ) : null}
+        )}
       </section>
 
       {/* Market cards */}
-      <div className="market-grid">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredEntries.map(({ market }) => {
           const metrics = deriveMarketMetrics(market)
           const tradeCount = market.quotes.length
           const spec = getSampleSpec(market.title)
           const isThesis = spec?.type === 'thesis'
           const supportingModules = spec?.supportingModules || []
-
-          // Determine route based on type
           const detailPath = isThesis ? `/thesis/${market.id}` : `/market/${market.id}`
 
           return (
             <article
               key={market.id}
-              className={`market-card ${isThesis ? 'market-card-thesis' : 'market-card-module'}`}
+              className="p-5 bg-gray-900 border border-gray-800 rounded-xl cursor-pointer hover:border-gray-700 transition-colors"
               onClick={() => navigate(detailPath)}
             >
-              {isThesis && <span className="card-type-badge thesis-badge">Thesis</span>}
-              {!isThesis && spec && <span className="card-type-badge module-badge">Module</span>}
-              
-              <h2 className="market-card-title">{market.title}</h2>
-              {market.description ? (
-                <p className="market-card-desc">{market.description}</p>
-              ) : null}
+              {/* Badge */}
+              <div className="mb-3">
+                {isThesis ? (
+                  <span className="px-2 py-1 text-xs font-medium bg-purple-500/20 text-purple-400 rounded">
+                    Thesis
+                  </span>
+                ) : spec ? (
+                  <span className="px-2 py-1 text-xs font-medium bg-blue-500/20 text-blue-400 rounded">
+                    Module
+                  </span>
+                ) : null}
+              </div>
 
-              {/* For theses, show supporting modules */}
+              <h2 className="text-base font-semibold text-white mb-2 line-clamp-2">
+                {market.title}
+              </h2>
+
+              {market.description && (
+                <p className="text-sm text-gray-400 mb-3 line-clamp-2">
+                  {market.description}
+                </p>
+              )}
+
+              {/* Supporting modules for theses */}
               {isThesis && supportingModules.length > 0 && (
-                <div className="thesis-modules">
-                  <span className="thesis-modules-label">Based on {supportingModules.length} modules</span>
-                  <ul className="thesis-modules-list">
-                    {supportingModules.slice(0, 2).map((mod, i) => (
-                      <li key={i} className="thesis-module-item">{mod}</li>
-                    ))}
-                    {supportingModules.length > 2 && (
-                      <li className="thesis-module-item thesis-module-more">
-                        +{supportingModules.length - 2} more
-                      </li>
-                    )}
-                  </ul>
+                <div className="mb-3">
+                  <span className="text-xs text-gray-500">
+                    Based on {supportingModules.length} modules
+                  </span>
                 </div>
               )}
 
-              <div className="state-bar market-card-bar">
-                <span
-                  className="state-bar-long"
+              {/* Probability bar */}
+              <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden mb-3">
+                <div
+                  className="h-full bg-green-500 rounded-full"
                   style={{ width: `${metrics.longPositionShare * 100}%` }}
                 />
               </div>
-              <div className="market-card-odds">
-                <span>LONG {formatPercent(metrics.longPositionShare)}</span>
-                <span>SHORT {formatPercent(metrics.shortPositionShare)}</span>
+
+              {/* Odds */}
+              <div className="flex justify-between text-sm font-medium mb-3">
+                <span className="text-green-400">YES {formatPercent(metrics.longPositionShare)}</span>
+                <span className="text-red-400">NO {formatPercent(metrics.shortPositionShare)}</span>
               </div>
-              <div className="market-card-meta">
+
+              {/* Meta */}
+              <div className="flex gap-4 text-xs text-gray-500">
                 <span>Reserve {formatCurrency(market.reserve)}</span>
                 <span>{tradeCount} trade{tradeCount !== 1 ? 's' : ''}</span>
               </div>
@@ -476,26 +509,32 @@ export default function LandingPage({ markets, dispatch }: Props) {
       </div>
 
       {/* Create modal */}
-      {showCreateModal ? (
-        <div className="modal-backdrop" onClick={() => setShowCreateModal(false)}>
-          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">New market</h2>
+      {showCreateModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div
+            className="w-full max-w-lg p-6 bg-gray-900 border border-gray-700 rounded-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-white">New market</h2>
               <button
                 type="button"
-                className="ghost-button modal-close"
+                className="px-3 py-1 text-sm text-gray-400 hover:text-white"
                 onClick={() => setShowCreateModal(false)}
               >
                 Close
               </button>
             </div>
-            <p className="muted">
+            <p className="text-sm text-gray-400 mb-4">
               Alice, Bob, and Carol start with cash only. You seed the opening position.
             </p>
             {createForm}
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   )
 }

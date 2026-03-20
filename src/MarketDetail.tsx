@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import type { Dispatch } from 'react'
 import type { MarketEntry } from './storage'
 import type { Side } from './market'
 import { priceLong, priceShort, previewTrade } from './market'
+import PriceChart from './PriceChart'
 
-// Match the exact Action type from App.tsx
 type TradeAction = {
   type: 'TRADE'
   marketId: string
@@ -20,18 +20,24 @@ interface Props {
   dispatch: Dispatch<TradeAction>
 }
 
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+function formatCurrency(value: number) {
+  return `$${currencyFormatter.format(value)}`
+}
+
 export default function MarketDetail({ entry, dispatch }: Props) {
-  useParams<{ id: string }>() // URL param handled by router
   const [amount, setAmount] = useState(100)
   const [selectedSide, setSelectedSide] = useState<Side>('LONG')
 
   const market = entry.market
 
-  // Price calculations
   const yesPrice = priceLong(market.qLong, market.qShort, market.b)
   const noPrice = priceShort(market.qLong, market.qShort, market.b)
 
-  // Preview the trade (5 args: market, actor, kind, side, amount)
   const preview = previewTrade(market, 'you', 'BUY', selectedSide, amount)
 
   const handleTrade = (side: Side) => {
@@ -46,138 +52,145 @@ export default function MarketDetail({ entry, dispatch }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <div className="border-b border-gray-800 px-6 py-4">
-        <Link to="/" className="text-gray-400 hover:text-white text-sm">
-          ← Back to Markets
-        </Link>
-      </div>
+    <div className="max-w-6xl mx-auto px-6 py-8">
+      {/* Back link */}
+      <Link
+        to="/"
+        className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white mb-6"
+      >
+        ← Back to Markets
+      </Link>
 
-      {/* Main content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Left column - Chart and info */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Title */}
-            <div>
-              <h1 className="text-3xl font-bold mb-2">{market.title}</h1>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left column - Main content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Title */}
+          <div>
+            <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-500/20 text-blue-400 rounded mb-3">
+              Module
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+              {market.title}
+            </h1>
+            {market.description && (
               <p className="text-gray-400">{market.description}</p>
-            </div>
+            )}
+          </div>
 
-            {/* Price display */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-800 rounded-lg p-4">
-                <div className="text-sm text-gray-400 mb-1">YES Price</div>
-                <div className="text-2xl font-bold text-green-400">
-                  {(yesPrice * 100).toFixed(1)}%
-                </div>
-              </div>
-              <div className="bg-gray-800 rounded-lg p-4">
-                <div className="text-sm text-gray-400 mb-1">NO Price</div>
-                <div className="text-2xl font-bold text-red-400">
-                  {(noPrice * 100).toFixed(1)}%
-                </div>
+          {/* Price display */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-5 bg-gray-900 border border-gray-800 rounded-xl">
+              <div className="text-sm text-gray-400 mb-1">YES Price</div>
+              <div className="text-3xl font-bold text-green-400">
+                {(yesPrice * 100).toFixed(1)}¢
               </div>
             </div>
-
-            {/* Chart placeholder */}
-            <div className="bg-gray-800 rounded-lg p-6 h-64 flex items-center justify-center">
-              <span className="text-gray-500">Price History Chart</span>
-            </div>
-
-            {/* Market stats */}
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h3 className="font-semibold mb-4">Market Stats</h3>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <div className="text-gray-400">Liquidity (b)</div>
-                  <div className="font-medium">{market.b.toFixed(0)}</div>
-                </div>
-                <div>
-                  <div className="text-gray-400">YES Pool (qLong)</div>
-                  <div className="font-medium">{market.qLong.toFixed(2)}</div>
-                </div>
-                <div>
-                  <div className="text-gray-400">NO Pool (qShort)</div>
-                  <div className="font-medium">{market.qShort.toFixed(2)}</div>
-                </div>
+            <div className="p-5 bg-gray-900 border border-gray-800 rounded-xl">
+              <div className="text-sm text-gray-400 mb-1">NO Price</div>
+              <div className="text-3xl font-bold text-red-400">
+                {(noPrice * 100).toFixed(1)}¢
               </div>
             </div>
           </div>
 
-          {/* Right column - Trade panel */}
-          <div className="lg:col-span-1">
-            <div className="bg-gray-800 rounded-lg p-6 sticky top-6">
-              <h3 className="font-semibold mb-4">Place Your Bet</h3>
+          {/* Chart */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <h3 className="text-sm font-medium text-gray-400 mb-4">Price History</h3>
+            <div className="h-64">
+              <PriceChart data={entry.history} />
+            </div>
+          </div>
 
-              {/* Side selector */}
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                <button
-                  onClick={() => setSelectedSide('LONG')}
-                  className={`py-3 rounded-lg font-medium transition-colors ${
-                    selectedSide === 'LONG'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  YES {(yesPrice * 100).toFixed(0)}¢
-                </button>
-                <button
-                  onClick={() => setSelectedSide('SHORT')}
-                  className={`py-3 rounded-lg font-medium transition-colors ${
-                    selectedSide === 'SHORT'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  NO {(noPrice * 100).toFixed(0)}¢
-                </button>
+          {/* Market stats */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <h3 className="font-semibold text-white mb-4">Market Stats</h3>
+            <div className="grid grid-cols-3 gap-6">
+              <div>
+                <div className="text-sm text-gray-400 mb-1">Liquidity (b)</div>
+                <div className="text-lg font-medium text-white">{market.b.toFixed(0)}</div>
               </div>
-
-              {/* Amount input */}
-              <div className="mb-4">
-                <label className="block text-sm text-gray-400 mb-2">Amount (sats)</label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
-                  min="1"
-                />
+              <div>
+                <div className="text-sm text-gray-400 mb-1">YES Pool (qLong)</div>
+                <div className="text-lg font-medium text-white">{market.qLong.toFixed(2)}</div>
               </div>
+              <div>
+                <div className="text-sm text-gray-400 mb-1">NO Pool (qShort)</div>
+                <div className="text-lg font-medium text-white">{market.qShort.toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-              {/* Preview */}
-              {preview && (
-                <div className="bg-gray-700 rounded-lg p-4 mb-4 text-sm">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-400">Cost</span>
-                    <span>{preview.sats.toFixed(2)} sats</span>
-                  </div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-400">Tokens</span>
-                    <span>{preview.tokens.toFixed(4)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Avg Price</span>
-                    <span>{(preview.avgPrice * 100).toFixed(1)}¢</span>
-                  </div>
-                </div>
-              )}
+        {/* Right column - Trade panel */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-24 bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <h3 className="font-semibold text-white mb-4">Place Your Bet</h3>
 
-              {/* Trade button */}
+            {/* Side selector */}
+            <div className="grid grid-cols-2 gap-3 mb-5">
               <button
-                onClick={() => handleTrade(selectedSide)}
-                className={`w-full py-4 rounded-lg font-bold text-lg transition-colors ${
+                onClick={() => setSelectedSide('LONG')}
+                className={`py-3 rounded-lg font-medium transition-all ${
                   selectedSide === 'LONG'
-                    ? 'bg-green-600 hover:bg-green-500'
-                    : 'bg-red-600 hover:bg-red-500'
+                    ? 'bg-green-600 text-white ring-2 ring-green-500 ring-offset-2 ring-offset-gray-900'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                Buy {selectedSide === 'LONG' ? 'YES' : 'NO'}
+                YES {(yesPrice * 100).toFixed(0)}¢
+              </button>
+              <button
+                onClick={() => setSelectedSide('SHORT')}
+                className={`py-3 rounded-lg font-medium transition-all ${
+                  selectedSide === 'SHORT'
+                    ? 'bg-red-600 text-white ring-2 ring-red-500 ring-offset-2 ring-offset-gray-900'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                NO {(noPrice * 100).toFixed(0)}¢
               </button>
             </div>
+
+            {/* Amount input */}
+            <div className="mb-5">
+              <label className="block text-sm text-gray-400 mb-2">Amount (sats)</label>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(Number(e.target.value))}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
+                min="1"
+              />
+            </div>
+
+            {/* Preview */}
+            {preview && (
+              <div className="bg-gray-800 rounded-lg p-4 mb-5 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Cost</span>
+                  <span className="text-white">{formatCurrency(preview.sats)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Tokens</span>
+                  <span className="text-white">{preview.tokens.toFixed(4)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Avg Price</span>
+                  <span className="text-white">{(preview.avgPrice * 100).toFixed(1)}¢</span>
+                </div>
+              </div>
+            )}
+
+            {/* Trade button */}
+            <button
+              onClick={() => handleTrade(selectedSide)}
+              className={`w-full py-4 rounded-lg font-bold text-lg transition-colors ${
+                selectedSide === 'LONG'
+                  ? 'bg-green-600 hover:bg-green-500 text-white'
+                  : 'bg-red-600 hover:bg-red-500 text-white'
+              }`}
+            >
+              Buy {selectedSide === 'LONG' ? 'YES' : 'NO'}
+            </button>
           </div>
         </div>
       </div>

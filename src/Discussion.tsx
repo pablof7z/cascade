@@ -13,7 +13,6 @@ interface Comment {
   positionSize?: number
 }
 
-// Mock comments data
 const mockComments: Comment[] = [
   {
     id: '1',
@@ -81,7 +80,6 @@ interface DiscussionProps {
 }
 
 export default function Discussion({ marketId }: DiscussionProps) {
-  // marketId can be used in the future to load comments for specific markets
   void marketId
   const [filter, setFilter] = useState<FilterType>('all')
   const [newComment, setNewComment] = useState('')
@@ -93,74 +91,82 @@ export default function Discussion({ marketId }: DiscussionProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Mock: would publish to Nostr
     setNewComment('')
   }
 
+  const filterBtnClass = (f: FilterType) =>
+    `px-3 py-1.5 text-sm rounded-lg transition-colors ${
+      filter === f
+        ? 'bg-gray-700 text-white'
+        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+    }`
+
   return (
-    <div className="discussion">
-      <div className="discussion-header">
-        <h3 className="discussion-title">Discussion</h3>
-        <div className="discussion-filters">
-          <button
-            type="button"
-            className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
-            onClick={() => setFilter('all')}
-          >
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h3 className="text-lg font-semibold text-white">Discussion</h3>
+        <div className="flex gap-1">
+          <button type="button" className={filterBtnClass('all')} onClick={() => setFilter('all')}>
             All
           </button>
-          <button
-            type="button"
-            className={`filter-tab ${filter === 'long' ? 'active' : ''}`}
-            onClick={() => setFilter('long')}
-          >
+          <button type="button" className={filterBtnClass('long')} onClick={() => setFilter('long')}>
             Long Holders
           </button>
-          <button
-            type="button"
-            className={`filter-tab ${filter === 'short' ? 'active' : ''}`}
-            onClick={() => setFilter('short')}
-          >
+          <button type="button" className={filterBtnClass('short')} onClick={() => setFilter('short')}>
             Short Holders
           </button>
         </div>
       </div>
 
-      <form className="discussion-compose" onSubmit={handleSubmit}>
+      {/* Compose */}
+      <form className="space-y-3" onSubmit={handleSubmit}>
         <textarea
-          className="discussion-input"
+          className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 resize-y min-h-[80px]"
           placeholder="Share your analysis..."
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           rows={3}
         />
-        <button type="submit" className="primary-button" disabled={!newComment.trim()}>
+        <button
+          type="submit"
+          className="px-4 py-2 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!newComment.trim()}
+        >
           Post
         </button>
       </form>
 
-      <div className="discussion-comments">
+      {/* Comments */}
+      <div className="space-y-4">
         {filteredComments.map((comment) => (
-          <div key={comment.id} className="comment-card">
-            <div className="comment-header">
-              <div className="comment-author">
-                <span className="comment-avatar">
+          <div key={comment.id} className="p-4 bg-gray-900 border border-gray-800 rounded-xl">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 flex items-center justify-center bg-gray-700 text-white text-sm font-medium rounded-full">
                   {comment.displayName.charAt(0).toUpperCase()}
                 </span>
-                <span className="comment-name">{comment.displayName}</span>
-                <span className="comment-npub">{comment.npub}</span>
+                <span className="font-medium text-white">{comment.displayName}</span>
+                <code className="text-xs text-gray-500">{comment.npub}</code>
               </div>
               {comment.position !== 'none' && (
-                <span className={`position-badge position-${comment.position}`}>
+                <span
+                  className={`px-2 py-1 text-xs font-medium rounded ${
+                    comment.position === 'long'
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-red-500/20 text-red-400'
+                  }`}
+                >
                   {comment.position.toUpperCase()}
                   {comment.positionSize && ` ${formatCurrency(comment.positionSize)}`}
                 </span>
               )}
             </div>
-            <p className="comment-content">{comment.content}</p>
-            <div className="comment-footer">
-              <span className="comment-time">{formatTimeAgo(comment.timestamp)}</span>
-            </div>
+            {/* Content */}
+            <p className="text-gray-300 mb-3">{comment.content}</p>
+            {/* Footer */}
+            <span className="text-xs text-gray-500">{formatTimeAgo(comment.timestamp)}</span>
           </div>
         ))}
       </div>

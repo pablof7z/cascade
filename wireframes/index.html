@@ -231,6 +231,17 @@
       }
     }
     
+    /* Impact colors */
+    .impact-positive { color: #22c55e; }
+    .impact-negative { color: #ef4444; }
+    .cascade-impact { 
+      font-size: 11px; 
+      color: #666; 
+      margin-top: 4px; 
+      padding-left: 12px; 
+      border-left: 2px solid #ddd;
+    }
+    
     /* Chart placeholder */
     .chart-placeholder {
       background: linear-gradient(135deg, #f8f8f8 0%, #eee 100%);
@@ -580,6 +591,10 @@
     <a href="#module" onclick="showPage('module')">Module Detail</a>
     <a href="#thesis" onclick="showPage('thesis')">Thesis Detail</a>
     <a href="#builder" onclick="showPage('builder')">Thesis Builder</a>
+    <a href="#portfolio" onclick="showPage('portfolio')">Portfolio</a>
+    <a href="#profile" onclick="showPage('profile')">Profile</a>
+    <a href="#leaderboard" onclick="showPage('leaderboard')">Leaderboard</a>
+    <a href="#activity" onclick="showPage('activity')">Activity</a>
   </nav>
 
   <!-- PAGE 1: Landing Page -->
@@ -1377,6 +1392,650 @@
             Creating a thesis costs gas + initial liquidity
           </p>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 5: Portfolio / My Positions -->
+  <div id="portfolio" class="page">
+    <div class="header">
+      <div class="container">
+        <h1>My Portfolio</h1>
+        <p>Track your positions and exposure across modules and theses</p>
+      </div>
+    </div>
+    
+    <div class="container">
+      <!-- Summary Stats -->
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Total Invested</div>
+          <div style="font-size: 28px; font-weight: 700;">$2,450</div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Current Value</div>
+          <div style="font-size: 28px; font-weight: 700;">$2,892</div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Unrealized P&L</div>
+          <div style="font-size: 28px; font-weight: 700; color: #22c55e;">+$442</div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Return</div>
+          <div style="font-size: 28px; font-weight: 700; color: #22c55e;">+18.0%</div>
+        </div>
+      </div>
+      
+      <!-- Position Tabs -->
+      <div class="tabs" style="margin-bottom: 24px;">
+        <button class="tab active">Module Positions</button>
+        <button class="tab">Thesis Positions</button>
+      </div>
+      
+      <!-- Sort Options -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="font-size: 14px; color: #666;">8 active positions</div>
+        <div style="display: flex; gap: 8px;">
+          <select style="padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+            <option>Largest Position</option>
+            <option>Most Profitable</option>
+            <option>Expiring Soon</option>
+            <option>Recently Traded</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Position List -->
+      <div class="card" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span class="badge badge-module">Module</span>
+              <span style="font-weight: 600;">Fed cuts rates by 50bps in March 2025</span>
+            </div>
+            <div style="font-size: 13px; color: #666;">
+              <span style="background: #22c55e; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 8px;">YES</span>
+              142 shares @ 67¢ avg • Current: 72¢
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 18px; font-weight: 600;">$102.24</div>
+            <div style="font-size: 13px; color: #22c55e;">+$7.10 (+7.5%)</div>
+          </div>
+        </div>
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; font-size: 12px; color: #666;">
+          Resolves: March 19, 2025 (28 days) • Potential payout: $142.00
+        </div>
+      </div>
+      
+      <div class="card" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span class="badge badge-module">Module</span>
+              <span style="font-weight: 600;">Office vacancy exceeds 25% by Q4 2025</span>
+            </div>
+            <div style="font-size: 13px; color: #666;">
+              <span style="background: #22c55e; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 8px;">YES</span>
+              200 shares @ 48¢ avg • Current: 52¢
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 18px; font-weight: 600;">$104.00</div>
+            <div style="font-size: 13px; color: #22c55e;">+$8.00 (+8.3%)</div>
+          </div>
+        </div>
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; font-size: 12px; color: #666;">
+          Resolves: January 15, 2026 (301 days) • Potential payout: $200.00
+        </div>
+      </div>
+      
+      <div class="card" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span class="badge badge-module">Module</span>
+              <span style="font-weight: 600;">Regional bank failure ($10B+) in 2025</span>
+            </div>
+            <div style="font-size: 13px; color: #666;">
+              <span style="background: #ef4444; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 8px;">NO</span>
+              300 shares @ 82¢ avg • Current: 78¢
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 18px; font-weight: 600;">$234.00</div>
+            <div style="font-size: 13px; color: #ef4444;">-$12.00 (-4.9%)</div>
+          </div>
+        </div>
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; font-size: 12px; color: #666;">
+          Resolves: December 31, 2025 (286 days) • Potential payout: $300.00
+        </div>
+      </div>
+      
+      <div class="card" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span class="badge badge-thesis">Thesis</span>
+              <span style="font-weight: 600;">Commercial Real Estate will collapse by 2026</span>
+            </div>
+            <div style="font-size: 13px; color: #666;">
+              <span style="background: #22c55e; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 8px;">YES</span>
+              500 shares @ 30¢ avg • Current: 34¢
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 18px; font-weight: 600;">$170.00</div>
+            <div style="font-size: 13px; color: #22c55e;">+$20.00 (+13.3%)</div>
+          </div>
+        </div>
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; font-size: 12px; color: #666;">
+          Based on 3 modules • Probability evolves as evidence resolves
+        </div>
+      </div>
+      
+      <!-- Exposure Analysis -->
+      <div class="section-header" style="margin-top: 32px;">Exposure Analysis</div>
+      
+      <div class="annotation">
+        How your portfolio value changes based on module resolutions. This helps you understand correlated risk.
+      </div>
+      
+      <div class="card">
+        <h3 style="margin-bottom: 16px; font-size: 14px;">If Module Resolves YES...</h3>
+        
+        <div style="border: 1px solid #eee; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 500;">Fed cuts rates by 50bps</div>
+              <div style="font-size: 12px; color: #666;">Direct: +$42.44 • Thesis impact: +$25.00</div>
+            </div>
+            <div style="font-size: 18px; font-weight: 600; color: #22c55e;">Net: +$67.44</div>
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #eee; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 500;">Office vacancy >25%</div>
+              <div style="font-size: 12px; color: #666;">Direct: +$96.00 • Thesis impact: +$40.00</div>
+            </div>
+            <div style="font-size: 18px; font-weight: 600; color: #22c55e;">Net: +$136.00</div>
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #eee; border-radius: 6px; padding: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 500;">Regional bank failure</div>
+              <div style="font-size: 12px; color: #666;">Direct: -$234.00 • Thesis impact: +$62.50</div>
+            </div>
+            <div style="font-size: 18px; font-weight: 600; color: #ef4444;">Net: -$171.50</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 6: User Profile -->
+  <div id="profile" class="page">
+    <div class="header">
+      <div class="container">
+        <h1>Profile</h1>
+        <p>Your prediction track record and activity</p>
+      </div>
+    </div>
+    
+    <div class="container">
+      <div class="two-col">
+        <div>
+          <!-- Identity Card -->
+          <div class="card">
+            <div style="display: flex; gap: 20px; align-items: flex-start;">
+              <div style="width: 80px; height: 80px; background: #f0f0f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px;">
+                👤
+              </div>
+              <div style="flex: 1;">
+                <div style="font-size: 18px; font-weight: 600; margin-bottom: 4px;">Anonymous Predictor</div>
+                <div style="font-size: 12px; font-family: monospace; color: #666; word-break: break-all; margin-bottom: 8px;">
+                  npub1abc...xyz123
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <span style="background: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-size: 11px;">Joined: Jan 2025</span>
+                  <span style="background: #22c55e20; color: #22c55e; padding: 4px 8px; border-radius: 4px; font-size: 11px;">Top 5% Predictor</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Stats Grid -->
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 16px 0;">
+            <div class="card" style="text-align: center;">
+              <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Total Trades</div>
+              <div style="font-size: 24px; font-weight: 700;">156</div>
+            </div>
+            <div class="card" style="text-align: center;">
+              <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Win Rate</div>
+              <div style="font-size: 24px; font-weight: 700;">68%</div>
+            </div>
+            <div class="card" style="text-align: center;">
+              <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Total P&L</div>
+              <div style="font-size: 24px; font-weight: 700; color: #22c55e;">+$4,892</div>
+            </div>
+            <div class="card" style="text-align: center;">
+              <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Reputation</div>
+              <div style="font-size: 24px; font-weight: 700;">⭐ 847</div>
+            </div>
+          </div>
+          
+          <!-- Tabs -->
+          <div class="tabs" style="margin: 24px 0 16px 0;">
+            <button class="tab">Positions</button>
+            <button class="tab active">Created Modules</button>
+            <button class="tab">Created Theses</button>
+            <button class="tab">Trade History</button>
+          </div>
+          
+          <!-- Created Modules List -->
+          <div class="section-header">Created Modules (12)</div>
+          
+          <div class="card" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <div style="font-weight: 500;">Fed cuts rates by 50bps in March 2025</div>
+                <div style="font-size: 12px; color: #666; margin-top: 4px;">$142K volume • 234 traders • Informs 12 theses</div>
+              </div>
+              <div style="text-align: right;">
+                <span class="price-small">67¢</span>
+                <div style="font-size: 11px; color: #666; margin-top: 4px;">Pending</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <div style="font-weight: 500;">Trump wins 2024 election</div>
+                <div style="font-size: 12px; color: #666; margin-top: 4px;">$1.2M volume • 1,892 traders • Informed 45 theses</div>
+              </div>
+              <div style="text-align: right;">
+                <span style="background: #22c55e; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 12px;">YES ✓</span>
+                <div style="font-size: 11px; color: #666; margin-top: 4px;">Resolved</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <div style="font-weight: 500;">Bitcoin reaches $100K by Dec 2024</div>
+                <div style="font-size: 12px; color: #666; margin-top: 4px;">$890K volume • 2,156 traders • Informed 28 theses</div>
+              </div>
+              <div style="text-align: right;">
+                <span style="background: #ef4444; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 12px;">NO ✓</span>
+                <div style="font-size: 11px; color: #666; margin-top: 4px;">Resolved</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right Column: Accuracy Chart -->
+        <div>
+          <div class="card">
+            <h3 style="margin-bottom: 16px;">Prediction Accuracy Over Time</h3>
+            <div class="chart-placeholder" style="height: 200px;">
+              📈 Accuracy Chart
+              <div style="font-size: 12px; margin-top: 8px;">Monthly win rate trend</div>
+            </div>
+            <div style="display: flex; justify-content: space-around; margin-top: 16px; padding-top: 16px; border-top: 1px solid #eee;">
+              <div style="text-align: center;">
+                <div style="font-size: 12px; color: #666;">Last 30 days</div>
+                <div style="font-size: 18px; font-weight: 600;">72%</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 12px; color: #666;">Last 90 days</div>
+                <div style="font-size: 18px; font-weight: 600;">68%</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 12px; color: #666;">All time</div>
+                <div style="font-size: 18px; font-weight: 600;">65%</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card" style="margin-top: 16px;">
+            <h3 style="margin-bottom: 16px;">Performance by Category</h3>
+            <div style="margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                <span>Politics</span>
+                <span style="font-weight: 500;">78% (23 trades)</span>
+              </div>
+              <div style="background: #eee; height: 8px; border-radius: 4px;">
+                <div style="background: #22c55e; height: 100%; width: 78%; border-radius: 4px;"></div>
+              </div>
+            </div>
+            <div style="margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                <span>Macro / Rates</span>
+                <span style="font-weight: 500;">71% (42 trades)</span>
+              </div>
+              <div style="background: #eee; height: 8px; border-radius: 4px;">
+                <div style="background: #22c55e; height: 100%; width: 71%; border-radius: 4px;"></div>
+              </div>
+            </div>
+            <div style="margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                <span>Real Estate</span>
+                <span style="font-weight: 500;">62% (18 trades)</span>
+              </div>
+              <div style="background: #eee; height: 8px; border-radius: 4px;">
+                <div style="background: #22c55e; height: 100%; width: 62%; border-radius: 4px;"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                <span>Sports</span>
+                <span style="font-weight: 500;">54% (73 trades)</span>
+              </div>
+              <div style="background: #eee; height: 8px; border-radius: 4px;">
+                <div style="background: #f59e0b; height: 100%; width: 54%; border-radius: 4px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 7: Leaderboard -->
+  <div id="leaderboard" class="page">
+    <div class="header">
+      <div class="container">
+        <h1>Leaderboard</h1>
+        <p>Top predictors, creators, and most accurate forecasters</p>
+      </div>
+    </div>
+    
+    <div class="container">
+      <!-- Tabs -->
+      <div class="tabs" style="margin-bottom: 24px;">
+        <button class="tab active">Top Predictors</button>
+        <button class="tab">Top Creators</button>
+        <button class="tab">Most Accurate</button>
+      </div>
+      
+      <!-- Time Filter -->
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+        <div style="display: flex; gap: 8px;">
+          <button style="padding: 6px 12px; border: 1px solid #111; background: #111; color: #fff; border-radius: 4px; font-size: 12px; cursor: pointer;">All Time</button>
+          <button style="padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; font-size: 12px; cursor: pointer;">This Month</button>
+          <button style="padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; font-size: 12px; cursor: pointer;">This Week</button>
+        </div>
+      </div>
+      
+      <!-- Leaderboard Table -->
+      <div class="card">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 2px solid #111;">
+              <th style="text-align: left; padding: 12px 8px; font-size: 12px; color: #666;">Rank</th>
+              <th style="text-align: left; padding: 12px 8px; font-size: 12px; color: #666;">Predictor</th>
+              <th style="text-align: right; padding: 12px 8px; font-size: 12px; color: #666;">Profit</th>
+              <th style="text-align: right; padding: 12px 8px; font-size: 12px; color: #666;">Win Rate</th>
+              <th style="text-align: right; padding: 12px 8px; font-size: 12px; color: #666;">Trades</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 16px 8px; font-weight: 700; font-size: 18px;">🥇</td>
+              <td style="padding: 16px 8px;">
+                <div style="font-weight: 500;">CryptoOracle</div>
+                <div style="font-size: 11px; font-family: monospace; color: #666;">npub1qxy...8fjk</div>
+              </td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 600; color: #22c55e;">+$142,892</td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 500;">74%</td>
+              <td style="padding: 16px 8px; text-align: right; color: #666;">1,247</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 16px 8px; font-weight: 700; font-size: 18px;">🥈</td>
+              <td style="padding: 16px 8px;">
+                <div style="font-weight: 500;">MacroMaster</div>
+                <div style="font-size: 11px; font-family: monospace; color: #666;">npub1abc...def1</div>
+              </td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 600; color: #22c55e;">+$98,456</td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 500;">69%</td>
+              <td style="padding: 16px 8px; text-align: right; color: #666;">892</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 16px 8px; font-weight: 700; font-size: 18px;">🥉</td>
+              <td style="padding: 16px 8px;">
+                <div style="font-weight: 500;">ThesisBuilder</div>
+                <div style="font-size: 11px; font-family: monospace; color: #666;">npub1xyz...789a</div>
+              </td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 600; color: #22c55e;">+$87,234</td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 500;">71%</td>
+              <td style="padding: 16px 8px; text-align: right; color: #666;">756</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 16px 8px; font-weight: 600;">4</td>
+              <td style="padding: 16px 8px;">
+                <div style="font-weight: 500;">PoliticalPundit</div>
+                <div style="font-size: 11px; font-family: monospace; color: #666;">npub1pol...itcs</div>
+              </td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 600; color: #22c55e;">+$72,891</td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 500;">67%</td>
+              <td style="padding: 16px 8px; text-align: right; color: #666;">623</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 16px 8px; font-weight: 600;">5</td>
+              <td style="padding: 16px 8px;">
+                <div style="font-weight: 500;">RealEstateGuru</div>
+                <div style="font-size: 11px; font-family: monospace; color: #666;">npub1cre...prop</div>
+              </td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 600; color: #22c55e;">+$65,123</td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 500;">72%</td>
+              <td style="padding: 16px 8px; text-align: right; color: #666;">412</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 16px 8px; font-weight: 600;">6</td>
+              <td style="padding: 16px 8px;">
+                <div style="font-weight: 500;">SportsAnalyst</div>
+                <div style="font-size: 11px; font-family: monospace; color: #666;">npub1spr...tsss</div>
+              </td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 600; color: #22c55e;">+$54,892</td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 500;">58%</td>
+              <td style="padding: 16px 8px; text-align: right; color: #666;">1,892</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 16px 8px; font-weight: 600;">7</td>
+              <td style="padding: 16px 8px;">
+                <div style="font-weight: 500;">BondTrader</div>
+                <div style="font-size: 11px; font-family: monospace; color: #666;">npub1bnd...fixd</div>
+              </td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 600; color: #22c55e;">+$48,234</td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 500;">65%</td>
+              <td style="padding: 16px 8px; text-align: right; color: #666;">534</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee; background: #fffde7;">
+              <td style="padding: 16px 8px; font-weight: 600;">42</td>
+              <td style="padding: 16px 8px;">
+                <div style="font-weight: 500;">You (Anonymous Predictor)</div>
+                <div style="font-size: 11px; font-family: monospace; color: #666;">npub1abc...xyz1 👈</div>
+              </td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 600; color: #22c55e;">+$4,892</td>
+              <td style="padding: 16px 8px; text-align: right; font-weight: 500;">68%</td>
+              <td style="padding: 16px 8px; text-align: right; color: #666;">156</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <div style="text-align: center; margin-top: 16px;">
+        <button style="padding: 8px 24px; border: 1px solid #ddd; background: #fff; border-radius: 4px; font-size: 13px; cursor: pointer;">Load More</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 8: Activity Feed -->
+  <div id="activity" class="page">
+    <div class="header">
+      <div class="container">
+        <h1>Activity Feed</h1>
+        <p>Real-time platform activity and market movements</p>
+      </div>
+    </div>
+    
+    <div class="container">
+      <!-- Filter Tabs -->
+      <div class="tabs" style="margin-bottom: 24px;">
+        <button class="tab active">All</button>
+        <button class="tab">Trades</button>
+        <button class="tab">New Markets</button>
+        <button class="tab">Resolutions</button>
+      </div>
+      
+      <!-- Activity Items -->
+      <div class="card" style="margin-bottom: 12px;">
+        <div style="display: flex; gap: 12px;">
+          <div style="font-size: 24px;">💰</div>
+          <div style="flex: 1;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 4px;">2 minutes ago</div>
+            <div>
+              <span style="font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">@npub1qxy...8fjk</span>
+              bought <span style="font-weight: 600; color: #22c55e;">YES</span> on 
+              <span style="font-weight: 500; cursor: pointer; text-decoration: underline;" onclick="showPage('module')">Fed cuts rates by 50bps in March 2025</span>
+            </div>
+            <div style="font-size: 13px; color: #666; margin-top: 4px;">
+              $500 @ 67¢ → 746 shares
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card" style="margin-bottom: 12px;">
+        <div style="display: flex; gap: 12px;">
+          <div style="font-size: 24px;">✨</div>
+          <div style="flex: 1;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 4px;">8 minutes ago</div>
+            <div>
+              <span style="font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">@npub1abc...def1</span>
+              created new module
+              <span style="font-weight: 500; cursor: pointer; text-decoration: underline;">Apple releases AI glasses by Q2 2026</span>
+            </div>
+            <div style="font-size: 13px; color: #666; margin-top: 4px;">
+              Starting price: 50¢ • Initial liquidity: $1,000
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card" style="margin-bottom: 12px;">
+        <div style="display: flex; gap: 12px;">
+          <div style="font-size: 24px;">💰</div>
+          <div style="flex: 1;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 4px;">12 minutes ago</div>
+            <div>
+              <span style="font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">@npub1xyz...789a</span>
+              bought <span style="font-weight: 600; color: #ef4444;">NO</span> on 
+              <span style="font-weight: 500; cursor: pointer; text-decoration: underline;">Regional bank failure ($10B+) in 2025</span>
+            </div>
+            <div style="font-size: 13px; color: #666; margin-top: 4px;">
+              $250 @ 78¢ → 321 shares
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card" style="margin-bottom: 12px; border-left: 4px solid #22c55e;">
+        <div style="display: flex; gap: 12px;">
+          <div style="font-size: 24px;">⚡</div>
+          <div style="flex: 1;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 4px;">25 minutes ago</div>
+            <div>
+              <span style="font-weight: 500; cursor: pointer; text-decoration: underline;">China tariffs exceed 25%</span>
+              resolved <span style="font-weight: 600; color: #22c55e;">YES</span>
+            </div>
+            <div style="background: #f8f8f8; border-radius: 6px; padding: 12px; margin-top: 8px;">
+              <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">📊 Cascade Effect — 5 theses affected:</div>
+              <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
+                • <span style="font-weight: 500;">Trump enacts major tariffs</span> → <span class="impact-positive">+18% probability</span>
+              </div>
+              <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
+                • <span style="font-weight: 500;">US-China trade war escalates</span> → <span class="impact-positive">+22% probability</span>
+              </div>
+              <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
+                • <span style="font-weight: 500;">Inflation returns to >4%</span> → <span class="impact-positive">+8% probability</span>
+              </div>
+              <div style="font-size: 13px; color: #666;">
+                • <span style="font-weight: 500;">Dollar strengthens vs Yuan</span> → <span class="impact-negative">-12% probability</span>
+              </div>
+              <div style="font-size: 12px; color: #666; margin-top: 4px;">+ 1 more thesis</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card" style="margin-bottom: 12px;">
+        <div style="display: flex; gap: 12px;">
+          <div style="font-size: 24px;">📝</div>
+          <div style="flex: 1;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 4px;">34 minutes ago</div>
+            <div>
+              <span style="font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">@npub1pol...itcs</span>
+              created new thesis
+              <span style="font-weight: 500; cursor: pointer; text-decoration: underline;" onclick="showPage('thesis')">AI regulation passes in EU by 2025</span>
+            </div>
+            <div style="font-size: 13px; color: #666; margin-top: 4px;">
+              Based on 4 modules • Starting probability: 45¢
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card" style="margin-bottom: 12px;">
+        <div style="display: flex; gap: 12px;">
+          <div style="font-size: 24px;">💰</div>
+          <div style="flex: 1;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 4px;">41 minutes ago</div>
+            <div>
+              <span style="font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">@npub1cre...prop</span>
+              sold <span style="font-weight: 600; color: #22c55e;">YES</span> on 
+              <span style="font-weight: 500; cursor: pointer; text-decoration: underline;" onclick="showPage('thesis')">Commercial Real Estate will collapse by 2026</span>
+            </div>
+            <div style="font-size: 13px; color: #666; margin-top: 4px;">
+              200 shares @ 34¢ → $68.00 • P&L: <span style="color: #22c55e;">+$12.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card" style="margin-bottom: 12px; border-left: 4px solid #ef4444;">
+        <div style="display: flex; gap: 12px;">
+          <div style="font-size: 24px;">⚡</div>
+          <div style="flex: 1;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 4px;">1 hour ago</div>
+            <div>
+              <span style="font-weight: 500; cursor: pointer; text-decoration: underline;">Bitcoin reaches $100K by Dec 2024</span>
+              resolved <span style="font-weight: 600; color: #ef4444;">NO</span>
+            </div>
+            <div style="background: #f8f8f8; border-radius: 6px; padding: 12px; margin-top: 8px;">
+              <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">📊 Cascade Effect — 3 theses affected:</div>
+              <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
+                • <span style="font-weight: 500;">Crypto bull run continues to 2025</span> → <span class="impact-negative">-15% probability</span>
+              </div>
+              <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
+                • <span style="font-weight: 500;">Bitcoin becomes reserve asset</span> → <span class="impact-negative">-8% probability</span>
+              </div>
+              <div style="font-size: 13px; color: #666;">
+                • <span style="font-weight: 500;">Altcoin season Q1 2025</span> → <span class="impact-negative">-12% probability</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin-top: 16px;">
+        <button style="padding: 8px 24px; border: 1px solid #ddd; background: #fff; border-radius: 4px; font-size: 13px; cursor: pointer;">Load More Activity</button>
       </div>
     </div>
   </div>

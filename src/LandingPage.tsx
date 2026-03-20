@@ -370,8 +370,8 @@ export default function LandingPage({ markets, dispatch }: Props) {
               onClick={() => setActiveTypeFilter(filter)}
             >
               {filter}
-              {filter === 'Modules' && <span className="tab-count">{moduleCount}</span>}
-              {filter === 'Theses' && <span className="tab-count">{thesisCount}</span>}
+              {filter === 'Modules' && <span className="tab-count"> ({moduleCount})</span>}
+              {filter === 'Theses' && <span className="tab-count"> ({thesisCount})</span>}
             </button>
           ))}
         </div>

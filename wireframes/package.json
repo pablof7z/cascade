@@ -1,0 +1,7 @@
+{
+  "name": "cascade-wireframes",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "npx serve ."
+  }
+}

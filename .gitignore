@@ -26,3 +26,7 @@ dist-ssr
 # Build artifacts and test output
 .artifacts
 test-results
+.vercel
+
+# Git worktrees
+.worktrees/

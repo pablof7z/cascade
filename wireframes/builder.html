@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thesis Builder - Cascade</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #000; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 2px solid #000; margin-bottom: 30px; }
+        .logo { font-size: 24px; font-weight: bold; text-decoration: none; color: #000; }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-links a { text-decoration: none; color: #666; font-size: 14px; }
+        .nav-links a:hover, .nav-links a.active { color: #000; font-weight: 500; }
+        
+        h1 { font-size: 28px; margin-bottom: 30px; }
+        
+        .layout { display: grid; grid-template-columns: 1fr 350px; gap: 40px; }
+        
+        .form-section { margin-bottom: 30px; }
+        .form-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #ccc; }
+        
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; font-size: 12px; color: #666; margin-bottom: 8px; text-transform: uppercase; }
+        .input-group input, .input-group textarea { width: 100%; padding: 12px; border: 2px solid #ccc; font-size: 14px; font-family: inherit; }
+        .input-group input:focus, .input-group textarea:focus { outline: none; border-color: #000; }
+        .input-group textarea { min-height: 100px; resize: vertical; }
+        .input-group .hint { font-size: 11px; color: #999; margin-top: 5px; }
+        
+        .search-modules { position: relative; }
+        .search-modules input { width: 100%; padding: 12px; border: 2px solid #ccc; font-size: 14px; }
+        .search-results { border: 2px solid #ccc; border-top: none; max-height: 200px; overflow-y: auto; }
+        .search-result { padding: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .search-result:hover { background: #f0f0f0; }
+        .search-result .title { font-size: 14px; }
+        .search-result .price { font-size: 12px; color: #666; }
+        .add-btn { background: #000; color: #fff; border: none; padding: 5px 10px; font-size: 11px; cursor: pointer; }
+        
+        .selected-modules { margin-top: 20px; }
+        .selected-module { border: 2px solid #000; padding: 15px; margin-bottom: 15px; }
+        .selected-module-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .selected-module-title { font-weight: 600; }
+        .remove-btn { background: none; border: 1px solid #ccc; padding: 5px 10px; font-size: 11px; cursor: pointer; }
+        .remove-btn:hover { background: #f0f0f0; }
+        
+        .module-config { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .config-group label { display: block; font-size: 11px; color: #666; margin-bottom: 5px; text-transform: uppercase; }
+        .toggle-btns { display: flex; }
+        .toggle-btn { flex: 1; padding: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 12px; }
+        .toggle-btn.active { background: #000; color: #fff; border-color: #000; }
+        .toggle-btn:first-child { border-right: none; }
+        
+        .weight-slider { width: 100%; margin-top: 5px; }
+        .weight-value { font-size: 14px; font-weight: bold; text-align: center; margin-top: 5px; }
+        
+        .sidebar { position: sticky; top: 20px; }
+        .preview-panel { border: 2px solid #000; padding: 25px; }
+        .preview-panel h3 { font-size: 16px; margin-bottom: 20px; text-align: center; border-bottom: 1px solid #ccc; padding-bottom: 15px; }
+        
+        .preview-probability { text-align: center; margin-bottom: 25px; }
+        .preview-probability .value { font-size: 56px; font-weight: bold; }
+        .preview-probability .label { font-size: 12px; color: #666; }
+        
+        .preview-breakdown { margin-bottom: 25px; }
+        .preview-breakdown h4 { font-size: 12px; color: #666; text-transform: uppercase; margin-bottom: 10px; }
+        .breakdown-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+        .breakdown-item .impact { font-weight: 500; }
+        .breakdown-item .impact.positive { color: #000; }
+        .breakdown-item .impact.negative { color: #666; }
+        
+        .create-btn { width: 100%; padding: 15px; background: #000; color: #fff; border: none; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .create-btn:hover { opacity: 0.8; }
+        .create-btn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        .preview-empty { text-align: center; padding: 40px 20px; color: #999; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <a href="index.html" class="logo">CASCADE</a>
+            <div class="nav-links">
+                <a href="index.html">Markets</a>
+                <a href="portfolio.html">Portfolio</a>
+                <a href="leaderboard.html">Leaderboard</a>
+                <a href="activity.html">Activity</a>
+                <a href="profile.html">Profile</a>
+            </div>
+        </nav>
+        
+        <h1>Create New Thesis</h1>
+        
+        <div class="layout">
+            <div class="main-content">
+                <div class="form-section">
+                    <h2>Thesis Details</h2>
+                    <div class="input-group">
+                        <label>Thesis Title</label>
+                        <input type="text" placeholder="e.g., Bitcoin will exceed $150k by end of 2026">
+                        <div class="hint">A clear, specific statement that can be true or false</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Description</label>
+                        <textarea placeholder="Describe your thesis and what would make it true or false..."></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>Category</label>
+                        <input type="text" placeholder="e.g., Crypto, Politics, Tech">
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h2>Select Supporting Modules</h2>
+                    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Choose modules that will inform your thesis probability. Define whether each module's YES outcome supports or opposes your thesis.</p>
+                    
+                    <div class="search-modules">
+                        <input type="text" placeholder="Search modules...">
+                        <div class="search-results">
+                            <div class="search-result">
+                                <div>
+                                    <div class="title">Fed cuts rates in March 2026</div>
+                                    <div class="price">YES: 72¢ · Resolves Mar 20</div>
+                                </div>
+                                <button class="add-btn">+ Add</button>
+                            </div>
+                            <div class="search-result">
+                                <div>
+                                    <div class="title">Bitcoin ETF inflows exceed $5B in Q1</div>
+                                    <div class="price">YES: 64¢ · Resolves Apr 1</div>
+                                </div>
+                                <button class="add-btn">+ Add</button>
+                            </div>
+                            <div class="search-result">
+                                <div>
+                                    <div class="title">GPT-5 released before July 2026</div>
+                                    <div class="price">YES: 55¢ · Resolves Jul 1</div>
+                                </div>
+                                <button class="add-btn">+ Add</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="selected-modules">
+                        <div class="selected-module">
+                            <div class="selected-module-header">
+                                <span class="selected-module-title">Fed cuts rates in March 2026</span>
+                                <button class="remove-btn">Remove</button>
+                            </div>
+                            <div class="module-config">
+                                <div class="config-group">
+                                    <label>If YES resolves...</label>
+                                    <div class="toggle-btns">
+                                        <button class="toggle-btn active">Supports</button>
+                                        <button class="toggle-btn">Opposes</button>
+                                    </div>
+                                </div>
+                                <div class="config-group">
+                                    <label>Weight</label>
+                                    <input type="range" class="weight-slider" min="1" max="10" value="5">
+                                    <div class="weight-value">5</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="selected-module">
+                            <div class="selected-module-header">
+                                <span class="selected-module-title">Bitcoin ETF inflows exceed $5B in Q1</span>
+                                <button class="remove-btn">Remove</button>
+                            </div>
+                            <div class="module-config">
+                                <div class="config-group">
+                                    <label>If YES resolves...</label>
+                                    <div class="toggle-btns">
+                                        <button class="toggle-btn active">Supports</button>
+                                        <button class="toggle-btn">Opposes</button>
+                                    </div>
+                                </div>
+                                <div class="config-group">
+                                    <label>Weight</label>
+                                    <input type="range" class="weight-slider" min="1" max="10" value="8">
+                                    <div class="weight-value">8</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="preview-panel">
+                    <h3>Probability Preview</h3>
+                    
+                    <div class="preview-probability">
+                        <div class="value">67%</div>
+                        <div class="label">Calculated from module weights</div>
+                    </div>
+                    
+                    <div class="preview-breakdown">
+                        <h4>Module Contributions</h4>
+                        <div class="breakdown-item">
+                            <span>Fed Rate Cut</span>
+                            <span class="impact positive">+8%</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>ETF Inflows</span>
+                            <span class="impact positive">+12%</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span>Base Probability</span>
+                            <span class="impact">47%</span>
+                        </div>
+                    </div>
+                    
+                    <button class="create-btn">Create Thesis</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

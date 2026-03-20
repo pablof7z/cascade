@@ -1,47 +1,117 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent, Dispatch } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { deriveMarketMetrics, type Side } from './market'
 import type { MarketEntry } from './storage'
 import type { Action } from './App'
 import ReserveChart from './ReserveChart'
 
+type MarketType = 'module' | 'thesis'
+
 type SampleMarketSpec = {
   title: string
   description: string
+  category: string
+  type: MarketType
+  supportingModules?: string[] // For theses, list of module titles they're based on
 }
 
-const sampleMarketBank: SampleMarketSpec[] = [
+// Modules — concrete, falsifiable predictions
+const sampleModules: SampleMarketSpec[] = [
   {
-    title: 'Will fusion hit grid parity by 2035?',
+    title: 'AGI achieved by 2030',
     description:
-      'A toy market on whether fusion reaches commercially meaningful power economics before 2035.',
+      'Will a system demonstrating general-purpose reasoning across arbitrary domains be publicly recognized by major AI labs before 2030?',
+    category: 'AI & Compute',
+    type: 'module',
   },
   {
-    title: 'Will a new reserve currency bloc emerge before 2040?',
+    title: 'First Mars landing with crew by 2035',
     description:
-      'A macro market on whether the current reserve stack fractures into a durable alternative bloc.',
+      'Will humans set foot on Mars before January 1, 2035? Requires successful landing and survival for at least 24 hours.',
+    category: 'Space & Frontier',
+    type: 'module',
   },
   {
-    title: 'Will US housing become structurally cheaper by 2030?',
+    title: 'Lab-grown meat exceeds 10% market share by 2028',
     description:
-      'A supply-and-rates market disguised as a social stability argument.',
+      'Will cultivated meat products capture over 10% of global meat sales by volume before 2028?',
+    category: 'Biotech & Health',
+    type: 'module',
   },
   {
-    title: 'Will a practical anti-aging therapy reach rich-country clinics by 2038?',
+    title: 'US implements UBI pilot program',
     description:
-      'Focuses on real clinical deployment, not just another optimistic paper cycle.',
+      'Will the US federal government launch a universal basic income pilot of 10,000+ participants before 2030?',
+    category: 'Governance & Society',
+    type: 'module',
   },
   {
-    title: 'Will fully synthetic food undercut premium animal protein by 2033?',
+    title: 'Fusion power plant goes online',
     description:
-      'A price compression market on whether lab-grown alternatives escape prototype jail.',
+      'Will a fusion reactor deliver net-positive energy to a commercial grid before 2035?',
+    category: 'Energy & Climate',
+    type: 'module',
   },
   {
-    title: 'Will an open-source humanoid robot stack go mainstream by 2032?',
+    title: 'Brain-computer interface reaches 1M users',
     description:
-      'Tracks whether low-cost humanoid systems become deployable rather than staying lab theater.',
+      'Will any single BCI product (invasive or non-invasive) have 1 million active users before 2032?',
+    category: 'Biotech & Health',
+    type: 'module',
   },
 ]
+
+// Theses — longer-form structural claims about the future
+const sampleTheses: SampleMarketSpec[] = [
+  {
+    title: 'The Great Decoupling — AI productivity gains don\'t translate to wage growth',
+    description:
+      'Despite AI driving significant productivity increases, median real wages in developed economies remain flat or decline through 2035.',
+    category: 'AI & Compute',
+    type: 'thesis',
+    supportingModules: ['AGI achieved by 2030', 'US implements UBI pilot program'],
+  },
+  {
+    title: 'Space economy exceeds $1T by 2040',
+    description:
+      'The total value of space-related economic activity — including launch services, satellites, manufacturing, tourism, and resource extraction — surpasses $1 trillion annually.',
+    category: 'Space & Frontier',
+    type: 'thesis',
+    supportingModules: ['First Mars landing with crew by 2035'],
+  },
+  {
+    title: 'Biological longevity escape velocity achieved',
+    description:
+      'Life expectancy gains exceed one year per year for some demographic by 2045, driven by rejuvenation therapies rather than disease prevention alone.',
+    category: 'Biotech & Health',
+    type: 'thesis',
+    supportingModules: ['Brain-computer interface reaches 1M users', 'Lab-grown meat exceeds 10% market share by 2028'],
+  },
+  {
+    title: 'Climate migration reshapes global politics',
+    description:
+      'By 2040, climate-driven migration creates at least one new nation-state or triggers the collapse of an existing government.',
+    category: 'Energy & Climate',
+    type: 'thesis',
+    supportingModules: ['Fusion power plant goes online'],
+  },
+]
+
+const sampleMarketBank = [...sampleModules, ...sampleTheses]
+
+const categories = [
+  'All',
+  'AI & Compute',
+  'Space & Frontier',
+  'Biotech & Health',
+  'Energy & Climate',
+  'Governance & Society',
+  'Existential Risk',
+]
+
+const typeFilters = ['All', 'Modules', 'Theses'] as const
+type TypeFilter = typeof typeFilters[number]
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
@@ -95,23 +165,72 @@ function buildAggregateReserve(entries: MarketEntry[]): { time: number; value: n
   return result
 }
 
+function computeAverageHorizon(): string {
+  // Mock: average years until resolution across sample markets
+  return '8.4 years'
+}
+
+// Helper to get sample spec for a market (mock - in real app this would be stored)
+function getSampleSpec(title: string): SampleMarketSpec | undefined {
+  return sampleMarketBank.find(spec => spec.title === title)
+}
+
 type Props = {
   markets: Record<string, MarketEntry>
   dispatch: Dispatch<Action>
 }
 
 export default function LandingPage({ markets, dispatch }: Props) {
+  const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [initialSide, setInitialSide] = useState<Side>('LONG')
   const [initialSats, setInitialSats] = useState('150')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [activeCategory, setActiveCategory] = useState('All')
+  const [activeTypeFilter, setActiveTypeFilter] = useState<TypeFilter>('All')
 
   const entries = Object.values(markets)
 
+  // Filter entries by type
+  const filteredEntries = useMemo(() => {
+    let filtered = entries
+
+    // Filter by type
+    if (activeTypeFilter === 'Modules') {
+      filtered = filtered.filter(e => {
+        const spec = getSampleSpec(e.market.title)
+        return !spec || spec.type === 'module'
+      })
+    } else if (activeTypeFilter === 'Theses') {
+      filtered = filtered.filter(e => {
+        const spec = getSampleSpec(e.market.title)
+        return spec?.type === 'thesis'
+      })
+    }
+
+    // Filter by category
+    if (activeCategory !== 'All') {
+      filtered = filtered.filter(e => {
+        const spec = getSampleSpec(e.market.title)
+        return spec?.category === activeCategory
+      })
+    }
+
+    return filtered
+  }, [entries, activeTypeFilter, activeCategory])
+
   const totalReserve = entries.reduce((sum, e) => sum + e.market.reserve, 0)
-  const totalTrades = entries.reduce((sum, e) => sum + e.market.quotes.length, 0)
   const aggregateReserve = useMemo(() => buildAggregateReserve(entries), [entries])
+
+  const moduleCount = entries.filter(e => {
+    const spec = getSampleSpec(e.market.title)
+    return !spec || spec.type === 'module'
+  }).length
+  const thesisCount = entries.filter(e => {
+    const spec = getSampleSpec(e.market.title)
+    return spec?.type === 'thesis'
+  }).length
 
   function handleCreateMarket(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -150,7 +269,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
         <input
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="Will a new energy breakthrough ship by 2032?"
+          placeholder="Will AGI emerge before 2030?"
         />
       </label>
       <label>
@@ -159,7 +278,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           rows={3}
-          placeholder="Describe the scenario so anyone looking at the order flow knows what this market is trying to say."
+          placeholder="Define the resolution criteria clearly. What evidence would settle this question?"
         />
       </label>
       <div className="dual-row">
@@ -199,13 +318,13 @@ export default function LandingPage({ markets, dispatch }: Props) {
       <div className="shell shell-compact">
         <section className="create-shell">
           <div className="create-meta">
-            <p className="label">Prediction market sandbox</p>
+            <p className="label">Prediction markets for long-term thinkers</p>
           </div>
           <div className="create-panel">
-            <h1>Create the market</h1>
+            <h1>Map the future. Trade your beliefs.</h1>
             <p className="hero-copy">
-              Start from zero. Define the question, pick the opening side, and seed
-              the first position yourself.
+              Create markets on the questions that matter in decades, not days.
+              AI timelines, space colonization, climate trajectories, civilizational risks.
             </p>
             <p className="muted">
               Alice, Bob, and Carol start with cash only: zero LONG, zero SHORT,
@@ -224,30 +343,65 @@ export default function LandingPage({ markets, dispatch }: Props) {
       <section className="landing-hero">
         <div className="landing-hero-top">
           <div>
-            <p className="label">Prediction market sandbox</p>
-            <h1 className="landing-headline">Your markets</h1>
+            <p className="label">Prediction markets for long-term thinkers</p>
+            <h1 className="landing-headline">Map the future. Trade your beliefs.</h1>
           </div>
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => setShowCreateModal(true)}
-          >
-            New market
-          </button>
+          <div className="hero-actions">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => setShowCreateModal(true)}
+            >
+              New market
+            </button>
+            <Link to="/builder" className="ghost-button">
+              Build thesis
+            </Link>
+          </div>
+        </div>
+
+        {/* Type filter tabs (All | Modules | Theses) */}
+        <div className="type-tabs">
+          {typeFilters.map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              className={`type-tab ${activeTypeFilter === filter ? 'active' : ''}`}
+              onClick={() => setActiveTypeFilter(filter)}
+            >
+              {filter}
+              {filter === 'Modules' && <span className="tab-count">{moduleCount}</span>}
+              {filter === 'Theses' && <span className="tab-count">{thesisCount}</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* Category tabs */}
+        <div className="category-tabs">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
+              onClick={() => setActiveCategory(cat)}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
 
         <div className="landing-stats">
           <div className="landing-stat">
             <span className="landing-stat-value">{entries.length}</span>
-            <span className="landing-stat-label">Market{entries.length !== 1 ? 's' : ''}</span>
+            <span className="landing-stat-label">Active markets</span>
           </div>
           <div className="landing-stat">
             <span className="landing-stat-value">{formatCurrency(totalReserve)}</span>
             <span className="landing-stat-label">Total reserve</span>
           </div>
           <div className="landing-stat">
-            <span className="landing-stat-value">{totalTrades}</span>
-            <span className="landing-stat-label">Trade{totalTrades !== 1 ? 's' : ''}</span>
+            <span className="landing-stat-value">{computeAverageHorizon()}</span>
+            <span className="landing-stat-label">Avg. resolution horizon</span>
           </div>
         </div>
 
@@ -261,21 +415,47 @@ export default function LandingPage({ markets, dispatch }: Props) {
 
       {/* Market cards */}
       <div className="market-grid">
-        {entries.map(({ market }) => {
+        {filteredEntries.map(({ market }) => {
           const metrics = deriveMarketMetrics(market)
           const tradeCount = market.quotes.length
+          const spec = getSampleSpec(market.title)
+          const isThesis = spec?.type === 'thesis'
+          const supportingModules = spec?.supportingModules || []
+
+          // Determine route based on type
+          const detailPath = isThesis ? `/thesis/${market.id}` : `/market/${market.id}`
+
           return (
             <article
               key={market.id}
-              className="market-card"
-              onClick={() =>
-                dispatch({ type: 'NAVIGATE', view: { screen: 'detail', marketId: market.id } })
-              }
+              className={`market-card ${isThesis ? 'market-card-thesis' : 'market-card-module'}`}
+              onClick={() => navigate(detailPath)}
             >
+              {isThesis && <span className="card-type-badge thesis-badge">Thesis</span>}
+              {!isThesis && spec && <span className="card-type-badge module-badge">Module</span>}
+              
               <h2 className="market-card-title">{market.title}</h2>
               {market.description ? (
                 <p className="market-card-desc">{market.description}</p>
               ) : null}
+
+              {/* For theses, show supporting modules */}
+              {isThesis && supportingModules.length > 0 && (
+                <div className="thesis-modules">
+                  <span className="thesis-modules-label">Based on {supportingModules.length} modules</span>
+                  <ul className="thesis-modules-list">
+                    {supportingModules.slice(0, 2).map((mod, i) => (
+                      <li key={i} className="thesis-module-item">{mod}</li>
+                    ))}
+                    {supportingModules.length > 2 && (
+                      <li className="thesis-module-item thesis-module-more">
+                        +{supportingModules.length - 2} more
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
               <div className="state-bar market-card-bar">
                 <span
                   className="state-bar-long"

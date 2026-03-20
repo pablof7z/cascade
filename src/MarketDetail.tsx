@@ -1,5 +1,7 @@
 import { startTransition, useEffect, useRef, useState } from 'react'
 import type { FormEvent, Dispatch } from 'react'
+import { useNavigate } from 'react-router-dom'
+import Discussion from './Discussion'
 import {
   ACTORS,
   ACTOR_LABELS,
@@ -98,6 +100,7 @@ type Props = {
 }
 
 export default function MarketDetail({ entry, dispatch }: Props) {
+  const navigate = useNavigate()
   const { market: activeMarket, history } = entry
   const marketId = activeMarket.id
 
@@ -265,7 +268,7 @@ export default function MarketDetail({ entry, dispatch }: Props) {
           <button
             type="button"
             className="ghost-button back-button"
-            onClick={() => dispatch({ type: 'NAVIGATE', view: { screen: 'landing' } })}
+            onClick={() => navigate('/')}
           >
             All markets
           </button>
@@ -709,6 +712,9 @@ export default function MarketDetail({ entry, dispatch }: Props) {
             )}
           </div>
         </details>
+
+        {/* Discussion Section */}
+        <Discussion marketId={activeMarket.id} />
       </div>
     </div>
   )

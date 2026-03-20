@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity - Cascade</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #000; }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 2px solid #000; margin-bottom: 30px; }
+        .logo { font-size: 24px; font-weight: bold; text-decoration: none; color: #000; }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-links a { text-decoration: none; color: #666; font-size: 14px; }
+        .nav-links a:hover, .nav-links a.active { color: #000; font-weight: 500; }
+        
+        h1 { font-size: 28px; margin-bottom: 30px; }
+        
+        .filter-tabs { display: flex; gap: 10px; margin-bottom: 30px; }
+        .filter-tab { padding: 10px 20px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 13px; }
+        .filter-tab.active { background: #000; color: #fff; border-color: #000; }
+        .filter-tab:hover:not(.active) { background: #f0f0f0; }
+        
+        .activity-feed { display: flex; flex-direction: column; gap: 0; }
+        
+        .activity-item { padding: 20px; border-bottom: 1px solid #eee; display: flex; gap: 15px; }
+        .activity-item:hover { background: #f9f9f9; }
+        
+        .activity-icon { width: 40px; height: 40px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .activity-icon.trade { background: #f0f0f0; }
+        .activity-icon.new { background: #000; color: #fff; }
+        .activity-icon.resolution { background: #fff; border: 2px solid #000; }
+        
+        .activity-content { flex: 1; }
+        .activity-main { margin-bottom: 8px; }
+        .activity-user { font-weight: 600; }
+        .activity-action { color: #333; }
+        .activity-target { font-weight: 500; }
+        .activity-target a { color: #000; text-decoration: none; }
+        .activity-target a:hover { text-decoration: underline; }
+        
+        .activity-details { font-size: 13px; color: #666; margin-bottom: 8px; }
+        .activity-time { font-size: 12px; color: #999; }
+        
+        .cascade-effect { background: #f9f9f9; border-left: 3px solid #000; padding: 12px 15px; margin-top: 12px; }
+        .cascade-title { font-size: 12px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; color: #666; }
+        .cascade-item { font-size: 13px; margin-bottom: 5px; display: flex; justify-content: space-between; }
+        .cascade-item:last-child { margin-bottom: 0; }
+        .cascade-impact { font-weight: 500; }
+        .cascade-impact.positive { color: #000; }
+        .cascade-impact.negative { color: #666; }
+        
+        .load-more { display: block; width: 100%; padding: 15px; text-align: center; border: 2px solid #000; background: #fff; cursor: pointer; font-size: 14px; font-weight: 500; margin-top: 20px; }
+        .load-more:hover { background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <a href="index.html" class="logo">CASCADE</a>
+            <div class="nav-links">
+                <a href="index.html">Markets</a>
+                <a href="portfolio.html">Portfolio</a>
+                <a href="leaderboard.html">Leaderboard</a>
+                <a href="activity.html" class="active">Activity</a>
+                <a href="profile.html">Profile</a>
+            </div>
+        </nav>
+        
+        <h1>Activity Feed</h1>
+        
+        <div class="filter-tabs">
+            <button class="filter-tab active">All</button>
+            <button class="filter-tab">Trades</button>
+            <button class="filter-tab">New Markets</button>
+            <button class="filter-tab">Resolutions</button>
+        </div>
+        
+        <div class="activity-feed">
+            <div class="activity-item">
+                <div class="activity-icon resolution">✓</div>
+                <div class="activity-content">
+                    <div class="activity-main">
+                        <span class="activity-target"><a href="module.html">Fed cuts rates in March 2026</a></span>
+                        <span class="activity-action">resolved</span>
+                        <strong>YES</strong>
+                    </div>
+                    <div class="activity-details">
+                        Federal Reserve announced 25bps rate cut at March FOMC meeting
+                    </div>
+                    <div class="cascade-effect">
+                        <div class="cascade-title">Cascade Effects on Theses</div>
+                        <div class="cascade-item">
+                            <span><a href="thesis.html">Bitcoin will exceed $150k by end of 2026</a></span>
+                            <span class="cascade-impact positive">+8% → 75%</span>
+                        </div>
+                        <div class="cascade-item">
+                            <span><a href="thesis.html">S&P 500 reaches 6000 by Q3 2026</a></span>
+                            <span class="cascade-impact positive">+12% → 68%</span>
+                        </div>
+                        <div class="cascade-item">
+                            <span><a href="thesis.html">Housing prices decline 10% by 2027</a></span>
+                            <span class="cascade-impact negative">-5% → 32%</span>
+                        </div>
+                    </div>
+                    <div class="activity-time">2 minutes ago</div>
+                </div>
+            </div>
+            
+            <div class="activity-item">
+                <div class="activity-icon trade">💰</div>
+                <div class="activity-content">
+                    <div class="activity-main">
+                        <span class="activity-user">whale_watcher</span>
+                        <span class="activity-action">bought</span>
+                        <strong>5,000 YES</strong>
+                        <span class="activity-action">shares of</span>
+                        <span class="activity-target"><a href="thesis.html">Bitcoin will exceed $150k by end of 2026</a></span>
+                    </div>
+                    <div class="activity-details">
+                        At 67¢ · Total: 335,000 sats
+                    </div>
+                    <div class="activity-time">5 minutes ago</div>
+                </div>
+            </div>
+            
+            <div class="activity-item">
+                <div class="activity-icon new">+</div>
+                <div class="activity-content">
+                    <div class="activity-main">
+                        <span class="activity-user">market_maker</span>
+                        <span class="activity-action">created new module</span>
+                        <span class="activity-target"><a href="module.html">Apple announces AI chip in WWDC 2026</a></span>
+                    </div>
+                    <div class="activity-details">
+                        Resolves: Jun 15, 2026 · Category: Tech
+                    </div>
+                    <div class="activity-time">12 minutes ago</div>
+                </div>
+            </div>
+            
+            <div class="activity-item">
+                <div class="activity-icon trade">💰</div>
+                <div class="activity-content">
+                    <div class="activity-main">
+                        <span class="activity-user">crypto_oracle</span>
+                        <span class="activity-action">sold</span>
+                        <strong>1,200 NO</strong>
+                        <span class="activity-action">shares of</span>
+                        <span class="activity-target"><a href="module.html">GPT-5 released before July 2026</a></span>
+                    </div>
+                    <div class="activity-details">
+                        At 45¢ · Total: 54,000 sats · P&L: +8,400 sats
+                    </div>
+                    <div class="activity-time">18 minutes ago</div>
+                </div>
+            </div>
+            
+            <div class="activity-item">
+                <div class="activity-icon new">+</div>
+                <div class="activity-content">
+                    <div class="activity-main">
+                        <span class="activity-user">thesis_builder</span>
+                        <span class="activity-action">created new thesis</span>
+                        <span class="activity-target"><a href="thesis.html">Ethereum merge to PoS succeeds without issues</a></span>
+                    </div>
+                    <div class="activity-details">
+                        Based on 3 modules · Initial probability: 72%
+                    </div>
+                    <div class="activity-time">25 minutes ago</div>
+                </div>
+            </div>
+            
+            <div class="activity-item">
+                <div class="activity-icon resolution">✓</div>
+                <div class="activity-content">
+                    <div class="activity-main">
+                        <span class="activity-target"><a href="module.html">Tesla Q1 deliveries exceed 450k</a></span>
+                        <span class="activity-action">resolved</span>
+                        <strong>NO</strong>
+                    </div>
+                    <div class="activity-details">
+                        Tesla reported 423k deliveries in Q1 2026
+                    </div>
+                    <div class="cascade-effect">
+                        <div class="cascade-title">Cascade Effects on Theses</div>
+                        <div class="cascade-item">
+                            <span><a href="thesis.html">Tesla stock reaches $400 by 2027</a></span>
+                            <span class="cascade-impact negative">-6% → 41%</span>
+                        </div>
+                        <div class="cascade-item">
+                            <span><a href="thesis.html">EV adoption exceeds 30% by 2028</a></span>
+                            <span class="cascade-impact negative">-3% → 62%</span>
+                        </div>
+                    </div>
+                    <div class="activity-time">1 hour ago</div>
+                </div>
+            </div>
+            
+            <div class="activity-item">
+                <div class="activity-icon trade">💰</div>
+                <div class="activity-content">
+                    <div class="activity-main">
+                        <span class="activity-user">prediction_king</span>
+                        <span class="activity-action">bought</span>
+                        <strong>2,500 YES</strong>
+                        <span class="activity-action">shares of</span>
+                        <span class="activity-target"><a href="module.html">Democrats win 2026 Senate majority</a></span>
+                    </div>
+                    <div class="activity-details">
+                        At 38¢ · Total: 95,000 sats
+                    </div>
+                    <div class="activity-time">1 hour ago</div>
+                </div>
+            </div>
+            
+            <div class="activity-item">
+                <div class="activity-icon trade">💰</div>
+                <div class="activity-content">
+                    <div class="activity-main">
+                        <span class="activity-user">btc_believer</span>
+                        <span class="activity-action">bought</span>
+                        <strong>800 YES</strong>
+                        <span class="activity-action">shares of</span>
+                        <span class="activity-target"><a href="module.html">Bitcoin ETF inflows exceed $5B in Q1</a></span>
+                    </div>
+                    <div class="activity-details">
+                        At 64¢ · Total: 51,200 sats
+                    </div>
+                    <div class="activity-time">2 hours ago</div>
+                </div>
+            </div>
+        </div>
+        
+        <button class="load-more">Load More Activity</button>
+    </div>
+</body>
+</html>

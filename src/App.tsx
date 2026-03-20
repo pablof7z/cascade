@@ -1,4 +1,5 @@
 import { useEffect, useReducer } from 'react'
+import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom'
 import './App.css'
 import {
   ACTOR_LABELS,
@@ -17,6 +18,9 @@ import type { HistoryPoint } from './PriceChart'
 import { load, save, type MarketEntry } from './storage'
 import LandingPage from './LandingPage'
 import MarketDetail from './MarketDetail'
+import ThesisDetail from './ThesisDetail'
+import ThesisBuilder from './ThesisBuilder'
+import NavHeader from './NavHeader'
 
 type ToastTone = 'good' | 'warn' | 'neutral'
 
@@ -26,11 +30,8 @@ type Toast = {
   tone: ToastTone
 }
 
-type View = { screen: 'landing' } | { screen: 'detail'; marketId: string }
-
 type State = {
   markets: Record<string, MarketEntry>
-  view: View
   toast?: Toast
 }
 
@@ -59,7 +60,6 @@ export type Action =
       tone: ToastTone
       basisTradeId: string
     }
-  | { type: 'NAVIGATE'; view: View }
   | { type: 'DELETE_MARKET'; marketId: string }
   | { type: 'CLEAR_TOAST' }
 
@@ -124,7 +124,6 @@ function initState(): State {
   const persisted = load()
   return {
     markets: persisted ?? {},
-    view: { screen: 'landing' },
   }
 }
 
@@ -150,7 +149,6 @@ function reducer(state: State, action: Action): State {
         return {
           ...state,
           markets: { ...state.markets, [market.id]: entry },
-          view: { screen: 'detail', marketId: market.id },
           toast: {
             title: 'Market ready',
             body: `${title} is live. Everyone starts flat until the first trade lands.`,
@@ -182,7 +180,6 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         markets: { ...state.markets, [market.id]: entry },
-        view: { screen: 'detail', marketId: market.id },
         toast: {
           title: 'Market rebalanced!',
           body: `${seeded.detail} ${ACTOR_LABELS.you} opened the market.`,
@@ -260,9 +257,6 @@ function reducer(state: State, action: Action): State {
       }
     }
 
-    case 'NAVIGATE':
-      return { ...state, view: action.view }
-
     case 'DELETE_MARKET': {
       const remaining = Object.fromEntries(
         Object.entries(state.markets).filter(([marketId]) => marketId !== action.marketId),
@@ -270,7 +264,6 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         markets: remaining,
-        view: { screen: 'landing' },
         toast: { title: 'Market deleted', body: 'Gone. No undo.', tone: 'neutral' },
       }
     }
@@ -283,8 +276,27 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-function App() {
+// Wrapper components for routing
+function MarketDetailWrapper({ markets, dispatch }: { markets: Record<string, MarketEntry>; dispatch: React.Dispatch<Action> }) {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  
+  if (!id || !markets[id]) {
+    navigate('/')
+    return null
+  }
+  
+  return <MarketDetail key={id} entry={markets[id]} dispatch={dispatch} />
+}
+
+function ThesisDetailWrapper({ markets, dispatch }: { markets: Record<string, MarketEntry>; dispatch: React.Dispatch<Action> }) {
+  const { id } = useParams<{ id: string }>()
+  return <ThesisDetail thesisId={id || ''} markets={markets} dispatch={dispatch} />
+}
+
+function AppContent() {
   const [state, dispatch] = useReducer(reducer, undefined, initState)
+  const navigate = useNavigate()
 
   useEffect(() => {
     save(state.markets)
@@ -296,20 +308,27 @@ function App() {
     return () => window.clearTimeout(timer)
   }, [state.toast])
 
-  const content =
-    state.view.screen === 'detail' && state.markets[state.view.marketId] ? (
-      <MarketDetail
-        key={state.view.marketId}
-        entry={state.markets[state.view.marketId]}
-        dispatch={dispatch}
-      />
-    ) : (
-      <LandingPage markets={state.markets} dispatch={dispatch} />
-    )
+  // Handle market creation navigation
+  const handleDispatch = (action: Action) => {
+    dispatch(action)
+    if (action.type === 'CREATE_MARKET') {
+      // Navigate after state updates - we need to get the new market ID
+      // For now, just stay on the page - the reducer will handle view changes
+    }
+    if (action.type === 'DELETE_MARKET') {
+      navigate('/')
+    }
+  }
 
   return (
     <>
-      {content}
+      <NavHeader />
+      <Routes>
+        <Route path="/" element={<LandingPage markets={state.markets} dispatch={handleDispatch} />} />
+        <Route path="/market/:id" element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
+        <Route path="/thesis/:id" element={<ThesisDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
+        <Route path="/builder" element={<ThesisBuilder markets={state.markets} dispatch={handleDispatch} />} />
+      </Routes>
       {state.toast ? (
         <div className={`toast ${state.toast.tone}`}>
           <strong>{state.toast.title}</strong>
@@ -317,6 +336,14 @@ function App() {
         </div>
       ) : null}
     </>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   )
 }
 

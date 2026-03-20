@@ -257,9 +257,13 @@ export default function MarketDetail({ entry, dispatch }: Props) {
   }
 
   const liveProofs = activeMarket.proofs.filter((proof) => proof.remainingTokens > 0.000001)
+  
+  // Recent trades for the "Recent Trades" section
+  const recentQuotes = [...activeMarket.quotes].reverse().slice(0, 8)
 
   return (
     <div className="shell shell-single">
+      {/* Header */}
       <header className="market-header">
         <div className="market-header-nav">
           <button
@@ -281,28 +285,53 @@ export default function MarketDetail({ entry, dispatch }: Props) {
         <p className="hero-copy">{activeMarket.description}</p>
       </header>
 
-      <div className="dashboard dashboard-main">
-        <section className="trade-dock">
-          <div className="trade-topline">
-            <div className="trade-title-group">
-              <p className="label">Trade</p>
-              <div className="actor-tabs actor-tabs-compact">
-                {ACTORS.map((actor) => (
-                  <button
-                    key={actor}
-                    type="button"
-                    className={`mode-button actor-tab ${selectedActor === actor ? 'active' : ''}`}
-                    onClick={() => setSelectedActor(actor)}
-                  >
-                    {ACTOR_LABELS[actor]}
-                  </button>
-                ))}
-              </div>
+      {/* Main Layout: Chart + Bet Panel (side by side) */}
+      <div className="market-main-grid">
+        {/* Left: Price Chart (prominent) */}
+        <section className="chart-section">
+          <div className="chart-header">
+            <div className="market-state-odds">
+              <strong className="odds-long">LONG {formatPercent(metrics.longPositionShare)}</strong>
+              <span className="odds-separator">vs</span>
+              <strong className="odds-short">SHORT {formatPercent(metrics.shortPositionShare)}</strong>
             </div>
+            <div className="market-cap-badge">
+              Market cap {formatCurrency(activeMarket.reserve)}
+            </div>
+          </div>
+          
+          <div className="state-bar">
+            <span
+              className="state-bar-long"
+              style={{ width: `${metrics.longPositionShare * 100}%` }}
+            />
+          </div>
+          
+          <div className="chart-container">
+            <PriceChart data={history} />
+          </div>
+          
+          <div className="chart-meta">
+            <span>LMSR quote: LONG {formatPercent(metrics.longOdds)} | SHORT {formatPercent(metrics.shortOdds)}</span>
+            <span>Outstanding: {formatTokens(activeMarket.qLong)} LONG | {formatTokens(activeMarket.qShort)} SHORT</span>
+          </div>
+        </section>
 
-            <div className={`trade-state ${preview ? 'ready' : ''}`}>
-              <span>{ACTOR_LABELS[selectedActor]}</span>
-              <strong>{tradeLabel}</strong>
+        {/* Right: Bet Panel */}
+        <aside className="bet-panel">
+          <div className="bet-panel-header">
+            <h2>Place Bet</h2>
+            <div className="actor-tabs actor-tabs-compact">
+              {ACTORS.map((actor) => (
+                <button
+                  key={actor}
+                  type="button"
+                  className={`mode-button actor-tab ${selectedActor === actor ? 'active' : ''}`}
+                  onClick={() => setSelectedActor(actor)}
+                >
+                  {ACTOR_LABELS[actor]}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -315,9 +344,9 @@ export default function MarketDetail({ entry, dispatch }: Props) {
             ))}
           </div>
 
-          <form className="stacked-form trade-form-compact" onSubmit={handleTradeSubmit}>
-            <div className="trade-control-row">
-              <div className="toggle-group toggle-group-compact">
+          <form className="bet-form" onSubmit={handleTradeSubmit}>
+            <div className="bet-controls">
+              <div className="toggle-group">
                 <span className="toggle-label">Action</span>
                 <div className="segment-control">
                   {tradeKinds.map((kind) => (
@@ -333,7 +362,7 @@ export default function MarketDetail({ entry, dispatch }: Props) {
                 </div>
               </div>
 
-              <div className="toggle-group toggle-group-compact">
+              <div className="toggle-group">
                 <span className="toggle-label">Side</span>
                 <div className="segment-control">
                   {tradeSides.map((side) => (
@@ -349,7 +378,7 @@ export default function MarketDetail({ entry, dispatch }: Props) {
                 </div>
               </div>
 
-              <label className="trade-amount-field trade-amount-field-compact">
+              <label className="bet-amount-field">
                 <span>{tradeAmountLabel}</span>
                 <input
                   value={tradeAmount}
@@ -357,19 +386,11 @@ export default function MarketDetail({ entry, dispatch }: Props) {
                   inputMode="decimal"
                 />
               </label>
-
-              <button className="primary-button trade-submit" type="submit">
-                {submitLabel}
-              </button>
             </div>
 
-            <div className={`trade-preview-strip ${preview ? 'ready' : 'idle'}`}>
+            <div className={`bet-preview ${preview ? 'ready' : 'idle'}`}>
               {preview ? (
                 <>
-                  <div className="preview-chip preview-status-chip">
-                    <span>Execution</span>
-                    <strong>Ready</strong>
-                  </div>
                   {previewSummary.map((item) => (
                     <div className="preview-chip" key={item.label}>
                       <span>{item.label}</span>
@@ -378,226 +399,225 @@ export default function MarketDetail({ entry, dispatch }: Props) {
                   ))}
                 </>
               ) : (
-                <p className="muted">
-                  Preview uses the exact LMSR cost delta for {ACTOR_LABELS[selectedActor]}.
-                </p>
+                <p className="muted">Enter amount to preview trade</p>
               )}
             </div>
 
             {preview ? (
-              <p className="trade-footnote">
-                Quote {formatPercent(preview.startPrice)} {'->'} {formatPercent(preview.endPrice)} | Slippage{' '}
+              <p className="bet-slippage">
+                Quote {formatPercent(preview.startPrice)} → {formatPercent(preview.endPrice)} | Slippage{' '}
                 {formatPercent(Math.abs(preview.endPrice - preview.startPrice))}
               </p>
             ) : null}
+
+            <button className="primary-button bet-submit" type="submit">
+              {submitLabel}
+            </button>
           </form>
-        </section>
-
-        <aside className="info-rail">
-          <section className="sticky-info">
-            <div className="market-state">
-              <p className="label">Current state</p>
-              <div className="market-state-odds">
-                <strong>LONG {formatPercent(metrics.longPositionShare)}</strong>
-                <span>vs</span>
-                <strong>SHORT {formatPercent(metrics.shortPositionShare)}</strong>
-              </div>
-              <div className="state-bar">
-                <span
-                  className="state-bar-long"
-                  style={{ width: `${metrics.longPositionShare * 100}%` }}
-                />
-              </div>
-              <div className="market-state-meta">
-                <span>Market cap {formatCurrency(activeMarket.reserve)}</span>
-                <span>
-                  LMSR quote LONG {formatPercent(metrics.longOdds)} | SHORT{' '}
-                  {formatPercent(metrics.shortOdds)}
-                </span>
-                <span>
-                  Committed stake LONG {formatPercent(metrics.longCapital)} | SHORT{' '}
-                  {formatPercent(metrics.shortCapital)}
-                </span>
-                <span>
-                  Committed dollars {formatCurrency(metrics.longCommitted)} LONG |{' '}
-                  {formatCurrency(metrics.shortCommitted)} SHORT
-                </span>
-                <span>
-                  Outstanding shares {formatTokens(activeMarket.qLong)} LONG |{' '}
-                  {formatTokens(activeMarket.qShort)} SHORT
-                </span>
-              </div>
-
-              <p className="muted">Quote history</p>
-              <PriceChart data={history} />
-
-              <div className="market-controls">
-                <div className="section-head section-head-compact">
-                  <p className="label">Crowd</p>
-                  <button
-                    type="button"
-                    className={`mode-button live-toggle ${livelyMarket ? 'active' : ''}`}
-                    onClick={() => setLivelyMarket((current) => !current)}
-                  >
-                    {livelyMarket ? 'Live' : 'Paused'}
-                  </button>
-                </div>
-
-                <div className="segment-control regime-control">
-                  <button
-                    type="button"
-                    className={`mode-button segment-button ${
-                      marketBias === 'NEUTRAL' ? 'active' : ''
-                    }`}
-                    onClick={() => {
-                      setMarketBias('NEUTRAL')
-                      setRealityPressure(0)
-                      realityPressureRef.current = 0
-                    }}
-                  >
-                    Balanced
-                  </button>
-                  <button
-                    type="button"
-                    className={`mode-button segment-button ${
-                      isFavoredBias(marketBias) ? 'active' : ''
-                    }`}
-                    onClick={() => setMarketBias((current) => (current === 'NEUTRAL' ? 'LONGS_FAVORED' : current))}
-                  >
-                    Favored
-                  </button>
-                </div>
-
-                {isFavoredBias(marketBias) ? (
-                  <div className="reality-speed-row">
-                    <span className="toggle-label">Favored side</span>
-                    <div className="segment-control speed-control">
-                      <button
-                        type="button"
-                        className={`mode-button segment-button ${
-                          marketBias === 'LONGS_FAVORED' ? 'active' : ''
-                        }`}
-                        onClick={() => {
-                          setMarketBias('LONGS_FAVORED')
-                          setRealityPressure(0)
-                          realityPressureRef.current = 0
-                        }}
-                      >
-                        LONG
-                      </button>
-                      <button
-                        type="button"
-                        className={`mode-button segment-button ${
-                          marketBias === 'SHORTS_FAVORED' ? 'active' : ''
-                        }`}
-                        onClick={() => {
-                          setMarketBias('SHORTS_FAVORED')
-                          setRealityPressure(0)
-                          realityPressureRef.current = 0
-                        }}
-                      >
-                        SHORT
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="reality-speed-row">
-                  <span className="toggle-label">Reality speed</span>
-                  <div className="segment-control speed-control">
-                    {(
-                      Object.entries(REALITY_SPEEDS) as Array<
-                        [RealitySpeed, (typeof REALITY_SPEEDS)[RealitySpeed]]
-                      >
-                    ).map(([speedKey, speedConfig]) => (
-                      <button
-                        key={speedKey}
-                        type="button"
-                        disabled={!isFavoredBias(marketBias)}
-                        className={`mode-button segment-button ${
-                          realitySpeed === speedKey ? 'active' : ''
-                        }`}
-                        onClick={() => setRealitySpeed(speedKey)}
-                      >
-                        {speedConfig.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {isFavoredBias(marketBias) ? (
-                  <p className="reality-pressure">
-                    Reality pressure {formatPercent(realityPressure)}
-                  </p>
-                ) : null}
-
-                <p className="muted market-mode-note">
-                  {livelyMarket
-                    ? isFavoredBias(marketBias)
-                      ? `Reality is leaning toward the ${favoredSideLabel(
-                          marketBias,
-                        )} at ${REALITY_SPEEDS[
-                          realitySpeed
-                        ].label.toLowerCase()} speed. As pressure builds, fresh ${
-                          favoredSideLabel(marketBias)?.toUpperCase()
-                        } flow keeps entering, the other side rushes harder toward the exits, and winners stop clipping profit once the move looks close to locked in.`
-                      : 'The crowd is live. Alice, Bob, and Carol keep reacting to price, P&L, and who looks overextended.'
-                    : 'Crowd is paused. Turn it on to let the other actors keep trading on their own.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="wallets-section">
-              <div className="section-head section-head-compact">
-                <p className="label">Wallets</p>
-                <div className="segment-control wallet-view-control">
-                  <button
-                    type="button"
-                    className={`mode-button segment-button ${
-                      walletView === 'ACTORS' ? 'active' : ''
-                    }`}
-                    onClick={() => setWalletView('ACTORS')}
-                  >
-                    Actors
-                  </button>
-                  <button
-                    type="button"
-                    className={`mode-button segment-button ${
-                      walletView === 'AGGREGATE' ? 'active' : ''
-                    }`}
-                    onClick={() => setWalletView('AGGREGATE')}
-                  >
-                    Aggregate
-                  </button>
-                </div>
-              </div>
-              <div className="wallet-list">
-                {walletRows.map((row) => (
-                  <article
-                    className={`wallet-row ${row.selected ? 'selected' : ''}`}
-                    key={row.key}
-                  >
-                    <div className="wallet-row-head">
-                      <div>
-                        <strong>{row.label}</strong>
-                        {row.detail ? <small className="wallet-caption">{row.detail}</small> : null}
-                      </div>
-                      <span>Total {formatCurrency(row.metrics.totalValue)}</span>
-                    </div>
-                    <div className="wallet-row-meta">
-                      <span>Cash {formatCurrency(row.metrics.cash)}</span>
-                      <span>LONG {formatTokens(row.metrics.long)}</span>
-                      <span>SHORT {formatTokens(row.metrics.short)}</span>
-                      <span>Pos {formatCurrency(row.metrics.liquidationValue)}</span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </section>
         </aside>
       </div>
 
+      {/* Secondary Grid: Order Book + Recent Trades */}
+      <div className="market-secondary-grid">
+        {/* Order Book / Wallets */}
+        <section className="orderbook-section">
+          <div className="section-header">
+            <h3>Order Book</h3>
+            <div className="segment-control wallet-view-control">
+              <button
+                type="button"
+                className={`mode-button segment-button ${walletView === 'ACTORS' ? 'active' : ''}`}
+                onClick={() => setWalletView('ACTORS')}
+              >
+                Actors
+              </button>
+              <button
+                type="button"
+                className={`mode-button segment-button ${walletView === 'AGGREGATE' ? 'active' : ''}`}
+                onClick={() => setWalletView('AGGREGATE')}
+              >
+                Aggregate
+              </button>
+            </div>
+          </div>
+          
+          <div className="orderbook-stats">
+            <div className="orderbook-stat">
+              <span>Committed LONG</span>
+              <strong>{formatPercent(metrics.longCapital)} ({formatCurrency(metrics.longCommitted)})</strong>
+            </div>
+            <div className="orderbook-stat">
+              <span>Committed SHORT</span>
+              <strong>{formatPercent(metrics.shortCapital)} ({formatCurrency(metrics.shortCommitted)})</strong>
+            </div>
+          </div>
+          
+          <div className="wallet-list">
+            {walletRows.map((row) => (
+              <article
+                className={`wallet-row ${row.selected ? 'selected' : ''}`}
+                key={row.key}
+              >
+                <div className="wallet-row-head">
+                  <div>
+                    <strong>{row.label}</strong>
+                    {row.detail ? <small className="wallet-caption">{row.detail}</small> : null}
+                  </div>
+                  <span>Total {formatCurrency(row.metrics.totalValue)}</span>
+                </div>
+                <div className="wallet-row-meta">
+                  <span>Cash {formatCurrency(row.metrics.cash)}</span>
+                  <span>LONG {formatTokens(row.metrics.long)}</span>
+                  <span>SHORT {formatTokens(row.metrics.short)}</span>
+                  <span>Pos {formatCurrency(row.metrics.liquidationValue)}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* Recent Trades */}
+        <section className="recent-trades-section">
+          <div className="section-header">
+            <h3>Recent Trades</h3>
+          </div>
+          <div className="trades-list">
+            {recentQuotes.length ? (
+              recentQuotes.map((quote) => (
+                <article className="trade-row" key={quote.id}>
+                  <div className="trade-info">
+                    <strong className={`trade-kind trade-kind-${quote.kind.toLowerCase()}`}>
+                      {quote.kind}
+                    </strong>
+                    <span className="trade-actor">{ACTOR_LABELS[quote.actor]}</span>
+                    <span className={`trade-side trade-side-${quote.side.toLowerCase()}`}>
+                      {quote.side}
+                    </span>
+                  </div>
+                  <div className="trade-amounts">
+                    <span>{formatCurrency(quote.sats)}</span>
+                    <span className="trade-tokens">{formatTokens(quote.tokens)} tokens</span>
+                  </div>
+                  <time className="trade-time">{quote.createdAt}</time>
+                </article>
+              ))
+            ) : (
+              <p className="muted">No trades yet. Be the first!</p>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* Crowd Simulation Controls */}
+      <section className="crowd-controls-section">
+        <div className="section-header">
+          <h3>Crowd Simulation</h3>
+          <button
+            type="button"
+            className={`mode-button live-toggle ${livelyMarket ? 'active' : ''}`}
+            onClick={() => setLivelyMarket((current) => !current)}
+          >
+            {livelyMarket ? 'Live' : 'Paused'}
+          </button>
+        </div>
+        
+        <div className="crowd-controls-grid">
+          <div className="crowd-control-group">
+            <span className="toggle-label">Market Bias</span>
+            <div className="segment-control regime-control">
+              <button
+                type="button"
+                className={`mode-button segment-button ${marketBias === 'NEUTRAL' ? 'active' : ''}`}
+                onClick={() => {
+                  setMarketBias('NEUTRAL')
+                  setRealityPressure(0)
+                  realityPressureRef.current = 0
+                }}
+              >
+                Balanced
+              </button>
+              <button
+                type="button"
+                className={`mode-button segment-button ${isFavoredBias(marketBias) ? 'active' : ''}`}
+                onClick={() => setMarketBias((current) => (current === 'NEUTRAL' ? 'LONGS_FAVORED' : current))}
+              >
+                Favored
+              </button>
+            </div>
+          </div>
+
+          {isFavoredBias(marketBias) ? (
+            <div className="crowd-control-group">
+              <span className="toggle-label">Favored Side</span>
+              <div className="segment-control speed-control">
+                <button
+                  type="button"
+                  className={`mode-button segment-button ${marketBias === 'LONGS_FAVORED' ? 'active' : ''}`}
+                  onClick={() => {
+                    setMarketBias('LONGS_FAVORED')
+                    setRealityPressure(0)
+                    realityPressureRef.current = 0
+                  }}
+                >
+                  LONG
+                </button>
+                <button
+                  type="button"
+                  className={`mode-button segment-button ${marketBias === 'SHORTS_FAVORED' ? 'active' : ''}`}
+                  onClick={() => {
+                    setMarketBias('SHORTS_FAVORED')
+                    setRealityPressure(0)
+                    realityPressureRef.current = 0
+                  }}
+                >
+                  SHORT
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="crowd-control-group">
+            <span className="toggle-label">Reality Speed</span>
+            <div className="segment-control speed-control">
+              {(
+                Object.entries(REALITY_SPEEDS) as Array<
+                  [RealitySpeed, (typeof REALITY_SPEEDS)[RealitySpeed]]
+                >
+              ).map(([speedKey, speedConfig]) => (
+                <button
+                  key={speedKey}
+                  type="button"
+                  disabled={!isFavoredBias(marketBias)}
+                  className={`mode-button segment-button ${realitySpeed === speedKey ? 'active' : ''}`}
+                  onClick={() => setRealitySpeed(speedKey)}
+                >
+                  {speedConfig.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {isFavoredBias(marketBias) ? (
+          <div className="reality-pressure-bar">
+            <span>Reality Pressure</span>
+            <div className="pressure-track">
+              <div className="pressure-fill" style={{ width: `${realityPressure * 100}%` }} />
+            </div>
+            <strong>{formatPercent(realityPressure)}</strong>
+          </div>
+        ) : null}
+
+        <p className="crowd-description muted">
+          {livelyMarket
+            ? isFavoredBias(marketBias)
+              ? `Reality is leaning toward the ${favoredSideLabel(marketBias)} at ${REALITY_SPEEDS[realitySpeed].label.toLowerCase()} speed. As pressure builds, fresh ${favoredSideLabel(marketBias)?.toUpperCase()} flow keeps entering.`
+              : 'The crowd is live. Alice, Bob, and Carol keep reacting to price, P&L, and who looks overextended.'
+            : 'Crowd is paused. Turn it on to let the other actors keep trading on their own.'}
+        </p>
+      </section>
+
+      {/* Collapsible Detail Drawers */}
       <div className="detail-drawers">
         <details className="detail-drawer">
           <summary>
@@ -674,7 +694,7 @@ export default function MarketDetail({ entry, dispatch }: Props) {
                       <strong>{receipt.kind}</strong>
                       <p>
                         {ACTOR_LABELS[receipt.actor]} {receipt.side} | reserve{' '}
-                        {formatCurrency(receipt.reserveBefore)} {'->'}{' '}
+                        {formatCurrency(receipt.reserveBefore)} {'->'}{ ' '}
                         {formatCurrency(receipt.reserveAfter)}
                       </p>
                     </div>

@@ -89,3 +89,431 @@ h3 {
 #root {
   min-height: 100vh;
 }
+
+/* ===== Market Detail Layout (Wireframe-style) ===== */
+
+.market-detail-page {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.market-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.market-detail-header .back-link {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: color 0.15s;
+}
+
+.market-detail-header .back-link:hover {
+  color: var(--text);
+}
+
+.market-detail-header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.market-detail-header .price-badge {
+  margin-left: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.market-detail-header .current-price {
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.market-detail-header .price-change {
+  font-size: 0.875rem;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.market-detail-header .price-change.positive {
+  color: var(--positive);
+}
+
+.market-detail-header .price-change.negative {
+  color: var(--negative);
+}
+
+/* Main content grid */
+.market-detail-content {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 0;
+  min-height: calc(100vh - 65px);
+}
+
+/* Main column (chart + data sections) */
+.market-main-column {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+}
+
+/* Chart section - prominent */
+.chart-section {
+  flex: 0 0 auto;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.chart-section h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.chart-container {
+  height: 320px;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* Data sections grid (order book + recent trades) */
+.data-sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+.data-section {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.5rem;
+  overflow: hidden;
+}
+
+.data-section:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.data-section h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+/* Order Book */
+.order-book {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+}
+
+.order-book-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.order-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 0.375rem 0;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.order-row:hover {
+  background: var(--hover);
+}
+
+.order-row.buy .price {
+  color: var(--positive);
+}
+
+.order-row.sell .price {
+  color: var(--negative);
+}
+
+/* Recent Trades */
+.trades-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+}
+
+.trade-item {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 0.375rem 0;
+  border-radius: 4px;
+}
+
+.trade-item .price.buy {
+  color: var(--positive);
+}
+
+.trade-item .price.sell {
+  color: var(--negative);
+}
+
+.trade-item .time {
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* Right sidebar (bet panel) */
+.bet-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+}
+
+/* Trade/Bet Panel */
+.trade-panel {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.trade-panel h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.trade-type-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.trade-type-tab {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.trade-type-tab:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.trade-type-tab.active.buy {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: var(--positive);
+  color: var(--positive);
+}
+
+.trade-type-tab.active.sell {
+  background: rgba(248, 113, 113, 0.1);
+  border-color: var(--negative);
+  color: var(--negative);
+}
+
+.trade-form-group {
+  margin-bottom: 1rem;
+}
+
+.trade-form-group label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.trade-input-wrapper {
+  position: relative;
+}
+
+.trade-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  padding-right: 3rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 1rem;
+  font-family: 'IBM Plex Mono', monospace;
+  transition: border-color 0.15s;
+}
+
+.trade-input:focus {
+  outline: none;
+  border-color: var(--border-strong);
+}
+
+.trade-input-suffix {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.trade-estimate {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+  margin-top: 0.5rem;
+}
+
+.trade-estimate .value {
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.trade-submit-btn {
+  width: 100%;
+  padding: 1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 1rem;
+}
+
+.trade-submit-btn.buy {
+  background: var(--positive);
+  color: #000;
+}
+
+.trade-submit-btn.buy:hover {
+  background: #22c55e;
+}
+
+.trade-submit-btn.sell {
+  background: var(--negative);
+  color: #000;
+}
+
+.trade-submit-btn.sell:hover {
+  background: #ef4444;
+}
+
+.trade-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Market Info Panel */
+.market-info-panel {
+  padding: 1.5rem;
+  flex: 1;
+}
+
+.market-info-panel h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8125rem;
+}
+
+.info-row .label {
+  color: var(--text-muted);
+}
+
+.info-row .value {
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--text);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .market-detail-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .market-main-column {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .data-sections {
+    grid-template-columns: 1fr;
+  }
+  
+  .data-section:first-child {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 640px) {
+  .market-detail-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  
+  .market-detail-header .price-badge {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+  
+  .chart-container {
+    height: 240px;
+  }
+}

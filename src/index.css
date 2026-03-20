@@ -1,10 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* Base styles only */
 body {
-  @apply bg-gray-950 text-gray-100 antialiased;
+  background-color: rgb(3 7 18); /* gray-950 */
+  color: rgb(243 244 246); /* gray-100 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Custom scrollbar */
@@ -12,11 +13,12 @@ body {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  @apply bg-gray-900;
+  background-color: rgb(17 24 39); /* gray-900 */
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-700 rounded;
+  background-color: rgb(55 65 81); /* gray-700 */
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-600;
+  background-color: rgb(75 85 99); /* gray-600 */
 }

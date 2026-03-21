@@ -122,7 +122,7 @@ export default function Leaderboard() {
             type="button"
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               timeFilter === filter
-                ? 'bg-blue-600 text-white'
+                ? 'bg-gray-600 text-white'
                 : 'bg-gray-800 text-gray-400 hover:text-white'
             }`}
             onClick={() => setTimeFilter(filter)}

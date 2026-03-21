@@ -127,7 +127,7 @@ export default function Profile() {
                 className="flex items-center gap-3 p-3 bg-gray-800 border border-gray-700 rounded-lg hover:border-gray-600 transition-colors"
               >
                 <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                  pos.type === 'thesis' ? 'bg-purple-900/50 text-purple-300' : 'bg-blue-900/50 text-blue-300'
+                  pos.type === 'thesis' ? 'bg-gray-700/50 text-gray-300' : 'bg-gray-700/50 text-gray-300'
                 }`}>
                   {pos.type}
                 </span>

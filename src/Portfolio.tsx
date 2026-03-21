@@ -162,7 +162,7 @@ export default function Portfolio() {
           >
             <div className="flex items-center gap-2 mb-2">
               <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                position.type === 'thesis' ? 'bg-purple-900/50 text-purple-300' : 'bg-blue-900/50 text-blue-300'
+                position.type === 'thesis' ? 'bg-gray-700/50 text-gray-300' : 'bg-gray-700/50 text-gray-300'
               }`}>
                 {position.type}
               </span>

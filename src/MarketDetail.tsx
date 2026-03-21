@@ -66,7 +66,7 @@ export default function MarketDetail({ entry, dispatch }: Props) {
         <div className="lg:col-span-2 space-y-6">
           {/* Title */}
           <div>
-            <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-500/20 text-blue-400 rounded mb-3">
+            <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-700/50 text-gray-300 rounded mb-3">
               Module
             </span>
             <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">

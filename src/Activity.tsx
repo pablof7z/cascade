@@ -231,11 +231,11 @@ export default function Activity() {
                 className="inline-flex items-center gap-2 text-sm hover:opacity-80 transition-opacity"
               >
                 <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                  item.marketType === 'thesis' ? 'bg-purple-900/50 text-purple-300' : 'bg-blue-900/50 text-blue-300'
+                  item.marketType === 'thesis' ? 'bg-gray-700/50 text-gray-300' : 'bg-gray-700/50 text-gray-300'
                 }`}>
                   {item.marketType}
                 </span>
-                <span className="text-blue-400">{item.marketName}</span>
+                <span className="text-gray-200">{item.marketName}</span>
               </Link>
             </div>
           </div>

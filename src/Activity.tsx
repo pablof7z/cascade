@@ -9,7 +9,7 @@ interface ActivityItem {
   type: ActivityType
   timestamp: Date
   actor: string
-  actorNpub: string
+  actorDescriptor: string
   action: string
   marketId: string
   marketName: string
@@ -29,7 +29,7 @@ function generateMockActivity(): ActivityItem[] {
       type: 'trade',
       timestamp: new Date(now - 2 * minute),
       actor: 'futurist_alice',
-      actorNpub: 'npub1qrs...def',
+      actorDescriptor: 'AI timelines',
       action: 'bought YES',
       marketId: '1',
       marketName: 'AGI achieved by 2030',
@@ -41,7 +41,7 @@ function generateMockActivity(): ActivityItem[] {
       type: 'new_market',
       timestamp: new Date(now - 15 * minute),
       actor: 'thesis_builder',
-      actorNpub: 'npub1abc...xyz',
+      actorDescriptor: 'Thesis builder',
       action: 'created thesis',
       marketId: '20',
       marketName: 'The Great Decoupling',
@@ -52,7 +52,7 @@ function generateMockActivity(): ActivityItem[] {
       type: 'trade',
       timestamp: new Date(now - 32 * minute),
       actor: 'oracle_bob',
-      actorNpub: 'npub1xyz...abc',
+      actorDescriptor: 'Macro catalysts',
       action: 'sold NO',
       marketId: '2',
       marketName: 'First Mars landing by 2035',
@@ -64,7 +64,7 @@ function generateMockActivity(): ActivityItem[] {
       type: 'resolution',
       timestamp: new Date(now - 1 * hour),
       actor: 'system',
-      actorNpub: 'npub1sys...tem',
+      actorDescriptor: 'Settlement engine',
       action: 'resolved YES',
       marketId: '5',
       marketName: 'GPT-5 released in 2024',
@@ -75,7 +75,7 @@ function generateMockActivity(): ActivityItem[] {
       type: 'trade',
       timestamp: new Date(now - 1.5 * hour),
       actor: 'sigma_trader',
-      actorNpub: 'npub1mno...pqr',
+      actorDescriptor: 'Energy & climate',
       action: 'bought YES',
       marketId: '3',
       marketName: 'Fusion power plant goes online',
@@ -87,7 +87,7 @@ function generateMockActivity(): ActivityItem[] {
       type: 'new_market',
       timestamp: new Date(now - 2 * hour),
       actor: 'future_shaper',
-      actorNpub: 'npub1def...ghi',
+      actorDescriptor: 'New market scout',
       action: 'created module',
       marketId: '10',
       marketName: 'Neuralink FDA approval by 2026',
@@ -98,7 +98,7 @@ function generateMockActivity(): ActivityItem[] {
       type: 'trade',
       timestamp: new Date(now - 3 * hour),
       actor: 'ai_believer',
-      actorNpub: 'npub1ghi...jkl',
+      actorDescriptor: 'Labs & benchmarks',
       action: 'bought NO',
       marketId: '20',
       marketName: 'The Great Decoupling',
@@ -110,7 +110,7 @@ function generateMockActivity(): ActivityItem[] {
       type: 'resolution',
       timestamp: new Date(now - 4 * hour),
       actor: 'system',
-      actorNpub: 'npub1sys...tem',
+      actorDescriptor: 'Settlement engine',
       action: 'resolved NO',
       marketId: '8',
       marketName: 'Bitcoin hits $200k in 2025',
@@ -121,7 +121,7 @@ function generateMockActivity(): ActivityItem[] {
       type: 'trade',
       timestamp: new Date(now - 5 * hour),
       actor: 'space_hodler',
-      actorNpub: 'npub1jkl...mno',
+      actorDescriptor: 'Launch & defense',
       action: 'bought YES',
       marketId: '21',
       marketName: 'Space economy exceeds $1T by 2040',
@@ -133,7 +133,7 @@ function generateMockActivity(): ActivityItem[] {
       type: 'new_market',
       timestamp: new Date(now - 6 * hour),
       actor: 'market_maker_1',
-      actorNpub: 'npub1pqr...stu',
+      actorDescriptor: 'Liquidity strategist',
       action: 'created module',
       marketId: '11',
       marketName: 'Commercial quantum computer by 2028',
@@ -217,7 +217,7 @@ export default function Activity() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 <span className="text-white font-medium">{item.actor}</span>
-                <code className="text-xs text-neutral-500">{item.actorNpub}</code>
+                <span className="text-xs text-neutral-500">{item.actorDescriptor}</span>
                 <span className="text-xs text-neutral-500">{formatTimestamp(item.timestamp)}</span>
               </div>
               <div className="flex items-center gap-2 mb-2">

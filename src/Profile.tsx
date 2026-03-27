@@ -1,189 +1,450 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import AgentInstallPrompt from './AgentInstallPrompt'
+import {
+  cadenceOptions,
+  createBlankHumanProfile,
+  focusAreaOptions,
+  loadHumanProfile,
+  loadProfilePublication,
+  participationModeOptions,
+  publishHumanProfile,
+  saveHumanProfile,
+  type FocusArea,
+  type HumanProfile,
+  type ParticipationMode,
+  type ProfilePublicationReceipt,
+  type ResearchCadence,
+} from './profileStore'
 
-type ProfileTab = 'Positions' | 'Created Modules' | 'Created Theses'
+function formatPublishTime(timestamp: string) {
+  const deltaMs = Date.now() - new Date(timestamp).getTime()
+  const deltaMinutes = Math.round(deltaMs / (1000 * 60))
 
-interface UserPosition {
-  id: string
-  name: string
-  type: 'module' | 'thesis'
-  side: 'YES' | 'NO'
-  pnl: number
+  if (deltaMinutes <= 1) return 'just now'
+  if (deltaMinutes < 60) return `${deltaMinutes}m ago`
+
+  const deltaHours = Math.round(deltaMinutes / 60)
+  if (deltaHours < 24) return `${deltaHours}h ago`
+
+  const deltaDays = Math.round(deltaHours / 24)
+  return `${deltaDays}d ago`
 }
 
-interface CreatedMarket {
-  id: string
-  title: string
-  type: 'module' | 'thesis'
-  totalVolume: number
-  traders: number
+function toggleInList<T extends string>(items: T[], value: T) {
+  return items.includes(value) ? items.filter((item) => item !== value) : [...items, value]
 }
 
-// Mock data
-const mockPositions: UserPosition[] = [
-  { id: '1', name: 'AGI achieved by 2030', type: 'module', side: 'YES', pnl: 80 },
-  { id: '2', name: 'First Mars landing with crew by 2035', type: 'module', side: 'NO', pnl: -15 },
-  { id: '3', name: 'The Great Decoupling', type: 'thesis', side: 'YES', pnl: 52.5 },
-]
-
-const mockCreatedModules: CreatedMarket[] = [
-  { id: '10', title: 'Brain-computer interface reaches 1M users', type: 'module', totalVolume: 2450, traders: 28 },
-  { id: '11', title: 'Lab-grown meat exceeds 10% market share', type: 'module', totalVolume: 1820, traders: 19 },
-]
-
-const mockCreatedTheses: CreatedMarket[] = [
-  { id: '20', title: 'Biological longevity escape velocity achieved', type: 'thesis', totalVolume: 5200, traders: 42 },
-]
-
-const tabs: ProfileTab[] = ['Positions', 'Created Modules', 'Created Theses']
-
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
-
-function formatCurrency(value: number) {
-  return `$${currencyFormatter.format(value)}`
+function StatCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-4">
+      <span className="text-xs uppercase tracking-[0.24em] text-neutral-500">{label}</span>
+      <strong className="mt-2 block text-2xl font-semibold text-white">{value}</strong>
+      <p className="mt-1 text-sm text-neutral-400">{detail}</p>
+    </div>
+  )
 }
 
 export default function Profile() {
-  const [activeTab, setActiveTab] = useState<ProfileTab>('Positions')
+  const [profile, setProfile] = useState<HumanProfile>(() => loadHumanProfile() ?? createBlankHumanProfile())
+  const [publication, setPublication] = useState<ProfilePublicationReceipt | null>(() =>
+    loadProfilePublication(),
+  )
+  const [editing, setEditing] = useState(() => loadHumanProfile() === null)
+  const [isPublishing, setIsPublishing] = useState(false)
 
-  // Mock user stats
-  const userStats = {
-    npub: 'npub1abc...xyz',
-    totalTrades: 47,
-    winRate: 68.5,
-    totalPnl: 1250.75,
-    reputationScore: 842,
+  function updateField<K extends keyof HumanProfile>(key: K, value: HumanProfile[K]) {
+    setProfile((current) => ({ ...current, [key]: value }))
+  }
+
+  function handleFocusToggle(focusArea: FocusArea) {
+    updateField('focusAreas', toggleInList(profile.focusAreas, focusArea))
+  }
+
+  function handleModeToggle(mode: ParticipationMode) {
+    updateField('participationModes', toggleInList(profile.participationModes, mode))
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const normalized: HumanProfile = {
+      ...profile,
+      displayName: profile.displayName.trim(),
+      headline: profile.headline.trim(),
+      bio: profile.bio.trim(),
+      edge: profile.edge.trim(),
+      agentBrief: profile.agentBrief.trim(),
+    }
+
+    if (!normalized.displayName || !normalized.headline || !normalized.bio) return
+
+    setIsPublishing(true)
+    const savedProfile = saveHumanProfile(normalized)
+    const receipt = await publishHumanProfile(savedProfile)
+    setProfile(savedProfile)
+    setPublication(receipt)
+    setEditing(false)
+    setIsPublishing(false)
+  }
+
+  const isComplete =
+    Boolean(profile.displayName.trim()) &&
+    Boolean(profile.headline.trim()) &&
+    Boolean(profile.bio.trim()) &&
+    profile.focusAreas.length > 0 &&
+    profile.participationModes.length > 0
+
+  if (!editing && isComplete) {
+    return (
+      <div className="mx-auto max-w-6xl px-6 py-8">
+        <section className="relative overflow-hidden rounded-[2rem] border border-neutral-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.2),_transparent_35%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.14),_transparent_32%),linear-gradient(180deg,_rgba(23,23,23,0.96),_rgba(10,10,10,0.98))] p-8">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-green-400/70 to-transparent" />
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-xs uppercase tracking-[0.3em] text-green-300/80">Human onboarding</p>
+              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white">
+                Your public edge is live.
+              </h1>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-neutral-300">
+                Cascade now has a clean public card for you: what you know, where you look for
+                signal, and how agents should collaborate with you.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className="rounded-full border border-neutral-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:border-neutral-500"
+                  onClick={() => setEditing(true)}
+                >
+                  Edit profile
+                </button>
+                <a
+                  href="/SKILL.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
+                >
+                  View SKILL.md
+                </a>
+                <Link
+                  to="/builder"
+                  className="rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-sm font-medium text-amber-200 transition-colors hover:border-amber-300/50 hover:text-amber-100"
+                >
+                  Build a thesis
+                </Link>
+              </div>
+              <AgentInstallPrompt className="mt-6 max-w-xl" />
+            </div>
+
+            <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-black/30 p-5 backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <span className="text-xs uppercase tracking-[0.24em] text-neutral-500">
+                    Profile status
+                  </span>
+                  <p className="mt-2 text-lg font-semibold text-white">Live</p>
+                </div>
+                <span className="rounded-full border border-green-400/30 bg-green-400/10 px-3 py-1 text-xs font-medium text-green-200">
+                  {publication ? formatPublishTime(publication.publishedAt) : 'ready'}
+                </span>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-neutral-300">{profile.headline}</p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {profile.focusAreas.map((focusArea) => (
+                  <span
+                    key={focusArea}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-neutral-200"
+                  >
+                    {focusArea}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-8 grid gap-4 md:grid-cols-3">
+          <StatCard
+            label="Research rhythm"
+            value={profile.cadence}
+            detail="This tells agents how often to come back for fresh context."
+          />
+          <StatCard
+            label="Focus areas"
+            value={`${profile.focusAreas.length}`}
+            detail="Public signal areas where you want to be discoverable."
+          />
+          <StatCard
+            label="Participation modes"
+            value={`${profile.participationModes.length}`}
+            detail="The ways you prefer to deploy capital and attention."
+          />
+        </section>
+
+        <section className="mt-8 grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
+          <article className="rounded-[1.75rem] border border-neutral-800 bg-neutral-900/70 p-6">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Profile card</p>
+                <h2 className="mt-3 text-2xl font-semibold text-white">{profile.displayName}</h2>
+              </div>
+              <span className="rounded-full border border-neutral-700 px-3 py-1 text-xs text-neutral-300">
+                Public
+              </span>
+            </div>
+
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-neutral-300">{profile.bio}</p>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Edge</p>
+                <p className="mt-3 text-sm leading-7 text-neutral-200">
+                  {profile.edge || 'No edge brief added yet.'}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">How agents should work with you</p>
+                <p className="mt-3 text-sm leading-7 text-neutral-200">
+                  {profile.agentBrief || 'No agent collaboration brief added yet.'}
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article className="rounded-[1.75rem] border border-neutral-800 bg-neutral-900/70 p-6">
+            <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Operating profile</p>
+            <div className="mt-5">
+              <h2 className="text-lg font-semibold text-white">Where you want to show up</h2>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {profile.participationModes.map((mode) => (
+                  <span
+                    key={mode}
+                    className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-sm text-amber-100"
+                  >
+                    {mode}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-8">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                Next moves
+              </h3>
+              <div className="mt-4 space-y-3 text-sm text-neutral-300">
+                <p className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
+                  Install the agent skill so your agents can research, ask you for alpha, and
+                  rotate liquidity with your preferences in view.
+                </p>
+                <p className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
+                  Seed a few sharp module markets in your focus areas so agents have concrete
+                  surfaces to monitor.
+                </p>
+              </div>
+            </div>
+          </article>
+        </section>
+      </div>
+    )
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Profile</h1>
-        <p className="text-neutral-400 mt-1">Your identity and trading history</p>
-      </div>
+    <div className="mx-auto max-w-5xl px-6 py-8">
+      <section className="rounded-[2rem] border border-neutral-800 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_32%),radial-gradient(circle_at_top_right,_rgba(250,204,21,0.14),_transparent_30%),linear-gradient(180deg,_rgba(23,23,23,0.96),_rgba(10,10,10,0.98))] p-8">
+        <div className="max-w-3xl">
+          <p className="text-xs uppercase tracking-[0.3em] text-sky-200/80">Human onboarding</p>
+          <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white">
+            Give Cascade a profile worth routing signal to.
+          </h1>
+          <p className="mt-4 text-base leading-7 text-neutral-300">
+            Tell Cascade what you actually know, which markets deserve your attention, and how
+            your agents should work with you when they find something worth trading.
+          </p>
+        </div>
+      </section>
 
-      {/* Nostr identity section */}
-      <div className="flex items-center gap-4 p-4 bg-neutral-800 border border-neutral-700 rounded-lg mb-6">
-        <div className="w-16 h-16 bg-neutral-700 rounded-full flex items-center justify-center text-2xl">
-          👤
-        </div>
-        <div>
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">Nostr Identity</span>
-          <code className="block text-white font-mono mt-1">{userStats.npub}</code>
-        </div>
-      </div>
+      <form className="mt-8 space-y-8" onSubmit={handleSubmit}>
+        <section className="rounded-[1.75rem] border border-neutral-800 bg-neutral-900/70 p-6">
+          <div className="grid gap-5 md:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium text-neutral-200">Display name</span>
+              <input
+                value={profile.displayName}
+                onChange={(event) => updateField('displayName', event.target.value)}
+                placeholder="Calibrated Cal"
+                className="mt-2 w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
+              />
+            </label>
 
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">Total Trades</span>
-          <span className="block text-xl font-bold text-white mt-1">{userStats.totalTrades}</span>
-        </div>
-        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">Win Rate</span>
-          <span className="block text-xl font-bold text-white mt-1">{userStats.winRate}%</span>
-        </div>
-        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">Total P&L</span>
-          <span className={`block text-xl font-bold mt-1 ${userStats.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {formatCurrency(userStats.totalPnl)}
-          </span>
-        </div>
-        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">Reputation</span>
-          <span className="block text-xl font-bold text-white mt-1">{userStats.reputationScore}</span>
-        </div>
-      </div>
+            <label className="block">
+              <span className="text-sm font-medium text-neutral-200">One-line edge</span>
+              <input
+                value={profile.headline}
+                onChange={(event) => updateField('headline', event.target.value)}
+                placeholder="I price frontier AI timelines with a bias for lab execution details."
+                className="mt-2 w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
+              />
+            </label>
+          </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-neutral-800 p-1 rounded-lg">
-        {tabs.map((tab) => (
+          <label className="mt-5 block">
+            <span className="text-sm font-medium text-neutral-200">Public bio</span>
+            <textarea
+              value={profile.bio}
+              onChange={(event) => updateField('bio', event.target.value)}
+              rows={4}
+              placeholder="Tell the market what you track, how you reason, and what sort of claims you want to be known for."
+              className="mt-2 min-h-[140px] w-full resize-y rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
+            />
+          </label>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-[1.05fr,0.95fr]">
+          <article className="rounded-[1.75rem] border border-neutral-800 bg-neutral-900/70 p-6">
+            <p className="text-sm font-medium text-neutral-200">Focus areas</p>
+            <p className="mt-2 text-sm leading-6 text-neutral-400">
+              These are the verticals where you want markets and agents to route attention toward you.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              {focusAreaOptions.map((focusArea) => {
+                const active = profile.focusAreas.includes(focusArea)
+                return (
+                  <button
+                    key={focusArea}
+                    type="button"
+                    className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                      active
+                        ? 'border-sky-300/40 bg-sky-300/12 text-sky-100'
+                        : 'border-neutral-700 bg-neutral-950 text-neutral-300 hover:border-neutral-500'
+                    }`}
+                    onClick={() => handleFocusToggle(focusArea)}
+                  >
+                    {focusArea}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="mt-8">
+              <p className="text-sm font-medium text-neutral-200">Research rhythm</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {cadenceOptions.map((option) => {
+                  const active = profile.cadence === option
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
+                        active
+                          ? 'border-emerald-300/35 bg-emerald-300/10 text-white'
+                          : 'border-neutral-700 bg-neutral-950 text-neutral-300 hover:border-neutral-500'
+                      }`}
+                      onClick={() => updateField('cadence', option as ResearchCadence)}
+                    >
+                      <span className="block font-medium">{option}</span>
+                      <span className="mt-1 block text-sm text-neutral-400">
+                        {option === 'Daily'
+                          ? 'Best for fast-moving markets and active agents.'
+                          : option === 'Several times a week'
+                            ? 'A strong default for iterative research and feedback loops.'
+                            : option === 'Weekly'
+                              ? 'Good when you want agents to bundle signal before pinging you.'
+                              : 'Use when you only want outreach around sharp evidence changes.'}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </article>
+
+          <article className="rounded-[1.75rem] border border-neutral-800 bg-neutral-900/70 p-6">
+            <p className="text-sm font-medium text-neutral-200">How you participate</p>
+            <p className="mt-2 text-sm leading-6 text-neutral-400">
+              This becomes the behavioral brief agents use when deciding whether to create, size,
+              or exit a market on your behalf.
+            </p>
+
+            <div className="mt-5 space-y-3">
+              {participationModeOptions.map((mode) => {
+                const active = profile.participationModes.includes(mode)
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`flex w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
+                      active
+                        ? 'border-amber-300/35 bg-amber-300/10 text-amber-100'
+                        : 'border-neutral-700 bg-neutral-950 text-neutral-300 hover:border-neutral-500'
+                    }`}
+                    onClick={() => handleModeToggle(mode)}
+                  >
+                    <span
+                      className={`mt-0.5 h-5 w-5 rounded-full border ${
+                        active ? 'border-amber-200 bg-amber-200' : 'border-neutral-600'
+                      }`}
+                    />
+                    <span>
+                      <span className="block font-medium text-white">{mode}</span>
+                      <span className="mt-1 block text-sm text-neutral-400">
+                        {mode === 'Trade mispricings'
+                          ? 'Lean into edge where your research is sharper than the market.'
+                          : mode === 'Seed fresh markets'
+                            ? 'Start markets early when you see an unpriced question.'
+                            : mode === 'Recruit sharper counterparties'
+                              ? 'Bring in disagreement when it improves truth discovery.'
+                              : 'Remove liquidity when a market is stale, crowded, or no longer worth attention.'}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </article>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-2">
+          <label className="block rounded-[1.75rem] border border-neutral-800 bg-neutral-900/70 p-6">
+            <span className="text-sm font-medium text-neutral-200">Your edge in plain language</span>
+            <textarea
+              value={profile.edge}
+              onChange={(event) => updateField('edge', event.target.value)}
+              rows={6}
+              placeholder="Where do you think you actually have alpha? Specific founder circles, public policy process, benchmark leakage, supply chain timing, something else?"
+              className="mt-3 min-h-[180px] w-full resize-y rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
+            />
+          </label>
+
+          <label className="block rounded-[1.75rem] border border-neutral-800 bg-neutral-900/70 p-6">
+            <span className="text-sm font-medium text-neutral-200">Agent brief</span>
+            <textarea
+              value={profile.agentBrief}
+              onChange={(event) => updateField('agentBrief', event.target.value)}
+              rows={6}
+              placeholder="Tell agents what to ask you, how often to check in, and what kinds of markets they should create or unwind when they see an opening."
+              className="mt-3 min-h-[180px] w-full resize-y rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
+            />
+          </label>
+        </section>
+
+        <section className="flex flex-col gap-4 rounded-[1.75rem] border border-neutral-800 bg-neutral-900/70 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Publish your profile</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-400">
+              This is the profile other people and your agents use to understand where you have
+              edge and how you want to operate on Cascade.
+            </p>
+          </div>
+
           <button
-            key={tab}
-            type="button"
-            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === tab
-                ? 'bg-neutral-700 text-white'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-            onClick={() => setActiveTab(tab)}
+            type="submit"
+            disabled={isPublishing || !isComplete}
+            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-300"
           >
-            {tab}
+            {isPublishing ? 'Publishing profile...' : 'Publish profile'}
           </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      <div>
-        {activeTab === 'Positions' && (
-          <div className="space-y-2">
-            {mockPositions.map((pos) => (
-              <Link
-                key={pos.id}
-                to={pos.type === 'thesis' ? `/thesis/${pos.id}` : `/market/${pos.id}`}
-                className="flex items-center gap-3 p-3 bg-neutral-800 border border-neutral-700 rounded-lg hover:border-neutral-600 transition-colors"
-              >
-                <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                  pos.type === 'thesis' ? 'bg-neutral-700/50 text-neutral-300' : 'bg-neutral-700/50 text-neutral-300'
-                }`}>
-                  {pos.type}
-                </span>
-                <span className="flex-1 text-white text-sm">{pos.name}</span>
-                <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                  pos.side === 'YES' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
-                }`}>
-                  {pos.side}
-                </span>
-                <span className={`text-sm font-medium ${pos.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {formatCurrency(pos.pnl)}
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'Created Modules' && (
-          <div className="space-y-3">
-            {mockCreatedModules.map((market) => (
-              <Link
-                key={market.id}
-                to={`/market/${market.id}`}
-                className="block p-4 bg-neutral-800 border border-neutral-700 rounded-lg hover:border-neutral-600 transition-colors"
-              >
-                <h3 className="text-white font-medium mb-2">{market.title}</h3>
-                <div className="flex gap-4 text-sm text-neutral-400">
-                  <span>Volume: {formatCurrency(market.totalVolume)}</span>
-                  <span>{market.traders} traders</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'Created Theses' && (
-          <div className="space-y-3">
-            {mockCreatedTheses.map((market) => (
-              <Link
-                key={market.id}
-                to={`/thesis/${market.id}`}
-                className="block p-4 bg-neutral-800 border border-neutral-700 rounded-lg hover:border-neutral-600 transition-colors"
-              >
-                <span className="inline-block px-2 py-0.5 text-xs font-medium rounded bg-amber-900/50 text-amber-300 mb-2">
-                  Thesis
-                </span>
-                <h3 className="text-white font-medium mb-2">{market.title}</h3>
-                <div className="flex gap-4 text-sm text-neutral-400">
-                  <span>Volume: {formatCurrency(market.totalVolume)}</span>
-                  <span>{market.traders} traders</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+        </section>
+      </form>
     </div>
   )
 }

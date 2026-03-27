@@ -11,7 +11,9 @@ import {
   priceLong,
   type ActorId,
   type Market,
+  type MarketKind,
   type Side,
+  type ThesisDefinition,
   type TradeKind,
 } from './market'
 import type { HistoryPoint } from './PriceChart'
@@ -42,11 +44,14 @@ type State = {
 export type Action =
   | {
       type: 'CREATE_MARKET'
+      id?: string
       title: string
       description: string
       seedWithUser: boolean
       initialSide?: Side
       initialSats?: number
+      kind?: MarketKind
+      thesis?: ThesisDefinition
     }
   | {
       type: 'TRADE'
@@ -141,8 +146,11 @@ function reducer(state: State, action: Action): State {
       }
 
       const market = createEmptyMarket({
+        id: action.id,
         title,
         description: description || 'User-created scenario market with fully transparent fake settlement.',
+        kind: action.kind,
+        thesis: action.thesis,
       })
 
       if (!action.seedWithUser) {
@@ -294,8 +302,7 @@ function MarketDetailWrapper({ markets, dispatch }: { markets: Record<string, Ma
 }
 
 function ThesisDetailWrapper({ markets, dispatch }: { markets: Record<string, MarketEntry>; dispatch: React.Dispatch<Action> }) {
-  const { id } = useParams<{ id: string }>()
-  return <ThesisDetail thesisId={id || ''} markets={markets} dispatch={dispatch} />
+  return <ThesisDetail markets={markets} dispatch={dispatch} />
 }
 
 function AppContent() {
@@ -332,6 +339,7 @@ function AppContent() {
         <Route path="/market/:id" element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/thesis/:id" element={<ThesisDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/builder" element={<ThesisBuilder markets={state.markets} dispatch={handleDispatch} />} />
+        <Route path="/onboarding" element={<Profile />} />
         <Route path="/portfolio" element={<Portfolio />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/leaderboard" element={<Leaderboard />} />

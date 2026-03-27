@@ -10,6 +10,8 @@ export type ActorId = (typeof ACTORS)[number]
 export type CrowdActorId = (typeof CROWD_ACTORS)[number]
 export type Side = 'LONG' | 'SHORT'
 export type TradeKind = 'BUY' | 'REDEEM'
+export type MarketKind = 'module' | 'thesis'
+export type ThesisSignalOutcome = 'YES' | 'NO'
 export type SyntheticActivity =
   | 'BUY_LONG'
   | 'BUY_SHORT'
@@ -98,10 +100,25 @@ export type LastTrade = {
   pnlDelta: number
 }
 
+export type ThesisSignal = {
+  moduleMarketId?: string
+  moduleTitle: string
+  expectedOutcome: ThesisSignalOutcome
+  note: string
+}
+
+export type ThesisDefinition = {
+  statement: string
+  argument: string
+  signals: ThesisSignal[]
+}
+
 export type Market = {
   id: string
   title: string
   description: string
+  kind?: MarketKind
+  thesis?: ThesisDefinition
   b: number
   qLong: number
   qShort: number
@@ -294,11 +311,23 @@ export function createEmptyMarket(input: {
   id?: string
   title: string
   description: string
+  kind?: MarketKind
+  thesis?: ThesisDefinition
 }) {
+  const kind = input.kind ?? (input.thesis ? 'thesis' : 'module')
   return {
     id: input.id ?? makeId('market'),
     title: input.title,
     description: input.description,
+    kind,
+    thesis:
+      kind === 'thesis'
+        ? input.thesis ?? {
+            statement: input.title,
+            argument: input.description,
+            signals: [],
+          }
+        : undefined,
     b: DEFAULT_SENSITIVITY,
     qLong: 0,
     qShort: 0,

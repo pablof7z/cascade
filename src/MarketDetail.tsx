@@ -4,6 +4,7 @@ import type { Dispatch } from 'react'
 import type { MarketEntry } from './storage'
 import type { Side } from './market'
 import { priceLong, priceShort, previewTrade } from './market'
+import Discussion from './Discussion'
 import PriceChart from './PriceChart'
 
 type TradeAction = {
@@ -100,6 +101,14 @@ export default function MarketDetail({ entry, dispatch }: Props) {
               <PriceChart data={entry.history} />
             </div>
           </div>
+
+          <Discussion
+            marketTitle={market.title}
+            marketKind="module"
+            consensus={yesPrice}
+            reserve={market.reserve}
+            tradeCount={market.quotes.length}
+          />
 
           {/* Market stats */}
           <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">

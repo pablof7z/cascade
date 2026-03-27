@@ -42,12 +42,12 @@ export default function NavHeader() {
           <Link to="/profile" className={linkClass('/profile')}>
             Profile
           </Link>
-          <button
-            type="button"
-            className="px-4 py-2 text-sm font-medium text-white bg-neutral-700 hover:bg-neutral-600 rounded-lg transition-colors"
+          <Link
+            to="/profile"
+            className="px-4 py-2 text-sm font-semibold text-neutral-950 bg-white hover:bg-neutral-100 rounded-lg transition-colors"
           >
-            Connect
-          </button>
+            Start onboarding
+          </Link>
         </div>
       </div>
     </header>

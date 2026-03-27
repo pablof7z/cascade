@@ -62,52 +62,52 @@ export default function Profile() {
     <div className="max-w-4xl mx-auto px-4 py-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Profile</h1>
-        <p className="text-gray-400 mt-1">Your identity and trading history</p>
+        <p className="text-neutral-400 mt-1">Your identity and trading history</p>
       </div>
 
       {/* Nostr identity section */}
-      <div className="flex items-center gap-4 p-4 bg-gray-800 border border-gray-700 rounded-lg mb-6">
-        <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center text-2xl">
+      <div className="flex items-center gap-4 p-4 bg-neutral-800 border border-neutral-700 rounded-lg mb-6">
+        <div className="w-16 h-16 bg-neutral-700 rounded-full flex items-center justify-center text-2xl">
           👤
         </div>
         <div>
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Nostr Identity</span>
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">Nostr Identity</span>
           <code className="block text-white font-mono mt-1">{userStats.npub}</code>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Total Trades</span>
+        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">Total Trades</span>
           <span className="block text-xl font-bold text-white mt-1">{userStats.totalTrades}</span>
         </div>
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Win Rate</span>
+        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">Win Rate</span>
           <span className="block text-xl font-bold text-white mt-1">{userStats.winRate}%</span>
         </div>
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Total P&L</span>
+        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">Total P&L</span>
           <span className={`block text-xl font-bold mt-1 ${userStats.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {formatCurrency(userStats.totalPnl)}
           </span>
         </div>
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Reputation</span>
+        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">Reputation</span>
           <span className="block text-xl font-bold text-white mt-1">{userStats.reputationScore}</span>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-gray-800 p-1 rounded-lg">
+      <div className="flex gap-1 mb-6 bg-neutral-800 p-1 rounded-lg">
         {tabs.map((tab) => (
           <button
             key={tab}
             type="button"
             className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
               activeTab === tab
-                ? 'bg-gray-700 text-white'
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-neutral-700 text-white'
+                : 'text-neutral-400 hover:text-white'
             }`}
             onClick={() => setActiveTab(tab)}
           >
@@ -124,10 +124,10 @@ export default function Profile() {
               <Link
                 key={pos.id}
                 to={pos.type === 'thesis' ? `/thesis/${pos.id}` : `/market/${pos.id}`}
-                className="flex items-center gap-3 p-3 bg-gray-800 border border-gray-700 rounded-lg hover:border-gray-600 transition-colors"
+                className="flex items-center gap-3 p-3 bg-neutral-800 border border-neutral-700 rounded-lg hover:border-neutral-600 transition-colors"
               >
                 <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                  pos.type === 'thesis' ? 'bg-gray-700/50 text-gray-300' : 'bg-gray-700/50 text-gray-300'
+                  pos.type === 'thesis' ? 'bg-neutral-700/50 text-neutral-300' : 'bg-neutral-700/50 text-neutral-300'
                 }`}>
                   {pos.type}
                 </span>
@@ -151,10 +151,10 @@ export default function Profile() {
               <Link
                 key={market.id}
                 to={`/market/${market.id}`}
-                className="block p-4 bg-gray-800 border border-gray-700 rounded-lg hover:border-gray-600 transition-colors"
+                className="block p-4 bg-neutral-800 border border-neutral-700 rounded-lg hover:border-neutral-600 transition-colors"
               >
                 <h3 className="text-white font-medium mb-2">{market.title}</h3>
-                <div className="flex gap-4 text-sm text-gray-400">
+                <div className="flex gap-4 text-sm text-neutral-400">
                   <span>Volume: {formatCurrency(market.totalVolume)}</span>
                   <span>{market.traders} traders</span>
                 </div>
@@ -169,13 +169,13 @@ export default function Profile() {
               <Link
                 key={market.id}
                 to={`/thesis/${market.id}`}
-                className="block p-4 bg-gray-800 border border-gray-700 rounded-lg hover:border-gray-600 transition-colors"
+                className="block p-4 bg-neutral-800 border border-neutral-700 rounded-lg hover:border-neutral-600 transition-colors"
               >
-                <span className="inline-block px-2 py-0.5 text-xs font-medium rounded bg-purple-900/50 text-purple-300 mb-2">
+                <span className="inline-block px-2 py-0.5 text-xs font-medium rounded bg-amber-900/50 text-amber-300 mb-2">
                   Thesis
                 </span>
                 <h3 className="text-white font-medium mb-2">{market.title}</h3>
-                <div className="flex gap-4 text-sm text-gray-400">
+                <div className="flex gap-4 text-sm text-neutral-400">
                   <span>Volume: {formatCurrency(market.totalVolume)}</span>
                   <span>{market.traders} traders</span>
                 </div>

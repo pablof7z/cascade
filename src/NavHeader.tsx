@@ -7,12 +7,12 @@ export default function NavHeader() {
   const linkClass = (href: string) =>
     `px-3 py-2 text-sm font-medium rounded-md transition-colors ${
       path === href
-        ? 'text-white bg-gray-800'
-        : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+        ? 'text-white bg-neutral-800'
+        : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
     }`
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-800 bg-gray-950/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link to="/" className="text-xl font-bold text-white tracking-tight">
@@ -44,7 +44,7 @@ export default function NavHeader() {
           </Link>
           <button
             type="button"
-            className="px-4 py-2 text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-white bg-neutral-700 hover:bg-neutral-600 rounded-lg transition-colors"
           >
             Connect
           </button>

@@ -82,7 +82,7 @@ export default function PriceChart({ data }: Props) {
     })
 
     const reserveSeries = chart.addSeries(LineSeries, {
-      color: 'rgba(147, 130, 255, 0.6)',
+      color: 'rgba(217, 176, 112, 0.6)',
       lineWidth: 1,
       priceScaleId: 'right',
       priceFormat: {

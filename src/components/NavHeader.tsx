@@ -13,7 +13,7 @@ export function NavHeader() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-800 bg-gray-950/95 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link to="/" className="text-xl font-bold text-white">
           Cascade
@@ -26,8 +26,8 @@ export function NavHeader() {
               to={path}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 location.pathname === path
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                  ? 'bg-neutral-800 text-white'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
               }`}
             >
               {label}
@@ -35,7 +35,7 @@ export function NavHeader() {
           ))}
         </nav>
 
-        <button className="px-4 py-2 rounded-lg border border-gray-700 text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors">
+        <button className="px-4 py-2 rounded-lg border border-neutral-700 text-sm font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors">
           Connect
         </button>
       </div>

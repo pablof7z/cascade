@@ -2,8 +2,8 @@
 
 /* Base styles */
 body {
-  background-color: #030712; /* gray-950 */
-  color: #f3f4f6; /* gray-100 */
+  background-color: #0a0a0a; /* neutral-950 */
+  color: #f5f5f5; /* neutral-100 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -13,12 +13,12 @@ body {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background-color: #111827; /* gray-900 */
+  background-color: #171717; /* neutral-900 */
 }
 ::-webkit-scrollbar-thumb {
-  background-color: #374151; /* gray-700 */
+  background-color: #404040; /* neutral-700 */
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #4b5563; /* gray-600 */
+  background-color: #525252; /* neutral-600 */
 }

@@ -58,9 +58,9 @@ export default function ReserveChart({ data, height = 120 }: Props) {
     })
 
     const series = chart.addSeries(AreaSeries, {
-      lineColor: 'rgba(147, 130, 255, 0.8)',
-      topColor: 'rgba(147, 130, 255, 0.2)',
-      bottomColor: 'rgba(147, 130, 255, 0.02)',
+      lineColor: 'rgba(217, 176, 112, 0.8)',
+      topColor: 'rgba(217, 176, 112, 0.2)',
+      bottomColor: 'rgba(217, 176, 112, 0.02)',
       lineWidth: 2,
       priceScaleId: 'right',
       priceFormat: {

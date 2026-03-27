@@ -110,21 +110,21 @@ export default function Portfolio() {
     <div className="max-w-4xl mx-auto px-4 py-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Portfolio</h1>
-        <p className="text-gray-400 mt-1">Track your positions and performance</p>
+        <p className="text-neutral-400 mt-1">Track your positions and performance</p>
       </div>
 
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Total Invested</span>
+        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">Total Invested</span>
           <span className="block text-xl font-bold text-white mt-1">{formatCurrency(totalInvested)}</span>
         </div>
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Current Value</span>
+        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">Current Value</span>
           <span className="block text-xl font-bold text-white mt-1">{formatCurrency(currentValue)}</span>
         </div>
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Total P&L</span>
+        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
+          <span className="text-xs text-neutral-500 uppercase tracking-wider">Total P&L</span>
           <span className={`block text-xl font-bold mt-1 ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {formatCurrency(totalPnl)} ({formatPercent(totalPnlPercent)})
           </span>
@@ -132,20 +132,20 @@ export default function Portfolio() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-gray-800 p-1 rounded-lg">
+      <div className="flex gap-1 mb-6 bg-neutral-800 p-1 rounded-lg">
         {tabs.map((tab) => (
           <button
             key={tab}
             type="button"
             className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
               activeTab === tab
-                ? 'bg-gray-700 text-white'
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-neutral-700 text-white'
+                : 'text-neutral-400 hover:text-white'
             }`}
             onClick={() => setActiveTab(tab)}
           >
             {tab}
-            <span className="ml-2 text-xs text-gray-500">
+            <span className="ml-2 text-xs text-neutral-500">
               {tab === 'Module Positions' ? mockModulePositions.length : mockThesisPositions.length}
             </span>
           </button>
@@ -158,11 +158,11 @@ export default function Portfolio() {
           <Link
             key={position.id}
             to={position.type === 'thesis' ? `/thesis/${position.id}` : `/market/${position.id}`}
-            className="block bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-gray-600 transition-colors"
+            className="block bg-neutral-800 border border-neutral-700 rounded-lg p-4 hover:border-neutral-600 transition-colors"
           >
             <div className="flex items-center gap-2 mb-2">
               <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                position.type === 'thesis' ? 'bg-gray-700/50 text-gray-300' : 'bg-gray-700/50 text-gray-300'
+                position.type === 'thesis' ? 'bg-neutral-700/50 text-neutral-300' : 'bg-neutral-700/50 text-neutral-300'
               }`}>
                 {position.type}
               </span>
@@ -175,19 +175,19 @@ export default function Portfolio() {
             <h3 className="text-white font-medium mb-3">{position.marketName}</h3>
             <div className="grid grid-cols-4 gap-4">
               <div>
-                <span className="text-xs text-gray-500 block">Amount</span>
+                <span className="text-xs text-neutral-500 block">Amount</span>
                 <span className="text-sm text-white">{formatCurrency(position.amount)}</span>
               </div>
               <div>
-                <span className="text-xs text-gray-500 block">Avg Price</span>
+                <span className="text-xs text-neutral-500 block">Avg Price</span>
                 <span className="text-sm text-white">{(position.avgPrice * 100).toFixed(0)}¢</span>
               </div>
               <div>
-                <span className="text-xs text-gray-500 block">Current</span>
+                <span className="text-xs text-neutral-500 block">Current</span>
                 <span className="text-sm text-white">{(position.currentPrice * 100).toFixed(0)}¢</span>
               </div>
               <div>
-                <span className="text-xs text-gray-500 block">P&L</span>
+                <span className="text-xs text-neutral-500 block">P&L</span>
                 <span className={`text-sm ${position.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {formatCurrency(position.pnl)} ({formatPercent(position.pnlPercent)})
                 </span>

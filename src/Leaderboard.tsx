@@ -84,28 +84,28 @@ export default function Leaderboard() {
 
   const getRankStyle = (rank: number) => {
     if (rank === 1) return 'bg-yellow-500 text-black'
-    if (rank === 2) return 'bg-gray-400 text-black'
+    if (rank === 2) return 'bg-neutral-400 text-black'
     if (rank === 3) return 'bg-amber-700 text-white'
-    return 'bg-gray-700 text-gray-300'
+    return 'bg-neutral-700 text-neutral-300'
   }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Leaderboard</h1>
-        <p className="text-gray-400 mt-1">Top performers on Cascade</p>
+        <p className="text-neutral-400 mt-1">Top performers on Cascade</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-gray-800 p-1 rounded-lg">
+      <div className="flex gap-1 mb-4 bg-neutral-800 p-1 rounded-lg">
         {leaderboardTabs.map((tab) => (
           <button
             key={tab}
             type="button"
             className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
               activeTab === tab
-                ? 'bg-gray-700 text-white'
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-neutral-700 text-white'
+                : 'text-neutral-400 hover:text-white'
             }`}
             onClick={() => setActiveTab(tab)}
           >
@@ -122,8 +122,8 @@ export default function Leaderboard() {
             type="button"
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               timeFilter === filter
-                ? 'bg-gray-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:text-white'
+                ? 'bg-neutral-600 text-white'
+                : 'bg-neutral-800 text-neutral-400 hover:text-white'
             }`}
             onClick={() => setTimeFilter(filter)}
           >
@@ -137,23 +137,23 @@ export default function Leaderboard() {
         {entries.map((entry) => (
           <div
             key={entry.rank}
-            className="flex items-center gap-4 p-4 bg-gray-800 border border-gray-700 rounded-lg"
+            className="flex items-center gap-4 p-4 bg-neutral-800 border border-neutral-700 rounded-lg"
           >
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${getRankStyle(entry.rank)}`}>
               {entry.rank}
             </div>
             <div className="flex-1 min-w-0">
               <span className="block text-white font-medium">{entry.displayName}</span>
-              <code className="text-xs text-gray-500">{entry.npub}</code>
+              <code className="text-xs text-neutral-500">{entry.npub}</code>
             </div>
             <div className="flex gap-6">
               <div className="text-right">
                 <span className="block text-white font-medium">{formatStat(entry.stat1, entry.stat1Label)}</span>
-                <span className="text-xs text-gray-500">{entry.stat1Label}</span>
+                <span className="text-xs text-neutral-500">{entry.stat1Label}</span>
               </div>
               <div className="text-right">
                 <span className="block text-white font-medium">{formatStat(entry.stat2, entry.stat2Label)}</span>
-                <span className="text-xs text-gray-500">{entry.stat2Label}</span>
+                <span className="text-xs text-neutral-500">{entry.stat2Label}</span>
               </div>
             </div>
           </div>

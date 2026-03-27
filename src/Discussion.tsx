@@ -97,8 +97,8 @@ export default function Discussion({ marketId }: DiscussionProps) {
   const filterBtnClass = (f: FilterType) =>
     `px-3 py-1.5 text-sm rounded-lg transition-colors ${
       filter === f
-        ? 'bg-gray-700 text-white'
-        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+        ? 'bg-neutral-700 text-white'
+        : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
     }`
 
   return (
@@ -122,7 +122,7 @@ export default function Discussion({ marketId }: DiscussionProps) {
       {/* Compose */}
       <form className="space-y-3" onSubmit={handleSubmit}>
         <textarea
-          className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 resize-y min-h-[80px]"
+          className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 resize-y min-h-[80px]"
           placeholder="Share your analysis..."
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
@@ -130,7 +130,7 @@ export default function Discussion({ marketId }: DiscussionProps) {
         />
         <button
           type="submit"
-          className="px-4 py-2 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-white text-neutral-900 font-medium rounded-lg hover:bg-neutral-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={!newComment.trim()}
         >
           Post
@@ -140,15 +140,15 @@ export default function Discussion({ marketId }: DiscussionProps) {
       {/* Comments */}
       <div className="space-y-4">
         {filteredComments.map((comment) => (
-          <div key={comment.id} className="p-4 bg-gray-900 border border-gray-800 rounded-xl">
+          <div key={comment.id} className="p-4 bg-neutral-900 border border-neutral-800 rounded-xl">
             {/* Header */}
             <div className="flex items-center justify-between gap-4 mb-3">
               <div className="flex items-center gap-3">
-                <span className="w-8 h-8 flex items-center justify-center bg-gray-700 text-white text-sm font-medium rounded-full">
+                <span className="w-8 h-8 flex items-center justify-center bg-neutral-700 text-white text-sm font-medium rounded-full">
                   {comment.displayName.charAt(0).toUpperCase()}
                 </span>
                 <span className="font-medium text-white">{comment.displayName}</span>
-                <code className="text-xs text-gray-500">{comment.npub}</code>
+                <code className="text-xs text-neutral-500">{comment.npub}</code>
               </div>
               {comment.position !== 'none' && (
                 <span
@@ -164,9 +164,9 @@ export default function Discussion({ marketId }: DiscussionProps) {
               )}
             </div>
             {/* Content */}
-            <p className="text-gray-300 mb-3">{comment.content}</p>
+            <p className="text-neutral-300 mb-3">{comment.content}</p>
             {/* Footer */}
-            <span className="text-xs text-gray-500">{formatTimeAgo(comment.timestamp)}</span>
+            <span className="text-xs text-neutral-500">{formatTimeAgo(comment.timestamp)}</span>
           </div>
         ))}
       </div>

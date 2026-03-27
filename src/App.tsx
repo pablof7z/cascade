@@ -338,9 +338,15 @@ function AppContent() {
         <Route path="/activity" element={<Activity />} />
       </Routes>
       {state.toast ? (
-        <div className={`toast ${state.toast.tone}`}>
-          <strong>{state.toast.title}</strong>
-          <p>{state.toast.body}</p>
+        <div className={`fixed bottom-6 right-6 z-50 max-w-sm px-5 py-4 rounded-xl border shadow-lg backdrop-blur-sm ${
+          state.toast.tone === 'good'
+            ? 'bg-green-900/80 border-green-700 text-green-100'
+            : state.toast.tone === 'warn'
+              ? 'bg-red-900/80 border-red-700 text-red-100'
+              : 'bg-neutral-800/90 border-neutral-700 text-neutral-100'
+        }`}>
+          <strong className="block text-sm font-semibold">{state.toast.title}</strong>
+          <p className="text-sm mt-1 opacity-90">{state.toast.body}</p>
         </div>
       ) : null}
     </>

@@ -8,7 +8,7 @@ button {
 /* Range input styling */
 input[type="range"] {
   appearance: none;
-  background-color: #374151; /* gray-700 */
+  background-color: #404040; /* neutral-700 */
   height: 0.5rem;
   border-radius: 9999px;
   cursor: pointer;

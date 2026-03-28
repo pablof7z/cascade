@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { execSync } from 'child_process'
+
+const commitHash = execSync('git rev-parse --short=7 HEAD').toString().trim()
 import {
   getAgentMarket,
   getLiquidityReport,
@@ -102,4 +105,7 @@ function agentApiPlugin() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), agentApiPlugin()],
+  define: {
+    __COMMIT_HASH__: JSON.stringify(commitHash),
+  },
 })

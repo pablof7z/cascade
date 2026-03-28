@@ -30,6 +30,7 @@ import Activity from './Activity'
 import NavHeader from './NavHeader'
 import OnboardingSplit from './OnboardingSplit'
 import TestnetBanner from './components/TestnetBanner'
+import Footer from './components/Footer'
 
 type ToastTone = 'good' | 'warn' | 'neutral'
 
@@ -335,9 +336,10 @@ function AppContent() {
   }
 
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
       <TestnetBanner />
       <NavHeader />
+      <main className="flex-1">
       <Routes>
         <Route path="/" element={<LandingPage markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/market/:id" element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
@@ -350,6 +352,8 @@ function AppContent() {
         <Route path="/activity" element={<Activity />} />
         <Route path="/join" element={<OnboardingSplit className="py-12" />} />
       </Routes>
+      </main>
+      <Footer />
       {state.toast ? (
         <div className={`fixed bottom-6 right-6 z-50 max-w-sm px-5 py-4 rounded-xl border shadow-lg backdrop-blur-sm ${
           state.toast.tone === 'good'
@@ -362,7 +366,7 @@ function AppContent() {
           <p className="text-sm mt-1 opacity-90">{state.toast.body}</p>
         </div>
       ) : null}
-    </>
+    </div>
   )
 }
 

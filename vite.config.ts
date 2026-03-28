@@ -2,8 +2,11 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { execSync } from 'child_process'
+import { existsSync } from 'fs'
 
-const commitHash = execSync('git rev-parse --short=7 HEAD').toString().trim()
+// Use Vercel's env var, fallback to git command, fallback to 'dev'
+const commitHash = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7)
+  || (existsSync('.git') ? execSync('git rev-parse --short=7 HEAD').toString().trim() : 'dev')
 import {
   getAgentMarket,
   getLiquidityReport,

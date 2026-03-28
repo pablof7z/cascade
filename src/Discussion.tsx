@@ -4,7 +4,7 @@ import { sampleTheses } from './marketCatalog'
 
 type PositionType = 'long' | 'short' | 'none'
 type PostKind = 'claim' | 'rebuttal' | 'evidence' | 'catalyst'
-type FilterType = 'all' | PostKind
+// FilterType removed - simplified UI
 type Conviction = 'Fresh' | 'Building' | 'High'
 
 interface ArenaCard {
@@ -59,20 +59,9 @@ interface DiscussionProps {
   thesisSignals?: ThesisSignal[]
 }
 
-const filterOptions: { id: FilterType; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'claim', label: 'Claims' },
-  { id: 'rebuttal', label: 'Rebuttals' },
-  { id: 'evidence', label: 'Evidence' },
-  { id: 'catalyst', label: 'Catalysts' },
-]
+// Removed filter tabs - overly complex for the UI
 
-const kindOptions: { value: PostKind; label: string }[] = [
-  { value: 'claim', label: 'Claim' },
-  { value: 'rebuttal', label: 'Rebuttal' },
-  { value: 'evidence', label: 'Evidence' },
-  { value: 'catalyst', label: 'Catalyst' },
-]
+// kindOptions removed - simplified UI
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 0,
@@ -356,7 +345,7 @@ export default function Discussion({
   tradeCount,
   thesisSignals = [],
 }: DiscussionProps) {
-  const [filter, setFilter] = useState<FilterType>('all')
+  // Removed filter state - simplified UI
   const [newPost, setNewPost] = useState('')
   const [newKind, setNewKind] = useState<PostKind>('claim')
   const [newPosition, setNewPosition] = useState<PositionType>('long')
@@ -371,8 +360,6 @@ export default function Discussion({
   )
 
   const posts = [...draftPosts, ...arena.posts]
-  const filteredPosts =
-    filter === 'all' ? posts : posts.filter((post) => post.kind === filter)
 
   const stanceLabels =
     marketKind === 'thesis'
@@ -456,31 +443,15 @@ export default function Discussion({
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="grid gap-8 xl:grid-cols-[1fr_300px]">
+      {/* Main content - single column layout */}
+      <div className="space-y-8">
         {/* Posts - flat list with dividers */}
         <div>
-          {/* Filters */}
-          <div className="flex flex-wrap gap-2 mb-6">
-            {filterOptions.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                  filter === option.id
-                    ? 'bg-neutral-800 text-white'
-                    : 'text-neutral-600 hover:text-white'
-                }`}
-                onClick={() => setFilter(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+          <h3 className="text-sm font-medium text-white mb-4">Discussion ({posts.length})</h3>
 
           {/* Post list - NO CARDS, just dividers */}
           <div className="divide-y divide-neutral-800">
-            {filteredPosts.map((post) => (
+            {posts.map((post) => (
               <article key={post.id} className="py-5 first:pt-0">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex-1 min-w-0">
@@ -511,85 +482,41 @@ export default function Discussion({
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Pressure points - flat list */}
-          <aside>
-            <h3 className="text-sm font-medium text-white mb-1">{arena.nodesTitle}</h3>
-            <p className="text-xs text-neutral-600 mb-4">{arena.nodesDescription}</p>
-            <div className="divide-y divide-neutral-800">
-              {arena.nodes.map((node) => (
-                <div key={node.id} className="py-3 first:pt-0">
-                  <div className="text-xs text-neutral-600 mb-1">{node.eyebrow}</div>
-                  <div className="text-sm font-medium text-white mb-1">{node.label}</div>
-                  <p className="text-xs text-neutral-500">{node.detail}</p>
-                </div>
-              ))}
-            </div>
-          </aside>
+        {/* Compose form - inline */}
+        <form
+          className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl space-y-4 max-w-2xl"
+          onSubmit={handleSubmit}
+        >
+          <div>
+            <h3 className="text-sm font-medium text-white mb-1">Add to discussion</h3>
+          </div>
 
-          {/* Compose - THE ONLY CARD in discussion */}
-          <form
-            className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl space-y-4"
-            onSubmit={handleSubmit}
-          >
-            <div>
-              <h3 className="text-sm font-medium text-white mb-1">Enter the arena</h3>
-              <p className="text-xs text-neutral-600">{arena.composeHint}</p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="text-xs text-neutral-600">Type</span>
-                <select
-                  value={newKind}
-                  onChange={(event) => setNewKind(event.target.value as PostKind)}
-                  className="mt-1 w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-neutral-600"
-                >
-                  {kindOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="text-xs text-neutral-600">Stance</span>
-                <select
-                  value={newPosition}
-                  onChange={(event) => setNewPosition(event.target.value as PositionType)}
-                  className="mt-1 w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-neutral-600"
-                >
-                  <option value="long">{stanceLabels.long}</option>
-                  <option value="short">{stanceLabels.short}</option>
-                  <option value="none">{stanceLabels.none}</option>
-                </select>
-              </label>
-            </div>
-
-            <label className="block">
-              <span className="text-xs text-neutral-600">Argument</span>
-              <textarea
-                className="mt-1 min-h-[100px] w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm placeholder-neutral-600 focus:outline-none focus:border-neutral-600 resize-y"
-                placeholder={
-                  marketKind === 'thesis'
-                    ? 'State the hinge, explain why it matters...'
-                    : 'Explain what this module proves...'
-                }
-                value={newPost}
-                onChange={(event) => setNewPost(event.target.value)}
-              />
-            </label>
-
+          <div className="flex gap-3">
+            <select
+              value={newPosition}
+              onChange={(event) => setNewPosition(event.target.value as PositionType)}
+              className="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-neutral-600"
+            >
+              <option value="long">{stanceLabels.long}</option>
+              <option value="short">{stanceLabels.short}</option>
+              <option value="none">{stanceLabels.none}</option>
+            </select>
+            <input
+              type="text"
+              className="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm placeholder-neutral-600 focus:outline-none focus:border-neutral-600"
+              placeholder="Share your argument..."
+              value={newPost}
+              onChange={(event) => setNewPost(event.target.value)}
+            />
             <button
               type="submit"
-              className="w-full px-4 py-2 bg-white text-neutral-950 text-sm font-medium rounded-lg hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-white text-neutral-950 text-sm font-medium rounded-lg hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!newPost.trim()}
             >
-              {arena.composeCta}
+              Post
             </button>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </section>
   )

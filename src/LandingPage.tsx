@@ -1201,29 +1201,53 @@ export default function LandingPage({ markets, dispatch }: Props) {
         </div>
         
         <div className="divide-y divide-neutral-800/50">
-          {sampleDiscussions.map(discussion => (
-            <Link
-              key={discussion.id}
-              to={`/thesis/${discussion.id}`}
-              className="block py-2.5 hover:bg-neutral-900/50 -mx-2 px-2 transition-colors"
-            >
-              {/* Preview text */}
-              <div className="text-sm text-white truncate mb-1">{discussion.preview}</div>
-              
-              {/* Metadata: market title + author + time + replies */}
-              <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-                <span>in</span>
-                <span className="text-neutral-400">"{discussion.marketTitle}"</span>
-                <span>•</span>
-                <span className="text-neutral-400">@{discussion.author}</span>
-                <span>•</span>
-                <span>{discussion.timestamp}</span>
-                <span>•</span>
-                <span>{discussion.replyCount} {discussion.replyCount === 1 ? 'reply' : 'replies'}</span>
-                {discussion.replyCount > 15 && <span>🔥</span>}
+          {sampleDiscussions.map(discussion => {
+            // Find a market that matches the discussion's market title
+            const matchingEntry = Object.values(markets).find(
+              e => e.market.title === discussion.marketTitle
+            )
+            const marketPath = matchingEntry 
+              ? `/market/${matchingEntry.market.id}`
+              : null
+            
+            const content = (
+              <>
+                {/* Preview text */}
+                <div className="text-sm text-white truncate mb-1">{discussion.preview}</div>
+                
+                {/* Metadata: market title + author + time + replies */}
+                <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+                  <span>in</span>
+                  <span className="text-neutral-400">"{discussion.marketTitle}"</span>
+                  <span>•</span>
+                  <span className="text-neutral-400">@{discussion.author}</span>
+                  <span>•</span>
+                  <span>{discussion.timestamp}</span>
+                  <span>•</span>
+                  <span>{discussion.replyCount} {discussion.replyCount === 1 ? 'reply' : 'replies'}</span>
+                  {discussion.replyCount > 15 && <span>🔥</span>}
+                </div>
+              </>
+            )
+            
+            // Only render as link if we have a matching market
+            return marketPath ? (
+              <Link
+                key={discussion.id}
+                to={marketPath}
+                className="block py-2.5 hover:bg-neutral-900/50 -mx-2 px-2 transition-colors"
+              >
+                {content}
+              </Link>
+            ) : (
+              <div
+                key={discussion.id}
+                className="py-2.5 -mx-2 px-2 opacity-75"
+              >
+                {content}
               </div>
-            </Link>
-          ))}
+            )
+          })}
         </div>
       </section>
 

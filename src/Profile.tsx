@@ -98,8 +98,7 @@ export default function Profile() {
   if (!editing && isComplete) {
     return (
       <div className="mx-auto max-w-6xl px-6 py-8">
-        <section className="relative overflow-hidden rounded-[2rem] border border-neutral-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.2),_transparent_35%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.14),_transparent_32%),linear-gradient(180deg,_rgba(23,23,23,0.96),_rgba(10,10,10,0.98))] p-8">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-green-400/70 to-transparent" />
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900 p-8">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <p className="text-xs uppercase tracking-[0.3em] text-green-300/80">Human onboarding</p>
@@ -250,7 +249,7 @@ export default function Profile() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-      <section className="rounded-[2rem] border border-neutral-800 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_32%),radial-gradient(circle_at_top_right,_rgba(250,204,21,0.14),_transparent_30%),linear-gradient(180deg,_rgba(23,23,23,0.96),_rgba(10,10,10,0.98))] p-8">
+      <section className="rounded-2xl border border-neutral-800 bg-neutral-900 p-8">
         <div className="max-w-3xl">
           <p className="text-xs uppercase tracking-[0.3em] text-sky-200/80">Human onboarding</p>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white">

@@ -67,9 +67,6 @@ export default function MarketDetail({ entry, dispatch }: Props) {
         <div className="lg:col-span-2 space-y-6">
           {/* Title */}
           <div>
-            <span className="inline-block px-2 py-1 text-xs font-medium bg-neutral-700/50 text-neutral-300 rounded mb-3">
-              Module
-            </span>
             <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">
               {market.title}
             </h1>
@@ -139,20 +136,20 @@ export default function MarketDetail({ entry, dispatch }: Props) {
             <div className="grid grid-cols-2 gap-3 mb-5">
               <button
                 onClick={() => setSelectedSide('LONG')}
-                className={`py-3 rounded-lg font-medium transition-all ${
+                className={`py-3 rounded-lg font-medium ${
                   selectedSide === 'LONG'
-                    ? 'bg-green-600 text-white ring-2 ring-green-500 ring-offset-2 ring-offset-neutral-900'
-                    : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-neutral-800 text-neutral-400 hover:text-white'
                 }`}
               >
                 YES {(yesPrice * 100).toFixed(0)}¢
               </button>
               <button
                 onClick={() => setSelectedSide('SHORT')}
-                className={`py-3 rounded-lg font-medium transition-all ${
+                className={`py-3 rounded-lg font-medium ${
                   selectedSide === 'SHORT'
-                    ? 'bg-red-600 text-white ring-2 ring-red-500 ring-offset-2 ring-offset-neutral-900'
-                    : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-neutral-800 text-neutral-400 hover:text-white'
                 }`}
               >
                 NO {(noPrice * 100).toFixed(0)}¢

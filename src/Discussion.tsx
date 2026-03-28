@@ -342,16 +342,16 @@ function buildModuleArena(marketTitle: string, consensus: number): ArenaData {
   }
 }
 
-function positionBadgeClass(position: PositionType) {
-  if (position === 'long') return 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
-  if (position === 'short') return 'bg-rose-500/15 text-rose-300 border border-rose-500/20'
-  return 'bg-neutral-800 text-neutral-300 border border-neutral-700'
+function positionClass(position: PositionType) {
+  if (position === 'long') return 'text-green-400'
+  if (position === 'short') return 'text-red-400'
+  return 'text-neutral-400'
 }
 
-function accentBarClass(position: PositionType) {
-  if (position === 'long') return 'from-emerald-400/70 via-emerald-400/15 to-transparent'
-  if (position === 'short') return 'from-rose-400/70 via-rose-400/15 to-transparent'
-  return 'from-sky-400/70 via-sky-400/15 to-transparent'
+function positionBorder(position: PositionType) {
+  if (position === 'long') return 'border-l-green-500'
+  if (position === 'short') return 'border-l-red-500'
+  return 'border-l-neutral-600'
 }
 
 export default function Discussion({
@@ -418,66 +418,68 @@ export default function Discussion({
     setNewPosition('long')
   }
 
-  const filterButtonClass = (id: FilterType) =>
-    `px-3 py-1.5 text-sm rounded-full transition-colors ${
-      filter === id
-        ? 'bg-white text-neutral-950'
-        : 'bg-neutral-900 text-neutral-400 hover:text-white hover:bg-neutral-800'
-    }`
-
   return (
-    <section className="rounded-[28px] border border-neutral-800 bg-neutral-950/80 overflow-hidden">
-      <div className="border-b border-neutral-800 bg-[radial-gradient(circle_at_top_left,_rgba(82,82,91,0.22),_transparent_48%),linear-gradient(180deg,_rgba(23,23,23,0.95),_rgba(10,10,10,0.98))] px-6 py-6 sm:px-8">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.28em] text-neutral-500 mb-3">
+    <section className="border border-neutral-800 rounded-lg bg-neutral-950 overflow-hidden">
+      {/* Header */}
+      <div className="border-b border-neutral-800 p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-xs uppercase tracking-wider text-neutral-500 mb-2">
               {arena.eyebrow}
             </p>
-            <h2 className="text-2xl sm:text-3xl font-semibold text-white mb-3">{arena.title}</h2>
-            <p className="text-neutral-300 leading-7">{arena.description}</p>
+            <h2 className="text-xl font-semibold text-white mb-2">{arena.title}</h2>
+            <p className="text-sm text-neutral-400">{arena.description}</p>
           </div>
-          <div className="grid grid-cols-3 gap-3 min-w-full sm:min-w-0 sm:w-auto">
-            <div className="rounded-2xl border border-neutral-800 bg-black/30 px-4 py-3">
-              <div className="text-xs uppercase tracking-wider text-neutral-500 mb-1">Consensus</div>
-              <div className="text-lg font-semibold text-white">{formatPercent(consensus)}</div>
+          <div className="flex gap-6 text-sm">
+            <div>
+              <div className="text-neutral-500">Consensus</div>
+              <div className="text-white font-medium">{formatPercent(consensus)}</div>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-black/30 px-4 py-3">
-              <div className="text-xs uppercase tracking-wider text-neutral-500 mb-1">Reserve</div>
-              <div className="text-lg font-semibold text-white">{formatCurrency(reserve)}</div>
+            <div>
+              <div className="text-neutral-500">Reserve</div>
+              <div className="text-white font-medium">{formatCurrency(reserve)}</div>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-black/30 px-4 py-3">
-              <div className="text-xs uppercase tracking-wider text-neutral-500 mb-1">Live trades</div>
-              <div className="text-lg font-semibold text-white">{tradeCount}</div>
+            <div>
+              <div className="text-neutral-500">Trades</div>
+              <div className="text-white font-medium">{tradeCount}</div>
             </div>
           </div>
         </div>
 
+        {/* Case cards */}
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           {arena.cards.map((card) => (
             <div
               key={card.label}
-              className="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-5"
+              className={`p-4 bg-neutral-900 border border-neutral-800 rounded-lg border-l-2 ${positionBorder(card.stance)}`}
             >
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${positionBadgeClass(card.stance)}`}>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <span className={`text-sm font-medium ${positionClass(card.stance)}`}>
                   {card.label}
                 </span>
-                <span className="text-xs uppercase tracking-widest text-neutral-500">{card.hook}</span>
+                <span className="text-xs text-neutral-500">{card.hook}</span>
               </div>
-              <p className="text-neutral-200 leading-7">{card.summary}</p>
+              <p className="text-sm text-neutral-300">{card.summary}</p>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="grid gap-6 p-6 sm:p-8 xl:grid-cols-[minmax(0,1.25fr)_360px]">
-        <div className="space-y-6">
+      {/* Main content */}
+      <div className="grid gap-6 p-6 xl:grid-cols-[1fr_320px]">
+        {/* Posts */}
+        <div className="space-y-4">
+          {/* Filters */}
           <div className="flex flex-wrap gap-2">
             {filterOptions.map((option) => (
               <button
                 key={option.id}
                 type="button"
-                className={filterButtonClass(option.id)}
+                className={`px-3 py-1.5 text-sm rounded-lg ${
+                  filter === option.id
+                    ? 'bg-neutral-800 text-white'
+                    : 'text-neutral-500 hover:text-white'
+                }`}
                 onClick={() => setFilter(option.id)}
               >
                 {option.label}
@@ -485,79 +487,76 @@ export default function Discussion({
             ))}
           </div>
 
-          <div className="space-y-4">
+          {/* Post list */}
+          <div className="space-y-3">
             {filteredPosts.map((post) => (
               <article
                 key={post.id}
-                className="relative overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/80 p-5"
+                className={`p-4 bg-neutral-900 border border-neutral-800 rounded-lg border-l-2 ${positionBorder(post.position)}`}
               >
-                <div className={`pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r ${accentBarClass(post.position)}`} />
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="text-sm font-semibold text-white">{post.author}</span>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-sm font-medium text-white">{post.author}</span>
                       <span className="text-xs text-neutral-500">{post.role}</span>
-                      <span className={`px-2 py-1 text-[11px] rounded-full ${positionBadgeClass(post.position)}`}>
+                      <span className={`text-xs ${positionClass(post.position)}`}>
                         {stanceLabels[post.position]}
                       </span>
-                      <span className="px-2 py-1 text-[11px] rounded-full bg-neutral-800 text-neutral-300 border border-neutral-700">
-                        {post.kind}
-                      </span>
+                      <span className="text-xs text-neutral-600">{post.kind}</span>
                     </div>
-                    <h3 className="text-lg font-semibold text-white mb-2">{post.headline}</h3>
-                    <p className="text-neutral-300 leading-7">{post.content}</p>
+                    <h3 className="text-base font-medium text-white mb-1">{post.headline}</h3>
+                    <p className="text-sm text-neutral-400">{post.content}</p>
                   </div>
                   <div className="sm:text-right shrink-0">
-                    <div className="text-xs uppercase tracking-wider text-neutral-500 mb-1">Target</div>
-                    <div className="text-sm text-neutral-200">{post.target}</div>
+                    <div className="text-xs text-neutral-500">{post.target}</div>
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-neutral-400">
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
                   <span>{formatTimeAgo(post.timestamp)}</span>
                   <span>{post.replyCount} replies</span>
-                  <span>{post.conviction} conviction</span>
-                  {post.stake ? <span>Stake {formatCurrency(post.stake)}</span> : null}
-                  {post.priceImpact ? <span>Moved price {formatPercent(post.priceImpact)}</span> : null}
+                  {post.stake ? <span>{formatCurrency(post.stake)} staked</span> : null}
+                  {post.priceImpact ? <span>+{formatPercent(post.priceImpact)} price</span> : null}
                 </div>
               </article>
             ))}
           </div>
         </div>
 
-        <div className="space-y-5">
-          <aside className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-5">
-            <h3 className="text-lg font-semibold text-white mb-2">{arena.nodesTitle}</h3>
-            <p className="text-sm text-neutral-400 leading-6 mb-4">{arena.nodesDescription}</p>
+        {/* Sidebar */}
+        <div className="space-y-4">
+          {/* Pressure points */}
+          <aside className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg">
+            <h3 className="text-sm font-medium text-white mb-1">{arena.nodesTitle}</h3>
+            <p className="text-xs text-neutral-500 mb-4">{arena.nodesDescription}</p>
             <div className="space-y-3">
               {arena.nodes.map((node) => (
-                <div key={node.id} className="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-4">
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500 mb-2">
-                    {node.eyebrow}
-                  </div>
-                  <div className="text-sm font-medium text-white mb-2">{node.label}</div>
-                  <p className="text-sm text-neutral-400 leading-6">{node.detail}</p>
+                <div key={node.id} className="p-3 bg-neutral-950 border border-neutral-800 rounded-lg">
+                  <div className="text-xs text-neutral-500 mb-1">{node.eyebrow}</div>
+                  <div className="text-sm font-medium text-white mb-1">{node.label}</div>
+                  <p className="text-xs text-neutral-400">{node.detail}</p>
                 </div>
               ))}
             </div>
           </aside>
 
+          {/* Compose */}
           <form
-            className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-5 space-y-4"
+            className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg space-y-4"
             onSubmit={handleSubmit}
           >
             <div>
-              <h3 className="text-lg font-semibold text-white mb-2">Enter the arena</h3>
-              <p className="text-sm text-neutral-400 leading-6">{arena.composeHint}</p>
+              <h3 className="text-sm font-medium text-white mb-1">Enter the arena</h3>
+              <p className="text-xs text-neutral-500">{arena.composeHint}</p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="text-xs uppercase tracking-wider text-neutral-500">Post type</span>
+                <span className="text-xs text-neutral-500">Type</span>
                 <select
                   value={newKind}
                   onChange={(event) => setNewKind(event.target.value as PostKind)}
-                  className="mt-2 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white focus:outline-none focus:border-neutral-500"
+                  className="mt-1 w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white text-sm focus:outline-none focus:border-neutral-600"
                 >
                   {kindOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -567,11 +566,11 @@ export default function Discussion({
                 </select>
               </label>
               <label className="block">
-                <span className="text-xs uppercase tracking-wider text-neutral-500">Stance</span>
+                <span className="text-xs text-neutral-500">Stance</span>
                 <select
                   value={newPosition}
                   onChange={(event) => setNewPosition(event.target.value as PositionType)}
-                  className="mt-2 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 text-white focus:outline-none focus:border-neutral-500"
+                  className="mt-1 w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white text-sm focus:outline-none focus:border-neutral-600"
                 >
                   <option value="long">{stanceLabels.long}</option>
                   <option value="short">{stanceLabels.short}</option>
@@ -581,13 +580,13 @@ export default function Discussion({
             </div>
 
             <label className="block">
-              <span className="text-xs uppercase tracking-wider text-neutral-500">Argument</span>
+              <span className="text-xs text-neutral-500">Argument</span>
               <textarea
-                className="mt-2 min-h-[140px] w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-4 text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 resize-y"
+                className="mt-1 min-h-[100px] w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white text-sm placeholder-neutral-600 focus:outline-none focus:border-neutral-600 resize-y"
                 placeholder={
                   marketKind === 'thesis'
-                    ? 'State the hinge, explain why it matters, and make the other side answer it.'
-                    : 'Explain what this module proves, what it does not prove, and which thesis should move if you are right.'
+                    ? 'State the hinge, explain why it matters...'
+                    : 'Explain what this module proves...'
                 }
                 value={newPost}
                 onChange={(event) => setNewPost(event.target.value)}
@@ -596,7 +595,7 @@ export default function Discussion({
 
             <button
               type="submit"
-              className="w-full rounded-xl bg-white px-4 py-3 font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full px-4 py-2 bg-white text-neutral-950 text-sm font-medium rounded-lg hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!newPost.trim()}
             >
               {arena.composeCta}

@@ -211,9 +211,6 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
   const renderClaimStep = () => (
     <div className="space-y-8">
       <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-neutral-500 mb-3">
-          Step 1
-        </p>
         <h1 className="text-3xl font-semibold text-white">
           Name the thesis
         </h1>
@@ -255,9 +252,6 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
   const renderCaseStep = () => (
     <div className="space-y-8">
       <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-neutral-500 mb-3">
-          Step 2
-        </p>
         <h2 className="text-3xl font-semibold text-white">
           Write the case
         </h2>
@@ -281,15 +275,9 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
   const renderSignalsStep = () => (
     <div className="space-y-8">
       <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-neutral-500 mb-3">
-          Step 3
-        </p>
-        <h2 className="text-3xl font-semibold text-white mb-3">
+        <h2 className="text-3xl font-semibold text-white">
           Add signals
         </h2>
-        <p className="max-w-2xl text-neutral-400">
-          Pick existing markets that should resolve a certain way if the thesis is right.
-        </p>
       </div>
 
       {selectedSignals.length > 0 ? (
@@ -450,39 +438,30 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
   const renderReviewStep = () => (
     <div className="space-y-8">
       <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-neutral-500 mb-3">
-          Step 4
-        </p>
         <h2 className="text-3xl font-semibold text-white">
-          Review the thesis
+          Review
         </h2>
       </div>
 
       <section className="border-b border-neutral-800 pb-6">
-        <p className="text-xs uppercase tracking-[0.18em] text-neutral-500 mb-3">
-          Title
-        </p>
-        <p className="text-3xl font-medium text-white">
-          {trimmedStatement || 'No title yet'}
+        <h3 className="text-sm text-neutral-500 mb-2">Title</h3>
+        <p className="text-2xl font-medium text-white">
+          {trimmedStatement || '—'}
         </p>
       </section>
 
       <section className="border-b border-neutral-800 pb-6">
-        <p className="text-xs uppercase tracking-[0.18em] text-neutral-500 mb-3">
-          Argument
-        </p>
+        <h3 className="text-sm text-neutral-500 mb-2">Argument</h3>
         <p className="whitespace-pre-line text-neutral-300">
-          {trimmedArgument || 'No argument yet'}
+          {trimmedArgument || '—'}
         </p>
       </section>
 
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-            Signals
-          </p>
-          <span className="text-sm text-neutral-400">
-            {selectedSignals.length} selected
+          <h3 className="text-sm text-neutral-500">Signals</h3>
+          <span className="text-sm text-neutral-500">
+            {selectedSignals.length}
           </span>
         </div>
 

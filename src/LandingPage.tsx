@@ -4,7 +4,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { deriveMarketMetrics, type Side } from './market'
 import type { MarketEntry } from './storage'
 import type { Action } from './App'
-import ReserveChart from './ReserveChart'
 
 type MarketType = 'module' | 'thesis'
 
@@ -58,6 +57,55 @@ const sampleModules: SampleMarketSpec[] = [
       'Will any single BCI product (invasive or non-invasive) have 1 million active users before 2032?',
     category: 'Biotech & Health',
     type: 'module',
+  },
+]
+
+type SampleDiscussion = {
+  id: string
+  marketTitle: string
+  author: string
+  preview: string
+  replyCount: number
+  stance: 'LONG' | 'SHORT' | null
+  timestamp: string
+}
+
+const sampleDiscussions: SampleDiscussion[] = [
+  {
+    id: 'd1',
+    marketTitle: 'AGI achieved by 2030',
+    author: 'reasoning_agent',
+    preview: 'The goalposts keep moving. We had "AI can\'t play Go" until 2016. Now we have "AI can\'t reason" while o1 solves IMO problems. Define AGI or this resolves never.',
+    replyCount: 14,
+    stance: 'LONG',
+    timestamp: '2h ago',
+  },
+  {
+    id: 'd2',
+    marketTitle: 'The Great Decoupling',
+    author: 'macro_watcher',
+    preview: 'Productivity-wage decoupling started in 1973, not with AI. The thesis conflates correlation with causation. Real wages track total compensation when you include benefits.',
+    replyCount: 8,
+    stance: 'SHORT',
+    timestamp: '4h ago',
+  },
+  {
+    id: 'd3',
+    marketTitle: 'Space economy exceeds $1T by 2040',
+    author: 'orbital_capital',
+    preview: 'Starship changes everything. Launch costs dropping 100x means the entire satellite industry reprices. $1T is conservative if Starlink alone hits $100B ARR.',
+    replyCount: 21,
+    stance: 'LONG',
+    timestamp: '6h ago',
+  },
+  {
+    id: 'd4',
+    marketTitle: 'Lab-grown meat exceeds 10% market share by 2028',
+    author: 'biotech_skeptic',
+    preview: 'Cost parity is a myth. Current cultivated meat runs $50/kg at scale. Traditional beef is $4/kg. That\'s not a gap you close in 4 years.',
+    replyCount: 6,
+    stance: 'SHORT',
+    timestamp: '8h ago',
   },
 ]
 
@@ -132,33 +180,6 @@ function shuffle<T>(items: T[]) {
   return next
 }
 
-function buildAggregateReserve(entries: MarketEntry[]): { time: number; value: number }[] {
-  if (entries.length === 0) return []
-
-  const events: { time: number; marketIdx: number; reserve: number }[] = []
-  for (let i = 0; i < entries.length; i++) {
-    for (const point of entries[i].history) {
-      events.push({ time: point.time, marketIdx: i, reserve: point.reserve })
-    }
-  }
-  events.sort((a, b) => a.time - b.time)
-
-  const lastReserve = new Array<number>(entries.length).fill(0)
-  const result: { time: number; value: number }[] = []
-
-  for (const event of events) {
-    lastReserve[event.marketIdx] = event.reserve
-    const total = lastReserve.reduce((sum, v) => sum + v, 0)
-    if (result.length > 0 && result[result.length - 1].time === event.time) {
-      result[result.length - 1].value = total
-    } else {
-      result.push({ time: event.time, value: total })
-    }
-  }
-
-  return result
-}
-
 function getSampleSpec(title: string): SampleMarketSpec | undefined {
   return sampleMarketBank.find(spec => spec.title === title)
 }
@@ -206,7 +227,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
   }, [entries, activeTypeFilter, activeCategory])
 
   const totalReserve = entries.reduce((sum, e) => sum + e.market.reserve, 0)
-  const aggregateReserve = useMemo(() => buildAggregateReserve(entries), [entries])
 
   const moduleCount = entries.filter(e => {
     const spec = getSampleSpec(e.market.title)
@@ -250,153 +270,275 @@ export default function LandingPage({ markets, dispatch }: Props) {
   const createForm = (
     <form className="space-y-4" onSubmit={handleCreateMarket}>
       <label className="block">
-        <span className="text-sm text-gray-400">Title</span>
+        <span className="text-sm text-neutral-400">Title</span>
         <input
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           placeholder="Will AGI emerge before 2030?"
-          className="mt-1 w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-500"
+          className="mt-1 w-full px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
         />
       </label>
       <label className="block">
-        <span className="text-sm text-gray-400">Description</span>
+        <span className="text-sm text-neutral-400">Description</span>
         <textarea
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           rows={3}
-          placeholder="Define the resolution criteria clearly. What evidence would settle this question?"
-          className="mt-1 w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 resize-y min-h-[88px]"
+          placeholder="Define the resolution criteria clearly."
+          className="mt-1 w-full px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600 resize-y min-h-[88px]"
         />
       </label>
       <div className="grid grid-cols-2 gap-4">
         <label className="block">
-          <span className="text-sm text-gray-400">Initial side</span>
+          <span className="text-sm text-neutral-400">Side</span>
           <select
             value={initialSide}
             onChange={(event) => setInitialSide(event.target.value as Side)}
-            className="mt-1 w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
+            className="mt-1 w-full px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white focus:outline-none focus:border-neutral-600"
           >
             <option value="LONG">LONG</option>
             <option value="SHORT">SHORT</option>
           </select>
         </label>
         <label className="block">
-          <span className="text-sm text-gray-400">Initial sats</span>
+          <span className="text-sm text-neutral-400">Sats</span>
           <input
             value={initialSats}
             onChange={(event) => setInitialSats(event.target.value)}
             inputMode="decimal"
-            className="mt-1 w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-500"
+            className="mt-1 w-full px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white focus:outline-none focus:border-neutral-600"
           />
         </label>
       </div>
       <div className="flex gap-3 pt-2">
         <button
-          className="flex-1 px-4 py-3 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+          className="flex-1 px-4 py-3 bg-white text-neutral-950 font-medium rounded-lg hover:bg-neutral-100"
           type="submit"
         >
-          Create + seed market
+          Create market
         </button>
         <button
-          className="px-4 py-3 border border-gray-600 text-gray-300 font-medium rounded-lg hover:border-gray-500 hover:text-white transition-colors"
+          className="px-4 py-3 border border-neutral-700 text-neutral-300 rounded-lg hover:border-neutral-600 hover:text-white"
           type="button"
           onClick={handleLoadSampleMarket}
         >
-          Random market
+          Random
         </button>
       </div>
     </form>
   )
 
-  // Empty state
+  // Empty state — show what Cascade is
   if (entries.length === 0) {
     return (
-      <div className="max-w-xl mx-auto px-6 py-24">
-        <div className="text-center mb-8">
-          <p className="text-xs uppercase tracking-widest text-gray-500 mb-4">
-            Prediction markets for long-term thinkers
-          </p>
-          <h1 className="text-3xl font-bold text-white mb-4">
-            Map the future. Trade your beliefs.
+      <div className="min-h-screen bg-neutral-950">
+        {/* Hero */}
+        <header className="max-w-4xl mx-auto px-6 pt-16 pb-12">
+          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
+            Cascade
           </h1>
-          <p className="text-gray-400 mb-2">
-            Create markets on the questions that matter in decades, not days.
-            AI timelines, space colonization, climate trajectories, civilizational risks.
+          <p className="text-xl text-neutral-400 max-w-2xl">
+            Prediction markets for questions that matter in decades, not days. 
+            Trade on open-ended theses. Let discourse move the price.
           </p>
-          <p className="text-sm text-gray-500">
-            Alice, Bob, and Carol start with cash only: zero LONG, zero SHORT,
-            no hidden allocations.
-          </p>
-        </div>
-        {createForm}
+        </header>
+
+        {/* Concept */}
+        <section className="max-w-4xl mx-auto px-6 pb-16">
+          <div className="grid gap-6 sm:grid-cols-3">
+            <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-lg">
+              <h3 className="text-lg font-semibold text-white mb-2">Theses</h3>
+              <p className="text-sm text-neutral-400">
+                Open-ended questions with no hard resolution date. 
+                The market scores the argument over time.
+              </p>
+            </div>
+            <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-lg">
+              <h3 className="text-lg font-semibold text-white mb-2">Modules</h3>
+              <p className="text-sm text-neutral-400">
+                Discrete, falsifiable claims that feed into larger theses. 
+                Evidence battlegrounds.
+              </p>
+            </div>
+            <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-lg">
+              <h3 className="text-lg font-semibold text-white mb-2">Discussion</h3>
+              <p className="text-sm text-neutral-400">
+                Not a comment section. Structured debate where 
+                conviction-backed arguments move prices.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Featured Theses */}
+        <section className="max-w-4xl mx-auto px-6 pb-16">
+          <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-6">
+            Featured Theses
+          </h2>
+          <div className="space-y-4">
+            {sampleTheses.slice(0, 3).map((thesis) => (
+              <article
+                key={thesis.title}
+                className="p-6 bg-neutral-900 border border-neutral-800 rounded-lg cursor-pointer hover:border-neutral-700"
+                onClick={() => {
+                  dispatch({
+                    type: 'CREATE_MARKET',
+                    title: thesis.title,
+                    description: thesis.description,
+                    seedWithUser: false,
+                  })
+                }}
+              >
+                <h3 className="text-lg font-medium text-white mb-2">
+                  {thesis.title}
+                </h3>
+                <p className="text-sm text-neutral-400 mb-4">
+                  {thesis.description}
+                </p>
+                {thesis.supportingModules && (
+                  <div className="flex flex-wrap gap-2">
+                    {thesis.supportingModules.map((mod) => (
+                      <span
+                        key={mod}
+                        className="px-2 py-1 text-xs text-neutral-500 border border-neutral-800 rounded"
+                      >
+                        {mod}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* Active Modules */}
+        <section className="max-w-4xl mx-auto px-6 pb-16">
+          <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-6">
+            Active Modules
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {sampleModules.slice(0, 4).map((mod) => (
+              <article
+                key={mod.title}
+                className="p-5 bg-neutral-900 border border-neutral-800 rounded-lg cursor-pointer hover:border-neutral-700"
+                onClick={() => {
+                  dispatch({
+                    type: 'CREATE_MARKET',
+                    title: mod.title,
+                    description: mod.description,
+                    seedWithUser: false,
+                  })
+                }}
+              >
+                <div className="text-xs text-neutral-500 mb-2">{mod.category}</div>
+                <h3 className="text-base font-medium text-white mb-2">
+                  {mod.title}
+                </h3>
+                <p className="text-sm text-neutral-400 line-clamp-2">
+                  {mod.description}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* Latest Discussions */}
+        <section className="max-w-4xl mx-auto px-6 pb-16">
+          <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wider mb-6">
+            Latest Discussions
+          </h2>
+          <div className="space-y-3">
+            {sampleDiscussions.map((discussion) => (
+              <article
+                key={discussion.id}
+                className="p-5 bg-neutral-900 border border-neutral-800 rounded-lg hover:border-neutral-700 cursor-pointer"
+              >
+                <div className="flex items-start justify-between gap-4 mb-2">
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="text-white font-medium">{discussion.author}</span>
+                    {discussion.stance && (
+                      <span className={discussion.stance === 'LONG' ? 'text-green-500' : 'text-red-500'}>
+                        {discussion.stance}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-neutral-500">{discussion.timestamp}</span>
+                </div>
+                <p className="text-sm text-neutral-300 mb-3">{discussion.preview}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-neutral-500">{discussion.marketTitle}</span>
+                  <span className="text-xs text-neutral-500">{discussion.replyCount} replies</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="max-w-4xl mx-auto px-6 pb-24">
+          <div className="p-8 bg-neutral-900 border border-neutral-800 rounded-lg">
+            <h2 className="text-2xl font-semibold text-white mb-4">
+              Start a market
+            </h2>
+            {createForm}
+          </div>
+        </section>
       </div>
     )
   }
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8">
-      {/* Hero */}
-      <section className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-gray-500 mb-2">
-              Prediction markets for long-term thinkers
-            </p>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">
-              Map the future. Trade your beliefs.
-            </h1>
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              className="px-4 py-2 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
-              onClick={() => setShowCreateModal(true)}
-            >
-              New market
-            </button>
-            <Link
-              to="/builder"
-              className="px-4 py-2 border border-gray-600 text-gray-300 font-medium rounded-lg hover:border-gray-500 hover:text-white transition-colors"
-            >
-              Build thesis
-            </Link>
-          </div>
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <h1 className="text-2xl font-bold text-white">Markets</h1>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            className="px-4 py-2 bg-white text-neutral-950 font-medium rounded-lg hover:bg-neutral-100"
+            onClick={() => setShowCreateModal(true)}
+          >
+            New market
+          </button>
+          <Link
+            to="/builder"
+            className="px-4 py-2 border border-neutral-700 text-neutral-300 rounded-lg hover:border-neutral-600 hover:text-white"
+          >
+            Build thesis
+          </Link>
         </div>
+      </header>
 
-        {/* Type filter tabs */}
-        <div className="flex gap-1 mb-4">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-6 mb-6">
+        <div className="flex gap-1">
           {typeFilters.map((filter) => (
             <button
               key={filter}
               type="button"
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`px-3 py-1.5 text-sm rounded-lg ${
                 activeTypeFilter === filter
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                  ? 'bg-neutral-800 text-white'
+                  : 'text-neutral-500 hover:text-white'
               }`}
               onClick={() => setActiveTypeFilter(filter)}
             >
               {filter}
-              {filter === 'Modules' && (
-                <span className="ml-1 text-gray-500">({moduleCount})</span>
-              )}
-              {filter === 'Theses' && (
-                <span className="ml-1 text-gray-500">({thesisCount})</span>
-              )}
+              {filter === 'Modules' && ` (${moduleCount})`}
+              {filter === 'Theses' && ` (${thesisCount})`}
             </button>
           ))}
         </div>
-
-        {/* Category tabs */}
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-2">
           {categories.map((cat) => (
             <button
               key={cat}
               type="button"
-              className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+              className={`px-3 py-1.5 text-sm rounded-lg ${
                 activeCategory === cat
-                  ? 'bg-gray-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-white'
+                  ? 'bg-neutral-800 text-white'
+                  : 'text-neutral-500 hover:text-white'
               }`}
               onClick={() => setActiveCategory(cat)}
             >
@@ -404,29 +546,19 @@ export default function LandingPage({ markets, dispatch }: Props) {
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Stats */}
-        <div className="flex flex-wrap gap-8 py-4 border-y border-gray-800">
-          <div>
-            <div className="text-2xl font-bold text-white">{entries.length}</div>
-            <div className="text-xs uppercase tracking-wider text-gray-500">Active markets</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-white">{formatCurrency(totalReserve)}</div>
-            <div className="text-xs uppercase tracking-wider text-gray-500">Total reserve</div>
-          </div>
+      {/* Stats row */}
+      <div className="flex gap-8 text-sm mb-8">
+        <div>
+          <span className="text-white font-medium">{entries.length}</span>
+          <span className="text-neutral-500 ml-2">markets</span>
         </div>
-
-        {/* Reserve chart */}
-        {aggregateReserve.length >= 2 && (
-          <div className="mt-6">
-            <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Total reserve</p>
-            <div className="h-36 rounded-lg overflow-hidden">
-              <ReserveChart data={aggregateReserve} height={140} />
-            </div>
-          </div>
-        )}
-      </section>
+        <div>
+          <span className="text-white font-medium">{formatCurrency(totalReserve)}</span>
+          <span className="text-neutral-500 ml-2">reserve</span>
+        </div>
+      </div>
 
       {/* Market cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -435,49 +567,26 @@ export default function LandingPage({ markets, dispatch }: Props) {
           const tradeCount = market.quotes.length
           const spec = getSampleSpec(market.title)
           const isThesis = spec?.type === 'thesis'
-          const supportingModules = spec?.supportingModules || []
           const detailPath = isThesis ? `/thesis/${market.id}` : `/market/${market.id}`
 
           return (
             <article
               key={market.id}
-              className="p-5 bg-gray-900 border border-gray-800 rounded-xl cursor-pointer hover:border-gray-700 transition-colors"
+              className="bg-neutral-900 border border-neutral-800 rounded-lg p-5 cursor-pointer hover:border-neutral-700"
               onClick={() => navigate(detailPath)}
             >
-              {/* Badge */}
-              <div className="mb-3">
-                {isThesis ? (
-                  <span className="px-2 py-1 text-xs font-medium bg-purple-500/20 text-purple-400 rounded">
-                    Thesis
-                  </span>
-                ) : spec ? (
-                  <span className="px-2 py-1 text-xs font-medium bg-gray-700/50 text-gray-300 rounded">
-                    Module
-                  </span>
-                ) : null}
-              </div>
-
-              <h2 className="text-base font-semibold text-white mb-2 line-clamp-2">
+              <h2 className="text-base font-medium text-white mb-2 line-clamp-2">
                 {market.title}
               </h2>
 
               {market.description && (
-                <p className="text-sm text-gray-400 mb-3 line-clamp-2">
+                <p className="text-sm text-neutral-500 mb-4 line-clamp-2">
                   {market.description}
                 </p>
               )}
 
-              {/* Supporting modules for theses */}
-              {isThesis && supportingModules.length > 0 && (
-                <div className="mb-3">
-                  <span className="text-xs text-gray-500">
-                    Based on {supportingModules.length} modules
-                  </span>
-                </div>
-              )}
-
               {/* Probability bar */}
-              <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden mb-3">
+              <div className="h-1 bg-neutral-800 rounded-full overflow-hidden mb-3">
                 <div
                   className="h-full bg-green-500 rounded-full"
                   style={{ width: `${metrics.longPositionShare * 100}%` }}
@@ -485,14 +594,14 @@ export default function LandingPage({ markets, dispatch }: Props) {
               </div>
 
               {/* Odds */}
-              <div className="flex justify-between text-sm font-medium mb-3">
-                <span className="text-green-400">YES {formatPercent(metrics.longPositionShare)}</span>
-                <span className="text-red-400">NO {formatPercent(metrics.shortPositionShare)}</span>
+              <div className="flex justify-between text-sm mb-3">
+                <span className="text-green-500">{formatPercent(metrics.longPositionShare)}</span>
+                <span className="text-red-500">{formatPercent(metrics.shortPositionShare)}</span>
               </div>
 
               {/* Meta */}
-              <div className="flex gap-4 text-xs text-gray-500">
-                <span>Reserve {formatCurrency(market.reserve)}</span>
+              <div className="flex gap-4 text-xs text-neutral-500">
+                <span>{formatCurrency(market.reserve)}</span>
                 <span>{tradeCount} trade{tradeCount !== 1 ? 's' : ''}</span>
               </div>
             </article>
@@ -503,26 +612,23 @@ export default function LandingPage({ markets, dispatch }: Props) {
       {/* Create modal */}
       {showCreateModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80"
           onClick={() => setShowCreateModal(false)}
         >
           <div
-            className="w-full max-w-lg p-6 bg-gray-900 border border-gray-700 rounded-xl"
+            className="w-full max-w-lg p-6 bg-neutral-900 border border-neutral-800 rounded-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-white">New market</h2>
               <button
                 type="button"
-                className="px-3 py-1 text-sm text-gray-400 hover:text-white"
+                className="text-sm text-neutral-500 hover:text-white"
                 onClick={() => setShowCreateModal(false)}
               >
                 Close
               </button>
             </div>
-            <p className="text-sm text-gray-400 mb-4">
-              Alice, Bob, and Carol start with cash only. You seed the opening position.
-            </p>
             {createForm}
           </div>
         </div>

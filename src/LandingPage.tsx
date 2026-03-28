@@ -286,28 +286,6 @@ function PulseDot({ color = 'emerald' }: { color?: 'emerald' | 'amber' | 'rose' 
   )
 }
 
-// Live activity counter with animation
-function LiveCounter({ label, value, suffix = '' }: { label: string; value: number; suffix?: string }) {
-  const [displayValue, setDisplayValue] = useState(value)
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Randomly increment/decrement to simulate live activity
-      setDisplayValue(prev => prev + Math.floor(Math.random() * 3) - 1)
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [])
-  
-  return (
-    <div className="text-center">
-      <div className="text-3xl md:text-4xl font-bold text-white tabular-nums">
-        {displayValue.toLocaleString()}{suffix}
-      </div>
-      <div className="text-xs text-neutral-500 uppercase tracking-wider mt-1">{label}</div>
-    </div>
-  )
-}
-
 // Hero chart component using lightweight-charts
 function HeroChart({ data }: { data: { time: number; value: number }[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -619,12 +597,12 @@ export default function LandingPage({ markets, dispatch }: Props) {
                 <div className="space-y-8">
                   {/* Provocative headline */}
                   <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight">
-                    Trade your thesis.
+                    Trade on Ideas That Don't Expire
                   </h2>
                   
                   {/* Sub-hook — creates intrigue */}
                   <p className="text-xl md:text-2xl text-neutral-400 max-w-lg leading-relaxed">
-                    Prediction markets for questions that evolve.
+                    Most prediction markets close. Cascade doesn't. Take positions on ongoing theses, change minds, move markets.
                   </p>
                   
                   {/* CTA */}
@@ -633,7 +611,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                       to="/join"
                       className="px-8 py-4 bg-white text-neutral-950 font-semibold rounded-lg hover:bg-neutral-100 transition-colors text-lg"
                     >
-                      Join
+                      Start Trading
                     </Link>
                     <Link
                       to="/join"
@@ -708,22 +686,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
             </div>
           </div>
           
-          {/* Live stats bar */}
-          <div className="relative z-10 border-t border-neutral-800/50 bg-neutral-900/30 backdrop-blur-sm">
-            <div className="max-w-7xl mx-auto px-6 py-6">
-              <div className="grid grid-cols-3 md:grid-cols-5 gap-8">
-                <LiveCounter label="Active Markets" value={142} />
-                <LiveCounter label="Traders Online" value={847} />
-                <LiveCounter label="24h Volume" value={89} suffix="K" />
-                <div className="hidden md:block">
-                  <LiveCounter label="Open Questions" value={1284} />
-                </div>
-                <div className="hidden md:block">
-                  <LiveCounter label="Arguments Today" value={523} />
-                </div>
-              </div>
-            </div>
-          </div>
         </section>
 
         {/* ═══════════════════════════════════════════════════════════════════
@@ -753,7 +715,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
         <section className="max-w-7xl mx-auto px-6 py-16">
           <div className="flex items-center gap-3 mb-8">
             <PulseDot color="emerald" />
-            <h2 className="text-2xl font-bold text-white">Arguments moving markets</h2>
+            <h2 className="text-2xl font-bold text-white">The Debate</h2>
           </div>
           
           <div className="grid lg:grid-cols-3 gap-6">
@@ -1043,10 +1005,10 @@ export default function LandingPage({ markets, dispatch }: Props) {
           {/* Left — Hero statement */}
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-2">
-              Trade your thesis.
+              Trade on Ideas That Don't Expire
             </h1>
             <p className="text-neutral-400">
-              Prediction markets for questions that evolve.
+              Most prediction markets close. Cascade doesn't. Take positions on ongoing theses, change minds, move markets.
             </p>
           </div>
           
@@ -1197,7 +1159,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
       <section className="max-w-6xl mx-auto px-6 pb-10">
         <div className="flex items-center gap-3 mb-4">
           <PulseDot color="emerald" />
-          <h2 className="text-xl font-bold text-white">Latest Discussions</h2>
+          <h2 className="text-xl font-bold text-white">The Debate</h2>
         </div>
         
         <div className="divide-y divide-neutral-800/50">

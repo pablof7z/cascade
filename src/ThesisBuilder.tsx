@@ -193,6 +193,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
       description: trimmedArgument,
       seedWithUser: false,
       kind: 'thesis',
+      creatorPubkey: 'you',
       thesis: {
         statement: trimmedStatement,
         argument: trimmedArgument,

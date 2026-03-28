@@ -19,6 +19,7 @@ import {
 } from './market'
 import type { HistoryPoint } from './PriceChart'
 import { load, save, type MarketEntry } from './storage'
+import { recordTrade, recordMarketCreation } from './services/participantIndex'
 import LandingPage from './LandingPage'
 import MarketDetail from './MarketDetail'
 import ThesisDetail from './ThesisDetail'
@@ -59,6 +60,7 @@ export type Action =
       initialSats?: number
       kind?: MarketKind
       thesis?: ThesisDefinition
+      creatorPubkey: string
     }
   | {
       type: 'TRADE'
@@ -158,12 +160,17 @@ function reducer(state: State, action: Action): State {
         description: description || 'User-created scenario market with fully transparent fake settlement.',
         kind: action.kind,
         thesis: action.thesis,
+        creatorPubkey: action.creatorPubkey,
       })
 
       if (!action.seedWithUser) {
         const entry: MarketEntry = {
           market,
           history: appendHistoryPoint([], market),
+        }
+        // Track market creation in participant index
+        if (market.creatorPubkey) {
+          recordMarketCreation(market.creatorPubkey, market.id)
         }
         return {
           ...state,
@@ -195,6 +202,11 @@ function reducer(state: State, action: Action): State {
       const entry: MarketEntry = {
         market: seededMarket,
         history: appendHistoryPoint(appendHistoryPoint([], market), seededMarket),
+      }
+      // Track market creation and initial trade in participant index
+      if (market.creatorPubkey) {
+        recordMarketCreation(market.creatorPubkey, market.id)
+        recordTrade(market.creatorPubkey, market.id, 0) // Initial seed trade
       }
       return {
         ...state,
@@ -231,6 +243,8 @@ function reducer(state: State, action: Action): State {
           result.detail,
           action.actor === 'you' ? 'good' : 'neutral',
         )
+        // Track trade in participant index (use 'you' as placeholder for current user pubkey)
+        recordTrade(action.actor, action.marketId, 0)
         return {
           ...state,
           markets: { ...state.markets, [action.marketId]: committed.entry },
@@ -250,6 +264,8 @@ function reducer(state: State, action: Action): State {
         }
       }
       const committed = commitMarketResult(entry, market, result.market, result.detail, 'neutral')
+      // Track redeem trade in participant index
+      recordTrade(action.actor, action.marketId, 0)
       return {
         ...state,
         markets: { ...state.markets, [action.marketId]: committed.entry },

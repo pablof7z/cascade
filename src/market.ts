@@ -55,7 +55,8 @@ export type ParticipantAccount = {
   short: number
 }
 
-export type ParticipantBook = Record<ActorId, ParticipantAccount>
+// ParticipantBook uses pubkey strings as keys (any pubkey, not just legacy ActorId)
+export type ParticipantBook = Record<string, ParticipantAccount>
 
 export type CashuQuote = {
   id: string
@@ -153,9 +154,9 @@ export type Market = {
   receipts: Receipt[]
   events: MarketEvent[]
   lastTrade?: LastTrade
-  // New fields for rich profiles
-  creatorPubkey?: string
-  createdAt?: number
+  // Required fields for rich profiles
+  creatorPubkey: string
+  createdAt: number
 }
 
 export type ExecutionPreview = {
@@ -339,7 +340,7 @@ export function createEmptyMarket(input: {
   description: string
   kind?: MarketKind
   thesis?: ThesisDefinition
-  creatorPubkey?: string
+  creatorPubkey: string
 }) {
   const kind = input.kind ?? (input.thesis ? 'thesis' : 'module')
   return {

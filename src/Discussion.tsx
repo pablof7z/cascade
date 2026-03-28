@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { MarketKind, ThesisSignal } from './market'
+import { getActorDisplayName } from './market'
 import { sampleTheses } from './marketCatalog'
 import { UserAvatar } from './components/UserAvatar'
 
@@ -40,7 +41,6 @@ const MOCK_AUTHOR_PUBKEYS: Record<string, string> = {
 
 interface DebatePost {
   id: string
-  author: string
   authorPubkey: string
   role: string
   headline: string
@@ -168,7 +168,6 @@ function buildThesisArena(
     posts: [
       {
         id: 'thesis-claim',
-        author: 'orion',
         authorPubkey: MOCK_AUTHOR_PUBKEYS.orion,
         role: 'thesis allocator',
         headline: 'The market is still underpricing the transmission mechanism',
@@ -185,7 +184,6 @@ function buildThesisArena(
       },
       {
         id: 'thesis-rebuttal',
-        author: 'delta',
         authorPubkey: MOCK_AUTHOR_PUBKEYS.delta,
         role: 'counterparty',
         headline: 'Narrative coherence is being mistaken for causal inevitability',
@@ -202,7 +200,6 @@ function buildThesisArena(
       },
       {
         id: 'thesis-evidence',
-        author: 'minerva',
         authorPubkey: MOCK_AUTHOR_PUBKEYS.minerva,
         role: 'evidence scout',
         headline: 'Resolution criteria need sharper falsifiers',
@@ -217,7 +214,6 @@ function buildThesisArena(
       },
       ...nodes.slice(0, 3).map((node, index) => ({
         id: `thesis-catalyst-${node.id}`,
-        author: ['atlas', 'iris', 'quinn'][index] ?? 'agent',
         authorPubkey: [MOCK_AUTHOR_PUBKEYS.atlas, MOCK_AUTHOR_PUBKEYS.iris, MOCK_AUTHOR_PUBKEYS.quinn][index] ?? 'mock_agent',
         role: 'signal tracker',
         headline: `Catalyst thread: ${node.label}`,
@@ -291,7 +287,6 @@ function buildModuleArena(marketTitle: string, consensus: number): ArenaData {
     posts: [
       {
         id: 'module-claim',
-        author: 'sable',
         authorPubkey: MOCK_AUTHOR_PUBKEYS.sable,
         role: 'module specialist',
         headline: 'This module is being treated as a side quest when it is really a hinge',
@@ -308,7 +303,6 @@ function buildModuleArena(marketTitle: string, consensus: number): ArenaData {
       },
       {
         id: 'module-rebuttal',
-        author: 'echo',
         authorPubkey: MOCK_AUTHOR_PUBKEYS.echo,
         role: 'skeptic',
         headline: 'A module can matter without deserving a direct thesis repricing',
@@ -325,7 +319,6 @@ function buildModuleArena(marketTitle: string, consensus: number): ArenaData {
       },
       {
         id: 'module-evidence',
-        author: 'lyra',
         authorPubkey: MOCK_AUTHOR_PUBKEYS.lyra,
         role: 'research agent',
         headline: 'Resolution criteria deserve as much scrutiny as the forecast itself',
@@ -340,7 +333,6 @@ function buildModuleArena(marketTitle: string, consensus: number): ArenaData {
       },
       ...nodes.slice(0, 2).map((node, index) => ({
         id: `module-catalyst-${node.id}`,
-        author: ['nova', 'marlow'][index] ?? 'agent',
         authorPubkey: [MOCK_AUTHOR_PUBKEYS.nova, MOCK_AUTHOR_PUBKEYS.marlow][index] ?? 'mock_agent',
         role: 'thesis mapper',
         headline: `If this resolves, ${node.label} should move next`,
@@ -399,7 +391,6 @@ export default function Discussion({
 
     const draft: DebatePost = {
       id: `draft-${Date.now()}`,
-      author: 'you',
       authorPubkey: MOCK_AUTHOR_PUBKEYS.you,
       role: 'active participant',
       headline:
@@ -484,7 +475,7 @@ export default function Discussion({
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <UserAvatar pubkey={post.authorPubkey} size="sm" />
-                      <span className="text-sm font-medium text-white">{post.author}</span>
+                      <span className="text-sm font-medium text-white">{getActorDisplayName(post.authorPubkey)}</span>
                       <span className="text-xs text-neutral-600">{post.role}</span>
                       <span className={`text-xs ${positionClass(post.position)}`}>
                         {stanceLabels[post.position]}

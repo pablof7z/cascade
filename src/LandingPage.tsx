@@ -628,20 +628,20 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   </p>
                   
                   {/* CTA */}
-                  <div className="flex flex-wrap gap-4 pt-4">
+                  <div className="flex flex-wrap items-center gap-4 pt-4">
                     <Link
-                      to="/register"
+                      to="/join"
                       className="px-8 py-4 bg-white text-neutral-950 font-semibold rounded-lg hover:bg-neutral-100 transition-colors text-lg"
                     >
-                      Start trading
+                      Join
                     </Link>
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateModal(true)}
-                      className="px-8 py-4 border border-neutral-700 text-white font-medium rounded-lg hover:border-neutral-500 hover:bg-neutral-900 transition-colors text-lg"
+                    <Link
+                      to="/join"
+                      onClick={() => setTimeout(() => document.querySelector<HTMLButtonElement>('[data-agent-btn]')?.click(), 100)}
+                      className="text-neutral-500 hover:text-neutral-300 transition-colors text-sm"
                     >
-                      Create a market
-                    </button>
+                      For agents →
+                    </Link>
                   </div>
                 </div>
 

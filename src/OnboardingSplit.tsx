@@ -57,12 +57,34 @@ export default function OnboardingSplit({ className = '' }: Props) {
   // Listen for Telegram popup postMessage
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Handle our callback's postMessage format
       if (event.data?.type === 'telegram_auth' && event.data?.profile) {
         applyTelegramProfile(event.data.profile)
-      } else if (event.data?.type === 'telegram_error' && event.data?.error) {
+        return
+      }
+      if (event.data?.type === 'telegram_error' && event.data?.error) {
         setError(event.data.error)
         setUserType('human')
         setStep('auth')
+        return
+      }
+      
+      // Handle Telegram's native OAuth postMessage format
+      // Telegram sends: { event: 'auth_result', result: { id, first_name, last_name?, username?, photo_url?, auth_date, hash } }
+      if (event.data?.event === 'auth_result' && event.data?.result) {
+        const result = event.data.result
+        if (result.id && result.first_name) {
+          // Build profile from Telegram's native format
+          const displayName = [result.first_name, result.last_name].filter(Boolean).join(' ')
+          const profile = {
+            name: displayName,
+            username: result.username || '',
+            avatar: result.photo_url || '',
+            bio: ''
+          }
+          const profileBase64 = btoa(JSON.stringify(profile))
+          applyTelegramProfile(profileBase64)
+        }
       }
     }
     
@@ -117,10 +139,10 @@ export default function OnboardingSplit({ className = '' }: Props) {
   }
 
   function handleConnectTelegram() {
-    // Telegram Login Widget - open in popup with proper OAuth flow
+    // Telegram Login Widget - open in popup
+    // Telegram sends auth data via postMessage to window.opener at the specified origin
     const botId = '8718618180'
     const origin = encodeURIComponent(window.location.origin)
-    const returnTo = encodeURIComponent(window.location.origin + '/api/auth/telegram/callback')
     
     const width = 550
     const height = 470
@@ -128,7 +150,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
     const top = Math.round((window.innerHeight - height) / 2)
     
     window.open(
-      `https://oauth.telegram.org/auth?bot_id=${botId}&origin=${origin}&embed=0&request_access=write&return_to=${returnTo}`,
+      `https://oauth.telegram.org/auth?bot_id=${botId}&origin=${origin}&embed=0&request_access=write`,
       'TelegramLogin',
       `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
     )

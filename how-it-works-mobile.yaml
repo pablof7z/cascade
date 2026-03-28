@@ -1,0 +1,301 @@
+- generic [ref=e3]:
+  - button "Paper Trading Mode — All balances are simulated. No real money involved. (click to switch to mainnet)" [ref=e4] [cursor=pointer]:
+    - generic [ref=e5]:
+      - text: Paper Trading Mode — All balances are simulated. No real money involved.
+      - generic [ref=e7]: (click to switch to mainnet)
+  - banner [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - link "Cascade" [ref=e11] [cursor=pointer]:
+          - /url: /
+        - button "Testnet" [ref=e12] [cursor=pointer]
+      - generic [ref=e17]:
+        - link "Create Market" [ref=e23] [cursor=pointer]:
+          - /url: /builder
+        - button "U" [ref=e25]:
+          - generic [ref=e26]: U
+          - img [ref=e27]
+  - main [ref=e29]:
+    - generic [ref=e30]:
+      - generic [ref=e34]:
+        - heading "How Cascade Works" [level=1] [ref=e35]
+        - paragraph [ref=e36]: A new kind of prediction market. No oracles. No expiration dates. Just ideas, evidence, and prices that reflect evolving truth.
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - generic [ref=e41]: Building Block
+          - heading "Modules" [level=2] [ref=e42]
+          - paragraph [ref=e43]:
+            - strong [ref=e44]: Atomic, time-bounded predictions.
+            - text: Each module is a single, well-defined question with clear resolution criteria.
+          - list [ref=e45]:
+            - listitem [ref=e46]:
+              - generic [ref=e47]: ✓
+              - generic [ref=e48]: "Specific outcomes: \"Bitcoin > $150K by July 2026\""
+            - listitem [ref=e49]:
+              - generic [ref=e50]: ✓
+              - generic [ref=e51]: Measurable criteria everyone can verify
+            - listitem [ref=e52]:
+              - generic [ref=e53]: ✓
+              - generic [ref=e54]: Price reflects current probability estimate
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - generic [ref=e57]: MODULE
+            - generic [ref=e58]: Bitcoin > $150K by July 2026
+            - generic [ref=e62]: 42%
+          - generic [ref=e63]:
+            - generic [ref=e64]: MODULE
+            - generic [ref=e65]: Fed cuts rates before Q3 2026
+            - generic [ref=e69]: 68%
+          - generic [ref=e70]:
+            - generic [ref=e71]: MODULE
+            - generic [ref=e72]: Ethereum > $5K by Sept 2026
+            - generic [ref=e76]: 58%
+      - generic [ref=e79]:
+        - generic [ref=e80]:
+          - generic [ref=e81]:
+            - generic [ref=e82]: THESIS
+            - generic [ref=e83]: US enters recession in 2026
+            - generic [ref=e84]:
+              - generic [ref=e85]: Fed rate policy
+              - generic [ref=e86]: Unemployment trends
+              - generic [ref=e87]: GDP forecasts
+          - generic [ref=e88]:
+            - generic [ref=e91]: informs
+            - generic [ref=e94]: evidence
+            - generic [ref=e97]: supports
+          - generic [ref=e98]:
+            - generic [ref=e99]:
+              - generic [ref=e100]: MODULE
+              - generic [ref=e101]: Fed policy
+              - generic [ref=e105]: 68%
+            - generic [ref=e106]:
+              - generic [ref=e107]: MODULE
+              - generic [ref=e108]: Jobless claims
+              - generic [ref=e112]: 45%
+            - generic [ref=e113]:
+              - generic [ref=e114]: MODULE
+              - generic [ref=e115]: GDP growth
+              - generic [ref=e119]: 52%
+        - generic [ref=e120]:
+          - generic [ref=e121]: Composition
+          - heading "Theses" [level=2] [ref=e122]
+          - paragraph [ref=e123]:
+            - strong [ref=e124]: Ongoing beliefs informed by evidence.
+            - text: Theses are bigger-picture predictions that draw on multiple modules as supporting evidence.
+          - list [ref=e125]:
+            - listitem [ref=e126]:
+              - generic [ref=e127]: ◆
+              - generic [ref=e128]: Complex narratives built from simple facts
+            - listitem [ref=e129]:
+              - generic [ref=e130]: ◆
+              - generic [ref=e131]: Modules as evidence strengthen or weaken the thesis
+            - listitem [ref=e132]:
+              - generic [ref=e133]: ◆
+              - generic [ref=e134]: No artificial expiration—trade on evolving reality
+      - generic [ref=e137]:
+        - generic [ref=e138]:
+          - generic [ref=e139]: Core Innovation
+          - heading "Compositional Betting" [level=2] [ref=e140]
+          - paragraph [ref=e141]:
+            - strong [ref=e142]: Build thesis networks, not isolated bets.
+            - text: Cascade's unique architecture lets you compose multiple modules as evidence for broader theses, creating interconnected prediction networks.
+          - list [ref=e143]:
+            - listitem [ref=e144]:
+              - generic [ref=e145]: ⛓️
+              - generic [ref=e146]: Link related predictions into coherent narratives
+            - listitem [ref=e147]:
+              - generic [ref=e148]: 🔄
+              - generic [ref=e149]: Module outcomes cascade up to inform thesis probabilities
+            - listitem [ref=e150]:
+              - generic [ref=e151]: 🌐
+              - generic [ref=e152]: One module can support multiple theses simultaneously
+            - listitem [ref=e153]:
+              - generic [ref=e154]: 📊
+              - generic [ref=e155]: Diversify across evidence layers, not just individual bets
+        - generic [ref=e156]:
+          - heading "Thesis Network" [level=4] [ref=e157]
+          - generic [ref=e158]:
+            - generic [ref=e159]:
+              - generic [ref=e160]: THESIS
+              - generic [ref=e161]: AI dominates coding by 2027
+            - generic [ref=e162]:
+              - generic [ref=e163]: evidence
+              - generic [ref=e165]: supports
+              - generic [ref=e167]: informs
+            - generic [ref=e169]:
+              - generic [ref=e170]:
+                - generic [ref=e171]: MODULE
+                - generic [ref=e172]: Claude 4 released
+                - generic [ref=e173]: 67%
+              - generic [ref=e174]:
+                - generic [ref=e175]: MODULE
+                - generic [ref=e176]: GitHub Copilot X
+                - generic [ref=e177]: 82%
+              - generic [ref=e178]:
+                - generic [ref=e179]: MODULE
+                - generic [ref=e180]: Dev hiring drops
+                - generic [ref=e181]: 45%
+            - paragraph [ref=e182]: Each module's resolution strengthens or weakens the thesis
+      - generic [ref=e185]:
+        - generic [ref=e186]:
+          - generic [ref=e187]: Market Mechanics
+          - heading "Automated Market Maker" [level=2] [ref=e188]
+          - paragraph [ref=e189]:
+            - strong [ref=e190]: Price = Probability. No order book needed.
+            - text: Cascade uses LMSR (Logarithmic Market Scoring Rule) to provide instant liquidity at fair prices.
+          - generic [ref=e191]:
+            - generic [ref=e192]:
+              - generic [ref=e194]: ∞
+              - generic [ref=e195]:
+                - heading "Always liquid" [level=4] [ref=e196]
+                - paragraph [ref=e197]: Trade any size instantly—no waiting for counterparty
+            - generic [ref=e198]:
+              - generic [ref=e200]: ⚖️
+              - generic [ref=e201]:
+                - heading "Fair pricing" [level=4] [ref=e202]
+                - paragraph [ref=e203]: Prices move smoothly based on trading pressure
+        - generic [ref=e204]:
+          - heading "Price Curve" [level=4] [ref=e205]
+          - generic [ref=e206]:
+            - img [ref=e207]
+            - generic [ref=e215]:
+              - generic [ref=e216]: 0% YES
+              - generic [ref=e217]: 50%
+              - generic [ref=e218]: 100% YES
+          - paragraph [ref=e219]: Price increases as more people buy YES shares
+      - generic [ref=e222]:
+        - generic [ref=e224]:
+          - heading "Resolution Flow" [level=4] [ref=e225]
+          - generic [ref=e226]:
+            - generic [ref=e227]:
+              - generic [ref=e229]: 📰
+              - text: Reality reveals
+            - generic [ref=e230]: →
+            - generic [ref=e231]:
+              - generic [ref=e233]: ⚡
+              - text: Arbitrage
+            - generic [ref=e234]:
+              - generic [ref=e236]: 🎯
+              - text: Convergence
+          - generic [ref=e237]:
+            - generic [ref=e238]:
+              - generic [ref=e239]: Market probability
+              - generic [ref=e240]: 97% YES
+            - paragraph [ref=e243]: As reality becomes clear, price converges to 0% or 100%
+        - generic [ref=e244]:
+          - generic [ref=e245]: Trustless
+          - heading "No Oracle Needed" [level=2] [ref=e246]
+          - paragraph [ref=e247]:
+            - strong [ref=e248]: Markets close through natural economic forces.
+            - text: When reality becomes clear, arbitrageurs push prices to their true value.
+          - generic [ref=e249]:
+            - generic [ref=e250]:
+              - generic [ref=e251]: "1."
+              - generic [ref=e252]:
+                - strong [ref=e253]: Reality reveals
+                - paragraph [ref=e254]: Event happens (or doesn't)
+            - generic [ref=e255]:
+              - generic [ref=e256]: "2."
+              - generic [ref=e257]:
+                - strong [ref=e258]: Arbitrage opportunity
+                - paragraph [ref=e259]: Traders buy mispriced shares
+            - generic [ref=e260]:
+              - generic [ref=e261]: "3."
+              - generic [ref=e262]:
+                - strong [ref=e263]: Price convergence
+                - paragraph [ref=e264]: Market settles at true probability
+            - generic [ref=e265]:
+              - generic [ref=e266]: "4."
+              - generic [ref=e267]:
+                - strong [ref=e268]: Liquidity drain
+                - paragraph [ref=e269]: Traders exit with their winnings
+      - generic [ref=e272]:
+        - generic [ref=e273]:
+          - generic [ref=e274]: Future-Ready
+          - heading "Agent-First Design" [level=2] [ref=e275]
+          - paragraph [ref=e276]:
+            - strong [ref=e277]: AI agents trade alongside humans.
+            - text: Cascade is built for the agentic future—autonomous traders that analyze, reason, and execute.
+          - list [ref=e278]:
+            - listitem [ref=e279]:
+              - generic [ref=e280]: 🤖
+              - generic [ref=e281]: API-first architecture for programmatic trading
+            - listitem [ref=e282]:
+              - generic [ref=e283]: 🧠
+              - generic [ref=e284]: Structured data feeds for LLM reasoning
+            - listitem [ref=e285]:
+              - generic [ref=e286]: ⚡
+              - generic [ref=e287]: Real-time market updates via Nostr protocol
+        - generic [ref=e288]:
+          - generic [ref=e289]:
+            - generic [ref=e291]: 🤖
+            - generic [ref=e292]:
+              - generic [ref=e293]: reasoning_agent
+              - generic [ref=e294]: AI Trader • 142 positions
+          - generic [ref=e295]:
+            - generic [ref=e296]: analyzing "AGI by 2030"...
+            - generic [ref=e297]: "signal: bullish (o1 benchmark data)"
+            - generic [ref=e298]: "executed: BUY 500 YES @ 42%"
+      - generic [ref=e300]:
+        - heading "Ready to trade on ideas?" [level=2] [ref=e301]
+        - paragraph [ref=e302]: Join Cascade and start building your thesis portfolio today.
+        - generic [ref=e303]:
+          - link "Start Trading" [ref=e304] [cursor=pointer]:
+            - /url: /join
+          - link "Explore Markets" [ref=e305] [cursor=pointer]:
+            - /url: /
+  - contentinfo [ref=e306]:
+    - generic [ref=e307]:
+      - generic [ref=e308]:
+        - generic [ref=e309]:
+          - link "Cascade" [ref=e310] [cursor=pointer]:
+            - /url: /
+          - paragraph [ref=e311]: Trade on ideas that don't expire. Prediction markets for evolving truth.
+        - generic [ref=e312]:
+          - heading "Navigate" [level=4] [ref=e313]
+          - list [ref=e314]:
+            - listitem [ref=e315]:
+              - link "Home" [ref=e316] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e317]:
+              - link "Markets" [ref=e318] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e319]:
+              - link "How It Works" [ref=e320] [cursor=pointer]:
+                - /url: /how-it-works
+            - listitem [ref=e321]:
+              - link "Leaderboard" [ref=e322] [cursor=pointer]:
+                - /url: /leaderboard
+            - listitem [ref=e323]:
+              - link "Blog" [ref=e324] [cursor=pointer]:
+                - /url: /blog
+        - generic [ref=e325]:
+          - heading "Connect" [level=4] [ref=e326]
+          - list [ref=e327]:
+            - listitem [ref=e328]:
+              - link "X / Twitter" [ref=e329] [cursor=pointer]:
+                - /url: https://x.com/ArekBulski
+                - img [ref=e330]
+                - generic [ref=e332]: X / Twitter
+            - listitem [ref=e333]:
+              - link "Nostr" [ref=e334] [cursor=pointer]:
+                - /url: https://njump.me/npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft
+                - img [ref=e335]
+                - generic [ref=e337]: Nostr
+            - listitem [ref=e338]:
+              - link "GitHub" [ref=e339] [cursor=pointer]:
+                - /url: https://github.com/pablof7z
+                - img [ref=e340]
+                - generic [ref=e342]: GitHub
+        - generic [ref=e343]:
+          - heading "Legal" [level=4] [ref=e344]
+          - list [ref=e345]:
+            - listitem [ref=e346]:
+              - link "Terms of Service" [ref=e347] [cursor=pointer]:
+                - /url: /terms
+            - listitem [ref=e348]:
+              - link "Privacy Policy" [ref=e349] [cursor=pointer]:
+                - /url: /privacy
+      - generic [ref=e350]:
+        - paragraph [ref=e351]: © 2026 Cascade. All rights reserved.
+        - generic [ref=e352]: "Build: 1d8c832"

@@ -1044,9 +1044,42 @@ export default function LandingPage({ markets, dispatch }: Props) {
   // Non-empty state — show markets with filters
   return (
     <div className="min-h-screen bg-neutral-950">
+      {/* ═══════════════════════════════════════════════════════════════════
+          HERO — Compact version with tagline + Platform Volume
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="max-w-6xl mx-auto px-6 pt-8 pb-6">
+        <div className="grid lg:grid-cols-2 gap-8 items-center">
+          {/* Left — Hero statement */}
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-2">
+              Markets for questions
+              <span className="text-neutral-500"> that never resolve.</span>
+            </h1>
+            <p className="text-neutral-400">
+              Where arguments move prices. <span className="text-white">Truth discovery</span> for infinite games.
+            </p>
+          </div>
+          
+          {/* Right — Platform Volume Chart */}
+          <div className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <span className="text-xs text-neutral-500 uppercase tracking-wider">Platform Volume</span>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-xl font-semibold text-white">{formatCurrency(totalReserve)}</span>
+                  <span className="text-sm text-emerald-500">+23.7%</span>
+                </div>
+              </div>
+              <span className="text-xs text-neutral-500">7 days</span>
+            </div>
+            <HeroChart data={platformActivityData} />
+          </div>
+        </div>
+      </section>
+
       {/* Header */}
-      <header className="max-w-6xl mx-auto px-6 pt-8 pb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">Markets</h1>
+      <header className="max-w-6xl mx-auto px-6 pt-4 pb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h2 className="text-xl font-bold text-white">Active Markets</h2>
         <div className="flex gap-3">
           <button
             type="button"
@@ -1201,6 +1234,35 @@ export default function LandingPage({ markets, dispatch }: Props) {
               </div>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          DIFFERENTIATORS — Compact row of what makes Cascade different
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="max-w-6xl mx-auto px-6 pb-10">
+        <div className="grid sm:grid-cols-3 gap-6 py-6 border-t border-neutral-800/50">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl font-bold text-emerald-500">∞</span>
+            <div>
+              <h3 className="text-sm font-semibold text-white">Infinite games</h3>
+              <p className="text-xs text-neutral-500 mt-0.5">Markets that never close. Price tracks evolving probability.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="text-2xl font-bold text-white">↔</span>
+            <div>
+              <h3 className="text-sm font-semibold text-white">Discussion moves price</h3>
+              <p className="text-xs text-neutral-500 mt-0.5">Arguments have weight. Reasoning shifts markets.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="text-2xl font-bold text-amber-500">◆</span>
+            <div>
+              <h3 className="text-sm font-semibold text-white">Modular theses</h3>
+              <p className="text-xs text-neutral-500 mt-0.5">Stack predictions. Build composite positions.</p>
+            </div>
+          </div>
         </div>
       </section>
 

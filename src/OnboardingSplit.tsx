@@ -1,8 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { generateKeyPair, saveKeys, loadStoredKeys } from './nostrKeys'
 
 type UserType = 'human' | 'agent' | null
 type Step = 'choose' | 'auth' | 'profile' | 'success'
+
+type SocialProfile = {
+  name: string
+  username: string
+  avatar: string
+  bio: string
+}
 
 type Props = {
   className?: string
@@ -25,8 +32,85 @@ export default function OnboardingSplit({ className = '' }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [connectedWith, setConnectedWith] = useState<'twitter' | 'telegram' | null>(null)
 
   const interestOptions = ['Politics', 'Tech', 'Crypto', 'Sports', 'Finance', 'Science', 'Culture', 'Climate']
+
+  // Handle OAuth callbacks (Twitter and Telegram)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    
+    // Twitter callback
+    const twitterProfile = params.get('twitter_profile')
+    const twitterError = params.get('twitter_error')
+    
+    // Telegram callback
+    const telegramProfile = params.get('telegram_profile')
+    const telegramError = params.get('telegram_error')
+
+    if (twitterError || telegramError) {
+      setError(twitterError || telegramError || 'Authentication failed')
+      setUserType('human')
+      setStep('auth')
+      window.history.replaceState({}, '', '/register')
+      return
+    }
+
+    if (twitterProfile) {
+      try {
+        const profile: SocialProfile = JSON.parse(atob(twitterProfile))
+        setDisplayName(profile.name)
+        setUsername(profile.username.toLowerCase().replace(/[^a-z0-9_-]/g, ''))
+        if (profile.bio) setTagline(profile.bio.slice(0, 80))
+        if (profile.avatar) setAvatarPreview(profile.avatar)
+        setConnectedWith('twitter')
+        setUserType('human')
+        setStep('profile')
+        window.history.replaceState({}, '', '/register')
+      } catch {
+        console.error('Failed to parse Twitter profile')
+      }
+    }
+
+    if (telegramProfile) {
+      try {
+        const profile: SocialProfile = JSON.parse(atob(telegramProfile))
+        setDisplayName(profile.name)
+        if (profile.username) {
+          setUsername(profile.username.toLowerCase().replace(/[^a-z0-9_-]/g, ''))
+        }
+        if (profile.avatar) setAvatarPreview(profile.avatar)
+        setConnectedWith('telegram')
+        setUserType('human')
+        setStep('profile')
+        window.history.replaceState({}, '', '/register')
+      } catch {
+        console.error('Failed to parse Telegram profile')
+      }
+    }
+  }, [])
+
+  function handleConnectTwitter() {
+    window.location.href = '/api/auth/twitter'
+  }
+
+  function handleConnectTelegram() {
+    // Telegram Login Widget - open in popup with proper OAuth flow
+    const botId = '8718618180'
+    const origin = encodeURIComponent(window.location.origin)
+    const returnTo = encodeURIComponent(window.location.origin + '/api/auth/telegram/callback')
+    
+    const width = 550
+    const height = 470
+    const left = Math.round((window.innerWidth - width) / 2)
+    const top = Math.round((window.innerHeight - height) / 2)
+    
+    window.open(
+      `https://oauth.telegram.org/auth?bot_id=${botId}&origin=${origin}&embed=0&request_access=write&return_to=${returnTo}`,
+      'TelegramLogin',
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
+    )
+  }
 
   function handleChooseHuman() {
     setUserType('human')
@@ -246,6 +330,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
           <div className="space-y-3 mb-6">
             <button
               type="button"
+              onClick={handleConnectTelegram}
               className="w-full flex items-center justify-center gap-3 px-4 py-4 bg-neutral-900 border border-neutral-800 hover:border-neutral-600 text-white rounded-xl transition-colors"
             >
               <svg className="w-5 h-5 text-[#0088cc]" viewBox="0 0 24 24" fill="currentColor">
@@ -255,6 +340,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
             </button>
             <button
               type="button"
+              onClick={handleConnectTwitter}
               className="w-full flex items-center justify-center gap-3 px-4 py-4 bg-neutral-900 border border-neutral-800 hover:border-neutral-600 text-white rounded-xl transition-colors"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -304,6 +390,22 @@ export default function OnboardingSplit({ className = '' }: Props) {
 
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-white">Create Your Profile</h1>
+            {connectedWith === 'twitter' && (
+              <p className="mt-2 text-sm text-green-400 flex items-center justify-center gap-1">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                Connected with X
+              </p>
+            )}
+            {connectedWith === 'telegram' && (
+              <p className="mt-2 text-sm text-green-400 flex items-center justify-center gap-1">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .37z"/>
+                </svg>
+                Connected with Telegram
+              </p>
+            )}
           </div>
 
           <form onSubmit={handleJoin} className="space-y-6">

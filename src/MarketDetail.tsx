@@ -6,6 +6,7 @@ import type { Side } from './market'
 import { priceLong, priceShort, previewTrade } from './market'
 import Discussion from './Discussion'
 import PriceChart from './PriceChart'
+import EmbedModal from './components/EmbedModal'
 
 type TradeAction = {
   type: 'TRADE'
@@ -33,6 +34,7 @@ function formatCurrency(value: number) {
 export default function MarketDetail({ entry, dispatch }: Props) {
   const [amount, setAmount] = useState(100)
   const [selectedSide, setSelectedSide] = useState<Side>('LONG')
+  const [showEmbedModal, setShowEmbedModal] = useState(false)
 
   const market = entry.market
 
@@ -74,12 +76,23 @@ export default function MarketDetail({ entry, dispatch }: Props) {
               <p className="text-neutral-500 text-sm">{market.description}</p>
             )}
             
-            <Link
-              to={`/market/${market.id}/discuss`}
-              className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-sm font-medium text-white bg-neutral-800 hover:bg-neutral-700 transition-colors"
-            >
-              💬 Join Discussion
-            </Link>
+            <div className="flex items-center gap-3 mt-4">
+              <Link
+                to={`/market/${market.id}/discuss`}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-neutral-800 hover:bg-neutral-700 transition-colors rounded-lg"
+              >
+                💬 Join Discussion
+              </Link>
+              <button
+                onClick={() => setShowEmbedModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-neutral-400 bg-neutral-800 hover:bg-neutral-700 hover:text-white transition-colors rounded-lg"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5.5 3L2 8L5.5 13M10.5 3L14 8L10.5 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Embed
+              </button>
+            </div>
             
             {/* Dominant price display - typography does the work */}
             <div className="mt-8 flex items-baseline gap-8">
@@ -189,6 +202,14 @@ export default function MarketDetail({ entry, dispatch }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Embed Modal */}
+      <EmbedModal
+        marketId={market.id}
+        marketTitle={market.title}
+        isOpen={showEmbedModal}
+        onClose={() => setShowEmbedModal(false)}
+      />
     </div>
   )
 }

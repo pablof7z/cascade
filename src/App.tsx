@@ -34,6 +34,7 @@ import { TermsOfService, PrivacyPolicy } from './LegalPages'
 import NavHeader from './NavHeader'
 import OnboardingSplit from './OnboardingSplit'
 import WalletPage from './WalletPage'
+import EmbedPage from './EmbedPage'
 import TestnetBanner from './components/TestnetBanner'
 import Footer from './components/Footer'
 
@@ -397,7 +398,12 @@ function App() {
   return (
     <TestnetProvider>
       <BrowserRouter>
-        <AppContent />
+        <Routes>
+          {/* Embed route renders standalone without app shell */}
+          <Route path="/embed/market/:id" element={<EmbedPage />} />
+          {/* All other routes render with full app shell */}
+          <Route path="/*" element={<AppContent />} />
+        </Routes>
       </BrowserRouter>
     </TestnetProvider>
   )

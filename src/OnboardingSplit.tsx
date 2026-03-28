@@ -40,11 +40,18 @@ export default function OnboardingSplit({ className = '' }: Props) {
   const applyTelegramProfile = (profileBase64: string) => {
     try {
       const profile: SocialProfile = JSON.parse(atob(profileBase64))
+      console.log('Telegram profile received:', profile)
       setDisplayName(profile.name)
       if (profile.username) {
-        setUsername(profile.username.toLowerCase().replace(/[^a-z0-9_-]/g, ''))
+        const cleanUsername = profile.username.toLowerCase().replace(/[^a-z0-9_-]/g, '')
+        setUsername(cleanUsername)
+        // Trigger availability check for the pre-filled username
+        checkAvailability(cleanUsername)
       }
-      if (profile.avatar) setAvatarPreview(profile.avatar)
+      if (profile.avatar) {
+        console.log('Setting avatar from Telegram:', profile.avatar)
+        setAvatarPreview(profile.avatar)
+      }
       setConnectedWith('telegram')
       setUserType('human')
       setStep('profile')

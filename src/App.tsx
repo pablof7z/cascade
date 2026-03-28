@@ -1,5 +1,6 @@
 import { useEffect, useReducer } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom'
+import { TestnetProvider } from './testnetConfig'
 import './App.css'
 import {
   ACTOR_LABELS,
@@ -27,6 +28,7 @@ import Profile from './Profile'
 import Leaderboard from './Leaderboard'
 import Activity from './Activity'
 import NavHeader from './NavHeader'
+import TestnetBanner from './components/TestnetBanner'
 
 type ToastTone = 'good' | 'warn' | 'neutral'
 
@@ -333,6 +335,7 @@ function AppContent() {
 
   return (
     <>
+      <TestnetBanner />
       <NavHeader />
       <Routes>
         <Route path="/" element={<LandingPage markets={state.markets} dispatch={handleDispatch} />} />
@@ -363,9 +366,11 @@ function AppContent() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <TestnetProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </TestnetProvider>
   )
 }
 

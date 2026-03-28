@@ -1,8 +1,10 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useTestnet, TESTNET_LABELS } from './testnetConfig'
 
 export default function NavHeader() {
   const location = useLocation()
   const path = location.pathname
+  const { isTestnet, toggle } = useTestnet()
 
   const linkClass = (href: string) =>
     `px-3 py-2 text-sm font-medium rounded-md transition-colors ${
@@ -18,6 +20,23 @@ export default function NavHeader() {
           <Link to="/" className="text-xl font-bold text-white tracking-tight">
             Cascade
           </Link>
+          {isTestnet ? (
+            <button
+              onClick={toggle}
+              className="px-2 py-0.5 text-xs font-bold bg-amber-500 text-amber-950 rounded-full uppercase tracking-wide hover:bg-amber-400 transition-colors cursor-pointer"
+              title="Click to switch to mainnet"
+            >
+              {TESTNET_LABELS.shortLabel}
+            </button>
+          ) : (
+            <button
+              onClick={toggle}
+              className="px-2 py-0.5 text-xs font-medium bg-green-600 text-white rounded-full uppercase tracking-wide hover:bg-green-500 transition-colors cursor-pointer"
+              title="Click to switch to testnet"
+            >
+              Mainnet
+            </button>
+          )}
 
           <nav className="hidden md:flex items-center gap-1">
             <Link to="/" className={linkClass('/')}>

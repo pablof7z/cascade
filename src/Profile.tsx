@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { loadStoredKeys } from './nostrKeys'
+import Wallet from './components/Wallet'
 
 type Profile = {
   displayName: string
@@ -64,6 +65,11 @@ export default function Profile() {
               <p className="text-sm text-neutral-400 font-mono break-all">{keys.npub}</p>
             </div>
           )}
+        </div>
+
+        {/* Wallet Section */}
+        <div className="mt-6">
+          <Wallet />
         </div>
       </div>
     )

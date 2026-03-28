@@ -30,6 +30,7 @@ import Leaderboard from './Leaderboard'
 import Activity from './Activity'
 import Blog from './Blog'
 import HowItWorks from './HowItWorks'
+import { TermsOfService, PrivacyPolicy } from './LegalPages'
 import NavHeader from './NavHeader'
 import OnboardingSplit from './OnboardingSplit'
 import WalletPage from './WalletPage'
@@ -371,6 +372,8 @@ function AppContent() {
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/wallet" element={<WalletPage />} />
         <Route path="/join" element={<OnboardingSplit className="py-12" />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
       </Routes>
       </main>
       <Footer />

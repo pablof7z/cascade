@@ -166,7 +166,7 @@ export default function HowItWorks() {
             <div className="space-y-3">
               <ModuleCard title="Bitcoin > $150K by July 2026" probability={42} />
               <ModuleCard title="Fed cuts rates before Q3 2026" probability={68} />
-              <ModuleCard title="GPT-5 released by Dec 2025" probability={73} />
+              <ModuleCard title="Ethereum > $5K by Sept 2026" probability={58} />
             </div>
           </div>
         </div>
@@ -226,6 +226,91 @@ export default function HowItWorks() {
                   <span>No artificial expiration—trade on evolving reality</span>
                 </li>
               </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Compositional Betting Section */}
+      <section className="py-16 border-t border-neutral-900">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-block px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded-full text-cyan-500 text-sm mb-4">
+                Core Innovation
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                Compositional Betting
+              </h2>
+              <p className="text-lg text-neutral-400 mb-6">
+                <strong className="text-white">Build thesis networks, not isolated bets.</strong> Cascade's 
+                unique architecture lets you compose multiple modules as evidence for broader theses, 
+                creating interconnected prediction networks.
+              </p>
+              <ul className="space-y-3 text-neutral-300">
+                <li className="flex items-start gap-3">
+                  <span className="text-cyan-500 mt-1">⛓️</span>
+                  <span>Link related predictions into coherent narratives</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-cyan-500 mt-1">🔄</span>
+                  <span>Module outcomes cascade up to inform thesis probabilities</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-cyan-500 mt-1">🌐</span>
+                  <span>One module can support multiple theses simultaneously</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-cyan-500 mt-1">📊</span>
+                  <span>Diversify across evidence layers, not just individual bets</span>
+                </li>
+              </ul>
+            </div>
+            <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6">
+              <h4 className="text-sm text-neutral-500 mb-4 uppercase tracking-wide">Thesis Network</h4>
+              <div className="space-y-4">
+                {/* Top-level thesis */}
+                <div className="bg-gradient-to-r from-cyan-500/10 to-transparent border border-cyan-500/30 rounded-lg p-4">
+                  <div className="text-xs text-cyan-500 mb-1">THESIS</div>
+                  <div className="text-white font-medium">AI dominates coding by 2027</div>
+                </div>
+                {/* Connecting lines */}
+                <div className="flex justify-center gap-6 text-neutral-600">
+                  <div className="text-center">
+                    <div className="w-px h-4 bg-neutral-700 mx-auto" />
+                    <span className="text-[10px]">evidence</span>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-px h-4 bg-neutral-700 mx-auto" />
+                    <span className="text-[10px]">supports</span>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-px h-4 bg-neutral-700 mx-auto" />
+                    <span className="text-[10px]">informs</span>
+                  </div>
+                </div>
+                {/* Supporting modules */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-neutral-800/50 border border-neutral-700 rounded p-2 text-center">
+                    <div className="text-[10px] text-neutral-500">MODULE</div>
+                    <div className="text-xs text-white truncate">Claude 4 released</div>
+                    <div className="text-emerald-500 text-xs">67%</div>
+                  </div>
+                  <div className="bg-neutral-800/50 border border-neutral-700 rounded p-2 text-center">
+                    <div className="text-[10px] text-neutral-500">MODULE</div>
+                    <div className="text-xs text-white truncate">GitHub Copilot X</div>
+                    <div className="text-emerald-500 text-xs">82%</div>
+                  </div>
+                  <div className="bg-neutral-800/50 border border-neutral-700 rounded p-2 text-center">
+                    <div className="text-[10px] text-neutral-500">MODULE</div>
+                    <div className="text-xs text-white truncate">Dev hiring drops</div>
+                    <div className="text-amber-500 text-xs">45%</div>
+                  </div>
+                </div>
+                <p className="text-xs text-neutral-500 text-center pt-2">
+                  Each module's resolution strengthens or weakens the thesis
+                </p>
+              </div>
             </div>
           </div>
         </div>

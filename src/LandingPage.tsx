@@ -1,17 +1,9 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import type { FormEvent, Dispatch } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { deriveMarketMetrics, type Side } from './market'
 import type { MarketEntry } from './storage'
 import type { Action } from './App'
-import {
-  createChart,
-  AreaSeries,
-  ColorType,
-  type IChartApi,
-  type ISeriesApi,
-  type UTCTimestamp,
-} from 'lightweight-charts'
 
 type MarketType = 'module' | 'thesis'
 
@@ -120,24 +112,6 @@ const sampleDiscussions: SampleDiscussion[] = [
     stance: 'LONG',
     timestamp: '6h ago',
   },
-  {
-    id: 'd4',
-    marketTitle: 'Lab-grown meat exceeds 10% market share by 2028',
-    author: 'biotech_skeptic',
-    preview: 'Cost parity is a myth. Current cultivated meat runs $50/kg at scale. Traditional beef is $4/kg. That\'s not a gap you close in 4 years.',
-    replyCount: 6,
-    stance: 'SHORT',
-    timestamp: '8h ago',
-  },
-  {
-    id: 'd5',
-    marketTitle: 'Fusion power plant goes online',
-    author: 'energy_futures',
-    preview: 'Commonwealth Fusion is targeting 2030. Their SPARC tokamak is on schedule. Helion claims 2028. The physics is solved — this is now an engineering problem.',
-    replyCount: 11,
-    stance: 'LONG',
-    timestamp: '12h ago',
-  },
 ]
 
 const sampleTheses: SampleMarketSpec[] = [
@@ -176,35 +150,6 @@ const sampleTheses: SampleMarketSpec[] = [
 ]
 
 const sampleMarketBank = [...sampleModules, ...sampleTheses]
-
-// Sample market movers data
-const sampleMovers = [
-  { title: 'AGI achieved by 2030', probability: 0.42, change: 0.12, sparkline: [30, 32, 35, 38, 40, 42] },
-  { title: 'Fusion power plant goes online', probability: 0.28, change: -0.08, sparkline: [36, 34, 32, 30, 29, 28] },
-  { title: 'First Mars landing with crew by 2035', probability: 0.35, change: 0.05, sparkline: [30, 31, 32, 33, 34, 35] },
-  { title: 'China GDP surpasses US', probability: 0.55, change: -0.04, sparkline: [59, 58, 57, 56, 55, 55] },
-]
-
-// Sample recent trades
-const sampleTrades = [
-  { market: 'AGI by 2030', side: 'YES', amount: 500, user: 'reasoning_agent', timeAgo: '2m' },
-  { market: 'Fusion power plant', side: 'NO', amount: 250, user: 'energy_bear', timeAgo: '5m' },
-  { market: 'Mars landing 2035', side: 'YES', amount: 1000, user: 'space_bull', timeAgo: '8m' },
-  { market: 'Lab-grown meat', side: 'NO', amount: 150, user: 'biotech_skeptic', timeAgo: '12m' },
-  { market: 'UBI pilot program', side: 'YES', amount: 300, user: 'policy_watcher', timeAgo: '15m' },
-  { market: 'BCI reaches 1M users', side: 'YES', amount: 200, user: 'neuro_optimist', timeAgo: '18m' },
-]
-
-// Sample platform activity data for hero chart (last 7 days)
-const platformActivityData = [
-  { time: Date.now() / 1000 - 6 * 86400, value: 12400 },
-  { time: Date.now() / 1000 - 5 * 86400, value: 15200 },
-  { time: Date.now() / 1000 - 4 * 86400, value: 14100 },
-  { time: Date.now() / 1000 - 3 * 86400, value: 18900 },
-  { time: Date.now() / 1000 - 2 * 86400, value: 22300 },
-  { time: Date.now() / 1000 - 1 * 86400, value: 19800 },
-  { time: Date.now() / 1000, value: 24500 },
-]
 
 const categories = [
   'All',
@@ -247,12 +192,12 @@ function getSampleSpec(title: string): SampleMarketSpec | undefined {
 }
 
 // Mini sparkline component
-function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
+function Sparkline({ data, positive, size = 'default' }: { data: number[]; positive: boolean; size?: 'default' | 'large' }) {
   const min = Math.min(...data)
   const max = Math.max(...data)
   const range = max - min || 1
-  const height = 20
-  const width = 60
+  const height = size === 'large' ? 40 : 20
+  const width = size === 'large' ? 100 : 60
   const points = data
     .map((v, i) => {
       const x = (i / (data.length - 1)) * width
@@ -266,7 +211,7 @@ function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
       <polyline
         fill="none"
         stroke={positive ? '#22c55e' : '#ef4444'}
-        strokeWidth="1.5"
+        strokeWidth={size === 'large' ? 2 : 1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
         points={points}
@@ -276,163 +221,52 @@ function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
 }
 
 // Probability bar component
-function ProbabilityBar({ probability, size = 'default' }: { probability: number; size?: 'default' | 'large' }) {
-  const height = size === 'large' ? 'h-2' : 'h-1'
+function ProbabilityBar({ probability, size = 'default' }: { probability: number; size?: 'default' | 'large' | 'hero' }) {
+  const height = size === 'hero' ? 'h-3' : size === 'large' ? 'h-2' : 'h-1'
   return (
     <div className={`w-full ${height} bg-neutral-800 rounded-full overflow-hidden`}>
       <div
-        className={`${height} bg-emerald-500 rounded-full transition-all duration-300`}
+        className={`${height} bg-emerald-500 rounded-full transition-all duration-500`}
         style={{ width: `${probability * 100}%` }}
       />
     </div>
   )
 }
 
-// Hero chart component using lightweight-charts
-function HeroChart({ data }: { data: { time: number; value: number }[] }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<IChartApi | null>(null)
-  const seriesRef = useRef<ISeriesApi<'Area'> | null>(null)
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    const chart = createChart(container, {
-      width: container.clientWidth,
-      height: 140,
-      layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: 'rgba(255, 255, 255, 0.3)',
-        fontSize: 10,
-      },
-      grid: {
-        vertLines: { visible: false },
-        horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
-      },
-      leftPriceScale: {
-        visible: false,
-      },
-      rightPriceScale: {
-        visible: true,
-        borderVisible: false,
-      },
-      timeScale: {
-        visible: true,
-        borderVisible: false,
-        timeVisible: false,
-      },
-      handleScroll: false,
-      handleScale: false,
-      crosshair: {
-        vertLine: { visible: false },
-        horzLine: { visible: false },
-      },
-    })
-
-    const series = chart.addSeries(AreaSeries, {
-      lineColor: 'rgba(16, 185, 129, 0.9)',
-      topColor: 'rgba(16, 185, 129, 0.25)',
-      bottomColor: 'rgba(16, 185, 129, 0.02)',
-      lineWidth: 2,
-      priceFormat: {
-        type: 'custom',
-        formatter: (value: number) => `$${(value / 1000).toFixed(1)}k`,
-      },
-    })
-
-    chartRef.current = chart
-    seriesRef.current = series
-
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        chart.applyOptions({ width: entry.contentRect.width })
-      }
-    })
-    observer.observe(container)
-
-    return () => {
-      observer.disconnect()
-      chart.remove()
-      chartRef.current = null
-      seriesRef.current = null
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!seriesRef.current || !chartRef.current) return
-    if (data.length < 2) return
-
-    const chartData = data.map((point) => ({
-      time: point.time as UTCTimestamp,
-      value: point.value,
-    }))
-
-    seriesRef.current.setData(chartData)
-    chartRef.current.timeScale().fitContent()
-  }, [data])
-
-  return <div ref={containerRef} className="w-full" />
-}
-
-// Animated trades ticker
-function TradesTicker({ trades }: { trades: typeof sampleTrades }) {
-  const [visibleTrades, setVisibleTrades] = useState(trades.slice(0, 4))
-  const [fadeIndex, setFadeIndex] = useState(-1)
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setFadeIndex(0)
-      setTimeout(() => {
-        setVisibleTrades(prev => {
-          const remaining = prev.slice(1)
-          const nextIndex = (trades.indexOf(prev[prev.length - 1]) + 1) % trades.length
-          return [...remaining, trades[nextIndex]]
-        })
-        setFadeIndex(-1)
-      }, 300)
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [trades])
-
+// Animated pulse dot
+function PulseDot({ color = 'emerald' }: { color?: 'emerald' | 'amber' | 'rose' }) {
+  const colorClasses = {
+    emerald: 'bg-emerald-500',
+    amber: 'bg-amber-500',
+    rose: 'bg-rose-500',
+  }
   return (
-    <div className="flex gap-6 overflow-hidden">
-      {visibleTrades.map((trade, i) => (
-        <div
-          key={`${trade.user}-${trade.market}-${i}`}
-          className={`text-sm whitespace-nowrap transition-all duration-300 ${
-            i === fadeIndex ? 'opacity-0 -translate-x-4' : 'opacity-100 translate-x-0'
-          }`}
-        >
-          <span className="text-white">@{trade.user}</span>
-          {' bought '}
-          <span className={trade.side === 'YES' ? 'text-emerald-500' : 'text-rose-500'}>
-            {trade.side}
-          </span>
-          {' on '}
-          <span className="text-neutral-300">{trade.market}</span>
-          <span className="text-neutral-500"> — {trade.timeAgo}</span>
-        </div>
-      ))}
-    </div>
+    <span className="relative flex h-2 w-2">
+      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${colorClasses[color]} opacity-75`} />
+      <span className={`relative inline-flex rounded-full h-2 w-2 ${colorClasses[color]}`} />
+    </span>
   )
 }
 
-// Section header with accent
-function SectionHeader({ children, prominent }: { children: React.ReactNode; prominent?: boolean }) {
-  if (prominent) {
-    return (
-      <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-3">
-        <span className="w-1 h-5 bg-emerald-500 rounded-full" />
-        {children}
-      </h2>
-    )
-  }
+// Live activity counter with animation
+function LiveCounter({ label, value, suffix = '' }: { label: string; value: number; suffix?: string }) {
+  const [displayValue, setDisplayValue] = useState(value)
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Randomly increment/decrement to simulate live activity
+      setDisplayValue(prev => prev + Math.floor(Math.random() * 3) - 1)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
+  
   return (
-    <h2 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-      <span className="w-0.5 h-3 bg-neutral-700 rounded-full" />
-      {children}
-    </h2>
+    <div className="text-center">
+      <div className="text-3xl md:text-4xl font-bold text-white tabular-nums">
+        {displayValue.toLocaleString()}{suffix}
+      </div>
+      <div className="text-xs text-neutral-500 uppercase tracking-wider mt-1">{label}</div>
+    </div>
   )
 }
 
@@ -477,26 +311,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
 
     return filtered
   }, [entries, activeTypeFilter, activeCategory])
-
-  // Filter sample data by category
-  const filteredTheses = useMemo(() => {
-    if (activeCategory === 'All') return sampleTheses
-    return sampleTheses.filter(t => t.category === activeCategory)
-  }, [activeCategory])
-
-  const filteredModules = useMemo(() => {
-    if (activeCategory === 'All') return sampleModules
-    return sampleModules.filter(m => m.category === activeCategory)
-  }, [activeCategory])
-
-  const filteredDiscussions = useMemo(() => {
-    if (activeCategory === 'All') return sampleDiscussions
-    // Match discussions to their market's category
-    return sampleDiscussions.filter(d => {
-      const spec = sampleMarketBank.find(s => s.title === d.marketTitle)
-      return spec?.category === activeCategory
-    })
-  }, [activeCategory])
 
   const totalReserve = entries.reduce((sum, e) => sum + e.market.reserve, 0)
 
@@ -600,18 +414,272 @@ export default function LandingPage({ markets, dispatch }: Props) {
     </form>
   )
 
-  // Empty state — show full landing page
+  // Empty state — show full landing page with TENSION
   if (entries.length === 0) {
+    // Featured thesis for hero section
+    const featuredThesis = sampleTheses[0] // The Great Decoupling
+    const featuredProbability = 0.67
+    
     return (
       <div className="min-h-screen bg-neutral-950">
-        {/* Header */}
-        <header className="max-w-6xl mx-auto px-6 pt-8 pb-6">
-          <h1 className="text-3xl font-bold text-white tracking-tight">Cascade</h1>
-        </header>
+        {/* ═══════════════════════════════════════════════════════════════════
+            HERO — Provocative statement + Featured Market
+            Creates tension, establishes the vibe, commands attention
+        ═══════════════════════════════════════════════════════════════════ */}
+        <section className="relative min-h-[85vh] flex flex-col">
+          {/* Background gradient */}
+          <div className="absolute inset-0 bg-gradient-to-b from-neutral-900/50 via-neutral-950 to-neutral-950" />
+          
+          {/* Header */}
+          <header className="relative z-10 max-w-7xl mx-auto w-full px-6 pt-8">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold text-white tracking-tight">Cascade</h1>
+              <div className="flex items-center gap-2">
+                <PulseDot color="emerald" />
+                <span className="text-xs text-neutral-400">Live</span>
+              </div>
+            </div>
+          </header>
 
-        {/* 1. Category Navigation */}
-        <nav className="max-w-6xl mx-auto px-6 pb-6">
-          <div className="flex flex-wrap gap-2">
+          {/* Hero content */}
+          <div className="relative z-10 flex-1 flex items-center">
+            <div className="max-w-7xl mx-auto w-full px-6 py-16">
+              <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+                
+                {/* Left — The Hook */}
+                <div className="space-y-8">
+                  {/* Provocative headline */}
+                  <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight">
+                    Markets for questions
+                    <span className="block text-neutral-500">that never resolve.</span>
+                  </h2>
+                  
+                  {/* Sub-hook — creates intrigue */}
+                  <p className="text-xl md:text-2xl text-neutral-400 max-w-lg leading-relaxed">
+                    Where arguments move prices. 
+                    <span className="text-white"> Truth discovery</span> for infinite games.
+                  </p>
+                  
+                  {/* CTA */}
+                  <div className="flex flex-wrap gap-4 pt-4">
+                    <Link
+                      to="/register"
+                      className="px-8 py-4 bg-white text-neutral-950 font-semibold rounded-lg hover:bg-neutral-100 transition-colors text-lg"
+                    >
+                      Start trading
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateModal(true)}
+                      className="px-8 py-4 border border-neutral-700 text-white font-medium rounded-lg hover:border-neutral-500 hover:bg-neutral-900 transition-colors text-lg"
+                    >
+                      Create a market
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right — Featured Thesis (DOMINANT VISUAL) */}
+                <div 
+                  className="relative group cursor-pointer"
+                  onClick={() => {
+                    dispatch({
+                      type: 'CREATE_MARKET',
+                      title: featuredThesis.title,
+                      description: featuredThesis.description,
+                      seedWithUser: false,
+                    })
+                  }}
+                >
+                  {/* Glow effect */}
+                  <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/10 via-transparent to-emerald-500/5 rounded-2xl blur-xl group-hover:from-emerald-500/20 transition-all duration-500" />
+                  
+                  <article className="relative bg-neutral-900/80 backdrop-blur border border-neutral-800 rounded-2xl p-8 group-hover:border-neutral-700 transition-all duration-300">
+                    {/* Category + Live indicator */}
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                        {featuredThesis.category} · Thesis
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <PulseDot color="amber" />
+                        <span className="text-xs text-amber-500">47 trading now</span>
+                      </div>
+                    </div>
+                    
+                    {/* Title */}
+                    <h3 className="text-2xl md:text-3xl font-bold text-white mb-6 leading-tight">
+                      {featuredThesis.title}
+                    </h3>
+                    
+                    {/* Giant probability */}
+                    <div className="mb-6">
+                      <ProbabilityBar probability={featuredProbability} size="hero" />
+                      <div className="flex items-baseline justify-between mt-4">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-5xl font-bold text-emerald-500">{Math.round(featuredProbability * 100)}%</span>
+                          <span className="text-lg text-neutral-500">YES</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm text-emerald-500">+12% today</span>
+                          <Sparkline 
+                            data={[45, 48, 52, 55, 58, 62, 67]} 
+                            positive={true} 
+                            size="large" 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Meta stats */}
+                    <div className="flex items-center gap-6 text-sm text-neutral-400 border-t border-neutral-800 pt-4">
+                      <span>$24.5K volume</span>
+                      <span>312 traders</span>
+                      <span>89 comments</span>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Live stats bar */}
+          <div className="relative z-10 border-t border-neutral-800/50 bg-neutral-900/30 backdrop-blur-sm">
+            <div className="max-w-7xl mx-auto px-6 py-6">
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-8">
+                <LiveCounter label="Active Markets" value={142} />
+                <LiveCounter label="Traders Online" value={847} />
+                <LiveCounter label="24h Volume" value={89} suffix="K" />
+                <div className="hidden md:block">
+                  <LiveCounter label="Open Questions" value={1284} />
+                </div>
+                <div className="hidden md:block">
+                  <LiveCounter label="Arguments Today" value={523} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            LIVE DISCUSSION — Pattern break, pulls you in
+        ═══════════════════════════════════════════════════════════════════ */}
+        <section className="max-w-7xl mx-auto px-6 py-16">
+          <div className="flex items-center gap-3 mb-8">
+            <PulseDot color="emerald" />
+            <h2 className="text-2xl font-bold text-white">Arguments moving markets</h2>
+          </div>
+          
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Featured discussion — LARGER */}
+            <div className="lg:col-span-2">
+              <article className="h-full bg-neutral-900 border border-neutral-800 rounded-xl p-6 hover:border-neutral-700 transition-colors cursor-pointer">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                    RA
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center flex-wrap gap-3 mb-3">
+                      <span className="font-semibold text-white">@reasoning_agent</span>
+                      <span className="px-2 py-0.5 text-xs font-bold bg-emerald-500/20 text-emerald-400 rounded">
+                        LONG
+                      </span>
+                      <span className="text-xs text-neutral-500">2h ago</span>
+                    </div>
+                    <p className="text-lg text-neutral-200 mb-4 leading-relaxed">
+                      "{sampleDiscussions[0].preview}"
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-neutral-400">{sampleDiscussions[0].marketTitle}</span>
+                        <span className="text-emerald-500">14 replies</span>
+                      </div>
+                      <span className="text-xs text-neutral-600">Click to join discussion →</span>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+            
+            {/* Side discussions — smaller */}
+            <div className="space-y-4">
+              {sampleDiscussions.slice(1, 3).map(discussion => (
+                <article 
+                  key={discussion.id}
+                  className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-4 hover:border-neutral-700 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-medium text-white">@{discussion.author}</span>
+                    <span className={`px-1.5 py-0.5 text-xs font-bold rounded ${
+                      discussion.stance === 'LONG' 
+                        ? 'bg-emerald-500/20 text-emerald-400' 
+                        : 'bg-rose-500/20 text-rose-400'
+                    }`}>
+                      {discussion.stance}
+                    </span>
+                  </div>
+                  <p className="text-sm text-neutral-400 line-clamp-2 mb-2">
+                    {discussion.preview}
+                  </p>
+                  <div className="flex items-center gap-3 text-xs text-neutral-500">
+                    <span>{discussion.replyCount} replies</span>
+                    <span>{discussion.timestamp}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            THE DIFFERENTIATOR — Why Cascade is different
+            Asymmetric layout, typography contrast
+        ═══════════════════════════════════════════════════════════════════ */}
+        <section className="max-w-7xl mx-auto px-6 py-16 border-t border-neutral-900">
+          <div className="grid lg:grid-cols-12 gap-12 items-start">
+            {/* Left — Big statement */}
+            <div className="lg:col-span-5">
+              <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-6">
+                Not another
+                <span className="block text-neutral-600">prediction market.</span>
+              </h2>
+              <p className="text-lg text-neutral-400 leading-relaxed">
+                Traditional markets resolve to YES or NO. Cascade trades on evolving truth — 
+                questions that compound, theses that grow, arguments that sharpen.
+              </p>
+            </div>
+            
+            {/* Right — Three differentiators */}
+            <div className="lg:col-span-7 grid sm:grid-cols-3 gap-6">
+              <div className="space-y-3">
+                <div className="text-4xl font-bold text-emerald-500">∞</div>
+                <h3 className="text-lg font-semibold text-white">Infinite games</h3>
+                <p className="text-sm text-neutral-500 leading-relaxed">
+                  Markets that never close. Price tracks evolving probability as evidence accumulates.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <div className="text-4xl font-bold text-white">↔</div>
+                <h3 className="text-lg font-semibold text-white">Discussion moves price</h3>
+                <p className="text-sm text-neutral-500 leading-relaxed">
+                  Arguments have weight. Compelling reasoning shifts markets before trades do.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <div className="text-4xl font-bold text-amber-500">◆</div>
+                <h3 className="text-lg font-semibold text-white">Modular theses</h3>
+                <p className="text-sm text-neutral-500 leading-relaxed">
+                  Stack predictions. Your thesis on AI depends on AGI timing and labor economics.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            ACTIVE QUESTIONS — Browse by category
+        ═══════════════════════════════════════════════════════════════════ */}
+        <section className="max-w-7xl mx-auto px-6 py-16">
+          {/* Category filters */}
+          <div className="flex flex-wrap gap-2 mb-8">
             {categories.map(cat => (
               <button
                 key={cat}
@@ -619,205 +687,166 @@ export default function LandingPage({ markets, dispatch }: Props) {
                 onClick={() => setActiveCategory(cat)}
                 className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
                   activeCategory === cat
-                    ? 'bg-neutral-800 text-white'
-                    : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
+                    ? 'bg-white text-neutral-950'
+                    : 'text-neutral-400 hover:text-white hover:bg-neutral-900 border border-neutral-800'
                 }`}
               >
                 {cat}
               </button>
             ))}
           </div>
-        </nav>
 
-        {/* 2. Hero Chart — Platform Pulse */}
-        <section className="max-w-6xl mx-auto px-6 pb-10">
-          <div className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-5">
-            <div className="flex items-center justify-between mb-4">
+          {/* Asymmetric grid — one big, rest smaller */}
+          <div className="grid lg:grid-cols-12 gap-6">
+            {/* Big featured module */}
+            <div className="lg:col-span-5">
+              {(() => {
+                const mod = sampleModules[0]
+                const prob = 0.42
+                return (
+                  <article
+                    className="h-full bg-neutral-900 border border-neutral-800 rounded-xl p-6 cursor-pointer hover:border-neutral-700 transition-all group"
+                    onClick={() => {
+                      dispatch({
+                        type: 'CREATE_MARKET',
+                        title: mod.title,
+                        description: mod.description,
+                        seedWithUser: false,
+                      })
+                    }}
+                  >
+                    <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      {mod.category} · Module
+                    </span>
+                    <h3 className="text-2xl font-bold text-white mt-3 mb-4 group-hover:text-emerald-400 transition-colors">
+                      {mod.title}
+                    </h3>
+                    <p className="text-neutral-400 text-sm mb-6 leading-relaxed">
+                      {mod.description}
+                    </p>
+                    <ProbabilityBar probability={prob} size="large" />
+                    <div className="flex items-baseline gap-2 mt-4">
+                      <span className="text-4xl font-bold text-emerald-500">{Math.round(prob * 100)}%</span>
+                      <span className="text-neutral-500">YES</span>
+                      <span className="ml-auto text-sm text-emerald-500">+12%</span>
+                    </div>
+                  </article>
+                )
+              })()}
+            </div>
+            
+            {/* Smaller modules grid */}
+            <div className="lg:col-span-7 grid sm:grid-cols-2 gap-4">
+              {sampleModules.slice(1, 5).map(mod => {
+                const prob = Math.random() * 0.4 + 0.25
+                return (
+                  <article
+                    key={mod.title}
+                    className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-4 cursor-pointer hover:border-neutral-700 hover:bg-neutral-900 transition-all"
+                    onClick={() => {
+                      dispatch({
+                        type: 'CREATE_MARKET',
+                        title: mod.title,
+                        description: mod.description,
+                        seedWithUser: false,
+                      })
+                    }}
+                  >
+                    <span className="text-xs text-neutral-500">{mod.category}</span>
+                    <h3 className="text-sm font-medium text-white mt-1 mb-3 line-clamp-2">
+                      {mod.title}
+                    </h3>
+                    <ProbabilityBar probability={prob} />
+                    <div className="flex items-baseline justify-between mt-2">
+                      <span className="text-lg font-semibold text-white">
+                        {Math.round(prob * 100)}%
+                      </span>
+                      <Sparkline 
+                        data={[30, 32, 28, 35, 33, Math.round(prob * 100)]} 
+                        positive={true} 
+                      />
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            CTA — Start a market
+        ═══════════════════════════════════════════════════════════════════ */}
+        <section className="max-w-7xl mx-auto px-6 py-24">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-neutral-900 via-neutral-900 to-neutral-800 border border-neutral-800 p-12">
+            {/* Background decoration */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
+            
+            <div className="relative grid lg:grid-cols-2 gap-12 items-center">
               <div>
-                <span className="text-xs text-neutral-500 uppercase tracking-wider">Platform Volume</span>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-semibold text-white">$24,500</span>
-                  <span className="text-sm text-emerald-500">+23.7%</span>
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  Have a thesis?
+                </h2>
+                <p className="text-lg text-neutral-400 mb-6">
+                  Turn your conviction into a market. Let the crowd price your prediction.
+                </p>
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(true)}
+                    className="px-6 py-3 bg-white text-neutral-950 font-semibold rounded-lg hover:bg-neutral-100 transition-colors"
+                  >
+                    Create market
+                  </button>
+                  <Link
+                    to="/builder"
+                    className="px-6 py-3 border border-neutral-700 text-white font-medium rounded-lg hover:border-neutral-500 transition-colors"
+                  >
+                    Build thesis
+                  </Link>
                 </div>
               </div>
-              <div className="text-right text-xs text-neutral-500">
-                Last 7 days
+              
+              {/* Quick preview of form */}
+              <div className="bg-neutral-950/50 rounded-xl p-6 border border-neutral-800">
+                <div className="space-y-4 opacity-75">
+                  <div className="h-3 w-20 bg-neutral-800 rounded" />
+                  <div className="h-12 bg-neutral-800/50 rounded-lg border border-neutral-700" />
+                  <div className="h-3 w-24 bg-neutral-800 rounded" />
+                  <div className="h-20 bg-neutral-800/50 rounded-lg border border-neutral-700" />
+                  <div className="flex gap-3">
+                    <div className="flex-1 h-10 bg-white/10 rounded-lg" />
+                    <div className="w-24 h-10 bg-neutral-800 rounded-lg" />
+                  </div>
+                </div>
               </div>
             </div>
-            <HeroChart data={platformActivityData} />
           </div>
         </section>
 
-        {/* 3. Featured Theses */}
-        <section className="max-w-6xl mx-auto px-6 pb-10">
-          <SectionHeader>Featured Theses</SectionHeader>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {filteredTheses.slice(0, 4).map(thesis => {
-              const probability = Math.random() * 0.3 + 0.35
-              return (
-                <article
-                  key={thesis.title}
-                  className="p-5 bg-neutral-900 border border-neutral-800 rounded-lg cursor-pointer hover:border-neutral-700 hover:bg-neutral-900/80 transition-all"
-                  onClick={() => {
-                    dispatch({
-                      type: 'CREATE_MARKET',
-                      title: thesis.title,
-                      description: thesis.description,
-                      seedWithUser: false,
-                    })
-                  }}
+        {/* Create modal */}
+        {showCreateModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowCreateModal(false)}
+          >
+            <div
+              className="w-full max-w-lg p-6 bg-neutral-900 border border-neutral-800 rounded-xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-white">New market</h2>
+                <button
+                  type="button"
+                  className="text-sm text-neutral-500 hover:text-white"
+                  onClick={() => setShowCreateModal(false)}
                 >
-                  <span className="text-xs text-neutral-500">{thesis.category}</span>
-                  <h3 className="text-base font-medium text-white mt-1 mb-3 line-clamp-2">
-                    {thesis.title}
-                  </h3>
-                  <ProbabilityBar probability={probability} size="large" />
-                  <div className="flex items-baseline gap-1 mt-2">
-                    <span className="text-2xl font-semibold text-emerald-500">
-                      {Math.round(probability * 100)}%
-                    </span>
-                    <span className="text-sm text-neutral-500">YES</span>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-        </section>
-
-        {/* 4. Latest Discussions — MOST PROMINENT */}
-        <section className="max-w-6xl mx-auto px-6 pb-10">
-          <SectionHeader prominent>Latest Discussions</SectionHeader>
-          <div className="bg-neutral-900 border border-neutral-800 rounded-lg divide-y divide-neutral-800">
-            {filteredDiscussions.length > 0 ? (
-              filteredDiscussions.map(discussion => (
-                <article
-                  key={discussion.id}
-                  className="p-6 hover:bg-neutral-800/30 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-sm font-medium text-white">
-                          {discussion.author}
-                        </span>
-                        {discussion.stance && (
-                          <span
-                            className={`px-2 py-0.5 text-xs font-semibold rounded ${
-                              discussion.stance === 'LONG'
-                                ? 'bg-emerald-500/20 text-emerald-400'
-                                : 'bg-rose-500/20 text-rose-400'
-                            }`}
-                          >
-                            {discussion.stance}
-                          </span>
-                        )}
-                        <span className="text-xs text-neutral-500">
-                          {discussion.timestamp}
-                        </span>
-                      </div>
-                      <p className="text-sm text-neutral-300 mb-3 leading-relaxed">
-                        {discussion.preview}
-                      </p>
-                      <div className="flex items-center gap-4 text-xs text-neutral-500">
-                        <span className="text-neutral-400">{discussion.marketTitle}</span>
-                        <span>{discussion.replyCount} replies</span>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="p-8 text-center text-neutral-500">
-                No discussions in this category yet.
+                  Close
+                </button>
               </div>
-            )}
+              {createForm}
+            </div>
           </div>
-        </section>
-
-        {/* 5. Active Modules */}
-        <section className="max-w-6xl mx-auto px-6 pb-10">
-          <SectionHeader>Active Modules</SectionHeader>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {filteredModules.slice(0, 8).map(mod => {
-              const probability = Math.random() * 0.4 + 0.3
-              return (
-                <article
-                  key={mod.title}
-                  className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg cursor-pointer hover:border-neutral-700 hover:bg-neutral-900/80 transition-all"
-                  onClick={() => {
-                    dispatch({
-                      type: 'CREATE_MARKET',
-                      title: mod.title,
-                      description: mod.description,
-                      seedWithUser: false,
-                    })
-                  }}
-                >
-                  <span className="text-xs text-neutral-500">{mod.category}</span>
-                  <h3 className="text-sm font-medium text-white mt-1 mb-3 line-clamp-2">
-                    {mod.title}
-                  </h3>
-                  <ProbabilityBar probability={probability} />
-                  <span className="text-lg font-semibold text-white mt-2 block">
-                    {Math.round(probability * 100)}%
-                  </span>
-                </article>
-              )
-            })}
-          </div>
-        </section>
-
-        {/* 6. Market Movers */}
-        <section className="max-w-6xl mx-auto px-6 pb-10">
-          <SectionHeader>Market Movers — 24h</SectionHeader>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {sampleMovers.map(mover => {
-              const isPositive = mover.change >= 0
-              return (
-                <article
-                  key={mover.title}
-                  className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg cursor-pointer hover:border-neutral-700 hover:bg-neutral-900/80 transition-all"
-                >
-                  <h3 className="text-sm font-medium text-white mb-3 line-clamp-1">
-                    {mover.title}
-                  </h3>
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <span className="text-xl font-semibold text-white">
-                        {Math.round(mover.probability * 100)}%
-                      </span>
-                      <span
-                        className={`ml-2 text-sm font-medium ${
-                          isPositive ? 'text-emerald-500' : 'text-rose-500'
-                        }`}
-                      >
-                        {isPositive ? '+' : ''}
-                        {Math.round(mover.change * 100)}%
-                      </span>
-                    </div>
-                    <Sparkline data={mover.sparkline} positive={isPositive} />
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-        </section>
-
-        {/* 7. Recent Trades Ticker */}
-        <section className="max-w-6xl mx-auto px-6 pb-10">
-          <SectionHeader>Live Trades</SectionHeader>
-          <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-4 overflow-hidden">
-            <TradesTicker trades={sampleTrades} />
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="max-w-6xl mx-auto px-6 pb-24">
-          <div className="p-8 bg-neutral-900 border border-neutral-800 rounded-lg">
-            <h2 className="text-xl font-semibold text-white mb-6">Start a market</h2>
-            {createForm}
-          </div>
-        </section>
+        )}
       </div>
     )
   }
@@ -939,88 +968,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
               </article>
             )
           })}
-        </div>
-      </section>
-
-      {/* Latest Discussions */}
-      <section className="max-w-6xl mx-auto px-6 pb-10">
-        <SectionHeader prominent>Latest Discussions</SectionHeader>
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg divide-y divide-neutral-800">
-          {filteredDiscussions.slice(0, 5).map(discussion => (
-            <article
-              key={discussion.id}
-              className="p-6 hover:bg-neutral-800/30 cursor-pointer transition-colors"
-            >
-              <div className="flex items-start gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-sm font-medium text-white">{discussion.author}</span>
-                    {discussion.stance && (
-                      <span
-                        className={`px-2 py-0.5 text-xs font-semibold rounded ${
-                          discussion.stance === 'LONG'
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-rose-500/20 text-rose-400'
-                        }`}
-                      >
-                        {discussion.stance}
-                      </span>
-                    )}
-                    <span className="text-xs text-neutral-500">{discussion.timestamp}</span>
-                  </div>
-                  <p className="text-sm text-neutral-300 mb-3 leading-relaxed">{discussion.preview}</p>
-                  <div className="flex items-center gap-4 text-xs text-neutral-500">
-                    <span className="text-neutral-400">{discussion.marketTitle}</span>
-                    <span>{discussion.replyCount} replies</span>
-                  </div>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* Market Movers */}
-      <section className="max-w-6xl mx-auto px-6 pb-10">
-        <SectionHeader>Market Movers — 24h</SectionHeader>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {sampleMovers.map(mover => {
-            const isPositive = mover.change >= 0
-            return (
-              <article
-                key={mover.title}
-                className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg cursor-pointer hover:border-neutral-700 hover:bg-neutral-900/80 transition-all"
-              >
-                <h3 className="text-sm font-medium text-white mb-3 line-clamp-1">
-                  {mover.title}
-                </h3>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <span className="text-xl font-semibold text-white">
-                      {Math.round(mover.probability * 100)}%
-                    </span>
-                    <span
-                      className={`ml-2 text-sm font-medium ${
-                        isPositive ? 'text-emerald-500' : 'text-rose-500'
-                      }`}
-                    >
-                      {isPositive ? '+' : ''}
-                      {Math.round(mover.change * 100)}%
-                    </span>
-                  </div>
-                  <Sparkline data={mover.sparkline} positive={isPositive} />
-                </div>
-              </article>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* Recent Trades */}
-      <section className="max-w-6xl mx-auto px-6 pb-24">
-        <SectionHeader>Live Trades</SectionHeader>
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-4 overflow-hidden">
-          <TradesTicker trades={sampleTrades} />
         </div>
       </section>
 

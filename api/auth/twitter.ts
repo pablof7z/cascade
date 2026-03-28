@@ -50,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     code_challenge_method: 'S256'
   })
 
-  const authUrl = `https://twitter.com/i/oauth2/authorize?${params.toString()}`
+  const authUrl = `https://x.com/i/oauth2/authorize?${params.toString()}`
 
   // Redirect to Twitter
   res.redirect(302, authUrl)

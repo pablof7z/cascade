@@ -364,6 +364,7 @@ function AppContent() {
         <Route path="/onboarding" element={<Profile />} />
         <Route path="/portfolio" element={<Portfolio />} />
         <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/:npub" element={<Profile />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/activity" element={<Activity />} />
         <Route path="/blog" element={<Blog />} />

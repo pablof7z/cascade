@@ -3,6 +3,7 @@ const DEFAULT_SENSITIVITY = 0.0001
 const MAX_LEDGER_ITEMS = 16
 const MAX_EVENTS = 20
 
+// Legacy actor constants for backward compatibility with crowd simulation
 export const ACTORS = ['you', 'alice', 'bob', 'carol'] as const
 export const CROWD_ACTORS = ['alice', 'bob', 'carol'] as const
 
@@ -19,11 +20,33 @@ export type SyntheticActivity =
   | 'REDEEM_SHORT'
 export type MarketBias = 'NEUTRAL' | 'LONGS_FAVORED' | 'SHORTS_FAVORED'
 
+// Legacy labels for backward compatibility
 export const ACTOR_LABELS: Record<ActorId, string> = {
   you: 'You',
   alice: 'Alice',
   bob: 'Bob',
   carol: 'Carol',
+}
+
+// Simulated crowd pubkeys for backward compatibility
+export const CROWD_PUBKEYS = {
+  alice: 'sim_alice_00000000000000000000000000000000000000000000000000000001',
+  bob: 'sim_bob_0000000000000000000000000000000000000000000000000000000002',
+  carol: 'sim_carol_000000000000000000000000000000000000000000000000000003',
+} as const
+
+// Get display name for a pubkey (returns short form if unknown)
+export function getActorDisplayName(pubkey: string): string {
+  // Check if it's a legacy actor
+  if (pubkey === 'you') return 'You'
+  if (pubkey === CROWD_PUBKEYS.alice) return 'Alice'
+  if (pubkey === CROWD_PUBKEYS.bob) return 'Bob'
+  if (pubkey === CROWD_PUBKEYS.carol) return 'Carol'
+  // For real pubkeys, return truncated form
+  if (pubkey.length > 16) {
+    return `${pubkey.slice(0, 8)}...${pubkey.slice(-4)}`
+  }
+  return pubkey
 }
 
 export type ParticipantAccount = {
@@ -130,6 +153,9 @@ export type Market = {
   receipts: Receipt[]
   events: MarketEvent[]
   lastTrade?: LastTrade
+  // New fields for rich profiles
+  creatorPubkey?: string
+  createdAt?: number
 }
 
 export type ExecutionPreview = {
@@ -313,6 +339,7 @@ export function createEmptyMarket(input: {
   description: string
   kind?: MarketKind
   thesis?: ThesisDefinition
+  creatorPubkey?: string
 }) {
   const kind = input.kind ?? (input.thesis ? 'thesis' : 'module')
   return {
@@ -338,6 +365,8 @@ export function createEmptyMarket(input: {
     spentProofs: [],
     receipts: [],
     events: [],
+    creatorPubkey: input.creatorPubkey,
+    createdAt: Date.now(),
   } satisfies Market
 }
 

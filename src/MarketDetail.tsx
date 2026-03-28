@@ -6,6 +6,7 @@ import type { Side } from './market'
 import { priceLong, priceShort, previewTrade } from './market'
 import Discussion from './Discussion'
 import PriceChart from './PriceChart'
+import { UserAvatar } from './components/UserAvatar'
 
 type TradeAction = {
   type: 'TRADE'
@@ -72,6 +73,13 @@ export default function MarketDetail({ entry, dispatch }: Props) {
             </h1>
             {market.description && (
               <p className="text-neutral-500 text-sm">{market.description}</p>
+            )}
+            
+            {market.creatorPubkey && (
+              <div className="flex items-center gap-2 mt-3 text-sm text-neutral-400">
+                <span>Created by</span>
+                <UserAvatar pubkey={market.creatorPubkey} size="sm" showName />
+              </div>
             )}
             
             <Link

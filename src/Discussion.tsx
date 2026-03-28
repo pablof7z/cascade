@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { MarketKind, ThesisSignal } from './market'
 import { sampleTheses } from './marketCatalog'
+import { UserAvatar } from './components/UserAvatar'
 
 type PositionType = 'long' | 'short' | 'none'
 type PostKind = 'claim' | 'rebuttal' | 'evidence' | 'catalyst'
@@ -21,9 +22,26 @@ interface ArenaNode {
   detail: string
 }
 
+// Mock pubkeys for simulated discussion participants
+const MOCK_AUTHOR_PUBKEYS: Record<string, string> = {
+  orion: 'mock_orion_00000000000000000000000000000000000000000000000000001',
+  delta: 'mock_delta_00000000000000000000000000000000000000000000000000002',
+  minerva: 'mock_minerva_000000000000000000000000000000000000000000000003',
+  atlas: 'mock_atlas_00000000000000000000000000000000000000000000000000004',
+  iris: 'mock_iris_000000000000000000000000000000000000000000000000000005',
+  quinn: 'mock_quinn_00000000000000000000000000000000000000000000000000006',
+  sable: 'mock_sable_00000000000000000000000000000000000000000000000000007',
+  echo: 'mock_echo_000000000000000000000000000000000000000000000000000008',
+  lyra: 'mock_lyra_000000000000000000000000000000000000000000000000000009',
+  nova: 'mock_nova_000000000000000000000000000000000000000000000000000010',
+  marlow: 'mock_marlow_0000000000000000000000000000000000000000000000000011',
+  you: 'you', // Will be replaced with actual user pubkey
+}
+
 interface DebatePost {
   id: string
   author: string
+  authorPubkey: string
   role: string
   headline: string
   content: string
@@ -151,6 +169,7 @@ function buildThesisArena(
       {
         id: 'thesis-claim',
         author: 'orion',
+        authorPubkey: MOCK_AUTHOR_PUBKEYS.orion,
         role: 'thesis allocator',
         headline: 'The market is still underpricing the transmission mechanism',
         content:
@@ -167,6 +186,7 @@ function buildThesisArena(
       {
         id: 'thesis-rebuttal',
         author: 'delta',
+        authorPubkey: MOCK_AUTHOR_PUBKEYS.delta,
         role: 'counterparty',
         headline: 'Narrative coherence is being mistaken for causal inevitability',
         content:
@@ -183,6 +203,7 @@ function buildThesisArena(
       {
         id: 'thesis-evidence',
         author: 'minerva',
+        authorPubkey: MOCK_AUTHOR_PUBKEYS.minerva,
         role: 'evidence scout',
         headline: 'Resolution criteria need sharper falsifiers',
         content:
@@ -197,6 +218,7 @@ function buildThesisArena(
       ...nodes.slice(0, 3).map((node, index) => ({
         id: `thesis-catalyst-${node.id}`,
         author: ['atlas', 'iris', 'quinn'][index] ?? 'agent',
+        authorPubkey: [MOCK_AUTHOR_PUBKEYS.atlas, MOCK_AUTHOR_PUBKEYS.iris, MOCK_AUTHOR_PUBKEYS.quinn][index] ?? 'mock_agent',
         role: 'signal tracker',
         headline: `Catalyst thread: ${node.label}`,
         content: node.detail,
@@ -270,6 +292,7 @@ function buildModuleArena(marketTitle: string, consensus: number): ArenaData {
       {
         id: 'module-claim',
         author: 'sable',
+        authorPubkey: MOCK_AUTHOR_PUBKEYS.sable,
         role: 'module specialist',
         headline: 'This module is being treated as a side quest when it is really a hinge',
         content:
@@ -286,6 +309,7 @@ function buildModuleArena(marketTitle: string, consensus: number): ArenaData {
       {
         id: 'module-rebuttal',
         author: 'echo',
+        authorPubkey: MOCK_AUTHOR_PUBKEYS.echo,
         role: 'skeptic',
         headline: 'A module can matter without deserving a direct thesis repricing',
         content:
@@ -302,6 +326,7 @@ function buildModuleArena(marketTitle: string, consensus: number): ArenaData {
       {
         id: 'module-evidence',
         author: 'lyra',
+        authorPubkey: MOCK_AUTHOR_PUBKEYS.lyra,
         role: 'research agent',
         headline: 'Resolution criteria deserve as much scrutiny as the forecast itself',
         content:
@@ -316,6 +341,7 @@ function buildModuleArena(marketTitle: string, consensus: number): ArenaData {
       ...nodes.slice(0, 2).map((node, index) => ({
         id: `module-catalyst-${node.id}`,
         author: ['nova', 'marlow'][index] ?? 'agent',
+        authorPubkey: [MOCK_AUTHOR_PUBKEYS.nova, MOCK_AUTHOR_PUBKEYS.marlow][index] ?? 'mock_agent',
         role: 'thesis mapper',
         headline: `If this resolves, ${node.label} should move next`,
         content: node.detail,
@@ -374,6 +400,7 @@ export default function Discussion({
     const draft: DebatePost = {
       id: `draft-${Date.now()}`,
       author: 'you',
+      authorPubkey: MOCK_AUTHOR_PUBKEYS.you,
       role: 'active participant',
       headline:
         newKind === 'claim'
@@ -456,6 +483,7 @@ export default function Discussion({
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <UserAvatar pubkey={post.authorPubkey} size="sm" />
                       <span className="text-sm font-medium text-white">{post.author}</span>
                       <span className="text-xs text-neutral-600">{post.role}</span>
                       <span className={`text-xs ${positionClass(post.position)}`}>

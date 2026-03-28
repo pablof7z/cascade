@@ -91,14 +91,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     bio: ''
   }
 
-  const params = new URLSearchParams({
-    telegram_profile: Buffer.from(JSON.stringify(profileData)).toString('base64')
-  })
-
-  res.redirect(302, `/register?${params.toString()}`)
+  // Send profile data to opener window via postMessage and close popup
+  const profileBase64 = Buffer.from(JSON.stringify(profileData)).toString('base64')
+  
+  res.setHeader('Content-Type', 'text/html')
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head><title>Telegram Login</title></head>
+      <body>
+        <script>
+          if (window.opener) {
+            window.opener.postMessage({
+              type: 'telegram_auth',
+              profile: '${profileBase64}'
+            }, '*');
+            window.close();
+          } else {
+            // Fallback: redirect if no opener (direct navigation)
+            window.location.href = '/register?telegram_profile=${profileBase64}';
+          }
+        </script>
+        <p>Completing login...</p>
+      </body>
+    </html>
+  `)
 }
 
 function redirectWithError(res: VercelResponse, message: string) {
-  const params = new URLSearchParams({ telegram_error: message })
-  res.redirect(302, `/register?${params.toString()}`)
+  res.setHeader('Content-Type', 'text/html')
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head><title>Telegram Login</title></head>
+      <body>
+        <script>
+          if (window.opener) {
+            window.opener.postMessage({
+              type: 'telegram_error',
+              error: '${message.replace(/'/g, "\\'")}'
+            }, '*');
+            window.close();
+          } else {
+            window.location.href = '/register?telegram_error=${encodeURIComponent(message)}';
+          }
+        </script>
+        <p>Authentication failed...</p>
+      </body>
+    </html>
+  `)
 }

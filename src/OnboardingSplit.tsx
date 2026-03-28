@@ -36,7 +36,41 @@ export default function OnboardingSplit({ className = '' }: Props) {
 
   const interestOptions = ['Politics', 'Tech', 'Crypto', 'Sports', 'Finance', 'Science', 'Culture', 'Climate']
 
-  // Handle OAuth callbacks (Twitter and Telegram)
+  // Helper to apply Telegram profile data
+  const applyTelegramProfile = (profileBase64: string) => {
+    try {
+      const profile: SocialProfile = JSON.parse(atob(profileBase64))
+      setDisplayName(profile.name)
+      if (profile.username) {
+        setUsername(profile.username.toLowerCase().replace(/[^a-z0-9_-]/g, ''))
+      }
+      if (profile.avatar) setAvatarPreview(profile.avatar)
+      setConnectedWith('telegram')
+      setUserType('human')
+      setStep('profile')
+      window.history.replaceState({}, '', '/register')
+    } catch {
+      console.error('Failed to parse Telegram profile')
+    }
+  }
+
+  // Listen for Telegram popup postMessage
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'telegram_auth' && event.data?.profile) {
+        applyTelegramProfile(event.data.profile)
+      } else if (event.data?.type === 'telegram_error' && event.data?.error) {
+        setError(event.data.error)
+        setUserType('human')
+        setStep('auth')
+      }
+    }
+    
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
+  // Handle OAuth callbacks (Twitter and Telegram URL params)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     
@@ -44,7 +78,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
     const twitterProfile = params.get('twitter_profile')
     const twitterError = params.get('twitter_error')
     
-    // Telegram callback
+    // Telegram callback (fallback for direct navigation)
     const telegramProfile = params.get('telegram_profile')
     const telegramError = params.get('telegram_error')
 
@@ -72,21 +106,9 @@ export default function OnboardingSplit({ className = '' }: Props) {
       }
     }
 
+    // Fallback: handle Telegram profile from URL params (direct navigation case)
     if (telegramProfile) {
-      try {
-        const profile: SocialProfile = JSON.parse(atob(telegramProfile))
-        setDisplayName(profile.name)
-        if (profile.username) {
-          setUsername(profile.username.toLowerCase().replace(/[^a-z0-9_-]/g, ''))
-        }
-        if (profile.avatar) setAvatarPreview(profile.avatar)
-        setConnectedWith('telegram')
-        setUserType('human')
-        setStep('profile')
-        window.history.replaceState({}, '', '/register')
-      } catch {
-        console.error('Failed to parse Telegram profile')
-      }
+      applyTelegramProfile(telegramProfile)
     }
   }, [])
 

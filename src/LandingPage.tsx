@@ -1,9 +1,17 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import type { FormEvent, Dispatch } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { deriveMarketMetrics, type Side } from './market'
 import type { MarketEntry } from './storage'
 import type { Action } from './App'
+import {
+  createChart,
+  AreaSeries,
+  ColorType,
+  type IChartApi,
+  type ISeriesApi,
+  type UTCTimestamp,
+} from 'lightweight-charts'
 
 type MarketType = 'module' | 'thesis'
 
@@ -151,6 +159,35 @@ const sampleTheses: SampleMarketSpec[] = [
 
 const sampleMarketBank = [...sampleModules, ...sampleTheses]
 
+// Sample market movers data
+const sampleMovers = [
+  { title: 'AGI achieved by 2030', probability: 0.42, change: 0.12, sparkline: [30, 32, 35, 38, 40, 42] },
+  { title: 'Fusion power plant goes online', probability: 0.28, change: -0.08, sparkline: [36, 34, 32, 30, 29, 28] },
+  { title: 'First Mars landing with crew by 2035', probability: 0.35, change: 0.05, sparkline: [30, 31, 32, 33, 34, 35] },
+  { title: 'China GDP surpasses US', probability: 0.55, change: -0.04, sparkline: [59, 58, 57, 56, 55, 55] },
+]
+
+// Sample recent trades
+const sampleTrades = [
+  { market: 'AGI by 2030', side: 'YES', amount: 500, user: 'reasoning_agent', timeAgo: '2m' },
+  { market: 'Fusion power plant', side: 'NO', amount: 250, user: 'energy_bear', timeAgo: '5m' },
+  { market: 'Mars landing 2035', side: 'YES', amount: 1000, user: 'space_bull', timeAgo: '8m' },
+  { market: 'Lab-grown meat', side: 'NO', amount: 150, user: 'biotech_skeptic', timeAgo: '12m' },
+  { market: 'UBI pilot program', side: 'YES', amount: 300, user: 'policy_watcher', timeAgo: '15m' },
+  { market: 'BCI reaches 1M users', side: 'YES', amount: 200, user: 'neuro_optimist', timeAgo: '18m' },
+]
+
+// Sample platform activity data for hero chart (last 7 days)
+const platformActivityData = [
+  { time: Date.now() / 1000 - 6 * 86400, value: 12400 },
+  { time: Date.now() / 1000 - 5 * 86400, value: 15200 },
+  { time: Date.now() / 1000 - 4 * 86400, value: 14100 },
+  { time: Date.now() / 1000 - 3 * 86400, value: 18900 },
+  { time: Date.now() / 1000 - 2 * 86400, value: 22300 },
+  { time: Date.now() / 1000 - 1 * 86400, value: 19800 },
+  { time: Date.now() / 1000, value: 24500 },
+]
+
 const categories = [
   'All',
   'AI',
@@ -266,6 +303,136 @@ function LiveCounter({ label, value, suffix = '' }: { label: string; value: numb
         {displayValue.toLocaleString()}{suffix}
       </div>
       <div className="text-xs text-neutral-500 uppercase tracking-wider mt-1">{label}</div>
+    </div>
+  )
+}
+
+// Hero chart component using lightweight-charts
+function HeroChart({ data }: { data: { time: number; value: number }[] }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<IChartApi | null>(null)
+  const seriesRef = useRef<ISeriesApi<'Area'> | null>(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const chart = createChart(container, {
+      width: container.clientWidth,
+      height: 140,
+      layout: {
+        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor: 'rgba(255, 255, 255, 0.3)',
+        fontSize: 10,
+      },
+      grid: {
+        vertLines: { visible: false },
+        horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
+      },
+      leftPriceScale: {
+        visible: false,
+      },
+      rightPriceScale: {
+        visible: true,
+        borderVisible: false,
+      },
+      timeScale: {
+        visible: true,
+        borderVisible: false,
+        timeVisible: false,
+      },
+      handleScroll: false,
+      handleScale: false,
+      crosshair: {
+        vertLine: { visible: false },
+        horzLine: { visible: false },
+      },
+    })
+
+    const series = chart.addSeries(AreaSeries, {
+      lineColor: 'rgba(16, 185, 129, 0.9)',
+      topColor: 'rgba(16, 185, 129, 0.25)',
+      bottomColor: 'rgba(16, 185, 129, 0.02)',
+      lineWidth: 2,
+      priceFormat: {
+        type: 'custom',
+        formatter: (value: number) => `${(value / 1000).toFixed(1)}k`,
+      },
+    })
+
+    chartRef.current = chart
+    seriesRef.current = series
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        chart.applyOptions({ width: entry.contentRect.width })
+      }
+    })
+    observer.observe(container)
+
+    return () => {
+      observer.disconnect()
+      chart.remove()
+      chartRef.current = null
+      seriesRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!seriesRef.current || !chartRef.current) return
+    if (data.length < 2) return
+
+    const chartData = data.map((point) => ({
+      time: point.time as UTCTimestamp,
+      value: point.value,
+    }))
+
+    seriesRef.current.setData(chartData)
+    chartRef.current.timeScale().fitContent()
+  }, [data])
+
+  return <div ref={containerRef} className="w-full" />
+}
+
+// Animated trades ticker
+function TradesTicker({ trades }: { trades: typeof sampleTrades }) {
+  const [visibleTrades, setVisibleTrades] = useState(trades.slice(0, 4))
+  const [fadeIndex, setFadeIndex] = useState(-1)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFadeIndex(0)
+      setTimeout(() => {
+        setVisibleTrades(prev => {
+          const remaining = prev.slice(1)
+          const nextIndex = (trades.indexOf(prev[prev.length - 1]) + 1) % trades.length
+          return [...remaining, trades[nextIndex]]
+        })
+        setFadeIndex(-1)
+      }, 300)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [trades])
+
+  return (
+    <div className="flex gap-6 overflow-hidden">
+      {visibleTrades.map((trade, i) => (
+        <div
+          key={`${trade.user}-${trade.market}-${i}`}
+          className={`text-sm whitespace-nowrap transition-all duration-300 ${
+            i === fadeIndex ? 'opacity-0 -translate-x-4' : 'opacity-100 translate-x-0'
+          }`}
+        >
+          <span className="text-white">@{trade.user}</span>
+          {' bought '}
+          <span className={trade.side === 'YES' ? 'text-emerald-500' : 'text-rose-500'}>
+            {trade.side}
+          </span>
+          {' on '}
+          <span className="text-neutral-300">{trade.market}</span>
+          <span className="text-neutral-500"> — {trade.timeAgo}</span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -556,6 +723,27 @@ export default function LandingPage({ markets, dispatch }: Props) {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            PLATFORM VOLUME — Visual energy with real chart
+        ═══════════════════════════════════════════════════════════════════ */}
+        <section className="max-w-7xl mx-auto px-6 py-10">
+          <div className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <span className="text-xs text-neutral-500 uppercase tracking-wider">Platform Volume</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-semibold text-white">$24,500</span>
+                  <span className="text-sm text-emerald-500">+23.7%</span>
+                </div>
+              </div>
+              <div className="text-right text-xs text-neutral-500">
+                Last 7 days
+              </div>
+            </div>
+            <HeroChart data={platformActivityData} />
           </div>
         </section>
 

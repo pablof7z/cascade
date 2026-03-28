@@ -57,22 +57,33 @@ export default function OnboardingSplit({ className = '' }: Props) {
   // Listen for Telegram popup postMessage
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // Parse event.data - Telegram sends JSON.stringify'd data
+      let data = event.data
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data)
+        } catch {
+          // Not JSON, ignore
+          return
+        }
+      }
+      
       // Handle our callback's postMessage format
-      if (event.data?.type === 'telegram_auth' && event.data?.profile) {
-        applyTelegramProfile(event.data.profile)
+      if (data?.type === 'telegram_auth' && data?.profile) {
+        applyTelegramProfile(data.profile)
         return
       }
-      if (event.data?.type === 'telegram_error' && event.data?.error) {
-        setError(event.data.error)
+      if (data?.type === 'telegram_error' && data?.error) {
+        setError(data.error)
         setUserType('human')
         setStep('auth')
         return
       }
       
       // Handle Telegram's native OAuth postMessage format
-      // Telegram sends: { event: 'auth_result', result: { id, first_name, last_name?, username?, photo_url?, auth_date, hash } }
-      if (event.data?.event === 'auth_result' && event.data?.result) {
-        const result = event.data.result
+      // Telegram sends: JSON.stringify({ event: 'auth_result', result: { id, first_name, last_name?, username?, photo_url?, auth_date, hash } })
+      if (data?.event === 'auth_result' && data?.result) {
+        const result = data.result
         if (result.id && result.first_name) {
           // Build profile from Telegram's native format
           const displayName = [result.first_name, result.last_name].filter(Boolean).join(' ')

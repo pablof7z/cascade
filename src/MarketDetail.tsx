@@ -106,23 +106,7 @@ export default function MarketDetail({ entry, dispatch }: Props) {
             </div>
           </div>
 
-          {/* Market stats - inline, no card */}
-          <div className="flex gap-8 text-sm border-t border-neutral-800 pt-6">
-            <div>
-              <div className="text-neutral-600 mb-1">Liquidity</div>
-              <div className="text-white">{market.b.toFixed(0)}</div>
-            </div>
-            <div>
-              <div className="text-neutral-600 mb-1">YES Pool</div>
-              <div className="text-white">{market.qLong.toFixed(2)}</div>
-            </div>
-            <div>
-              <div className="text-neutral-600 mb-1">NO Pool</div>
-              <div className="text-white">{market.qShort.toFixed(2)}</div>
-            </div>
-          </div>
-
-          {/* Discussion - full width below */}
+          {/* Discussion section - PRIMARY content, full width */}
           <Discussion
             marketTitle={market.title}
             marketKind="module"

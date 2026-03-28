@@ -863,12 +863,36 @@ export default function LandingPage({ markets, dispatch }: Props) {
             const matchingEntry = Object.values(markets).find(
               e => e.market.title === discussion.marketTitle
             )
-            const marketPath = matchingEntry 
-              ? `/market/${matchingEntry.market.id}`
-              : null
             
-            const content = (
-              <>
+            // Find the spec for this market to get description
+            const spec = sampleMarketBank.find(s => s.title === discussion.marketTitle)
+            
+            const handleClick = () => {
+              if (matchingEntry) {
+                // Market exists - navigate to its discussion
+                navigate(`/market/${matchingEntry.market.id}/discuss`)
+              } else if (spec) {
+                // Market doesn't exist - create it first, then navigate
+                const marketId = `discussion-${discussion.id}`
+                dispatch({
+                  type: 'CREATE_MARKET',
+                  id: marketId,
+                  title: spec.title,
+                  description: spec.description,
+                  seedWithUser: false,
+                })
+                // Navigate after a tick to let state update
+                setTimeout(() => navigate(`/market/${marketId}/discuss`), 0)
+              }
+            }
+            
+            return (
+              <button
+                key={discussion.id}
+                type="button"
+                onClick={handleClick}
+                className="block w-full text-left py-2.5 hover:bg-neutral-900/50 -mx-2 px-2 transition-colors cursor-pointer"
+              >
                 {/* Preview text */}
                 <div className="text-sm text-white truncate mb-1">{discussion.preview}</div>
                 
@@ -884,25 +908,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   <span>{discussion.replyCount} {discussion.replyCount === 1 ? 'reply' : 'replies'}</span>
                   {discussion.replyCount > 15 && <span>🔥</span>}
                 </div>
-              </>
-            )
-            
-            // Only render as link if we have a matching market
-            return marketPath ? (
-              <Link
-                key={discussion.id}
-                to={`${marketPath}/discuss`}
-                className="block py-2.5 hover:bg-neutral-900/50 -mx-2 px-2 transition-colors"
-              >
-                {content}
-              </Link>
-            ) : (
-              <div
-                key={discussion.id}
-                className="py-2.5 -mx-2 px-2 opacity-75"
-              >
-                {content}
-              </div>
+              </button>
             )
           })}
         </div>

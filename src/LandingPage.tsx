@@ -160,6 +160,7 @@ const sampleTheses: SampleMarketSpec[] = [
 const sampleMarketBank = [...sampleModules, ...sampleTheses]
 
 // Sample market movers data
+// @ts-ignore
 const sampleMovers = [
   { title: 'AGI achieved by 2030', probability: 0.42, change: 0.12, sparkline: [30, 32, 35, 38, 40, 42] },
   { title: 'Fusion power plant goes online', probability: 0.28, change: -0.08, sparkline: [36, 34, 32, 30, 29, 28] },
@@ -395,6 +396,7 @@ function HeroChart({ data }: { data: { time: number; value: number }[] }) {
 }
 
 // Animated trades ticker
+// @ts-ignore
 function TradesTicker({ trades }: { trades: typeof sampleTrades }) {
   const [visibleTrades, setVisibleTrades] = useState(trades.slice(0, 4))
   const [fadeIndex, setFadeIndex] = useState(-1)

@@ -120,6 +120,24 @@ const sampleDiscussions: SampleDiscussion[] = [
     stance: 'LONG',
     timestamp: '6h ago',
   },
+  {
+    id: 'd4',
+    marketTitle: 'Lab-grown meat exceeds 10% market share by 2028',
+    author: 'biotech_skeptic',
+    preview: 'Cost parity is a myth. Current cultivated meat runs $50/kg at scale. Traditional beef is $4/kg. That\'s not a gap you close in 4 years.',
+    replyCount: 6,
+    stance: 'SHORT',
+    timestamp: '8h ago',
+  },
+  {
+    id: 'd5',
+    marketTitle: 'Fusion power plant goes online',
+    author: 'energy_futures',
+    preview: 'Commonwealth Fusion is targeting 2030. Their SPARC tokamak is on schedule. Helion claims 2028. The physics is solved — this is now an engineering problem.',
+    replyCount: 11,
+    stance: 'LONG',
+    timestamp: '12h ago',
+  },
 ]
 
 const sampleTheses: SampleMarketSpec[] = [
@@ -374,7 +392,6 @@ function HeroChart({ data }: { data: { time: number; value: number }[] }) {
 }
 
 // Animated trades ticker
-// @ts-ignore
 function TradesTicker({ trades }: { trades: typeof sampleTrades }) {
   const [visibleTrades, setVisibleTrades] = useState(trades.slice(0, 4))
   const [fadeIndex, setFadeIndex] = useState(-1)
@@ -706,6 +723,21 @@ export default function LandingPage({ markets, dispatch }: Props) {
               </div>
             </div>
             <HeroChart data={platformActivityData} />
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            LIVE TRADES TICKER — Real-time activity feed
+        ═══════════════════════════════════════════════════════════════════ */}
+        <section className="max-w-7xl mx-auto px-6 py-4 border-b border-neutral-800/50">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 shrink-0">
+              <PulseDot color="emerald" />
+              <span className="text-xs text-neutral-500 uppercase tracking-wider">Live</span>
+            </div>
+            <div className="overflow-hidden text-sm text-neutral-400">
+              <TradesTicker trades={sampleTrades} />
+            </div>
           </div>
         </section>
 

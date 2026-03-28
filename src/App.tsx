@@ -31,6 +31,7 @@ import Activity from './Activity'
 import Blog from './Blog'
 import NavHeader from './NavHeader'
 import OnboardingSplit from './OnboardingSplit'
+import WalletPage from './WalletPage'
 import TestnetBanner from './components/TestnetBanner'
 import Footer from './components/Footer'
 
@@ -366,6 +367,7 @@ function AppContent() {
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/activity" element={<Activity />} />
         <Route path="/blog" element={<Blog />} />
+        <Route path="/wallet" element={<WalletPage />} />
         <Route path="/join" element={<OnboardingSplit className="py-12" />} />
       </Routes>
       </main>

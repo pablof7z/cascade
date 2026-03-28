@@ -28,6 +28,7 @@ import Profile from './Profile'
 import Leaderboard from './Leaderboard'
 import Activity from './Activity'
 import NavHeader from './NavHeader'
+import OnboardingSplit from './OnboardingSplit'
 import TestnetBanner from './components/TestnetBanner'
 
 type ToastTone = 'good' | 'warn' | 'neutral'
@@ -347,6 +348,7 @@ function AppContent() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/activity" element={<Activity />} />
+        <Route path="/join" element={<OnboardingSplit className="py-12" />} />
       </Routes>
       {state.toast ? (
         <div className={`fixed bottom-6 right-6 z-50 max-w-sm px-5 py-4 rounded-xl border shadow-lg backdrop-blur-sm ${

@@ -62,10 +62,10 @@ export default function NavHeader() {
             Profile
           </Link>
           <Link
-            to="/profile"
+            to="/join"
             className="px-4 py-2 text-sm font-semibold text-neutral-950 bg-white hover:bg-neutral-100 rounded-lg transition-colors"
           >
-            Start onboarding
+            Join
           </Link>
         </div>
       </div>

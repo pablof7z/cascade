@@ -57,48 +57,65 @@ export default function MarketDetail({ entry, dispatch }: Props) {
       {/* Back link */}
       <Link
         to="/"
-        className="inline-flex items-center gap-2 text-sm text-neutral-400 hover:text-white mb-6"
+        className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-white mb-8"
       >
         ← Back to Markets
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-12">
         {/* Left column - Main content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Title */}
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+        <div className="space-y-10">
+          {/* Header with dominant probability */}
+          <header>
+            <h1 className="text-2xl font-semibold text-white mb-2">
               {market.title}
             </h1>
             {market.description && (
-              <p className="text-neutral-400">{market.description}</p>
+              <p className="text-neutral-500 text-sm">{market.description}</p>
             )}
-          </div>
-
-          {/* Price display */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl">
-              <div className="text-sm text-neutral-400 mb-1">YES Price</div>
-              <div className="text-3xl font-bold text-green-400">
-                {(yesPrice * 100).toFixed(1)}¢
+            
+            {/* Dominant price display - typography does the work */}
+            <div className="mt-8 flex items-baseline gap-8">
+              <div>
+                <div className="text-5xl font-bold text-emerald-400 tracking-tight">
+                  {(yesPrice * 100).toFixed(0)}¢
+                </div>
+                <div className="text-sm text-neutral-500 mt-1">YES</div>
+              </div>
+              <div>
+                <div className="text-5xl font-bold text-rose-400 tracking-tight">
+                  {(noPrice * 100).toFixed(0)}¢
+                </div>
+                <div className="text-sm text-neutral-500 mt-1">NO</div>
               </div>
             </div>
-            <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl">
-              <div className="text-sm text-neutral-400 mb-1">NO Price</div>
-              <div className="text-3xl font-bold text-red-400">
-                {(noPrice * 100).toFixed(1)}¢
-              </div>
-            </div>
-          </div>
+          </header>
 
-          {/* Chart */}
-          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
-            <h3 className="text-sm font-medium text-neutral-400 mb-4">Price History</h3>
-            <div className="h-64">
+          {/* Chart - no card wrapper, just the chart */}
+          <div>
+            <div className="text-xs text-neutral-600 uppercase tracking-wider mb-3">Price History</div>
+            <div className="h-56">
               <PriceChart data={entry.history} />
             </div>
           </div>
 
+          {/* Market stats - inline, no card */}
+          <div className="flex gap-8 text-sm border-t border-neutral-800 pt-6">
+            <div>
+              <div className="text-neutral-600 mb-1">Liquidity</div>
+              <div className="text-white">{market.b.toFixed(0)}</div>
+            </div>
+            <div>
+              <div className="text-neutral-600 mb-1">YES Pool</div>
+              <div className="text-white">{market.qLong.toFixed(2)}</div>
+            </div>
+            <div>
+              <div className="text-neutral-600 mb-1">NO Pool</div>
+              <div className="text-white">{market.qShort.toFixed(2)}</div>
+            </div>
+          </div>
+
+          {/* Discussion - full width below */}
           <Discussion
             marketTitle={market.title}
             marketKind="module"
@@ -106,39 +123,20 @@ export default function MarketDetail({ entry, dispatch }: Props) {
             reserve={market.reserve}
             tradeCount={market.quotes.length}
           />
-
-          {/* Market stats */}
-          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
-            <h3 className="font-semibold text-white mb-4">Market Stats</h3>
-            <div className="grid grid-cols-3 gap-6">
-              <div>
-                <div className="text-sm text-neutral-400 mb-1">Liquidity (b)</div>
-                <div className="text-lg font-medium text-white">{market.b.toFixed(0)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-neutral-400 mb-1">YES Pool (qLong)</div>
-                <div className="text-lg font-medium text-white">{market.qLong.toFixed(2)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-neutral-400 mb-1">NO Pool (qShort)</div>
-                <div className="text-lg font-medium text-white">{market.qShort.toFixed(2)}</div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Right column - Trade panel */}
+        {/* Right column - Trade panel (THE ONLY CARD) */}
         <div className="lg:col-span-1">
           <div className="sticky top-24 bg-neutral-900 border border-neutral-800 rounded-xl p-6">
-            <h3 className="font-semibold text-white mb-4">Place Your Bet</h3>
+            <h3 className="font-semibold text-white mb-5">Place Your Bet</h3>
 
             {/* Side selector */}
             <div className="grid grid-cols-2 gap-3 mb-5">
               <button
                 onClick={() => setSelectedSide('LONG')}
-                className={`py-3 rounded-lg font-medium ${
+                className={`py-3 rounded-lg font-medium transition-colors ${
                   selectedSide === 'LONG'
-                    ? 'bg-green-600 text-white'
+                    ? 'bg-emerald-600 text-white'
                     : 'bg-neutral-800 text-neutral-400 hover:text-white'
                 }`}
               >
@@ -146,9 +144,9 @@ export default function MarketDetail({ entry, dispatch }: Props) {
               </button>
               <button
                 onClick={() => setSelectedSide('SHORT')}
-                className={`py-3 rounded-lg font-medium ${
+                className={`py-3 rounded-lg font-medium transition-colors ${
                   selectedSide === 'SHORT'
-                    ? 'bg-red-600 text-white'
+                    ? 'bg-rose-600 text-white'
                     : 'bg-neutral-800 text-neutral-400 hover:text-white'
                 }`}
               >
@@ -158,7 +156,7 @@ export default function MarketDetail({ entry, dispatch }: Props) {
 
             {/* Amount input */}
             <div className="mb-5">
-              <label className="block text-sm text-neutral-400 mb-2">Amount (sats)</label>
+              <label className="block text-sm text-neutral-500 mb-2">Amount (sats)</label>
               <input
                 type="number"
                 value={amount}
@@ -170,17 +168,17 @@ export default function MarketDetail({ entry, dispatch }: Props) {
 
             {/* Preview */}
             {preview && (
-              <div className="bg-neutral-800 rounded-lg p-4 mb-5 space-y-2">
+              <div className="bg-neutral-800/50 rounded-lg p-4 mb-5 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-400">Cost</span>
+                  <span className="text-neutral-500">Cost</span>
                   <span className="text-white">{formatCurrency(preview.sats)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-400">Tokens</span>
+                  <span className="text-neutral-500">Tokens</span>
                   <span className="text-white">{preview.tokens.toFixed(4)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-400">Avg Price</span>
+                  <span className="text-neutral-500">Avg Price</span>
                   <span className="text-white">{(preview.avgPrice * 100).toFixed(1)}¢</span>
                 </div>
               </div>
@@ -191,8 +189,8 @@ export default function MarketDetail({ entry, dispatch }: Props) {
               onClick={() => handleTrade(selectedSide)}
               className={`w-full py-4 rounded-lg font-bold text-lg transition-colors ${
                 selectedSide === 'LONG'
-                  ? 'bg-green-600 hover:bg-green-500 text-white'
-                  : 'bg-red-600 hover:bg-red-500 text-white'
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  : 'bg-rose-600 hover:bg-rose-500 text-white'
               }`}
             >
               Buy {selectedSide === 'LONG' ? 'YES' : 'NO'}

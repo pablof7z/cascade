@@ -105,70 +105,66 @@ export default function ThesisDetail({ markets, dispatch }: Props) {
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
       {/* Back link */}
-      <Link to="/" className="text-sm text-neutral-500 hover:text-white mb-6 inline-block">
+      <Link to="/" className="text-sm text-neutral-500 hover:text-white mb-8 inline-block">
         ← Back to markets
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-12">
         {/* Main content */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Header */}
+        <div className="space-y-10">
+          {/* Header with dominant probability */}
           <header>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+            <h1 className="text-2xl font-semibold text-white mb-2">
               {market.title}
             </h1>
             {market.description && (
-              <p className="text-neutral-400">{market.description}</p>
+              <p className="text-neutral-500 text-sm">{market.description}</p>
             )}
+
+            {/* Dominant probability - typography does the work */}
+            <div className="mt-8">
+              <div className="text-6xl font-bold text-white tracking-tight">
+                {formatPercent(metrics.longPositionShare)}
+              </div>
+              <div className="mt-3 h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full"
+                  style={{ width: `${metrics.longPositionShare * 100}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-sm mt-2">
+                <span className="text-emerald-400">{formatPercent(metrics.longPositionShare)} YES</span>
+                <span className="text-rose-400">{formatPercent(metrics.shortPositionShare)} NO</span>
+              </div>
+            </div>
           </header>
 
-          {/* Probability display */}
-          <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-5">
-            <div className="flex justify-between items-baseline mb-3">
-              <span className="text-sm text-neutral-500">Probability</span>
-              <span className="text-2xl font-bold text-white">
-                {formatPercent(metrics.longPositionShare)}
-              </span>
-            </div>
-            <div className="h-2 bg-neutral-800 rounded-full overflow-hidden mb-3">
-              <div
-                className="h-full bg-green-500 rounded-full"
-                style={{ width: `${metrics.longPositionShare * 100}%` }}
-              />
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-green-500">{formatPercent(metrics.longPositionShare)}</span>
-              <span className="text-red-500">{formatPercent(metrics.shortPositionShare)}</span>
-            </div>
-          </div>
-
-          {/* Related Modules */}
+          {/* Related Modules - flat list, no cards */}
           <section>
-            <h2 className="text-lg font-semibold text-white mb-4">Related modules</h2>
+            <div className="text-xs text-neutral-600 uppercase tracking-wider mb-4">Related Modules</div>
 
-            <div className="space-y-3">
+            <div className="divide-y divide-neutral-800">
               {mockSupportingModules.map((mod) => (
-                <div
-                  key={mod.id}
-                  className="bg-neutral-900 border border-neutral-800 rounded-lg p-4"
-                >
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <h3 className="font-medium text-white">{mod.title}</h3>
+                <div key={mod.id} className="py-4 first:pt-0 last:pb-0">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-white font-medium">{mod.title}</h3>
+                      <div className="text-sm text-neutral-500 mt-1">
+                        {formatPercent(mod.probability)} probability
+                      </div>
+                    </div>
                     <span
-                      className={`text-sm ${
-                        mod.direction === 'supports' ? 'text-green-500' : 'text-red-500'
+                      className={`text-sm font-medium ${
+                        mod.direction === 'supports' ? 'text-emerald-400' : 'text-rose-400'
                       }`}
                     >
                       {mod.direction === 'supports' ? '↑' : '↓'} {mod.impact > 0 ? '+' : ''}{mod.impact}%
                     </span>
                   </div>
-                  <div className="flex gap-6 text-sm text-neutral-500">
-                    <span>{formatPercent(mod.probability)}</span>
-                  </div>
                   <div className="h-1 bg-neutral-800 rounded-full overflow-hidden mt-3">
                     <div
                       className={`h-full rounded-full ${
-                        mod.direction === 'supports' ? 'bg-green-500' : 'bg-red-500'
+                        mod.direction === 'supports' ? 'bg-emerald-500/50' : 'bg-rose-500/50'
                       }`}
                       style={{ width: `${mod.probability * 100}%` }}
                     />
@@ -178,32 +174,45 @@ export default function ThesisDetail({ markets, dispatch }: Props) {
             </div>
           </section>
 
+          {/* Stats - inline, no card */}
+          <div className="flex gap-8 text-sm border-t border-neutral-800 pt-6">
+            <div>
+              <div className="text-neutral-600 mb-1">Reserve</div>
+              <div className="text-white">{formatCurrency(market.reserve)}</div>
+            </div>
+            <div>
+              <div className="text-neutral-600 mb-1">Trades</div>
+              <div className="text-white">{market.quotes.length}</div>
+            </div>
+            <div>
+              <div className="text-neutral-600 mb-1">Modules</div>
+              <div className="text-white">{mockSupportingModules.length}</div>
+            </div>
+          </div>
+
           {/* Discussion */}
-          <section className="pt-6 border-t border-neutral-800">
-            <Discussion
-              marketTitle={market.title}
-              marketKind="thesis"
-              consensus={metrics.longPositionShare}
-              reserve={market.reserve}
-              tradeCount={market.quotes.length}
-            />
-          </section>
+          <Discussion
+            marketTitle={market.title}
+            marketKind="thesis"
+            consensus={metrics.longPositionShare}
+            reserve={market.reserve}
+            tradeCount={market.quotes.length}
+          />
         </div>
 
-        {/* Sidebar */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Bet Panel */}
-          <div className="sticky top-24 bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-            <h3 className="font-semibold text-white mb-4">Trade</h3>
+        {/* Sidebar - Trade Panel (THE ONLY CARD) */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-24 bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+            <h3 className="font-semibold text-white mb-5">Trade</h3>
 
             {/* Side toggle */}
             <div className="grid grid-cols-2 gap-3 mb-5">
               <button
                 type="button"
                 onClick={() => setBetSide('LONG')}
-                className={`py-3 rounded-lg font-medium ${
+                className={`py-3 rounded-lg font-medium transition-colors ${
                   betSide === 'LONG'
-                    ? 'bg-green-600 text-white'
+                    ? 'bg-emerald-600 text-white'
                     : 'bg-neutral-800 text-neutral-400 hover:text-white'
                 }`}
               >
@@ -212,9 +221,9 @@ export default function ThesisDetail({ markets, dispatch }: Props) {
               <button
                 type="button"
                 onClick={() => setBetSide('SHORT')}
-                className={`py-3 rounded-lg font-medium ${
+                className={`py-3 rounded-lg font-medium transition-colors ${
                   betSide === 'SHORT'
-                    ? 'bg-red-600 text-white'
+                    ? 'bg-rose-600 text-white'
                     : 'bg-neutral-800 text-neutral-400 hover:text-white'
                 }`}
               >
@@ -239,7 +248,7 @@ export default function ThesisDetail({ markets, dispatch }: Props) {
             </label>
 
             {/* Preview */}
-            <div className="bg-neutral-800 rounded-lg p-4 mb-5 space-y-2">
+            <div className="bg-neutral-800/50 rounded-lg p-4 mb-5 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-neutral-500">Return</span>
                 <span className="text-white">
@@ -265,33 +274,14 @@ export default function ThesisDetail({ markets, dispatch }: Props) {
             <button
               type="button"
               onClick={handlePlaceBet}
-              className={`w-full py-4 rounded-lg font-medium text-lg ${
+              className={`w-full py-4 rounded-lg font-bold text-lg transition-colors ${
                 betSide === 'LONG'
-                  ? 'bg-green-600 hover:bg-green-500 text-white'
-                  : 'bg-red-600 hover:bg-red-500 text-white'
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  : 'bg-rose-600 hover:bg-rose-500 text-white'
               }`}
             >
               Buy {betSide === 'LONG' ? 'YES' : 'NO'}
             </button>
-          </div>
-
-          {/* Market Stats */}
-          <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-            <h3 className="font-semibold text-white mb-4">Stats</h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Reserve</span>
-                <span className="text-white">{formatCurrency(market.reserve)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Trades</span>
-                <span className="text-white">{market.quotes.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Modules</span>
-                <span className="text-white">{mockSupportingModules.length}</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>

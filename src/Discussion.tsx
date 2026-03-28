@@ -343,15 +343,9 @@ function buildModuleArena(marketTitle: string, consensus: number): ArenaData {
 }
 
 function positionClass(position: PositionType) {
-  if (position === 'long') return 'text-green-400'
-  if (position === 'short') return 'text-red-400'
-  return 'text-neutral-400'
-}
-
-function positionBorder(position: PositionType) {
-  if (position === 'long') return 'border-l-green-500'
-  if (position === 'short') return 'border-l-red-500'
-  return 'border-l-neutral-600'
+  if (position === 'long') return 'text-emerald-400'
+  if (position === 'short') return 'text-rose-400'
+  return 'text-neutral-500'
 }
 
 export default function Discussion({
@@ -419,66 +413,63 @@ export default function Discussion({
   }
 
   return (
-    <section className="border border-neutral-800 rounded-lg bg-neutral-950 overflow-hidden">
-      {/* Header */}
-      <div className="border-b border-neutral-800 p-6">
+    <section className="border-t border-neutral-800 pt-8">
+      {/* Header - no card wrapper */}
+      <div className="mb-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
-            <p className="text-xs uppercase tracking-wider text-neutral-500 mb-2">
+            <div className="text-xs uppercase tracking-wider text-neutral-600 mb-2">
               {arena.eyebrow}
-            </p>
-            <h2 className="text-xl font-semibold text-white mb-2">{arena.title}</h2>
-            <p className="text-sm text-neutral-400">{arena.description}</p>
+            </div>
+            <h2 className="text-lg font-medium text-white mb-2">{arena.title}</h2>
+            <p className="text-sm text-neutral-500">{arena.description}</p>
           </div>
           <div className="flex gap-6 text-sm">
             <div>
-              <div className="text-neutral-500">Consensus</div>
-              <div className="text-white font-medium">{formatPercent(consensus)}</div>
+              <div className="text-neutral-600">Consensus</div>
+              <div className="text-white">{formatPercent(consensus)}</div>
             </div>
             <div>
-              <div className="text-neutral-500">Reserve</div>
-              <div className="text-white font-medium">{formatCurrency(reserve)}</div>
+              <div className="text-neutral-600">Reserve</div>
+              <div className="text-white">{formatCurrency(reserve)}</div>
             </div>
             <div>
-              <div className="text-neutral-500">Trades</div>
-              <div className="text-white font-medium">{tradeCount}</div>
+              <div className="text-neutral-600">Trades</div>
+              <div className="text-white">{tradeCount}</div>
             </div>
           </div>
         </div>
 
-        {/* Case cards */}
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        {/* Case summaries - flat, no cards */}
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
           {arena.cards.map((card) => (
-            <div
-              key={card.label}
-              className={`p-4 bg-neutral-900 border border-neutral-800 rounded-lg border-l-2 ${positionBorder(card.stance)}`}
-            >
-              <div className="flex items-center justify-between gap-3 mb-2">
+            <div key={card.label}>
+              <div className="flex items-center gap-2 mb-2">
                 <span className={`text-sm font-medium ${positionClass(card.stance)}`}>
                   {card.label}
                 </span>
-                <span className="text-xs text-neutral-500">{card.hook}</span>
+                <span className="text-xs text-neutral-600">{card.hook}</span>
               </div>
-              <p className="text-sm text-neutral-300">{card.summary}</p>
+              <p className="text-sm text-neutral-400">{card.summary}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Main content */}
-      <div className="grid gap-6 p-6 xl:grid-cols-[1fr_320px]">
-        {/* Posts */}
-        <div className="space-y-4">
+      <div className="grid gap-8 xl:grid-cols-[1fr_300px]">
+        {/* Posts - flat list with dividers */}
+        <div>
           {/* Filters */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mb-6">
             {filterOptions.map((option) => (
               <button
                 key={option.id}
                 type="button"
-                className={`px-3 py-1.5 text-sm rounded-lg ${
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                   filter === option.id
                     ? 'bg-neutral-800 text-white'
-                    : 'text-neutral-500 hover:text-white'
+                    : 'text-neutral-600 hover:text-white'
                 }`}
                 onClick={() => setFilter(option.id)}
               >
@@ -487,32 +478,29 @@ export default function Discussion({
             ))}
           </div>
 
-          {/* Post list */}
-          <div className="space-y-3">
+          {/* Post list - NO CARDS, just dividers */}
+          <div className="divide-y divide-neutral-800">
             {filteredPosts.map((post) => (
-              <article
-                key={post.id}
-                className={`p-4 bg-neutral-900 border border-neutral-800 rounded-lg border-l-2 ${positionBorder(post.position)}`}
-              >
+              <article key={post.id} className="py-5 first:pt-0">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className="text-sm font-medium text-white">{post.author}</span>
-                      <span className="text-xs text-neutral-500">{post.role}</span>
+                      <span className="text-xs text-neutral-600">{post.role}</span>
                       <span className={`text-xs ${positionClass(post.position)}`}>
                         {stanceLabels[post.position]}
                       </span>
-                      <span className="text-xs text-neutral-600">{post.kind}</span>
+                      <span className="text-xs text-neutral-700">{post.kind}</span>
                     </div>
-                    <h3 className="text-base font-medium text-white mb-1">{post.headline}</h3>
-                    <p className="text-sm text-neutral-400">{post.content}</p>
+                    <h3 className="text-white mb-1">{post.headline}</h3>
+                    <p className="text-sm text-neutral-500">{post.content}</p>
                   </div>
                   <div className="sm:text-right shrink-0">
-                    <div className="text-xs text-neutral-500">{post.target}</div>
+                    <div className="text-xs text-neutral-600">{post.target}</div>
                   </div>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-neutral-600">
                   <span>{formatTimeAgo(post.timestamp)}</span>
                   <span>{post.replyCount} replies</span>
                   {post.stake ? <span>{formatCurrency(post.stake)} staked</span> : null}
@@ -524,39 +512,39 @@ export default function Discussion({
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-4">
-          {/* Pressure points */}
-          <aside className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg">
+        <div className="space-y-6">
+          {/* Pressure points - flat list */}
+          <aside>
             <h3 className="text-sm font-medium text-white mb-1">{arena.nodesTitle}</h3>
-            <p className="text-xs text-neutral-500 mb-4">{arena.nodesDescription}</p>
-            <div className="space-y-3">
+            <p className="text-xs text-neutral-600 mb-4">{arena.nodesDescription}</p>
+            <div className="divide-y divide-neutral-800">
               {arena.nodes.map((node) => (
-                <div key={node.id} className="p-3 bg-neutral-950 border border-neutral-800 rounded-lg">
-                  <div className="text-xs text-neutral-500 mb-1">{node.eyebrow}</div>
+                <div key={node.id} className="py-3 first:pt-0">
+                  <div className="text-xs text-neutral-600 mb-1">{node.eyebrow}</div>
                   <div className="text-sm font-medium text-white mb-1">{node.label}</div>
-                  <p className="text-xs text-neutral-400">{node.detail}</p>
+                  <p className="text-xs text-neutral-500">{node.detail}</p>
                 </div>
               ))}
             </div>
           </aside>
 
-          {/* Compose */}
+          {/* Compose - THE ONLY CARD in discussion */}
           <form
-            className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg space-y-4"
+            className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl space-y-4"
             onSubmit={handleSubmit}
           >
             <div>
               <h3 className="text-sm font-medium text-white mb-1">Enter the arena</h3>
-              <p className="text-xs text-neutral-500">{arena.composeHint}</p>
+              <p className="text-xs text-neutral-600">{arena.composeHint}</p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="text-xs text-neutral-500">Type</span>
+                <span className="text-xs text-neutral-600">Type</span>
                 <select
                   value={newKind}
                   onChange={(event) => setNewKind(event.target.value as PostKind)}
-                  className="mt-1 w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white text-sm focus:outline-none focus:border-neutral-600"
+                  className="mt-1 w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-neutral-600"
                 >
                   {kindOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -566,11 +554,11 @@ export default function Discussion({
                 </select>
               </label>
               <label className="block">
-                <span className="text-xs text-neutral-500">Stance</span>
+                <span className="text-xs text-neutral-600">Stance</span>
                 <select
                   value={newPosition}
                   onChange={(event) => setNewPosition(event.target.value as PositionType)}
-                  className="mt-1 w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white text-sm focus:outline-none focus:border-neutral-600"
+                  className="mt-1 w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-neutral-600"
                 >
                   <option value="long">{stanceLabels.long}</option>
                   <option value="short">{stanceLabels.short}</option>
@@ -580,9 +568,9 @@ export default function Discussion({
             </div>
 
             <label className="block">
-              <span className="text-xs text-neutral-500">Argument</span>
+              <span className="text-xs text-neutral-600">Argument</span>
               <textarea
-                className="mt-1 min-h-[100px] w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-white text-sm placeholder-neutral-600 focus:outline-none focus:border-neutral-600 resize-y"
+                className="mt-1 min-h-[100px] w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm placeholder-neutral-600 focus:outline-none focus:border-neutral-600 resize-y"
                 placeholder={
                   marketKind === 'thesis'
                     ? 'State the hinge, explain why it matters...'

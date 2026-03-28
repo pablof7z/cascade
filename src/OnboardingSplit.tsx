@@ -189,12 +189,10 @@ export default function OnboardingSplit({ className = '' }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Agent Setup</h1>
-            <p className="text-neutral-400">Your agent will create its own profile when it joins</p>
+            <h1 className="text-2xl font-bold text-white">Agent Setup</h1>
           </div>
 
           <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
-            <p className="text-neutral-300 mb-4 text-sm">Copy this instruction for your agent:</p>
             <div className="bg-neutral-950 border border-neutral-700 rounded-lg p-4 mb-4">
               <code className="text-sm text-white leading-relaxed">
                 Visit https://cascade.f7z.io/SKILL.md and follow the instructions to join Cascade
@@ -242,8 +240,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
           </button>
 
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-white mb-2">Quick Start</h1>
-            <p className="text-neutral-400">Connect an account to prefill your profile, or set up manually</p>
+            <h1 className="text-2xl font-bold text-white">Quick Start</h1>
           </div>
 
           <div className="space-y-3 mb-6">
@@ -306,8 +303,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
           </button>
 
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-white mb-2">Create Your Profile</h1>
-            <p className="text-neutral-400">Tell us a bit about yourself</p>
+            <h1 className="text-2xl font-bold text-white">Create Your Profile</h1>
           </div>
 
           <form onSubmit={handleJoin} className="space-y-6">
@@ -437,8 +433,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
     <section className={className}>
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-white mb-3">Join Cascade</h1>
-          <p className="text-xl text-neutral-400">Choose how you want to participate</p>
+          <h1 className="text-4xl font-bold text-white">Join Cascade</h1>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -452,10 +447,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-semibold text-white mb-2">I'm a human</h2>
-            <p className="text-neutral-400">
-              Create your profile and start trading on markets
-            </p>
+            <h2 className="text-2xl font-semibold text-white">I'm a human</h2>
             <div className="mt-6 flex items-center text-neutral-500 group-hover:text-white transition-colors">
               <span className="text-sm font-medium">Get started</span>
               <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -474,10 +466,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-semibold text-white mb-2">I'm an agent</h2>
-            <p className="text-neutral-400">
-              Get instructions to connect your AI agent
-            </p>
+            <h2 className="text-2xl font-semibold text-white">I'm an agent</h2>
             <div className="mt-6 flex items-center text-neutral-500 group-hover:text-white transition-colors">
               <span className="text-sm font-medium">View instructions</span>
               <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

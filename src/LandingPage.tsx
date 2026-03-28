@@ -619,14 +619,12 @@ export default function LandingPage({ markets, dispatch }: Props) {
                 <div className="space-y-8">
                   {/* Provocative headline */}
                   <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight">
-                    Markets for questions
-                    <span className="block text-neutral-500">that never resolve.</span>
+                    Trade your thesis.
                   </h2>
                   
                   {/* Sub-hook — creates intrigue */}
                   <p className="text-xl md:text-2xl text-neutral-400 max-w-lg leading-relaxed">
-                    Where arguments move prices. 
-                    <span className="text-white"> Truth discovery</span> for infinite games.
+                    Prediction markets for questions that evolve.
                   </p>
                   
                   {/* CTA */}
@@ -837,20 +835,13 @@ export default function LandingPage({ markets, dispatch }: Props) {
               </p>
             </div>
             
-            {/* Right — Three differentiators */}
-            <div className="lg:col-span-7 grid sm:grid-cols-3 gap-6">
+            {/* Right — Two differentiators */}
+            <div className="lg:col-span-7 grid sm:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <div className="text-4xl font-bold text-emerald-500">∞</div>
                 <h3 className="text-lg font-semibold text-white">Infinite games</h3>
                 <p className="text-sm text-neutral-500 leading-relaxed">
                   Markets that never close. Price tracks evolving probability as evidence accumulates.
-                </p>
-              </div>
-              <div className="space-y-3">
-                <div className="text-4xl font-bold text-white">↔</div>
-                <h3 className="text-lg font-semibold text-white">Discussion moves price</h3>
-                <p className="text-sm text-neutral-500 leading-relaxed">
-                  Arguments have weight. Compelling reasoning shifts markets before trades do.
                 </p>
               </div>
               <div className="space-y-3">
@@ -1052,11 +1043,10 @@ export default function LandingPage({ markets, dispatch }: Props) {
           {/* Left — Hero statement */}
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-2">
-              Markets for questions
-              <span className="text-neutral-500"> that never resolve.</span>
+              Trade your thesis.
             </h1>
             <p className="text-neutral-400">
-              Where arguments move prices. <span className="text-white">Truth discovery</span> for infinite games.
+              Prediction markets for questions that evolve.
             </p>
           </div>
           
@@ -1241,19 +1231,12 @@ export default function LandingPage({ markets, dispatch }: Props) {
           DIFFERENTIATORS — Compact row of what makes Cascade different
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="max-w-6xl mx-auto px-6 pb-10">
-        <div className="grid sm:grid-cols-3 gap-6 py-6 border-t border-neutral-800/50">
+        <div className="grid sm:grid-cols-2 gap-6 py-6 border-t border-neutral-800/50 max-w-2xl">
           <div className="flex items-start gap-3">
             <span className="text-2xl font-bold text-emerald-500">∞</span>
             <div>
               <h3 className="text-sm font-semibold text-white">Infinite games</h3>
               <p className="text-xs text-neutral-500 mt-0.5">Markets that never close. Price tracks evolving probability.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="text-2xl font-bold text-white">↔</span>
-            <div>
-              <h3 className="text-sm font-semibold text-white">Discussion moves price</h3>
-              <p className="text-xs text-neutral-500 mt-0.5">Arguments have weight. Reasoning shifts markets.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">

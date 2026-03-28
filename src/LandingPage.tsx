@@ -579,37 +579,122 @@ export default function LandingPage({ markets, dispatch }: Props) {
   )
 
   // Single unified landing page - works with or without markets
+  const featuredThesis = sampleTheses[0]
+  const featuredProbability = 0.67
+  
   return (
     <div className="min-h-screen bg-neutral-950">
       {/* ═══════════════════════════════════════════════════════════════════
-          HERO — Compact version with tagline + Platform Volume
+          HERO — Provocative statement + Featured Market
       ═══════════════════════════════════════════════════════════════════ */}
-      <section className="max-w-6xl mx-auto px-6 pt-8 pb-6">
-        <div className="grid lg:grid-cols-2 gap-8 items-center">
-          {/* Left — Hero statement */}
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-2">
-              Trade on Ideas That Don't Expire
-            </h1>
-            <p className="text-neutral-400">
-              Most prediction markets close. Cascade doesn't. Take positions on ongoing theses, change minds, move markets.
-            </p>
-          </div>
-          
-          {/* Right — Platform Volume Chart */}
-          <div className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <span className="text-xs text-neutral-500 uppercase tracking-wider">Platform Volume</span>
-                <div className="flex items-baseline gap-2 mt-0.5">
-                  <span className="text-xl font-semibold text-white">{formatCurrency(totalReserve)}</span>
-                  <span className="text-sm text-emerald-500">+23.7%</span>
+      <section className="relative min-h-[85vh] flex flex-col">
+        {/* Background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-neutral-900/50 via-neutral-950 to-neutral-950" />
+        
+        {/* Hero content */}
+        <div className="relative z-10 flex-1 flex items-center">
+          <div className="max-w-7xl mx-auto w-full px-6 py-16">
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+              
+              {/* Left — The Hook */}
+              <div className="space-y-8">
+                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight">
+                  Trade on Ideas That Don't Expire
+                </h1>
+                
+                <p className="text-xl md:text-2xl text-neutral-400 max-w-lg leading-relaxed">
+                  Most prediction markets close. Cascade doesn't. Take positions on ongoing theses, change minds, move markets.
+                </p>
+                
+                {/* CTA */}
+                <div className="flex flex-wrap items-center gap-4 pt-4">
+                  <Link
+                    to="/join"
+                    className="px-8 py-4 bg-white text-neutral-950 font-semibold rounded-lg hover:bg-neutral-100 transition-colors text-lg"
+                  >
+                    Start Trading
+                  </Link>
+                  <Link
+                    to="/join"
+                    onClick={() => setTimeout(() => document.querySelector<HTMLButtonElement>('[data-agent-btn]')?.click(), 100)}
+                    className="text-neutral-500 hover:text-neutral-300 transition-colors text-sm"
+                  >
+                    For agents →
+                  </Link>
                 </div>
               </div>
-              <span className="text-xs text-neutral-500">7 days</span>
+
+              {/* Right — Featured Thesis */}
+              <div 
+                className="relative group cursor-pointer"
+                onClick={() => {
+                  dispatch({
+                    type: 'CREATE_MARKET',
+                    title: featuredThesis.title,
+                    description: featuredThesis.description,
+                    seedWithUser: false,
+                  })
+                }}
+              >
+                <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/10 via-transparent to-emerald-500/5 rounded-2xl blur-xl group-hover:from-emerald-500/20 transition-all duration-500" />
+                
+                <article className="relative bg-neutral-900/80 backdrop-blur border border-neutral-800 rounded-2xl p-8 group-hover:border-neutral-700 transition-all duration-300">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                      {featuredThesis.category} · Thesis
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <PulseDot color="amber" />
+                      <span className="text-xs text-amber-500">47 trading now</span>
+                    </div>
+                  </div>
+                  
+                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-6 leading-tight">
+                    {featuredThesis.title}
+                  </h3>
+                  
+                  <div className="mb-6">
+                    <ProbabilityBar probability={featuredProbability} size="hero" />
+                    <div className="flex items-baseline justify-between mt-4">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-5xl font-bold text-emerald-500">{Math.round(featuredProbability * 100)}%</span>
+                        <span className="text-lg text-neutral-500">YES</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm text-emerald-500">+12% today</span>
+                        <Sparkline data={[45, 48, 52, 55, 58, 62, 67]} positive={true} size="large" />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-6 text-sm text-neutral-400 border-t border-neutral-800 pt-4">
+                    <span>$24.5K volume</span>
+                    <span>312 traders</span>
+                    <span>89 comments</span>
+                  </div>
+                </article>
+              </div>
             </div>
-            <HeroChart data={platformActivityData} />
           </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          PLATFORM VOLUME — Visual energy with real chart
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="max-w-7xl mx-auto px-6 py-10">
+        <div className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <span className="text-xs text-neutral-500 uppercase tracking-wider">Platform Volume</span>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-semibold text-white">{formatCurrency(totalReserve)}</span>
+                <span className="text-sm text-emerald-500">+23.7%</span>
+              </div>
+            </div>
+            <span className="text-xs text-neutral-500">Last 7 days</span>
+          </div>
+          <HeroChart data={platformActivityData} />
         </div>
       </section>
 
@@ -813,22 +898,86 @@ export default function LandingPage({ markets, dispatch }: Props) {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          DIFFERENTIATORS — Compact row of what makes Cascade different
+          THE DIFFERENTIATOR — Why Cascade is different
       ═══════════════════════════════════════════════════════════════════ */}
-      <section className="max-w-6xl mx-auto px-6 pb-10">
-        <div className="grid sm:grid-cols-2 gap-6 py-6 border-t border-neutral-800/50 max-w-2xl">
-          <div className="flex items-start gap-3">
-            <span className="text-2xl font-bold text-emerald-500">∞</span>
-            <div>
-              <h3 className="text-sm font-semibold text-white">Infinite games</h3>
-              <p className="text-xs text-neutral-500 mt-0.5">Markets that never close. Price tracks evolving probability.</p>
+      <section className="max-w-7xl mx-auto px-6 py-16 border-t border-neutral-900">
+        <div className="grid lg:grid-cols-12 gap-12 items-start">
+          {/* Left — Big statement */}
+          <div className="lg:col-span-5">
+            <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-6">
+              Not another
+              <span className="block text-neutral-600">prediction market.</span>
+            </h2>
+            <p className="text-lg text-neutral-400 leading-relaxed">
+              Traditional markets resolve to YES or NO. Cascade trades on evolving truth — 
+              questions that compound, theses that grow, arguments that sharpen.
+            </p>
+          </div>
+          
+          {/* Right — Two differentiators */}
+          <div className="lg:col-span-7 grid sm:grid-cols-2 gap-8">
+            <div className="space-y-3">
+              <div className="text-4xl font-bold text-emerald-500">∞</div>
+              <h3 className="text-lg font-semibold text-white">Infinite games</h3>
+              <p className="text-sm text-neutral-500 leading-relaxed">
+                Markets that never close. Price tracks evolving probability as evidence accumulates.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div className="text-4xl font-bold text-amber-500">◆</div>
+              <h3 className="text-lg font-semibold text-white">Modular theses</h3>
+              <p className="text-sm text-neutral-500 leading-relaxed">
+                Stack predictions. Your thesis on AI depends on AGI timing and labor economics.
+              </p>
             </div>
           </div>
-          <div className="flex items-start gap-3">
-            <span className="text-2xl font-bold text-amber-500">◆</span>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          CTA — Start a market
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="max-w-7xl mx-auto px-6 py-24">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-neutral-900 via-neutral-900 to-neutral-800 border border-neutral-800 p-12">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
+          
+          <div className="relative grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h3 className="text-sm font-semibold text-white">Modular theses</h3>
-              <p className="text-xs text-neutral-500 mt-0.5">Stack predictions. Build composite positions.</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                Have a thesis?
+              </h2>
+              <p className="text-lg text-neutral-400 mb-6">
+                Turn your conviction into a market. Let the crowd price your prediction.
+              </p>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(true)}
+                  className="px-6 py-3 bg-white text-neutral-950 font-semibold rounded-lg hover:bg-neutral-100 transition-colors"
+                >
+                  Create market
+                </button>
+                <Link
+                  to="/builder"
+                  className="px-6 py-3 border border-neutral-700 text-white font-medium rounded-lg hover:border-neutral-500 transition-colors"
+                >
+                  Build thesis
+                </Link>
+              </div>
+            </div>
+            
+            {/* Quick preview of form */}
+            <div className="bg-neutral-950/50 rounded-xl p-6 border border-neutral-800">
+              <div className="space-y-4 opacity-75">
+                <div className="h-3 w-20 bg-neutral-800 rounded" />
+                <div className="h-12 bg-neutral-800/50 rounded-lg border border-neutral-700" />
+                <div className="h-3 w-24 bg-neutral-800 rounded" />
+                <div className="h-20 bg-neutral-800/50 rounded-lg border border-neutral-700" />
+                <div className="flex gap-3">
+                  <div className="flex-1 h-10 bg-white/10 rounded-lg" />
+                  <div className="w-24 h-10 bg-neutral-800 rounded-lg" />
+                </div>
+              </div>
             </div>
           </div>
         </div>

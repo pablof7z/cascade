@@ -1145,10 +1145,16 @@ export default function LandingPage({ markets, dispatch }: Props) {
                 {/* Probability bar */}
                 <ProbabilityBar probability={metrics.longPositionShare} size="large" />
 
-                {/* Odds */}
-                <div className="flex justify-between text-sm mt-2 mb-3">
-                  <span className="text-emerald-500">{formatPercent(metrics.longPositionShare)}</span>
-                  <span className="text-rose-500">{formatPercent(metrics.shortPositionShare)}</span>
+                {/* Odds + Sparkline */}
+                <div className="flex justify-between items-center text-sm mt-2 mb-3">
+                  <div className="flex gap-4">
+                    <span className="text-emerald-500">{formatPercent(metrics.longPositionShare)}</span>
+                    <span className="text-rose-500">{formatPercent(metrics.shortPositionShare)}</span>
+                  </div>
+                  <Sparkline 
+                    data={[35, 38, 42, 40, 45, Math.round(metrics.longPositionShare * 100)]} 
+                    positive={metrics.longPositionShare > 0.4} 
+                  />
                 </div>
 
                 {/* Meta */}
@@ -1182,40 +1188,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
               <div className="text-sm text-white truncate mb-1">{discussion.preview}</div>
               
               {/* Metadata: market title + author + time + replies */}
-              <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-                <span>in</span>
-                <span className="text-neutral-400">"{discussion.marketTitle}"</span>
-                <span>•</span>
-                <span className="text-neutral-400">@{discussion.author}</span>
-                <span>•</span>
-                <span>{discussion.timestamp}</span>
-                <span>•</span>
-                <span>{discussion.replyCount} {discussion.replyCount === 1 ? 'reply' : 'replies'}</span>
-                {discussion.replyCount > 15 && <span>🔥</span>}
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* Latest Discussions - Reddit-style flat list, below markets */}
-      <section className="max-w-6xl mx-auto px-6 pb-10">
-        <div className="flex items-center gap-3 mb-4">
-          <PulseDot color="emerald" />
-          <h2 className="text-xl font-bold text-white">Latest Discussions</h2>
-        </div>
-        
-        <div className="divide-y divide-neutral-800/50">
-          {sampleDiscussions.map(discussion => (
-            <Link
-              key={discussion.id}
-              to={`/thesis/${discussion.id}`}
-              className="block py-2.5 hover:bg-neutral-900/50 -mx-2 px-2 transition-colors"
-            >
-              {/* Preview text */}
-              <div className="text-sm text-white truncate mb-1">{discussion.preview}</div>
-              
-              {/* Metadata with market title */}
               <div className="flex items-center gap-1.5 text-xs text-neutral-500">
                 <span>in</span>
                 <span className="text-neutral-400">"{discussion.marketTitle}"</span>

@@ -70,7 +70,8 @@ export default function Wallet() {
         setDeposit(dep)
         
         // Get the bolt11 invoice - check various property names
-        const invoice = (dep as any).pr || (dep as any).bolt11 || dep.quoteId
+        // The deposit returns an object with 'request' containing the bolt11 string
+        const invoice = (dep as any).pr || (dep as any).bolt11 || (dep as any).request
         if (invoice) {
           setBolt11(invoice)
         }

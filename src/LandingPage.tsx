@@ -196,6 +196,44 @@ const sampleTrades = [
   { market: 'BCI reaches 1M users', side: 'YES', amount: 200, user: 'neuro_optimist', timeAgo: '18m' },
 ]
 
+// Helper to classify markets into curated sections
+function classifyMarkets(entries: MarketEntry[]) {
+  const withMetrics = entries.map(e => ({
+    entry: e,
+    tradeCount: e.market.quotes.length,
+    reserve: e.market.reserve,
+    spec: getSampleSpec(e.market.title),
+  }))
+
+  // Trending: High trade activity (top by trade count)
+  const trending = [...withMetrics]
+    .sort((a, b) => b.tradeCount - a.tradeCount)
+    .slice(0, 5)
+    .map(m => m.entry)
+
+  // Pink-sheet: Low market cap underdogs (bottom by reserve)
+  const pinkSheet = [...withMetrics]
+    .filter(m => m.reserve < 500) // Low reserve threshold
+    .sort((a, b) => a.reserve - b.reserve)
+    .slice(0, 4)
+    .map(m => m.entry)
+
+  // New this week: Most recently created (using ID as proxy for recency)
+  const newThisWeek = entries.slice(-4)
+
+  // Hot debates: Markets with high trade count AND balanced odds (contentious)
+  const hotDebates = [...withMetrics]
+    .filter(m => {
+      const metrics = deriveMarketMetrics(m.entry.market)
+      const balance = Math.abs(metrics.longPositionShare - 0.5)
+      return balance < 0.2 && m.tradeCount >= 2 // Near 50-50 and has activity
+    })
+    .slice(0, 3)
+    .map(m => m.entry)
+
+  return { trending, pinkSheet, newThisWeek, hotDebates }
+}
+
 // Sample platform activity data for hero chart (last 7 days)
 const platformActivityData = [
   { time: Date.now() / 1000 - 6 * 86400, value: 12400 },
@@ -724,9 +762,266 @@ export default function LandingPage({ markets, dispatch }: Props) {
         </div>
       </section>
 
+      {/* ═══════════════════════════════════════════════════════════════════
+          CURATED SECTIONS — Visual variety with different layouts
+      ═══════════════════════════════════════════════════════════════════ */}
+      {(() => {
+        const curated = classifyMarkets(entries)
+        
+        return (
+          <>
+            {/* TRENDING MARKETS — Sidebar layout: featured + sidebar picks */}
+            {curated.trending.length > 0 && (
+              <section className="max-w-7xl mx-auto px-6 py-10">
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="text-2xl">🔥</span>
+                  <h2 className="text-2xl font-bold text-white">Trending Markets</h2>
+                  <span className="text-sm text-neutral-500">High activity</span>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
+                  {/* Featured (first trending) */}
+                  {curated.trending[0] && (() => {
+                    const { market } = curated.trending[0]
+                    const metrics = deriveMarketMetrics(market)
+                    const spec = getSampleSpec(market.title)
+                    const detailPath = spec?.type === 'thesis' ? `/thesis/${market.id}` : `/market/${market.id}`
+                    
+                    return (
+                      <article
+                        className="bg-gradient-to-br from-neutral-900 to-neutral-900/50 border border-neutral-800 rounded-xl p-8 cursor-pointer hover:border-emerald-500/30 transition-all group"
+                        onClick={() => navigate(detailPath)}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-medium text-emerald-500 uppercase tracking-wider">
+                            {spec?.category || 'Market'} · Featured
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <PulseDot color="emerald" />
+                            <span className="text-xs text-emerald-500">{market.quotes.length} trades</span>
+                          </div>
+                        </div>
+                        
+                        <h3 className="text-2xl md:text-3xl font-bold text-white mb-4 group-hover:text-emerald-50 transition-colors">
+                          {market.title}
+                        </h3>
+                        
+                        <p className="text-neutral-400 mb-6 line-clamp-2">{market.description}</p>
+                        
+                        <ProbabilityBar probability={metrics.longPositionShare} size="hero" />
+                        
+                        <div className="flex items-baseline justify-between mt-4">
+                          <div className="flex items-baseline gap-3">
+                            <span className="text-4xl font-bold text-emerald-500">{formatPercent(metrics.longPositionShare)}</span>
+                            <span className="text-neutral-500">YES</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-neutral-500">
+                            <span>{formatCurrency(market.reserve)} reserve</span>
+                            <Sparkline 
+                              data={[35, 40, 38, 45, 50, Math.round(metrics.longPositionShare * 100)]} 
+                              positive={metrics.longPositionShare > 0.4}
+                              size="large"
+                            />
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  })()}
+                  
+                  {/* Sidebar — Compact list of other trending */}
+                  <aside className="space-y-3">
+                    <span className="text-xs text-neutral-500 uppercase tracking-wider">Also trending</span>
+                    {curated.trending.slice(1, 5).map(({ market }) => {
+                      const metrics = deriveMarketMetrics(market)
+                      const spec = getSampleSpec(market.title)
+                      const detailPath = spec?.type === 'thesis' ? `/thesis/${market.id}` : `/market/${market.id}`
+                      
+                      return (
+                        <article
+                          key={market.id}
+                          className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-4 cursor-pointer hover:border-neutral-700 transition-all"
+                          onClick={() => navigate(detailPath)}
+                        >
+                          <h4 className="text-sm font-medium text-white mb-2 line-clamp-1">{market.title}</h4>
+                          <div className="flex items-center justify-between">
+                            <span className="text-emerald-500 text-sm font-medium">{formatPercent(metrics.longPositionShare)}</span>
+                            <Sparkline 
+                              data={[30, 35, 33, 40, Math.round(metrics.longPositionShare * 100)]} 
+                              positive={metrics.longPositionShare > 0.4}
+                            />
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </aside>
+                </div>
+              </section>
+            )}
+
+            {/* PINK-SHEET MARKETS — Asymmetric grid: underdogs */}
+            {curated.pinkSheet.length > 0 && (
+              <section className="max-w-7xl mx-auto px-6 py-10 border-t border-neutral-900">
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="text-2xl">📉</span>
+                  <h2 className="text-2xl font-bold text-white">Pink-Sheet Markets</h2>
+                  <span className="text-sm text-neutral-500">Low cap underdogs</span>
+                </div>
+                
+                <div className="grid lg:grid-cols-12 gap-6">
+                  {/* Left side — 5 cols: featured underdog */}
+                  {curated.pinkSheet[0] && (() => {
+                    const { market } = curated.pinkSheet[0]
+                    const metrics = deriveMarketMetrics(market)
+                    const spec = getSampleSpec(market.title)
+                    const detailPath = spec?.type === 'thesis' ? `/thesis/${market.id}` : `/market/${market.id}`
+                    
+                    return (
+                      <article
+                        className="lg:col-span-5 bg-neutral-900 border border-amber-500/20 rounded-xl p-6 cursor-pointer hover:border-amber-500/40 transition-all"
+                        onClick={() => navigate(detailPath)}
+                      >
+                        <span className="inline-block px-2 py-1 text-xs font-medium text-amber-500 bg-amber-500/10 rounded mb-3">
+                          Underdog
+                        </span>
+                        <h3 className="text-xl font-bold text-white mb-3">{market.title}</h3>
+                        <ProbabilityBar probability={metrics.longPositionShare} size="large" />
+                        <div className="flex justify-between items-center mt-3 text-sm">
+                          <span className="text-emerald-500 font-medium">{formatPercent(metrics.longPositionShare)}</span>
+                          <span className="text-amber-500">{formatCurrency(market.reserve)}</span>
+                        </div>
+                      </article>
+                    )
+                  })()}
+                  
+                  {/* Right side — 7 cols: grid of other underdogs */}
+                  <div className="lg:col-span-7 grid sm:grid-cols-2 gap-4">
+                    {curated.pinkSheet.slice(1, 4).map(({ market }) => {
+                      const metrics = deriveMarketMetrics(market)
+                      const spec = getSampleSpec(market.title)
+                      const detailPath = spec?.type === 'thesis' ? `/thesis/${market.id}` : `/market/${market.id}`
+                      
+                      return (
+                        <article
+                          key={market.id}
+                          className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-4 cursor-pointer hover:border-neutral-700 transition-all"
+                          onClick={() => navigate(detailPath)}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="text-sm font-medium text-white line-clamp-2 flex-1">{market.title}</h4>
+                            <span className="text-xs text-amber-500 ml-2 shrink-0">{formatCurrency(market.reserve)}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-emerald-500 text-sm">{formatPercent(metrics.longPositionShare)}</span>
+                            <div className="flex-1">
+                              <ProbabilityBar probability={metrics.longPositionShare} />
+                            </div>
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* HOT DEBATES + NEW THIS WEEK — Two-column split */}
+            {(curated.hotDebates.length > 0 || curated.newThisWeek.length > 0) && (
+              <section className="max-w-7xl mx-auto px-6 py-10 border-t border-neutral-900">
+                <div className="grid md:grid-cols-2 gap-10">
+                  {/* Hot Debates — Markets with contentious odds */}
+                  {curated.hotDebates.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-3 mb-5">
+                        <span className="text-xl">⚔️</span>
+                        <h2 className="text-xl font-bold text-white">Hot Debates</h2>
+                      </div>
+                      <div className="space-y-3">
+                        {curated.hotDebates.map(({ market }) => {
+                          const metrics = deriveMarketMetrics(market)
+                          const spec = getSampleSpec(market.title)
+                          const detailPath = spec?.type === 'thesis' ? `/thesis/${market.id}` : `/market/${market.id}`
+                          
+                          return (
+                            <article
+                              key={market.id}
+                              className="bg-neutral-900/50 border border-rose-500/10 rounded-lg p-4 cursor-pointer hover:border-rose-500/30 transition-all"
+                              onClick={() => navigate(detailPath)}
+                            >
+                              <h4 className="text-sm font-medium text-white mb-3">{market.title}</h4>
+                              <div className="flex items-center gap-4">
+                                <div className="flex-1">
+                                  <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-emerald-500">YES {formatPercent(metrics.longPositionShare)}</span>
+                                    <span className="text-rose-500">NO {formatPercent(metrics.shortPositionShare)}</span>
+                                  </div>
+                                  <div className="h-2 bg-neutral-800 rounded-full overflow-hidden flex">
+                                    <div 
+                                      className="bg-emerald-500 h-full" 
+                                      style={{ width: `${metrics.longPositionShare * 100}%` }}
+                                    />
+                                    <div 
+                                      className="bg-rose-500 h-full" 
+                                      style={{ width: `${metrics.shortPositionShare * 100}%` }}
+                                    />
+                                  </div>
+                                </div>
+                                <span className="text-xs text-neutral-500">{market.quotes.length} trades</span>
+                              </div>
+                            </article>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* New This Week */}
+                  {curated.newThisWeek.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-3 mb-5">
+                        <span className="text-xl">✨</span>
+                        <h2 className="text-xl font-bold text-white">New This Week</h2>
+                      </div>
+                      <div className="space-y-3">
+                        {curated.newThisWeek.map(({ market }) => {
+                          const metrics = deriveMarketMetrics(market)
+                          const spec = getSampleSpec(market.title)
+                          const detailPath = spec?.type === 'thesis' ? `/thesis/${market.id}` : `/market/${market.id}`
+                          
+                          return (
+                            <article
+                              key={market.id}
+                              className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-4 cursor-pointer hover:border-neutral-700 transition-all group"
+                              onClick={() => navigate(detailPath)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center shrink-0">
+                                  <span className="text-emerald-500 text-lg font-bold">{formatPercent(metrics.longPositionShare).replace('%', '')}</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-sm font-medium text-white truncate group-hover:text-emerald-50">{market.title}</h4>
+                                  <span className="text-xs text-neutral-500">{spec?.category || 'Market'}</span>
+                                </div>
+                                <Sparkline 
+                                  data={[40, 42, 45, 43, Math.round(metrics.longPositionShare * 100)]} 
+                                  positive={metrics.longPositionShare > 0.4}
+                                />
+                              </div>
+                            </article>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+          </>
+        )
+      })()}
+
       {/* Header */}
-      <header className="max-w-6xl mx-auto px-6 pt-4 pb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h2 className="text-xl font-bold text-white">Active Markets</h2>
+      <header className="max-w-6xl mx-auto px-6 pt-4 pb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-neutral-900">
+        <h2 className="text-xl font-bold text-white">All Markets</h2>
         <div className="flex gap-3">
           <button
             type="button"
@@ -798,9 +1093,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
 
       {/* Market cards */}
       <section className="max-w-6xl mx-auto px-6 pb-10">
-        <div className="flex items-center gap-3 mb-6">
-          <h2 className="text-xl font-bold text-white">Active Markets</h2>
-        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredEntries.map(({ market }) => {
             const metrics = deriveMarketMetrics(market)

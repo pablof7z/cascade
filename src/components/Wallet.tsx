@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 import { loadStoredKeys } from '../nostrKeys'
 import { loadOrCreateWallet, getWalletBalance, createDeposit, sendTokens, receiveToken } from '../walletStore'
 import type { NDKCashuDeposit } from '@nostr-dev-kit/wallet'
@@ -14,6 +15,7 @@ export default function Wallet() {
   const [showReceive, setShowReceive] = useState(false)
   const [depositAmount, setDepositAmount] = useState('')
   const [deposit, setDeposit] = useState<NDKCashuDeposit | null>(null)
+  const [bolt11, setBolt11] = useState<string | null>(null)
   const [sendAmount, setSendAmount] = useState('')
   const [sendResult, setSendResult] = useState<string | null>(null)
   const [receiveToken_, setReceiveToken] = useState('')
@@ -59,24 +61,39 @@ export default function Wallet() {
     if (!amount || amount < 1) return
 
     setActionLoading(true)
-    const dep = await createDeposit(amount)
-    setActionLoading(false)
+    setError(null)
+    
+    try {
+      const dep = await createDeposit(amount)
 
-    if (dep) {
-      setDeposit(dep)
-      // Listen for success
-      dep.on('success', () => {
-        setDeposit(null)
-        setShowDeposit(false)
-        setDepositAmount('')
-        refreshBalance()
-      })
-      dep.on('error', (err) => {
-        setError(`Deposit failed: ${err}`)
-      })
-    } else {
-      setError('Failed to create deposit')
+      if (dep) {
+        setDeposit(dep)
+        
+        // Get the bolt11 invoice - check various property names
+        const invoice = (dep as any).pr || (dep as any).bolt11 || dep.quoteId
+        if (invoice) {
+          setBolt11(invoice)
+        }
+        
+        // Listen for success
+        dep.on('success', () => {
+          setDeposit(null)
+          setBolt11(null)
+          setShowDeposit(false)
+          setDepositAmount('')
+          refreshBalance()
+        })
+        dep.on('error', (err) => {
+          setError(`Deposit failed: ${err}`)
+        })
+      } else {
+        setError('Failed to create deposit')
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create deposit')
     }
+    
+    setActionLoading(false)
   }
 
   const handleSend = async () => {
@@ -208,22 +225,30 @@ export default function Wallet() {
             </>
           ) : (
             <>
+              {/* QR Code Display */}
+              {bolt11 && (
+                <div className="flex justify-center mb-4">
+                  <div className="bg-white p-3 rounded-lg">
+                    <QRCodeSVG value={bolt11.toUpperCase()} size={200} />
+                  </div>
+                </div>
+              )}
               <div className="bg-neutral-950 p-3 rounded mb-3">
                 <p className="text-xs text-neutral-400 mb-1">Lightning Invoice</p>
-                <p className="text-xs text-white font-mono break-all">{deposit.quoteId || 'Generating...'}</p>
+                <p className="text-xs text-white font-mono break-all">{bolt11 || 'Generating...'}</p>
               </div>
-              <p className="text-xs text-neutral-400 mb-3">Pay this invoice to deposit sats. Waiting for payment...</p>
+              <p className="text-xs text-neutral-400 mb-3">Scan QR code or copy invoice to deposit {parseInt(depositAmount).toLocaleString()} sats. Waiting for payment...</p>
               <div className="flex gap-2">
-                {deposit.quoteId && (
+                {bolt11 && (
                   <button
-                    onClick={() => copyToClipboard(deposit.quoteId!)}
+                    onClick={() => copyToClipboard(bolt11)}
                     className="flex-1 px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded"
                   >
                     Copy Invoice
                   </button>
                 )}
                 <button
-                  onClick={() => { setDeposit(null); setShowDeposit(false); setDepositAmount(''); }}
+                  onClick={() => { setDeposit(null); setBolt11(null); setShowDeposit(false); setDepositAmount(''); }}
                   className="px-3 py-2 text-neutral-400 hover:text-white"
                 >
                   Cancel

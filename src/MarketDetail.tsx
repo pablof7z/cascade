@@ -74,6 +74,13 @@ export default function MarketDetail({ entry, dispatch }: Props) {
               <p className="text-neutral-500 text-sm">{market.description}</p>
             )}
             
+            <Link
+              to={`/market/${market.id}/discuss`}
+              className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-sm font-medium text-white bg-neutral-800 hover:bg-neutral-700 transition-colors"
+            >
+              💬 Join Discussion
+            </Link>
+            
             {/* Dominant price display - typography does the work */}
             <div className="mt-8 flex items-baseline gap-8">
               <div>

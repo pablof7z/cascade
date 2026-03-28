@@ -1,0 +1,170 @@
+- generic [ref=e3]:
+  - button "Paper Trading Mode — All balances are simulated. No real money involved. (click to switch to mainnet)" [ref=e4] [cursor=pointer]:
+    - generic [ref=e5]:
+      - text: Paper Trading Mode — All balances are simulated. No real money involved.
+      - generic [ref=e7]: (click to switch to mainnet)
+  - banner [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - link "Cascade" [ref=e11] [cursor=pointer]:
+          - /url: /
+        - button "Testnet" [ref=e12] [cursor=pointer]
+        - navigation [ref=e13]:
+          - link "Markets" [ref=e14] [cursor=pointer]:
+            - /url: /
+          - link "Leaderboard" [ref=e15] [cursor=pointer]:
+            - /url: /leaderboard
+          - link "Activity" [ref=e16] [cursor=pointer]:
+            - /url: /activity
+      - generic [ref=e17]:
+        - generic [ref=e19]:
+          - textbox "Search markets..." [active] [ref=e20]: AI
+          - img [ref=e21]
+        - link "Create Market" [ref=e23] [cursor=pointer]:
+          - /url: /builder
+        - button "U" [ref=e25]:
+          - generic [ref=e26]: U
+          - img [ref=e27]
+  - main [ref=e29]:
+    - generic [ref=e344]:
+      - generic [ref=e345]:
+        - heading "Activity" [level=1] [ref=e346]
+        - paragraph [ref=e347]: Recent activity across all markets
+      - generic [ref=e348]:
+        - button "All" [ref=e349]
+        - button "Trades" [ref=e350]
+        - button "New Markets" [ref=e351]
+        - button "Resolutions" [ref=e352]
+      - generic [ref=e353]:
+        - generic [ref=e354]:
+          - generic [ref=e355]: 💱
+          - generic [ref=e356]:
+            - generic [ref=e357]:
+              - generic [ref=e358]: futurist_alice
+              - generic [ref=e359]: AI timelines
+              - generic [ref=e360]: 2m ago
+            - generic [ref=e361]:
+              - generic [ref=e362]: bought YES
+              - generic [ref=e363]: $250 @ 58¢
+            - link "module AGI achieved by 2030" [ref=e364] [cursor=pointer]:
+              - /url: /market/1
+              - generic [ref=e365]: module
+              - generic [ref=e366]: AGI achieved by 2030
+        - generic [ref=e367]:
+          - generic [ref=e368]: 🆕
+          - generic [ref=e369]:
+            - generic [ref=e370]:
+              - generic [ref=e371]: thesis_builder
+              - generic [ref=e372]: Thesis builder
+              - generic [ref=e373]: 15m ago
+            - generic [ref=e375]: created thesis
+            - link "thesis The Great Decoupling" [ref=e376] [cursor=pointer]:
+              - /url: /thesis/20
+              - generic [ref=e377]: thesis
+              - generic [ref=e378]: The Great Decoupling
+        - generic [ref=e379]:
+          - generic [ref=e380]: 💱
+          - generic [ref=e381]:
+            - generic [ref=e382]:
+              - generic [ref=e383]: oracle_bob
+              - generic [ref=e384]: Macro catalysts
+              - generic [ref=e385]: 32m ago
+            - generic [ref=e386]:
+              - generic [ref=e387]: sold NO
+              - generic [ref=e388]: $180 @ 29¢
+            - link "module First Mars landing by 2035" [ref=e389] [cursor=pointer]:
+              - /url: /market/2
+              - generic [ref=e390]: module
+              - generic [ref=e391]: First Mars landing by 2035
+        - generic [ref=e392]:
+          - generic [ref=e393]: ✅
+          - generic [ref=e394]:
+            - generic [ref=e395]:
+              - generic [ref=e396]: system
+              - generic [ref=e397]: Settlement engine
+              - generic [ref=e398]: 1h ago
+            - generic [ref=e400]: resolved YES
+            - link "module GPT-5 released in 2024" [ref=e401] [cursor=pointer]:
+              - /url: /market/5
+              - generic [ref=e402]: module
+              - generic [ref=e403]: GPT-5 released in 2024
+        - generic [ref=e404]:
+          - generic [ref=e405]: 💱
+          - generic [ref=e406]:
+            - generic [ref=e407]:
+              - generic [ref=e408]: sigma_trader
+              - generic [ref=e409]: Energy & climate
+              - generic [ref=e410]: 1h ago
+            - generic [ref=e411]:
+              - generic [ref=e412]: bought YES
+              - generic [ref=e413]: $500 @ 41¢
+            - link "module Fusion power plant goes online" [ref=e414] [cursor=pointer]:
+              - /url: /market/3
+              - generic [ref=e415]: module
+              - generic [ref=e416]: Fusion power plant goes online
+        - generic [ref=e417]:
+          - generic [ref=e418]: 🆕
+          - generic [ref=e419]:
+            - generic [ref=e420]:
+              - generic [ref=e421]: future_shaper
+              - generic [ref=e422]: New market scout
+              - generic [ref=e423]: 2h ago
+            - generic [ref=e425]: created module
+            - link "module Neuralink FDA approval by 2026" [ref=e426] [cursor=pointer]:
+              - /url: /market/10
+              - generic [ref=e427]: module
+              - generic [ref=e428]: Neuralink FDA approval by 2026
+        - generic [ref=e429]:
+          - generic [ref=e430]: 💱
+          - generic [ref=e431]:
+            - generic [ref=e432]:
+              - generic [ref=e433]: ai_believer
+              - generic [ref=e434]: Labs & benchmarks
+              - generic [ref=e435]: 3h ago
+            - generic [ref=e436]:
+              - generic [ref=e437]: bought NO
+              - generic [ref=e438]: $320 @ 38¢
+            - link "thesis The Great Decoupling" [ref=e439] [cursor=pointer]:
+              - /url: /thesis/20
+              - generic [ref=e440]: thesis
+              - generic [ref=e441]: The Great Decoupling
+        - generic [ref=e442]:
+          - generic [ref=e443]: ✅
+          - generic [ref=e444]:
+            - generic [ref=e445]:
+              - generic [ref=e446]: system
+              - generic [ref=e447]: Settlement engine
+              - generic [ref=e448]: 4h ago
+            - generic [ref=e450]: resolved NO
+            - link "module Bitcoin hits $200k in 2025" [ref=e451] [cursor=pointer]:
+              - /url: /market/8
+              - generic [ref=e452]: module
+              - generic [ref=e453]: Bitcoin hits $200k in 2025
+        - generic [ref=e454]:
+          - generic [ref=e455]: 💱
+          - generic [ref=e456]:
+            - generic [ref=e457]:
+              - generic [ref=e458]: space_hodler
+              - generic [ref=e459]: Launch & defense
+              - generic [ref=e460]: 5h ago
+            - generic [ref=e461]:
+              - generic [ref=e462]: bought YES
+              - generic [ref=e463]: $750 @ 52¢
+            - link "thesis Space economy exceeds $1T by 2040" [ref=e464] [cursor=pointer]:
+              - /url: /thesis/21
+              - generic [ref=e465]: thesis
+              - generic [ref=e466]: Space economy exceeds $1T by 2040
+        - generic [ref=e467]:
+          - generic [ref=e468]: 🆕
+          - generic [ref=e469]:
+            - generic [ref=e470]:
+              - generic [ref=e471]: market_maker_1
+              - generic [ref=e472]: Liquidity strategist
+              - generic [ref=e473]: 6h ago
+            - generic [ref=e475]: created module
+            - link "module Commercial quantum computer by 2028" [ref=e476] [cursor=pointer]:
+              - /url: /market/11
+              - generic [ref=e477]: module
+              - generic [ref=e478]: Commercial quantum computer by 2028
+  - contentinfo [ref=e244]:
+    - generic [ref=e246]: "Build: 83cdd3f"

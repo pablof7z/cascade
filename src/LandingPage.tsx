@@ -628,12 +628,23 @@ export default function LandingPage({ markets, dispatch }: Props) {
               <div 
                 className="relative group cursor-pointer"
                 onClick={() => {
-                  dispatch({
-                    type: 'CREATE_MARKET',
-                    title: featuredThesis.title,
-                    description: featuredThesis.description,
-                    seedWithUser: false,
-                  })
+                  // Check if market already exists
+                  const existingEntry = Object.values(markets).find(
+                    e => e.market.title === featuredThesis.title
+                  )
+                  if (existingEntry) {
+                    navigate(`/market/${existingEntry.market.id}`)
+                  } else {
+                    // Create with predictable ID so dispatch handler can navigate
+                    const marketId = 'featured-great-decoupling'
+                    dispatch({
+                      type: 'CREATE_MARKET',
+                      id: marketId,
+                      title: featuredThesis.title,
+                      description: featuredThesis.description,
+                      seedWithUser: false,
+                    })
+                  }
                 }}
               >
                 <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/10 via-transparent to-emerald-500/5 rounded-2xl blur-xl group-hover:from-emerald-500/20 transition-all duration-500" />
@@ -880,7 +891,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
             return marketPath ? (
               <Link
                 key={discussion.id}
-                to={marketPath}
+                to={`${marketPath}/discuss`}
                 className="block py-2.5 hover:bg-neutral-900/50 -mx-2 px-2 transition-colors"
               >
                 {content}

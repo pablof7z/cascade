@@ -22,11 +22,13 @@ import { load, save, type MarketEntry } from './storage'
 import LandingPage from './LandingPage'
 import MarketDetail from './MarketDetail'
 import ThesisDetail from './ThesisDetail'
+import DiscussPage from './DiscussPage'
 import ThesisBuilder from './ThesisBuilder'
 import Portfolio from './Portfolio'
 import Profile from './Profile'
 import Leaderboard from './Leaderboard'
 import Activity from './Activity'
+import Blog from './Blog'
 import NavHeader from './NavHeader'
 import OnboardingSplit from './OnboardingSplit'
 import TestnetBanner from './components/TestnetBanner'
@@ -296,17 +298,27 @@ function reducer(state: State, action: Action): State {
 function MarketDetailWrapper({ markets, dispatch }: { markets: Record<string, MarketEntry>; dispatch: React.Dispatch<Action> }) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const entry = id ? markets[id] : undefined
   
-  if (!id || !markets[id]) {
-    navigate('/')
+  useEffect(() => {
+    if (!id || !entry) {
+      navigate('/', { replace: true })
+    }
+  }, [id, entry, navigate])
+  
+  if (!entry) {
     return null
   }
   
-  return <MarketDetail key={id} entry={markets[id]} dispatch={dispatch} />
+  return <MarketDetail key={id} entry={entry} dispatch={dispatch} />
 }
 
 function ThesisDetailWrapper({ markets, dispatch }: { markets: Record<string, MarketEntry>; dispatch: React.Dispatch<Action> }) {
   return <ThesisDetail markets={markets} dispatch={dispatch} />
+}
+
+function DiscussPageWrapper({ markets }: { markets: Record<string, MarketEntry> }) {
+  return <DiscussPage markets={markets} />
 }
 
 function AppContent() {
@@ -325,11 +337,13 @@ function AppContent() {
 
   // Handle market creation navigation
   const handleDispatch = (action: Action) => {
-    dispatch(action)
-    if (action.type === 'CREATE_MARKET') {
-      // Navigate after state updates - we need to get the new market ID
-      // For now, just stay on the page - the reducer will handle view changes
+    if (action.type === 'CREATE_MARKET' && action.id) {
+      // If caller provided an ID, navigate after dispatch
+      dispatch(action)
+      navigate(`/market/${action.id}`)
+      return
     }
+    dispatch(action)
     if (action.type === 'DELETE_MARKET') {
       navigate('/')
     }
@@ -343,6 +357,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<LandingPage markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/market/:id" element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
+        <Route path="/market/:id/discuss" element={<DiscussPageWrapper markets={state.markets} />} />
         <Route path="/thesis/:id" element={<ThesisDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/builder" element={<ThesisBuilder markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/onboarding" element={<Profile />} />
@@ -350,6 +365,7 @@ function AppContent() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/activity" element={<Activity />} />
+        <Route path="/blog" element={<Blog />} />
         <Route path="/join" element={<OnboardingSplit className="py-12" />} />
       </Routes>
       </main>

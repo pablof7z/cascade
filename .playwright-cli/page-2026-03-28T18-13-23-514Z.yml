@@ -1,0 +1,139 @@
+- generic [ref=e3]:
+  - button "Paper Trading Mode — All balances are simulated. No real money involved. (click to switch to mainnet)" [ref=e4] [cursor=pointer]:
+    - generic [ref=e5]:
+      - text: Paper Trading Mode — All balances are simulated. No real money involved.
+      - generic [ref=e7]: (click to switch to mainnet)
+  - banner [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - link "Cascade" [ref=e11] [cursor=pointer]:
+          - /url: /
+        - button "Testnet" [ref=e12] [cursor=pointer]
+        - navigation [ref=e13]:
+          - link "Markets" [ref=e14] [cursor=pointer]:
+            - /url: /
+          - link "Leaderboard" [active] [ref=e15] [cursor=pointer]:
+            - /url: /leaderboard
+          - link "Activity" [ref=e16] [cursor=pointer]:
+            - /url: /activity
+      - generic [ref=e17]:
+        - generic [ref=e19]:
+          - textbox "Search markets..." [ref=e20]
+          - img [ref=e21]
+        - link "Create Market" [ref=e23] [cursor=pointer]:
+          - /url: /builder
+        - button "U" [ref=e25]:
+          - generic [ref=e26]: U
+          - img [ref=e27]
+  - main [ref=e29]:
+    - generic [ref=e259]:
+      - generic [ref=e260]:
+        - heading "Leaderboard" [level=1] [ref=e261]
+        - paragraph [ref=e262]: Top performers on Cascade
+      - generic [ref=e263]:
+        - button "Top Predictors" [ref=e264]
+        - button "Top Creators" [ref=e265]
+        - button "Most Accurate" [ref=e266]
+      - generic [ref=e267]:
+        - button "All Time" [ref=e268]
+        - button "This Month" [ref=e269]
+        - button "This Week" [ref=e270]
+      - generic [ref=e271]:
+        - generic [ref=e272]:
+          - generic [ref=e273]: "1"
+          - generic [ref=e274]:
+            - generic [ref=e275]: futurist_alice
+            - text: AI timelines
+          - generic [ref=e276]:
+            - generic [ref=e277]:
+              - generic [ref=e278]: $8,420
+              - text: Total P&L
+            - generic [ref=e279]:
+              - generic [ref=e280]: "156"
+              - text: Trades
+        - generic [ref=e281]:
+          - generic [ref=e282]: "2"
+          - generic [ref=e283]:
+            - generic [ref=e284]: oracle_bob
+            - text: Macro catalysts
+          - generic [ref=e285]:
+            - generic [ref=e286]:
+              - generic [ref=e287]: $6,250
+              - text: Total P&L
+            - generic [ref=e288]:
+              - generic [ref=e289]: "98"
+              - text: Trades
+        - generic [ref=e290]:
+          - generic [ref=e291]: "3"
+          - generic [ref=e292]:
+            - generic [ref=e293]: sigma_trader
+            - text: Energy & climate
+          - generic [ref=e294]:
+            - generic [ref=e295]:
+              - generic [ref=e296]: $5,180
+              - text: Total P&L
+            - generic [ref=e297]:
+              - generic [ref=e298]: "203"
+              - text: Trades
+        - generic [ref=e299]:
+          - generic [ref=e300]: "4"
+          - generic [ref=e301]:
+            - generic [ref=e302]: cascader_99
+            - text: Signal hunter
+          - generic [ref=e303]:
+            - generic [ref=e304]:
+              - generic [ref=e305]: $4,720
+              - text: Total P&L
+            - generic [ref=e306]:
+              - generic [ref=e307]: "87"
+              - text: Trades
+        - generic [ref=e308]:
+          - generic [ref=e309]: "5"
+          - generic [ref=e310]:
+            - generic [ref=e311]: ai_believer
+            - text: Labs & benchmarks
+          - generic [ref=e312]:
+            - generic [ref=e313]:
+              - generic [ref=e314]: $3,950
+              - text: Total P&L
+            - generic [ref=e315]:
+              - generic [ref=e316]: "142"
+              - text: Trades
+        - generic [ref=e317]:
+          - generic [ref=e318]: "6"
+          - generic [ref=e319]:
+            - generic [ref=e320]: space_hodler
+            - text: Launch & defense
+          - generic [ref=e321]:
+            - generic [ref=e322]:
+              - generic [ref=e323]: $3,420
+              - text: Total P&L
+            - generic [ref=e324]:
+              - generic [ref=e325]: "65"
+              - text: Trades
+        - generic [ref=e326]:
+          - generic [ref=e327]: "7"
+          - generic [ref=e328]:
+            - generic [ref=e329]: climate_prophet
+            - text: Policy watcher
+          - generic [ref=e330]:
+            - generic [ref=e331]:
+              - generic [ref=e332]: $2,890
+              - text: Total P&L
+            - generic [ref=e333]:
+              - generic [ref=e334]: "78"
+              - text: Trades
+        - generic [ref=e335]:
+          - generic [ref=e336]: "8"
+          - generic [ref=e337]:
+            - generic [ref=e338]: tech_oracle
+            - text: Frontier theses
+          - generic [ref=e339]:
+            - generic [ref=e340]:
+              - generic [ref=e341]: $2,450
+              - text: Total P&L
+            - generic [ref=e342]:
+              - generic [ref=e343]: "112"
+              - text: Trades
+  - contentinfo [ref=e244]:
+    - generic [ref=e246]: "Build: 83cdd3f"

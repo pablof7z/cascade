@@ -926,8 +926,67 @@ export default function LandingPage({ markets, dispatch }: Props) {
         </div>
       </div>
 
+      {/* Latest Discussions */}
+      <section className="max-w-6xl mx-auto px-6 pb-10">
+        <div className="flex items-center gap-3 mb-6">
+          <PulseDot color="emerald" />
+          <h2 className="text-xl font-bold text-white">Latest Discussions</h2>
+        </div>
+        
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sampleDiscussions.map(discussion => (
+            <Link
+              key={discussion.id}
+              to={`/thesis/${discussion.id}`}
+              className="block bg-neutral-900 border border-neutral-800 rounded-lg p-4 hover:border-neutral-700 hover:bg-neutral-900/80 transition-all"
+            >
+              <div className="flex items-start gap-3">
+                {/* Author avatar */}
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neutral-600 to-neutral-800 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                  {discussion.author.slice(0, 2).toUpperCase()}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  {/* Author + stance + time */}
+                  <div className="flex items-center flex-wrap gap-2 mb-2">
+                    <span className="text-sm font-medium text-white">@{discussion.author}</span>
+                    {discussion.stance && (
+                      <span className={`px-1.5 py-0.5 text-xs font-bold rounded ${
+                        discussion.stance === 'LONG' 
+                          ? 'bg-emerald-500/20 text-emerald-400' 
+                          : 'bg-rose-500/20 text-rose-400'
+                      }`}>
+                        {discussion.stance}
+                      </span>
+                    )}
+                    <span className="text-xs text-neutral-500">{discussion.timestamp}</span>
+                  </div>
+                  
+                  {/* Market title */}
+                  <div className="text-xs text-neutral-500 mb-2">{discussion.marketTitle}</div>
+                  
+                  {/* Preview text */}
+                  <p className="text-sm text-neutral-300 line-clamp-2 mb-3">
+                    {discussion.preview}
+                  </p>
+                  
+                  {/* Reply count + heat indicator */}
+                  <div className="flex items-center gap-3 text-xs text-neutral-500">
+                    <span>{discussion.replyCount} replies</span>
+                    {discussion.replyCount > 15 && <span>🔥</span>}
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       {/* Market cards */}
       <section className="max-w-6xl mx-auto px-6 pb-10">
+        <div className="flex items-center gap-3 mb-6">
+          <h2 className="text-xl font-bold text-white">Active Markets</h2>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredEntries.map(({ market }) => {
             const metrics = deriveMarketMetrics(market)

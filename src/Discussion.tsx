@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { MarketKind, ThesisSignal } from './market'
 import { sampleTheses } from './marketCatalog'
+import MockProfileLink from './components/MockProfileLink'
 
 type PositionType = 'long' | 'short' | 'none'
 type PostKind = 'claim' | 'rebuttal' | 'evidence' | 'catalyst'
@@ -456,7 +457,12 @@ export default function Discussion({
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-white">{post.author}</span>
+                      <MockProfileLink
+                        handle={post.author}
+                        className="text-white hover:text-white"
+                        compact
+                        stopPropagation
+                      />
                       <span className="text-xs text-neutral-600">{post.role}</span>
                       <span className={`text-xs ${positionClass(post.position)}`}>
                         {stanceLabels[post.position]}

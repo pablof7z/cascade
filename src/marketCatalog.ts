@@ -57,15 +57,15 @@ export const sampleModules: SampleMarketSpec[] = [
 
 export const sampleTheses: SampleMarketSpec[] = [
   {
-    title: "The Great Decoupling - AI productivity gains don't translate to wage growth",
+    title: "The Great Decoupling — AI productivity gains don't translate to wage growth",
     description:
       'Despite AI driving significant productivity increases, median real wages in developed economies remain flat or decline through 2035.',
     category: 'AI & Compute',
     type: 'thesis',
     thesis: {
-      statement: "The Great Decoupling - AI productivity gains don't translate to wage growth",
+      statement: "The Great Decoupling — AI productivity gains don't translate to wage growth",
       argument:
-        'The core claim is that AI compounds output far faster than labor can defend its share of that output. Software captures more of the marginal work, firms keep more of the operating leverage, and institutions react after the fact. If that dynamic is right, the economy can look more productive on paper while households still feel squeezed.',
+        '## Core claim\n\nAI compounds output faster than labor can defend its share of that output.\n\n### What needs to happen\n\n- Software captures more of the marginal work.\n- Firms keep more of the operating leverage.\n- Institutions react after the fact instead of repricing labor immediately.\n\n> If that sequence holds, the economy can look more productive on paper while households still feel squeezed.',
       signals: [
         {
           moduleTitle: 'AGI achieved by 2030',

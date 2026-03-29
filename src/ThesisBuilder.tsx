@@ -4,6 +4,8 @@ import type { Dispatch } from 'react'
 import type { Action } from './App'
 import { deriveMarketMetrics, type ThesisSignalOutcome } from './market'
 import { inferMarketType } from './marketCatalog'
+import MarkdownContent from './components/MarkdownContent'
+import TiptapEditor from './components/TiptapEditor'
 import type { MarketEntry } from './storage'
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -255,18 +257,20 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
         <h2 className="text-3xl font-semibold text-white">
           Write the case
         </h2>
+        <p className="mt-2 max-w-2xl text-sm text-neutral-500">
+          Use headings, lists, quotes, and emphasis. The final thesis page renders this markdown directly.
+        </p>
       </div>
 
       <label className="block">
         <span className="text-sm font-medium text-neutral-400 mb-3 block">
           Argument
         </span>
-        <textarea
+        <TiptapEditor
           value={thesisArgument}
-          onChange={(event) => setThesisArgument(event.target.value)}
-          rows={12}
+          onChange={setThesisArgument}
           placeholder="Why does this thesis play out?"
-          className="min-h-[240px] w-full resize-y border-0 border-b border-neutral-800 bg-transparent px-0 py-4 text-base text-white placeholder-neutral-600 focus:outline-none focus:border-white"
+          className="border-b border-neutral-800 pb-4"
         />
       </label>
     </div>
@@ -452,9 +456,11 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
 
       <section className="border-b border-neutral-800 pb-6">
         <h3 className="text-sm text-neutral-500 mb-2">Argument</h3>
-        <p className="whitespace-pre-line text-neutral-300">
-          {trimmedArgument || '—'}
-        </p>
+        {trimmedArgument ? (
+          <MarkdownContent content={trimmedArgument} className="text-neutral-300" />
+        ) : (
+          <p className="text-neutral-400">—</p>
+        )}
       </section>
 
       <section>

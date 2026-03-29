@@ -8,7 +8,10 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
  * - User can toggle via UI, stored in localStorage
  */
 
-const STORAGE_KEY = 'cascade_testnet_mode'
+const STORAGE_KEY = 'cascade_network'
+const LEGACY_STORAGE_KEY = 'cascade_testnet_mode'
+const TESTNET_STORAGE_VALUE = 'testnet'
+const MAINNET_STORAGE_VALUE = 'mainnet'
 
 // Default from env var, fallback to true (prototype phase)
 const ENV_DEFAULT = import.meta.env.VITE_TESTNET_DEFAULT !== 'false'
@@ -38,16 +41,33 @@ interface TestnetContextValue {
 
 const TestnetContext = createContext<TestnetContextValue | null>(null)
 
+function readStoredTestnetPreference(): boolean | null {
+  if (typeof window === 'undefined') return null
+
+  const storedNetwork = localStorage.getItem(STORAGE_KEY)
+  if (storedNetwork === TESTNET_STORAGE_VALUE) return true
+  if (storedNetwork === MAINNET_STORAGE_VALUE) return false
+
+  const legacyStored = localStorage.getItem(LEGACY_STORAGE_KEY)
+  if (legacyStored === 'true') return true
+  if (legacyStored === 'false') return false
+
+  return null
+}
+
+function persistTestnetPreference(isTestnet: boolean) {
+  localStorage.setItem(STORAGE_KEY, isTestnet ? TESTNET_STORAGE_VALUE : MAINNET_STORAGE_VALUE)
+  localStorage.removeItem(LEGACY_STORAGE_KEY)
+}
+
 export function TestnetProvider({ children }: { children: ReactNode }) {
   const [isTestnet, setIsTestnet] = useState(() => {
-    if (typeof window === 'undefined') return ENV_DEFAULT
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored !== null) return stored === 'true'
-    return ENV_DEFAULT
+    return readStoredTestnetPreference() ?? ENV_DEFAULT
   })
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, String(isTestnet))
+    if (typeof window === 'undefined') return
+    persistTestnetPreference(isTestnet)
   }, [isTestnet])
 
   const toggle = () => setIsTestnet(prev => !prev)

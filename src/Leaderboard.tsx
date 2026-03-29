@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import type { MarketEntry } from './storage'
+import { useBookmarks } from './useBookmarks'
 
-type LeaderboardTab = 'Top Predictors' | 'Top Creators' | 'Most Accurate'
+type LeaderboardTab = 'Top Predictors' | 'Top Creators' | 'Most Accurate' | 'Most Bookmarked'
 type TimeFilter = 'All Time' | 'This Month' | 'This Week'
 
 interface LeaderboardEntry {
@@ -11,6 +14,7 @@ interface LeaderboardEntry {
   stat1Label: string
   stat2: number
   stat2Label: string
+  marketId?: string
 }
 
 // Mock data generators
@@ -47,7 +51,7 @@ function generateAccurate(): LeaderboardEntry[] {
   ]
 }
 
-const leaderboardTabs: LeaderboardTab[] = ['Top Predictors', 'Top Creators', 'Most Accurate']
+const leaderboardTabs: LeaderboardTab[] = ['Top Predictors', 'Top Creators', 'Most Accurate', 'Most Bookmarked']
 const timeFilters: TimeFilter[] = ['All Time', 'This Month', 'This Week']
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -57,17 +61,27 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 
 function formatStat(value: number, label: string): string {
   if (label === 'Total P&L' || label === 'Volume') {
-    return `$${currencyFormatter.format(value)}`
+    return `${currencyFormatter.format(value)}`
   }
-  if (label === 'Accuracy %') {
+  if (label === 'Accuracy %' || label === 'Yes %') {
     return `${value.toFixed(1)}%`
+  }
+  if (label === 'Bookmarks') {
+    return value.toString()
   }
   return value.toString()
 }
 
-export default function Leaderboard() {
+interface LeaderboardProps {
+  markets?: Record<string, MarketEntry>
+}
+
+export default function Leaderboard({ markets = {} }: LeaderboardProps) {
   const [activeTab, setActiveTab] = useState<LeaderboardTab>('Top Predictors')
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('All Time')
+
+  const marketIds = useMemo(() => Object.keys(markets), [markets])
+  const { getTopBookmarked } = useBookmarks(marketIds)
 
   const getEntries = (): LeaderboardEntry[] => {
     switch (activeTab) {
@@ -77,6 +91,20 @@ export default function Leaderboard() {
         return generateCreators()
       case 'Most Accurate':
         return generateAccurate()
+      case 'Most Bookmarked':
+        return getTopBookmarked(10).map((item, i) => {
+          const market = markets[item.marketId]?.market
+          return {
+            rank: i + 1,
+            displayName: market?.title ?? item.marketId.slice(0, 12) + '…',
+            descriptor: market?.description?.slice(0, 60) || 'Prediction market',
+            stat1: item.count,
+            stat1Label: 'Bookmarks',
+            stat2: market ? Math.round((market.qLong / (market.qLong + market.qShort)) * 100) : 0,
+            stat2Label: 'Yes %',
+            marketId: item.marketId,
+          }
+        })
     }
   }
 
@@ -134,30 +162,51 @@ export default function Leaderboard() {
 
       {/* Leaderboard list */}
       <div className="space-y-2">
-        {entries.map((entry) => (
-          <div
-            key={entry.rank}
-            className="flex items-center gap-4 p-4 bg-neutral-800 border border-neutral-700 rounded-lg"
-          >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${getRankStyle(entry.rank)}`}>
-              {entry.rank}
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="block text-white font-medium">{entry.displayName}</span>
-              <span className="text-xs text-neutral-500">{entry.descriptor}</span>
-            </div>
-            <div className="flex gap-6">
-              <div className="text-right">
-                <span className="block text-white font-medium">{formatStat(entry.stat1, entry.stat1Label)}</span>
-                <span className="text-xs text-neutral-500">{entry.stat1Label}</span>
+        {entries.length === 0 && activeTab === 'Most Bookmarked' && (
+          <p className="text-neutral-500 text-sm py-8 text-center">
+            No bookmarked markets yet. Bookmark markets to see them ranked here.
+          </p>
+        )}
+        {entries.map((entry) => {
+          const content = (
+            <>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${getRankStyle(entry.rank)}`}>
+                {entry.rank}
               </div>
-              <div className="text-right">
-                <span className="block text-white font-medium">{formatStat(entry.stat2, entry.stat2Label)}</span>
-                <span className="text-xs text-neutral-500">{entry.stat2Label}</span>
+              <div className="flex-1 min-w-0">
+                <span className="block text-white font-medium truncate">{entry.displayName}</span>
+                <span className="text-xs text-neutral-500 truncate block">{entry.descriptor}</span>
               </div>
+              <div className="flex gap-6 shrink-0">
+                <div className="text-right">
+                  <span className="block text-white font-medium">{formatStat(entry.stat1, entry.stat1Label)}</span>
+                  <span className="text-xs text-neutral-500">{entry.stat1Label}</span>
+                </div>
+                <div className="text-right">
+                  <span className="block text-white font-medium">{formatStat(entry.stat2, entry.stat2Label)}</span>
+                  <span className="text-xs text-neutral-500">{entry.stat2Label}</span>
+                </div>
+              </div>
+            </>
+          )
+
+          return entry.marketId ? (
+            <Link
+              key={entry.rank}
+              to={`/market/${entry.marketId}`}
+              className="flex items-center gap-4 p-4 bg-neutral-800 border border-neutral-700 rounded-lg hover:border-neutral-600 hover:bg-neutral-750 transition-colors"
+            >
+              {content}
+            </Link>
+          ) : (
+            <div
+              key={entry.rank}
+              className="flex items-center gap-4 p-4 bg-neutral-800 border border-neutral-700 rounded-lg"
+            >
+              {content}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

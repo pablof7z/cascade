@@ -151,6 +151,13 @@ export default function NavHeader() {
                     Profile
                   </Link>
                   <Link
+                    to="/bookmarks"
+                    className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    Bookmarks
+                  </Link>
+                  <Link
                     to="/settings"
                     className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
                     onClick={() => setUserMenuOpen(false)}

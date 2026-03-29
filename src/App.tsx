@@ -28,6 +28,7 @@ import ThesisBuilder from './ThesisBuilder'
 import Portfolio from './Portfolio'
 import Profile from './Profile'
 import Leaderboard from './Leaderboard'
+import BookmarksPage from './BookmarksPage'
 import Activity from './Activity'
 import Blog from './Blog'
 import HowItWorks from './HowItWorks'
@@ -374,7 +375,8 @@ function AppContent() {
         <Route path="/onboarding" element={<Profile />} />
         <Route path="/portfolio" element={<Portfolio />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/leaderboard" element={<Leaderboard markets={state.markets} />} />
+        <Route path="/bookmarks" element={<BookmarksPage />} />
         <Route path="/activity" element={<Activity />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/how-it-works" element={<HowItWorks />} />

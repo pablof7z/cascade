@@ -7,6 +7,8 @@ import { priceLong, priceShort, previewTrade } from './market'
 import Discussion from './Discussion'
 import PriceChart from './PriceChart'
 import EmbedModal from './components/EmbedModal'
+import BookmarkButton from './components/BookmarkButton'
+import { useBookmarks } from './useBookmarks'
 
 type TradeAction = {
   type: 'TRADE'
@@ -37,6 +39,7 @@ export default function MarketDetail({ entry, dispatch }: Props) {
   const [showEmbedModal, setShowEmbedModal] = useState(false)
 
   const market = entry.market
+  const { isBookmarked, toggle, getCount } = useBookmarks([market.id])
 
   const yesPrice = priceLong(market.qLong, market.qShort, market.b)
   const noPrice = priceShort(market.qLong, market.qShort, market.b)
@@ -69,9 +72,18 @@ export default function MarketDetail({ entry, dispatch }: Props) {
         <div className="space-y-10">
           {/* Header with dominant probability */}
           <header>
-            <h1 className="text-2xl font-semibold text-white mb-2">
-              {market.title}
-            </h1>
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="text-2xl font-semibold text-white mb-2">
+                {market.title}
+              </h1>
+              <BookmarkButton
+                isBookmarked={isBookmarked(market.id)}
+                count={getCount(market.id)}
+                onToggle={() => toggle(market.id)}
+                size="md"
+                showCount
+              />
+            </div>
             {market.description && (
               <p className="text-neutral-500 text-sm">{market.description}</p>
             )}

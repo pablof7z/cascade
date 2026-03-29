@@ -705,7 +705,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-6 py-20">
         <div className="flex items-baseline gap-4 mb-12">
-          <h2 className="text-3xl font-black text-white tracking-tight">Hot Debates</h2>
+          <h2 className="text-3xl font-black text-white tracking-tight">Latest Discussions</h2>
           <span className="text-sm text-neutral-600">Near 50/50 · Markets in conflict</span>
         </div>
 
@@ -946,7 +946,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="flex items-center gap-3 mb-8">
             <PulseDot color="emerald" />
-            <h2 className="text-3xl font-black text-white tracking-tight">The Debate</h2>
+            <h2 className="text-3xl font-black text-white tracking-tight">Latest Discussions</h2>
           </div>
 
           <div className="max-w-3xl space-y-0">

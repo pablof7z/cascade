@@ -1,10 +1,12 @@
 import { useParams, Link } from 'react-router-dom'
 import { deriveMarketMetrics, type Side } from './market'
+import { getThesisDefinition } from './marketCatalog'
 import type { MarketEntry } from './storage'
 import type { Action } from './App'
 import type { Dispatch } from 'react'
 import { useState } from 'react'
 import Discussion from './Discussion'
+import MarkdownContent from './components/MarkdownContent'
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
@@ -18,45 +20,6 @@ function formatCurrency(value: number) {
 function formatPercent(value: number) {
   return `${currencyFormatter.format(value * 100)}%`
 }
-
-interface SupportingModule {
-  id: string
-  title: string
-  probability: number
-  impact: number
-  direction: 'supports' | 'opposes'
-}
-
-const mockSupportingModules: SupportingModule[] = [
-  {
-    id: 'mod-1',
-    title: 'AGI achieved by 2030',
-    probability: 0.35,
-    impact: 15,
-    direction: 'supports',
-  },
-  {
-    id: 'mod-2',
-    title: 'US implements UBI pilot program',
-    probability: 0.42,
-    impact: 8,
-    direction: 'supports',
-  },
-  {
-    id: 'mod-3',
-    title: 'Major tech company announces mass layoffs due to AI',
-    probability: 0.68,
-    impact: 12,
-    direction: 'supports',
-  },
-  {
-    id: 'mod-4',
-    title: 'Real wages grow 2%+ annually through 2030',
-    probability: 0.55,
-    impact: -20,
-    direction: 'opposes',
-  },
-]
 
 type Props = {
   thesisId?: string
@@ -87,6 +50,18 @@ export default function ThesisDetail({ markets, dispatch }: Props) {
 
   const { market } = entry
   const metrics = deriveMarketMetrics(market)
+  const thesis = getThesisDefinition(market)
+  const relatedSignals = (thesis?.signals ?? []).map((signal) => {
+    const matchingEntry =
+      (signal.moduleMarketId ? markets[signal.moduleMarketId] : undefined) ??
+      Object.values(markets).find((candidate) => candidate.market.title === signal.moduleTitle)
+
+    return {
+      ...signal,
+      routeId: matchingEntry?.market.id,
+      probability: matchingEntry ? deriveMarketMetrics(matchingEntry.market).longPositionShare : undefined,
+    }
+  })
 
   const handlePlaceBet = () => {
     const amount = Number(betAmount)
@@ -114,12 +89,15 @@ export default function ThesisDetail({ markets, dispatch }: Props) {
         <div className="space-y-10">
           {/* Header with dominant probability */}
           <header>
+            <div className="text-xs uppercase tracking-[0.18em] text-neutral-500">
+              Thesis market
+            </div>
             <h1 className="text-2xl font-semibold text-white mb-2">
-              {market.title}
+              {thesis?.statement ?? market.title}
             </h1>
-            {market.description && (
-              <p className="text-neutral-500 text-sm">{market.description}</p>
-            )}
+            <p className="text-neutral-500 text-sm">
+              Build the case, attach signal markets, and trade the argument in public.
+            </p>
 
             {/* Dominant probability - typography does the work */}
             <div className="mt-8">
@@ -139,39 +117,73 @@ export default function ThesisDetail({ markets, dispatch }: Props) {
             </div>
           </header>
 
+          <section>
+            <div className="text-xs text-neutral-600 uppercase tracking-wider mb-4">Thesis</div>
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-6">
+              <MarkdownContent
+                content={thesis?.argument ?? market.description}
+                className="text-base leading-7 text-neutral-300"
+              />
+            </div>
+          </section>
+
           {/* Related Modules - flat list, no cards */}
           <section>
             <div className="text-xs text-neutral-600 uppercase tracking-wider mb-4">Related Modules</div>
 
-            <div className="divide-y divide-neutral-800">
-              {mockSupportingModules.map((mod) => (
-                <div key={mod.id} className="py-4 first:pt-0 last:pb-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-white font-medium">{mod.title}</h3>
-                      <div className="text-sm text-neutral-500 mt-1">
-                        {formatPercent(mod.probability)} probability
+            {relatedSignals.length > 0 ? (
+              <div className="divide-y divide-neutral-800">
+                {relatedSignals.map((signal, index) => (
+                  <div key={`${signal.moduleTitle}-${index}`} className="py-4 first:pt-0 last:pb-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        {signal.routeId ? (
+                          <Link
+                            to={`/market/${signal.routeId}`}
+                            className="font-medium text-white transition-colors hover:text-emerald-300"
+                          >
+                            {signal.moduleTitle}
+                          </Link>
+                        ) : (
+                          <h3 className="text-white font-medium">{signal.moduleTitle}</h3>
+                        )}
+                        <div className="mt-1 text-sm text-neutral-500">
+                          {signal.note || 'No rationale added for this signal yet.'}
+                        </div>
+                        {signal.probability !== undefined ? (
+                          <div className="mt-2 text-xs text-neutral-500">
+                            Live YES {formatPercent(signal.probability)}
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-xs text-neutral-600">Mock-only signal link</div>
+                        )}
                       </div>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                          signal.expectedOutcome === 'YES'
+                            ? 'bg-emerald-500/10 text-emerald-300'
+                            : 'bg-rose-500/10 text-rose-300'
+                        }`}
+                      >
+                        Expect {signal.expectedOutcome}
+                      </span>
                     </div>
-                    <span
-                      className={`text-sm font-medium ${
-                        mod.direction === 'supports' ? 'text-emerald-400' : 'text-rose-400'
-                      }`}
-                    >
-                      {mod.direction === 'supports' ? '↑' : '↓'} {mod.impact > 0 ? '+' : ''}{mod.impact}%
-                    </span>
+                    {signal.probability !== undefined ? (
+                      <div className="mt-3 h-1 bg-neutral-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-emerald-500/60"
+                          style={{ width: `${signal.probability * 100}%` }}
+                        />
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="h-1 bg-neutral-800 rounded-full overflow-hidden mt-3">
-                    <div
-                      className={`h-full rounded-full ${
-                        mod.direction === 'supports' ? 'bg-emerald-500/50' : 'bg-rose-500/50'
-                      }`}
-                      style={{ width: `${mod.probability * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-neutral-800 p-5 text-sm text-neutral-500">
+                No signal markets attached yet. Launch from the thesis builder to connect this argument to specific modules.
+              </div>
+            )}
           </section>
 
           {/* Stats - inline, no card */}
@@ -186,7 +198,7 @@ export default function ThesisDetail({ markets, dispatch }: Props) {
             </div>
             <div>
               <div className="text-neutral-600 mb-1">Modules</div>
-              <div className="text-white">{mockSupportingModules.length}</div>
+              <div className="text-white">{relatedSignals.length}</div>
             </div>
           </div>
 
@@ -197,6 +209,7 @@ export default function ThesisDetail({ markets, dispatch }: Props) {
             consensus={metrics.longPositionShare}
             reserve={market.reserve}
             tradeCount={market.quotes.length}
+            thesisSignals={thesis?.signals}
           />
         </div>
 

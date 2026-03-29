@@ -3,6 +3,8 @@ import type { FormEvent, Dispatch } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AgentFeatureSection from './components/AgentFeatureSection'
 import { deriveMarketMetrics, type Side } from './market'
+import { getThesisDefinition } from './marketCatalog'
+import MockProfileLink from './components/MockProfileLink'
 import type { MarketEntry } from './storage'
 import type { Action } from './App'
 // lightweight-charts used by market detail pages
@@ -98,7 +100,7 @@ const sampleDiscussions: SampleDiscussion[] = [
   },
   {
     id: 'd2',
-    marketTitle: 'The Great Decoupling',
+    marketTitle: 'The Great Decoupling — AI productivity gains don\'t translate to wage growth',
     author: 'macro_watcher',
     preview: 'Productivity-wage decoupling started in 1973, not with AI. The thesis conflates correlation with causation. Real wages track total compensation when you include benefits.',
     replyCount: 8,
@@ -277,7 +279,12 @@ function TradesTicker({ trades }: { trades: typeof sampleTrades }) {
             i === fadeIndex ? 'opacity-0 -translate-x-4' : 'opacity-100 translate-x-0'
           }`}
         >
-          <span className="text-white">@{trade.user}</span>
+          <MockProfileLink
+            handle={trade.user}
+            className="text-white hover:text-white"
+            compact
+            showAvatar={false}
+          />
           {' bought '}
           <span className={trade.side === 'YES' ? 'text-emerald-500' : 'text-rose-500'}>
             {trade.side}
@@ -361,20 +368,34 @@ export default function LandingPage({ markets, dispatch }: Props) {
     setShowCreateModal(false)
   }
 
-  function handleLoadSampleMarket() {
-    const spec = shuffle(sampleMarketBank)[0]
-    dispatch({
+  function buildCreateMarketAction(spec: SampleMarketSpec, id?: string): Action {
+    return {
       type: 'CREATE_MARKET',
+      id,
       title: spec.title,
       description: spec.description,
       seedWithUser: false,
-    })
+      kind: spec.type,
+      thesis:
+        spec.type === 'thesis'
+          ? getThesisDefinition({
+              title: spec.title,
+              description: spec.description,
+              kind: 'thesis',
+            })
+          : undefined,
+    }
+  }
+
+  function handleLoadSampleMarket() {
+    const spec = shuffle(sampleMarketBank)[0]
+    dispatch(buildCreateMarketAction(spec))
     setShowCreateModal(false)
   }
 
   function navigateToMarket(entry: MarketEntry) {
     const spec = getSampleSpec(entry.market.title)
-    const isThesis = spec?.type === 'thesis'
+    const isThesis = entry.market.kind === 'thesis' || spec?.type === 'thesis'
     navigate(isThesis ? `/thesis/${entry.market.id}` : `/market/${entry.market.id}`)
   }
 
@@ -449,11 +470,10 @@ export default function LandingPage({ markets, dispatch }: Props) {
                     Start Trading
                   </Link>
                   <Link
-                    to="/join"
-                    onClick={() => setTimeout(() => document.querySelector<HTMLButtonElement>('[data-agent-btn]')?.click(), 100)}
-                    className="text-neutral-500 hover:text-neutral-300 transition-colors text-sm"
+                    to="/builder"
+                    className="px-6 py-4 rounded-lg border border-neutral-700 text-sm font-medium text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
                   >
-                    For agents →
+                    Open Thesis Builder
                   </Link>
                 </div>
               </div>
@@ -470,15 +490,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
                       e => e.market.title === featuredThesis.title
                     )
                     if (existingEntry) {
-                      navigate(`/market/${existingEntry.market.id}`)
+                      navigateToMarket(existingEntry)
                     } else {
-                      dispatch({
-                        type: 'CREATE_MARKET',
-                        id: 'featured-great-decoupling',
-                        title: featuredThesis.title,
-                        description: featuredThesis.description,
-                        seedWithUser: false,
-                      })
+                      dispatch(buildCreateMarketAction(featuredThesis, 'featured-great-decoupling'))
                     }
                   }}
                 >
@@ -811,7 +825,12 @@ export default function LandingPage({ markets, dispatch }: Props) {
               ].map((shift, i) => (
                 <div key={i} className="py-2 border-b border-neutral-800/20 last:border-0">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-sm text-white font-medium truncate">@{shift.user}</span>
+                    <MockProfileLink
+                      handle={shift.user}
+                      className="truncate text-white hover:text-white"
+                      compact
+                      stopPropagation
+                    />
                     <span className="text-[10px] text-neutral-600 tabular-nums shrink-0">{shift.time}</span>
                   </div>
                   <div className="text-xs text-neutral-500 mt-0.5">
@@ -836,7 +855,13 @@ export default function LandingPage({ markets, dispatch }: Props) {
                 <div key={i} className="py-3 border-b border-neutral-800/20 last:border-0">
                   <p className="text-[13px] text-neutral-300 leading-snug italic">{take.quote}</p>
                   <div className="flex items-center gap-2 mt-1.5 text-[11px]">
-                    <span className="text-neutral-500">@{take.author}</span>
+                    <MockProfileLink
+                      handle={take.author}
+                      className="text-neutral-500"
+                      compact
+                      showAvatar={false}
+                      stopPropagation
+                    />
                     <span className={`font-medium ${take.stance === 'LONG' ? 'text-emerald-600' : 'text-rose-600'}`}>
                       {take.stance === 'LONG' ? '▲ YES' : '▼ NO'}
                     </span>
@@ -1067,40 +1092,47 @@ export default function LandingPage({ markets, dispatch }: Props) {
 
               const handleClick = () => {
                 if (matchingEntry) {
-                  navigate(`/market/${matchingEntry.market.id}/discuss`)
+                  const isThesis = matchingEntry.market.kind === 'thesis' || spec?.type === 'thesis'
+                  navigate(isThesis ? `/thesis/${matchingEntry.market.id}` : `/market/${matchingEntry.market.id}/discuss`)
                 } else if (spec) {
                   const marketId = `discussion-${discussion.id}`
-                  dispatch({
-                    type: 'CREATE_MARKET',
-                    id: marketId,
-                    title: spec.title,
-                    description: spec.description,
-                    seedWithUser: false,
-                  })
-                  setTimeout(() => navigate(`/market/${marketId}/discuss`), 0)
+                  dispatch(buildCreateMarketAction(spec, marketId))
+                  if (spec.type !== 'thesis') {
+                    setTimeout(() => navigate(`/market/${marketId}/discuss`), 0)
+                  }
                 }
               }
 
               return (
-                <button
+                <article
                   key={discussion.id}
-                  type="button"
-                  onClick={handleClick}
-                  className="block w-full text-left py-3 hover:bg-neutral-800/20 -mx-2 px-2 transition-colors cursor-pointer border-b border-neutral-800/20 last:border-0"
+                  className="py-3 border-b border-neutral-800/20 last:border-0"
                 >
-                  <div className="text-sm text-white mb-1 leading-relaxed">{discussion.preview}</div>
                   <div className="flex items-center gap-1.5 text-xs text-neutral-600">
                     <span>in</span>
                     <span className="text-neutral-400">"{discussion.marketTitle}"</span>
                     <span>·</span>
-                    <span className="text-neutral-400">@{discussion.author}</span>
+                    <MockProfileLink
+                      handle={discussion.author}
+                      className="text-neutral-400"
+                      compact
+                      showAvatar={false}
+                      stopPropagation
+                    />
                     <span>·</span>
                     <span>{discussion.timestamp}</span>
                     <span>·</span>
                     <span>{discussion.replyCount} replies</span>
                     {discussion.replyCount > 15 && <span>🔥</span>}
                   </div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleClick}
+                    className="mt-1 block w-full cursor-pointer px-0 text-left transition-colors hover:text-white"
+                  >
+                    <div className="text-sm leading-relaxed text-white">{discussion.preview}</div>
+                  </button>
+                </article>
               )
             })}
           </div>

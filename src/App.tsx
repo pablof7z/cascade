@@ -27,6 +27,7 @@ import ThreadPage from './ThreadPage'
 import ThesisBuilder from './ThesisBuilder'
 import Portfolio from './Portfolio'
 import Profile from './Profile'
+import MockProfilePage from './MockProfilePage'
 import Leaderboard from './Leaderboard'
 import BookmarksPage from './BookmarksPage'
 import Activity from './Activity'
@@ -355,9 +356,10 @@ function AppContent() {
   // Handle market creation navigation
   const handleDispatch = (action: Action) => {
     if (action.type === 'CREATE_MARKET' && action.id) {
-      // If caller provided an ID, navigate after dispatch
       dispatch(action)
-      navigate(`/market/${action.id}`)
+      const route =
+        action.kind === 'thesis' || action.thesis ? `/thesis/${action.id}` : `/market/${action.id}`
+      navigate(route)
       return
     }
     dispatch(action)
@@ -381,6 +383,7 @@ function AppContent() {
         <Route path="/onboarding" element={<Profile />} />
         <Route path="/portfolio" element={<Portfolio />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/u/:handle" element={<MockProfilePage />} />
         <Route path="/leaderboard" element={<Leaderboard markets={state.markets} />} />
         <Route path="/bookmarks" element={<BookmarksPage />} />
         <Route path="/activity" element={<Activity />} />

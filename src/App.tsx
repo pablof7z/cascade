@@ -36,6 +36,9 @@ import { TermsOfService, PrivacyPolicy } from './LegalPages'
 import NavHeader from './NavHeader'
 import OnboardingSplit from './OnboardingSplit'
 import WalletPage from './WalletPage'
+import HireAgents from './HireAgents'
+import EnrollAgent from './EnrollAgent'
+import AgentDashboard from './AgentDashboard'
 import EmbedPage from './EmbedPage'
 import EmbedLanding from './EmbedLanding'
 import TestnetBanner from './components/TestnetBanner'
@@ -384,6 +387,9 @@ function AppContent() {
         <Route path="/join" element={<OnboardingSplit className="py-12" />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/hire-agents" element={<HireAgents />} />
+        <Route path="/enroll-agent" element={<EnrollAgent />} />
+        <Route path="/dashboard/agents" element={<AgentDashboard />} />
         <Route path="/embed" element={<EmbedLanding />} />
       </Routes>
       </main>

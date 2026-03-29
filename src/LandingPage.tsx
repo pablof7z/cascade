@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import type { FormEvent, Dispatch } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import AgentFeatureSection from './components/AgentFeatureSection'
 import { deriveMarketMetrics, type Side } from './market'
 import type { MarketEntry } from './storage'
 import type { Action } from './App'
@@ -1140,6 +1141,11 @@ export default function LandingPage({ markets, dispatch }: Props) {
           </div>
         </div>
       </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          Agent Feature Section — Trade with AI
+      ═══════════════════════════════════════════════════════════════════ */}
+      <AgentFeatureSection />
 
       {/* ═══════════════════════════════════════════════════════════════════
           CTA — Create a market

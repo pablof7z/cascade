@@ -23,6 +23,7 @@ import LandingPage from './LandingPage'
 import MarketDetail from './MarketDetail'
 import ThesisDetail from './ThesisDetail'
 import DiscussPage from './DiscussPage'
+import ThreadPage from './ThreadPage'
 import ThesisBuilder from './ThesisBuilder'
 import Portfolio from './Portfolio'
 import Profile from './Profile'
@@ -37,6 +38,8 @@ import WalletPage from './WalletPage'
 import HireAgents from './HireAgents'
 import EnrollAgent from './EnrollAgent'
 import AgentDashboard from './AgentDashboard'
+import EmbedPage from './EmbedPage'
+import EmbedLanding from './EmbedLanding'
 import TestnetBanner from './components/TestnetBanner'
 import Footer from './components/Footer'
 
@@ -327,6 +330,10 @@ function DiscussPageWrapper({ markets }: { markets: Record<string, MarketEntry> 
   return <DiscussPage markets={markets} />
 }
 
+function ThreadPageWrapper({ markets }: { markets: Record<string, MarketEntry> }) {
+  return <ThreadPage markets={markets} />
+}
+
 function AppContent() {
   const [state, dispatch] = useReducer(reducer, undefined, initState)
   const navigate = useNavigate()
@@ -364,6 +371,7 @@ function AppContent() {
         <Route path="/" element={<LandingPage markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/market/:id" element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/market/:id/discuss" element={<DiscussPageWrapper markets={state.markets} />} />
+        <Route path="/market/:id/discuss/:threadId" element={<ThreadPageWrapper markets={state.markets} />} />
         <Route path="/thesis/:id" element={<ThesisDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/builder" element={<ThesisBuilder markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/onboarding" element={<Profile />} />
@@ -380,6 +388,7 @@ function AppContent() {
         <Route path="/hire-agents" element={<HireAgents />} />
         <Route path="/enroll-agent" element={<EnrollAgent />} />
         <Route path="/dashboard/agents" element={<AgentDashboard />} />
+        <Route path="/embed" element={<EmbedLanding />} />
       </Routes>
       </main>
       <Footer />
@@ -403,7 +412,12 @@ function App() {
   return (
     <TestnetProvider>
       <BrowserRouter>
-        <AppContent />
+        <Routes>
+          {/* Embed route renders standalone without app shell */}
+          <Route path="/embed/market/:id" element={<EmbedPage />} />
+          {/* All other routes render with full app shell */}
+          <Route path="/*" element={<AppContent />} />
+        </Routes>
       </BrowserRouter>
     </TestnetProvider>
   )

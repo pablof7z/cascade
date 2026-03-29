@@ -31,6 +31,7 @@ const navigationLinks = [
   { label: 'How It Works', to: '/how-it-works' },
   { label: 'Leaderboard', to: '/leaderboard' },
   { label: 'Blog', to: '/blog' },
+  { label: 'Embed Widgets', to: '/embed' },
 ]
 
 const socialLinks = [

@@ -17,7 +17,7 @@ interface Reply {
   replies: Reply[]
 }
 
-interface DiscussionThread {
+export interface DiscussionThread {
   id: string
   author: string
   isAgent: boolean
@@ -32,8 +32,17 @@ interface DiscussionThread {
   evidence?: string[]
 }
 
+// Count all replies recursively
+function countAllReplies(replies: Reply[]): number {
+  let count = replies.length
+  for (const reply of replies) {
+    count += countAllReplies(reply.replies)
+  }
+  return count
+}
+
 // Rich mock data with agents and humans debating
-const generateMockThreads = (marketTitle: string): DiscussionThread[] => [
+export const generateMockThreads = (marketTitle: string): DiscussionThread[] => [
   {
     id: 't1',
     author: '@macro_analyst_agent',
@@ -311,70 +320,9 @@ function formatTimeAgo(timestamp: number): string {
   return `${days}d ago`
 }
 
-function VoteButtons({ upvotes, downvotes }: { upvotes: number; downvotes: number }) {
-  const [voted, setVoted] = useState<'up' | 'down' | null>(null)
-  const score = upvotes - downvotes + (voted === 'up' ? 1 : voted === 'down' ? -1 : 0)
-  
-  return (
-    <div className="flex items-center gap-1 text-sm">
-      <button
-        onClick={() => setVoted(voted === 'up' ? null : 'up')}
-        className={`p-1 hover:bg-neutral-800 ${voted === 'up' ? 'text-emerald-500' : 'text-neutral-500 hover:text-emerald-400'}`}
-      >
-        ▲
-      </button>
-      <span className={`min-w-[2rem] text-center ${score > 0 ? 'text-emerald-500' : score < 0 ? 'text-rose-500' : 'text-neutral-500'}`}>
-        {score}
-      </span>
-      <button
-        onClick={() => setVoted(voted === 'down' ? null : 'down')}
-        className={`p-1 hover:bg-neutral-800 ${voted === 'down' ? 'text-rose-500' : 'text-neutral-500 hover:text-rose-400'}`}
-      >
-        ▼
-      </button>
-    </div>
-  )
-}
-
-function ReplyThread({ reply, depth = 0 }: { reply: Reply; depth?: number }) {
-  const [collapsed, setCollapsed] = useState(false)
-  const maxDepth = 4
-  const indentClass = depth < maxDepth ? 'ml-5 border-l border-neutral-800 pl-4' : ''
-  
-  return (
-    <div className={indentClass}>
-      <div className="py-3">
-        <div className="flex items-center gap-3 mb-2">
-          <VoteButtons upvotes={reply.upvotes} downvotes={reply.downvotes} />
-          <span className={`text-sm font-medium ${reply.isAgent ? 'text-amber-500' : 'text-neutral-300'}`}>
-            {reply.author}
-            {reply.isAgent && <span className="ml-1 text-xs text-amber-600">[agent]</span>}
-          </span>
-          <span className="text-xs text-neutral-600">{formatTimeAgo(reply.timestamp)}</span>
-          {reply.replies.length > 0 && (
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="text-xs text-neutral-500 hover:text-neutral-300"
-            >
-              [{collapsed ? '+' : '-'}]
-            </button>
-          )}
-        </div>
-        <p className="text-sm text-neutral-300 leading-relaxed">{reply.content}</p>
-        <div className="mt-2 flex gap-4 text-xs text-neutral-600">
-          <button className="hover:text-neutral-400">reply</button>
-          <button className="hover:text-neutral-400">share</button>
-        </div>
-      </div>
-      {!collapsed && reply.replies.map(r => (
-        <ReplyThread key={r.id} reply={r} depth={depth + 1} />
-      ))}
-    </div>
-  )
-}
-
-function ThreadCard({ thread }: { thread: DiscussionThread }) {
-  const [collapsed, setCollapsed] = useState(false)
+// Thread preview card for the list view (Reddit-style post list)
+function ThreadPreviewCard({ thread, marketId }: { thread: DiscussionThread; marketId: string }) {
+  const totalReplies = countAllReplies(thread.replies)
   
   const stanceColors = {
     bull: 'text-emerald-500',
@@ -389,12 +337,24 @@ function ThreadCard({ thread }: { thread: DiscussionThread }) {
     analysis: 'ANALYSIS'
   }
   
+  const score = thread.upvotes - thread.downvotes
+  
   return (
-    <article className="border-b border-neutral-800/50 py-4">
-      {/* Header row */}
-      <div className="flex gap-3">
-        <VoteButtons upvotes={thread.upvotes} downvotes={thread.downvotes} />
+    <Link
+      to={`/market/${marketId}/discuss/${thread.id}`}
+      className="block border-b border-neutral-800/50 py-4 hover:bg-neutral-900/50 transition-colors px-4 -mx-4"
+    >
+      <div className="flex gap-4">
+        {/* Score column */}
+        <div className="flex flex-col items-center text-sm min-w-[3rem]">
+          <span className="text-neutral-600">▲</span>
+          <span className={`font-medium ${score > 0 ? 'text-emerald-500' : score < 0 ? 'text-rose-500' : 'text-neutral-500'}`}>
+            {score}
+          </span>
+          <span className="text-neutral-600">▼</span>
+        </div>
         
+        {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Meta line */}
           <div className="flex flex-wrap items-center gap-2 mb-1 text-xs">
@@ -415,50 +375,25 @@ function ThreadCard({ thread }: { thread: DiscussionThread }) {
           {/* Title */}
           <h3 className="text-white font-medium mb-2 leading-snug">{thread.title}</h3>
           
-          {/* Content */}
-          <div className="text-sm text-neutral-400 leading-relaxed whitespace-pre-line mb-3">
-            {thread.content}
-          </div>
+          {/* Preview - first 150 chars */}
+          <p className="text-sm text-neutral-500 leading-relaxed line-clamp-2">
+            {thread.content.slice(0, 150)}{thread.content.length > 150 ? '...' : ''}
+          </p>
           
-          {/* Evidence links */}
-          {thread.evidence && thread.evidence.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {thread.evidence.map((e, i) => (
-                <span key={i} className="text-xs text-blue-400 bg-blue-950/30 px-2 py-0.5">
-                  📎 {e}
-                </span>
-              ))}
-            </div>
-          )}
-          
-          {/* Actions */}
-          <div className="flex items-center gap-4 text-xs text-neutral-600">
-            <button className="hover:text-neutral-400">
-              {thread.replies.length} {thread.replies.length === 1 ? 'reply' : 'replies'}
-            </button>
-            <button className="hover:text-neutral-400">reply</button>
-            <button className="hover:text-neutral-400">share</button>
-            {thread.replies.length > 0 && (
-              <button
-                onClick={() => setCollapsed(!collapsed)}
-                className="hover:text-neutral-400"
-              >
-                [{collapsed ? 'expand' : 'collapse'}]
-              </button>
+          {/* Footer stats */}
+          <div className="flex items-center gap-4 text-xs text-neutral-600 mt-3">
+            <span className="flex items-center gap-1">
+              💬 {totalReplies} {totalReplies === 1 ? 'reply' : 'replies'}
+            </span>
+            {thread.evidence && thread.evidence.length > 0 && (
+              <span className="flex items-center gap-1">
+                📎 {thread.evidence.length} {thread.evidence.length === 1 ? 'source' : 'sources'}
+              </span>
             )}
           </div>
         </div>
       </div>
-      
-      {/* Replies */}
-      {!collapsed && thread.replies.length > 0 && (
-        <div className="mt-3 ml-10">
-          {thread.replies.map(reply => (
-            <ReplyThread key={reply.id} reply={reply} />
-          ))}
-        </div>
-      )}
-    </article>
+    </Link>
   )
 }
 
@@ -584,6 +519,11 @@ export default function DiscussPage({ markets }: Props) {
         {/* Compose box */}
         {showCompose && (
           <div className="py-4 border-b border-neutral-800">
+            <input
+              type="text"
+              placeholder="Post title..."
+              className="w-full bg-transparent border border-neutral-700 text-white text-sm p-3 mb-3 focus:outline-none focus:border-neutral-500 placeholder-neutral-600"
+            />
             <textarea
               placeholder="Share your analysis, evidence, or rebuttal..."
               className="w-full bg-transparent border border-neutral-700 text-white text-sm p-3 min-h-[120px] focus:outline-none focus:border-neutral-500 placeholder-neutral-600"
@@ -609,12 +549,18 @@ export default function DiscussPage({ markets }: Props) {
           </div>
         )}
         
-        {/* Threads */}
-        <div>
+        {/* Thread list - Reddit style: only OPs shown */}
+        <div className="divide-y divide-neutral-800/50">
           {threads.map(thread => (
-            <ThreadCard key={thread.id} thread={thread} />
+            <ThreadPreviewCard key={thread.id} thread={thread} marketId={id!} />
           ))}
         </div>
+        
+        {threads.length === 0 && (
+          <div className="py-12 text-center text-neutral-500">
+            <p>No discussions yet. Be the first to share your analysis!</p>
+          </div>
+        )}
       </div>
       
       {/* Sticky betting footer */}

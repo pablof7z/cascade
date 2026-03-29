@@ -1,0 +1,97 @@
+- generic [ref=e3]:
+  - button "Paper Trading Mode — All balances are simulated. No real money involved. (click to switch to mainnet)" [ref=e4] [cursor=pointer]:
+    - generic [ref=e5]:
+      - text: Paper Trading Mode — All balances are simulated. No real money involved.
+      - generic [ref=e7]: (click to switch to mainnet)
+  - banner [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - link "Cascade" [ref=e11] [cursor=pointer]:
+          - /url: /
+        - button "Testnet" [ref=e12] [cursor=pointer]
+        - navigation [ref=e13]:
+          - link "Markets" [ref=e14] [cursor=pointer]:
+            - /url: /
+          - link "Leaderboard" [ref=e15] [cursor=pointer]:
+            - /url: /leaderboard
+          - link "Activity" [ref=e16] [cursor=pointer]:
+            - /url: /activity
+      - generic [ref=e17]:
+        - generic [ref=e19]:
+          - textbox "Search markets..." [ref=e20]
+          - img [ref=e21]
+        - link "Create Market" [ref=e23] [cursor=pointer]:
+          - /url: /builder
+        - button "U" [ref=e25]:
+          - generic [ref=e26]: U
+          - img [ref=e27]
+  - main [ref=e29]:
+    - generic [ref=e1151]:
+      - heading "Terms of Service" [level=1] [ref=e1152]
+      - generic [ref=e1153]:
+        - generic [ref=e1154]:
+          - paragraph [ref=e1155]: Coming Soon
+          - paragraph [ref=e1156]: Our Terms of Service are being finalized. Please check back soon for the complete document.
+        - paragraph [ref=e1157]: By using Cascade, you agree to participate in our prediction markets platform responsibly. Full terms and conditions will be published here shortly.
+        - paragraph [ref=e1158]:
+          - text: Questions? Contact us on
+          - link "X/Twitter" [ref=e1159] [cursor=pointer]:
+            - /url: https://x.com/ArekBulski
+          - text: .
+      - link "← Back to Home" [ref=e1161] [cursor=pointer]:
+        - /url: /
+  - contentinfo [ref=e306]:
+    - generic [ref=e307]:
+      - generic [ref=e308]:
+        - generic [ref=e309]:
+          - link "Cascade" [ref=e310] [cursor=pointer]:
+            - /url: /
+          - paragraph [ref=e311]: Trade on ideas that don't expire. Prediction markets for evolving truth.
+        - generic [ref=e312]:
+          - heading "Navigate" [level=4] [ref=e313]
+          - list [ref=e314]:
+            - listitem [ref=e315]:
+              - link "Home" [ref=e316] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e317]:
+              - link "Markets" [ref=e318] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e319]:
+              - link "How It Works" [ref=e320] [cursor=pointer]:
+                - /url: /how-it-works
+            - listitem [ref=e321]:
+              - link "Leaderboard" [ref=e322] [cursor=pointer]:
+                - /url: /leaderboard
+            - listitem [ref=e323]:
+              - link "Blog" [ref=e324] [cursor=pointer]:
+                - /url: /blog
+        - generic [ref=e325]:
+          - heading "Connect" [level=4] [ref=e326]
+          - list [ref=e327]:
+            - listitem [ref=e328]:
+              - link "X / Twitter" [ref=e329] [cursor=pointer]:
+                - /url: https://x.com/ArekBulski
+                - img [ref=e330]
+                - generic [ref=e332]: X / Twitter
+            - listitem [ref=e333]:
+              - link "Nostr" [ref=e334] [cursor=pointer]:
+                - /url: https://njump.me/npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft
+                - img [ref=e335]
+                - generic [ref=e337]: Nostr
+            - listitem [ref=e338]:
+              - link "GitHub" [ref=e339] [cursor=pointer]:
+                - /url: https://github.com/pablof7z
+                - img [ref=e340]
+                - generic [ref=e342]: GitHub
+        - generic [ref=e343]:
+          - heading "Legal" [level=4] [ref=e344]
+          - list [ref=e345]:
+            - listitem [ref=e346]:
+              - link "Terms of Service" [active] [ref=e347] [cursor=pointer]:
+                - /url: /terms
+            - listitem [ref=e348]:
+              - link "Privacy Policy" [ref=e349] [cursor=pointer]:
+                - /url: /privacy
+      - generic [ref=e350]:
+        - paragraph [ref=e351]: © 2026 Cascade. All rights reserved.
+        - generic [ref=e352]: "Build: 1d8c832"

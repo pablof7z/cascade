@@ -26,44 +26,6 @@ function CodeBlock({ code }: { code: string }) {
   )
 }
 
-function StepCard({ number, title, description }: { number: number; title: string; description: string }) {
-  return (
-    <div className="flex gap-4">
-      <div className="shrink-0 w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center">
-        <span className="text-emerald-500 font-bold">{number}</span>
-      </div>
-      <div>
-        <h3 className="text-white font-semibold mb-1">{title}</h3>
-        <p className="text-neutral-400 text-sm">{description}</p>
-      </div>
-    </div>
-  )
-}
-
-function FeatureCard({ icon, title, description }: { icon: string; title: string; description: string }) {
-  return (
-    <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-5 hover:border-neutral-700 transition-colors">
-      <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-3">
-        <span className="text-xl">{icon}</span>
-      </div>
-      <h3 className="text-white font-semibold mb-2">{title}</h3>
-      <p className="text-neutral-400 text-sm">{description}</p>
-    </div>
-  )
-}
-
-function UseCaseCard({ emoji, role, quote }: { emoji: string; role: string; quote: string }) {
-  return (
-    <div className="bg-gradient-to-br from-neutral-900 to-neutral-900/50 border border-neutral-800 rounded-xl p-5">
-      <div className="flex items-center gap-3 mb-3">
-        <span className="text-2xl">{emoji}</span>
-        <span className="text-emerald-500 font-medium">{role}</span>
-      </div>
-      <p className="text-neutral-300 italic">"{quote}"</p>
-    </div>
-  )
-}
-
 // Demo embed component (simplified inline version)
 function DemoEmbed() {
   return (
@@ -133,10 +95,10 @@ export default function EmbedLanding() {
         <div className="max-w-6xl mx-auto px-6 relative">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="inline-block px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-500 text-sm mb-4">
+              <span className="text-emerald-500 text-sm font-medium tracking-wide uppercase">
                 New Feature
-              </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+              </span>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mt-3 mb-6 leading-tight">
                 Put Prediction Markets on Your Site
               </h1>
               <p className="text-xl text-neutral-400 mb-8">
@@ -166,7 +128,7 @@ export default function EmbedLanding() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-16 border-t border-neutral-900">
+      <section id="how-it-works" className="py-16 bg-neutral-900/30">
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -178,28 +140,24 @@ export default function EmbedLanding() {
           </div>
           
           <div className="grid md:grid-cols-2 gap-12 items-start">
-            <div className="space-y-8">
-              <StepCard 
-                number={1}
-                title="Find a market on Cascade"
-                description="Browse our markets or create your own prediction question."
-              />
-              <StepCard 
-                number={2}
-                title="Click the Embed button"
-                description="Look for the embed icon on any market page."
-              />
-              <StepCard 
-                number={3}
-                title="Copy the iframe code"
-                description="We generate the embed code automatically for you."
-              />
-              <StepCard 
-                number={4}
-                title="Paste into your site"
-                description="Works with Substack, Medium, WordPress, Ghost, or any HTML."
-              />
-            </div>
+            <ol className="space-y-8">
+              {[
+                { title: 'Find a market on Cascade', desc: 'Browse our markets or create your own prediction question.' },
+                { title: 'Click the Embed button', desc: 'Look for the embed icon on any market page.' },
+                { title: 'Copy the iframe code', desc: 'We generate the embed code automatically for you.' },
+                { title: 'Paste into your site', desc: 'Works with Substack, Medium, WordPress, Ghost, or any HTML.' },
+              ].map((step, i) => (
+                <li key={i} className="flex gap-4">
+                  <span className="shrink-0 text-2xl font-bold text-emerald-500/60 tabular-nums leading-7">
+                    {i + 1}.
+                  </span>
+                  <div>
+                    <h3 className="text-white font-semibold mb-1">{step.title}</h3>
+                    <p className="text-neutral-400 text-sm">{step.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
             
             <div>
               <div className="text-sm text-neutral-500 mb-3">Example embed code:</div>
@@ -212,8 +170,8 @@ export default function EmbedLanding() {
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section className="py-16 border-t border-neutral-900">
+      {/* Features */}
+      <section className="py-16">
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -224,43 +182,27 @@ export default function EmbedLanding() {
             </p>
           </div>
           
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            <FeatureCard 
-              icon="⚡"
-              title="Live Updating"
-              description="Prices update automatically as traders buy and sell. Your readers see real-time market sentiment."
-            />
-            <FeatureCard 
-              icon="🎨"
-              title="Dark & Light Themes"
-              description="Choose the theme that matches your site. Just add ?theme=light to the embed URL."
-            />
-            <FeatureCard 
-              icon="📱"
-              title="Responsive Design"
-              description="Widgets adapt to any container width. Looks great on mobile, tablet, and desktop."
-            />
-            <FeatureCard 
-              icon="✍️"
-              title="Works Everywhere"
-              description="Substack, Medium, WordPress, Ghost, Notion, or any platform that supports iframes."
-            />
-            <FeatureCard 
-              icon="🔗"
-              title="Links to Full Market"
-              description="Readers can click through to trade, see history, and join the discussion."
-            />
-            <FeatureCard 
-              icon="🚀"
-              title="Zero Setup"
-              description="No API keys, no authentication, no account needed. Just paste and go."
-            />
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-10">
+            {[
+              { icon: '⚡', title: 'Live Updating', desc: 'Prices update automatically as traders buy and sell. Your readers see real-time market sentiment.' },
+              { icon: '🎨', title: 'Dark & Light Themes', desc: 'Choose the theme that matches your site. Just add ?theme=light to the embed URL.' },
+              { icon: '📱', title: 'Responsive Design', desc: 'Widgets adapt to any container width. Looks great on mobile, tablet, and desktop.' },
+              { icon: '✍️', title: 'Works Everywhere', desc: 'Substack, Medium, WordPress, Ghost, Notion, or any platform that supports iframes.' },
+              { icon: '🔗', title: 'Links to Full Market', desc: 'Readers can click through to trade, see history, and join the discussion.' },
+              { icon: '🚀', title: 'Zero Setup', desc: 'No API keys, no authentication, no account needed. Just paste and go.' },
+            ].map((f, i) => (
+              <div key={i}>
+                <span className="text-2xl mb-3 block">{f.icon}</span>
+                <h3 className="text-white font-semibold mb-2">{f.title}</h3>
+                <p className="text-neutral-400 text-sm leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Theme Options */}
-      <section className="py-16 border-t border-neutral-900">
+      <section className="py-16 bg-neutral-900/30">
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
@@ -275,7 +217,7 @@ export default function EmbedLanding() {
               <CodeBlock code={lightThemeCode} />
             </div>
             <div className="flex flex-col items-center gap-6">
-              {/* Light theme demo */}
+              {/* Light theme demo — container is functional, showing actual widget preview */}
               <div className="w-full max-w-[380px] bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-lg">
                 <div className="p-4">
                   <h2 className="text-sm font-semibold text-neutral-900 leading-tight mb-3">
@@ -316,7 +258,7 @@ export default function EmbedLanding() {
       </section>
 
       {/* Use Cases */}
-      <section className="py-16 border-t border-neutral-900">
+      <section className="py-16">
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -327,28 +269,24 @@ export default function EmbedLanding() {
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-5">
-            <UseCaseCard 
-              emoji="📰"
-              role="Journalists"
-              quote="Embed election odds directly in my coverage. Readers see what the crowd thinks, not just my opinion."
-            />
-            <UseCaseCard 
-              emoji="✍️"
-              role="Bloggers"
-              quote="I add prediction markets to my tech analysis. It turns speculation into something readers can bet on."
-            />
-            <UseCaseCard 
-              emoji="📊"
-              role="Analysts"
-              quote="Show my readers exactly where I'm putting my money. Transparency builds trust."
-            />
+          <div className="grid md:grid-cols-3 gap-10">
+            {[
+              { emoji: '📰', role: 'Journalists', quote: 'Embed election odds directly in my coverage. Readers see what the crowd thinks, not just my opinion.' },
+              { emoji: '✍️', role: 'Bloggers', quote: 'I add prediction markets to my tech analysis. It turns speculation into something readers can bet on.' },
+              { emoji: '📊', role: 'Analysts', quote: 'Show my readers exactly where I\'m putting my money. Transparency builds trust.' },
+            ].map((uc, i) => (
+              <div key={i}>
+                <span className="text-3xl mb-3 block">{uc.emoji}</span>
+                <span className="text-emerald-500 font-medium text-sm uppercase tracking-wide">{uc.role}</span>
+                <p className="text-neutral-300 mt-2 italic leading-relaxed">"{uc.quote}"</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 border-t border-neutral-900">
+      <section className="py-20 bg-neutral-900/30">
         <div className="max-w-3xl mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Ready to Add Live Markets to Your Content?

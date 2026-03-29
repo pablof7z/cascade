@@ -1069,7 +1069,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
           onClick={() => setShowCreateModal(false)}
         >
           <div
-            className="w-full max-w-lg p-6 bg-neutral-900 border border-neutral-800 rounded-lg"
+            className="w-full max-w-lg p-6 bg-neutral-950/80 backdrop-blur-sm rounded-md shadow-2xl ring-1 ring-white/10"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
@@ -1089,7 +1089,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   value={title}
                   onChange={event => setTitle(event.target.value)}
                   placeholder="Will AGI emerge before 2030?"
-                  className="mt-1 w-full px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
+                  className="mt-1 w-full px-4 py-3 bg-neutral-950/50 border-b border-neutral-700 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
                 />
               </label>
               <label className="block">
@@ -1099,7 +1099,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   onChange={event => setDescription(event.target.value)}
                   rows={3}
                   placeholder="Define the resolution criteria clearly."
-                  className="mt-1 w-full px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600 resize-y min-h-[88px]"
+                  className="mt-1 w-full px-4 py-3 bg-neutral-950/50 border-b border-neutral-700 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all resize-y min-h-[88px]"
                 />
               </label>
               <div className="grid grid-cols-2 gap-4">
@@ -1108,7 +1108,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   <select
                     value={initialSide}
                     onChange={event => setInitialSide(event.target.value as Side)}
-                    className="mt-1 w-full px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white focus:outline-none focus:border-neutral-600"
+                    className="mt-1 w-full px-4 py-3 bg-neutral-950/50 border-b border-neutral-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
                   >
                     <option value="LONG">LONG</option>
                     <option value="SHORT">SHORT</option>
@@ -1120,7 +1120,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                     value={initialSats}
                     onChange={event => setInitialSats(event.target.value)}
                     inputMode="decimal"
-                    className="mt-1 w-full px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white focus:outline-none focus:border-neutral-600"
+                    className="mt-1 w-full px-4 py-3 bg-neutral-950/50 border-b border-neutral-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
                   />
                 </label>
               </div>

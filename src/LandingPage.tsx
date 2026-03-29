@@ -196,6 +196,8 @@ const sampleTrades = [
   { market: 'BCI reaches 1M users', side: 'YES', amount: 200, user: 'neuro_optimist', timeAgo: '18m' },
 ]
 
+
+
 // Sample platform activity data for hero chart (last 7 days)
 const platformActivityData = [
   { time: Date.now() / 1000 - 6 * 86400, value: 12400 },
@@ -850,6 +852,341 @@ export default function LandingPage({ markets, dispatch }: Props) {
         </div>
       </section>
 
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 1: TRENDING MARKETS — Sidebar layout
+          Big featured item left, compact ranked list right. NO cards.
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="max-w-7xl mx-auto px-6 pt-20 pb-16">
+        <div className="flex items-baseline justify-between mb-10">
+          <h2 className="text-3xl font-bold text-white tracking-tight">Trending</h2>
+          <span className="text-sm text-neutral-500">by volume · 24h</span>
+        </div>
+
+        <div className="grid lg:grid-cols-5 gap-0">
+          {/* Left — Dominant featured market (3 cols) */}
+          {(() => {
+            const featured = entries[0]
+            if (!featured) return null
+            const fm = deriveMarketMetrics(featured.market)
+            const spec = getSampleSpec(featured.market.title)
+            return (
+              <div
+                className="lg:col-span-3 lg:border-r lg:border-neutral-800 lg:pr-10 pb-8 lg:pb-0 cursor-pointer group"
+                onClick={() => navigate(spec?.type === 'thesis' ? `/thesis/${featured.market.id}` : `/market/${featured.market.id}`)}
+              >
+                <span className="text-xs font-medium text-emerald-500 uppercase tracking-widest">
+                  #1 Trending
+                </span>
+                <h3 className="text-4xl md:text-5xl font-bold text-white mt-3 mb-5 leading-[1.1] group-hover:text-emerald-400 transition-colors">
+                  {featured.market.title}
+                </h3>
+                <p className="text-lg text-neutral-400 leading-relaxed mb-8 max-w-xl">
+                  {featured.market.description}
+                </p>
+                <div className="flex items-end gap-12">
+                  <div>
+                    <span className="block text-6xl font-black text-white tabular-nums">
+                      {Math.round(fm.longPositionShare * 100)}
+                      <span className="text-2xl text-neutral-500 font-normal">%</span>
+                    </span>
+                    <span className="text-sm text-neutral-500 mt-1 block">YES probability</span>
+                  </div>
+                  <div>
+                    <span className="block text-2xl font-semibold text-white tabular-nums">{formatCurrency(featured.market.reserve)}</span>
+                    <span className="text-sm text-neutral-500">volume</span>
+                  </div>
+                  <div>
+                    <span className="block text-2xl font-semibold text-emerald-500 tabular-nums">+{(Math.random() * 15 + 3).toFixed(1)}%</span>
+                    <span className="text-sm text-neutral-500">24h</span>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Right — Compact ranked list (2 cols) */}
+          <div className="lg:col-span-2 lg:pl-10">
+            {entries.slice(1, 7).map(({ market }, i) => {
+              const m = deriveMarketMetrics(market)
+              const spec = getSampleSpec(market.title)
+              return (
+                <div
+                  key={market.id}
+                  className="flex items-start gap-4 py-3 border-b border-neutral-800/40 last:border-0 cursor-pointer hover:bg-white/[0.02] -mx-3 px-3 transition-colors"
+                  onClick={() => navigate(spec?.type === 'thesis' ? `/thesis/${market.id}` : `/market/${market.id}`)}
+                >
+                  <span className="text-2xl font-bold text-neutral-700 tabular-nums w-8 shrink-0 mt-0.5">
+                    {i + 2}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-white truncate">{market.title}</div>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-neutral-500">
+                      <span className="text-emerald-500 font-medium">{Math.round(m.longPositionShare * 100)}%</span>
+                      <span>{formatCurrency(market.reserve)}</span>
+                      <span className={Math.random() > 0.4 ? 'text-emerald-500' : 'text-rose-500'}>
+                        {Math.random() > 0.4 ? '+' : ''}{(Math.random() * 12 - 3).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                  <Sparkline
+                    data={[35 + Math.random()*10, 38 + Math.random()*10, 42 + Math.random()*10, 40 + Math.random()*10, 45 + Math.random()*10, Math.round(m.longPositionShare * 100)]}
+                    positive={m.longPositionShare > 0.45}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 2: PINK-SHEET MARKETS — HN/Reddit text-heavy list
+          Pure typography. No wrappers. Numbers inline. Let the text breathe.
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="max-w-4xl mx-auto px-6 py-16">
+        <div className="flex items-baseline gap-4 mb-2">
+          <h2 className="text-3xl font-bold text-white tracking-tight">Pink Sheets</h2>
+          <span className="text-sm text-amber-500/80 font-medium">low cap underdogs</span>
+        </div>
+        <p className="text-sm text-neutral-600 mb-8">Small markets. Early conviction. High upside if you're right.</p>
+
+        <ol className="space-y-0">
+          {[...entries]
+            .sort((a, b) => a.market.reserve - b.market.reserve)
+            .slice(0, 8)
+            .map(({ market }, i) => {
+              const m = deriveMarketMetrics(market)
+              const spec = getSampleSpec(market.title)
+              return (
+                <li
+                  key={market.id}
+                  className="group cursor-pointer"
+                  onClick={() => navigate(spec?.type === 'thesis' ? `/thesis/${market.id}` : `/market/${market.id}`)}
+                >
+                  <div className="flex items-baseline gap-0 py-2.5 border-b border-neutral-800/30 hover:border-neutral-700 transition-colors">
+                    {/* Rank number */}
+                    <span className="text-neutral-700 text-sm font-mono w-8 shrink-0">{i + 1}.</span>
+
+                    {/* Title — the hero element. Big, bold, scannable */}
+                    <span className="text-white font-medium group-hover:text-amber-400 transition-colors flex-1 mr-4">
+                      {market.title}
+                    </span>
+
+                    {/* Inline metrics — no wrappers, just text */}
+                    <span className="text-emerald-500 text-sm font-mono tabular-nums mr-4">
+                      {Math.round(m.longPositionShare * 100)}¢
+                    </span>
+                    <span className="text-neutral-600 text-xs font-mono tabular-nums mr-4 hidden sm:inline">
+                      {formatCurrency(market.reserve)}
+                    </span>
+                    <span className="text-neutral-700 text-xs hidden md:inline">
+                      {market.quotes.length} trade{market.quotes.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </li>
+              )
+            })}
+        </ol>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 3: HOT DEBATES — Bloomberg terminal / sports-book table
+          Rows with columns. Monospace. Dense data. Colored numbers.
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="bg-neutral-900/40 border-y border-neutral-800/50 py-16">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-baseline justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-white tracking-tight">Hot Debates</h2>
+              <p className="text-sm text-neutral-500 mt-1">Markets near 50/50 — conviction is split</p>
+            </div>
+            <div className="hidden md:flex items-center gap-2 text-xs text-neutral-600">
+              <PulseDot color="amber" />
+              <span>prices update live</span>
+            </div>
+          </div>
+
+          {/* Table header */}
+          <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-neutral-600 uppercase tracking-wider border-b border-neutral-700/50">
+            <div className="col-span-5">Market</div>
+            <div className="col-span-1 text-right">YES</div>
+            <div className="col-span-1 text-right">NO</div>
+            <div className="col-span-1 text-right">Spread</div>
+            <div className="col-span-2 text-right">Volume</div>
+            <div className="col-span-1 text-right">24h Δ</div>
+            <div className="col-span-1 text-right">Chart</div>
+          </div>
+
+          {/* Table rows */}
+          {[...entries]
+            .map(e => ({ ...e, spread: Math.abs(deriveMarketMetrics(e.market).longPositionShare - 0.5) }))
+            .sort((a, b) => a.spread - b.spread)
+            .slice(0, 6)
+            .map(({ market }) => {
+              const m = deriveMarketMetrics(market)
+              const spec = getSampleSpec(market.title)
+              const change = (Math.random() * 8 - 4)
+              const spread = Math.abs(m.longPositionShare - 0.5) * 200
+
+              return (
+                <div
+                  key={market.id}
+                  className="grid grid-cols-12 gap-4 items-center px-4 py-3 border-b border-neutral-800/30 hover:bg-white/[0.02] cursor-pointer transition-colors"
+                  onClick={() => navigate(spec?.type === 'thesis' ? `/thesis/${market.id}` : `/market/${market.id}`)}
+                >
+                  {/* Market name */}
+                  <div className="col-span-12 md:col-span-5">
+                    <span className="text-white text-sm font-medium">{market.title}</span>
+                    {spec?.category && (
+                      <span className="text-neutral-600 text-xs ml-2 hidden lg:inline">
+                        {spec.category}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* YES price */}
+                  <div className="hidden md:block col-span-1 text-right">
+                    <span className="text-emerald-500 font-mono text-sm tabular-nums font-medium">
+                      {Math.round(m.longPositionShare * 100)}¢
+                    </span>
+                  </div>
+
+                  {/* NO price */}
+                  <div className="hidden md:block col-span-1 text-right">
+                    <span className="text-rose-500 font-mono text-sm tabular-nums font-medium">
+                      {Math.round(m.shortPositionShare * 100)}¢
+                    </span>
+                  </div>
+
+                  {/* Spread */}
+                  <div className="hidden md:block col-span-1 text-right">
+                    <span className={`font-mono text-xs tabular-nums ${spread < 6 ? 'text-amber-500' : 'text-neutral-500'}`}>
+                      {spread.toFixed(1)}
+                    </span>
+                  </div>
+
+                  {/* Volume */}
+                  <div className="hidden md:block col-span-2 text-right">
+                    <span className="text-neutral-300 font-mono text-sm tabular-nums">
+                      {formatCurrency(market.reserve)}
+                    </span>
+                  </div>
+
+                  {/* 24h change */}
+                  <div className="hidden md:block col-span-1 text-right">
+                    <span className={`font-mono text-sm tabular-nums font-medium ${change > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      {change > 0 ? '+' : ''}{change.toFixed(1)}%
+                    </span>
+                  </div>
+
+                  {/* Mini chart */}
+                  <div className="hidden md:flex col-span-1 justify-end">
+                    <Sparkline
+                      data={[48 + Math.random()*4, 49 + Math.random()*4, 50 + Math.random()*4, 51 + Math.random()*4, 49 + Math.random()*4, Math.round(m.longPositionShare * 100)]}
+                      positive={change > 0}
+                    />
+                  </div>
+
+                  {/* Mobile-only inline stats */}
+                  <div className="col-span-12 md:hidden flex items-center gap-4 text-xs -mt-1">
+                    <span className="text-emerald-500 font-mono">{Math.round(m.longPositionShare * 100)}¢ YES</span>
+                    <span className="text-rose-500 font-mono">{Math.round(m.shortPositionShare * 100)}¢ NO</span>
+                    <span className="text-neutral-500">{formatCurrency(market.reserve)}</span>
+                    <span className={change > 0 ? 'text-emerald-500' : 'text-rose-500'}>
+                      {change > 0 ? '+' : ''}{change.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 4: NEW THIS WEEK — Full-bleed asymmetric layout
+          One massive item, then offset smaller items. Breaks the grid.
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-6 mb-8">
+          <h2 className="text-3xl font-bold text-white tracking-tight">New This Week</h2>
+        </div>
+
+        {/* Hero new market — full-width immersive treatment */}
+        {(() => {
+          const newest = entries.length > 2 ? entries[entries.length - 1] : entries[0]
+          if (!newest) return null
+          const nm = deriveMarketMetrics(newest.market)
+          const spec = getSampleSpec(newest.market.title)
+          return (
+            <div
+              className="relative bg-gradient-to-r from-indigo-950/30 via-neutral-950 to-neutral-950 cursor-pointer group"
+              onClick={() => navigate(spec?.type === 'thesis' ? `/thesis/${newest.market.id}` : `/market/${newest.market.id}`)}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-neutral-950/80" />
+              <div className="relative max-w-7xl mx-auto px-6 py-16 md:py-20">
+                <div className="max-w-3xl">
+                  <div className="flex items-center gap-3 mb-5">
+                    <span className="bg-indigo-500/20 text-indigo-400 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
+                      Just Listed
+                    </span>
+                    {spec?.category && (
+                      <span className="text-neutral-600 text-xs">{spec.category}</span>
+                    )}
+                  </div>
+                  <h3 className="text-3xl md:text-5xl font-bold text-white leading-[1.1] mb-5 group-hover:text-indigo-300 transition-colors">
+                    {newest.market.title}
+                  </h3>
+                  <p className="text-lg text-neutral-400 leading-relaxed mb-8 max-w-2xl">
+                    {newest.market.description}
+                  </p>
+                  <div className="flex items-center gap-8 text-sm">
+                    <span className="text-white font-semibold text-lg">{Math.round(nm.longPositionShare * 100)}% YES</span>
+                    <span className="text-neutral-400">{formatCurrency(newest.market.reserve)} vol</span>
+                    <span className="text-indigo-400">→ Trade now</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* Asymmetric grid of other new markets — deliberately unequal sizing */}
+        <div className="max-w-7xl mx-auto px-6 mt-10">
+          <div className="grid md:grid-cols-3 gap-x-8 gap-y-6">
+            {entries.slice(Math.max(0, entries.length - 4), entries.length - 1).reverse().map(({ market }, i) => {
+              const m = deriveMarketMetrics(market)
+              const spec = getSampleSpec(market.title)
+              // First item gets extra visual weight
+              const isFeature = i === 0
+              return (
+                <div
+                  key={market.id}
+                  className={`${isFeature ? 'md:col-span-2 md:row-span-2' : ''} cursor-pointer group py-4 ${!isFeature ? 'border-l-2 border-neutral-800 pl-6' : ''}`}
+                  onClick={() => navigate(spec?.type === 'thesis' ? `/thesis/${market.id}` : `/market/${market.id}`)}
+                >
+                  {spec?.category && (
+                    <span className="text-xs text-neutral-600 uppercase tracking-wider">{spec.category}</span>
+                  )}
+                  <h4 className={`font-semibold text-white mt-1 mb-2 group-hover:text-indigo-300 transition-colors ${isFeature ? 'text-2xl md:text-3xl leading-tight' : 'text-base'}`}>
+                    {market.title}
+                  </h4>
+                  {isFeature && (
+                    <p className="text-neutral-500 text-sm leading-relaxed mb-4 max-w-lg">
+                      {market.description}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="text-emerald-500 font-mono tabular-nums">{Math.round(m.longPositionShare * 100)}%</span>
+                    <span className="text-neutral-600">{formatCurrency(market.reserve)}</span>
+                    {isFeature && <Sparkline data={[30, 35, 33, 40, 42, Math.round(m.longPositionShare * 100)]} positive={true} />}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* Latest Discussions - Reddit-style flat list (below markets) */}
       <section className="max-w-6xl mx-auto px-6 pb-10">
         <div className="flex items-center gap-3 mb-4">
@@ -911,6 +1248,257 @@ export default function LandingPage({ markets, dispatch }: Props) {
               </button>
             )
           })}
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 1: TRENDING — Sidebar layout (dominant left + compact list right)
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="max-w-7xl mx-auto px-6 pt-20 pb-12">
+        <div className="flex items-baseline justify-between mb-10">
+          <h2 className="text-3xl font-bold text-white tracking-tight">Trending</h2>
+          <span className="text-sm text-neutral-600">by volume · 24h</span>
+        </div>
+
+        <div className="grid lg:grid-cols-12 gap-0">
+          {/* Dominant featured market — left side */}
+          {trendingMarkets[0] && (
+            <div className="lg:col-span-5 lg:border-r lg:border-neutral-800 lg:pr-10 pb-8 lg:pb-0">
+              <span className="text-xs font-medium text-emerald-600 uppercase tracking-widest">{trendingMarkets[0].category}</span>
+              <h3 className="text-2xl md:text-3xl font-bold text-white mt-2 mb-6 leading-snug">
+                {trendingMarkets[0].title}
+              </h3>
+              <div className="flex items-end gap-6 mb-6">
+                <span className="text-6xl font-black text-white tabular-nums">
+                  {Math.round(trendingMarkets[0].probability * 100)}
+                  <span className="text-2xl text-neutral-600 font-medium">%</span>
+                </span>
+                <div className="pb-2">
+                  <Sparkline data={trendingMarkets[0].sparkline} positive={trendingMarkets[0].change > 0} size="large" />
+                  <span className={`text-sm font-medium ${trendingMarkets[0].change > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {trendingMarkets[0].change > 0 ? '+' : ''}{(trendingMarkets[0].change * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-8 text-sm">
+                <div>
+                  <span className="text-neutral-600 block text-xs uppercase tracking-wider">Volume</span>
+                  <span className="text-white font-semibold">${(trendingMarkets[0].volume / 1000).toFixed(1)}K</span>
+                </div>
+                <div>
+                  <span className="text-neutral-600 block text-xs uppercase tracking-wider">Trades</span>
+                  <span className="text-white font-semibold">{trendingMarkets[0].trades24h}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Compact ranked list — right side */}
+          <div className="lg:col-span-7 lg:pl-10">
+            {trendingMarkets.slice(1).map((m, i) => (
+              <div
+                key={m.title}
+                className={`flex items-center gap-4 py-4 ${i > 0 ? 'border-t border-neutral-800/40' : ''}`}
+              >
+                <span className="text-2xl font-black text-neutral-700 w-8 text-right tabular-nums">{i + 2}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-white font-medium truncate">{m.title}</div>
+                  <span className="text-xs text-neutral-600">{m.category} · {m.trades24h} trades</span>
+                </div>
+                <Sparkline data={m.sparkline} positive={m.change > 0} />
+                <div className="text-right shrink-0 w-20">
+                  <div className="text-white font-semibold tabular-nums">{Math.round(m.probability * 100)}%</div>
+                  <span className={`text-xs tabular-nums ${m.change > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {m.change > 0 ? '▲' : '▼'} {Math.abs(m.change * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 2: PINK-SHEET — Bloomberg terminal / data-table style
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="bg-neutral-900/30 py-16">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-baseline gap-3 mb-1">
+            <h2 className="text-3xl font-bold text-amber-500/90 tracking-tight">Pink Sheets</h2>
+            <span className="text-xs text-amber-600/50 uppercase tracking-widest font-medium">low-cap underdogs</span>
+          </div>
+          <p className="text-sm text-neutral-600 mb-8">Early-stage markets. Thin liquidity. High conviction required.</p>
+
+          {/* Table header */}
+          <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs text-neutral-600 uppercase tracking-wider font-medium border-b border-neutral-800">
+            <div className="col-span-5">Market</div>
+            <div className="col-span-2 text-right">Odds</div>
+            <div className="col-span-2 text-right">Volume</div>
+            <div className="col-span-2 text-right">Traders</div>
+            <div className="col-span-1 text-right">Age</div>
+          </div>
+
+          {/* Table rows */}
+          {pinkSheetMarkets.map((m, i) => (
+            <div
+              key={m.title}
+              className={`grid grid-cols-12 gap-4 items-center px-4 py-3 text-sm cursor-pointer transition-colors hover:bg-white/[0.02] ${
+                i < pinkSheetMarkets.length - 1 ? 'border-b border-neutral-800/30' : ''
+              }`}
+            >
+              <div className="col-span-5 min-w-0">
+                <span className="text-white truncate block">{m.title}</span>
+                <span className="text-xs text-neutral-700">{m.category}</span>
+              </div>
+              <div className="col-span-2 text-right">
+                <span className="text-amber-500 font-mono font-medium tabular-nums">{(m.probability * 100).toFixed(0)}¢</span>
+              </div>
+              <div className="col-span-2 text-right">
+                <span className="text-neutral-400 font-mono tabular-nums">${m.volume}</span>
+              </div>
+              <div className="col-span-2 text-right">
+                <span className="text-neutral-500 font-mono tabular-nums">{m.traders}</span>
+              </div>
+              <div className="col-span-1 text-right">
+                <span className="text-neutral-600 text-xs">{m.created}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 3: HOT DEBATES — Text-heavy HN/Reddit style, typography-driven
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="max-w-4xl mx-auto px-6 py-20">
+        <h2 className="text-3xl font-bold text-white tracking-tight mb-2">Hot Debates</h2>
+        <p className="text-neutral-600 mb-10">Markets near 50/50 — where conviction matters most.</p>
+
+        <ol className="space-y-0">
+          {hotDebates.map((d, i) => {
+            const spread = Math.abs(d.yesOdds - d.noOdds)
+            const barWidth = `${d.yesOdds * 100}%`
+            return (
+              <li key={d.title} className={`${i > 0 ? 'border-t border-neutral-800/30' : ''}`}>
+                <div className="flex items-start gap-5 py-5 cursor-pointer group">
+                  {/* Heat indicator — just a colored bar, no box */}
+                  <div className="w-1 self-stretch rounded-full shrink-0" style={{
+                    background: `linear-gradient(to bottom, hsl(${(1 - d.heat) * 40}, 80%, 50%), hsl(${(1 - d.heat) * 40}, 60%, 30%))`,
+                    opacity: 0.5 + d.heat * 0.5,
+                  }} />
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-semibold text-white group-hover:text-emerald-400 transition-colors leading-tight">
+                      {d.title}
+                    </h3>
+                    <span className="text-sm text-neutral-500">{d.subtitle}</span>
+
+                    {/* YES/NO tug-of-war bar — raw, no wrapper */}
+                    <div className="flex items-center gap-3 mt-3">
+                      <span className="text-emerald-500 text-sm font-semibold tabular-nums w-12">{Math.round(d.yesOdds * 100)}%</span>
+                      <div className="flex-1 h-1.5 bg-rose-500/20 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500/70 rounded-full" style={{ width: barWidth }} />
+                      </div>
+                      <span className="text-rose-400 text-sm font-semibold tabular-nums w-12 text-right">{Math.round(d.noOdds * 100)}%</span>
+                    </div>
+
+                    <div className="flex items-center gap-4 mt-2 text-xs text-neutral-600">
+                      <span>{d.comments} comments</span>
+                      <span>spread: {(spread * 100).toFixed(0)}pts</span>
+                      {d.heat > 0.9 && <span className="text-rose-500 font-medium">🔥 on fire</span>}
+                    </div>
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 4: NEW THIS WEEK — Full-bleed asymmetric / magazine layout
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="relative overflow-hidden">
+        {/* Subtle gradient background — NOT neutral-900 */}
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/20 via-neutral-950 to-neutral-950" />
+        <div className="absolute top-0 left-1/3 w-96 h-96 bg-emerald-500/[0.03] rounded-full blur-3xl" />
+
+        <div className="relative max-w-7xl mx-auto px-6 py-20">
+          <div className="flex items-baseline gap-4 mb-12">
+            <h2 className="text-3xl font-bold text-white tracking-tight">New This Week</h2>
+            <div className="h-px flex-1 bg-gradient-to-r from-neutral-800 to-transparent" />
+          </div>
+
+          {/* Asymmetric 3-column masonry-like layout */}
+          <div className="grid md:grid-cols-3 gap-x-12 gap-y-0">
+            {/* Column 1 — featured large item */}
+            <div className="md:col-span-1">
+              {newThisWeek[0] && (
+                <div className="pb-10 cursor-pointer group">
+                  <span className="text-xs text-emerald-600 font-medium uppercase tracking-widest">{newThisWeek[0].category}</span>
+                  <h3 className="text-xl font-bold text-white mt-2 mb-3 leading-snug group-hover:text-emerald-400 transition-colors">
+                    {newThisWeek[0].title}
+                  </h3>
+                  <p className="text-sm text-neutral-500 leading-relaxed mb-4">{newThisWeek[0].description}</p>
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-3xl font-black text-white tabular-nums">{Math.round(newThisWeek[0].probability * 100)}%</span>
+                    <span className="text-xs text-neutral-600">@{newThisWeek[0].author} · {newThisWeek[0].timeAgo}</span>
+                  </div>
+                </div>
+              )}
+              {newThisWeek[1] && (
+                <div className="pt-8 border-t border-neutral-800/40 cursor-pointer group">
+                  <span className="text-xs text-neutral-600 font-medium uppercase tracking-widest">{newThisWeek[1].category}</span>
+                  <h3 className="text-base font-semibold text-white mt-1 mb-2 group-hover:text-emerald-400 transition-colors">
+                    {newThisWeek[1].title}
+                  </h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-lg font-bold text-white tabular-nums">{Math.round(newThisWeek[1].probability * 100)}%</span>
+                    <span className="text-xs text-neutral-600">@{newThisWeek[1].author} · {newThisWeek[1].timeAgo}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Column 2 — stacked medium items */}
+            <div className="md:col-span-1 md:border-l md:border-neutral-800/40 md:pl-12 mt-8 md:mt-0">
+              {newThisWeek.slice(2, 4).map((m, i) => (
+                <div key={m.title} className={`cursor-pointer group ${i > 0 ? 'mt-8 pt-8 border-t border-neutral-800/40' : ''}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs text-neutral-600 uppercase tracking-widest">{m.category}</span>
+                    <span className="text-neutral-800">·</span>
+                    <span className="text-xs text-neutral-700">{m.timeAgo}</span>
+                  </div>
+                  <h3 className="text-base font-semibold text-white mb-2 group-hover:text-emerald-400 transition-colors leading-snug">
+                    {m.title}
+                  </h3>
+                  <p className="text-sm text-neutral-600 leading-relaxed mb-3">{m.description}</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-white tabular-nums">{Math.round(m.probability * 100)}%</span>
+                    <span className="text-xs text-neutral-600">by @{m.author}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Column 3 — compact list */}
+            <div className="md:col-span-1 md:border-l md:border-neutral-800/40 md:pl-12 mt-8 md:mt-0">
+              <span className="text-xs text-neutral-600 uppercase tracking-wider font-medium">Also new</span>
+              {newThisWeek.slice(4).map((m) => (
+                <div key={m.title} className="mt-5 cursor-pointer group">
+                  <h3 className="text-sm font-medium text-neutral-300 group-hover:text-white transition-colors leading-snug">
+                    {m.title}
+                  </h3>
+                  <div className="flex items-center gap-3 mt-1 text-xs text-neutral-600">
+                    <span className="font-mono tabular-nums text-white">{Math.round(m.probability * 100)}%</span>
+                    <span>{m.category}</span>
+                    <span>@{m.author}</span>
+                    <span>{m.timeAgo}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

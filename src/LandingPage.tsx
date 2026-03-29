@@ -700,8 +700,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 3: HOT DEBATES — HN/Reddit text-heavy
-          Narrow column, heat indicators, YES/NO progress bars, plain text
+          SECTION 3: HOT DEBATES — HN/Reddit text-heavy + intelligence sidebar
+          Main column: heat indicators, YES/NO progress bars, plain text
+          Sidebar: position shifts, sharp takes, heat index, contrarian alerts
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-6 py-20">
         <div className="flex items-baseline gap-4 mb-12">
@@ -709,7 +710,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
           <span className="text-sm text-neutral-600">Near 50/50 · Markets in conflict</span>
         </div>
 
-        <div className="max-w-4xl">
+        <div className="grid lg:grid-cols-12 gap-0">
+          {/* ── Left: Debate listings ── */}
+          <div className="lg:col-span-8 lg:pr-10">
           {(() => {
             const debates = useHotDebates
               ? useHotDebates.map(entry => {
@@ -791,6 +794,111 @@ export default function LandingPage({ markets, dispatch }: Props) {
               )
             })
           })()}
+          </div>
+
+          {/* ── Right: Intelligence sidebar ── */}
+          <div className="lg:col-span-4 lg:pl-10 lg:border-l border-neutral-800/40 pt-8 lg:pt-0">
+
+            {/* ─── Position Shifts ─── */}
+            <div className="mb-8">
+              <h4 className="text-[11px] uppercase tracking-[0.2em] text-amber-500/80 font-semibold mb-4">Position Shifts</h4>
+              {[
+                { user: 'macro_watcher', action: 'flipped to YES', market: 'Great Decoupling', size: '$2.1K', time: '14m' },
+                { user: 'orbital_capital', action: 'doubled down NO', market: 'China GDP', size: '$4.8K', time: '31m' },
+                { user: 'energy_futures', action: 'flipped to NO', market: 'Climate migration', size: '$890', time: '1h' },
+                { user: 'reasoning_agent', action: 'new YES', market: 'Space economy', size: '$1.5K', time: '2h' },
+              ].map((shift, i) => (
+                <div key={i} className="py-2 border-b border-neutral-800/20 last:border-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-sm text-white font-medium truncate">@{shift.user}</span>
+                    <span className="text-[10px] text-neutral-600 tabular-nums shrink-0">{shift.time}</span>
+                  </div>
+                  <div className="text-xs text-neutral-500 mt-0.5">
+                    <span className={shift.action.includes('YES') || shift.action.includes('doubled') ? 'text-emerald-500/70' : 'text-rose-500/70'}>
+                      {shift.action}
+                    </span>
+                    {' '}{shift.market}
+                    <span className="text-neutral-600"> · {shift.size}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ─── Sharp Takes ─── */}
+            <div className="mb-8">
+              <h4 className="text-[11px] uppercase tracking-[0.2em] text-neutral-500 font-semibold mb-4">Sharp Takes</h4>
+              {[
+                { quote: '"If fusion is an engineering problem, so was the Apollo program. Budget it accordingly."', author: 'energy_futures', stance: 'LONG' as const },
+                { quote: '"China\'s demographics are a 50-year headwind. GDP comparisons ignore dependency ratios."', author: 'macro_watcher', stance: 'SHORT' as const },
+                { quote: '"Climate migration isn\'t a future event. It\'s happening now in Bangladesh and the Sahel."', author: 'geo_realist', stance: 'LONG' as const },
+              ].map((take, i) => (
+                <div key={i} className="py-3 border-b border-neutral-800/20 last:border-0">
+                  <p className="text-[13px] text-neutral-300 leading-snug italic">{take.quote}</p>
+                  <div className="flex items-center gap-2 mt-1.5 text-[11px]">
+                    <span className="text-neutral-500">@{take.author}</span>
+                    <span className={`font-medium ${take.stance === 'LONG' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {take.stance === 'LONG' ? '▲ YES' : '▼ NO'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ─── Heat Index ─── */}
+            <div className="mb-8">
+              <h4 className="text-[11px] uppercase tracking-[0.2em] text-neutral-500 font-semibold mb-3">Heat Index</h4>
+              <div className="text-[10px] text-neutral-700 uppercase tracking-wider flex justify-between px-0.5 mb-2">
+                <span>Market</span>
+                <span>Spread · Vol/24h</span>
+              </div>
+              {[
+                { title: 'Great Decoupling', spread: 2, vol: '$6.2K', heat: 0.92 },
+                { title: 'China GDP', spread: 4, vol: '$4.1K', heat: 0.84 },
+                { title: 'Climate migration', spread: 1, vol: '$2.8K', heat: 0.96 },
+                { title: 'Space $1T', spread: 6, vol: '$3.5K', heat: 0.76 },
+                { title: 'Arctic ice-free', spread: 8, vol: '$1.9K', heat: 0.68 },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center justify-between py-1.5 text-sm">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: item.heat > 0.9 ? '#f59e0b' : item.heat > 0.75 ? '#78716c' : '#525252',
+                        boxShadow: item.heat > 0.9 ? '0 0 4px #f59e0b80' : 'none',
+                      }}
+                    />
+                    <span className="text-neutral-300 truncate text-xs">{item.title}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 text-xs">
+                    <span className="font-mono text-neutral-500 tabular-nums">{item.spread}pt</span>
+                    <span className="font-mono text-neutral-600 tabular-nums">{item.vol}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ─── Contrarian Alert ─── */}
+            <div>
+              <h4 className="text-[11px] uppercase tracking-[0.2em] text-rose-500/70 font-semibold mb-3">⚡ Contrarian Alert</h4>
+              <p className="text-xs text-neutral-500 mb-3">Where top traders diverge from the crowd</p>
+              {[
+                { market: 'China GDP surpasses US', crowd: 55, whales: 38, whaleSide: 'NO' },
+                { market: 'Space economy $1T', crowd: 47, whales: 71, whaleSide: 'YES' },
+              ].map((alert, i) => (
+                <div key={i} className="py-2.5 border-b border-neutral-800/20 last:border-0">
+                  <span className="text-xs text-white font-medium block mb-1.5">{alert.market}</span>
+                  <div className="flex items-center gap-3 text-[11px]">
+                    <span className="text-neutral-600">Crowd YES {alert.crowd}%</span>
+                    <span className="text-neutral-700">→</span>
+                    <span className={alert.whaleSide === 'YES' ? 'text-emerald-500' : 'text-rose-500'}>
+                      Top 10 traders: {alert.whaleSide} {alert.whaleSide === 'YES' ? alert.whales : 100 - alert.whales}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+          </div>
         </div>
       </section>
 

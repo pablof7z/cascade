@@ -18,7 +18,7 @@ export default function BookmarksPage() {
       </div>
 
       {bookmarkedIds.length === 0 ? (
-        <div className="text-center py-16 bg-neutral-900 border border-neutral-800 rounded-lg">
+        <div className="text-center py-16 border-b border-neutral-800/40">
           <svg
             className="w-12 h-12 mx-auto text-neutral-600 mb-4"
             viewBox="0 0 24 24"
@@ -44,11 +44,11 @@ export default function BookmarksPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div>
           {bookmarkedIds.map((marketId) => (
             <div
               key={marketId}
-              className="flex items-center justify-between p-4 bg-neutral-900 border border-neutral-800 rounded-lg hover:border-neutral-700 transition-colors"
+              className="flex items-center justify-between py-3 px-1 border-b border-neutral-800/40 hover:bg-neutral-900/30 transition-colors"
             >
               <Link
                 to={`/market/${marketId}`}

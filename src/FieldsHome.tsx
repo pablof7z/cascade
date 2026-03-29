@@ -98,36 +98,44 @@ export default function FieldsHome() {
             </div>
           </div>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="text-sm text-neutral-400">Active fields</p>
-              <p className="mt-2 text-3xl font-semibold text-white">{fields.length}</p>
-              <p className="mt-2 text-sm text-neutral-500">
+          <dl className="mt-10 grid border-y border-neutral-800 md:grid-cols-2 xl:grid-cols-4">
+            <div className="border-b border-neutral-800 px-0 py-4 md:px-4 xl:border-b-0 xl:border-r xl:border-neutral-800 xl:pl-0">
+              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Active fields
+              </dt>
+              <dd className="mt-2 text-3xl font-semibold text-white">{fields.length}</dd>
+              <p className="mt-1 text-sm text-neutral-500">
                 Fields stay bounded by your judgment, not random topics.
               </p>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="text-sm text-neutral-400">Meetings awaiting judgment</p>
-              <p className="mt-2 text-3xl font-semibold text-white">{meetingsAwaiting.length}</p>
-              <p className="mt-2 text-sm text-neutral-500">
+            <div className="border-b border-neutral-800 px-0 py-4 md:px-4 xl:border-b-0 xl:border-r xl:border-neutral-800">
+              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Meetings awaiting judgment
+              </dt>
+              <dd className="mt-2 text-3xl font-semibold text-white">{meetingsAwaiting.length}</dd>
+              <p className="mt-1 text-sm text-neutral-500">
                 Visible disagreements that need a human call.
               </p>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="text-sm text-neutral-400">Hosted agent wallets</p>
-              <p className="mt-2 text-3xl font-semibold text-white">{hostedAgents}</p>
-              <p className="mt-2 text-sm text-neutral-500">
+            <div className="border-b border-neutral-800 px-0 py-4 md:border-b-0 md:px-4 xl:border-r xl:border-neutral-800">
+              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Hosted agent wallets
+              </dt>
+              <dd className="mt-2 text-3xl font-semibold text-white">{hostedAgents}</dd>
+              <p className="mt-1 text-sm text-neutral-500">
                 Each hosted agent keeps a separate wallet inside the field.
               </p>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="text-sm text-neutral-400">Capital deployed by field</p>
-              <p className="mt-2 text-3xl font-semibold text-white">{formatUsd(totalDeployed)}</p>
-              <p className="mt-2 text-sm text-neutral-500">
+            <div className="px-0 py-4 md:px-4 md:pr-0">
+              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Capital deployed by field
+              </dt>
+              <dd className="mt-2 text-3xl font-semibold text-white">{formatUsd(totalDeployed)}</dd>
+              <p className="mt-1 text-sm text-neutral-500">
                 Capital stays downstream of the research room.
               </p>
             </div>
-          </div>
+          </dl>
         </div>
       </section>
 
@@ -143,100 +151,127 @@ export default function FieldsHome() {
             </div>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-3">
+          <div className="border-t border-neutral-800">
             {fields.map((field) => {
               const source = latestSource(field)
               const hostedCount = field.council.filter(
                 (agent) => agent.provisioning === 'hosted',
               ).length
               const connectedCount = field.council.length - hostedCount
+              const humanActions = needsHumanActions(field)
 
               return (
-                <div
+                <article
                   key={field.id}
-                  className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6"
+                  className="grid gap-5 border-b border-neutral-800 py-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(17rem,0.75fr)] lg:items-start"
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] ${attentionClasses[field.attention]}`}
-                    >
-                      {field.attention.replace('-', ' ')}
-                    </span>
-                    <span
-                      className={`text-xs font-medium uppercase tracking-[0.18em] ${disagreementClasses[field.disagreement]}`}
-                    >
-                      Disagreement {field.disagreement}
-                    </span>
-                  </div>
-
-                  <h3 className="mt-5 text-2xl font-semibold text-white">{field.name}</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-neutral-300">{field.summary}</p>
-                  <p className="mt-4 text-sm leading-relaxed text-neutral-500">
-                    {field.conviction}
-                  </p>
-
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                        Theses & questions
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold text-white">
-                        {field.topics.length}
-                      </p>
-                      <p className="mt-2 text-sm text-neutral-400">{field.topics[0]?.title}</p>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] ${attentionClasses[field.attention]}`}
+                      >
+                        {field.attention.replace('-', ' ')}
+                      </span>
+                      <span
+                        className={`text-xs font-medium uppercase tracking-[0.18em] ${disagreementClasses[field.disagreement]}`}
+                      >
+                        Disagreement {field.disagreement}
+                      </span>
                     </div>
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                        Meeting status
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold text-white">
-                        {needsHumanActions(field)}
-                      </p>
-                      <p className="mt-2 text-sm text-neutral-400">
-                        action{needsHumanActions(field) === 1 ? '' : 's'} waiting on you
-                      </p>
-                    </div>
-                  </div>
 
-                  {source ? (
-                    <div className="mt-5 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                        Latest source
-                      </p>
-                      <div className="mt-2 flex items-center justify-between gap-4">
-                        <div>
-                          <p className="font-medium text-white">{source.title}</p>
-                          <p className="mt-1 text-sm text-neutral-400">
-                            {sourceKindLabels[source.kind]} by {source.author}
-                          </p>
-                        </div>
-                        <p className="shrink-0 text-xs text-neutral-500">{source.addedAt}</p>
+                    <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="max-w-3xl">
+                        <h3 className="text-2xl font-semibold text-white">{field.name}</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-neutral-300">
+                          {field.summary}
+                        </p>
+                      </div>
+                      <div className="grid min-w-0 gap-x-6 gap-y-2 text-sm text-neutral-400 sm:grid-cols-2 xl:min-w-[22rem]">
+                        <span>{field.council.length} council members</span>
+                        <span>{formatUsd(field.capital.deployedUsd)} deployed</span>
+                        <span>{hostedCount} hosted</span>
+                        <span>{connectedCount} connected</span>
                       </div>
                     </div>
-                  ) : null}
 
-                  <div className="mt-5 flex flex-wrap gap-4 text-sm text-neutral-400">
-                    <span>{field.council.length} council members</span>
-                    <span>{hostedCount} hosted</span>
-                    <span>{connectedCount} connected</span>
-                    <span>{formatUsd(field.capital.deployedUsd)} deployed</span>
+                    <p className="mt-4 max-w-3xl text-sm leading-relaxed text-neutral-500">
+                      {field.conviction}
+                    </p>
+
+                    <dl className="mt-5 grid gap-3 border-t border-neutral-800 pt-4 text-sm sm:grid-cols-3">
+                      <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-4">
+                        <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                          Theses & questions
+                        </dt>
+                        <dd className="mt-2 text-xl font-semibold text-white">
+                          {field.topics.length}
+                        </dd>
+                        <p className="mt-1 text-neutral-400">{field.topics[0]?.title}</p>
+                      </div>
+                      <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-4 sm:pb-0">
+                        <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                          Meeting status
+                        </dt>
+                        <dd className="mt-2 text-xl font-semibold text-white">{humanActions}</dd>
+                        <p className="mt-1 text-neutral-400">
+                          action{humanActions === 1 ? '' : 's'} waiting on you
+                        </p>
+                      </div>
+                      <div className="sm:pl-4">
+                        <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                          Latest source
+                        </dt>
+                        {source ? (
+                          <>
+                            <dd className="mt-2 font-medium text-white">{source.title}</dd>
+                            <p className="mt-1 text-neutral-400">
+                              {sourceKindLabels[source.kind]} by {source.author}
+                            </p>
+                            <p className="mt-1 text-xs text-neutral-500">{source.addedAt}</p>
+                          </>
+                        ) : (
+                          <p className="mt-2 text-neutral-500">No sources loaded yet.</p>
+                        )}
+                      </div>
+                    </dl>
                   </div>
 
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <Link
-                      to={`/field/${field.id}`}
-                      className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
-                    >
-                      Open Field
-                    </Link>
-                    <Link
-                      to={`/field/${field.id}/meeting`}
-                      className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
-                    >
-                      Open Meeting
-                    </Link>
+                  <div className="border-t border-neutral-800 pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+                    <div className="space-y-3 text-sm text-neutral-400">
+                      <div className="flex items-start justify-between gap-4 border-b border-neutral-800 pb-3">
+                        <span className="uppercase tracking-[0.18em] text-neutral-500">
+                          Meeting
+                        </span>
+                        <span>{field.meeting.updatedAt}</span>
+                      </div>
+                      <div className="border-b border-neutral-800 pb-3">
+                        <p className="font-medium text-white">{field.meeting.title}</p>
+                        <p className="mt-1 leading-relaxed text-neutral-400">
+                          {field.meeting.summary}
+                        </p>
+                      </div>
+                      <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-1">
+                        <span>{field.meeting.tensions.length} unresolved tensions</span>
+                        <span>{field.sourceLibrary.length} sources in library</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <Link
+                        to={`/field/${field.id}`}
+                        className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
+                      >
+                        Open Field
+                      </Link>
+                      <Link
+                        to={`/field/${field.id}/meeting`}
+                        className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
+                      >
+                        Open Meeting
+                      </Link>
+                    </div>
                   </div>
-                </div>
+                </article>
               )
             })}
           </div>
@@ -252,23 +287,28 @@ export default function FieldsHome() {
               before actions move from thought to capital.
             </p>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 border-t border-neutral-800">
               {meetingsAwaiting.map((field) => (
-                <div
+                <article
                   key={field.id}
-                  className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-5"
+                  className="grid gap-4 border-b border-neutral-800 py-5 md:grid-cols-[minmax(0,1fr)_auto]"
                 >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                        {field.name}
-                      </p>
-                      <h3 className="mt-2 text-xl font-semibold text-white">
-                        {field.meeting.title}
-                      </h3>
-                      <p className="mt-2 text-sm leading-relaxed text-neutral-300">
-                        {field.meeting.summary}
-                      </p>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                      {field.name}
+                    </p>
+                    <h3 className="mt-2 text-xl font-semibold text-white">
+                      {field.meeting.title}
+                    </h3>
+                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-300">
+                      {field.meeting.summary}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-4 md:items-end">
+                    <div className="grid gap-1 text-sm text-neutral-400 md:text-right">
+                      <span>{field.meeting.updatedAt}</span>
+                      <span>{needsHumanActions(field)} action items need approval</span>
+                      <span>{field.meeting.tensions.length} unresolved tensions</span>
                     </div>
                     <Link
                       to={`/field/${field.id}/meeting`}
@@ -277,36 +317,35 @@ export default function FieldsHome() {
                       Review Meeting
                     </Link>
                   </div>
-
-                  <div className="mt-4 flex flex-wrap gap-4 text-sm text-neutral-400">
-                    <span>{field.meeting.updatedAt}</span>
-                    <span>{needsHumanActions(field)} action items need approval</span>
-                    <span>{field.meeting.tensions.length} unresolved tensions</span>
-                  </div>
-                </div>
+                </article>
               ))}
             </div>
           </div>
 
-          <div className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
+          <div className="border-t border-neutral-800 pt-6">
             <h2 className="text-2xl font-semibold text-white">Latest source additions</h2>
             <p className="mt-2 text-sm leading-relaxed text-neutral-400">
               The library is part of the field itself. New sources are what give the council
               context worth debating.
             </p>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 border-t border-neutral-800">
               {recentSources.map(({ field, source }) => (
-                <div key={`${field.id}-${source.id}`} className="border-b border-neutral-800 pb-4 last:border-0">
-                  <div className="flex items-center justify-between gap-4">
-                    <p className="font-medium text-white">{source.title}</p>
-                    <span className="shrink-0 text-xs text-neutral-500">{source.addedAt}</span>
+                <article
+                  key={`${field.id}-${source.id}`}
+                  className="grid gap-3 border-b border-neutral-800 py-4"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="font-medium text-white">{source.title}</p>
+                      <span className="shrink-0 text-xs text-neutral-500">{source.addedAt}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-neutral-400">
+                      {sourceKindLabels[source.kind]} in {field.name}
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-neutral-500">{source.note}</p>
                   </div>
-                  <p className="mt-1 text-sm text-neutral-400">
-                    {sourceKindLabels[source.kind]} in {field.name}
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-500">{source.note}</p>
-                </div>
+                </article>
               ))}
             </div>
           </div>

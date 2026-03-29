@@ -144,99 +144,116 @@ export default function FieldDetail() {
             </div>
           </div>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="text-sm text-neutral-400">Active theses & questions</p>
-              <p className="mt-2 text-3xl font-semibold text-white">{field.topics.length}</p>
-              <p className="mt-2 text-sm text-neutral-500">The field stays anchored in live judgments.</p>
+          <dl className="mt-10 grid border-y border-neutral-800 md:grid-cols-2 xl:grid-cols-4">
+            <div className="border-b border-neutral-800 px-0 py-4 md:px-4 xl:border-b-0 xl:border-r xl:border-neutral-800 xl:pl-0">
+              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Active theses & questions
+              </dt>
+              <dd className="mt-2 text-3xl font-semibold text-white">{field.topics.length}</dd>
+              <p className="mt-1 text-sm text-neutral-500">The field stays anchored in live judgments.</p>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="text-sm text-neutral-400">Library sources</p>
-              <p className="mt-2 text-3xl font-semibold text-white">{field.sourceLibrary.length}</p>
-              <p className="mt-2 text-sm text-neutral-500">Sources are operating context, not attachments.</p>
+            <div className="border-b border-neutral-800 px-0 py-4 md:px-4 xl:border-b-0 xl:border-r xl:border-neutral-800">
+              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Library sources
+              </dt>
+              <dd className="mt-2 text-3xl font-semibold text-white">
+                {field.sourceLibrary.length}
+              </dd>
+              <p className="mt-1 text-sm text-neutral-500">
+                Sources are operating context, not attachments.
+              </p>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="text-sm text-neutral-400">Council members</p>
-              <p className="mt-2 text-3xl font-semibold text-white">{field.council.length}</p>
-              <p className="mt-2 text-sm text-neutral-500">
+            <div className="border-b border-neutral-800 px-0 py-4 md:border-b-0 md:px-4 xl:border-r xl:border-neutral-800">
+              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Council members
+              </dt>
+              <dd className="mt-2 text-3xl font-semibold text-white">{field.council.length}</dd>
+              <p className="mt-1 text-sm text-neutral-500">
                 {hostedCount} hosted, {field.council.length - hostedCount} connected.
               </p>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="text-sm text-neutral-400">Field wallet deployed</p>
-              <p className="mt-2 text-3xl font-semibold text-white">
+            <div className="px-0 py-4 md:px-4 md:pr-0">
+              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Field wallet deployed
+              </dt>
+              <dd className="mt-2 text-3xl font-semibold text-white">
                 {formatUsd(field.capital.deployedUsd)}
-              </p>
-              <p className="mt-2 text-sm text-neutral-500">
+              </dd>
+              <p className="mt-1 text-sm text-neutral-500">
                 Every action traces back to this field and its meeting record.
               </p>
             </div>
-          </div>
+          </dl>
         </div>
       </section>
 
-      <div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 lg:grid-cols-[1.35fr_0.95fr]">
-        <div className="space-y-8">
-          <section className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
+      <div className="mx-auto grid max-w-7xl gap-10 px-6 py-12 lg:grid-cols-[1.35fr_0.95fr]">
+        <div className="space-y-10">
+          <section className="border-t border-neutral-800 pt-6">
             <h2 className="text-2xl font-semibold text-white">Theses and questions</h2>
             <p className="mt-2 text-sm leading-relaxed text-neutral-400">
               These are the live questions the council is working, not a generic list of markets.
             </p>
 
-            <div className="mt-6 grid gap-4">
+            <div className="mt-6 border-t border-neutral-800">
               {field.topics.map((topic) => (
-                <div
+                <article
                   key={topic.id}
-                  className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-5"
+                  className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[auto_minmax(0,1fr)] md:gap-5"
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                      {topic.kind}
-                    </span>
+                  <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em]">
+                    <span className="text-neutral-500">{topic.kind}</span>
                     <span
-                      className={`text-xs font-medium uppercase tracking-[0.18em] ${topicStatusClasses[topic.status]}`}
+                      className={`font-medium ${topicStatusClasses[topic.status]}`}
                     >
                       {topic.status.replace('-', ' ')}
                     </span>
                   </div>
-                  <h3 className="mt-3 text-lg font-semibold text-white">{topic.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-400">{topic.summary}</p>
-                </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">{topic.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-neutral-400">{topic.summary}</p>
+                  </div>
+                </article>
               ))}
             </div>
           </section>
 
-          <section className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
+          <section className="border-t border-neutral-800 pt-6">
             <h2 className="text-2xl font-semibold text-white">Source library</h2>
             <p className="mt-2 text-sm leading-relaxed text-neutral-400">
               The field library shapes how the council argues. Sources stay visible in the room,
               and each one has a reason for being here.
             </p>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 border-t border-neutral-800">
               {field.sourceLibrary.map((source) => (
-                <div
+                <article
                   key={source.id}
-                  className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-5"
+                  className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[minmax(0,1fr)_12rem]"
                 >
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-3">
                       <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
                         {sourceKindLabels[source.kind]}
                       </p>
-                      <h3 className="mt-2 text-lg font-semibold text-white">{source.title}</h3>
-                      <p className="mt-1 text-sm text-neutral-400">{source.author}</p>
+                      <p className="text-xs text-neutral-500">{source.author}</p>
                     </div>
-                    <p className="text-xs text-neutral-500">{source.addedAt}</p>
+                    <h3 className="mt-2 text-lg font-semibold text-white">{source.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-neutral-300">{source.note}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+                      {source.relevance}
+                    </p>
                   </div>
-                  <p className="mt-4 text-sm leading-relaxed text-neutral-300">{source.note}</p>
-                  <p className="mt-3 text-sm leading-relaxed text-neutral-500">{source.relevance}</p>
-                </div>
+                  <div className="text-sm text-neutral-400 md:text-right">
+                    <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Added</p>
+                    <p className="mt-2">{source.addedAt}</p>
+                  </div>
+                </article>
               ))}
             </div>
           </section>
 
-          <section className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
+          <section className="border-t border-neutral-800 pt-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold text-white">Meeting room snapshot</h2>
@@ -252,114 +269,141 @@ export default function FieldDetail() {
               </Link>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                {field.meeting.title}
-              </p>
-              <p className="mt-2 text-lg font-semibold text-white">{field.meeting.summary}</p>
-              <p className="mt-2 text-sm text-neutral-500">Updated {field.meeting.updatedAt}</p>
+            <div className="mt-6 grid gap-3 border-y border-neutral-800 py-4 text-sm text-neutral-400 sm:grid-cols-3">
+              <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-4">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Meeting</p>
+                <p className="mt-2 font-medium text-white">{field.meeting.title}</p>
+              </div>
+              <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-4 sm:pb-0">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Summary</p>
+                <p className="mt-2">{field.meeting.summary}</p>
+              </div>
+              <div className="sm:pl-4">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Updated</p>
+                <p className="mt-2">{field.meeting.updatedAt}</p>
+              </div>
             </div>
 
-            <div className="mt-5 space-y-3">
+            <div className="border-t border-neutral-800">
               {latestEntries.map((entry) => (
-                <div key={entry.id} className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-5">
-                  <div className="flex items-center justify-between gap-4">
+                <article
+                  key={entry.id}
+                  className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[minmax(0,1fr)_9rem]"
+                >
+                  <div>
                     <p className="font-medium text-white">{entry.headline}</p>
-                    <span className="text-xs text-neutral-500">{entry.at}</span>
+                    <p className="mt-2 text-sm text-neutral-400">
+                      {getParticipantLabel(field, entry.authorId)}
+                    </p>
+                    <p className="mt-3 text-sm leading-relaxed text-neutral-300">{entry.body}</p>
                   </div>
-                  <p className="mt-2 text-sm text-neutral-400">
-                    {getParticipantLabel(field, entry.authorId)}
-                  </p>
-                  <p className="mt-3 text-sm leading-relaxed text-neutral-300">{entry.body}</p>
-                </div>
+                  <div className="text-sm text-neutral-500 md:text-right">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">At</p>
+                    <p className="mt-2">{entry.at}</p>
+                  </div>
+                </article>
               ))}
             </div>
           </section>
         </div>
 
-        <div className="space-y-8">
-          <section className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
+        <div className="space-y-10">
+          <section className="border-t border-neutral-800 pt-6">
             <h2 className="text-2xl font-semibold text-white">Council</h2>
             <p className="mt-2 text-sm leading-relaxed text-neutral-400">
               Hosted and connected agents work inside the same room. Hosted agents each keep a visible wallet.
             </p>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 border-t border-neutral-800">
               {field.council.map((agent) => (
-                <div
+                <article
                   key={agent.id}
-                  className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-5"
+                  className="grid gap-4 border-b border-neutral-800 py-5"
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] ${provisioningClasses[agent.provisioning]}`}
-                    >
-                      {agent.provisioning}
-                    </span>
-                    <span className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                      {agent.status}
-                    </span>
-                  </div>
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="max-w-xl">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] ${provisioningClasses[agent.provisioning]}`}
+                        >
+                          {agent.provisioning}
+                        </span>
+                        <span className="text-xs uppercase tracking-[0.18em] text-neutral-500">
+                          {agent.status}
+                        </span>
+                      </div>
 
-                  <h3 className="mt-4 text-xl font-semibold text-white">{agent.name}</h3>
-                  <p className="mt-1 text-sm text-neutral-400">{agent.role}</p>
-                  <p className="mt-4 text-sm leading-relaxed text-neutral-300">{agent.focus}</p>
-                  <p className="mt-3 text-sm leading-relaxed text-neutral-500">
-                    {agent.recentContribution}
-                  </p>
+                      <h3 className="mt-4 text-xl font-semibold text-white">{agent.name}</h3>
+                      <p className="mt-1 text-sm text-neutral-400">{agent.role}</p>
+                      <p className="mt-4 text-sm leading-relaxed text-neutral-300">{agent.focus}</p>
+                      <p className="mt-3 text-sm leading-relaxed text-neutral-500">
+                        {agent.recentContribution}
+                      </p>
+                    </div>
 
-                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Wallet balance</p>
-                      <p className="mt-2 text-lg font-semibold text-white">
-                        {formatUsd(agent.wallet.balanceUsd)}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Allocated</p>
-                      <p className="mt-2 text-lg font-semibold text-white">
-                        {formatUsd(agent.wallet.allocatedUsd)}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Month to date</p>
-                      <p className="mt-2 text-lg font-semibold text-white">
-                        {formatUsd(agent.wallet.monthlySpendUsd)}
-                      </p>
-                    </div>
+                    <dl className="grid gap-3 border-t border-neutral-800 pt-4 text-sm sm:grid-cols-3 xl:min-w-[22rem] xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
+                      <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-3">
+                        <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                          Wallet balance
+                        </dt>
+                        <dd className="mt-2 font-semibold text-white">
+                          {formatUsd(agent.wallet.balanceUsd)}
+                        </dd>
+                      </div>
+                      <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-3 sm:pb-0">
+                        <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                          Allocated
+                        </dt>
+                        <dd className="mt-2 font-semibold text-white">
+                          {formatUsd(agent.wallet.allocatedUsd)}
+                        </dd>
+                      </div>
+                      <div className="sm:pl-3">
+                        <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                          Month to date
+                        </dt>
+                        <dd className="mt-2 font-semibold text-white">
+                          {formatUsd(agent.wallet.monthlySpendUsd)}
+                        </dd>
+                      </div>
+                    </dl>
                   </div>
-                </div>
+                </article>
               ))}
             </div>
           </section>
 
-          <section className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
+          <section className="border-t border-neutral-800 pt-6">
             <h2 className="text-2xl font-semibold text-white">Capital context</h2>
             <p className="mt-2 text-sm leading-relaxed text-neutral-400">{field.capital.note}</p>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Field wallet</p>
-                <p className="mt-2 text-2xl font-semibold text-white">
+            <dl className="mt-6 grid border-y border-neutral-800 text-sm sm:grid-cols-2">
+              <div className="border-b border-neutral-800 px-0 py-4 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-4">
+                <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                  Field wallet
+                </dt>
+                <dd className="mt-2 text-2xl font-semibold text-white">
                   {formatUsd(field.capital.fieldWalletUsd)}
-                </p>
+                </dd>
               </div>
-              <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Available</p>
-                <p className="mt-2 text-2xl font-semibold text-white">
+              <div className="px-0 py-4 sm:pl-4">
+                <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                  Available
+                </dt>
+                <dd className="mt-2 text-2xl font-semibold text-white">
                   {formatUsd(field.capital.availableUsd)}
-                </p>
+                </dd>
               </div>
-            </div>
+            </dl>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-white">Current positions</h3>
-                <div className="mt-3 space-y-3">
+                <div className="mt-3 border-t border-neutral-800">
                   {field.positions.map((position) => (
-                    <div
+                    <article
                       key={position.id}
-                      className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4"
+                      className="grid gap-2 border-b border-neutral-800 py-4"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <p className="font-medium text-white">{position.label}</p>
@@ -370,18 +414,18 @@ export default function FieldDetail() {
                       <p className="mt-2 text-sm leading-relaxed text-neutral-400">
                         {position.thesis}
                       </p>
-                    </div>
+                    </article>
                   ))}
                 </div>
               </div>
 
               <div>
                 <h3 className="text-lg font-semibold text-white">Candidate markets</h3>
-                <div className="mt-3 space-y-3">
+                <div className="mt-3 border-t border-neutral-800">
                   {field.candidateMarkets.map((market) => (
-                    <div
+                    <article
                       key={market.id}
-                      className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4"
+                      className="grid gap-2 border-b border-neutral-800 py-4"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <p className="font-medium text-white">{market.label}</p>
@@ -392,20 +436,20 @@ export default function FieldDetail() {
                       <p className="mt-2 text-sm leading-relaxed text-neutral-400">
                         {market.framing}
                       </p>
-                    </div>
+                    </article>
                   ))}
                 </div>
               </div>
             </div>
           </section>
 
-          <section className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
+          <section className="border-t border-neutral-800 pt-6">
             <h2 className="text-2xl font-semibold text-white">Action queue</h2>
-            <div className="mt-5 space-y-3">
+            <div className="mt-5 border-t border-neutral-800">
               {field.meeting.actions.map((action) => (
-                <div
+                <article
                   key={action.id}
-                  className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4"
+                  className="grid gap-3 border-b border-neutral-800 py-4"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <p className="font-medium text-white">{action.title}</p>
@@ -419,7 +463,7 @@ export default function FieldDetail() {
                     Owner: {getParticipantLabel(field, action.ownerId)}
                   </p>
                   <p className="mt-2 text-sm leading-relaxed text-neutral-500">{action.rationale}</p>
-                </div>
+                </article>
               ))}
             </div>
           </section>

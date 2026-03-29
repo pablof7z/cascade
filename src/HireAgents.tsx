@@ -1,9 +1,15 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { loadFieldWorkspace } from './fieldStorage'
 import type { AgentProvisioning, FieldSource } from './fieldTypes'
 
 const usdPerHostedAgent = 150
+
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 0,
+})
 
 const provisioningClasses: Record<AgentProvisioning, string> = {
   hosted: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
@@ -94,19 +100,35 @@ const faqs = [
   },
 ]
 
+function formatUsd(value: number) {
+  return currencyFormatter.format(value)
+}
+
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [isOpen, setIsOpen] = useState(false)
+  const panelId = useId()
 
   return (
     <div className="border-b border-neutral-800 last:border-0">
       <button
         className="flex w-full items-center justify-between py-5 text-left"
         onClick={() => setIsOpen((open) => !open)}
+        aria-expanded={isOpen}
+        aria-controls={panelId}
       >
         <span className="pr-4 font-medium text-white">{question}</span>
-        <span className={`text-neutral-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}>v</span>
+        <span
+          aria-hidden="true"
+          className={`text-neutral-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        >
+          v
+        </span>
       </button>
-      {isOpen ? <div className="pb-5 text-sm leading-relaxed text-neutral-400">{answer}</div> : null}
+      {isOpen ? (
+        <div id={panelId} className="pb-5 text-sm leading-relaxed text-neutral-400">
+          {answer}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -178,20 +200,22 @@ export default function HireAgents() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
+          <div className="mt-10 border-t border-neutral-800">
             {staffingSteps.map((item) => (
-              <div
+              <article
                 key={item.step}
-                className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6"
+                className="grid gap-3 border-b border-neutral-800 py-5 md:grid-cols-[4rem_minmax(0,1fr)] md:gap-5"
               >
                 <p className="text-sm font-medium uppercase tracking-[0.2em] text-emerald-400">
                   {item.step}
                 </p>
-                <h3 className="mt-4 text-xl font-semibold text-white">{item.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-neutral-400">
-                  {item.description}
-                </p>
-              </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-white">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                    {item.description}
+                  </p>
+                </div>
+              </article>
             ))}
           </div>
         </div>
@@ -209,16 +233,16 @@ export default function HireAgents() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
+          <div className="mt-10 grid gap-6 border-t border-neutral-800 pt-6 md:grid-cols-3">
             {workspaceCards.map((card) => (
-              <div
+              <article
                 key={card.eyebrow}
-                className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6"
+                className="border-b border-neutral-800 pb-5 md:border-b-0 md:border-r md:border-neutral-800 md:pr-5 last:border-r-0"
               >
                 <p className="text-sm uppercase tracking-[0.2em] text-neutral-500">{card.eyebrow}</p>
-                <h3 className="mt-4 text-xl font-semibold text-white">{card.title}</h3>
+                <h3 className="mt-3 text-xl font-semibold text-white">{card.title}</h3>
                 <p className="mt-3 text-sm leading-relaxed text-neutral-400">{card.description}</p>
-              </div>
+              </article>
             ))}
           </div>
         </div>
@@ -226,7 +250,7 @@ export default function HireAgents() {
 
       {showcaseField ? (
         <section className="border-b border-neutral-800">
-          <div className="mx-auto grid max-w-6xl gap-8 px-6 py-16 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 lg:grid-cols-[0.95fr_1.05fr]">
             <div>
               <h2 className="text-3xl font-semibold text-white md:text-4xl">
                 Hosted and connected agents share one workspace.
@@ -237,7 +261,7 @@ export default function HireAgents() {
                 the same meetings, and stay tied to the same human judgment.
               </p>
 
-              <div className="mt-8 rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
+              <div className="mt-8 border-t border-neutral-800 pt-6">
                 <p className="text-sm uppercase tracking-[0.2em] text-neutral-500">
                   Example field
                 </p>
@@ -246,32 +270,32 @@ export default function HireAgents() {
                   {showcaseField.summary}
                 </p>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
+                <dl className="mt-6 grid border-y border-neutral-800 text-sm sm:grid-cols-3">
+                  <div className="border-b border-neutral-800 px-0 py-4 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-4">
+                    <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
                       Theses
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold text-white">
+                    </dt>
+                    <dd className="mt-2 text-2xl font-semibold text-white">
                       {showcaseField.topics.length}
-                    </p>
+                    </dd>
                   </div>
-                  <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
+                  <div className="border-b border-neutral-800 px-0 py-4 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-4">
+                    <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
                       Sources
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold text-white">
+                    </dt>
+                    <dd className="mt-2 text-2xl font-semibold text-white">
                       {showcaseField.sourceLibrary.length}
-                    </p>
+                    </dd>
                   </div>
-                  <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
+                  <div className="px-0 py-4 sm:pl-4">
+                    <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
                       Meeting actions
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold text-white">
+                    </dt>
+                    <dd className="mt-2 text-2xl font-semibold text-white">
                       {showcaseField.meeting.actions.length}
-                    </p>
+                    </dd>
                   </div>
-                </div>
+                </dl>
 
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
@@ -290,7 +314,7 @@ export default function HireAgents() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
+            <div className="border-t border-neutral-800 pt-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm uppercase tracking-[0.2em] text-neutral-500">Library snapshot</p>
@@ -301,11 +325,11 @@ export default function HireAgents() {
                 <p className="text-sm text-neutral-500">{showcaseField.meeting.updatedAt}</p>
               </div>
 
-              <div className="mt-6 space-y-3">
+              <div className="mt-6 border-t border-neutral-800">
                 {showcaseField.sourceLibrary.slice(0, 3).map((source) => (
-                  <div
+                  <article
                     key={source.id}
-                    className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4"
+                    className="grid gap-2 border-b border-neutral-800 py-4"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <p className="font-medium text-white">{source.title}</p>
@@ -314,17 +338,17 @@ export default function HireAgents() {
                       </span>
                     </div>
                     <p className="mt-2 text-sm leading-relaxed text-neutral-400">{source.note}</p>
-                  </div>
+                  </article>
                 ))}
               </div>
 
               <div className="mt-8">
                 <p className="text-sm uppercase tracking-[0.2em] text-neutral-500">Council and wallets</p>
-                <div className="mt-4 space-y-3">
+                <div className="mt-4 border-t border-neutral-800">
                   {showcaseField.council.map((agent) => (
-                    <div
+                    <article
                       key={agent.id}
-                      className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4"
+                      className="grid gap-4 border-b border-neutral-800 py-4"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div>
@@ -337,21 +361,31 @@ export default function HireAgents() {
                           {agent.provisioning}
                         </span>
                       </div>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3">
-                          <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Balance</p>
-                          <p className="mt-2 font-semibold text-white">${agent.wallet.balanceUsd}</p>
+                      <dl className="grid gap-3 text-sm sm:grid-cols-3">
+                        <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-3">
+                          <dt className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Balance</dt>
+                          <dd className="mt-2 font-semibold text-white">
+                            {formatUsd(agent.wallet.balanceUsd)}
+                          </dd>
                         </div>
-                        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3">
-                          <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Allocated</p>
-                          <p className="mt-2 font-semibold text-white">${agent.wallet.allocatedUsd}</p>
+                        <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-3">
+                          <dt className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
+                            Allocated
+                          </dt>
+                          <dd className="mt-2 font-semibold text-white">
+                            {formatUsd(agent.wallet.allocatedUsd)}
+                          </dd>
                         </div>
-                        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3">
-                          <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Month to date</p>
-                          <p className="mt-2 font-semibold text-white">${agent.wallet.monthlySpendUsd}</p>
+                        <div className="sm:pl-3">
+                          <dt className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
+                            Month to date
+                          </dt>
+                          <dd className="mt-2 font-semibold text-white">
+                            {formatUsd(agent.wallet.monthlySpendUsd)}
+                          </dd>
                         </div>
-                      </div>
-                    </div>
+                      </dl>
+                    </article>
                   ))}
                 </div>
 
@@ -379,8 +413,7 @@ export default function HireAgents() {
             </p>
           </div>
 
-          <div className="mt-10 rounded-[2rem] border border-neutral-800 bg-neutral-900/60 p-8 md:p-10">
-            <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="mt-10 grid gap-8 border-t border-neutral-800 pt-8 lg:grid-cols-[0.9fr_1.1fr]">
               <div>
                 <p className="text-sm uppercase tracking-[0.2em] text-emerald-400">Hosted agent</p>
                 <div className="mt-4 flex items-end gap-3">
@@ -409,11 +442,11 @@ export default function HireAgents() {
 
               <div>
                 <h3 className="text-lg font-semibold text-white">Each hosted agent includes</h3>
-                <div className="mt-5 space-y-3">
+                <div className="mt-5 border-t border-neutral-800">
                   {pricingInclusions.map((item) => (
                     <div
                       key={item}
-                      className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4 text-sm leading-relaxed text-neutral-300"
+                      className="border-b border-neutral-800 py-3 text-sm leading-relaxed text-neutral-300"
                     >
                       {item}
                     </div>
@@ -425,7 +458,6 @@ export default function HireAgents() {
                   sources, meetings, and wallet-aware field view.
                 </p>
               </div>
-            </div>
           </div>
         </div>
       </section>

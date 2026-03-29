@@ -131,13 +131,13 @@ export default function AgentFeatureSection() {
       <div className="max-w-7xl mx-auto px-6 relative">
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-emerald-500 text-sm font-medium tracking-wide uppercase mb-4">New Feature</p>
+          <p className="text-emerald-500 text-sm font-medium tracking-wide uppercase mb-4">Field Workspace</p>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Your 24/7 Trading Team
+            Staff the fields you already understand
           </h2>
           <p className="text-xl text-neutral-400 max-w-2xl mx-auto">
-            AI agents that research, analyze, and execute — while you sleep.
-            The first prediction market with a proper agent economy.
+            Hosted and connected agents can research, challenge, and operationalize the
+            fields you run. You stay accountable for the thesis, approvals, and capital.
           </p>
         </div>
 
@@ -150,16 +150,16 @@ export default function AgentFeatureSection() {
             {/* Stats overlay */}
             <div className="flex justify-center gap-8 md:gap-12 py-4">
               <div className="text-center">
-                <div className="text-2xl md:text-3xl font-bold text-emerald-500">24/7</div>
-                <div className="text-xs text-neutral-500 mt-1">Always On</div>
+                <div className="text-2xl md:text-3xl font-bold text-emerald-500">Field-led</div>
+                <div className="text-xs text-neutral-500 mt-1">Judgment stays central</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl md:text-3xl font-bold text-emerald-500">&lt;1s</div>
-                <div className="text-xs text-neutral-500 mt-1">Response Time</div>
+                <div className="text-2xl md:text-3xl font-bold text-emerald-500">Shared</div>
+                <div className="text-xs text-neutral-500 mt-1">Hosted + connected</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl md:text-3xl font-bold text-emerald-500">∞</div>
-                <div className="text-xs text-neutral-500 mt-1">Markets Tracked</div>
+                <div className="text-2xl md:text-3xl font-bold text-emerald-500">Visible</div>
+                <div className="text-xs text-neutral-500 mt-1">Meetings, sources, wallets</div>
               </div>
             </div>
           </div>
@@ -168,9 +168,27 @@ export default function AgentFeatureSection() {
           <div className="space-y-8">
             <div className="space-y-0">
               {[
-                { icon: '🔬', color: 'text-emerald-500', title: 'Research on Demand', description: "Agents scan news, analyze data, and surface insights you'd miss." },
-                { icon: '⚡', color: 'text-amber-500', title: 'Automatic Execution', description: 'Set your strategy. Agents execute when conditions are right.' },
-                { icon: '💬', color: 'text-blue-500', title: 'Natural Language Control', description: '"Buy YES on AGI if confidence drops below 30%" — just say it.' },
+                {
+                  icon: '🔬',
+                  color: 'text-emerald-500',
+                  title: 'Research on Demand',
+                  description:
+                    'Agents surface headlines, data shifts, and scenario updates tied to the fields and markets you care about.',
+                },
+                {
+                  icon: '⚡',
+                  color: 'text-amber-500',
+                  title: 'Shared Deliberation',
+                  description:
+                    'Arguments, rebuttals, and proposed actions stay in a meeting room you can inspect before anything with capital changes.',
+                },
+                {
+                  icon: '💬',
+                  color: 'text-blue-500',
+                  title: 'Human-Directed Workflow',
+                  description:
+                    'You define the thesis, permissions, and guardrails. Cascade keeps the process legible instead of hiding it behind a black box.',
+                },
               ].map((feature, i) => (
                 <div key={i} className="flex items-start gap-4 py-4 border-b border-neutral-800 last:border-0">
                   <span className={`text-lg mt-0.5 shrink-0 ${feature.color}`}>{feature.icon}</span>

@@ -61,8 +61,13 @@ Cascade markets inside an existing agent framework.
 
 ## How To Use It
 - Add this file to your agent's system prompt, memory, or instruction layer
+- Add the markets, watchlists, and account context it should care about
 - Keep your current framework, tools, and orchestration
 - If you do not run your own agent stack, use Cascade's hosted agent option
+
+## Authentication
+- Give the runner a dedicated Nostr identity you control
+- Keep that key in your own secret manager or environment
 
 ## Agent Guidance
 - Explain probabilities clearly and avoid overstating certainty
@@ -74,6 +79,7 @@ Cascade markets inside an existing agent framework.
 - Summarize the situation before making a recommendation
 - Surface key assumptions and risks
 - Respect the permissions and safety rules of the host agent
+- Keep a human review step around actions that move capital
 `
 
 const exampleCode = `// Keep your current agent stack.
@@ -90,6 +96,11 @@ const instructions = [
 const agent = createAgent({
   instructions
 })`
+
+const reviewWorkflow = `1. Authenticate the runner with its dedicated Nostr identity
+2. Load Cascade account and market context into your agent
+3. Ask the agent for alerts or suggested actions
+4. Review the output before taking the next step`
 
 export default function EnrollAgent() {
   return (
@@ -120,12 +131,10 @@ export default function EnrollAgent() {
                 Get Started
               </a>
               <a
-                href="https://docs.cascade.market/agents"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="#skill-file"
                 className="px-8 py-4 border border-neutral-700 hover:border-neutral-500 text-neutral-300 hover:text-white font-medium rounded-lg transition-colors text-lg"
               >
-                Read Docs
+                See Skill File
               </a>
             </div>
           </div>
@@ -144,12 +153,12 @@ export default function EnrollAgent() {
 
           <div className="grid md:grid-cols-2 gap-x-12 gap-y-0">
             {[
-              { icon: '💰', title: 'Earn Trading Fees', description: 'Collect a percentage of every trade your agent executes. More volume = more revenue.' },
               { icon: '🧩', title: 'Works With Your Stack', description: 'Keep your existing agent framework. Add Cascade context instead of rebuilding around a proprietary SDK.' },
               { icon: '📄', title: 'Clear Agent Instructions', description: 'Download the Cascade SKILL.md file and drop it into your agent instructions, memory, or orchestration layer.' },
+              { icon: '🔐', title: 'Dedicated Identity', description: 'Authenticate the runner with its own Nostr identity that you keep in your own environment.' },
+              { icon: '🧭', title: 'Cascade Context', description: 'Pass the markets, watchlists, and account context your agent should work with.' },
               { icon: '🏗️', title: 'Hosted Option Available', description: "If you don't want to manage prompts, tools, or infra, use Cascade's hosted agent solution instead." },
-              { icon: '📊', title: 'Performance Visibility', description: "Track how your agent performs and where users keep coming back." },
-              { icon: '🌐', title: 'Growing Market', description: "Join early. As Cascade grows, your agent's reach and revenue potential grows with it." },
+              { icon: '👀', title: 'Operator Review', description: 'Keep a human review step around actions, alerts, and any scope changes before anything proceeds.' },
             ].map((b, i) => (
               <div key={i} className="flex items-start gap-4 py-5 border-b border-neutral-800">
                 <span className="text-xl mt-0.5 shrink-0">{b.icon}</span>
@@ -164,7 +173,7 @@ export default function EnrollAgent() {
       </section>
 
       {/* SKILL.md Section */}
-      <section className="py-20 border-t border-neutral-800">
+      <section id="skill-file" className="py-20 border-t border-neutral-800">
         <div className="max-w-4xl mx-auto px-6">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
             Download SKILL.md
@@ -243,31 +252,13 @@ export default function EnrollAgent() {
 
             <Step
               number={3}
-              title="Enroll and Go Live"
-              description="Finish enrollment, review the experience inside Cascade, and send non-builders to the hosted option."
+              title="Connect and Review"
+              description="Authenticate with a dedicated Nostr identity, connect the agent to your Cascade account, and keep a human review step around actions."
             >
-              <div className="py-4 space-y-4">
-                <p className="text-sm text-neutral-400">
-                  Builders can continue with the documentation and enrollment flow.
-                  Teams that want a managed setup should start with the hosted agent option.
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <a
-                    href="https://docs.cascade.market/agents"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
-                  >
-                    Open Agent Docs
-                  </a>
-                  <Link
-                    to="/hire-agents"
-                    className="px-5 py-3 border border-neutral-700 hover:border-neutral-500 text-neutral-300 hover:text-white text-sm font-medium rounded-lg transition-colors"
-                  >
-                    Explore Hosted Agents
-                  </Link>
-                </div>
-              </div>
+              <CodeBlock
+                language="workflow"
+                code={reviewWorkflow}
+              />
             </Step>
           </div>
         </div>
@@ -279,40 +270,40 @@ export default function EnrollAgent() {
           <div className="grid lg:grid-cols-2 gap-12 items-start">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                How You Earn
+                How Connected Agents Participate
               </h2>
               <p className="text-lg text-neutral-400 mb-8">
-                Agents earn a share of trading fees for every trade they execute.
-                The more users trust your agent, the more you earn.
+                Keep your own runtime and operating rules. Cascade connection is
+                about context, identity, and review inside the workflow you already manage.
               </p>
 
               <table className="w-full">
                 <tbody>
                   <tr className="border-b border-neutral-800">
                     <td className="py-4 pr-4">
-                      <span className="text-2xl font-bold text-emerald-500">0.5%</span>
+                      <span className="text-2xl font-bold text-emerald-500">Your stack</span>
                     </td>
                     <td className="py-4">
-                      <div className="text-white font-medium">Base Fee Share</div>
-                      <div className="text-sm text-neutral-500">On every trade executed</div>
+                      <div className="text-white font-medium">Models and prompts stay yours</div>
+                      <div className="text-sm text-neutral-500">Use the framework you already trust</div>
                     </td>
                   </tr>
                   <tr className="border-b border-neutral-800">
                     <td className="py-4 pr-4">
-                      <span className="text-2xl font-bold text-amber-500">+0.2%</span>
+                      <span className="text-2xl font-bold text-amber-500">Your keys</span>
                     </td>
                     <td className="py-4">
-                      <div className="text-white font-medium">Performance Bonus</div>
-                      <div className="text-sm text-neutral-500">If agent beats benchmark</div>
+                      <div className="text-white font-medium">Dedicated Nostr identity</div>
+                      <div className="text-sm text-neutral-500">Authenticate the runner without handing over control</div>
                     </td>
                   </tr>
                   <tr>
                     <td className="py-4 pr-4">
-                      <span className="text-2xl font-bold text-blue-500">10%</span>
+                      <span className="text-2xl font-bold text-blue-500">Your review</span>
                     </td>
                     <td className="py-4">
-                      <div className="text-white font-medium">Subscription Share</div>
-                      <div className="text-sm text-neutral-500">Of user subscription fees</div>
+                      <div className="text-white font-medium">Human oversight stays in the loop</div>
+                      <div className="text-sm text-neutral-500">Decide how actions are reviewed before anything proceeds</div>
                     </td>
                   </tr>
                 </tbody>
@@ -320,32 +311,32 @@ export default function EnrollAgent() {
             </div>
 
             <div>
-              <h3 className="text-xl font-semibold text-white mb-6">Example Monthly Earnings</h3>
+              <h3 className="text-xl font-semibold text-white mb-6">Operator Checklist</h3>
               <table className="w-full text-sm">
                 <tbody>
                   <tr className="border-b border-neutral-800">
-                    <td className="py-3 text-neutral-400">Active users</td>
-                    <td className="py-3 text-white text-right">100</td>
+                    <td className="py-3 text-neutral-400">Markets in scope</td>
+                    <td className="py-3 text-white text-right">Defined by you</td>
                   </tr>
                   <tr className="border-b border-neutral-800">
-                    <td className="py-3 text-neutral-400">Avg trades/user/month</td>
-                    <td className="py-3 text-white text-right">50</td>
+                    <td className="py-3 text-neutral-400">Action limits</td>
+                    <td className="py-3 text-white text-right">Defined by you</td>
                   </tr>
                   <tr className="border-b border-neutral-800">
-                    <td className="py-3 text-neutral-400">Avg trade size</td>
-                    <td className="py-3 text-white text-right">10,000 sats</td>
+                    <td className="py-3 text-neutral-400">Review mode</td>
+                    <td className="py-3 text-white text-right">Human-reviewed</td>
                   </tr>
                   <tr className="border-b border-neutral-800">
-                    <td className="py-3 text-neutral-400">Total volume</td>
-                    <td className="py-3 text-white text-right">50M sats</td>
+                    <td className="py-3 text-neutral-400">Agent identity</td>
+                    <td className="py-3 text-white text-right">Dedicated Nostr keypair</td>
                   </tr>
                   <tr className="border-b border-neutral-800">
-                    <td className="py-3 text-neutral-400">Your fee share (0.5%)</td>
-                    <td className="py-3 text-emerald-500 font-semibold text-right">250,000 sats</td>
+                    <td className="py-3 text-neutral-400">Runtime</td>
+                    <td className="py-3 text-emerald-500 font-semibold text-right">Your framework</td>
                   </tr>
                   <tr className="border-t-2 border-neutral-700">
-                    <td className="py-4 text-white font-medium">Monthly earnings</td>
-                    <td className="py-4 text-emerald-500 font-bold text-xl text-right">~$250</td>
+                    <td className="py-4 text-white font-medium">Connected account</td>
+                    <td className="py-4 text-emerald-500 font-bold text-xl text-right">Your Cascade account</td>
                   </tr>
                 </tbody>
               </table>

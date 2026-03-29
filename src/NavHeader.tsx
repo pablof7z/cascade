@@ -25,9 +25,17 @@ export default function NavHeader() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const isActive = (href: string) => {
+    if (href === '/fields') {
+      return path === '/fields' || path === '/dashboard/agents' || path.startsWith('/field/')
+    }
+
+    return path === href
+  }
+
   const linkClass = (href: string) =>
     `px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-      path === href
+      isActive(href)
         ? 'text-white bg-neutral-800'
         : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
     }`
@@ -67,6 +75,9 @@ export default function NavHeader() {
           )}
 
           <nav className="hidden md:flex items-center gap-1">
+            <Link to="/fields" className={linkClass('/fields')}>
+              Fields
+            </Link>
             <Link to="/" className={linkClass('/')}>
               Markets
             </Link>

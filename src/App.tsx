@@ -39,6 +39,9 @@ import WalletPage from './WalletPage'
 import HireAgents from './HireAgents'
 import EnrollAgent from './EnrollAgent'
 import AgentDashboard from './AgentDashboard'
+import FieldsHome from './FieldsHome'
+import FieldDetail from './FieldDetail'
+import MeetingView from './MeetingView'
 import EmbedPage from './EmbedPage'
 import EmbedLanding from './EmbedLanding'
 import TestnetBanner from './components/TestnetBanner'
@@ -389,6 +392,9 @@ function AppContent() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/hire-agents" element={<HireAgents />} />
         <Route path="/enroll-agent" element={<EnrollAgent />} />
+        <Route path="/fields" element={<FieldsHome />} />
+        <Route path="/field/:id" element={<FieldDetail />} />
+        <Route path="/field/:id/meeting" element={<MeetingView />} />
         <Route path="/dashboard/agents" element={<AgentDashboard />} />
         <Route path="/embed" element={<EmbedLanding />} />
       </Routes>

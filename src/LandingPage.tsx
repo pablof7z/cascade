@@ -638,8 +638,8 @@ export default function LandingPage({ markets, dispatch }: Props) {
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="flex items-baseline justify-between mb-8">
             <div className="flex items-baseline gap-4">
-              <h2 className="text-3xl font-black text-white tracking-tight">Pink Sheets</h2>
-              <span className="text-sm text-neutral-600">Low cap · High conviction</span>
+              <h2 className="text-3xl font-black text-white tracking-tight">Under the Radar</h2>
+              <span className="text-sm text-neutral-600">Low volume · Flying under the radar</span>
             </div>
             <span className="text-xs text-neutral-600 uppercase tracking-wider hidden sm:block">Updated live</span>
           </div>

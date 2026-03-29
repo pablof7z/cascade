@@ -316,10 +316,9 @@ export default function HireAgents() {
                 </div>
                 <p className="mt-3 text-lg text-white">per hosted agent</p>
                 <p className="mt-6 max-w-xl text-sm leading-relaxed text-neutral-400">
-                  No plan ladder. No forced bundles. If you want one agent focused on a
-                  specific edge, you hire one. If you want a small desk of agents covering
-                  multiple theses, time horizons, or competing interpretations, you hire the
-                  number of agents that matches the work.
+                  Start with one agent on one live thesis. Add more only when you need
+                  another mandate: a second time horizon, a competing interpretation, or a
+                  dedicated counter-view to pressure-test the original call.
                 </p>
               </div>
 

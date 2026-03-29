@@ -21,7 +21,6 @@ function AgentNetworkVisualization() {
   return (
     <div className="relative w-full h-64 md:h-80">
       <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-        {/* Gradient definitions */}
         <defs>
           <linearGradient id="nodeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#10b981" stopOpacity="0.8" />
@@ -40,7 +39,6 @@ function AgentNetworkVisualization() {
           </filter>
         </defs>
 
-        {/* Connection lines with animation */}
         {connections.map((conn, i) => {
           const from = nodes[conn.from]
           const to = nodes[conn.to]
@@ -59,7 +57,6 @@ function AgentNetworkVisualization() {
           )
         })}
 
-        {/* Data flow particles */}
         {connections.map((conn, i) => {
           const from = nodes[conn.from]
           const to = nodes[conn.to]
@@ -79,12 +76,10 @@ function AgentNetworkVisualization() {
           )
         })}
 
-        {/* Nodes */}
         {nodes.map((node, i) => {
           const size = node.size === 'lg' ? 6 : node.size === 'md' ? 4 : 3
           return (
             <g key={i} style={{ animationDelay: `${node.delay}s` }}>
-              {/* Outer glow ring */}
               <circle
                 cx={node.x}
                 cy={node.y}
@@ -96,7 +91,6 @@ function AgentNetworkVisualization() {
                 className="animate-ping"
                 style={{ animationDuration: '3s', animationDelay: `${node.delay}s` }}
               />
-              {/* Main node */}
               <circle
                 cx={node.x}
                 cy={node.y}
@@ -104,7 +98,6 @@ function AgentNetworkVisualization() {
                 fill="url(#nodeGradient)"
                 filter="url(#glow)"
               />
-              {/* Inner highlight */}
               <circle
                 cx={node.x - size * 0.2}
                 cy={node.y - size * 0.2}
@@ -112,7 +105,6 @@ function AgentNetworkVisualization() {
                 fill="white"
                 opacity="0.3"
               />
-              {/* Label */}
               <text
                 x={node.x}
                 y={node.y + size + 5}
@@ -129,19 +121,9 @@ function AgentNetworkVisualization() {
   )
 }
 
-// Agent stat card
-function AgentStat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="text-center">
-      <div className="text-2xl md:text-3xl font-bold text-emerald-500">{value}</div>
-      <div className="text-xs text-neutral-500 mt-1">{label}</div>
-    </div>
-  )
-}
-
 export default function AgentFeatureSection() {
   return (
-    <section className="relative py-20 overflow-hidden border-t border-neutral-900">
+    <section className="relative py-20 overflow-hidden border-t border-neutral-800">
       {/* Background glow */}
       <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 via-transparent to-transparent" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/5 rounded-full blur-3xl" />
@@ -149,13 +131,7 @@ export default function AgentFeatureSection() {
       <div className="max-w-7xl mx-auto px-6 relative">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-sm mb-6">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
-            New Feature
-          </div>
+          <p className="text-emerald-500 text-sm font-medium tracking-wide uppercase mb-4">New Feature</p>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
             Your 24/7 Trading Team
           </h2>
@@ -172,51 +148,38 @@ export default function AgentFeatureSection() {
             <AgentNetworkVisualization />
             
             {/* Stats overlay */}
-            <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-8 md:gap-12 py-4 bg-gradient-to-t from-neutral-950 via-neutral-950/80 to-transparent">
-              <AgentStat value="24/7" label="Always On" />
-              <AgentStat value="<1s" label="Response Time" />
-              <AgentStat value="∞" label="Markets Tracked" />
+            <div className="flex justify-center gap-8 md:gap-12 py-4">
+              <div className="text-center">
+                <div className="text-2xl md:text-3xl font-bold text-emerald-500">24/7</div>
+                <div className="text-xs text-neutral-500 mt-1">Always On</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl md:text-3xl font-bold text-emerald-500">&lt;1s</div>
+                <div className="text-xs text-neutral-500 mt-1">Response Time</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl md:text-3xl font-bold text-emerald-500">∞</div>
+                <div className="text-xs text-neutral-500 mt-1">Markets Tracked</div>
+              </div>
             </div>
           </div>
 
-          {/* Right - Features & CTAs */}
+          {/* Right - Features as dense list, not cards */}
           <div className="space-y-8">
-            <div className="space-y-4">
-              <div className="flex items-start gap-4 p-4 rounded-xl bg-neutral-900/50 border border-neutral-800 hover:border-emerald-500/30 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
-                  <span className="text-emerald-500 text-lg">🔬</span>
+            <div className="space-y-0">
+              {[
+                { icon: '🔬', color: 'text-emerald-500', title: 'Research on Demand', description: "Agents scan news, analyze data, and surface insights you'd miss." },
+                { icon: '⚡', color: 'text-amber-500', title: 'Automatic Execution', description: 'Set your strategy. Agents execute when conditions are right.' },
+                { icon: '💬', color: 'text-blue-500', title: 'Natural Language Control', description: '"Buy YES on AGI if confidence drops below 30%" — just say it.' },
+              ].map((feature, i) => (
+                <div key={i} className="flex items-start gap-4 py-4 border-b border-neutral-800 last:border-0">
+                  <span className={`text-lg mt-0.5 shrink-0 ${feature.color}`}>{feature.icon}</span>
+                  <div>
+                    <h3 className="text-white font-semibold">{feature.title}</h3>
+                    <p className="text-sm text-neutral-400 mt-0.5">{feature.description}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1">Research on Demand</h3>
-                  <p className="text-sm text-neutral-400">
-                    Agents scan news, analyze data, and surface insights you'd miss.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4 p-4 rounded-xl bg-neutral-900/50 border border-neutral-800 hover:border-emerald-500/30 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
-                  <span className="text-amber-500 text-lg">⚡</span>
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1">Automatic Execution</h3>
-                  <p className="text-sm text-neutral-400">
-                    Set your strategy. Agents execute when conditions are right.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4 p-4 rounded-xl bg-neutral-900/50 border border-neutral-800 hover:border-emerald-500/30 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                  <span className="text-blue-500 text-lg">💬</span>
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1">Natural Language Control</h3>
-                  <p className="text-sm text-neutral-400">
-                    "Buy YES on AGI if confidence drops below 30%" — just say it.
-                  </p>
-                </div>
-              </div>
+              ))}
             </div>
 
             {/* CTAs */}

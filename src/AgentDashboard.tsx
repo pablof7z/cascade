@@ -122,20 +122,22 @@ function formatSats(value: number): string {
 // Components
 function StatusBadge({ status }: { status: AgentStatus }) {
   const styles = {
-    active: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    paused: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    error: 'bg-red-500/20 text-red-400 border-red-500/30',
+    active: 'text-emerald-400',
+    paused: 'text-amber-400',
+    error: 'text-red-400',
   }
   
   return (
-    <span className={`px-2 py-0.5 text-xs rounded-full border ${styles[status]}`}>
+    <span className={`text-xs font-medium ${styles[status]}`}>
       {status === 'active' && '● '}
+      {status === 'paused' && '◐ '}
+      {status === 'error' && '✕ '}
       {status}
     </span>
   )
 }
 
-function AgentCard({ 
+function AgentRow({ 
   agent, 
   isSelected, 
   onClick 
@@ -147,36 +149,35 @@ function AgentCard({
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-4 rounded-xl border transition-all ${
+      className={`w-full text-left py-4 border-b border-neutral-800 last:border-0 transition-colors ${
         isSelected
-          ? 'bg-neutral-800/50 border-emerald-500/50'
-          : 'bg-neutral-900/50 border-neutral-800 hover:border-neutral-700'
+          ? 'bg-neutral-900/50'
+          : 'hover:bg-neutral-900/30'
       }`}
     >
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center text-xl">
-            {agent.avatar}
-          </div>
+          <span className="text-xl">{agent.avatar}</span>
           <div>
-            <div className="text-white font-medium">{agent.name}</div>
-            <div className="text-xs text-neutral-500">{agent.lastActive}</div>
+            <span className="text-white font-medium">{agent.name}</span>
+            <span className="text-neutral-600 mx-2">·</span>
+            <span className="text-xs text-neutral-500">{agent.lastActive}</span>
           </div>
         </div>
         <StatusBadge status={agent.status} />
       </div>
       
-      <div className="grid grid-cols-2 gap-4 text-sm">
+      <div className="flex items-center gap-6 pl-9 text-sm">
         <div>
-          <div className="text-neutral-500 text-xs">P&L</div>
-          <div className={agent.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}>
-            {agent.pnl >= 0 ? '+' : ''}{formatSats(agent.pnl)} sats
+          <span className="text-neutral-500 text-xs mr-1.5">P&L</span>
+          <span className={agent.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+            {agent.pnl >= 0 ? '+' : ''}{formatSats(agent.pnl)}
             <span className="text-xs ml-1">({agent.pnlPercent >= 0 ? '+' : ''}{agent.pnlPercent}%)</span>
-          </div>
+          </span>
         </div>
         <div>
-          <div className="text-neutral-500 text-xs">Balance</div>
-          <div className="text-white">{formatSats(agent.balance)} sats</div>
+          <span className="text-neutral-500 text-xs mr-1.5">Bal</span>
+          <span className="text-white">{formatSats(agent.balance)}</span>
         </div>
       </div>
     </button>
@@ -187,8 +188,8 @@ function TradeRow({ trade }: { trade: Trade }) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-neutral-800 last:border-0">
       <div className="flex items-center gap-3">
-        <span className={`px-2 py-0.5 text-xs rounded ${
-          trade.side === 'YES' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+        <span className={`text-xs font-medium w-7 ${
+          trade.side === 'YES' ? 'text-emerald-400' : 'text-red-400'
         }`}>
           {trade.side}
         </span>
@@ -209,31 +210,11 @@ function TradeRow({ trade }: { trade: Trade }) {
   )
 }
 
-function ResearchCard({ note }: { note: ResearchNote }) {
-  return (
-    <div className="p-4 rounded-xl bg-neutral-900/50 border border-neutral-800">
-      <div className="flex items-start justify-between mb-2">
-        <h4 className="text-white font-medium">{note.title}</h4>
-        <span className="text-xs text-neutral-500">{note.timestamp}</span>
-      </div>
-      <p className="text-sm text-neutral-400 mb-3">{note.summary}</p>
-      <div className="flex flex-wrap gap-2">
-        {note.markets.map(market => (
-          <span key={market} className="text-xs px-2 py-1 bg-neutral-800 text-neutral-400 rounded">
-            {market}
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function CommandInput({ agentName }: { agentName: string }) {
   const [command, setCommand] = useState('')
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement command handling
     console.log('Command:', command)
     setCommand('')
   }
@@ -333,29 +314,29 @@ export default function AgentDashboard() {
             </div>
           </div>
           
-          {/* Portfolio summary */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            <div className="p-4 rounded-xl bg-neutral-900/50 border border-neutral-800">
-              <div className="text-xs text-neutral-500 mb-1">Total Balance</div>
-              <div className="text-2xl font-bold text-white">{formatSats(totalBalance)} sats</div>
+          {/* Portfolio summary — horizontal ticker-tape style */}
+          <div className="flex flex-wrap items-baseline gap-8 mt-8 pt-6 border-t border-neutral-800">
+            <div>
+              <span className="text-xs text-neutral-500 uppercase tracking-wide mr-2">Balance</span>
+              <span className="text-2xl font-bold text-white">{formatSats(totalBalance)} sats</span>
             </div>
-            <div className="p-4 rounded-xl bg-neutral-900/50 border border-neutral-800">
-              <div className="text-xs text-neutral-500 mb-1">Total P&L</div>
-              <div className={`text-2xl font-bold ${totalPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+            <div>
+              <span className="text-xs text-neutral-500 uppercase tracking-wide mr-2">P&L</span>
+              <span className={`text-2xl font-bold ${totalPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                 {totalPnl >= 0 ? '+' : ''}{formatSats(totalPnl)} sats
-              </div>
+              </span>
             </div>
-            <div className="p-4 rounded-xl bg-neutral-900/50 border border-neutral-800">
-              <div className="text-xs text-neutral-500 mb-1">Active Agents</div>
-              <div className="text-2xl font-bold text-white">
+            <div>
+              <span className="text-xs text-neutral-500 uppercase tracking-wide mr-2">Active</span>
+              <span className="text-2xl font-bold text-white">
                 {sampleAgents.filter(a => a.status === 'active').length}/{sampleAgents.length}
-              </div>
+              </span>
             </div>
-            <div className="p-4 rounded-xl bg-neutral-900/50 border border-neutral-800">
-              <div className="text-xs text-neutral-500 mb-1">Trades This Month</div>
-              <div className="text-2xl font-bold text-white">
+            <div>
+              <span className="text-xs text-neutral-500 uppercase tracking-wide mr-2">Trades</span>
+              <span className="text-2xl font-bold text-white">
                 {sampleAgents.reduce((sum, a) => sum + a.tradesThisMonth, 0)}
-              </div>
+              </span>
             </div>
           </div>
         </div>
@@ -364,11 +345,11 @@ export default function AgentDashboard() {
       {/* Main content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid lg:grid-cols-12 gap-8">
-          {/* Agent list - left sidebar */}
-          <div className="lg:col-span-4 space-y-4">
-            <h2 className="text-lg font-semibold text-white mb-4">Your Agents</h2>
+          {/* Agent list — left sidebar */}
+          <div className="lg:col-span-4">
+            <h2 className="text-lg font-semibold text-white mb-2">Your Agents</h2>
             {sampleAgents.map(agent => (
-              <AgentCard
+              <AgentRow
                 key={agent.id}
                 agent={agent}
                 isSelected={agent.id === selectedAgentId}
@@ -377,32 +358,32 @@ export default function AgentDashboard() {
             ))}
           </div>
 
-          {/* Agent detail - main content */}
-          <div className="lg:col-span-8 space-y-6">
+          {/* Agent detail — main content */}
+          <div className="lg:col-span-8 space-y-8">
             {/* Agent header */}
-            <div className="flex items-start justify-between p-6 rounded-xl bg-neutral-900/50 border border-neutral-800">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-neutral-800 flex items-center justify-center text-3xl">
-                  {selectedAgent.avatar}
-                </div>
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-xl font-semibold text-white">{selectedAgent.name}</h2>
-                    <StatusBadge status={selectedAgent.status} />
+            <div className="border-b border-neutral-800 pb-6">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <span className="text-3xl">{selectedAgent.avatar}</span>
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-xl font-semibold text-white">{selectedAgent.name}</h2>
+                      <StatusBadge status={selectedAgent.status} />
+                    </div>
+                    <p className="text-sm text-neutral-400 mt-1">{selectedAgent.strategy}</p>
                   </div>
-                  <p className="text-sm text-neutral-400 mt-1">{selectedAgent.strategy}</p>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowFundModal(true)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  Fund
-                </button>
-                <button className="px-4 py-2 border border-neutral-700 hover:border-neutral-500 text-neutral-300 text-sm rounded-lg transition-colors">
-                  {selectedAgent.status === 'active' ? 'Pause' : 'Resume'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowFundModal(true)}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    Fund
+                  </button>
+                  <button className="px-4 py-2 border border-neutral-700 hover:border-neutral-500 text-neutral-300 text-sm rounded-lg transition-colors">
+                    {selectedAgent.status === 'active' ? 'Pause' : 'Resume'}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -412,8 +393,8 @@ export default function AgentDashboard() {
               <CommandInput agentName={selectedAgent.name} />
             </div>
 
-            {/* Recent trades */}
-            <div className="rounded-xl bg-neutral-900/50 border border-neutral-800 p-6">
+            {/* Recent trades — clean table */}
+            <div>
               <h3 className="text-lg font-semibold text-white mb-4">Recent Trades</h3>
               {agentTrades.length > 0 ? (
                 <div>
@@ -422,44 +403,57 @@ export default function AgentDashboard() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-neutral-500">No trades yet</p>
+                <p className="text-sm text-neutral-500 py-4">No trades yet</p>
               )}
             </div>
 
-            {/* Research notes */}
+            {/* Research notes — dense list */}
             <div>
               <h3 className="text-lg font-semibold text-white mb-4">Research & Insights</h3>
               {agentResearch.length > 0 ? (
-                <div className="space-y-4">
+                <div>
                   {agentResearch.map(note => (
-                    <ResearchCard key={note.id} note={note} />
+                    <div key={note.id} className="py-4 border-b border-neutral-800 last:border-0">
+                      <div className="flex items-start justify-between mb-1">
+                        <h4 className="text-white font-medium">{note.title}</h4>
+                        <span className="text-xs text-neutral-500 shrink-0 ml-4">{note.timestamp}</span>
+                      </div>
+                      <p className="text-sm text-neutral-400 mb-2">{note.summary}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {note.markets.map(market => (
+                          <span key={market} className="text-xs text-neutral-500">#{market.replace(/\s+/g, '')}</span>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-neutral-500 p-4 rounded-xl bg-neutral-900/50 border border-neutral-800">
+                <p className="text-sm text-neutral-500 py-4">
                   No research notes from this agent yet
                 </p>
               )}
             </div>
 
-            {/* Agent memory/notes - placeholder */}
-            <div className="rounded-xl bg-neutral-900/50 border border-neutral-800 p-6">
+            {/* Agent memory/notes */}
+            <div>
               <h3 className="text-lg font-semibold text-white mb-4">Agent Memory</h3>
-              <div className="space-y-3">
-                <div className="p-3 rounded-lg bg-neutral-800/50 border border-neutral-700">
-                  <div className="text-xs text-neutral-500 mb-1">User Preference</div>
-                  <div className="text-sm text-neutral-300">Prefers conservative position sizes under 50k sats</div>
-                </div>
-                <div className="p-3 rounded-lg bg-neutral-800/50 border border-neutral-700">
-                  <div className="text-xs text-neutral-500 mb-1">Market Focus</div>
-                  <div className="text-sm text-neutral-300">AI, Technology, Space — avoid political markets</div>
-                </div>
-                <div className="p-3 rounded-lg bg-neutral-800/50 border border-neutral-700">
-                  <div className="text-xs text-neutral-500 mb-1">Risk Limit</div>
-                  <div className="text-sm text-neutral-300">Max 10% drawdown, then pause and alert</div>
-                </div>
-              </div>
-              <button className="mt-4 text-sm text-blue-400 hover:text-blue-300">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b border-neutral-800">
+                    <td className="py-3 pr-4 text-neutral-500 whitespace-nowrap align-top">User Preference</td>
+                    <td className="py-3 text-neutral-300">Prefers conservative position sizes under 50k sats</td>
+                  </tr>
+                  <tr className="border-b border-neutral-800">
+                    <td className="py-3 pr-4 text-neutral-500 whitespace-nowrap align-top">Market Focus</td>
+                    <td className="py-3 text-neutral-300">AI, Technology, Space — avoid political markets</td>
+                  </tr>
+                  <tr className="border-b border-neutral-800">
+                    <td className="py-3 pr-4 text-neutral-500 whitespace-nowrap align-top">Risk Limit</td>
+                    <td className="py-3 text-neutral-300">Max 10% drawdown, then pause and alert</td>
+                  </tr>
+                </tbody>
+              </table>
+              <button className="mt-3 text-sm text-blue-400 hover:text-blue-300">
                 + Add note
               </button>
             </div>
@@ -467,7 +461,7 @@ export default function AgentDashboard() {
         </div>
       </div>
 
-      {/* Fund modal */}
+      {/* Fund modal — acceptable: interactive container */}
       {showFundModal && (
         <FundModal agent={selectedAgent} onClose={() => setShowFundModal(false)} />
       )}

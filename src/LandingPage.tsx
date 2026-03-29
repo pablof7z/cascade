@@ -1,17 +1,10 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import type { FormEvent, Dispatch } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { deriveMarketMetrics, type Side } from './market'
 import type { MarketEntry } from './storage'
 import type { Action } from './App'
-import {
-  createChart,
-  AreaSeries,
-  ColorType,
-  type IChartApi,
-  type ISeriesApi,
-  type UTCTimestamp,
-} from 'lightweight-charts'
+// lightweight-charts used by market detail pages
 
 type MarketType = 'module' | 'thesis'
 
@@ -196,9 +189,6 @@ function formatCurrency(value: number) {
   return `$${currencyFormatter.format(value)}`
 }
 
-function formatPercent(value: number) {
-  return `${currencyFormatter.format(value * 100)}%`
-}
 
 function shuffle<T>(items: T[]) {
   const next = [...items]
@@ -300,28 +290,6 @@ function TradesTicker({ trades }: { trades: typeof sampleTrades }) {
   )
 }
 
-// Tug-of-war bar for near-50/50 markets
-function TugOfWar({ yes, size = 'md' }: { yes: number; size?: 'sm' | 'md' }) {
-  const no = 100 - yes
-  const h = size === 'md' ? 'h-6' : 'h-3'
-  return (
-    <div className={`flex w-full ${h} overflow-hidden`}>
-      <div
-        className="bg-emerald-600 transition-all duration-700 flex items-center justify-end pr-2"
-        style={{ width: `${yes}%` }}
-      >
-        {size === 'md' && <span className="text-xs font-bold text-white">{yes}%</span>}
-      </div>
-      <div
-        className="bg-rose-600 transition-all duration-700 flex items-center pl-2"
-        style={{ width: `${no}%` }}
-      >
-        {size === 'md' && <span className="text-xs font-bold text-white">{no}%</span>}
-      </div>
-    </div>
-  )
-}
-
 
 type Props = {
   markets: Record<string, MarketEntry>
@@ -372,7 +340,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
       .slice(0, 10)
   }, [entries])
 
-  const totalReserve = entries.reduce((sum, e) => sum + e.market.reserve, 0)
 
   function handleCreateMarket(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -733,9 +700,8 @@ export default function LandingPage({ markets, dispatch }: Props) {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 3: HOT DEBATES — Full-bleed asymmetric layout
-          One large 50/50 market dominates, smaller ones beside it,
-          tug-of-war visual for near-50% odds
+          SECTION 3: HOT DEBATES — HN/Reddit text-heavy
+          Narrow column, heat indicators, YES/NO progress bars, plain text
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-6 py-20">
         <div className="flex items-baseline gap-4 mb-12">
@@ -743,82 +709,108 @@ export default function LandingPage({ markets, dispatch }: Props) {
           <span className="text-sm text-neutral-600">Near 50/50 · Markets in conflict</span>
         </div>
 
-        {(() => {
-          const debates = useHotDebates
-            ? useHotDebates.map(entry => {
-                const metrics = deriveMarketMetrics(entry.market)
-                return {
-                  title: entry.market.title,
-                  yes: Math.round(metrics.longPositionShare * 100),
-                  traders: entry.market.quotes.length,
-                  comments: Math.floor(entry.market.quotes.length * 1.5),
-                  entry,
-                }
-              })
-            : hotDebateSample.map(s => ({ ...s, entry: null as MarketEntry | null }))
+        <div className="max-w-4xl">
+          {(() => {
+            const debates = useHotDebates
+              ? useHotDebates.map(entry => {
+                  const metrics = deriveMarketMetrics(entry.market)
+                  return {
+                    title: entry.market.title,
+                    yes: Math.round(metrics.longPositionShare * 100),
+                    traders: entry.market.quotes.length,
+                    comments: Math.floor(entry.market.quotes.length * 1.5),
+                    spread: Math.abs(Math.round(metrics.longPositionShare * 100) - 50),
+                    entry,
+                  }
+                })
+              : hotDebateSample.map(s => ({
+                  ...s,
+                  spread: Math.abs(s.yes - 50),
+                  entry: null as MarketEntry | null,
+                }))
 
-          const hero = debates[0]
-          const rest = debates.slice(1)
+            return debates.map((debate) => {
+              // Heat intensity: closer to 50/50 = hotter
+              const heat = Math.max(0, 1 - debate.spread / 25)
+              const no = 100 - debate.yes
 
-          return (
-            <div className="grid lg:grid-cols-12 gap-12">
-              {/* Left — Hero debate, big and dramatic */}
-              <div
-                className="lg:col-span-7 cursor-pointer group"
-                onClick={() => hero.entry ? navigateToMarket(hero.entry) : undefined}
-              >
-                <h3 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-snug mb-6 group-hover:text-emerald-400 transition-colors">
-                  {hero.title}
-                </h3>
-                <TugOfWar yes={hero.yes} />
-                <div className="flex justify-between mt-3 text-sm">
-                  <span className="text-emerald-500 font-medium">YES {hero.yes}%</span>
-                  <span className="text-rose-500 font-medium">NO {100 - hero.yes}%</span>
-                </div>
-                <div className="flex gap-6 mt-4 text-sm text-neutral-500">
-                  <span>{hero.traders} traders</span>
-                  <span>{hero.comments} comments</span>
-                  <span className="text-amber-500">🔥 Contested</span>
-                </div>
-              </div>
+              return (
+                <div
+                  key={debate.title}
+                  className="flex gap-5 py-6 border-b border-neutral-800/20 last:border-0 cursor-pointer group"
+                  onClick={() => debate.entry ? navigateToMarket(debate.entry) : undefined}
+                >
+                  {/* Heat indicator — thin vertical gradient bar */}
+                  <div className="w-1 shrink-0 rounded-full overflow-hidden self-stretch">
+                    <div
+                      className="w-full h-full rounded-full"
+                      style={{
+                        background: `linear-gradient(to bottom, ${
+                          heat > 0.7 ? '#f59e0b' : heat > 0.4 ? '#78716c' : '#404040'
+                        }, ${
+                          heat > 0.7 ? '#ef4444' : heat > 0.4 ? '#57534e' : '#262626'
+                        })`,
+                        opacity: 0.4 + heat * 0.6,
+                      }}
+                    />
+                  </div>
 
-              {/* Right — Stacked smaller debates */}
-              <div className="lg:col-span-5 space-y-6">
-                {rest.map((debate) => (
-                  <div
-                    key={debate.title}
-                    className="cursor-pointer group pb-6 border-b border-neutral-800/30 last:border-0 last:pb-0"
-                    onClick={() => debate.entry ? navigateToMarket(debate.entry) : undefined}
-                  >
-                    <h4 className="text-base font-semibold text-white mb-3 group-hover:text-emerald-400 transition-colors leading-snug">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-semibold text-white leading-snug mb-3 group-hover:text-emerald-400 transition-colors">
                       {debate.title}
-                    </h4>
-                    <TugOfWar yes={debate.yes} size="sm" />
-                    <div className="flex justify-between mt-2 text-xs text-neutral-500">
-                      <span>YES {debate.yes}% · NO {100 - debate.yes}%</span>
-                      <span>{debate.traders} traders</span>
+                    </h3>
+
+                    {/* YES/NO progress bar */}
+                    <div className="flex w-full h-2 overflow-hidden mb-2">
+                      <div
+                        className="bg-emerald-600 transition-all duration-500"
+                        style={{ width: `${debate.yes}%` }}
+                      />
+                      <div
+                        className="bg-rose-600 transition-all duration-500"
+                        style={{ width: `${no}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-4">
+                        <span className="text-emerald-500 font-medium tabular-nums">YES {debate.yes}%</span>
+                        <span className="text-rose-500 font-medium tabular-nums">NO {no}%</span>
+                        {debate.spread <= 5 && (
+                          <span className="text-amber-500 text-xs">🔥 Razor-thin</span>
+                        )}
+                      </div>
+                      <div className="flex gap-4 text-xs text-neutral-600">
+                        <span>{debate.comments} comments</span>
+                        <span>{debate.traders} traders</span>
+                        <span>spread {debate.spread}pt</span>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )
-        })()}
+                </div>
+              )
+            })
+          })()}
+        </div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 4: NEW THIS WEEK — HN/Reddit text list
-          Numbered items, title + metadata inline, no wrappers
+          SECTION 4: NEW THIS WEEK — Asymmetric magazine layout
+          3-column grid, varied density, full-bleed gradient background
       ═══════════════════════════════════════════════════════════════════ */}
-      <section className="border-t border-neutral-800/30">
-        <div className="max-w-7xl mx-auto px-6 py-16">
-          <div className="flex items-baseline gap-4 mb-10">
+      <section className="relative overflow-hidden">
+        {/* Full-bleed gradient background with blur orb */}
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/20 via-neutral-950 to-neutral-950" />
+        <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-emerald-900/10 rounded-full blur-3xl" />
+
+        <div className="relative z-10 max-w-7xl mx-auto px-6 py-16">
+          <div className="flex items-baseline gap-4 mb-12">
             <h2 className="text-3xl font-black text-white tracking-tight">New This Week</h2>
             <span className="text-sm text-neutral-600">Recently created</span>
           </div>
 
-          <div className="max-w-3xl">
-            {(useNewThisWeek
+          {(() => {
+            const items = useNewThisWeek
               ? useNewThisWeek.map((entry, i) => {
                   const metrics = deriveMarketMetrics(entry.market)
                   const spec = getSampleSpec(entry.market.title)
@@ -827,34 +819,123 @@ export default function LandingPage({ markets, dispatch }: Props) {
                     category: spec?.category || '',
                     prob: metrics.longPositionShare,
                     timeAgo: `${i + 1}d ago`,
+                    description: entry.market.description || spec?.description || '',
                     entry,
                   }
                 })
-              : newThisWeekSample.map(s => ({ ...s, entry: null as MarketEntry | null }))
-            ).map((item, i) => (
-              <div
-                key={item.title}
-                className="flex items-baseline gap-3 py-2.5 cursor-pointer group"
-                onClick={() => item.entry ? navigateToMarket(item.entry) : undefined}
-              >
-                <span className="text-sm font-mono text-neutral-700 w-6 shrink-0 tabular-nums text-right">{i + 1}.</span>
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm text-white group-hover:text-emerald-400 transition-colors font-medium">
-                    {item.title}
-                  </span>
-                  <span className="text-xs text-neutral-600 ml-2">
-                    ({item.category})
-                  </span>
+              : newThisWeekSample.map(s => ({
+                  ...s,
+                  description: sampleMarketBank.find(m => m.title === s.title)?.description || '',
+                  entry: null as MarketEntry | null,
+                }))
+
+            // Split into 3 columns with different density
+            const featured = items[0]
+            const subFeatured = items[1]
+            const mediumItems = items.slice(2, 5)
+            const compactItems = items.slice(5)
+
+            return (
+              <div className="grid lg:grid-cols-3 gap-10 lg:gap-12">
+                {/* Column 1 — Featured large item + smaller item below */}
+                <div className="space-y-8">
+                  {featured && (
+                    <div
+                      className="cursor-pointer group"
+                      onClick={() => featured.entry ? navigateToMarket(featured.entry) : undefined}
+                    >
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-emerald-500/70 font-medium">
+                        {featured.category} · {featured.timeAgo}
+                      </span>
+                      <h3 className="text-xl font-bold text-white mt-2 mb-3 leading-snug group-hover:text-emerald-400 transition-colors">
+                        {featured.title}
+                      </h3>
+                      <p className="text-sm text-neutral-500 leading-relaxed mb-4 line-clamp-3">
+                        {featured.description}
+                      </p>
+                      <span className="text-3xl font-black text-emerald-500 tabular-nums">
+                        {Math.round(featured.prob * 100)}¢
+                      </span>
+                    </div>
+                  )}
+
+                  {subFeatured && (
+                    <div
+                      className="pt-8 border-t border-neutral-800/30 cursor-pointer group"
+                      onClick={() => subFeatured.entry ? navigateToMarket(subFeatured.entry) : undefined}
+                    >
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-600 font-medium">
+                        {subFeatured.category} · {subFeatured.timeAgo}
+                      </span>
+                      <h4 className="text-base font-semibold text-white mt-1 mb-2 leading-snug group-hover:text-emerald-400 transition-colors">
+                        {subFeatured.title}
+                      </h4>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-lg font-bold text-white tabular-nums">
+                          {Math.round(subFeatured.prob * 100)}¢
+                        </span>
+                        <span className="text-xs text-neutral-600">{subFeatured.timeAgo}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <span className="text-sm font-mono font-bold text-white tabular-nums shrink-0">
-                  {Math.round(item.prob * 100)}¢
-                </span>
-                <span className="text-xs text-neutral-600 shrink-0 hidden sm:block w-16 text-right">
-                  {item.timeAgo}
-                </span>
+
+                {/* Column 2 — Medium stacked items with descriptions */}
+                <div className="space-y-0">
+                  {mediumItems.map((item) => (
+                    <div
+                      key={item.title}
+                      className="py-5 border-b border-neutral-800/20 last:border-0 cursor-pointer group"
+                      onClick={() => item.entry ? navigateToMarket(item.entry) : undefined}
+                    >
+                      <div className="flex items-start justify-between gap-4 mb-1">
+                        <h4 className="text-sm font-semibold text-white leading-snug group-hover:text-emerald-400 transition-colors">
+                          {item.title}
+                        </h4>
+                        <span className="text-sm font-mono font-bold text-white tabular-nums shrink-0">
+                          {Math.round(item.prob * 100)}¢
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-600 leading-relaxed line-clamp-2 mb-1">
+                        {item.description}
+                      </p>
+                      <span className="text-[10px] text-neutral-700 uppercase tracking-wider">
+                        {item.category} · {item.timeAgo}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Column 3 — Compact "Also new" list (titles + metadata only) */}
+                <div>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-600 font-medium block mb-4">
+                    Also new
+                  </span>
+                  {compactItems.map((item, i) => (
+                    <div
+                      key={item.title}
+                      className="flex items-baseline gap-3 py-2 cursor-pointer group"
+                      onClick={() => item.entry ? navigateToMarket(item.entry) : undefined}
+                    >
+                      <span className="text-xs font-mono text-neutral-700 tabular-nums w-4 text-right shrink-0">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-neutral-300 group-hover:text-emerald-400 transition-colors leading-snug">
+                          {item.title}
+                        </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs font-mono text-neutral-500 tabular-nums">{Math.round(item.prob * 100)}¢</span>
+                          <span className="text-[10px] text-neutral-700">{item.category}</span>
+                          <span className="text-[10px] text-neutral-700">{item.timeAgo}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
+            )
+          })()}
         </div>
       </section>
 

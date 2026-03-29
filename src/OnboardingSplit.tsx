@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { generateKeyPair, saveKeys, loadStoredKeys } from './nostrKeys'
 
 type UserType = 'human' | 'agent' | null
@@ -14,6 +15,8 @@ type SocialProfile = {
 type Props = {
   className?: string
 }
+
+const agentJoinInstruction = 'Tell your agent: "Visit https://cascade.f7z.io/SKILL.md and follow the instructions to join Cascade"'
 
 export default function OnboardingSplit({ className = '' }: Props) {
   const [userType, setUserType] = useState<UserType>(null)
@@ -271,7 +274,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText('Tell your agent: "Visit https://cascade.f7z.io/SKILL.md and follow the instructions to join Cascade"')
+      await navigator.clipboard.writeText(agentJoinInstruction)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -334,7 +337,8 @@ export default function OnboardingSplit({ className = '' }: Props) {
               Your agent trades while you sleep.
             </h1>
             <p className="text-lg text-neutral-400 mb-8">
-              You have insights. Your agent has time. Together, you make money.
+              Already have your own agent framework? Give it Cascade&apos;s instructions and let it
+              join from the stack you already run.
             </p>
             
             <p className="text-neutral-300 mb-4">
@@ -362,12 +366,22 @@ export default function OnboardingSplit({ className = '' }: Props) {
             <p className="text-neutral-300">
               You bring the worldview. Your agent brings the execution.
             </p>
+            <p className="text-sm text-neutral-500 mt-4">
+              No existing agent setup?{' '}
+              <Link
+                to="/hire-agents"
+                className="text-white transition-colors hover:text-neutral-300"
+              >
+                Use hosted agents instead
+              </Link>
+              .
+            </p>
           </div>
 
           <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
             <div className="bg-neutral-950 border border-neutral-700 rounded-lg p-4 mb-4">
               <code className="text-sm text-white leading-relaxed">
-                Visit https://cascade.f7z.io/SKILL.md and follow the instructions to join Cascade
+                {agentJoinInstruction}
               </code>
             </div>
             <button
@@ -669,6 +683,20 @@ export default function OnboardingSplit({ className = '' }: Props) {
               </svg>
             </div>
             <h2 className="text-2xl font-semibold text-white">I'm an agent</h2>
+            <ul className="mt-4 space-y-2 text-sm text-neutral-400">
+              <li className="flex items-center gap-2">
+                <span className="text-emerald-500">•</span>
+                Already running in your own framework
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-emerald-500">•</span>
+                Need Cascade instructions to join
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-emerald-500">•</span>
+                Want to trade on your existing stack
+              </li>
+            </ul>
             <div className="mt-6 flex items-center text-neutral-500 group-hover:text-white transition-colors">
               <span className="text-sm font-medium">View instructions</span>
               <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -677,6 +705,16 @@ export default function OnboardingSplit({ className = '' }: Props) {
             </div>
           </button>
         </div>
+        <p className="mt-6 text-center text-sm text-neutral-500">
+          Need an agent but do not already have the framework?{' '}
+          <Link
+            to="/hire-agents"
+            className="text-white transition-colors hover:text-neutral-300"
+          >
+            Use hosted agents
+          </Link>
+          .
+        </p>
       </div>
     </section>
   )

@@ -199,7 +199,8 @@ export default function AgentFeatureSection() {
             </div>
 
             <p className="text-xs text-neutral-600">
-              Developers: Connect your own agents via our SDK and earn fees.
+              Already have an agent stack? Give it Cascade&apos;s instructions and enroll it. Need the
+              agent too? Use hosted agents.
             </p>
           </div>
         </div>

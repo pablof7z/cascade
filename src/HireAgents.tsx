@@ -1,312 +1,292 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 
-// Pricing tier type
-type PricingTier = {
-  name: string
-  price: string
-  period: string
+type RoleCard = {
+  title: string
   description: string
-  features: string[]
-  cta: string
-  highlighted?: boolean
+  points: string[]
 }
 
-const pricingTiers: PricingTier[] = [
+type Capability = {
+  label: string
+  title: string
+  description: string
+}
+
+type UseCase = {
+  title: string
+  description: string
+}
+
+const roleCards: RoleCard[] = [
   {
-    name: 'Basic',
-    price: '10k',
-    period: 'sats/month',
-    description: 'Perfect for getting started with AI-assisted trading.',
-    features: [
-      '1 AI agent',
-      '50 trades per month',
-      'Basic market research',
-      'Daily market summaries',
-      'Email alerts',
+    title: 'You bring the edge',
+    description: 'The thesis is yours. The agent is there to deepen it, not replace it.',
+    points: [
+      'Your perspective on what the market is missing',
+      'The people, signals, and markets worth tracking',
+      'Your time horizon, conviction, and risk limits',
+      'The final say on how much capital should move',
     ],
-    cta: 'Start Basic',
   },
   {
-    name: 'Pro',
-    price: '50k',
-    period: 'sats/month',
-    description: 'For serious traders who want an edge.',
-    features: [
-      '3 AI agents',
-      'Unlimited trades',
-      'Advanced research & analysis',
-      'Priority execution',
-      'Real-time alerts',
-      'Custom strategies',
-      'Natural language commands',
+    title: 'Hosted agents stress-test it',
+    description:
+      'Each hosted agent turns one line of thinking into a monitored, challengeable, rules-based process.',
+    points: [
+      'Monitor new evidence, market drift, and changing base rates continuously',
+      'Validate and challenge the thesis with confirming and disconfirming information',
+      'Map second-, third-, and fourth-order effects before they surprise you',
+      'Trade within the permissions, sizing, and exit rules you define',
     ],
-    cta: 'Go Pro',
-    highlighted: true,
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    period: 'contact us',
-    description: 'Dedicated agents built for your needs.',
-    features: [
-      'Unlimited custom agents',
-      'Dedicated infrastructure',
-      'Custom model training',
-      'API access',
-      'Priority support',
-      'SLA guarantees',
-      'White-label options',
-    ],
-    cta: 'Contact Sales',
   },
 ]
 
-// FAQ Item
+const capabilities: Capability[] = [
+  {
+    label: '01',
+    title: 'Keep the research surface live',
+    description:
+      'Watch the news, discussions, and adjacent markets tied to your thesis so your view keeps evolving after you log off.',
+  },
+  {
+    label: '02',
+    title: 'Reality-test the thesis',
+    description:
+      'A good agent should not just agree with you. It should surface counterarguments, broken assumptions, changing base rates, and signs the market is proving you wrong.',
+  },
+  {
+    label: '03',
+    title: 'Track higher-order effects',
+    description:
+      'Follow the second-, third-, and fourth-order consequences that often matter more than the first headline reaction.',
+  },
+  {
+    label: '04',
+    title: 'Turn conviction into rules',
+    description:
+      'Translate your view into concrete monitoring, entry, sizing, hedging, and exit instructions so capital deployment stays disciplined.',
+  },
+  {
+    label: '05',
+    title: 'Keep a live reasoning log',
+    description:
+      'See what changed, why the agent updated its view, and how your thinking has actually played out in the market over time.',
+  },
+  {
+    label: '06',
+    title: 'Trade inside guardrails',
+    description:
+      'Agents can express your view in the market, but only inside the guardrails you set and with a record you can inspect afterward.',
+  },
+]
+
+const pricingInclusions = [
+  'A dedicated mandate built around your thesis, watchlists, and rules',
+  'Continuous monitoring, research briefs, and market alerts',
+  'Scenario analysis across first- and higher-order effects',
+  'Trade suggestions and execution inside your permissions and sizing rules',
+  'A transparent log for review, adjustment, and postmortems',
+]
+
+const useCases: UseCase[] = [
+  {
+    title: 'Track one deep thesis',
+    description:
+      'Give one agent a concentrated view such as an energy bottleneck, AI timeline, or policy shift and let it keep that case updated against reality.',
+  },
+  {
+    title: 'Run explicit counter-views',
+    description:
+      'Hire a second agent to argue the other side so your edge gets pressure-tested instead of turning into a private echo chamber.',
+  },
+  {
+    title: 'Separate different edges',
+    description:
+      'Use different agents for macro, sector, or event-driven ideas so each one has a cleaner mandate and a clearer trading record.',
+  },
+]
+
+const faqs = [
+  {
+    question: 'What am I paying for when I hire an agent?',
+    answer:
+      'You are hiring a hosted research and trading agent focused on the perspective, watchlists, and rules you define. The subscription covers ongoing monitoring, analysis, reasoning logs, and trading activity inside the permissions you grant.',
+  },
+  {
+    question: 'Do hosted agents replace my judgment?',
+    answer:
+      'No. The edge still has to come from you. Hosted agents extend that edge by researching it, challenging it, monitoring it, and trading it inside the rules you define. They do not turn weak thinking into a free-money machine.',
+  },
+  {
+    question: 'How many agents should I hire?',
+    answer:
+      'Start with one agent per distinct edge. If you have separate theses, time horizons, or deliberately opposing views you want tracked independently, hire additional agents instead of forcing one agent to cover everything.',
+  },
+  {
+    question: 'What makes a strong hosted agent mandate?',
+    answer:
+      'A strong mandate has a clear question, a market universe, a time horizon, and explicit constraints. The more concrete your view is, the better the agent can research it, challenge it, and trade it coherently.',
+  },
+  {
+    question: 'Will this guarantee better returns?',
+    answer:
+      'No. Hosted agents help you research more consistently, reason more clearly, and deploy capital more deliberately. Markets can still prove you wrong, and the value here is better process and tighter feedback loops, not effortless profits.',
+  },
+]
+
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [isOpen, setIsOpen] = useState(false)
-  
+
   return (
     <div className="border-b border-neutral-800 last:border-0">
       <button
-        className="w-full py-5 flex items-center justify-between text-left"
+        className="flex w-full items-center justify-between py-5 text-left"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span className="text-white font-medium pr-4">{question}</span>
+        <span className="pr-4 font-medium text-white">{question}</span>
         <span className={`text-neutral-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}>
           ▼
         </span>
       </button>
-      {isOpen && (
-        <div className="pb-5 text-neutral-400 text-sm leading-relaxed">
-          {answer}
-        </div>
-      )}
+      {isOpen && <div className="pb-5 text-sm leading-relaxed text-neutral-400">{answer}</div>}
     </div>
   )
 }
 
-const faqs = [
-  {
-    question: 'How do AI agents actually trade?',
-    answer: 'Agents operate with funds you allocate to them. They analyze markets, identify opportunities based on your strategy, and execute trades automatically. You maintain full control — set limits, approve large trades, or pause anytime.',
-  },
-  {
-    question: 'Is my capital safe?',
-    answer: 'Agents can only trade with funds you explicitly allocate. They cannot withdraw or transfer funds outside of trading. All trades are logged transparently, and you can set maximum position sizes and daily limits.',
-  },
-  {
-    question: 'Can I give agents custom instructions?',
-    answer: 'Yes! Pro and Enterprise plans support natural language commands. Tell your agent "Focus on AI markets" or "Be more conservative when volatility is high" and it adapts its strategy accordingly.',
-  },
-  {
-    question: 'What happens if an agent makes bad trades?',
-    answer: 'You can set stop-losses and maximum drawdown limits. If an agent hits your risk threshold, it automatically pauses and alerts you. You can review its reasoning and adjust strategy before resuming.',
-  },
-  {
-    question: 'Can I see what the agent is thinking?',
-    answer: 'Absolutely. Every trade comes with the agent\'s reasoning — what data it analyzed, why it made the decision, and its confidence level. Full transparency is core to our design.',
-  },
-  {
-    question: 'Do agents work 24/7?',
-    answer: 'Yes. Unlike human traders, agents never sleep. They continuously monitor markets, news, and on-chain data to catch opportunities at any hour.',
-  },
-]
-
 export default function HireAgents() {
   return (
     <div className="min-h-screen bg-neutral-950">
-      {/* Hero */}
-      <section className="py-20">
-        <div className="max-w-5xl mx-auto px-6">
+      <section className="relative overflow-hidden py-20">
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 via-transparent to-transparent" />
+        <div className="relative mx-auto max-w-5xl px-6">
           <div className="text-center">
-            <p className="text-emerald-500 text-sm font-medium tracking-wide uppercase mb-4">Now Available</p>
-            
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-              Hire AI Agents<br />
-              <span className="text-emerald-500">That Trade For You</span>
-            </h1>
-            
-            <p className="text-xl text-neutral-400 max-w-2xl mx-auto mb-8">
-              24/7 market monitoring. Instant execution. Research on demand.
-              Let AI handle the grunt work while you focus on strategy.
+            <p className="mb-4 text-sm font-medium uppercase tracking-wide text-emerald-500">
+              Hosted Agents
             </p>
-            
+
+            <h1 className="mb-6 text-5xl font-bold leading-tight text-white md:text-6xl lg:text-7xl">
+              Hire Hosted Agents
+              <br />
+              <span className="text-emerald-500">To Stress-Test Your Edge</span>
+            </h1>
+
+            <p className="mx-auto mb-6 max-w-3xl text-xl text-neutral-400">
+              You bring the perspective, priors, and capital discipline. Hosted agents keep
+              researching that view, validating and challenging it against new evidence,
+              tracking how it plays out in reality, and trading within the rules you set.
+            </p>
+
+            <p className="mx-auto mb-8 max-w-2xl text-sm uppercase tracking-[0.2em] text-neutral-500">
+              Starts at $150/month per hosted agent. Pay for the mandates you actually want
+              running.
+            </p>
+
             <div className="flex flex-wrap justify-center gap-4">
               <a
                 href="#pricing"
-                className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors text-lg"
+                className="rounded-lg bg-emerald-600 px-8 py-4 text-lg font-semibold text-white transition-colors hover:bg-emerald-500"
               >
-                View Pricing
+                See Per-Agent Pricing
               </a>
-              <Link
-                to="/how-it-works"
-                className="px-8 py-4 border border-neutral-700 hover:border-neutral-500 text-neutral-300 hover:text-white font-medium rounded-lg transition-colors text-lg"
+              <a
+                href="#how-it-works"
+                className="rounded-lg border border-neutral-700 px-8 py-4 text-lg font-medium text-neutral-300 transition-colors hover:border-neutral-500 hover:text-white"
               >
                 How It Works
-              </Link>
+              </a>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Capabilities */}
-      <section className="py-20 border-t border-neutral-800">
-        <div className="max-w-5xl mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-            What Your Agents Can Do
+      <section id="how-it-works" className="border-t border-neutral-800 py-20">
+        <div className="mx-auto max-w-5xl px-6">
+          <h2 className="mb-3 text-3xl font-bold text-white md:text-4xl">
+            Your edge stays human. The process stays live.
           </h2>
-          <p className="text-lg text-neutral-400 max-w-2xl mb-12">
-            More than automated trading — your agents are research assistants, analysts, and execution partners.
+          <p className="mb-12 max-w-3xl text-lg text-neutral-400">
+            This is not a promise of effortless profits from autonomous AI. The point is to
+            keep your thinking live between market checks, reality-test it when evidence
+            changes, and deploy capital with more structure than memory or vibes can support.
           </p>
-          
-          <div className="space-y-0">
-            {[
-              { icon: '🔍', title: 'Continuous Research', description: 'Scan news, social media, and on-chain data 24/7. Surface relevant information before markets react.', metric: '100+ sources' },
-              { icon: '📊', title: 'Market Analysis', description: 'Analyze probability movements, volume patterns, and trader behavior to identify opportunities.', metric: 'Real-time' },
-              { icon: '⚡', title: 'Instant Execution', description: 'When conditions match your strategy, execute trades in milliseconds. No delays, no hesitation.', metric: '<100ms' },
-              { icon: '🎯', title: 'Strategy Automation', description: "Define rules in plain English. 'Buy YES if probability drops below 30% on high confidence markets.'" },
-              { icon: '📱', title: 'Smart Alerts', description: 'Get notified about market moves, trade executions, and opportunities that match your interests.' },
-              { icon: '📝', title: 'Transparent Reasoning', description: 'Every decision explained. See exactly why your agent made each trade with full audit trails.' },
-            ].map((cap, i) => (
-              <div key={i} className="flex items-start gap-5 py-5 border-b border-neutral-800 last:border-0">
-                <span className="text-2xl mt-0.5 shrink-0">{cap.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-3">
-                    <h3 className="text-lg font-semibold text-white">{cap.title}</h3>
-                    {cap.metric && (
-                      <span className="text-xs text-emerald-500 font-medium">{cap.metric}</span>
-                    )}
-                  </div>
-                  <p className="text-sm text-neutral-400 mt-1 leading-relaxed">{cap.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Pricing — comparison table style */}
-      <section id="pricing" className="py-20 border-t border-neutral-800">
-        <div className="max-w-5xl mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-            Simple, Transparent Pricing
-          </h2>
-          <p className="text-lg text-neutral-400 mb-12">
-            Pay in sats. Cancel anytime. No hidden fees.
-          </p>
-          
-          {/* Desktop: table layout */}
-          <div className="hidden md:block">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b-2 border-neutral-700">
-                  {pricingTiers.map((tier) => (
-                    <th key={tier.name} className="text-left pb-6 pr-8 last:pr-0 w-1/3">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-xl font-bold text-white">{tier.name}</span>
-                        {tier.highlighted && (
-                          <span className="text-xs text-emerald-500 font-medium">★ Most Popular</span>
-                        )}
-                      </div>
-                      <div className="flex items-baseline gap-1 mt-2">
-                        <span className="text-3xl font-bold text-white">{tier.price}</span>
-                        <span className="text-neutral-500 text-sm">{tier.period}</span>
-                      </div>
-                      <p className="text-sm text-neutral-400 mt-1">{tier.description}</p>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {pricingTiers.map((tier) => (
-                    <td key={tier.name} className="align-top pr-8 last:pr-0 py-6">
-                      <ul className="space-y-2.5 mb-8">
-                        {tier.features.map((feature, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm">
-                            <span className="text-emerald-500 mt-0.5">✓</span>
-                            <span className="text-neutral-300">{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <button
-                        className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                          tier.highlighted
-                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                            : 'bg-neutral-800 hover:bg-neutral-700 text-white'
-                        }`}
-                      >
-                        {tier.cta}
-                      </button>
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile: stacked layout */}
-          <div className="md:hidden space-y-0">
-            {pricingTiers.map((tier) => (
-              <div key={tier.name} className={`py-8 border-b border-neutral-800 last:border-0 ${tier.highlighted ? 'bg-neutral-950' : ''}`}>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-xl font-bold text-white">{tier.name}</span>
-                  {tier.highlighted && (
-                    <span className="text-xs text-emerald-500 font-medium">★ Most Popular</span>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-1 mb-1">
-                  <span className="text-3xl font-bold text-white">{tier.price}</span>
-                  <span className="text-neutral-500 text-sm">{tier.period}</span>
-                </div>
-                <p className="text-sm text-neutral-400 mb-4">{tier.description}</p>
-                <ul className="space-y-2 mb-6">
-                  {tier.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="text-emerald-500 mt-0.5">✓</span>
-                      <span className="text-neutral-300">{feature}</span>
+          <div className="grid gap-6 md:grid-cols-2">
+            {roleCards.map((card) => (
+              <div
+                key={card.title}
+                className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-6"
+              >
+                <h3 className="mb-2 text-xl font-semibold text-white">{card.title}</h3>
+                <p className="mb-5 text-sm leading-relaxed text-neutral-400">
+                  {card.description}
+                </p>
+                <ul className="space-y-3">
+                  {card.points.map((point) => (
+                    <li key={point} className="flex items-start gap-3 text-sm text-neutral-300">
+                      <span className="mt-0.5 text-emerald-500">•</span>
+                      <span>{point}</span>
                     </li>
                   ))}
                 </ul>
-                <button
-                  className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                    tier.highlighted
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                      : 'bg-neutral-800 hover:bg-neutral-700 text-white'
-                  }`}
-                >
-                  {tier.cta}
-                </button>
               </div>
             ))}
           </div>
-          
-          <p className="text-center text-sm text-neutral-500 mt-8">
-            All plans include a 7-day free trial. No credit card required.
-          </p>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {[
+              {
+                step: '01',
+                title: 'Set the mandate',
+                description:
+                  'Start with a thesis, a market universe, and the evidence that should strengthen, weaken, or invalidate the view.',
+              },
+              {
+                step: '02',
+                title: 'Encode the rules',
+                description:
+                  'Decide whether the agent should only research, recommend trades, or trade inside explicit sizing, risk, and exit guardrails.',
+              },
+              {
+                step: '03',
+                title: 'Review reality',
+                description:
+                  'Use the agent log to see how your thinking evolved, which higher-order effects mattered, and where the thesis held up or broke.',
+              },
+            ].map((item) => (
+              <div key={item.step} className="border-t border-neutral-800 pt-5">
+                <p className="mb-2 text-sm font-medium text-emerald-500">{item.step}</p>
+                <h3 className="mb-2 text-lg font-semibold text-white">{item.title}</h3>
+                <p className="text-sm leading-relaxed text-neutral-400">{item.description}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Social Proof — pull quotes, not cards */}
-      <section className="py-20 border-t border-neutral-800">
-        <div className="max-w-5xl mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-12">
-            Trusted by Traders
+      <section className="border-t border-neutral-800 py-20">
+        <div className="mx-auto max-w-5xl px-6">
+          <h2 className="mb-3 text-3xl font-bold text-white md:text-4xl">
+            What each hosted agent is there to do
           </h2>
-          
+          <p className="mb-12 max-w-3xl text-lg text-neutral-400">
+            Hosted agents are there to deepen and operationalize your edge, not to replace
+            judgment with a magic box.
+          </p>
+
           <div className="space-y-0">
-            {[
-              { quote: 'My agent caught a market mispricing at 3am that I would have completely missed. Paid for the whole year\'s subscription in one trade.', author: 'Alex K.', role: 'Pro Trader' },
-              { quote: 'The research summaries alone are worth it. I get a daily briefing on all my markets with actual insights, not just price changes.', author: 'Sarah M.', role: 'Part-time Trader' },
-              { quote: 'I was skeptical about letting AI trade for me, but the transparency is incredible. I can see exactly why every trade was made.', author: 'David R.', role: 'Hedge Fund Analyst' },
-            ].map((t, i) => (
-              <div key={i} className="py-6 border-b border-neutral-800 last:border-0">
-                <p className="text-neutral-300 text-lg leading-relaxed mb-3">"{t.quote}"</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-white">{t.author}</span>
-                  <span className="text-neutral-600">·</span>
-                  <span className="text-sm text-neutral-500">{t.role}</span>
+            {capabilities.map((capability) => (
+              <div
+                key={capability.label}
+                className="flex items-start gap-5 border-b border-neutral-800 py-6 last:border-0"
+              >
+                <span className="shrink-0 text-sm font-semibold tracking-[0.2em] text-emerald-500">
+                  {capability.label}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-semibold text-white">{capability.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-neutral-400">
+                    {capability.description}
+                  </p>
                 </div>
               </div>
             ))}
@@ -314,42 +294,111 @@ export default function HireAgents() {
         </div>
       </section>
 
-      {/* FAQ — flat list, no wrapper card */}
-      <section className="py-20 border-t border-neutral-800">
-        <div className="max-w-3xl mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-10">
+      <section id="pricing" className="border-t border-neutral-800 py-20">
+        <div className="mx-auto max-w-5xl px-6">
+          <h2 className="mb-3 text-3xl font-bold text-white md:text-4xl">
+            Per-agent pricing in dollars
+          </h2>
+          <p className="mb-12 max-w-3xl text-lg text-neutral-400">
+            Pricing is simple: one monthly fee per hosted agent. Add agents only when you
+            want another mandate, another time horizon, or an explicit counter-view.
+          </p>
+
+          <div className="rounded-3xl border border-neutral-800 bg-neutral-900/60 p-8 md:p-10">
+            <div className="grid gap-10 md:grid-cols-[1.1fr_0.9fr]">
+              <div>
+                <p className="text-sm font-medium uppercase tracking-[0.2em] text-emerald-500">
+                  Starts at
+                </p>
+                <div className="mt-4 flex items-end gap-3">
+                  <span className="text-5xl font-bold text-white md:text-6xl">$150</span>
+                  <span className="pb-2 text-lg text-neutral-400">/month</span>
+                </div>
+                <p className="mt-3 text-lg text-white">per hosted agent</p>
+                <p className="mt-6 max-w-xl text-sm leading-relaxed text-neutral-400">
+                  No plan ladder. No forced bundles. If you want one agent focused on a
+                  specific edge, you hire one. If you want a small desk of agents covering
+                  multiple theses, time horizons, or competing interpretations, you hire the
+                  number of agents that matches the work.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="mb-5 text-lg font-semibold text-white">Each agent includes</h3>
+                <ul className="space-y-3">
+                  {pricingInclusions.map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-sm text-neutral-300">
+                      <span className="mt-0.5 text-emerald-500">✓</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-neutral-800 py-20">
+        <div className="mx-auto max-w-5xl px-6">
+          <h2 className="mb-3 text-3xl font-bold text-white md:text-4xl">
+            Ways to use hosted agents
+          </h2>
+          <p className="mb-12 max-w-3xl text-lg text-neutral-400">
+            The right setup usually looks less like outsourcing your thinking and more like
+            giving your best ideas a persistent operating system for research, monitoring,
+            and rules-based capital deployment.
+          </p>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {useCases.map((useCase) => (
+              <div
+                key={useCase.title}
+                className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-6"
+              >
+                <h3 className="mb-3 text-xl font-semibold text-white">{useCase.title}</h3>
+                <p className="text-sm leading-relaxed text-neutral-400">{useCase.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-neutral-800 py-20">
+        <div className="mx-auto max-w-3xl px-6">
+          <h2 className="mb-10 text-3xl font-bold text-white md:text-4xl">
             Frequently Asked Questions
           </h2>
-          
-          {faqs.map((faq, i) => (
-            <FAQItem key={i} question={faq.question} answer={faq.answer} />
+
+          {faqs.map((faq) => (
+            <FAQItem key={faq.question} question={faq.question} answer={faq.answer} />
           ))}
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="py-20 border-t border-neutral-800">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Ready to Trade Smarter?
+      <section id="final-cta" className="border-t border-neutral-800 py-20">
+        <div className="mx-auto max-w-4xl px-6 text-center">
+          <h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
+            Start with one hosted agent
           </h2>
-          <p className="text-lg text-neutral-400 mb-8 max-w-2xl mx-auto">
-            Start with a free trial. No credit card required. 
-            Cancel anytime.
+          <p className="mx-auto mb-8 max-w-2xl text-lg text-neutral-400">
+            Pick the sharpest view you have. Give it a mandate. Let an agent keep
+            researching it, challenging it, and trading it with a cleaner record than
+            memory alone.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a
               href="#pricing"
-              className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors text-lg"
+              className="rounded-lg bg-emerald-600 px-8 py-4 text-lg font-semibold text-white transition-colors hover:bg-emerald-500"
             >
-              Get Started Free
+              See Per-Agent Pricing
             </a>
-            <Link
-              to="/enroll-agent"
-              className="px-8 py-4 border border-neutral-700 hover:border-neutral-500 text-neutral-300 hover:text-white font-medium rounded-lg transition-colors"
+            <a
+              href="#how-it-works"
+              className="rounded-lg border border-neutral-700 px-8 py-4 font-medium text-neutral-300 transition-colors hover:border-neutral-500 hover:text-white"
             >
-              I'm a Developer →
-            </Link>
+              Review How It Works
+            </a>
           </div>
         </div>
       </section>

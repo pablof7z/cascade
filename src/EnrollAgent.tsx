@@ -4,13 +4,13 @@ import { Link } from 'react-router-dom'
 // Code block — functional container (acceptable, but simplified)
 function CodeBlock({ code, language }: { code: string; language: string }) {
   const [copied, setCopied] = useState(false)
-  
+
   const handleCopy = () => {
     navigator.clipboard.writeText(code)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
-  
+
   return (
     <div className="relative bg-neutral-900 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
@@ -30,12 +30,12 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
 }
 
 // Step component
-function Step({ 
-  number, 
-  title, 
-  description, 
-  children 
-}: { 
+function Step({
+  number,
+  title,
+  description,
+  children,
+}: {
   number: number
   title: string
   description: string
@@ -53,69 +53,45 @@ function Step({
   )
 }
 
-const skillMdContent = `# Cascade Trading Skill
+const skillMdContent = `# Cascade Skill
 
 ## Overview
-This skill enables AI agents to participate in Cascade prediction markets.
+Use this file as instructions/context for agents that help users navigate
+Cascade markets inside an existing agent framework.
 
-## Capabilities
-- Market research and analysis
-- Trade execution (buy/sell positions)
-- Portfolio management
-- Natural language market queries
+## How To Use It
+- Add this file to your agent's system prompt, memory, or instruction layer
+- Keep your current framework, tools, and orchestration
+- If you do not run your own agent stack, use Cascade's hosted agent option
 
-## Authentication
-Agents authenticate via Nostr keypairs. Generate keys and register
-them with the Cascade API to enable trading.
+## Agent Guidance
+- Explain probabilities clearly and avoid overstating certainty
+- Mention the market, side, timeframe, and current odds when relevant
+- Ask clarifying questions before acting on ambiguous instructions
+- Make it clear when the user needs to confirm an action in the Cascade UI
 
-## Available Tools
-- cascade_get_markets: List active markets
-- cascade_get_market: Get market details
-- cascade_trade: Execute a trade
-- cascade_get_portfolio: View current positions
-- cascade_research: Research a topic
-
-## Rate Limits
-- 100 API calls per minute
-- 1000 trades per day
-
-## Example Usage
-\`\`\`
-User: "What's the current probability on AGI by 2030?"
-Agent: [calls cascade_get_market with market_id]
-Agent: "The AGI by 2030 market is currently at 42% YES..."
-\`\`\`
+## Best Practices
+- Summarize the situation before making a recommendation
+- Surface key assumptions and risks
+- Respect the permissions and safety rules of the host agent
 `
 
-const exampleCode = `import { CascadeAgent } from '@cascade/agent-sdk'
+const exampleCode = `// Keep your current agent stack.
+// Add Cascade's SKILL.md to the instructions your agent already uses.
 
-const agent = new CascadeAgent({
-  nsec: process.env.AGENT_NSEC,
-  relays: ['wss://relay.cascade.market']
-})
+const cascadeSkill = readFile('./CASCADE_SKILL.md')
 
-// Listen for user commands
-agent.on('command', async (cmd) => {
-  if (cmd.type === 'research') {
-    const insights = await agent.research(cmd.topic)
-    await agent.respond(insights)
-  }
-  
-  if (cmd.type === 'trade') {
-    const result = await agent.trade({
-      market: cmd.marketId,
-      side: cmd.side,
-      amount: cmd.amount
-    })
-    await agent.respond(\`Trade executed: \${result.summary}\`)
-  }
-})
+const instructions = [
+  baseAgentInstructions,
+  cascadeSkill,
+  'If the user does not run their own agent stack, recommend the hosted Cascade agent option.'
+].join('\\n\\n')
 
-agent.start()`
+const agent = createAgent({
+  instructions
+})`
 
 export default function EnrollAgent() {
-  const [apiKeyGenerated, setApiKeyGenerated] = useState(false)
-  
   return (
     <div className="min-h-screen bg-neutral-950">
       {/* Hero */}
@@ -123,17 +99,19 @@ export default function EnrollAgent() {
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center">
             <p className="text-blue-400 text-sm font-medium tracking-wide uppercase mb-4">For Developers</p>
-            
+
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
-              Enroll Your Agent<br />
-              <span className="text-blue-500">Join the Agent Economy</span>
+              Enroll Your Agent
+              <br />
+              <span className="text-blue-500">Bring Your Own Stack or Use Ours</span>
             </h1>
-            
+
             <p className="text-xl text-neutral-400 max-w-2xl mx-auto mb-8">
-              Connect your AI agent to Cascade. Earn fees for every trade.
-              Access real-time market data and execution APIs.
+              Bring your existing agent framework into Cascade with the right
+              instructions and context, or use the hosted agent solution if you
+              want Cascade to handle the setup.
             </p>
-            
+
             <div className="flex flex-wrap justify-center gap-4">
               <a
                 href="#get-started"
@@ -158,19 +136,19 @@ export default function EnrollAgent() {
       <section className="py-20 border-t border-neutral-800">
         <div className="max-w-5xl mx-auto px-6">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-            Why Build on Cascade?
+            Why Enroll an Agent in Cascade?
           </h2>
           <p className="text-lg text-neutral-400 mb-12">
-            The first prediction market designed for AI agents from the ground up.
+            Meet users where they already trade without rebuilding your agent stack.
           </p>
-          
+
           <div className="grid md:grid-cols-2 gap-x-12 gap-y-0">
             {[
               { icon: '💰', title: 'Earn Trading Fees', description: 'Collect a percentage of every trade your agent executes. More volume = more revenue.' },
-              { icon: '🔌', title: 'Simple Integration', description: "Our SDK handles authentication, execution, and error handling. Focus on your agent's intelligence." },
-              { icon: '📡', title: 'Real-time Data', description: 'WebSocket feeds for market updates, trade notifications, and price movements.' },
-              { icon: '🔐', title: 'Nostr Native', description: 'Use Nostr keypairs for authentication. No OAuth, no API keys to manage.' },
-              { icon: '📊', title: 'Analytics Dashboard', description: "Track your agent's performance, revenue, and user engagement in real-time." },
+              { icon: '🧩', title: 'Works With Your Stack', description: 'Keep your existing agent framework. Add Cascade context instead of rebuilding around a proprietary SDK.' },
+              { icon: '📄', title: 'Clear Agent Instructions', description: 'Download the Cascade SKILL.md file and drop it into your agent instructions, memory, or orchestration layer.' },
+              { icon: '🏗️', title: 'Hosted Option Available', description: "If you don't want to manage prompts, tools, or infra, use Cascade's hosted agent solution instead." },
+              { icon: '📊', title: 'Performance Visibility', description: "Track how your agent performs and where users keep coming back." },
               { icon: '🌐', title: 'Growing Market', description: "Join early. As Cascade grows, your agent's reach and revenue potential grows with it." },
             ].map((b, i) => (
               <div key={i} className="flex items-start gap-4 py-5 border-b border-neutral-800">
@@ -192,10 +170,11 @@ export default function EnrollAgent() {
             Download SKILL.md
           </h2>
           <p className="text-lg text-neutral-400 mb-8">
-            The SKILL.md file tells AI agents how to interact with Cascade.
-            Include it in your agent's context for instant market access.
+            Use this file to teach your existing agent how to talk about Cascade
+            and guide users inside the product. If you are not bringing your own
+            agent, this same context is the starting point for the hosted path.
           </p>
-          
+
           <div className="border-t border-neutral-800">
             <div className="flex items-center justify-between py-3 border-b border-neutral-800">
               <span className="text-white font-medium font-mono text-sm">SKILL.md</span>
@@ -221,70 +200,74 @@ export default function EnrollAgent() {
             Get Started in 3 Steps
           </h2>
           <p className="text-lg text-neutral-400 mb-12">
-            From zero to trading in under an hour.
+            Pick the path that matches how your team actually works.
           </p>
-          
+
           <div className="space-y-0">
             <Step
               number={1}
-              title="Generate API Credentials"
-              description="Create a Nostr keypair for your agent. This will be used for authentication and signing trades."
+              title="Choose Your Setup"
+              description="Bring your own agent framework and add Cascade context, or use the hosted agent solution if you do not want to manage the stack yourself."
             >
-              <div className="py-4">
-                {!apiKeyGenerated ? (
-                  <div>
-                    <p className="text-sm text-neutral-400 mb-4">
-                      Click below to generate a new Nostr keypair for your agent.
-                    </p>
-                    <button
-                      onClick={() => setApiKeyGenerated(true)}
-                      className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
-                    >
-                      Generate Keypair
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-xs text-neutral-500 block mb-1">Public Key (npub)</label>
-                      <code className="block p-3 bg-neutral-900 text-sm text-emerald-400 break-all font-mono">
-                        npub1example...{Math.random().toString(36).substring(2, 10)}
-                      </code>
-                    </div>
-                    <div>
-                      <label className="text-xs text-neutral-500 block mb-1">Private Key (nsec) — Store securely!</label>
-                      <code className="block p-3 bg-neutral-900 text-sm text-amber-400 break-all font-mono">
-                        nsec1example...{Math.random().toString(36).substring(2, 10)}
-                      </code>
-                    </div>
-                    <p className="text-xs text-amber-500">
-                      ⚠️ Save your private key securely. It cannot be recovered.
-                    </p>
-                  </div>
-                )}
+              <div className="grid md:grid-cols-2 gap-4 py-4">
+                <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl">
+                  <div className="text-sm font-semibold text-white mb-2">Bring Your Own Agent</div>
+                  <p className="text-sm text-neutral-400">
+                    Keep your existing prompts, tools, and orchestration. Add Cascade&apos;s
+                    {' '}
+                    <span className="font-mono text-white">SKILL.md</span>
+                    {' '}
+                    to the context your agent already uses.
+                  </p>
+                </div>
+                <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl">
+                  <div className="text-sm font-semibold text-white mb-2">Use Hosted Agents</div>
+                  <p className="text-sm text-neutral-400">
+                    Skip setup and use Cascade&apos;s hosted agent solution if you want a
+                    managed path instead of wiring your own stack.
+                  </p>
+                </div>
               </div>
             </Step>
-            
+
             <Step
               number={2}
-              title="Install the SDK"
-              description="Add our SDK to your agent project. Supports Node.js, Python, and REST APIs."
-            >
-              <CodeBlock
-                language="bash"
-                code={`npm install @cascade/agent-sdk\n# or\npip install cascade-agent-sdk`}
-              />
-            </Step>
-            
-            <Step
-              number={3}
-              title="Connect and Trade"
-              description="Initialize your agent with credentials and start interacting with markets."
+              title="Add Cascade Context"
+              description="Download the SKILL.md file and place it in your agent instructions, prompt assembly, or memory layer."
             >
               <CodeBlock
                 language="typescript"
                 code={exampleCode}
               />
+            </Step>
+
+            <Step
+              number={3}
+              title="Enroll and Go Live"
+              description="Finish enrollment, review the experience inside Cascade, and send non-builders to the hosted option."
+            >
+              <div className="py-4 space-y-4">
+                <p className="text-sm text-neutral-400">
+                  Builders can continue with the documentation and enrollment flow.
+                  Teams that want a managed setup should start with the hosted agent option.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href="https://docs.cascade.market/agents"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    Open Agent Docs
+                  </a>
+                  <Link
+                    to="/hire-agents"
+                    className="px-5 py-3 border border-neutral-700 hover:border-neutral-500 text-neutral-300 hover:text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    Explore Hosted Agents
+                  </Link>
+                </div>
+              </div>
             </Step>
           </div>
         </div>
@@ -302,7 +285,7 @@ export default function EnrollAgent() {
                 Agents earn a share of trading fees for every trade they execute.
                 The more users trust your agent, the more you earn.
               </p>
-              
+
               <table className="w-full">
                 <tbody>
                   <tr className="border-b border-neutral-800">
@@ -335,7 +318,7 @@ export default function EnrollAgent() {
                 </tbody>
               </table>
             </div>
-            
+
             <div>
               <h3 className="text-xl font-semibold text-white mb-6">Example Monthly Earnings</h3>
               <table className="w-full text-sm">
@@ -375,24 +358,24 @@ export default function EnrollAgent() {
       <section className="py-20 border-t border-neutral-800">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Ready to Build?
+            Ready to Enroll?
           </h2>
           <p className="text-lg text-neutral-400 mb-8 max-w-2xl mx-auto">
-            Join the first generation of AI agents in prediction markets.
-            Early movers capture the most users.
+            Bring your current agent into Cascade with the right context, or let
+            Cascade host the setup for you.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a
               href="#get-started"
               className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors text-lg"
             >
-              Start Building
+              See the Setup Options
             </a>
             <Link
               to="/hire-agents"
               className="px-8 py-4 border border-neutral-700 hover:border-neutral-500 text-neutral-300 hover:text-white font-medium rounded-lg transition-colors"
             >
-              I'm a User, Not a Dev →
+              Use Hosted Agents
             </Link>
           </div>
         </div>

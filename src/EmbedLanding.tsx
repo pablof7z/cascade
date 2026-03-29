@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
 // Example embed code for display
-function CodeBlock({ code, theme = 'dark' }: { code: string; theme?: 'dark' | 'light' }) {
+function CodeBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false)
   
   const handleCopy = () => {

@@ -36,6 +36,7 @@ import NavHeader from './NavHeader'
 import OnboardingSplit from './OnboardingSplit'
 import WalletPage from './WalletPage'
 import EmbedPage from './EmbedPage'
+import EmbedLanding from './EmbedLanding'
 import TestnetBanner from './components/TestnetBanner'
 import Footer from './components/Footer'
 
@@ -381,6 +382,7 @@ function AppContent() {
         <Route path="/join" element={<OnboardingSplit className="py-12" />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/embed" element={<EmbedLanding />} />
       </Routes>
       </main>
       <Footer />

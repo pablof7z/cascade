@@ -10,6 +10,30 @@ export default function NavHeader() {
   const [searchQuery, setSearchQuery] = useState('')
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const isWorkspaceRoute =
+    path === '/fields' || path === '/dashboard/agents' || path.startsWith('/field/')
+  const isFieldRoute = isWorkspaceRoute || path === '/hire-agents'
+  const navItems = isFieldRoute
+    ? [
+        { href: '/fields', label: 'Workspace' },
+        { href: '/hire-agents', label: 'Hire Agents' },
+        { href: '/', label: 'Markets' },
+        { href: '/activity', label: 'Activity' },
+      ]
+    : [
+        { href: '/fields', label: 'Fields' },
+        { href: '/', label: 'Markets' },
+        { href: '/leaderboard', label: 'Leaderboard' },
+        { href: '/activity', label: 'Activity' },
+      ]
+  const primaryAction = isFieldRoute
+    ? path === '/hire-agents'
+      ? { to: '/fields', label: 'View Fields' }
+      : { to: '/hire-agents', label: 'Hire Agents' }
+    : { to: '/builder', label: 'Build Thesis' }
+  const searchPlaceholder = isFieldRoute
+    ? 'Search fields, agents, or meetings...'
+    : 'Search markets...'
 
   // For now, simulate logged-in state (replace with real auth later)
   const isLoggedIn = true
@@ -27,7 +51,11 @@ export default function NavHeader() {
 
   const isActive = (href: string) => {
     if (href === '/fields') {
-      return path === '/fields' || path === '/dashboard/agents' || path.startsWith('/field/')
+      return isWorkspaceRoute
+    }
+
+    if (href === '/hire-agents') {
+      return path === '/hire-agents'
     }
 
     return path === href
@@ -44,7 +72,8 @@ export default function NavHeader() {
     e.preventDefault()
     if (searchQuery.trim()) {
       // Navigate to search results (implement search page later)
-      navigate(`/?search=${encodeURIComponent(searchQuery.trim())}`)
+      const destination = isFieldRoute ? '/fields' : '/'
+      navigate(`${destination}?search=${encodeURIComponent(searchQuery.trim())}`)
       setSearchQuery('')
     }
   }
@@ -75,18 +104,11 @@ export default function NavHeader() {
           )}
 
           <nav className="hidden md:flex items-center gap-1">
-            <Link to="/fields" className={linkClass('/fields')}>
-              Fields
-            </Link>
-            <Link to="/" className={linkClass('/')}>
-              Markets
-            </Link>
-            <Link to="/leaderboard" className={linkClass('/leaderboard')}>
-              Leaderboard
-            </Link>
-            <Link to="/activity" className={linkClass('/activity')}>
-              Activity
-            </Link>
+            {navItems.map((item) => (
+              <Link key={item.href} to={item.href} className={linkClass(item.href)}>
+                {item.label}
+              </Link>
+            ))}
           </nav>
         </div>
 
@@ -98,7 +120,7 @@ export default function NavHeader() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search markets..."
+                placeholder={searchPlaceholder}
                 className="w-48 lg:w-64 px-4 py-1.5 pl-9 text-sm bg-neutral-900 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 transition-colors"
               />
               <svg
@@ -117,12 +139,12 @@ export default function NavHeader() {
             </div>
           </form>
 
-          {/* Create Market Button */}
+          {/* Primary Action */}
           <Link
-            to="/builder"
+            to={primaryAction.to}
             className="px-4 py-2 text-sm font-semibold text-neutral-950 bg-white hover:bg-neutral-100 rounded-lg transition-colors"
           >
-            Build Thesis
+            {primaryAction.label}
           </Link>
 
           {/* User Menu or Join Button */}

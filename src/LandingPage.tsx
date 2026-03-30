@@ -881,6 +881,10 @@ export default function LandingPage({ markets, dispatch }: Props) {
               }
 
               const item = trendingSample[0]
+              const sampleSpec = getSampleSpec(item.title)
+              const handleSampleLeadClick = sampleSpec
+                ? () => navigateToSampleSpec(sampleSpec, 'featured-lead')
+                : undefined
 
               return (
                 <div className="grid gap-6 pt-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end">
@@ -890,9 +894,22 @@ export default function LandingPage({ markets, dispatch }: Props) {
                       <span>Sample market</span>
                       <span className="text-emerald-500">Highest volume</span>
                     </div>
-                    <h3 className="text-2xl font-bold leading-snug text-white md:text-3xl">
-                      {item.title}
-                    </h3>
+                    {handleSampleLeadClick ? (
+                      <button
+                        type="button"
+                        className="group w-full text-left"
+                        onClick={handleSampleLeadClick}
+                        aria-label={`Open ${item.title} market`}
+                      >
+                        <h3 className="text-2xl font-bold leading-snug text-white transition-colors group-hover:text-emerald-400 group-focus-visible:text-emerald-400 md:text-3xl">
+                          {item.title}
+                        </h3>
+                      </button>
+                    ) : (
+                      <h3 className="text-2xl font-bold leading-snug text-white md:text-3xl">
+                        {item.title}
+                      </h3>
+                    )}
                     <p className="max-w-2xl text-sm leading-6 text-neutral-400">
                       {getSampleSpec(item.title)?.description
                         || 'A representative high-conviction market from the current thesis pipeline.'}
@@ -939,7 +956,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
 
             <div className="space-y-0">
               {(useTrending ? useTrending.slice(1) : trendingSample.slice(1)).map((item, i) => {
-                const isReal = useTrending && 'market' in item
+                const isReal = Boolean(useTrending) && 'market' in item
                 const entry = item as MarketEntry
                 const sample = item as typeof trendingSample[0]
                 const marketTitle = isReal ? entry.market.title : sample.title
@@ -947,22 +964,29 @@ export default function LandingPage({ markets, dispatch }: Props) {
                 const change = isReal ? 0.05 : sample.change
                 const vol = isReal ? formatCurrency(entry.market.reserve) : sample.volume
                 const spec = isReal ? getSampleSpec(entry.market.title) : getSampleSpec(sample.title)
+                const handleFeaturedRowClick = isReal
+                  ? () => navigateToMarket(entry)
+                  : spec
+                    ? () => navigateToSampleSpec(spec, `featured-rank-${i + 2}`)
+                    : undefined
 
                 return (
                   <button
                     key={marketTitle}
                     type="button"
-                    className="w-full border-t border-neutral-900/70 py-3 text-left transition-colors hover:bg-neutral-900/40"
-                    onClick={() => {
-                      if (isReal) navigateToMarket(entry)
-                    }}
+                    className="group w-full border-t border-neutral-900/70 py-3 text-left transition-colors hover:bg-neutral-900/40 focus-visible:bg-neutral-900/40"
+                    onClick={handleFeaturedRowClick}
+                    disabled={!handleFeaturedRowClick}
+                    aria-label={handleFeaturedRowClick ? `Open ${marketTitle} market` : undefined}
                   >
                     <div className="flex items-start gap-3 sm:hidden">
                       <span className="w-7 shrink-0 pt-0.5 text-sm font-mono text-neutral-700 tabular-nums">
                         {String(i + 2).padStart(2, '0')}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium leading-snug text-white">{marketTitle}</span>
+                        <span className="block text-sm font-medium leading-snug text-white transition-colors group-hover:text-emerald-400 group-focus-visible:text-emerald-400">
+                          {marketTitle}
+                        </span>
                         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
                           <span className="font-mono tabular-nums text-white">{Math.round(prob * 100)}¢</span>
                           <span className={change >= 0 ? 'text-emerald-500' : 'text-rose-500'}>
@@ -979,7 +1003,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
                         {String(i + 2).padStart(2, '0')}
                       </span>
                       <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium text-white">{marketTitle}</span>
+                        <span className="block truncate text-sm font-medium text-white transition-colors group-hover:text-emerald-400 group-focus-visible:text-emerald-400">
+                          {marketTitle}
+                        </span>
                         <span className="mt-1 block text-[11px] uppercase tracking-[0.16em] text-neutral-600">
                           {spec?.category || 'Open field'}
                         </span>

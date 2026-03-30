@@ -81,6 +81,7 @@ export type MeetingEntry = {
   kind: MeetingEntryKind
   headline: string
   body: string
+  topicId?: string
   citations?: MeetingCitation[]
 }
 

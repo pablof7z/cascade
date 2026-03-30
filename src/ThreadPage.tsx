@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import type { MarketEntry } from './storage'
 import { priceLong } from './market'
 import { generateMockThreads, type DiscussionThread } from './DiscussPage'
+import { trackDiscussionInteraction } from './analytics'
 
 interface Reply {
   id: string
@@ -222,6 +223,12 @@ interface Props {
 export default function ThreadPage({ markets }: Props) {
   const { id: marketId, threadId } = useParams<{ id: string; threadId: string }>()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (marketId && threadId) {
+      trackDiscussionInteraction(marketId, 'view_thread')
+    }
+  }, [marketId, threadId])
   
   const entry = marketId ? markets[marketId] : undefined
   

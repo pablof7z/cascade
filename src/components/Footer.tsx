@@ -32,6 +32,7 @@ const navigationLinks = [
   { label: 'Leaderboard', to: '/leaderboard' },
   { label: 'Blog', to: '/blog' },
   { label: 'Embed Widgets', to: '/embed' },
+  { label: 'Analytics', to: '/analytics' },
 ]
 
 const socialLinks = [

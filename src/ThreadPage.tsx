@@ -238,7 +238,7 @@ export default function ThreadPage({ markets }: Props) {
   const thread = threads.find(t => t.id === threadId)
   
   if (!thread) {
-    navigate(`/market/${marketId}/discuss`)
+    navigate(`/market/${marketId}/discussion`)
     return null
   }
   
@@ -253,7 +253,7 @@ export default function ThreadPage({ markets }: Props) {
               {market.title.length > 40 ? market.title.slice(0, 40) + '...' : market.title}
             </Link>
             <span>›</span>
-            <Link to={`/market/${marketId}/discuss`} className="hover:text-neutral-300">
+            <Link to={`/market/${marketId}/discussion`} className="hover:text-neutral-300">
               Discussion
             </Link>
             <span>›</span>

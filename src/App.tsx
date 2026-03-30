@@ -22,7 +22,6 @@ import { load, save, type MarketEntry } from './storage'
 import LandingPage from './LandingPage'
 import MarketDetail from './MarketDetail'
 import ThesisDetail from './ThesisDetail'
-import DiscussPage from './DiscussPage'
 import ThreadPage from './ThreadPage'
 import ThesisBuilder from './ThesisBuilder'
 import Portfolio from './Portfolio'
@@ -316,7 +315,7 @@ function MarketDetailWrapper({
 }: {
   markets: Record<string, MarketEntry>
   dispatch: React.Dispatch<Action>
-  activeTab: 'overview' | 'charts' | 'activity'
+  activeTab: 'overview' | 'discussion' | 'charts' | 'activity'
 }) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -337,24 +336,6 @@ function MarketDetailWrapper({
 
 function ThesisDetailWrapper({ markets, dispatch }: { markets: Record<string, MarketEntry>; dispatch: React.Dispatch<Action> }) {
   return <ThesisDetail markets={markets} dispatch={dispatch} />
-}
-
-function DiscussPageWrapper({ markets }: { markets: Record<string, MarketEntry> }) {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const entry = id ? markets[id] : undefined
-
-  useEffect(() => {
-    if (!id || !entry) {
-      navigate('/', { replace: true })
-    }
-  }, [id, entry, navigate])
-
-  if (!entry) {
-    return null
-  }
-
-  return <DiscussPage markets={markets} />
 }
 
 function ThreadPageWrapper({ markets }: { markets: Record<string, MarketEntry> }) {
@@ -422,7 +403,7 @@ function AppContent() {
         />
         <Route
           path="/market/:id/discussion"
-          element={<DiscussPageWrapper markets={state.markets} />}
+          element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} activeTab="discussion" />}
         />
         <Route
           path="/market/:id/discussion/:threadId"

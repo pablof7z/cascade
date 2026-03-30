@@ -733,7 +733,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                         navigate(
                           isThesis
                             ? `/thesis/${matchingEntry.market.id}`
-                            : `/market/${matchingEntry.market.id}/discuss`,
+                            : `/market/${matchingEntry.market.id}/discussion`,
                         )
                         return
                       }
@@ -745,7 +745,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                         navigate(
                           spec.type === 'thesis'
                             ? `/thesis/${marketId}`
-                            : `/market/${marketId}/discuss`,
+                            : `/market/${marketId}/discussion`,
                         )
                       }, 0)
                     }
@@ -1466,12 +1466,12 @@ export default function LandingPage({ markets, dispatch }: Props) {
               const handleClick = () => {
                 if (matchingEntry) {
                   const isThesis = matchingEntry.market.kind === 'thesis' || spec?.type === 'thesis'
-                  navigate(isThesis ? `/thesis/${matchingEntry.market.id}` : `/market/${matchingEntry.market.id}/discuss`)
+                  navigate(isThesis ? `/thesis/${matchingEntry.market.id}` : `/market/${matchingEntry.market.id}/discussion`)
                 } else if (spec) {
                   const marketId = `discussion-${discussion.id}`
                   dispatch(buildCreateMarketAction(spec, marketId))
                   if (spec.type !== 'thesis') {
-                    setTimeout(() => navigate(`/market/${marketId}/discuss`), 0)
+                    setTimeout(() => navigate(`/market/${marketId}/discussion`), 0)
                   }
                 }
               }

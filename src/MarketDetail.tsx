@@ -13,6 +13,7 @@ import MarketTabsShell, { type MarketTabKey } from './MarketTabsShell'
 import { MarketDiscussionPanel, generateMockThreads, type DiscussionThread } from './DiscussPage'
 import { trackMarketView, trackTradePlaced } from './analytics'
 import { UserAvatar } from './components/UserAvatar'
+import { addPosition, getPositionsForMarket, type Position } from './positionStore'
 
 type TradeAction = {
   type: 'TRADE'
@@ -146,12 +147,18 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
   const [amount, setAmount] = useState(100)
   const [selectedSide, setSelectedSide] = useState<Side>('LONG')
   const [showEmbedModal, setShowEmbedModal] = useState(false)
+  const [positions, setPositions] = useState<Position[]>([])
 
   const market = entry.market
 
   useEffect(() => {
     trackMarketView(market.id)
   }, [market.id])
+
+  // Load existing positions for this market on mount and after trades
+  useEffect(() => {
+    setPositions(getPositionsForMarket(market.id))
+  }, [market.id, market.lastTrade?.id])
 
   const spec = getSampleSpec(market.title)
   const { isBookmarked, toggle, getCount } = useBookmarks([market.id])
@@ -242,6 +249,14 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
       side,
       amount,
     })
+
+    // Persist position to localStorage
+    const direction = side === 'LONG' ? 'yes' : 'no'
+    const price = side === 'LONG' ? yesPrice : noPrice
+    const tokens = preview ? preview.tokens : amount / price
+    addPosition(market.id, market.title, direction, tokens, price)
+    setPositions(getPositionsForMarket(market.id))
+
     trackTradePlaced(market.id, side, amount)
   }
 
@@ -960,6 +975,57 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
             >
               Buy {selectedSide === 'LONG' ? 'YES' : 'NO'}
             </button>
+
+            {/* Existing positions for this market */}
+            {positions.length > 0 && (
+              <div className="mt-6 rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                  Your Positions
+                </h4>
+                <div className="space-y-3">
+                  {positions.map((pos) => {
+                    const currentPrice =
+                      pos.direction === 'yes' ? yesPrice : noPrice
+                    const marketValue = pos.quantity * currentPrice
+                    const pnl = marketValue - pos.costBasis
+                    const pnlPct =
+                      pos.costBasis > 0 ? (pnl / pos.costBasis) * 100 : 0
+                    return (
+                      <div
+                        key={pos.id}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`inline-block h-2 w-2 rounded-full ${
+                              pos.direction === 'yes'
+                                ? 'bg-emerald-500'
+                                : 'bg-rose-500'
+                            }`}
+                          />
+                          <span className="font-medium text-neutral-200">
+                            {pos.direction === 'yes' ? 'YES' : 'NO'}
+                          </span>
+                          <span className="text-neutral-500">
+                            {pos.quantity.toFixed(1)} shares @{' '}
+                            {formatCurrency(pos.entryPrice)}
+                          </span>
+                        </div>
+                        <span
+                          className={`font-medium ${
+                            pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                          }`}
+                        >
+                          {pnl >= 0 ? '+' : ''}
+                          {formatCurrency(pnl)} ({pnlPct >= 0 ? '+' : ''}
+                          {pnlPct.toFixed(1)}%)
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

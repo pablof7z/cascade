@@ -203,6 +203,19 @@ function getSampleSpec(title: string): SampleMarketSpec | undefined {
   return sampleMarketBank.find(spec => spec.title === title)
 }
 
+function normalizeText(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function getRelatedDiscussions(title: string, limit = 2) {
+  const normalizedTitle = normalizeText(title)
+
+  return sampleDiscussions.filter((discussion) => {
+    const normalizedMarketTitle = normalizeText(discussion.marketTitle)
+    return normalizedTitle.includes(normalizedMarketTitle) || normalizedMarketTitle.includes(normalizedTitle)
+  }).slice(0, limit)
+}
+
 // Mini sparkline component
 function Sparkline({ data, positive, size = 'default' }: { data: number[]; positive: boolean; size?: 'default' | 'large' }) {
   const min = Math.min(...data)
@@ -634,15 +647,15 @@ export default function LandingPage({ markets, dispatch }: Props) {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 2: PINK-SHEET MARKETS — Bloomberg data-table style
+          SECTION 2: UNDER-THE-RADAR MARKETS — Bloomberg data-table style
           Rows with columns, alternating shading, monospace numbers
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="bg-neutral-900/40 border-y border-neutral-800/30">
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="flex items-baseline justify-between mb-8">
             <div className="flex items-baseline gap-4">
-              <h2 className="text-3xl font-black text-white tracking-tight">Pink Sheets</h2>
-              <span className="text-sm text-neutral-600">Low cap · High conviction</span>
+              <h2 className="text-3xl font-black text-white tracking-tight">Under the Radar</h2>
+              <span className="text-sm text-neutral-600">Smaller markets with lower volume and less attention.</span>
             </div>
             <span className="text-xs text-neutral-600 uppercase tracking-wider hidden sm:block">Updated live</span>
           </div>
@@ -703,96 +716,196 @@ export default function LandingPage({ markets, dispatch }: Props) {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 3: HOT DEBATES — HN/Reddit text-heavy
-          Narrow column, heat indicators, YES/NO progress bars, plain text
+          SECTION 3: MARKETS IN DISPUTE — split view with market moves and discussion context
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-6 py-20">
-        <div className="flex items-baseline gap-4 mb-12">
-          <h2 className="text-3xl font-black text-white tracking-tight">Hot Debates</h2>
-          <span className="text-sm text-neutral-600">Near 50/50 · Markets in conflict</span>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-end mb-10 border-b border-neutral-800/40 pb-6">
+          <div className="flex items-baseline gap-4">
+            <h2 className="text-3xl font-black text-white tracking-tight">Most Disputed</h2>
+            <span className="text-sm text-neutral-600">Markets where the odds are close and opinion is split.</span>
+          </div>
+          <p className="text-sm text-neutral-500 leading-relaxed lg:text-right">
+            Watch the price action, then scan the latest posts driving each market.
+          </p>
         </div>
 
-        <div className="max-w-4xl">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)] lg:gap-12">
           {(() => {
             const debates = useHotDebates
               ? useHotDebates.map(entry => {
                   const metrics = deriveMarketMetrics(entry.market)
+                  const yes = Math.round(metrics.longPositionShare * 100)
+                  const discussionContext = getRelatedDiscussions(entry.market.title)
                   return {
                     title: entry.market.title,
-                    yes: Math.round(metrics.longPositionShare * 100),
+                    yes,
                     traders: entry.market.quotes.length,
                     comments: Math.floor(entry.market.quotes.length * 1.5),
-                    spread: Math.abs(Math.round(metrics.longPositionShare * 100) - 50),
+                    spread: Math.abs(yes - 50),
+                    volume: formatCurrency(entry.market.reserve * 0.3),
+                    marketCap: formatCurrency(entry.market.reserve),
+                    chart: [
+                      Math.max(1, yes - 9),
+                      Math.max(1, yes - 5),
+                      Math.max(1, yes - 2),
+                      Math.min(99, yes + 3),
+                      Math.max(1, yes - 1),
+                      yes,
+                    ],
+                    discussionContext,
                     entry,
                   }
                 })
               : hotDebateSample.map(s => ({
                   ...s,
                   spread: Math.abs(s.yes - 50),
+                  volume: formatCurrency(s.traders * 28),
+                  marketCap: formatCurrency(s.traders * 110),
+                  chart: [
+                    Math.max(1, s.yes - 8),
+                    Math.max(1, s.yes - 5),
+                    Math.max(1, s.yes - 1),
+                    Math.min(99, s.yes + 2),
+                    Math.max(1, s.yes - 2),
+                    s.yes,
+                  ],
+                  discussionContext: getRelatedDiscussions(s.title),
                   entry: null as MarketEntry | null,
                 }))
 
-            return debates.map((debate) => {
-              // Heat intensity: closer to 50/50 = hotter
-              const heat = Math.max(0, 1 - debate.spread / 25)
-              const no = 100 - debate.yes
-
-              return (
-                <div
-                  key={debate.title}
-                  className="flex gap-5 py-6 border-b border-neutral-800/20 last:border-0 cursor-pointer group"
-                  onClick={() => debate.entry ? navigateToMarket(debate.entry) : undefined}
-                >
-                  {/* Heat indicator — thin vertical gradient bar */}
-                  <div className="w-1 shrink-0 rounded-full overflow-hidden self-stretch">
-                    <div
-                      className="w-full h-full rounded-full"
-                      style={{
-                        background: `linear-gradient(to bottom, ${
-                          heat > 0.7 ? '#f59e0b' : heat > 0.4 ? '#78716c' : '#404040'
-                        }, ${
-                          heat > 0.7 ? '#ef4444' : heat > 0.4 ? '#57534e' : '#262626'
-                        })`,
-                        opacity: 0.4 + heat * 0.6,
-                      }}
-                    />
+            return (
+              <>
+                <div>
+                  <div className="grid grid-cols-[minmax(0,1.4fr)_88px_76px_72px_88px] gap-3 pb-3 text-[10px] uppercase tracking-[0.18em] text-neutral-600 border-b border-neutral-800/40">
+                    <div>Market</div>
+                    <div className="text-right">Trend</div>
+                    <div className="text-right">Yes</div>
+                    <div className="text-right">Spread</div>
+                    <div className="text-right hidden sm:block">Volume</div>
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-white leading-snug mb-3 group-hover:text-emerald-400 transition-colors">
-                      {debate.title}
-                    </h3>
+                  {debates.map((debate) => {
+                    const no = 100 - debate.yes
 
-                    {/* YES/NO progress bar */}
-                    <div className="flex w-full h-2 overflow-hidden mb-2">
-                      <div
-                        className="bg-emerald-600 transition-all duration-500"
-                        style={{ width: `${debate.yes}%` }}
-                      />
-                      <div
-                        className="bg-rose-600 transition-all duration-500"
-                        style={{ width: `${no}%` }}
-                      />
-                    </div>
+                    return (
+                      <button
+                        key={debate.title}
+                        type="button"
+                        className="grid w-full grid-cols-[minmax(0,1.4fr)_88px_76px_72px_88px] gap-3 py-4 text-left border-b border-neutral-800/20 last:border-0 hover:bg-neutral-900/30 transition-colors"
+                        onClick={() => debate.entry ? navigateToMarket(debate.entry) : undefined}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-600">
+                              {debate.comments} posts
+                            </span>
+                            {debate.spread <= 5 && (
+                              <span className="text-[10px] uppercase tracking-[0.18em] text-amber-500">
+                                Razor-thin
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="text-base font-semibold text-white leading-snug">
+                            {debate.title}
+                          </h3>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-xs text-neutral-500">
+                            <span>{debate.traders} traders</span>
+                            <span>{debate.marketCap} market cap</span>
+                            <span className="text-neutral-400">NO {no}%</span>
+                          </div>
+                        </div>
 
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-4">
-                        <span className="text-emerald-500 font-medium tabular-nums">YES {debate.yes}%</span>
-                        <span className="text-rose-500 font-medium tabular-nums">NO {no}%</span>
-                        {debate.spread <= 5 && (
-                          <span className="text-amber-500 text-xs">🔥 Razor-thin</span>
-                        )}
-                      </div>
-                      <div className="flex gap-4 text-xs text-neutral-600">
-                        <span>{debate.comments} comments</span>
-                        <span>{debate.traders} traders</span>
-                        <span>spread {debate.spread}pt</span>
-                      </div>
-                    </div>
-                  </div>
+                        <div className="flex items-center justify-end">
+                          <Sparkline data={debate.chart} positive={debate.yes >= no} />
+                        </div>
+
+                        <div className="text-right font-mono text-sm font-bold text-white tabular-nums">
+                          {debate.yes}%
+                        </div>
+
+                        <div className="text-right font-mono text-xs text-neutral-500 tabular-nums pt-0.5">
+                          {debate.spread}pt
+                        </div>
+
+                        <div className="text-right font-mono text-xs text-neutral-500 tabular-nums pt-0.5 hidden sm:block">
+                          {debate.volume}
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
-              )
-            })
+
+                <aside className="border-t border-neutral-800/30 pt-6 lg:border-t-0 lg:border-l lg:border-neutral-800/30 lg:pt-0 lg:pl-8">
+                  <div className="flex items-center gap-2 mb-5">
+                    <PulseDot color="amber" />
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-400">
+                      Recent Discussion
+                    </h3>
+                  </div>
+
+                  <div className="space-y-6">
+                    {debates.map((debate) => (
+                      <div key={`${debate.title}-discussion`} className="border-b border-neutral-800/20 pb-5 last:border-0 last:pb-0">
+                        <button
+                          type="button"
+                          className="text-left w-full"
+                          onClick={() => debate.entry ? navigateToMarket(debate.entry) : undefined}
+                        >
+                          <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-600 mb-2">
+                            {debate.spread}pt spread
+                          </div>
+                          <div className="text-sm font-semibold text-white leading-snug mb-3">
+                            {debate.title}
+                          </div>
+                        </button>
+
+                        <div className="space-y-3">
+                          {debate.discussionContext.length > 0 ? debate.discussionContext.map((discussion) => (
+                            <button
+                              key={discussion.id}
+                              type="button"
+                              className="block w-full text-left"
+                              onClick={() => {
+                                const matchingEntry = Object.values(markets).find(
+                                  e => e.market.title === discussion.marketTitle
+                                )
+                                const spec = sampleMarketBank.find(s => s.title === discussion.marketTitle)
+
+                                if (matchingEntry) {
+                                  navigate(`/market/${matchingEntry.market.id}/discuss`)
+                                } else if (spec) {
+                                  const marketId = `discussion-${discussion.id}`
+                                  dispatch({
+                                    type: 'CREATE_MARKET',
+                                    id: marketId,
+                                    title: spec.title,
+                                    description: spec.description,
+                                    seedWithUser: false,
+                                    creatorPubkey: 'system',
+                                  })
+                                  setTimeout(() => navigate(`/market/${marketId}/discuss`), 0)
+                                }
+                              }}
+                            >
+                              <div className="text-sm text-neutral-300 leading-relaxed">
+                                {discussion.preview}
+                              </div>
+                              <div className="mt-1 text-[11px] text-neutral-600">
+                                @{discussion.author} · {discussion.timestamp} · {discussion.replyCount} replies
+                              </div>
+                            </button>
+                          )) : (
+                            <div className="text-sm text-neutral-500 leading-relaxed">
+                              Fresh pricing, no thread yet. Start the first argument from the market page.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </aside>
+              </>
+            )
           })()}
         </div>
       </section>
@@ -943,16 +1056,21 @@ export default function LandingPage({ markets, dispatch }: Props) {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          THE DEBATE — Discussion feed (text-only, Reddit-style)
+          LATEST DISCUSSIONS — Discussion feed (text-only, Reddit-style)
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="bg-neutral-900/20 border-t border-neutral-800/30">
         <div className="max-w-7xl mx-auto px-6 py-16">
-          <div className="flex items-center gap-3 mb-8">
-            <PulseDot color="emerald" />
-            <h2 className="text-3xl font-black text-white tracking-tight">The Debate</h2>
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_260px] md:items-end mb-8 border-b border-neutral-800/30 pb-5">
+            <div className="flex items-center gap-3">
+              <PulseDot color="emerald" />
+              <h2 className="text-3xl font-black text-white tracking-tight">Latest Discussions</h2>
+            </div>
+            <p className="text-sm text-neutral-500 leading-relaxed md:text-right">
+              Recent posts and replies across the markets.
+            </p>
           </div>
 
-          <div className="max-w-3xl space-y-0">
+          <div className="max-w-4xl space-y-0">
             {sampleDiscussions.map(discussion => {
               const matchingEntry = Object.values(markets).find(
                 e => e.market.title === discussion.marketTitle
@@ -981,19 +1099,27 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   key={discussion.id}
                   type="button"
                   onClick={handleClick}
-                  className="block w-full text-left py-3 hover:bg-neutral-800/20 -mx-2 px-2 transition-colors cursor-pointer border-b border-neutral-800/20 last:border-0"
+                  className="block w-full text-left py-4 hover:bg-neutral-800/20 -mx-2 px-2 transition-colors cursor-pointer border-b border-neutral-800/20 last:border-0"
                 >
-                  <div className="text-sm text-white mb-1 leading-relaxed">{discussion.preview}</div>
-                  <div className="flex items-center gap-1.5 text-xs text-neutral-600">
-                    <span>in</span>
-                    <span className="text-neutral-400">"{discussion.marketTitle}"</span>
-                    <span>·</span>
-                    <span className="text-neutral-400">@{discussion.author}</span>
-                    <span>·</span>
-                    <span>{discussion.timestamp}</span>
+                  <div className="flex items-start justify-between gap-6">
+                    <div className="min-w-0">
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-600 mb-2">
+                        {discussion.marketTitle}
+                      </div>
+                      <div className="text-sm text-white leading-relaxed">{discussion.preview}</div>
+                    </div>
+                    <div className="hidden sm:block text-right shrink-0">
+                      <div className="text-xs text-neutral-400">@{discussion.author}</div>
+                      <div className="text-[11px] text-neutral-600 mt-1">{discussion.timestamp}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-neutral-600 mt-2">
+                    <span>@{discussion.author}</span>
+                    <span className="sm:hidden">·</span>
+                    <span className="sm:hidden">{discussion.timestamp}</span>
                     <span>·</span>
                     <span>{discussion.replyCount} replies</span>
-                    {discussion.replyCount > 15 && <span>🔥</span>}
+                    {discussion.replyCount > 15 && <span>active</span>}
                   </div>
                 </button>
               )

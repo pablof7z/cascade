@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import type { MarketEntry } from './storage'
 import { priceLong } from './market'
+import MarketTabsShell from './MarketTabsShell'
 
 type SortOption = 'hot' | 'new' | 'top' | 'controversial'
 type PostType = 'argument' | 'evidence' | 'rebuttal' | 'analysis'
@@ -341,7 +342,7 @@ function ThreadPreviewCard({ thread, marketId }: { thread: DiscussionThread; mar
   
   return (
     <Link
-      to={`/market/${marketId}/discuss/${thread.id}`}
+      to={`/market/${marketId}/discussion/${thread.id}`}
       className="block border-b border-neutral-800/50 py-4 hover:bg-neutral-900/50 transition-colors px-4 -mx-4"
     >
       <div className="flex gap-4">
@@ -401,24 +402,22 @@ interface Props {
   markets: Record<string, MarketEntry>
 }
 
-export default function DiscussPage({ markets }: Props) {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+interface MarketDiscussionPanelProps {
+  marketId: string
+  marketTitle: string
+  variant?: 'overview' | 'discussion'
+}
+
+export function MarketDiscussionPanel({
+  marketId,
+  marketTitle,
+  variant = 'discussion',
+}: MarketDiscussionPanelProps) {
   const [sortBy, setSortBy] = useState<SortOption>('hot')
   const [showCompose, setShowCompose] = useState(false)
-  
-  const entry = id ? markets[id] : undefined
-  
-  if (!entry) {
-    navigate('/')
-    return null
-  }
-  
-  const market = entry.market
-  const probability = priceLong(market.qLong, market.qShort, market.b)
-  
+
   const threads = useMemo(() => {
-    const base = generateMockThreads(market.title)
+    const base = generateMockThreads(marketTitle)
     switch (sortBy) {
       case 'new':
         return [...base].sort((a, b) => b.timestamp - a.timestamp)
@@ -430,137 +429,199 @@ export default function DiscussPage({ markets }: Props) {
           const bScore = Math.min(b.upvotes, b.downvotes) / Math.max(b.upvotes, b.downvotes, 1)
           return bScore - aScore
         })
-      default: // hot
+      default:
         return [...base].sort((a, b) => {
           const aHot = (a.upvotes - a.downvotes) / Math.pow(((Date.now() - a.timestamp) / 3600000) + 2, 1.8)
           const bHot = (b.upvotes - b.downvotes) / Math.pow(((Date.now() - b.timestamp) / 3600000) + 2, 1.8)
           return bHot - aHot
         })
     }
-  }, [market.title, sortBy])
-  
+  }, [marketTitle, sortBy])
+
+  const visibleThreads = variant === 'overview' ? threads.slice(0, 3) : threads
+
   const sortOptions: { value: SortOption; label: string }[] = [
     { value: 'hot', label: 'Hot' },
     { value: 'new', label: 'New' },
     { value: 'top', label: 'Top' },
     { value: 'controversial', label: 'Controversial' }
   ]
-  
+
+  return (
+    <section className="rounded-2xl border border-neutral-800 bg-neutral-950/70">
+      <div className="border-b border-neutral-800 px-6 py-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-neutral-600">
+              {variant === 'overview' ? 'Decision support' : 'Debate surface'}
+            </p>
+            <h2 className="mt-2 text-xl font-semibold text-white">
+              {variant === 'overview'
+                ? 'Use the strongest arguments to underwrite the trade'
+                : 'Pressure-test the market before you size the position'}
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-400">
+              {variant === 'overview'
+                ? 'This feed is part of the market, not garnish. Scan the live claims, find the strongest counterarguments, and move into the full discussion when you need the complete thread map.'
+                : 'Discussion exists to sharpen conviction. The thread feed, key arguments, and compose controls are here to surface claims that should actually move price.'}
+            </p>
+          </div>
+
+          {variant === 'overview' ? (
+            <Link
+              to={`/market/${marketId}/discussion`}
+              className="inline-flex items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-100"
+            >
+              Open full discussion
+            </Link>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="border-b border-neutral-800 px-6 py-6">
+        <h3 className="mb-4 text-xs uppercase tracking-wider text-neutral-600">Key arguments</h3>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div>
+            <h4 className="mb-3 text-sm font-medium text-emerald-500">BULL CASE</h4>
+            <ul className="space-y-2">
+              {bullBearSummary.bull.map((point, i) => (
+                <li key={i} className="flex gap-2 text-sm text-neutral-400">
+                  <span className="text-emerald-600">•</span>
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4 className="mb-3 text-sm font-medium text-rose-500">BEAR CASE</h4>
+            <ul className="space-y-2">
+              {bullBearSummary.bear.map((point, i) => (
+                <li key={i} className="flex gap-2 text-sm text-neutral-400">
+                  <span className="text-rose-600">•</span>
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {variant === 'discussion' ? (
+        <div className="border-b border-neutral-800 px-6 py-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-1">
+              {sortOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setSortBy(opt.value)}
+                  className={`px-3 py-1.5 text-sm transition-colors ${
+                    sortBy === opt.value
+                      ? 'bg-neutral-800 text-white'
+                      : 'text-neutral-500 hover:text-neutral-300'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowCompose(!showCompose)}
+              className="text-sm text-white bg-neutral-800 hover:bg-neutral-700 px-4 py-2"
+            >
+              + New post
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="border-b border-neutral-800 px-6 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="text-sm text-neutral-400">Top live threads</div>
+            <Link
+              to={`/market/${marketId}/discussion`}
+              className="text-sm font-medium text-white hover:text-neutral-300"
+            >
+              See all {threads.length} threads
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {variant === 'discussion' && showCompose ? (
+        <div className="border-b border-neutral-800 px-6 py-4">
+          <input
+            type="text"
+            placeholder="Post title..."
+            className="w-full bg-transparent border border-neutral-700 text-white text-sm p-3 mb-3 focus:outline-none focus:border-neutral-500 placeholder-neutral-600"
+          />
+          <textarea
+            placeholder="Share your analysis, evidence, or rebuttal..."
+            className="w-full bg-transparent border border-neutral-700 text-white text-sm p-3 min-h-[120px] focus:outline-none focus:border-neutral-500 placeholder-neutral-600"
+          />
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex gap-2">
+              <select className="bg-neutral-800 border border-neutral-700 text-neutral-300 text-sm px-3 py-1.5">
+                <option>BULL</option>
+                <option>BEAR</option>
+                <option>NEUTRAL</option>
+              </select>
+              <select className="bg-neutral-800 border border-neutral-700 text-neutral-300 text-sm px-3 py-1.5">
+                <option>Argument</option>
+                <option>Evidence</option>
+                <option>Rebuttal</option>
+                <option>Analysis</option>
+              </select>
+            </div>
+            <button className="bg-white text-neutral-900 text-sm font-medium px-4 py-1.5 hover:bg-neutral-100">
+              Post
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="divide-y divide-neutral-800/50 px-6">
+        {visibleThreads.map((thread) => (
+          <ThreadPreviewCard key={thread.id} thread={thread} marketId={marketId} />
+        ))}
+      </div>
+
+      {visibleThreads.length === 0 ? (
+        <div className="px-6 py-12 text-center text-neutral-500">
+          <p>No discussions yet. Be the first to share your analysis.</p>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+export default function DiscussPage({ markets }: Props) {
+  const { id } = useParams<{ id: string }>()
+  const entry = id ? markets[id] : undefined
+
+  if (!entry || !id) {
+    return null
+  }
+
+  const market = entry.market
+  const probability = priceLong(market.qLong, market.qShort, market.b)
+
   return (
     <div className="min-h-screen bg-neutral-950">
-      {/* Main content */}
-      <div className="max-w-4xl mx-auto px-4 pb-32">
-        {/* Back + Market title */}
-        <div className="py-6 border-b border-neutral-800">
-          <Link
-            to={`/market/${id}`}
-            className="text-sm text-neutral-500 hover:text-neutral-300 mb-4 inline-block"
-          >
-            ← Back to market
-          </Link>
-          <h1 className="text-2xl font-bold text-white leading-tight">{market.title}</h1>
-          <p className="text-sm text-neutral-500 mt-2">{market.description}</p>
-        </div>
-        
-        {/* Key arguments summary */}
-        <section className="py-6 border-b border-neutral-800">
-          <h2 className="text-xs uppercase tracking-wider text-neutral-600 mb-4">Key Arguments</h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-sm font-medium text-emerald-500 mb-3">BULL CASE</h3>
-              <ul className="space-y-2">
-                {bullBearSummary.bull.map((point, i) => (
-                  <li key={i} className="text-sm text-neutral-400 flex gap-2">
-                    <span className="text-emerald-600">•</span>
-                    {point}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-rose-500 mb-3">BEAR CASE</h3>
-              <ul className="space-y-2">
-                {bullBearSummary.bear.map((point, i) => (
-                  <li key={i} className="text-sm text-neutral-400 flex gap-2">
-                    <span className="text-rose-600">•</span>
-                    {point}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-        
-        {/* Sort + compose */}
-        <div className="flex items-center justify-between py-4 border-b border-neutral-800">
-          <div className="flex gap-1">
-            {sortOptions.map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => setSortBy(opt.value)}
-                className={`px-3 py-1.5 text-sm transition-colors ${
-                  sortBy === opt.value
-                    ? 'bg-neutral-800 text-white'
-                    : 'text-neutral-500 hover:text-neutral-300'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setShowCompose(!showCompose)}
-            className="text-sm text-white bg-neutral-800 hover:bg-neutral-700 px-4 py-2"
-          >
-            + New post
-          </button>
-        </div>
-        
-        {/* Compose box */}
-        {showCompose && (
-          <div className="py-4 border-b border-neutral-800">
-            <input
-              type="text"
-              placeholder="Post title..."
-              className="w-full bg-transparent border border-neutral-700 text-white text-sm p-3 mb-3 focus:outline-none focus:border-neutral-500 placeholder-neutral-600"
-            />
-            <textarea
-              placeholder="Share your analysis, evidence, or rebuttal..."
-              className="w-full bg-transparent border border-neutral-700 text-white text-sm p-3 min-h-[120px] focus:outline-none focus:border-neutral-500 placeholder-neutral-600"
-            />
-            <div className="flex items-center justify-between mt-3">
-              <div className="flex gap-2">
-                <select className="bg-neutral-800 border border-neutral-700 text-neutral-300 text-sm px-3 py-1.5">
-                  <option>BULL</option>
-                  <option>BEAR</option>
-                  <option>NEUTRAL</option>
-                </select>
-                <select className="bg-neutral-800 border border-neutral-700 text-neutral-300 text-sm px-3 py-1.5">
-                  <option>Argument</option>
-                  <option>Evidence</option>
-                  <option>Rebuttal</option>
-                  <option>Analysis</option>
-                </select>
-              </div>
-              <button className="bg-white text-neutral-900 text-sm font-medium px-4 py-1.5 hover:bg-neutral-100">
-                Post
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {/* Thread list - Reddit style: only OPs shown */}
-        <div className="divide-y divide-neutral-800/50">
-          {threads.map(thread => (
-            <ThreadPreviewCard key={thread.id} thread={thread} marketId={id!} />
-          ))}
-        </div>
-        
-        {threads.length === 0 && (
-          <div className="py-12 text-center text-neutral-500">
-            <p>No discussions yet. Be the first to share your analysis!</p>
-          </div>
-        )}
+      <div className="mx-auto max-w-5xl px-4 pb-32 pt-8">
+        <MarketTabsShell
+          marketId={market.id}
+          marketTitle={market.title}
+          marketDescription={market.description}
+          probability={probability}
+          reserve={market.reserve}
+          tradeCount={market.quotes.length}
+          activeTab="discussion"
+        />
+
+        <MarketDiscussionPanel
+          marketId={market.id}
+          marketTitle={market.title}
+          variant="discussion"
+        />
       </div>
       
       {/* Sticky betting footer */}

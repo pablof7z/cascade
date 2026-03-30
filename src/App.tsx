@@ -1,5 +1,5 @@
 import { useEffect, useReducer } from 'react'
-import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom'
+import { BrowserRouter, Navigate, Routes, Route, useNavigate, useParams } from 'react-router-dom'
 import { TestnetProvider } from './testnetConfig'
 import './App.css'
 import {
@@ -309,7 +309,15 @@ function reducer(state: State, action: Action): State {
 }
 
 // Wrapper components for routing
-function MarketDetailWrapper({ markets, dispatch }: { markets: Record<string, MarketEntry>; dispatch: React.Dispatch<Action> }) {
+function MarketDetailWrapper({
+  markets,
+  dispatch,
+  activeTab,
+}: {
+  markets: Record<string, MarketEntry>
+  dispatch: React.Dispatch<Action>
+  activeTab: 'overview' | 'charts' | 'activity'
+}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const entry = id ? markets[id] : undefined
@@ -324,7 +332,7 @@ function MarketDetailWrapper({ markets, dispatch }: { markets: Record<string, Ma
     return null
   }
   
-  return <MarketDetail key={id} entry={entry} dispatch={dispatch} />
+  return <MarketDetail key={`${id}-${activeTab}`} entry={entry} dispatch={dispatch} activeTab={activeTab} />
 }
 
 function ThesisDetailWrapper({ markets, dispatch }: { markets: Record<string, MarketEntry>; dispatch: React.Dispatch<Action> }) {
@@ -332,11 +340,44 @@ function ThesisDetailWrapper({ markets, dispatch }: { markets: Record<string, Ma
 }
 
 function DiscussPageWrapper({ markets }: { markets: Record<string, MarketEntry> }) {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const entry = id ? markets[id] : undefined
+
+  useEffect(() => {
+    if (!id || !entry) {
+      navigate('/', { replace: true })
+    }
+  }, [id, entry, navigate])
+
+  if (!entry) {
+    return null
+  }
+
   return <DiscussPage markets={markets} />
 }
 
 function ThreadPageWrapper({ markets }: { markets: Record<string, MarketEntry> }) {
   return <ThreadPage markets={markets} />
+}
+
+function LegacyMarketDiscussionRedirect() {
+  const { id, threadId } = useParams<{ id: string; threadId?: string }>()
+
+  if (!id) {
+    return <Navigate to="/" replace />
+  }
+
+  return (
+    <Navigate
+      replace
+      to={
+        threadId
+          ? `/market/${id}/discussion/${threadId}`
+          : `/market/${id}/discussion`
+      }
+    />
+  )
 }
 
 function AppContent() {
@@ -375,9 +416,28 @@ function AppContent() {
       <main className="flex-1">
       <Routes>
         <Route path="/" element={<LandingPage markets={state.markets} dispatch={handleDispatch} />} />
-        <Route path="/market/:id" element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
-        <Route path="/market/:id/discuss" element={<DiscussPageWrapper markets={state.markets} />} />
-        <Route path="/market/:id/discuss/:threadId" element={<ThreadPageWrapper markets={state.markets} />} />
+        <Route
+          path="/market/:id"
+          element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} activeTab="overview" />}
+        />
+        <Route
+          path="/market/:id/discussion"
+          element={<DiscussPageWrapper markets={state.markets} />}
+        />
+        <Route
+          path="/market/:id/discussion/:threadId"
+          element={<ThreadPageWrapper markets={state.markets} />}
+        />
+        <Route
+          path="/market/:id/charts"
+          element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} activeTab="charts" />}
+        />
+        <Route
+          path="/market/:id/activity"
+          element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} activeTab="activity" />}
+        />
+        <Route path="/market/:id/discuss" element={<LegacyMarketDiscussionRedirect />} />
+        <Route path="/market/:id/discuss/:threadId" element={<LegacyMarketDiscussionRedirect />} />
         <Route path="/thesis/:id" element={<ThesisDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/builder" element={<ThesisBuilder markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/onboarding" element={<Profile />} />

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { loadFieldWorkspace } from './fieldStorage'
 import type { Field, FieldAttention, FieldDisagreement, FieldSource } from './fieldTypes'
 
@@ -43,15 +43,42 @@ function needsHumanActions(field: Field) {
   return field.meeting.actions.filter((action) => action.status === 'needs-human').length
 }
 
+function matchesSearchQuery(query: string, values: Array<string | undefined | null>) {
+  if (!query) return true
+  return values.some((value) => value?.toLowerCase().includes(query))
+}
+
+function matchesFieldSearch(field: Field, query: string) {
+  return matchesSearchQuery(query, [
+    field.name,
+    field.summary,
+    field.conviction,
+    field.meeting.title,
+    field.meeting.summary,
+    ...field.topics.map((topic) => topic.title),
+    ...field.council.map((agent) => agent.name),
+    ...field.meeting.entries.map((entry) => entry.headline),
+    ...field.meeting.tensions,
+    ...field.sourceLibrary.flatMap((source) => [source.title, source.author, source.note]),
+  ])
+}
+
 export default function FieldsHome() {
+  const [searchParams] = useSearchParams()
   const { fields } = loadFieldWorkspace()
-  const totalDeployed = fields.reduce((sum, field) => sum + field.capital.deployedUsd, 0)
-  const hostedAgents = fields.reduce(
+  const searchQuery = searchParams.get('search')?.trim() ?? ''
+  const normalizedSearchQuery = searchQuery.toLowerCase()
+  const hasSearchQuery = normalizedSearchQuery.length > 0
+  const filteredFields = hasSearchQuery
+    ? fields.filter((field) => matchesFieldSearch(field, normalizedSearchQuery))
+    : fields
+  const totalDeployed = filteredFields.reduce((sum, field) => sum + field.capital.deployedUsd, 0)
+  const hostedAgents = filteredFields.reduce(
     (sum, field) => sum + field.council.filter((agent) => agent.provisioning === 'hosted').length,
     0,
   )
-  const meetingsAwaiting = fields.filter((field) => field.meeting.status === 'awaiting-human')
-  const recentSources = fields
+  const meetingsAwaiting = filteredFields.filter((field) => field.meeting.status === 'awaiting-human')
+  const recentSources = filteredFields
     .flatMap((field) =>
       field.sourceLibrary.slice(0, 2).map((source) => ({
         field,
@@ -59,7 +86,7 @@ export default function FieldsHome() {
       })),
     )
     .slice(0, 4)
-  const featuredField = fields[0]
+  const featuredField = filteredFields[0]
 
   return (
     <div className="min-h-screen bg-neutral-950">
@@ -143,16 +170,23 @@ export default function FieldsHome() {
         <div className="mx-auto max-w-7xl px-6 py-14">
           <div className="mb-8 flex items-end justify-between gap-6">
             <div>
-              <h2 className="text-2xl font-semibold text-white md:text-3xl">Your active fields</h2>
+              <h2 className="text-2xl font-semibold text-white md:text-3xl">
+                {hasSearchQuery ? `Results for "${searchQuery}"` : 'Your active fields'}
+              </h2>
               <p className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-400">
-                Each field bundles the theses, library, staffed council, meeting room, and
-                capital context needed to operationalize one area of conviction.
+                {hasSearchQuery
+                  ? 'Matching fields are filtered by field name, meeting context, agent names, and source titles.'
+                  : 'Each field bundles the theses, library, staffed council, meeting room, and capital context needed to operationalize one area of conviction.'}
               </p>
             </div>
           </div>
 
           <div className="border-t border-neutral-800">
-            {fields.map((field) => {
+            {filteredFields.length === 0 ? (
+              <div className="py-6 text-sm text-neutral-500">
+                No fields match &quot;{searchQuery}&quot;. <Link to="/fields" className="text-white underline-offset-4 hover:underline">Clear search</Link>
+              </div>
+            ) : filteredFields.map((field) => {
               const source = latestSource(field)
               const hostedCount = field.council.filter(
                 (agent) => agent.provisioning === 'hosted',
@@ -288,7 +322,13 @@ export default function FieldsHome() {
             </p>
 
             <div className="mt-6 border-t border-neutral-800">
-              {meetingsAwaiting.map((field) => (
+              {meetingsAwaiting.length === 0 ? (
+                <div className="py-5 text-sm text-neutral-500">
+                  {hasSearchQuery
+                    ? 'No matching meetings are awaiting judgment.'
+                    : 'No meetings are awaiting judgment right now.'}
+                </div>
+              ) : meetingsAwaiting.map((field) => (
                 <article
                   key={field.id}
                   className="grid gap-4 border-b border-neutral-800 py-5 md:grid-cols-[minmax(0,1fr)_auto]"
@@ -330,7 +370,13 @@ export default function FieldsHome() {
             </p>
 
             <div className="mt-6 border-t border-neutral-800">
-              {recentSources.map(({ field, source }) => (
+              {recentSources.length === 0 ? (
+                <div className="py-5 text-sm text-neutral-500">
+                  {hasSearchQuery
+                    ? 'No source additions match this search.'
+                    : 'No source additions are available right now.'}
+                </div>
+              ) : recentSources.map(({ field, source }) => (
                 <article
                   key={`${field.id}-${source.id}`}
                   className="grid gap-3 border-b border-neutral-800 py-4"

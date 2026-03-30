@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import type { FormEvent, Dispatch } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import AgentFeatureSection from './components/AgentFeatureSection'
 import { deriveMarketMetrics, type Side } from './market'
 import { getThesisDefinition } from './marketCatalog'
@@ -222,6 +222,40 @@ function getSampleSpec(title: string): SampleMarketSpec | undefined {
   return sampleMarketBank.find(spec => spec.title === title)
 }
 
+function matchesSearchQuery(query: string, values: Array<string | undefined | null>) {
+  if (!query) return true
+  return values.some((value) => value?.toLowerCase().includes(query))
+}
+
+function matchesMarketEntrySearch(entry: MarketEntry, query: string) {
+  const spec = getSampleSpec(entry.market.title)
+  return matchesSearchQuery(query, [
+    entry.market.title,
+    entry.market.description,
+    spec?.category,
+    spec?.description,
+    ...(spec?.supportingModules ?? []),
+  ])
+}
+
+function matchesSampleSpecSearch(spec: SampleMarketSpec, query: string) {
+  return matchesSearchQuery(query, [
+    spec.title,
+    spec.description,
+    spec.category,
+    ...(spec.supportingModules ?? []),
+  ])
+}
+
+function matchesDiscussionSearch(discussion: SampleDiscussion, query: string) {
+  return matchesSearchQuery(query, [
+    discussion.marketTitle,
+    discussion.author,
+    discussion.preview,
+    discussion.stance,
+  ])
+}
+
 // Mini sparkline component
 function Sparkline({ data, positive, size = 'default' }: { data: number[]; positive: boolean; size?: 'default' | 'large' }) {
   const min = Math.min(...data)
@@ -322,11 +356,15 @@ type Props = {
 
 export default function LandingPage({ markets, dispatch }: Props) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [initialSide, setInitialSide] = useState<Side>('LONG')
   const [initialSats, setInitialSats] = useState('150')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const searchQuery = searchParams.get('search')?.trim() ?? ''
+  const normalizedSearchQuery = searchQuery.toLowerCase()
+  const hasSearchQuery = normalizedSearchQuery.length > 0
 
   const entries = Object.values(markets)
 
@@ -415,6 +453,14 @@ export default function LandingPage({ markets, dispatch }: Props) {
     navigate(isThesis ? `/thesis/${entry.market.id}` : `/market/${entry.market.id}`)
   }
 
+  function navigateToSampleSpec(spec: SampleMarketSpec, contextId: string) {
+    const marketId = `${contextId}-${spec.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+    dispatch(buildCreateMarketAction(spec, marketId))
+    setTimeout(() => {
+      navigate(spec.type === 'thesis' ? `/thesis/${marketId}` : `/market/${marketId}`)
+    }, 0)
+  }
+
   const featuredThesis = sampleFeaturedThesis.thesis
 
   // Sample data for sections when real markets are sparse
@@ -458,6 +504,42 @@ export default function LandingPage({ markets, dispatch }: Props) {
   const usePinkSheet = pinkSheetMarkets.length >= 3 ? pinkSheetMarkets : null
   const useHotDebates = hotDebates.length >= 3 ? hotDebates : null
   const useNewThisWeek = newThisWeek.length >= 3 ? newThisWeek : null
+  const searchMarketResults = hasSearchQuery
+    ? [
+        ...entries
+          .filter((entry) => matchesMarketEntrySearch(entry, normalizedSearchQuery))
+          .map((entry) => {
+            const spec = getSampleSpec(entry.market.title)
+            return {
+              key: `entry-${entry.market.id}`,
+              title: entry.market.title,
+              description:
+                entry.market.description ||
+                spec?.description ||
+                'Continuous market with active conviction on both sides.',
+              meta: spec?.category || (entry.market.kind === 'thesis' ? 'Thesis' : 'Market'),
+              onClick: () => navigateToMarket(entry),
+            }
+          }),
+        ...sampleMarketBank
+          .filter((spec) => matchesSampleSpecSearch(spec, normalizedSearchQuery))
+          .filter((spec) => !entries.some((entry) => entry.market.title === spec.title))
+          .map((spec) => ({
+            key: `sample-${spec.title}`,
+            title: spec.title,
+            description: spec.description,
+            meta: `${spec.category} · demo ${spec.type}`,
+            onClick: () => navigateToSampleSpec(spec, 'search'),
+          })),
+      ]
+    : []
+  const searchDiscussionResults = hasSearchQuery
+    ? sampleDiscussions.filter((discussion) =>
+        matchesDiscussionSearch(discussion, normalizedSearchQuery),
+      )
+    : []
+  const hasSearchResults =
+    searchMarketResults.length > 0 || searchDiscussionResults.length > 0
   return (
     <div className="min-h-screen bg-neutral-950">
       {/* ═══════════════════════════════════════════════════════════════════
@@ -581,6 +663,128 @@ export default function LandingPage({ markets, dispatch }: Props) {
         </div>
       </section>
 
+      {hasSearchQuery ? (
+        <section className="max-w-7xl mx-auto px-6 py-12">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+            <div>
+              <div className="flex items-center justify-between gap-4 border-b border-neutral-800 pb-4">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                    Search
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold text-white">
+                    Results for &quot;{searchQuery}&quot;
+                  </h2>
+                </div>
+                <Link
+                  to="/"
+                  className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
+                >
+                  Clear
+                </Link>
+              </div>
+
+              {searchMarketResults.length > 0 ? (
+                <div className="border-t border-neutral-800">
+                  {searchMarketResults.map((result) => (
+                    <button
+                      key={result.key}
+                      type="button"
+                      onClick={result.onClick}
+                      className="block w-full border-b border-neutral-800 py-4 text-left transition-colors hover:bg-neutral-900/40"
+                    >
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
+                        {result.meta}
+                      </p>
+                      <h3 className="mt-2 text-lg font-semibold text-white">{result.title}</h3>
+                      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-400">
+                        {result.description}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="border-t border-neutral-800 pt-4 text-sm text-neutral-500">
+                  No markets match this query.
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="border-b border-neutral-800 pb-4">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                  Discussions
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Matching threads</h2>
+              </div>
+
+              {searchDiscussionResults.length > 0 ? (
+                <div className="border-t border-neutral-800">
+                  {searchDiscussionResults.map((discussion) => {
+                    const matchingEntry = Object.values(markets).find(
+                      (entry) => entry.market.title === discussion.marketTitle,
+                    )
+                    const spec = sampleMarketBank.find((item) => item.title === discussion.marketTitle)
+
+                    const handleDiscussionClick = () => {
+                      if (matchingEntry) {
+                        const isThesis =
+                          matchingEntry.market.kind === 'thesis' || spec?.type === 'thesis'
+                        navigate(
+                          isThesis
+                            ? `/thesis/${matchingEntry.market.id}`
+                            : `/market/${matchingEntry.market.id}/discuss`,
+                        )
+                        return
+                      }
+
+                      if (!spec) return
+                      const marketId = `search-discussion-${discussion.id}`
+                      dispatch(buildCreateMarketAction(spec, marketId))
+                      setTimeout(() => {
+                        navigate(
+                          spec.type === 'thesis'
+                            ? `/thesis/${marketId}`
+                            : `/market/${marketId}/discuss`,
+                        )
+                      }, 0)
+                    }
+
+                    return (
+                      <button
+                        key={discussion.id}
+                        type="button"
+                        onClick={handleDiscussionClick}
+                        className="block w-full border-b border-neutral-800 py-4 text-left transition-colors hover:bg-neutral-900/40"
+                      >
+                        <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
+                          {discussion.marketTitle} · {discussion.author} · {discussion.replyCount} replies
+                        </p>
+                        <p className="mt-2 text-sm leading-relaxed text-neutral-300">
+                          {discussion.preview}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="border-t border-neutral-800 pt-4 text-sm text-neutral-500">
+                  No discussions match this query.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {!hasSearchResults ? (
+            <div className="mt-10 border-t border-neutral-800 pt-6">
+              <p className="text-sm text-neutral-400">
+                Nothing on the homepage matches &quot;{searchQuery}&quot; yet.
+              </p>
+            </div>
+          ) : null}
+        </section>
+      ) : (
+        <>
       {/* ═══════════════════════════════════════════════════════════════════
           LIVE TRADES TICKER
       ═══════════════════════════════════════════════════════════════════ */}
@@ -1281,6 +1485,8 @@ export default function LandingPage({ markets, dispatch }: Props) {
           </div>
         </div>
       </section>
+        </>
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════════
           DIFFERENTIATOR — Why Cascade is different

@@ -1,4 +1,5 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import Discussion from './Discussion'
 import { loadField } from './fieldStorage'
 import type {
   AgentProvisioning,
@@ -56,6 +57,19 @@ const sourceKindLabels: Record<FieldSource['kind'], string> = {
   video: 'Video',
 }
 
+type FieldDetailTab = 'markets' | 'discussions' | 'activity' | 'about'
+
+const fieldDetailTabs = [
+  { id: 'markets', label: 'Markets' },
+  { id: 'discussions', label: 'Discussions' },
+  { id: 'activity', label: 'Activity' },
+  { id: 'about', label: 'About' },
+] satisfies Array<{ id: FieldDetailTab; label: string }>
+
+function parseFieldDetailTab(value: string | null): FieldDetailTab {
+  return fieldDetailTabs.find((tab) => tab.id === value)?.id ?? 'markets'
+}
+
 function formatUsd(value: number) {
   return currencyFormatter.format(value)
 }
@@ -67,7 +81,9 @@ function getParticipantLabel(field: Field, participantId: string) {
 
 export default function FieldDetail() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const field = id ? loadField(id) : undefined
+  const activeTab = parseFieldDetailTab(searchParams.get('tab'))
 
   if (!field) {
     return (
@@ -89,6 +105,24 @@ export default function FieldDetail() {
 
   const hostedCount = field.council.filter((agent) => agent.provisioning === 'hosted').length
   const latestEntries = field.meeting.entries.slice(-2).reverse()
+  const tabCounts: Record<FieldDetailTab, number> = {
+    markets: field.topics.length + field.positions.length + field.candidateMarkets.length,
+    discussions: field.meeting.entries.length,
+    activity: field.meeting.actions.length,
+    about: field.sourceLibrary.length,
+  }
+
+  function handleTabChange(tab: FieldDetailTab) {
+    const nextSearchParams = new URLSearchParams(searchParams)
+
+    if (tab === 'markets') {
+      nextSearchParams.delete('tab')
+    } else {
+      nextSearchParams.set('tab', tab)
+    }
+
+    setSearchParams(nextSearchParams)
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950">
@@ -184,127 +218,299 @@ export default function FieldDetail() {
               </p>
             </div>
           </dl>
+
+          <div className="mt-10 border-b border-neutral-800">
+            <div
+              className="flex flex-wrap gap-6"
+              role="tablist"
+              aria-label="Field detail sections"
+            >
+              {fieldDetailTabs.map((tab) => {
+                const isActive = activeTab === tab.id
+
+                return (
+                  <button
+                    key={tab.id}
+                    id={`field-detail-tab-${tab.id}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`field-detail-panel-${tab.id}`}
+                    tabIndex={isActive ? 0 : -1}
+                    className={`border-b px-0 pb-4 text-sm font-medium uppercase tracking-[0.18em] transition-colors ${
+                      isActive
+                        ? 'border-white text-white'
+                        : 'border-transparent text-neutral-500 hover:text-neutral-200'
+                    }`}
+                    onClick={() => handleTabChange(tab.id)}
+                  >
+                    {tab.label}
+                    <span className="ml-2 text-[11px] text-neutral-600">{tabCounts[tab.id]}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </section>
 
       <div className="mx-auto grid max-w-7xl gap-10 px-6 py-12 lg:grid-cols-[1.35fr_0.95fr]">
         <div className="space-y-10">
-          <section className="border-t border-neutral-800 pt-6">
-            <h2 className="text-2xl font-semibold text-white">Theses and questions</h2>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-              These are the live questions the council is working, not a generic list of markets.
-            </p>
-
-            <div className="mt-6 border-t border-neutral-800">
-              {field.topics.map((topic) => (
-                <article
-                  key={topic.id}
-                  className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[auto_minmax(0,1fr)] md:gap-5"
-                >
-                  <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em]">
-                    <span className="text-neutral-500">{topic.kind}</span>
-                    <span
-                      className={`font-medium ${topicStatusClasses[topic.status]}`}
-                    >
-                      {topic.status.replace('-', ' ')}
-                    </span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">{topic.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-neutral-400">{topic.summary}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="border-t border-neutral-800 pt-6">
-            <h2 className="text-2xl font-semibold text-white">Source library</h2>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-              The field library shapes how the council argues. Sources stay visible in the room,
-              and each one has a reason for being here.
-            </p>
-
-            <div className="mt-6 border-t border-neutral-800">
-              {field.sourceLibrary.map((source) => (
-                <article
-                  key={source.id}
-                  className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[minmax(0,1fr)_12rem]"
-                >
-                  <div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                        {sourceKindLabels[source.kind]}
-                      </p>
-                      <p className="text-xs text-neutral-500">{source.author}</p>
-                    </div>
-                    <h3 className="mt-2 text-lg font-semibold text-white">{source.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-neutral-300">{source.note}</p>
-                    <p className="mt-2 text-sm leading-relaxed text-neutral-500">
-                      {source.relevance}
-                    </p>
-                  </div>
-                  <div className="text-sm text-neutral-400 md:text-right">
-                    <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Added</p>
-                    <p className="mt-2">{source.addedAt}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="border-t border-neutral-800 pt-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold text-white">Meeting room snapshot</h2>
+          <div
+            id="field-detail-panel-markets"
+            role="tabpanel"
+            aria-labelledby="field-detail-tab-markets"
+            tabIndex={activeTab === 'markets' ? 0 : -1}
+            hidden={activeTab !== 'markets'}
+            className="space-y-10"
+          >
+            <>
+              <section className="border-t border-neutral-800 pt-6">
+                <h2 className="text-2xl font-semibold text-white">Theses and questions</h2>
                 <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                  The field stays live through visible debate, cited evidence, and explicit action proposals.
+                  These are the live questions the council is working, not a generic list of
+                  markets.
                 </p>
-              </div>
-              <Link
-                to={`/field/${field.id}/meeting`}
-                className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
-              >
-                Open Full Meeting
-              </Link>
-            </div>
 
-            <div className="mt-6 grid gap-3 border-y border-neutral-800 py-4 text-sm text-neutral-400 sm:grid-cols-3">
-              <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Meeting</p>
-                <p className="mt-2 font-medium text-white">{field.meeting.title}</p>
-              </div>
-              <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-4 sm:pb-0">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Summary</p>
-                <p className="mt-2">{field.meeting.summary}</p>
-              </div>
-              <div className="sm:pl-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Updated</p>
-                <p className="mt-2">{field.meeting.updatedAt}</p>
-              </div>
-            </div>
+                <div className="mt-6 border-t border-neutral-800">
+                  {field.topics.map((topic) => (
+                    <article
+                      key={topic.id}
+                      className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[auto_minmax(0,1fr)] md:gap-5"
+                    >
+                      <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em]">
+                        <span className="text-neutral-500">{topic.kind}</span>
+                        <span className={`font-medium ${topicStatusClasses[topic.status]}`}>
+                          {topic.status.replace('-', ' ')}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">{topic.title}</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                          {topic.summary}
+                        </p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
 
-            <div className="border-t border-neutral-800">
-              {latestEntries.map((entry) => (
-                <article
-                  key={entry.id}
-                  className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[minmax(0,1fr)_9rem]"
+              <section className="border-t border-neutral-800 pt-6">
+                <h2 className="text-2xl font-semibold text-white">Current positions</h2>
+                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                  These are the market expressions already carrying the field&apos;s conviction.
+                </p>
+
+                <div className="mt-6 border-t border-neutral-800">
+                  {field.positions.map((position) => (
+                    <article
+                      key={position.id}
+                      className="grid gap-2 border-b border-neutral-800 py-4"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="font-medium text-white">{position.label}</p>
+                        <span className="text-sm text-neutral-300">
+                          {formatUsd(position.exposureUsd)}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                        {position.thesis}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <section className="border-t border-neutral-800 pt-6">
+                <h2 className="text-2xl font-semibold text-white">Candidate markets</h2>
+                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                  New market proposals stay attached to the field instead of turning into a
+                  detached catalog.
+                </p>
+
+                <div className="mt-6 border-t border-neutral-800">
+                  {field.candidateMarkets.map((market) => (
+                    <article
+                      key={market.id}
+                      className="grid gap-2 border-b border-neutral-800 py-4"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="font-medium text-white">{market.label}</p>
+                        <span className="text-xs uppercase tracking-[0.18em] text-neutral-500">
+                          {market.status.replace('-', ' ')}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                        {market.framing}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </>
+          </div>
+
+          <div
+            id="field-detail-panel-discussions"
+            role="tabpanel"
+            aria-labelledby="field-detail-tab-discussions"
+            tabIndex={activeTab === 'discussions' ? 0 : -1}
+            hidden={activeTab !== 'discussions'}
+            className="space-y-10"
+          >
+            <Discussion scope="field" field={field} />
+          </div>
+
+          <div
+            id="field-detail-panel-activity"
+            role="tabpanel"
+            aria-labelledby="field-detail-tab-activity"
+            tabIndex={activeTab === 'activity' ? 0 : -1}
+            hidden={activeTab !== 'activity'}
+            className="space-y-10"
+          >
+            <section className="border-t border-neutral-800 pt-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold text-white">Meeting room snapshot</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                    The field stays live through visible debate, cited evidence, and explicit
+                    action proposals.
+                  </p>
+                </div>
+                <Link
+                  to={`/field/${field.id}/meeting`}
+                  className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
                 >
+                  Open Full Meeting
+                </Link>
+              </div>
+
+              <div className="mt-6 grid gap-3 border-y border-neutral-800 py-4 text-sm text-neutral-400 sm:grid-cols-3">
+                <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-4">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                    Meeting
+                  </p>
+                  <p className="mt-2 font-medium text-white">{field.meeting.title}</p>
+                </div>
+                <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-4 sm:pb-0">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                    Summary
+                  </p>
+                  <p className="mt-2">{field.meeting.summary}</p>
+                </div>
+                <div className="sm:pl-4">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                    Updated
+                  </p>
+                  <p className="mt-2">{field.meeting.updatedAt}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-neutral-800">
+                {latestEntries.map((entry) => (
+                  <article
+                    key={entry.id}
+                    className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[minmax(0,1fr)_9rem]"
+                  >
+                    <div>
+                      <p className="font-medium text-white">{entry.headline}</p>
+                      <p className="mt-2 text-sm text-neutral-400">
+                        {getParticipantLabel(field, entry.authorId)}
+                      </p>
+                      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{entry.body}</p>
+                    </div>
+                    <div className="text-sm text-neutral-500 md:text-right">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                        At
+                      </p>
+                      <p className="mt-2">{entry.at}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          <div
+            id="field-detail-panel-about"
+            role="tabpanel"
+            aria-labelledby="field-detail-tab-about"
+            tabIndex={activeTab === 'about' ? 0 : -1}
+            hidden={activeTab !== 'about'}
+            className="space-y-10"
+          >
+            <>
+              <section className="border-t border-neutral-800 pt-6">
+                <h2 className="text-2xl font-semibold text-white">Field framing</h2>
+                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                  {field.recentUpdate}
+                </p>
+
+                <div className="mt-6 grid gap-6 border-y border-neutral-800 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
                   <div>
-                    <p className="font-medium text-white">{entry.headline}</p>
-                    <p className="mt-2 text-sm text-neutral-400">
-                      {getParticipantLabel(field, entry.authorId)}
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                      Conviction
                     </p>
-                    <p className="mt-3 text-sm leading-relaxed text-neutral-300">{entry.body}</p>
+                    <p className="mt-3 text-sm leading-relaxed text-neutral-300">
+                      {field.conviction}
+                    </p>
                   </div>
-                  <div className="text-sm text-neutral-500 md:text-right">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">At</p>
-                    <p className="mt-2">{entry.at}</p>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                      Live tensions
+                    </p>
+                    <div className="mt-3 space-y-3">
+                      {field.meeting.tensions.map((tension) => (
+                        <p key={tension} className="text-sm leading-relaxed text-neutral-400">
+                          {tension}
+                        </p>
+                      ))}
+                    </div>
                   </div>
-                </article>
-              ))}
-            </div>
-          </section>
+                </div>
+              </section>
+
+              <section className="border-t border-neutral-800 pt-6">
+                <h2 className="text-2xl font-semibold text-white">Source library</h2>
+                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                  The field library shapes how the council argues. Sources stay visible in the
+                  room, and each one has a reason for being here.
+                </p>
+
+                <div className="mt-6 border-t border-neutral-800">
+                  {field.sourceLibrary.map((source) => (
+                    <article
+                      key={source.id}
+                      className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[minmax(0,1fr)_12rem]"
+                    >
+                      <div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
+                            {sourceKindLabels[source.kind]}
+                          </p>
+                          <p className="text-xs text-neutral-500">{source.author}</p>
+                        </div>
+                        <h3 className="mt-2 text-lg font-semibold text-white">{source.title}</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-neutral-300">
+                          {source.note}
+                        </p>
+                        <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+                          {source.relevance}
+                        </p>
+                      </div>
+                      <div className="text-sm text-neutral-400 md:text-right">
+                        <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
+                          Added
+                        </p>
+                        <p className="mt-2">{source.addedAt}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </>
+          </div>
         </div>
 
         <div className="space-y-10">
@@ -395,52 +601,6 @@ export default function FieldDetail() {
                 </dd>
               </div>
             </dl>
-
-            <div className="mt-6 space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-white">Current positions</h3>
-                <div className="mt-3 border-t border-neutral-800">
-                  {field.positions.map((position) => (
-                    <article
-                      key={position.id}
-                      className="grid gap-2 border-b border-neutral-800 py-4"
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <p className="font-medium text-white">{position.label}</p>
-                        <span className="text-sm text-neutral-300">
-                          {formatUsd(position.exposureUsd)}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                        {position.thesis}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-white">Candidate markets</h3>
-                <div className="mt-3 border-t border-neutral-800">
-                  {field.candidateMarkets.map((market) => (
-                    <article
-                      key={market.id}
-                      className="grid gap-2 border-b border-neutral-800 py-4"
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <p className="font-medium text-white">{market.label}</p>
-                        <span className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                          {market.status.replace('-', ' ')}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                        {market.framing}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            </div>
           </section>
 
           <section className="border-t border-neutral-800 pt-6">

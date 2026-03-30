@@ -261,19 +261,16 @@ function buildThesisArena(
   }
 }
 
-function buildModuleArena(
-  marketTitle: string,
-  consensus: number,
-  reserve: number,
-  tradeCount: number,
-): ArenaData {
+function buildModuleArena(marketTitle: string, consensus: number, reserve: number, tradeCount: number): ArenaData {
   const linkedTheses = sampleTheses
     .filter((thesis) => thesis.thesis?.signals.some((signal) => signal.moduleTitle === marketTitle))
     .map((thesis, index) => ({
       id: `${thesis.title}-${index}`,
       label: thesis.title,
       eyebrow: 'Thesis exposed to this module',
-      detail: thesis.thesis?.argument ?? thesis.description,
+      detail:
+        thesis.thesis?.argument ??
+        thesis.description,
     }))
 
   const nodes =
@@ -488,8 +485,7 @@ function buildFieldArena(field: Field): ArenaData {
       position: getFieldPosition(entry.kind),
       conviction,
       timestamp: Date.now() - index * 1000 * 60 * 23,
-      replyCount:
-        entry.kind === 'decision' ? field.meeting.actions.length : entry.citations?.length ?? 0,
+      replyCount: entry.kind === 'decision' ? field.meeting.actions.length : entry.citations?.length ?? 0,
       target: getFieldTarget(field, entry, citedSource?.title, linkedTopic),
       displayTime: entry.at,
     }
@@ -608,13 +604,14 @@ export default function Discussion(props: DiscussionProps) {
 
   return (
     <section className="border-t border-neutral-800 pt-8">
+      {/* Header - no card wrapper */}
       <div className="mb-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
-            <div className="mb-2 text-xs uppercase tracking-wider text-neutral-600">
+            <div className="text-xs uppercase tracking-wider text-neutral-600 mb-2">
               {arena.eyebrow}
             </div>
-            <h2 className="mb-2 text-lg font-medium text-white">{arena.title}</h2>
+            <h2 className="text-lg font-medium text-white mb-2">{arena.title}</h2>
             <p className="text-sm text-neutral-500">{arena.description}</p>
           </div>
           <div className="flex gap-6 text-sm">
@@ -627,10 +624,11 @@ export default function Discussion(props: DiscussionProps) {
           </div>
         </div>
 
+        {/* Case summaries - flat, no cards */}
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           {arena.cards.map((card) => (
             <div key={card.label}>
-              <div className="mb-2 flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-2">
                 <span className={`text-sm font-medium ${positionClass(card.stance)}`}>
                   {card.label}
                 </span>
@@ -642,16 +640,19 @@ export default function Discussion(props: DiscussionProps) {
         </div>
       </div>
 
+      {/* Main content - single column layout */}
       <div className="space-y-8">
+        {/* Posts - flat list with dividers */}
         <div>
-          <h3 className="mb-4 text-sm font-medium text-white">Discussion ({posts.length})</h3>
+          <h3 className="text-sm font-medium text-white mb-4">Discussion ({posts.length})</h3>
 
+          {/* Post list - NO CARDS, just dividers */}
           <div className="divide-y divide-neutral-800">
             {posts.map((post) => (
               <article key={post.id} className="py-5 first:pt-0">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
                       {post.authorLabel ? (
                         <span className="text-white">{post.authorLabel}</span>
                       ) : (
@@ -668,10 +669,10 @@ export default function Discussion(props: DiscussionProps) {
                       </span>
                       <span className="text-xs text-neutral-700">{post.kind}</span>
                     </div>
-                    <h3 className="mb-1 text-white">{post.headline}</h3>
+                    <h3 className="text-white mb-1">{post.headline}</h3>
                     <p className="text-sm text-neutral-500">{post.content}</p>
                   </div>
-                  <div className="shrink-0 sm:text-right">
+                  <div className="sm:text-right shrink-0">
                     <div className="text-xs text-neutral-600">{post.target}</div>
                   </div>
                 </div>
@@ -687,9 +688,13 @@ export default function Discussion(props: DiscussionProps) {
           </div>
         </div>
 
-        <form className="max-w-2xl space-y-4 border-t border-neutral-800 pt-5" onSubmit={handleSubmit}>
+        {/* Compose form - inline */}
+        <form
+          className="max-w-2xl space-y-4 border-t border-neutral-800 pt-5"
+          onSubmit={handleSubmit}
+        >
           <div>
-            <h3 className="mb-1 text-sm font-medium text-white">{arena.composeTitle}</h3>
+            <h3 className="text-sm font-medium text-white mb-1">{arena.composeTitle}</h3>
           </div>
 
           <div className="flex gap-3">
@@ -697,7 +702,7 @@ export default function Discussion(props: DiscussionProps) {
               name="discussion-position"
               value={newPosition}
               onChange={(event) => setNewPosition(event.target.value as PositionType)}
-              className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:border-neutral-600 focus:outline-none"
+              className="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-neutral-600"
             >
               <option value="long">{stanceLabels.long}</option>
               <option value="short">{stanceLabels.short}</option>
@@ -706,14 +711,14 @@ export default function Discussion(props: DiscussionProps) {
             <input
               name="discussion-post"
               type="text"
-              className="flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-neutral-600 focus:outline-none"
+              className="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm placeholder-neutral-600 focus:outline-none focus:border-neutral-600"
               placeholder={arena.composePlaceholder}
               value={newPost}
               onChange={(event) => setNewPost(event.target.value)}
             />
             <button
               type="submit"
-              className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="px-4 py-2 bg-white text-neutral-950 text-sm font-medium rounded-lg hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!newPost.trim()}
             >
               Post

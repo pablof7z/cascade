@@ -9,7 +9,6 @@ import type {
   FieldSource,
   FieldTopicStatus,
   MeetingActionStatus,
-  MeetingStatus,
 } from './fieldTypes'
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -40,18 +39,6 @@ const actionStatusClasses: Record<MeetingActionStatus, string> = {
   approved: 'text-emerald-300',
   queued: 'text-amber-300',
   'needs-human': 'text-sky-300',
-}
-
-const meetingStatusClasses: Record<MeetingStatus, string> = {
-  live: 'text-emerald-300',
-  watching: 'text-amber-300',
-  'awaiting-human': 'text-sky-300',
-}
-
-const meetingStatusLabels: Record<MeetingStatus, string> = {
-  live: 'Live now',
-  watching: 'Watching',
-  'awaiting-human': 'Awaiting your call',
 }
 
 const provisioningClasses: Record<AgentProvisioning, string> = {
@@ -118,9 +105,6 @@ export default function FieldDetail() {
 
   const hostedCount = field.council.filter((agent) => agent.provisioning === 'hosted').length
   const latestEntries = field.meeting.entries.slice(-2).reverse()
-  const pendingHumanActions = field.meeting.actions.filter(
-    (action) => action.status === 'needs-human',
-  ).length
   const tabCounts: Record<FieldDetailTab, number> = {
     markets: field.topics.length + field.positions.length + field.candidateMarkets.length,
     discussions: field.meeting.entries.length,
@@ -183,7 +167,7 @@ export default function FieldDetail() {
                 to={`/field/${field.id}/meeting`}
                 className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
               >
-                Join Live Meeting
+                Open Meeting
               </Link>
               <Link
                 to="/hire-agents"
@@ -194,104 +178,13 @@ export default function FieldDetail() {
             </div>
           </div>
 
-          <div className="mt-10 grid gap-5 border-y border-neutral-800 py-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.65fr)]">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                  Live room
-                </p>
-                <span
-                  className={`text-xs font-medium uppercase tracking-[0.18em] ${meetingStatusClasses[field.meeting.status]}`}
-                >
-                  {meetingStatusLabels[field.meeting.status]}
-                </span>
-                <span className="text-xs text-neutral-500">Updated {field.meeting.updatedAt}</span>
-              </div>
-
-              <div className="mt-3 flex flex-col gap-3 border-b border-neutral-800 pb-4">
-                <h2 className="text-2xl font-semibold text-white">{field.meeting.title}</h2>
-                <p className="max-w-3xl text-sm leading-relaxed text-neutral-300">
-                  {field.meeting.summary}
-                </p>
-              </div>
-
-              <div className="border-b border-neutral-800">
-                {latestEntries.map((entry) => (
-                  <article
-                    key={entry.id}
-                    className="grid gap-3 border-b border-neutral-800 py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_7rem]"
-                  >
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-neutral-500">
-                        <span>{entry.kind}</span>
-                        <span className="text-neutral-600">/</span>
-                        <span>{getParticipantLabel(field, entry.authorId)}</span>
-                      </div>
-                      <p className="mt-2 font-medium text-white">{entry.headline}</p>
-                      <p className="mt-2 text-sm leading-relaxed text-neutral-400">{entry.body}</p>
-                    </div>
-                    <div className="text-sm text-neutral-500 md:text-right">
-                      <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">At</p>
-                      <p className="mt-2">{entry.at}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t border-neutral-800 pt-4 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
-              <dl className="grid gap-4 text-sm sm:grid-cols-3 xl:grid-cols-1">
-                <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-4 xl:border-b xl:border-r-0 xl:pb-3 xl:pr-0">
-                  <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                    In room
-                  </dt>
-                  <dd className="mt-2 text-2xl font-semibold text-white">
-                    {field.meeting.participantIds.length}
-                  </dd>
-                </div>
-                <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-4 xl:border-b xl:border-r-0 xl:px-0 xl:pb-3">
-                  <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                    Unresolved tensions
-                  </dt>
-                  <dd className="mt-2 text-2xl font-semibold text-white">
-                    {field.meeting.tensions.length}
-                  </dd>
-                </div>
-                <div className="sm:pl-4 xl:pl-0">
-                  <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                    Waiting on you
-                  </dt>
-                  <dd className="mt-2 text-2xl font-semibold text-white">{pendingHumanActions}</dd>
-                </div>
-              </dl>
-
-              <div className="mt-5 border-t border-neutral-800 pt-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                  Active tensions
-                </p>
-                <div className="mt-3 space-y-3">
-                  {field.meeting.tensions.map((tension) => (
-                    <p
-                      key={tension}
-                      className="border-l border-neutral-700 pl-3 text-sm leading-relaxed text-neutral-300"
-                    >
-                      {tension}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
           <dl className="mt-10 grid border-y border-neutral-800 md:grid-cols-2 xl:grid-cols-4">
             <div className="border-b border-neutral-800 px-0 py-4 md:px-4 xl:border-b-0 xl:border-r xl:border-neutral-800 xl:pl-0">
               <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
                 Active theses & questions
               </dt>
               <dd className="mt-2 text-3xl font-semibold text-white">{field.topics.length}</dd>
-              <p className="mt-1 text-sm text-neutral-500">
-                The field stays anchored in live judgments.
-              </p>
+              <p className="mt-1 text-sm text-neutral-500">The field stays anchored in live judgments.</p>
             </div>
             <div className="border-b border-neutral-800 px-0 py-4 md:px-4 xl:border-b-0 xl:border-r xl:border-neutral-800">
               <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
@@ -327,7 +220,11 @@ export default function FieldDetail() {
           </dl>
 
           <div className="mt-10 border-b border-neutral-800">
-            <div className="flex flex-wrap gap-6" role="tablist" aria-label="Field detail sections">
+            <div
+              className="flex flex-wrap gap-6"
+              role="tablist"
+              aria-label="Field detail sections"
+            >
               {fieldDetailTabs.map((tab) => {
                 const isActive = activeTab === tab.id
 
@@ -406,7 +303,10 @@ export default function FieldDetail() {
 
                 <div className="mt-6 border-t border-neutral-800">
                   {field.positions.map((position) => (
-                    <article key={position.id} className="grid gap-2 border-b border-neutral-800 py-4">
+                    <article
+                      key={position.id}
+                      className="grid gap-2 border-b border-neutral-800 py-4"
+                    >
                       <div className="flex items-center justify-between gap-4">
                         <p className="font-medium text-white">{position.label}</p>
                         <span className="text-sm text-neutral-300">
@@ -430,7 +330,10 @@ export default function FieldDetail() {
 
                 <div className="mt-6 border-t border-neutral-800">
                   {field.candidateMarkets.map((market) => (
-                    <article key={market.id} className="grid gap-2 border-b border-neutral-800 py-4">
+                    <article
+                      key={market.id}
+                      className="grid gap-2 border-b border-neutral-800 py-4"
+                    >
                       <div className="flex items-center justify-between gap-4">
                         <p className="font-medium text-white">{market.label}</p>
                         <span className="text-xs uppercase tracking-[0.18em] text-neutral-500">
@@ -614,13 +517,15 @@ export default function FieldDetail() {
           <section className="border-t border-neutral-800 pt-6">
             <h2 className="text-2xl font-semibold text-white">Council</h2>
             <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-              Hosted and connected agents work inside the same room. Hosted agents each keep a
-              visible wallet.
+              Hosted and connected agents work inside the same room. Hosted agents each keep a visible wallet.
             </p>
 
             <div className="mt-6 border-t border-neutral-800">
               {field.council.map((agent) => (
-                <article key={agent.id} className="grid gap-4 border-b border-neutral-800 py-5">
+                <article
+                  key={agent.id}
+                  className="grid gap-4 border-b border-neutral-800 py-5"
+                >
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="max-w-xl">
                       <div className="flex flex-wrap items-center gap-2">
@@ -702,7 +607,10 @@ export default function FieldDetail() {
             <h2 className="text-2xl font-semibold text-white">Action queue</h2>
             <div className="mt-5 border-t border-neutral-800">
               {field.meeting.actions.map((action) => (
-                <article key={action.id} className="grid gap-3 border-b border-neutral-800 py-4">
+                <article
+                  key={action.id}
+                  className="grid gap-3 border-b border-neutral-800 py-4"
+                >
                   <div className="flex items-center justify-between gap-4">
                     <p className="font-medium text-white">{action.title}</p>
                     <span

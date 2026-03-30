@@ -148,6 +148,7 @@ const seedFieldWorkspace: FieldWorkspace = {
             authorId: 'human',
             at: '26 min ago',
             kind: 'argument',
+            topicId: 'ai-thesis-1',
             headline: 'The field should stay anchored in workflows I have actually seen break.',
             body:
               'I do not want a generic "AI apps win" field. Keep the workspace around the places where I can recognize the failure mode, inspect the source material, and approve actions with context.',
@@ -157,7 +158,7 @@ const seedFieldWorkspace: FieldWorkspace = {
             authorId: 'ai-agent-1',
             at: '18 min ago',
             kind: 'evidence',
-            topicId: 'ai-thesis-1',
+            topicId: 'ai-question-1',
             headline: 'Source library keeps pointing to approval-heavy internal workflows.',
             body:
               'Across the support archive, adoption improved when the operator could click through to the evidence behind a recommendation. The field looks strongest where the council can preserve that evidence trail.',

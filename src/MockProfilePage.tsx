@@ -8,23 +8,85 @@ import { loadHumanProfile } from './profileStore'
 export default function MockProfilePage() {
   const { handle = '' } = useParams<{ handle: string }>()
   const normalizedHandle = normalizeHandle(handle)
-  const profile = getMockProfile(handle)
-  const tone = getToneClasses(profile.tone)
-  const humanProfile = normalizedHandle === 'you' ? loadHumanProfile() : null
   const isOwnProfile = normalizedHandle === 'you'
+  const humanProfile = isOwnProfile ? loadHumanProfile() : null
   const [isFollowing, setIsFollowing] = useState(false)
   const fields = loadFieldWorkspace().fields
+
+  if (isOwnProfile && !humanProfile) {
+    const emptyTone = getToneClasses('emerald')
+
+    return (
+      <div className="min-h-screen bg-neutral-950">
+        <div className="mx-auto max-w-6xl px-6 py-10">
+          <Link to="/" className="inline-flex text-sm text-neutral-500 transition-colors hover:text-white">
+            ← Back to markets
+          </Link>
+
+          <section
+            data-testid="profile-hero"
+            className={`mt-6 rounded-[2rem] border px-6 py-8 sm:px-8 ${emptyTone.panel}`}
+          >
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+                <div
+                  className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.75rem] bg-gradient-to-br ${emptyTone.avatar} text-2xl font-bold text-white shadow-lg shadow-black/20`}
+                >
+                  Y
+                </div>
+
+                <div className="max-w-2xl">
+                  <p className="text-xs font-medium uppercase tracking-[0.24em] text-neutral-400">Your profile</p>
+                  <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                    Finish your profile
+                  </h1>
+                  <p className="mt-4 max-w-2xl text-base leading-relaxed text-neutral-300">
+                    Save your name, thesis, and participation details before this page goes public.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex shrink-0 flex-wrap gap-3" data-testid="hero-actions">
+                <Link
+                  to="/profile"
+                  data-testid="edit-profile-button"
+                  className={`rounded-full px-5 py-3 text-sm font-semibold transition-colors ${emptyTone.button}`}
+                >
+                  Create profile
+                </Link>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    )
+  }
+
+  const profile = getMockProfile(handle)
+  const tone = getToneClasses(profile.tone)
   const displayName = humanProfile?.displayName.trim() || profile.displayName
   const headline = humanProfile?.headline.trim() || profile.headline
   const bio = humanProfile?.bio.trim() || profile.bio
-  const focusAreas = humanProfile?.focusAreas.length ? humanProfile.focusAreas : profile.focusAreas
-  const participationModes = humanProfile?.participationModes.length
-    ? humanProfile.participationModes
-    : profile.participationModes
+  const focusAreas = withFallbackItems(
+    humanProfile?.focusAreas.length ? humanProfile.focusAreas : profile.focusAreas,
+    profile.focusAreas,
+  )
+  const participationModes = withFallbackItems(
+    humanProfile?.participationModes.length ? humanProfile.participationModes : profile.participationModes,
+    profile.participationModes,
+  )
   const edge = humanProfile?.edge.trim() || profile.edge
   const lastActive = humanProfile?.updatedAt ? formatRelativeTimestamp(humanProfile.updatedAt) : profile.lastActive
-  const activeFields = buildActiveFields({ focusAreas, participationModes, edge }, fields)
-  const recentActivity = buildRecentActivity(profile, displayName, edge, activeFields)
+  const activeFields = ensureActiveFields(buildActiveFields({ focusAreas, participationModes, edge }, fields), {
+    focusAreas,
+    participationModes,
+    edge,
+  })
+  const recentActivity = ensureRecentActivity(buildRecentActivity(profile, displayName, edge, activeFields), {
+    displayName,
+    edge,
+    lastActive,
+  })
   const credibilityStrip = [
     { label: 'Last active', value: lastActive },
     { label: 'Markets joined', value: profile.marketsParticipated.toLocaleString() },
@@ -39,7 +101,10 @@ export default function MockProfilePage() {
           ← Back to markets
         </Link>
 
-        <section className={`mt-6 rounded-[2rem] border px-6 py-8 sm:px-8 ${tone.panel}`}>
+        <section
+          data-testid="profile-hero"
+          className={`mt-6 rounded-[2rem] border px-6 py-8 sm:px-8 ${tone.panel}`}
+        >
           <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
               <div
@@ -65,10 +130,11 @@ export default function MockProfilePage() {
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-wrap gap-3">
+            <div className="flex shrink-0 flex-wrap gap-3" data-testid="hero-actions">
               {isOwnProfile ? (
                 <Link
                   to="/profile"
+                  data-testid="edit-profile-button"
                   className={`rounded-full px-5 py-3 text-sm font-semibold transition-colors ${tone.button}`}
                 >
                   Edit profile
@@ -77,6 +143,8 @@ export default function MockProfilePage() {
                 <button
                   type="button"
                   onClick={() => setIsFollowing((current) => !current)}
+                  data-testid={isFollowing ? 'following-button' : 'follow-button'}
+                  aria-label={isFollowing ? 'Following' : 'Follow'}
                   className={`rounded-full px-5 py-3 text-sm font-semibold transition-colors ${tone.button}`}
                 >
                   {isFollowing ? 'Following' : 'Follow'}
@@ -91,7 +159,10 @@ export default function MockProfilePage() {
             </div>
           </div>
 
-          <dl className="mt-8 grid gap-4 border-t border-white/10 pt-5 sm:grid-cols-2 xl:grid-cols-4">
+          <dl
+            data-testid="credibility-strip"
+            className="credibility-strip mt-8 grid gap-4 border-t border-white/10 pt-5 sm:grid-cols-2 xl:grid-cols-4"
+          >
             {credibilityStrip.map((item) => (
               <div key={item.label}>
                 <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">{item.label}</dt>
@@ -103,7 +174,10 @@ export default function MockProfilePage() {
 
         <div className="mt-12 grid gap-12 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.85fr)]">
           <div>
-            <section className="border-t border-neutral-800 pt-8">
+            <section
+              data-testid="recent-activity"
+              className="recent-activity border-t border-neutral-800 pt-8"
+            >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Recent activity</p>
@@ -143,7 +217,10 @@ export default function MockProfilePage() {
               </div>
             </section>
 
-            <section className="mt-10 border-t border-neutral-800 pt-8">
+            <section
+              data-testid="active-in"
+              className="active-in mt-10 border-t border-neutral-800 pt-8"
+            >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Active in</p>
@@ -375,4 +452,63 @@ function formatRelativeTimestamp(value: string) {
   }
 
   return `${Math.round(elapsedMinutes / 1440)}d ago`
+}
+
+function withFallbackItems(items: string[], fallback: string[]) {
+  return items.length > 0 ? items : fallback
+}
+
+function ensureActiveFields(
+  rows: ActiveFieldRow[],
+  profile: { focusAreas: string[]; participationModes: string[]; edge: string },
+): ActiveFieldRow[] {
+  if (rows.length > 0) {
+    return rows
+  }
+
+  return profile.focusAreas.slice(0, 3).map((focusArea, index) => ({
+    label: focusArea,
+    summary: profile.edge,
+    verb: profile.participationModes[index % profile.participationModes.length] ?? 'Shows up early',
+    hookLabel: 'Open live thread',
+    hookTitle: `See current debate around ${focusArea}`,
+    to: `/fields?search=${encodeURIComponent(focusArea)}`,
+    updatedAt: 'Live workspace',
+  }))
+}
+
+function ensureRecentActivity(
+  rows: ActivityRow[],
+  profile: { displayName: string; edge: string; lastActive: string },
+): ActivityRow[] {
+  if (rows.length >= 3) {
+    return rows
+  }
+
+  return [
+    {
+      kind: 'Discussion',
+      title: 'Current field discussion',
+      detail: `${profile.displayName} keeps showing up where the argument can still be sharpened in public.`,
+      time: profile.lastActive,
+      to: '/fields',
+      cta: 'Open thread',
+    },
+    {
+      kind: 'Thesis',
+      title: 'Current conviction',
+      detail: profile.edge,
+      time: profile.lastActive,
+      to: '/fields',
+      cta: 'See field context',
+    },
+    {
+      kind: 'Note',
+      title: 'Areas of conviction',
+      detail: `${profile.displayName} uses notes to turn broad interest into clearer positions and better timing.`,
+      time: 'Earlier today',
+      to: '/fields',
+      cta: 'Open field',
+    },
+  ]
 }

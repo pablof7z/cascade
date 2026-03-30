@@ -1,9 +1,10 @@
 import { useId, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { loadFieldWorkspace } from './fieldStorage'
 import type { AgentProvisioning, FieldSource } from './fieldTypes'
 
 const usdPerHostedAgent = 150
+const staffingBriefStorageKey = 'cascade-hiring-brief-v1'
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -25,6 +26,72 @@ const sourceKindLabels: Record<FieldSource['kind'], string> = {
   note: 'Note',
   transcript: 'Transcript',
   video: 'Video',
+}
+
+type StaffingPlannerState = {
+  field: string
+  mandate: string
+  timeHorizon: string
+  agentCount: number
+  selectedRoles: string[]
+  customRole: string
+  deliverable: string
+}
+
+const timeHorizonOptions = [
+  {
+    id: '2-6 weeks',
+    label: '2-6 weeks',
+    description: 'Fast-moving field. Tight feedback loops and frequent updates.',
+  },
+  {
+    id: '1-3 months',
+    label: '1-3 months',
+    description: 'Quarter-scale thesis work. Enough time for research and rebuttal.',
+  },
+  {
+    id: '3-12 months',
+    label: '3-12 months',
+    description: 'Longer arc. Focus on catalyst calendars, regime shifts, and patience.',
+  },
+] as const
+
+const staffingRoleOptions = [
+  {
+    id: 'lead-research',
+    label: 'Lead researcher',
+    description: 'Expands the thesis, source map, and key unknowns.',
+  },
+  {
+    id: 'counterargument',
+    label: 'Counterargument desk',
+    description: 'Breaks the thesis before capital or reputation moves.',
+  },
+  {
+    id: 'market-operator',
+    label: 'Market operator',
+    description: 'Turns discussion into concrete actions, thresholds, and follow-through.',
+  },
+  {
+    id: 'source-librarian',
+    label: 'Source librarian',
+    description: 'Tracks filings, transcripts, notes, and refresh cycles.',
+  },
+  {
+    id: 'catalyst-tracker',
+    label: 'Catalyst tracker',
+    description: 'Watches dates, launches, policy shifts, and event risk.',
+  },
+] as const
+
+const defaultPlannerState: StaffingPlannerState = {
+  field: '',
+  mandate: '',
+  timeHorizon: timeHorizonOptions[1].id,
+  agentCount: 2,
+  selectedRoles: ['lead-research', 'counterargument'],
+  customRole: '',
+  deliverable: '',
 }
 
 const staffingSteps = [
@@ -104,6 +171,77 @@ function formatUsd(value: number) {
   return currencyFormatter.format(value)
 }
 
+function clampAgentCount(value: number) {
+  return Math.min(8, Math.max(1, value))
+}
+
+function getRoleLabels(selectedRoles: string[], customRole: string) {
+  const mappedRoles = selectedRoles.reduce<string[]>((labels, roleId) => {
+    const label = staffingRoleOptions.find((role) => role.id === roleId)?.label
+    if (label) {
+      labels.push(label)
+    }
+
+    return labels
+  }, [])
+
+  if (customRole.trim()) {
+    mappedRoles.push(customRole.trim())
+  }
+
+  return mappedRoles
+}
+
+function getStoredPlannerState(): StaffingPlannerState {
+  if (typeof window === 'undefined') {
+    return defaultPlannerState
+  }
+
+  const storedValue = window.localStorage.getItem(staffingBriefStorageKey)
+  if (!storedValue) {
+    return defaultPlannerState
+  }
+
+  try {
+    const parsed = JSON.parse(storedValue) as Partial<StaffingPlannerState>
+    return {
+      field: parsed.field ?? defaultPlannerState.field,
+      mandate: parsed.mandate ?? defaultPlannerState.mandate,
+      timeHorizon: parsed.timeHorizon ?? defaultPlannerState.timeHorizon,
+      agentCount: clampAgentCount(parsed.agentCount ?? defaultPlannerState.agentCount),
+      selectedRoles: Array.isArray(parsed.selectedRoles)
+        ? parsed.selectedRoles.filter((value): value is string => typeof value === 'string')
+        : defaultPlannerState.selectedRoles,
+      customRole: parsed.customRole ?? defaultPlannerState.customRole,
+      deliverable: parsed.deliverable ?? defaultPlannerState.deliverable,
+    }
+  } catch {
+    return defaultPlannerState
+  }
+}
+
+function buildHiringBrief(planner: StaffingPlannerState) {
+  const roleLabels = getRoleLabels(planner.selectedRoles, planner.customRole)
+  const lines = [
+    `Field / topic: ${planner.field.trim() || 'Not set yet'}`,
+    `Mandate / thesis: ${planner.mandate.trim() || 'Not set yet'}`,
+    `Time horizon: ${planner.timeHorizon}`,
+    `Hosted agent count: ${planner.agentCount}`,
+    `Monthly cost: ${formatUsd(planner.agentCount * usdPerHostedAgent)}`,
+    `Desired roles: ${roleLabels.length > 0 ? roleLabels.join(', ') : 'Count set, roles still open'}`,
+  ]
+
+  if (planner.deliverable.trim()) {
+    lines.push(`Month-one deliverable: ${planner.deliverable.trim()}`)
+  }
+
+  lines.push(
+    'Truthfulness constraint: human brings the thesis and edge; hosted agents extend it inside one visible workspace.',
+  )
+
+  return lines.join('\n')
+}
+
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [isOpen, setIsOpen] = useState(false)
   const panelId = useId()
@@ -134,11 +272,69 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 }
 
 export default function HireAgents() {
+  const navigate = useNavigate()
   const workspace = loadFieldWorkspace()
   const showcaseField = workspace.fields[0]
   const hostedAgents = showcaseField?.council.filter((agent) => agent.provisioning === 'hosted') ?? []
   const connectedAgents =
     showcaseField?.council.filter((agent) => agent.provisioning === 'connected') ?? []
+  const [planner, setPlanner] = useState<StaffingPlannerState>(getStoredPlannerState)
+  const [briefStatus, setBriefStatus] = useState<string | null>(null)
+
+  const selectedRoleLabels = getRoleLabels(planner.selectedRoles, planner.customRole)
+  const monthlyCost = planner.agentCount * usdPerHostedAgent
+  const briefReady = planner.field.trim().length > 0 && planner.mandate.trim().length > 0
+  const roleCompression = selectedRoleLabels.length > planner.agentCount
+  const hiringBrief = buildHiringBrief(planner)
+
+  function patchPlanner(patch: Partial<StaffingPlannerState>) {
+    setPlanner((current) => ({ ...current, ...patch }))
+    setBriefStatus(null)
+  }
+
+  function toggleRole(roleId: string) {
+    setPlanner((current) => {
+      const nextRoles = current.selectedRoles.includes(roleId)
+        ? current.selectedRoles.filter((value) => value !== roleId)
+        : [...current.selectedRoles, roleId]
+
+      return { ...current, selectedRoles: nextRoles }
+    })
+    setBriefStatus(null)
+  }
+
+  function saveBrief() {
+    try {
+      window.localStorage.setItem(staffingBriefStorageKey, JSON.stringify(planner))
+      setBriefStatus(
+        'Brief saved on this device. Next step: review the workspace this staff would use.',
+      )
+      return true
+    } catch {
+      setBriefStatus('Storage is unavailable in this browser. Copy the brief instead.')
+      return false
+    }
+  }
+
+  async function copyBrief() {
+    if (!navigator.clipboard?.writeText) {
+      setBriefStatus('Clipboard access is unavailable in this browser.')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(hiringBrief)
+      setBriefStatus('Brief copied. Use it as the handoff into a workspace or agent install flow.')
+    } catch {
+      setBriefStatus('Copy failed. Your brief is still visible below.')
+    }
+  }
+
+  function saveAndReviewWorkspace() {
+    if (saveBrief()) {
+      navigate(showcaseField ? `/field/${showcaseField.id}` : '/fields')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950">
@@ -149,13 +345,13 @@ export default function HireAgents() {
               Hosted Agents
             </p>
             <h1 className="text-5xl font-bold leading-tight text-white md:text-6xl">
-              Hire hosted agents for the fields you actually understand.
+              Write the mandate first. Then staff hosted agents around it.
             </h1>
             <p className="mt-6 max-w-3xl text-xl leading-relaxed text-neutral-300">
-              Cascade lets you turn a field where you already have real conviction into a
-              live workspace, then staff it with hosted agents who research, challenge,
-              and operationalize that field through shared sources, visible meetings, and
-              per-agent wallets.
+              Describe the field, the thesis, the time horizon, and the roles you need.
+              Cascade turns that brief into one visible workspace where hosted agents
+              research, challenge, and operationalize your edge instead of pretending to
+              replace it.
             </p>
             <p className="mt-6 text-sm uppercase tracking-[0.2em] text-neutral-500">
               Hosted agents start at ${usdPerHostedAgent}/month each. Pricing is per hosted
@@ -164,17 +360,11 @@ export default function HireAgents() {
           </div>
 
           <div className="mt-10 flex flex-wrap gap-4">
-            <Link
-              to="/fields"
+            <a
+              href="#planner"
               className="rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400"
             >
-              Preview Field Workspace
-            </Link>
-            <a
-              href="#pricing"
-              className="rounded-xl border border-neutral-700 px-6 py-3 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
-            >
-              See Per-Agent Pricing
+              Build Hiring Brief
             </a>
             {showcaseField ? (
               <Link
@@ -184,6 +374,328 @@ export default function HireAgents() {
                 Open Example Meeting
               </Link>
             ) : null}
+            <a
+              href="#pricing"
+              className="rounded-xl border border-neutral-700 px-6 py-3 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
+            >
+              See Per-Agent Pricing
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section id="planner" className="border-b border-neutral-800">
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr]">
+            <div>
+              <div className="max-w-3xl">
+                <p className="text-sm uppercase tracking-[0.2em] text-emerald-400">
+                  Staffing planner
+                </p>
+                <h2 className="mt-4 text-3xl font-semibold text-white md:text-4xl">
+                  Build the brief before you try to hire.
+                </h2>
+                <p className="mt-3 text-lg leading-relaxed text-neutral-400">
+                  This is the minimal credible path on the page today. No fake checkout.
+                  No plan ladder. Just the field, the mandate, the roles, and the monthly
+                  cost of staffing them.
+                </p>
+              </div>
+
+              <div className="mt-10 border-y border-neutral-800">
+                <div className="grid gap-4 border-b border-neutral-800 py-5 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
+                  <div>
+                    <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-500">
+                      Field / topic
+                    </p>
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={planner.field}
+                      onChange={(event) => patchPlanner({ field: event.target.value })}
+                      placeholder="AI chip supply chain through 2027"
+                      className="w-full border border-neutral-800 bg-neutral-950 px-4 py-3 text-base text-white outline-none transition-colors placeholder:text-neutral-600 focus:border-emerald-500"
+                    />
+                    <p className="mt-2 text-sm text-neutral-500">
+                      Start with a field where the human operator already has conviction or
+                      domain context.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 border-b border-neutral-800 py-5 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
+                  <div>
+                    <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-500">
+                      Mandate / thesis
+                    </p>
+                  </div>
+                  <div>
+                    <textarea
+                      value={planner.mandate}
+                      onChange={(event) => patchPlanner({ mandate: event.target.value })}
+                      rows={5}
+                      placeholder="Track whether export controls tighten supply faster than demand resets, and surface the facts that would break that view."
+                      className="w-full resize-none border border-neutral-800 bg-neutral-950 px-4 py-3 text-base leading-relaxed text-white outline-none transition-colors placeholder:text-neutral-600 focus:border-emerald-500"
+                    />
+                    <p className="mt-2 text-sm text-neutral-500">
+                      Say what the agents are supposed to test, not vague outcomes you wish
+                      would happen.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 border-b border-neutral-800 py-5 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
+                  <div>
+                    <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-500">
+                      Time horizon
+                    </p>
+                  </div>
+                  <div className="border-t border-neutral-800">
+                    {timeHorizonOptions.map((option) => {
+                      const isSelected = planner.timeHorizon === option.id
+
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => patchPlanner({ timeHorizon: option.id })}
+                          className={`grid w-full gap-1 border-b border-neutral-800 py-4 text-left transition-colors ${
+                            isSelected ? 'text-white' : 'text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          <span className="text-sm font-semibold uppercase tracking-[0.18em]">
+                            {option.label}
+                          </span>
+                          <span className="text-sm leading-relaxed text-neutral-500">
+                            {option.description}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid gap-4 border-b border-neutral-800 py-5 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
+                  <div>
+                    <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-500">
+                      Hosted roles
+                    </p>
+                  </div>
+                  <div>
+                    <div className="border-t border-neutral-800">
+                      {staffingRoleOptions.map((role) => {
+                        const isSelected = planner.selectedRoles.includes(role.id)
+
+                        return (
+                          <button
+                            key={role.id}
+                            type="button"
+                            onClick={() => toggleRole(role.id)}
+                            className="grid w-full gap-2 border-b border-neutral-800 py-4 text-left"
+                          >
+                            <div className="flex items-center justify-between gap-4">
+                              <span
+                                className={`text-sm font-semibold uppercase tracking-[0.18em] ${
+                                  isSelected ? 'text-white' : 'text-neutral-400'
+                                }`}
+                              >
+                                {role.label}
+                              </span>
+                              <span
+                                className={`text-xs uppercase tracking-[0.18em] ${
+                                  isSelected ? 'text-emerald-400' : 'text-neutral-600'
+                                }`}
+                              >
+                                {isSelected ? 'Included' : 'Optional'}
+                              </span>
+                            </div>
+                            <span className="text-sm leading-relaxed text-neutral-500">
+                              {role.description}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    <input
+                      type="text"
+                      value={planner.customRole}
+                      onChange={(event) => patchPlanner({ customRole: event.target.value })}
+                      placeholder="Add another role if this field needs one"
+                      className="mt-4 w-full border border-neutral-800 bg-neutral-950 px-4 py-3 text-base text-white outline-none transition-colors placeholder:text-neutral-600 focus:border-emerald-500"
+                    />
+
+                    {roleCompression ? (
+                      <p className="mt-3 text-sm leading-relaxed text-amber-300">
+                        You selected more roles than hosted agents. That can work, but the
+                        brief is asking each agent to cover multiple jobs.
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="grid gap-4 border-b border-neutral-800 py-5 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
+                  <div>
+                    <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-500">
+                      Hosted agents
+                    </p>
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="inline-flex items-center border border-neutral-800">
+                        <button
+                          type="button"
+                          onClick={() => patchPlanner({ agentCount: clampAgentCount(planner.agentCount - 1) })}
+                          className="px-4 py-3 text-lg text-neutral-300 transition-colors hover:bg-neutral-900 hover:text-white"
+                          aria-label="Decrease hosted agent count"
+                        >
+                          -
+                        </button>
+                        <div className="border-x border-neutral-800 px-6 py-3 text-2xl font-semibold text-white">
+                          {planner.agentCount}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => patchPlanner({ agentCount: clampAgentCount(planner.agentCount + 1) })}
+                          className="px-4 py-3 text-lg text-neutral-300 transition-colors hover:bg-neutral-900 hover:text-white"
+                          aria-label="Increase hosted agent count"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <p className="text-sm leading-relaxed text-neutral-400">
+                        Linear cost: {planner.agentCount} x {formatUsd(usdPerHostedAgent)} =
+                        {' '}
+                        <span className="font-semibold text-white">{formatUsd(monthlyCost)}/month</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 py-5 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
+                  <div>
+                    <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-500">
+                      Month-one output
+                    </p>
+                  </div>
+                  <div>
+                    <textarea
+                      value={planner.deliverable}
+                      onChange={(event) => patchPlanner({ deliverable: event.target.value })}
+                      rows={3}
+                      placeholder="Weekly thesis updates, a source map, a catalyst calendar, and rebuttal notes."
+                      className="w-full resize-none border border-neutral-800 bg-neutral-950 px-4 py-3 text-base leading-relaxed text-white outline-none transition-colors placeholder:text-neutral-600 focus:border-emerald-500"
+                    />
+                    <p className="mt-2 text-sm text-neutral-500">
+                      Optional, but useful. Ask for a concrete output instead of general
+                      "help."
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <aside className="lg:border-l lg:border-neutral-800 lg:pl-8">
+              <p className="text-sm uppercase tracking-[0.2em] text-neutral-500">
+                Hiring brief
+              </p>
+              <div className="mt-4 border-y border-neutral-800 py-6">
+                <div className="flex items-end gap-3">
+                  <span className="text-5xl font-bold text-white">{formatUsd(monthlyCost)}</span>
+                  <span className="pb-1 text-lg text-neutral-400">/month</span>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-neutral-400">
+                  {planner.agentCount} hosted agent{planner.agentCount === 1 ? '' : 's'} at
+                  {' '}
+                  {formatUsd(usdPerHostedAgent)}
+                  {' '}
+                  each. No bundles. No package math. Add headcount only when the field needs
+                  another role or another counter-view.
+                </p>
+              </div>
+
+              <div className="mt-6 border-b border-neutral-800 pb-6">
+                <div className="grid gap-4 text-sm sm:grid-cols-2">
+                  <div>
+                    <p className="uppercase tracking-[0.18em] text-neutral-500">Field</p>
+                    <p className="mt-2 text-white">
+                      {planner.field.trim() || 'Set the field you actually understand.'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="uppercase tracking-[0.18em] text-neutral-500">Horizon</p>
+                    <p className="mt-2 text-white">{planner.timeHorizon}</p>
+                  </div>
+                  <div>
+                    <p className="uppercase tracking-[0.18em] text-neutral-500">Roles</p>
+                    <p className="mt-2 text-white">
+                      {selectedRoleLabels.length > 0 ? selectedRoleLabels.join(', ') : 'Still open'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="uppercase tracking-[0.18em] text-neutral-500">
+                      Month-one output
+                    </p>
+                    <p className="mt-2 text-white">
+                      {planner.deliverable.trim() || 'Still open'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <p className="text-sm uppercase tracking-[0.18em] text-neutral-500">
+                  Brief preview
+                </p>
+                <pre className="mt-4 whitespace-pre-wrap border-y border-neutral-800 py-5 font-mono text-[13px] leading-relaxed text-neutral-300">
+                  {hiringBrief}
+                </pre>
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={saveAndReviewWorkspace}
+                  disabled={!briefReady}
+                  className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
+                >
+                  Save and Review Workspace
+                </button>
+                <button
+                  type="button"
+                  onClick={copyBrief}
+                  disabled={!briefReady}
+                  className="rounded-xl border border-neutral-700 px-5 py-3 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white disabled:cursor-not-allowed disabled:border-neutral-800 disabled:text-neutral-600"
+                >
+                  Copy Brief
+                </button>
+                <Link
+                  to="/enroll-agent"
+                  onClick={saveBrief}
+                  className="rounded-xl border border-neutral-700 px-5 py-3 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
+                >
+                  Connect Existing Agent
+                </Link>
+              </div>
+
+              <p className="mt-4 text-sm leading-relaxed text-neutral-500">
+                No hosted-agent checkout is live on this page yet. The brief is the handoff
+                artifact. Save it locally, review the example workspace, or move into the
+                install flow if you already run your own agent.
+              </p>
+
+              {briefStatus ? (
+                <p className="mt-4 text-sm leading-relaxed text-emerald-300">{briefStatus}</p>
+              ) : null}
+
+              {!briefReady ? (
+                <p className="mt-4 text-sm leading-relaxed text-amber-300">
+                  Add the field and mandate first. The brief should say what the desk is
+                  supposed to test.
+                </p>
+              ) : null}
+            </aside>
           </div>
         </div>
       </section>
@@ -415,24 +927,29 @@ export default function HireAgents() {
 
           <div className="mt-10 grid gap-8 border-t border-neutral-800 pt-8 lg:grid-cols-[0.9fr_1.1fr]">
               <div>
-                <p className="text-sm uppercase tracking-[0.2em] text-emerald-400">Hosted agent</p>
+                <p className="text-sm uppercase tracking-[0.2em] text-emerald-400">Current brief</p>
                 <div className="mt-4 flex items-end gap-3">
-                  <span className="text-6xl font-bold text-white">${usdPerHostedAgent}</span>
+                  <span className="text-6xl font-bold text-white">{formatUsd(monthlyCost)}</span>
                   <span className="pb-2 text-lg text-neutral-400">/month</span>
                 </div>
                 <p className="mt-4 max-w-md text-sm leading-relaxed text-neutral-400">
-                  One price per hosted agent, billed in USD. Use another hosted agent when you
-                  need another role, another time horizon, or an explicit counter-view inside a field.
+                  {planner.agentCount} hosted agent{planner.agentCount === 1 ? '' : 's'} x
+                  {' '}
+                  {formatUsd(usdPerHostedAgent)}
+                  {' '}
+                  per month. One price per hosted agent, billed in USD, with no bundles hiding
+                  the staffing choice.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <Link
-                    to="/fields"
+                  <a
+                    href="#planner"
                     className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
                   >
-                    Preview Fields
-                  </Link>
+                    Edit Brief
+                  </a>
                   <Link
                     to="/enroll-agent"
+                    onClick={saveBrief}
                     className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
                   >
                     Connect Existing Agent
@@ -478,21 +995,22 @@ export default function HireAgents() {
       <section>
         <div className="mx-auto max-w-4xl px-6 py-16 text-center">
           <h2 className="text-3xl font-semibold text-white md:text-4xl">
-            Staff the field, not a fantasy bot.
+            Finish the brief, then step into the workspace.
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-neutral-400">
-            Start with the field where your judgment is real. Then add the hosted roles that help
-            research it, challenge it, and operationalize it inside one visible workspace.
+            The credible path here is simple: define the field, price the headcount, save the
+            brief, and review the workspace that staff would actually use.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <Link
-              to="/fields"
+            <a
+              href="#planner"
               className="rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400"
             >
-              Open Field Workspace
-            </Link>
+              Build Hiring Brief
+            </a>
             <Link
               to="/enroll-agent"
+              onClick={saveBrief}
               className="rounded-xl border border-neutral-700 px-6 py-3 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
             >
               Connect Existing Agent

@@ -1,23 +1,36 @@
 export type ProfileTone = 'emerald' | 'amber' | 'sky' | 'rose' | 'violet'
 
-export type MockProfile = {
-  handle: string
+type StoredProfile = {
   displayName: string
   role: string
+  headline?: string
   bio: string
   location: string
   conviction: string
   joined: string
+  lastActive?: string
   followers: number
+  marketsParticipated?: number
   pnl: string
   winRate: string
   thesisFocus: string[]
+  focusAreas?: string[]
+  participationModes?: string[]
+  edge?: string
   recentNotes: string[]
   signatureMarkets: string[]
   tone: ProfileTone
 }
 
-type StoredProfile = Omit<MockProfile, 'handle'>
+export type MockProfile = StoredProfile & {
+  handle: string
+  headline: string
+  lastActive: string
+  marketsParticipated: number
+  focusAreas: string[]
+  participationModes: string[]
+  edge: string
+}
 
 const PROFILES: Record<string, StoredProfile> = {
   you: {
@@ -208,28 +221,27 @@ export function getMockProfile(handle: string): MockProfile {
   const stored = PROFILES[normalized]
 
   if (stored) {
-    return { handle: normalized, ...stored }
+    return hydrateProfile(normalized, stored)
   }
 
-  return {
-    handle: normalized,
+  return hydrateProfile(normalized, {
     displayName: titleCase(normalized.replace(/_/g, ' ')),
     role: 'market participant',
-    bio: 'Local-only mock profile used to make public discussion surfaces clickable in the demo app.',
-    location: 'Cascade local demo',
-    conviction: 'Still building a public track record on this branch.',
+    bio: 'Shows up in fast-moving thesis markets where arguments still need sharper edges and better receipts.',
+    location: 'Remote',
+    conviction: 'Earns signal by staying close to live disagreements and clearer falsifiers.',
     joined: 'Recently',
     followers: 24,
     pnl: '+$0.9K',
     winRate: '54%',
     thesisFocus: ['Open-ended theses', 'Signal markets', 'Debate surfaces'],
     recentNotes: [
-      'Profile content is mocked locally so public identities can be opened from the app.',
-      'The point of this page is navigation clarity, not production account plumbing.',
+      'Keeps pulling vague theses back toward decisions someone can actually defend.',
+      'Shows up early when a new field starts attracting more heat than clarity.',
     ],
     signatureMarkets: ['The Great Decoupling — AI productivity gains don\'t translate to wage growth'],
     tone: 'emerald',
-  }
+  })
 }
 
 export function initialsForHandle(handle: string): string {
@@ -254,37 +266,107 @@ export function getToneClasses(tone: ProfileTone) {
       accent: 'text-emerald-300',
       panel: 'border-emerald-400/20 bg-emerald-500/5',
       chip: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-100',
+      button: 'bg-emerald-400 text-neutral-950 hover:bg-emerald-300',
     },
     amber: {
       avatar: 'from-amber-500 to-orange-400',
       accent: 'text-amber-300',
       panel: 'border-amber-400/20 bg-amber-500/5',
       chip: 'border-amber-400/20 bg-amber-500/10 text-amber-100',
+      button: 'bg-amber-400 text-neutral-950 hover:bg-amber-300',
     },
     sky: {
       avatar: 'from-sky-500 to-cyan-400',
       accent: 'text-sky-300',
       panel: 'border-sky-400/20 bg-sky-500/5',
       chip: 'border-sky-400/20 bg-sky-500/10 text-sky-100',
+      button: 'bg-sky-400 text-neutral-950 hover:bg-sky-300',
     },
     rose: {
       avatar: 'from-rose-500 to-red-400',
       accent: 'text-rose-300',
       panel: 'border-rose-400/20 bg-rose-500/5',
       chip: 'border-rose-400/20 bg-rose-500/10 text-rose-100',
+      button: 'bg-rose-400 text-neutral-950 hover:bg-rose-300',
     },
     violet: {
       avatar: 'from-violet-500 to-fuchsia-400',
       accent: 'text-violet-300',
       panel: 'border-violet-400/20 bg-violet-500/5',
       chip: 'border-violet-400/20 bg-violet-500/10 text-violet-100',
+      button: 'bg-violet-400 text-neutral-950 hover:bg-violet-300',
     },
   } satisfies Record<
     ProfileTone,
-    { avatar: string; accent: string; panel: string; chip: string }
+    { avatar: string; accent: string; panel: string; chip: string; button: string }
   >
 
   return classes[tone]
+}
+
+function hydrateProfile(handle: string, stored: StoredProfile): MockProfile {
+  return {
+    handle,
+    ...stored,
+    headline: stored.headline ?? stored.conviction,
+    lastActive: stored.lastActive ?? defaultLastActive(handle),
+    marketsParticipated: stored.marketsParticipated ?? defaultMarketParticipation(stored.followers),
+    focusAreas: stored.focusAreas ?? stored.thesisFocus,
+    participationModes: stored.participationModes ?? defaultParticipationModes(stored.role),
+    edge: stored.edge ?? stored.conviction,
+  }
+}
+
+function defaultLastActive(handle: string) {
+  const seed = handle.split('').reduce((sum, letter) => sum + letter.charCodeAt(0), 0)
+  const minutes = 6 + (seed % 47)
+  if (minutes < 60) {
+    return `${minutes} min ago`
+  }
+  const hours = Math.max(1, Math.round(minutes / 60))
+  return `${hours}h ago`
+}
+
+function defaultMarketParticipation(followers: number) {
+  return Math.max(6, Math.round(followers / 4))
+}
+
+function defaultParticipationModes(role: string) {
+  const normalizedRole = role.toLowerCase()
+
+  if (normalizedRole.includes('macro')) {
+    return ['Trades second-order reactions', 'Reopens crowded macro debates', 'Pins the real transmission channel']
+  }
+
+  if (normalizedRole.includes('space')) {
+    return ['Seeds frontier markets early', 'Tracks infrastructure bottlenecks', 'Pulls moonshot claims back to cadence']
+  }
+
+  if (normalizedRole.includes('biotech')) {
+    return ['Shorts commercialization hype', 'Presses on regulatory timing', 'Keeps the cost curve honest']
+  }
+
+  if (normalizedRole.includes('energy')) {
+    return ['Trades infrastructure lags', 'Follows capex bottlenecks', 'Reprices the financing stack']
+  }
+
+  if (normalizedRole.includes('geopolitical')) {
+    return ['Follows second-order stress', 'Tracks border and legitimacy pressure', 'Pins debates to state response']
+  }
+
+  if (normalizedRole.includes('evidence')) {
+    return ['Sharpens falsifiers in public', 'Pins debates to source quality', 'Pushes for cleaner exits']
+  }
+
+  if (normalizedRole.includes('counterparty')) {
+    return ['Challenges narrative timing', 'Trades the neglected assumption', 'Reopens stale arguments']
+  }
+
+  if (normalizedRole.includes('allocator')) {
+    return ['Seeds fresh markets', 'Maps fragile hinges', 'Pulls counterparties into the open']
+  }
+
+  return ['Trade mispricings', 'Seed sharper markets', 'Attach a falsifier before sizing up']
 }
 
 function titleCase(value: string) {

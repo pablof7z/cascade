@@ -157,6 +157,7 @@ const seedFieldWorkspace: FieldWorkspace = {
             authorId: 'ai-agent-1',
             at: '18 min ago',
             kind: 'evidence',
+            topicId: 'ai-thesis-1',
             headline: 'Source library keeps pointing to approval-heavy internal workflows.',
             body:
               'Across the support archive, adoption improved when the operator could click through to the evidence behind a recommendation. The field looks strongest where the council can preserve that evidence trail.',
@@ -176,6 +177,7 @@ const seedFieldWorkspace: FieldWorkspace = {
             authorId: 'ai-agent-2',
             at: '13 min ago',
             kind: 'counterargument',
+            topicId: 'ai-question-2',
             headline: 'Distribution may outrun workflow quality for another buying cycle.',
             body:
               'The council should not confuse a better product shape with a faster market outcome. Buyers can stay with incumbents longer than the field expects if procurement sees the new category as operationally risky.',
@@ -191,6 +193,7 @@ const seedFieldWorkspace: FieldWorkspace = {
             authorId: 'ai-agent-3',
             at: '9 min ago',
             kind: 'argument',
+            topicId: 'ai-question-1',
             headline: 'Narrowing the field increases action quality.',
             body:
               'When the council models only support and internal research workflows, the source library stays coherent and the action queue becomes more legible. Broad framing makes the field feel like a prediction catalog instead of a workspace.',
@@ -206,6 +209,7 @@ const seedFieldWorkspace: FieldWorkspace = {
             authorId: 'human',
             at: '7 min ago',
             kind: 'decision',
+            topicId: 'ai-question-1',
             headline: 'Hold capital until the framing is narrower.',
             body:
               'I want the candidate markets and the next staffing decision scoped to the workflows where approval visibility is the actual moat.',
@@ -407,6 +411,7 @@ const seedFieldWorkspace: FieldWorkspace = {
             authorId: 'energy-agent-1',
             at: '41 min ago',
             kind: 'evidence',
+            topicId: 'energy-thesis-1',
             headline: 'Delivered relief still lags the narrative.',
             body:
               'The operator summary and the pricing tracker still point to the same regional bottlenecks. The market is talking as if relief is evenly distributed, but your field sources say otherwise.',
@@ -426,6 +431,7 @@ const seedFieldWorkspace: FieldWorkspace = {
             authorId: 'energy-agent-3',
             at: '34 min ago',
             kind: 'counterargument',
+            topicId: 'energy-question-2',
             headline: 'Policy language can still compress spreads before delivery changes.',
             body:
               'The field should respect that narrative relief can move pricing earlier than infrastructure does. We need a clear line between what you believe about reality and what the market may price in first.',
@@ -435,6 +441,7 @@ const seedFieldWorkspace: FieldWorkspace = {
             authorId: 'human',
             at: '22 min ago',
             kind: 'decision',
+            topicId: 'energy-question-2',
             headline: 'Stay patient unless the library shows actual delivery.',
             body:
               'I want the field to treat press-release optimism as noise unless it shows up in operator data and industrial procurement language.',
@@ -612,6 +619,7 @@ const seedFieldWorkspace: FieldWorkspace = {
             authorId: 'shipping-agent-1',
             at: '2 hours ago',
             kind: 'evidence',
+            topicId: 'shipping-thesis-1',
             headline: 'Route normalization is still overstated.',
             body:
               'The routing tracker shows the same corridors carrying elevated timing risk even when the daily narrative calms down.',
@@ -627,6 +635,7 @@ const seedFieldWorkspace: FieldWorkspace = {
             authorId: 'shipping-agent-2',
             at: '1 hour ago',
             kind: 'argument',
+            topicId: 'shipping-question-1',
             headline: 'The tradeable edge is in second-order inventory decisions.',
             body:
               'Downstream buyers are still paying to hold buffer inventory. That behavior matters more than whether the headline cycle looks calmer this week.',

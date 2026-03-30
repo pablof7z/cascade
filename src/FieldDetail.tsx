@@ -6,6 +6,7 @@ import type {
   FieldAttention,
   FieldDisagreement,
   FieldSource,
+  MeetingStatus,
   FieldTopicStatus,
   MeetingActionStatus,
 } from './fieldTypes'
@@ -38,6 +39,18 @@ const actionStatusClasses: Record<MeetingActionStatus, string> = {
   approved: 'text-emerald-300',
   queued: 'text-amber-300',
   'needs-human': 'text-sky-300',
+}
+
+const meetingStatusClasses: Record<MeetingStatus, string> = {
+  live: 'text-emerald-300',
+  watching: 'text-amber-300',
+  'awaiting-human': 'text-sky-300',
+}
+
+const meetingStatusLabels: Record<MeetingStatus, string> = {
+  live: 'Live now',
+  watching: 'Watching',
+  'awaiting-human': 'Awaiting your call',
 }
 
 const provisioningClasses: Record<AgentProvisioning, string> = {
@@ -89,6 +102,9 @@ export default function FieldDetail() {
 
   const hostedCount = field.council.filter((agent) => agent.provisioning === 'hosted').length
   const latestEntries = field.meeting.entries.slice(-2).reverse()
+  const pendingHumanActions = field.meeting.actions.filter(
+    (action) => action.status === 'needs-human',
+  ).length
 
   return (
     <div className="min-h-screen bg-neutral-950">
@@ -133,7 +149,7 @@ export default function FieldDetail() {
                 to={`/field/${field.id}/meeting`}
                 className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
               >
-                Open Meeting
+                Join Live Meeting
               </Link>
               <Link
                 to="/hire-agents"
@@ -141,6 +157,93 @@ export default function FieldDetail() {
               >
                 Hire Hosted Agents
               </Link>
+            </div>
+          </div>
+
+          <div className="mt-10 grid gap-5 border-y border-neutral-800 py-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.65fr)]">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Live room</p>
+                <span
+                  className={`text-xs font-medium uppercase tracking-[0.18em] ${meetingStatusClasses[field.meeting.status]}`}
+                >
+                  {meetingStatusLabels[field.meeting.status]}
+                </span>
+                <span className="text-xs text-neutral-500">Updated {field.meeting.updatedAt}</span>
+              </div>
+
+              <div className="mt-3 flex flex-col gap-3 border-b border-neutral-800 pb-4">
+                <h2 className="text-2xl font-semibold text-white">{field.meeting.title}</h2>
+                <p className="max-w-3xl text-sm leading-relaxed text-neutral-300">
+                  {field.meeting.summary}
+                </p>
+              </div>
+
+              <div className="border-b border-neutral-800">
+                {latestEntries.map((entry) => (
+                  <article
+                    key={entry.id}
+                    className="grid gap-3 border-b border-neutral-800 py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_7rem]"
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-neutral-500">
+                        <span>{entry.kind}</span>
+                        <span className="text-neutral-600">/</span>
+                        <span>{getParticipantLabel(field, entry.authorId)}</span>
+                      </div>
+                      <p className="mt-2 font-medium text-white">{entry.headline}</p>
+                      <p className="mt-2 text-sm leading-relaxed text-neutral-400">{entry.body}</p>
+                    </div>
+                    <div className="text-sm text-neutral-500 md:text-right">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">At</p>
+                      <p className="mt-2">{entry.at}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-neutral-800 pt-4 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
+              <dl className="grid gap-4 text-sm sm:grid-cols-3 xl:grid-cols-1">
+                <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-4 xl:border-b xl:border-r-0 xl:pr-0 xl:pb-3">
+                  <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                    In room
+                  </dt>
+                  <dd className="mt-2 text-2xl font-semibold text-white">
+                    {field.meeting.participantIds.length}
+                  </dd>
+                </div>
+                <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-4 xl:border-b xl:border-r-0 xl:px-0 xl:pb-3">
+                  <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                    Unresolved tensions
+                  </dt>
+                  <dd className="mt-2 text-2xl font-semibold text-white">
+                    {field.meeting.tensions.length}
+                  </dd>
+                </div>
+                <div className="sm:pl-4 xl:pl-0">
+                  <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                    Waiting on you
+                  </dt>
+                  <dd className="mt-2 text-2xl font-semibold text-white">{pendingHumanActions}</dd>
+                </div>
+              </dl>
+
+              <div className="mt-5 border-t border-neutral-800 pt-4">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                  Active tensions
+                </p>
+                <div className="mt-3 space-y-3">
+                  {field.meeting.tensions.map((tension) => (
+                    <p
+                      key={tension}
+                      className="border-l border-neutral-700 pl-3 text-sm leading-relaxed text-neutral-300"
+                    >
+                      {tension}
+                    </p>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -247,59 +350,6 @@ export default function FieldDetail() {
                   <div className="text-sm text-neutral-400 md:text-right">
                     <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Added</p>
                     <p className="mt-2">{source.addedAt}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="border-t border-neutral-800 pt-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold text-white">Meeting room snapshot</h2>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                  The field stays live through visible debate, cited evidence, and explicit action proposals.
-                </p>
-              </div>
-              <Link
-                to={`/field/${field.id}/meeting`}
-                className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
-              >
-                Open Full Meeting
-              </Link>
-            </div>
-
-            <div className="mt-6 grid gap-3 border-y border-neutral-800 py-4 text-sm text-neutral-400 sm:grid-cols-3">
-              <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Meeting</p>
-                <p className="mt-2 font-medium text-white">{field.meeting.title}</p>
-              </div>
-              <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-4 sm:pb-0">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Summary</p>
-                <p className="mt-2">{field.meeting.summary}</p>
-              </div>
-              <div className="sm:pl-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Updated</p>
-                <p className="mt-2">{field.meeting.updatedAt}</p>
-              </div>
-            </div>
-
-            <div className="border-t border-neutral-800">
-              {latestEntries.map((entry) => (
-                <article
-                  key={entry.id}
-                  className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[minmax(0,1fr)_9rem]"
-                >
-                  <div>
-                    <p className="font-medium text-white">{entry.headline}</p>
-                    <p className="mt-2 text-sm text-neutral-400">
-                      {getParticipantLabel(field, entry.authorId)}
-                    </p>
-                    <p className="mt-3 text-sm leading-relaxed text-neutral-300">{entry.body}</p>
-                  </div>
-                  <div className="text-sm text-neutral-500 md:text-right">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">At</p>
-                    <p className="mt-2">{entry.at}</p>
                   </div>
                 </article>
               ))}

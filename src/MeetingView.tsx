@@ -5,6 +5,7 @@ import type {
   Field,
   MeetingActionStatus,
   MeetingEntryKind,
+  MeetingStatus,
 } from './fieldTypes'
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -14,10 +15,10 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
 })
 
 const entryClasses: Record<MeetingEntryKind, string> = {
-  argument: 'border-emerald-500/20 bg-emerald-500/6',
-  counterargument: 'border-rose-500/20 bg-rose-500/6',
-  evidence: 'border-sky-500/20 bg-sky-500/6',
-  decision: 'border-amber-500/20 bg-amber-500/6',
+  argument: 'border-l-2 border-emerald-500/60',
+  counterargument: 'border-l-2 border-rose-500/60',
+  evidence: 'border-l-2 border-sky-500/60',
+  decision: 'border-l-2 border-amber-500/60',
 }
 
 const entryLabelClasses: Record<MeetingEntryKind, string> = {
@@ -36,6 +37,18 @@ const actionStatusClasses: Record<MeetingActionStatus, string> = {
   approved: 'text-emerald-300',
   queued: 'text-amber-300',
   'needs-human': 'text-sky-300',
+}
+
+const meetingStatusClasses: Record<MeetingStatus, string> = {
+  live: 'text-emerald-300',
+  watching: 'text-amber-300',
+  'awaiting-human': 'text-sky-300',
+}
+
+const meetingStatusLabels: Record<MeetingStatus, string> = {
+  live: 'Live now',
+  watching: 'Watching',
+  'awaiting-human': 'Awaiting your call',
 }
 
 function formatUsd(value: number) {
@@ -104,6 +117,9 @@ export default function MeetingView() {
   const citedSources = citedSourceIds
     .map((sourceId) => field.sourceLibrary.find((source) => source.id === sourceId))
     .filter((source): source is NonNullable<typeof source> => Boolean(source))
+  const pendingHumanApprovals = field.meeting.actions.filter(
+    (action) => action.status === 'needs-human',
+  ).length
 
   return (
     <div className="min-h-screen bg-neutral-950">
@@ -123,9 +139,14 @@ export default function MeetingView() {
 
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
-              <p className="text-sm uppercase tracking-[0.2em] text-emerald-400">
-                Meeting View
-              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-sm uppercase tracking-[0.2em] text-emerald-400">Meeting View</p>
+                <span
+                  className={`text-xs font-medium uppercase tracking-[0.18em] ${meetingStatusClasses[field.meeting.status]}`}
+                >
+                  {meetingStatusLabels[field.meeting.status]}
+                </span>
+              </div>
               <h1 className="mt-4 text-4xl font-bold tracking-tight text-white md:text-5xl">
                 {field.meeting.title}
               </h1>
@@ -151,41 +172,44 @@ export default function MeetingView() {
             </div>
           </div>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="text-sm text-neutral-400">Participants in room</p>
-              <p className="mt-2 text-3xl font-semibold text-white">
+          <dl className="mt-10 grid border-y border-neutral-800 md:grid-cols-2 xl:grid-cols-4">
+            <div className="border-b border-neutral-800 px-0 py-4 md:px-4 xl:border-b-0 xl:border-r xl:border-neutral-800 xl:pl-0">
+              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Participants in room
+              </dt>
+              <dd className="mt-2 text-3xl font-semibold text-white">
                 {field.meeting.participantIds.length}
-              </p>
+              </dd>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="text-sm text-neutral-400">Cited sources</p>
-              <p className="mt-2 text-3xl font-semibold text-white">{citedSources.length}</p>
+            <div className="border-b border-neutral-800 px-0 py-4 md:px-4 xl:border-b-0 xl:border-r xl:border-neutral-800">
+              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Cited sources
+              </dt>
+              <dd className="mt-2 text-3xl font-semibold text-white">{citedSources.length}</dd>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="text-sm text-neutral-400">Proposed actions</p>
-              <p className="mt-2 text-3xl font-semibold text-white">{field.meeting.actions.length}</p>
+            <div className="border-b border-neutral-800 px-0 py-4 md:border-b-0 md:px-4 xl:border-r xl:border-neutral-800">
+              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Proposed actions
+              </dt>
+              <dd className="mt-2 text-3xl font-semibold text-white">{field.meeting.actions.length}</dd>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-              <p className="text-sm text-neutral-400">Pending human approvals</p>
-              <p className="mt-2 text-3xl font-semibold text-white">
-                {field.meeting.actions.filter((action) => action.status === 'needs-human').length}
-              </p>
+            <div className="px-0 py-4 md:px-4 md:pr-0">
+              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                Pending human approvals
+              </dt>
+              <dd className="mt-2 text-3xl font-semibold text-white">{pendingHumanApprovals}</dd>
             </div>
-          </div>
+          </dl>
         </div>
       </section>
 
-      <div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 lg:grid-cols-[1.35fr_0.95fr]">
-        <section className="space-y-4">
+      <div className="mx-auto grid max-w-7xl gap-6 px-6 py-12 lg:grid-cols-[1.35fr_0.95fr]">
+        <section className="border-t border-neutral-800">
           {field.meeting.entries.map((entry) => {
             const participant = getParticipant(field, entry.authorId)
 
             return (
-              <article
-                key={entry.id}
-                className={`rounded-3xl border p-6 ${entryClasses[entry.kind]}`}
-              >
+              <article key={entry.id} className={`border-b border-neutral-800 py-5 pl-4 md:pl-5 ${entryClasses[entry.kind]}`}>
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -206,7 +230,7 @@ export default function MeetingView() {
                         </span>
                       )}
                     </div>
-                    <h2 className="mt-4 text-2xl font-semibold text-white">{entry.headline}</h2>
+                    <h2 className="mt-3 text-xl font-semibold text-white">{entry.headline}</h2>
                     <p className="mt-2 text-sm text-neutral-400">
                       {participant.name} - {participant.role}
                     </p>
@@ -214,20 +238,17 @@ export default function MeetingView() {
                   <span className="text-xs text-neutral-500">{entry.at}</span>
                 </div>
 
-                <p className="mt-5 text-sm leading-relaxed text-neutral-200">{entry.body}</p>
+                <p className="mt-4 text-sm leading-relaxed text-neutral-200">{entry.body}</p>
 
                 {entry.citations?.length ? (
-                  <div className="mt-5 space-y-3">
+                  <div className="mt-4 space-y-3 border-l border-neutral-800 pl-4">
                     {entry.citations.map((citation) => {
                       const source = field.sourceLibrary.find(
                         (item) => item.id === citation.sourceId,
                       )
 
                       return (
-                        <div
-                          key={`${entry.id}-${citation.sourceId}`}
-                          className="rounded-2xl border border-neutral-800 bg-neutral-950/70 p-4"
-                        >
+                        <div key={`${entry.id}-${citation.sourceId}`} className="grid gap-1">
                           <div className="flex items-center justify-between gap-4">
                             <p className="font-medium text-white">{source?.title ?? 'Source'}</p>
                             <span className="text-xs text-neutral-500">{source?.addedAt}</span>
@@ -248,15 +269,15 @@ export default function MeetingView() {
           })}
         </section>
 
-        <aside className="space-y-8">
-          <section className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
-            <h2 className="text-2xl font-semibold text-white">Participants and wallets</h2>
+        <aside className="space-y-6">
+          <section className="border-t border-neutral-800 pt-5">
+            <h2 className="text-xl font-semibold text-white">Participants and wallets</h2>
             <p className="mt-2 text-sm leading-relaxed text-neutral-400">
               Hosted agents keep separate wallets in the same room so funding and action stay legible.
             </p>
 
-            <div className="mt-6 space-y-4">
-              <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
+            <div className="mt-5 space-y-4">
+              <div className="border-b border-neutral-800 pb-4">
                 <p className="font-medium text-white">{field.owner.name}</p>
                 <p className="mt-1 text-sm text-neutral-400">{field.owner.role}</p>
                 <p className="mt-3 text-sm leading-relaxed text-neutral-500">
@@ -265,10 +286,7 @@ export default function MeetingView() {
               </div>
 
               {field.council.map((agent) => (
-                <div
-                  key={agent.id}
-                  className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4"
-                >
+                <div key={agent.id} className="border-b border-neutral-800 pb-4 last:border-b-0">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="font-medium text-white">{agent.name}</p>
@@ -281,41 +299,44 @@ export default function MeetingView() {
                     </span>
                   </div>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Balance</p>
-                      <p className="mt-2 font-semibold text-white">
+                  <dl className="mt-4 grid gap-3 border-t border-neutral-800 pt-3 text-sm sm:grid-cols-3">
+                    <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-3">
+                      <dt className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
+                        Balance
+                      </dt>
+                      <dd className="mt-2 font-semibold text-white">
                         {formatUsd(agent.wallet.balanceUsd)}
-                      </p>
+                      </dd>
                     </div>
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Allocated</p>
-                      <p className="mt-2 font-semibold text-white">
+                    <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-3 sm:pb-0">
+                      <dt className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
+                        Allocated
+                      </dt>
+                      <dd className="mt-2 font-semibold text-white">
                         {formatUsd(agent.wallet.allocatedUsd)}
-                      </p>
+                      </dd>
                     </div>
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Month to date</p>
-                      <p className="mt-2 font-semibold text-white">
+                    <div className="sm:pl-3">
+                      <dt className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
+                        Month to date
+                      </dt>
+                      <dd className="mt-2 font-semibold text-white">
                         {formatUsd(agent.wallet.monthlySpendUsd)}
-                      </p>
+                      </dd>
                     </div>
-                  </div>
+                  </dl>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
-            <h2 className="text-2xl font-semibold text-white">Proposed actions</h2>
-            <div className="mt-5 space-y-3">
+          <section className="border-t border-neutral-800 pt-5">
+            <h2 className="text-xl font-semibold text-white">Proposed actions</h2>
+            <div className="mt-4 space-y-4">
               {field.meeting.actions.map((action) => {
                 const owner = getParticipant(field, action.ownerId)
                 return (
-                  <div
-                    key={action.id}
-                    className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4"
-                  >
+                  <div key={action.id} className="border-b border-neutral-800 pb-4 last:border-b-0">
                     <div className="flex items-center justify-between gap-4">
                       <p className="font-medium text-white">{action.title}</p>
                       <span
@@ -334,13 +355,13 @@ export default function MeetingView() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
-            <h2 className="text-2xl font-semibold text-white">Unresolved tensions</h2>
-            <div className="mt-5 space-y-3">
+          <section className="border-t border-neutral-800 pt-5">
+            <h2 className="text-xl font-semibold text-white">Unresolved tensions</h2>
+            <div className="mt-4 space-y-3">
               {field.meeting.tensions.map((tension) => (
                 <div
                   key={tension}
-                  className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4 text-sm leading-relaxed text-neutral-300"
+                  className="border-l border-neutral-700 pl-3 text-sm leading-relaxed text-neutral-300"
                 >
                   {tension}
                 </div>
@@ -348,14 +369,11 @@ export default function MeetingView() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6">
-            <h2 className="text-2xl font-semibold text-white">Cited sources</h2>
-            <div className="mt-5 space-y-3">
+          <section className="border-t border-neutral-800 pt-5">
+            <h2 className="text-xl font-semibold text-white">Cited sources</h2>
+            <div className="mt-4 space-y-4">
               {citedSources.map((source) => (
-                <div
-                  key={source.id}
-                  className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4"
-                >
+                <div key={source.id} className="border-b border-neutral-800 pb-4 last:border-b-0">
                   <p className="font-medium text-white">{source.title}</p>
                   <p className="mt-1 text-sm text-neutral-400">{source.author}</p>
                   <p className="mt-2 text-sm leading-relaxed text-neutral-500">

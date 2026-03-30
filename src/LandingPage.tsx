@@ -1,10 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import type { FormEvent, Dispatch } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import AgentFeatureSection from './components/AgentFeatureSection'
+import { Link, useNavigate } from 'react-router-dom'
 import { deriveMarketMetrics, type Side } from './market'
-import { getThesisDefinition } from './marketCatalog'
-import MockProfileLink from './components/MockProfileLink'
 import type { MarketEntry } from './storage'
 import type { Action } from './App'
 // lightweight-charts used by market detail pages
@@ -100,7 +97,7 @@ const sampleDiscussions: SampleDiscussion[] = [
   },
   {
     id: 'd2',
-    marketTitle: 'The Great Decoupling — AI productivity gains don\'t translate to wage growth',
+    marketTitle: 'The Great Decoupling',
     author: 'macro_watcher',
     preview: 'Productivity-wage decoupling started in 1973, not with AI. The thesis conflates correlation with causation. Real wages track total compensation when you include benefits.',
     replyCount: 8,
@@ -172,22 +169,6 @@ const sampleTheses: SampleMarketSpec[] = [
 ]
 
 const sampleMarketBank = [...sampleModules, ...sampleTheses]
-const sampleFieldCount = new Set(sampleMarketBank.map(spec => spec.category)).size
-const sampleHomepageStats = {
-  markets: sampleMarketBank.length,
-  fields: sampleFieldCount,
-  theses: sampleTheses.length,
-  discussions: sampleDiscussions.length,
-}
-const sampleFeaturedThesis = {
-  thesis: sampleTheses[0],
-  probability: 0.67,
-  dailyMoveLabel: '+12% today',
-  sparkline: [45, 48, 52, 55, 58, 62, 67],
-  volume: '$24.5K',
-  openInterest: '312 traders',
-  discussion: '89 comments',
-}
 
 // Sample recent trades
 const sampleTrades = [
@@ -220,40 +201,6 @@ function shuffle<T>(items: T[]) {
 
 function getSampleSpec(title: string): SampleMarketSpec | undefined {
   return sampleMarketBank.find(spec => spec.title === title)
-}
-
-function matchesSearchQuery(query: string, values: Array<string | undefined | null>) {
-  if (!query) return true
-  return values.some((value) => value?.toLowerCase().includes(query))
-}
-
-function matchesMarketEntrySearch(entry: MarketEntry, query: string) {
-  const spec = getSampleSpec(entry.market.title)
-  return matchesSearchQuery(query, [
-    entry.market.title,
-    entry.market.description,
-    spec?.category,
-    spec?.description,
-    ...(spec?.supportingModules ?? []),
-  ])
-}
-
-function matchesSampleSpecSearch(spec: SampleMarketSpec, query: string) {
-  return matchesSearchQuery(query, [
-    spec.title,
-    spec.description,
-    spec.category,
-    ...(spec.supportingModules ?? []),
-  ])
-}
-
-function matchesDiscussionSearch(discussion: SampleDiscussion, query: string) {
-  return matchesSearchQuery(query, [
-    discussion.marketTitle,
-    discussion.author,
-    discussion.preview,
-    discussion.stance,
-  ])
 }
 
 // Mini sparkline component
@@ -329,12 +276,7 @@ function TradesTicker({ trades }: { trades: typeof sampleTrades }) {
             i === fadeIndex ? 'opacity-0 -translate-x-4' : 'opacity-100 translate-x-0'
           }`}
         >
-          <MockProfileLink
-            handle={trade.user}
-            className="text-white hover:text-white"
-            compact
-            showAvatar={false}
-          />
+          <span className="text-white">@{trade.user}</span>
           {' bought '}
           <span className={trade.side === 'YES' ? 'text-emerald-500' : 'text-rose-500'}>
             {trade.side}
@@ -356,15 +298,11 @@ type Props = {
 
 export default function LandingPage({ markets, dispatch }: Props) {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [initialSide, setInitialSide] = useState<Side>('LONG')
   const [initialSats, setInitialSats] = useState('150')
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const searchQuery = searchParams.get('search')?.trim() ?? ''
-  const normalizedSearchQuery = searchQuery.toLowerCase()
-  const hasSearchQuery = normalizedSearchQuery.length > 0
 
   const entries = Object.values(markets)
 
@@ -422,46 +360,25 @@ export default function LandingPage({ markets, dispatch }: Props) {
     setShowCreateModal(false)
   }
 
-  function buildCreateMarketAction(spec: SampleMarketSpec, id?: string): Action {
-    return {
+  function handleLoadSampleMarket() {
+    const spec = shuffle(sampleMarketBank)[0]
+    dispatch({
       type: 'CREATE_MARKET',
-      id,
       title: spec.title,
       description: spec.description,
       seedWithUser: false,
-      kind: spec.type,
-      thesis:
-        spec.type === 'thesis'
-          ? getThesisDefinition({
-              title: spec.title,
-              description: spec.description,
-              kind: 'thesis',
-            })
-          : undefined,
-    }
-  }
-
-  function handleLoadSampleMarket() {
-    const spec = shuffle(sampleMarketBank)[0]
-    dispatch(buildCreateMarketAction(spec))
+    })
     setShowCreateModal(false)
   }
 
   function navigateToMarket(entry: MarketEntry) {
     const spec = getSampleSpec(entry.market.title)
-    const isThesis = entry.market.kind === 'thesis' || spec?.type === 'thesis'
+    const isThesis = spec?.type === 'thesis'
     navigate(isThesis ? `/thesis/${entry.market.id}` : `/market/${entry.market.id}`)
   }
 
-  function navigateToSampleSpec(spec: SampleMarketSpec, contextId: string) {
-    const marketId = `${contextId}-${spec.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-    dispatch(buildCreateMarketAction(spec, marketId))
-    setTimeout(() => {
-      navigate(spec.type === 'thesis' ? `/thesis/${marketId}` : `/market/${marketId}`)
-    }, 0)
-  }
-
-  const featuredThesis = sampleFeaturedThesis.thesis
+  const featuredThesis = sampleTheses[0]
+  const featuredProbability = 0.67
 
   // Sample data for sections when real markets are sparse
   const trendingSample = [
@@ -504,158 +421,81 @@ export default function LandingPage({ markets, dispatch }: Props) {
   const usePinkSheet = pinkSheetMarkets.length >= 3 ? pinkSheetMarkets : null
   const useHotDebates = hotDebates.length >= 3 ? hotDebates : null
   const useNewThisWeek = newThisWeek.length >= 3 ? newThisWeek : null
-  const searchMarketResults = hasSearchQuery
-    ? [
-        ...entries
-          .filter((entry) => matchesMarketEntrySearch(entry, normalizedSearchQuery))
-          .map((entry) => {
-            const spec = getSampleSpec(entry.market.title)
-            return {
-              key: `entry-${entry.market.id}`,
-              title: entry.market.title,
-              description:
-                entry.market.description ||
-                spec?.description ||
-                'Continuous market with active conviction on both sides.',
-              meta: spec?.category || (entry.market.kind === 'thesis' ? 'Thesis' : 'Market'),
-              onClick: () => navigateToMarket(entry),
-            }
-          }),
-        ...sampleMarketBank
-          .filter((spec) => matchesSampleSpecSearch(spec, normalizedSearchQuery))
-          .filter((spec) => !entries.some((entry) => entry.market.title === spec.title))
-          .map((spec) => ({
-            key: `sample-${spec.title}`,
-            title: spec.title,
-            description: spec.description,
-            meta: `${spec.category} · demo ${spec.type}`,
-            onClick: () => navigateToSampleSpec(spec, 'search'),
-          })),
-      ]
-    : []
-  const searchDiscussionResults = hasSearchQuery
-    ? sampleDiscussions.filter((discussion) =>
-        matchesDiscussionSearch(discussion, normalizedSearchQuery),
-      )
-    : []
-  const hasSearchResults =
-    searchMarketResults.length > 0 || searchDiscussionResults.length > 0
+
   return (
     <div className="min-h-screen bg-neutral-950">
       {/* ═══════════════════════════════════════════════════════════════════
           HERO — Provocative statement + Featured Market
       ═══════════════════════════════════════════════════════════════════ */}
-      <section className="border-b border-neutral-900/80">
-        <div className="max-w-7xl mx-auto w-full px-6 py-10 lg:py-12">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)] lg:items-start">
-            <div className="space-y-8">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-600">
-                <span className="text-amber-500">Demo market map</span>
-                <span>Persistent thesis markets</span>
-                <span>Evidence reprices conviction</span>
-                <span>{sampleHomepageStats.fields} sample fields</span>
-              </div>
+      <section className="relative min-h-[80vh] flex flex-col">
+        <div className="absolute inset-0 bg-gradient-to-b from-neutral-900/50 via-neutral-950 to-neutral-950" />
 
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_220px] xl:items-end">
-                <div className="space-y-4">
-                  <h1 className="text-4xl font-bold leading-[1.02] tracking-tight text-white md:text-5xl lg:text-6xl">
-                    Trade on Ideas That Don&apos;t Expire
-                  </h1>
-                  <p className="max-w-2xl text-lg leading-relaxed text-neutral-400 md:text-xl">
-                    Cascade runs continuous markets on live theses. Build conviction, revise as evidence changes, and stay in the field instead of waiting for a single closing date.
-                  </p>
+        <div className="relative z-10 flex-1 flex items-center">
+          <div className="max-w-7xl mx-auto w-full px-6 py-16">
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+              <div className="space-y-8">
+                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight">
+                  Trade on Ideas That Don't Expire
+                </h1>
+                <p className="text-xl md:text-2xl text-neutral-400 max-w-lg leading-relaxed">
+                  Most prediction markets close. Cascade doesn't. Take positions on ongoing theses, change minds, move markets.
+                </p>
+                <div className="flex flex-wrap items-center gap-4 pt-4">
+                  <Link
+                    to="/join"
+                    className="px-8 py-4 bg-white text-neutral-950 font-semibold rounded-lg hover:bg-neutral-100 transition-colors text-lg"
+                  >
+                    Start Trading
+                  </Link>
+                  <Link
+                    to="/join"
+                    onClick={() => setTimeout(() => document.querySelector<HTMLButtonElement>('[data-agent-btn]')?.click(), 100)}
+                    className="text-neutral-500 hover:text-neutral-300 transition-colors text-sm"
+                  >
+                    For agents →
+                  </Link>
                 </div>
-
-                <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-neutral-900 pt-4 text-sm xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
-                  <div>
-                    <dt className="text-[11px] uppercase tracking-[0.18em] text-neutral-600">Demo markets</dt>
-                    <dd className="mt-1 text-xl font-semibold text-white tabular-nums">{sampleHomepageStats.markets}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[11px] uppercase tracking-[0.18em] text-neutral-600">Demo fields</dt>
-                    <dd className="mt-1 text-xl font-semibold text-white tabular-nums">{sampleHomepageStats.fields}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[11px] uppercase tracking-[0.18em] text-neutral-600">Demo theses</dt>
-                    <dd className="mt-1 text-xl font-semibold text-white tabular-nums">{sampleHomepageStats.theses}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[11px] uppercase tracking-[0.18em] text-neutral-600">Demo discussions</dt>
-                    <dd className="mt-1 text-xl font-semibold text-white tabular-nums">{sampleHomepageStats.discussions}</dd>
-                  </div>
-                </dl>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <Link
-                  to="/join"
-                  className="rounded-lg bg-white px-6 py-3 text-base font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
+              {/* Right — Featured thesis as raw typography, not a card */}
+              <div className="space-y-6">
+                <span className="text-xs font-medium text-amber-500 uppercase tracking-[0.2em]">
+                  Featured Thesis
+                </span>
+                <h2
+                  className="text-3xl md:text-4xl font-bold text-white leading-snug cursor-pointer hover:text-emerald-400 transition-colors"
+                  onClick={() => {
+                    const existingEntry = Object.values(markets).find(
+                      e => e.market.title === featuredThesis.title
+                    )
+                    if (existingEntry) {
+                      navigate(`/market/${existingEntry.market.id}`)
+                    } else {
+                      dispatch({
+                        type: 'CREATE_MARKET',
+                        id: 'featured-great-decoupling',
+                        title: featuredThesis.title,
+                        description: featuredThesis.description,
+                        seedWithUser: false,
+                      })
+                    }
+                  }}
                 >
-                  Start Trading
-                </Link>
-                <Link
-                  to="/builder"
-                  className="rounded-lg border border-neutral-700 px-5 py-3 text-sm font-medium text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
-                >
-                  Open Thesis Builder
-                </Link>
-              </div>
-            </div>
-
-            {/* Right — Featured thesis as raw typography, not a card */}
-            <div className="border-t border-neutral-900 pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-              <div className="flex items-center justify-between gap-4 text-[11px] font-medium uppercase tracking-[0.18em]">
-                <span className="text-amber-500">Featured Demo Thesis</span>
-                <span className="text-neutral-600">Illustrative market snapshot</span>
-              </div>
-              <button
-                type="button"
-                className="group mt-3 w-full text-left"
-                onClick={() => {
-                  const existingEntry = Object.values(markets).find(
-                    e => e.market.title === featuredThesis.title
-                  )
-                  if (existingEntry) {
-                    navigateToMarket(existingEntry)
-                  } else {
-                    dispatch(buildCreateMarketAction(featuredThesis, 'featured-great-decoupling'))
-                  }
-                }}
-              >
-                <h2 className="text-3xl font-bold leading-snug text-white transition-colors group-hover:text-emerald-400 md:text-4xl">
                   {featuredThesis.title}
                 </h2>
-              </button>
-              <p className="mt-4 max-w-xl text-sm leading-6 text-neutral-400">
-                {featuredThesis.description}
-              </p>
-              <div className="mt-6 flex flex-wrap items-end gap-x-4 gap-y-3">
-                <span className="text-5xl font-black tabular-nums text-emerald-500 md:text-6xl">
-                  {Math.round(sampleFeaturedThesis.probability * 100)}¢
-                </span>
-                <span className="pb-1 text-base text-emerald-500/70 md:text-lg">YES</span>
-                <span className="pb-1 text-sm text-emerald-500">{sampleFeaturedThesis.dailyMoveLabel}</span>
-                <Sparkline data={sampleFeaturedThesis.sparkline} positive={true} size="large" />
-              </div>
-              <div className="mt-5 grid gap-3 border-t border-neutral-900 pt-4 text-sm sm:grid-cols-2">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-neutral-600">Demo volume</span>
-                  <span className="font-mono tabular-nums text-white">{sampleFeaturedThesis.volume}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-neutral-600">Demo participation</span>
-                  <span className="font-mono tabular-nums text-white">{sampleFeaturedThesis.openInterest}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-neutral-600">Demo discussion</span>
-                  <span className="font-mono tabular-nums text-white">{sampleFeaturedThesis.discussion}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-neutral-600">Linked modules</span>
-                  <span className="flex items-center gap-1.5 font-mono tabular-nums text-white">
-                    <PulseDot color="amber" />
-                    {featuredThesis.supportingModules?.length ?? 0}
+                <div className="flex items-baseline gap-4">
+                  <span className="text-6xl font-black text-emerald-500 tabular-nums">
+                    {Math.round(featuredProbability * 100)}¢
                   </span>
+                  <span className="text-lg text-emerald-500/70">YES</span>
+                  <span className="text-sm text-emerald-500">+12% today</span>
+                  <Sparkline data={[45, 48, 52, 55, 58, 62, 67]} positive={true} size="large" />
+                </div>
+                <div className="flex gap-8 text-sm text-neutral-500">
+                  <span>$24.5K vol</span>
+                  <span>312 traders</span>
+                  <span>89 comments</span>
+                  <span className="flex items-center gap-1.5"><PulseDot color="amber" /> 47 active</span>
                 </div>
               </div>
             </div>
@@ -663,128 +503,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
         </div>
       </section>
 
-      {hasSearchQuery ? (
-        <section className="max-w-7xl mx-auto px-6 py-12">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
-            <div>
-              <div className="flex items-center justify-between gap-4 border-b border-neutral-800 pb-4">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                    Search
-                  </p>
-                  <h2 className="mt-2 text-2xl font-semibold text-white">
-                    Results for &quot;{searchQuery}&quot;
-                  </h2>
-                </div>
-                <Link
-                  to="/"
-                  className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
-                >
-                  Clear
-                </Link>
-              </div>
-
-              {searchMarketResults.length > 0 ? (
-                <div className="border-t border-neutral-800">
-                  {searchMarketResults.map((result) => (
-                    <button
-                      key={result.key}
-                      type="button"
-                      onClick={result.onClick}
-                      className="block w-full border-b border-neutral-800 py-4 text-left transition-colors hover:bg-neutral-900/40"
-                    >
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
-                        {result.meta}
-                      </p>
-                      <h3 className="mt-2 text-lg font-semibold text-white">{result.title}</h3>
-                      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-400">
-                        {result.description}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="border-t border-neutral-800 pt-4 text-sm text-neutral-500">
-                  No markets match this query.
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div className="border-b border-neutral-800 pb-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                  Discussions
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Matching threads</h2>
-              </div>
-
-              {searchDiscussionResults.length > 0 ? (
-                <div className="border-t border-neutral-800">
-                  {searchDiscussionResults.map((discussion) => {
-                    const matchingEntry = Object.values(markets).find(
-                      (entry) => entry.market.title === discussion.marketTitle,
-                    )
-                    const spec = sampleMarketBank.find((item) => item.title === discussion.marketTitle)
-
-                    const handleDiscussionClick = () => {
-                      if (matchingEntry) {
-                        const isThesis =
-                          matchingEntry.market.kind === 'thesis' || spec?.type === 'thesis'
-                        navigate(
-                          isThesis
-                            ? `/thesis/${matchingEntry.market.id}`
-                            : `/market/${matchingEntry.market.id}/discussion`,
-                        )
-                        return
-                      }
-
-                      if (!spec) return
-                      const marketId = `search-discussion-${discussion.id}`
-                      dispatch(buildCreateMarketAction(spec, marketId))
-                      setTimeout(() => {
-                        navigate(
-                          spec.type === 'thesis'
-                            ? `/thesis/${marketId}`
-                            : `/market/${marketId}/discussion`,
-                        )
-                      }, 0)
-                    }
-
-                    return (
-                      <button
-                        key={discussion.id}
-                        type="button"
-                        onClick={handleDiscussionClick}
-                        className="block w-full border-b border-neutral-800 py-4 text-left transition-colors hover:bg-neutral-900/40"
-                      >
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
-                          {discussion.marketTitle} · {discussion.author} · {discussion.replyCount} replies
-                        </p>
-                        <p className="mt-2 text-sm leading-relaxed text-neutral-300">
-                          {discussion.preview}
-                        </p>
-                      </button>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="border-t border-neutral-800 pt-4 text-sm text-neutral-500">
-                  No discussions match this query.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {!hasSearchResults ? (
-            <div className="mt-10 border-t border-neutral-800 pt-6">
-              <p className="text-sm text-neutral-400">
-                Nothing on the homepage matches &quot;{searchQuery}&quot; yet.
-              </p>
-            </div>
-          ) : null}
-        </section>
-      ) : (
-        <>
       {/* ═══════════════════════════════════════════════════════════════════
           LIVE TRADES TICKER
       ═══════════════════════════════════════════════════════════════════ */}
@@ -801,224 +519,110 @@ export default function LandingPage({ markets, dispatch }: Props) {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 1: FEATURED MARKETS — Lead market + compact tape
+          SECTION 1: TRENDING MARKETS — Sidebar layout
+          Dominant featured item left, compact ranked list right
       ═══════════════════════════════════════════════════════════════════ */}
-      <section className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-          <div>
-            <div className="flex flex-wrap items-end justify-between gap-4 border-b border-neutral-900 pb-4">
-              <div>
-                <h2 className="text-2xl font-black tracking-tight text-white md:text-3xl">Featured Markets</h2>
-                <p className="mt-1 max-w-xl text-sm text-neutral-500">
-                  Highest-liquidity contracts and live debates across the active research fields.
-                </p>
-              </div>
-              <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-600">
-                Ranked by volume
-              </span>
-            </div>
+      <section className="max-w-7xl mx-auto px-6 pt-20 pb-16">
+        <div className="flex items-baseline gap-4 mb-10">
+          <h2 className="text-3xl font-black text-white tracking-tight">Trending</h2>
+          <span className="text-sm text-neutral-600">Most volume · 24h</span>
+        </div>
 
+        <div className="grid lg:grid-cols-12 gap-0">
+          {/* Left — Dominant market */}
+          <div className="lg:col-span-5 lg:pr-12 lg:border-r border-neutral-800/50 pb-8 lg:pb-0">
             {(() => {
               if (useTrending && useTrending[0]) {
                 const entry = useTrending[0]
                 const metrics = deriveMarketMetrics(entry.market)
-                const spec = getSampleSpec(entry.market.title)
-
                 return (
-                  <div className="grid gap-6 pt-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end">
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-600">
-                        <span className="text-neutral-700">01</span>
-                        {spec?.category && <span>{spec.category}</span>}
-                        <span className="text-emerald-500">Highest volume</span>
-                      </div>
-                      <button
-                        type="button"
-                        className="group w-full text-left"
-                        onClick={() => navigateToMarket(entry)}
-                      >
-                        <h3 className="text-2xl font-bold leading-snug text-white transition-colors group-hover:text-emerald-400 md:text-3xl">
-                          {entry.market.title}
-                        </h3>
-                      </button>
-                      <p className="max-w-2xl text-sm leading-6 text-neutral-400">
-                        {entry.market.description
-                          || spec?.description
-                          || 'Continuous market with active conviction on both sides.'}
-                      </p>
+                  <div
+                    className="cursor-pointer group"
+                    onClick={() => navigateToMarket(entry)}
+                  >
+                    <span className="text-xs text-emerald-500 uppercase tracking-[0.15em] font-medium">#1 by volume</span>
+                    <h3 className="text-2xl md:text-3xl font-bold text-white mt-2 mb-4 group-hover:text-emerald-400 transition-colors leading-snug">
+                      {entry.market.title}
+                    </h3>
+                    <div className="flex items-baseline gap-3 mb-3">
+                      <span className="text-5xl font-black text-emerald-500 tabular-nums">
+                        {Math.round(metrics.longPositionShare * 100)}¢
+                      </span>
+                      <Sparkline
+                        data={[35, 38, 42, 40, 45, Math.round(metrics.longPositionShare * 100)]}
+                        positive={metrics.longPositionShare > 0.4}
+                        size="large"
+                      />
                     </div>
-
-                    <div className="border-t border-neutral-900 pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-                      <div className="flex items-end gap-3">
-                        <span className="text-5xl font-black tabular-nums text-emerald-500">
-                          {Math.round(metrics.longPositionShare * 100)}¢
-                        </span>
-                        <Sparkline
-                          data={[35, 38, 42, 40, 45, Math.round(metrics.longPositionShare * 100)]}
-                          positive={metrics.longPositionShare > 0.4}
-                          size="large"
-                        />
-                      </div>
-                      <dl className="mt-4 space-y-2 text-sm text-neutral-500">
-                        <div className="flex items-center justify-between gap-4">
-                          <dt>Volume</dt>
-                          <dd className="font-mono tabular-nums text-white">{formatCurrency(entry.market.reserve)}</dd>
-                        </div>
-                        <div className="flex items-center justify-between gap-4">
-                          <dt>Trades</dt>
-                          <dd className="font-mono tabular-nums text-white">{entry.market.quotes.length}</dd>
-                        </div>
-                        <div className="flex items-center justify-between gap-4">
-                          <dt>Direction</dt>
-                          <dd className="font-mono tabular-nums text-white">
-                            {metrics.longPositionShare >= 0.5 ? 'LONG bias' : 'SHORT bias'}
-                          </dd>
-                        </div>
-                      </dl>
+                    <div className="flex gap-6 text-sm text-neutral-500">
+                      <span>{formatCurrency(entry.market.reserve)} vol</span>
+                      <span>{entry.market.quotes.length} trades</span>
                     </div>
                   </div>
                 )
               }
-
+              // Fallback sample
               const item = trendingSample[0]
-              const sampleSpec = getSampleSpec(item.title)
-              const handleSampleLeadClick = sampleSpec
-                ? () => navigateToSampleSpec(sampleSpec, 'featured-lead')
-                : undefined
-
               return (
-                <div className="grid gap-6 pt-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end">
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-600">
-                      <span className="text-neutral-700">01</span>
-                      <span>Sample market</span>
-                      <span className="text-emerald-500">Highest volume</span>
-                    </div>
-                    {handleSampleLeadClick ? (
-                      <button
-                        type="button"
-                        className="group w-full text-left"
-                        onClick={handleSampleLeadClick}
-                        aria-label={`Open ${item.title} market`}
-                      >
-                        <h3 className="text-2xl font-bold leading-snug text-white transition-colors group-hover:text-emerald-400 group-focus-visible:text-emerald-400 md:text-3xl">
-                          {item.title}
-                        </h3>
-                      </button>
-                    ) : (
-                      <h3 className="text-2xl font-bold leading-snug text-white md:text-3xl">
-                        {item.title}
-                      </h3>
-                    )}
-                    <p className="max-w-2xl text-sm leading-6 text-neutral-400">
-                      {getSampleSpec(item.title)?.description
-                        || 'A representative high-conviction market from the current thesis pipeline.'}
-                    </p>
+                <div className="cursor-pointer group">
+                  <span className="text-xs text-emerald-500 uppercase tracking-[0.15em] font-medium">#1 by volume</span>
+                  <h3 className="text-2xl md:text-3xl font-bold text-white mt-2 mb-4 group-hover:text-emerald-400 transition-colors leading-snug">
+                    {item.title}
+                  </h3>
+                  <div className="flex items-baseline gap-3 mb-3">
+                    <span className="text-5xl font-black text-emerald-500 tabular-nums">
+                      {Math.round(item.prob * 100)}¢
+                    </span>
+                    <span className={`text-sm ${item.change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      {item.change >= 0 ? '+' : ''}{Math.round(item.change * 100)}%
+                    </span>
+                    <Sparkline data={[30, 32, 35, 38, 40, 42]} positive={item.change >= 0} size="large" />
                   </div>
-
-                  <div className="border-t border-neutral-900 pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-                    <div className="flex items-end gap-3">
-                      <span className="text-5xl font-black tabular-nums text-emerald-500">
-                        {Math.round(item.prob * 100)}¢
-                      </span>
-                      <Sparkline data={[30, 32, 35, 38, 40, 42]} positive={item.change >= 0} size="large" />
-                    </div>
-                    <dl className="mt-4 space-y-2 text-sm text-neutral-500">
-                      <div className="flex items-center justify-between gap-4">
-                        <dt>Volume</dt>
-                        <dd className="font-mono tabular-nums text-white">{item.volume}</dd>
-                      </div>
-                      <div className="flex items-center justify-between gap-4">
-                        <dt>Trades</dt>
-                        <dd className="font-mono tabular-nums text-white">{item.trades}</dd>
-                      </div>
-                      <div className="flex items-center justify-between gap-4">
-                        <dt>Move</dt>
-                        <dd className={`font-mono tabular-nums ${item.change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                          {item.change >= 0 ? '+' : ''}{Math.round(item.change * 100)}%
-                        </dd>
-                      </div>
-                    </dl>
+                  <div className="flex gap-6 text-sm text-neutral-500">
+                    <span>{item.volume} vol</span>
+                    <span>{item.trades} trades</span>
                   </div>
                 </div>
               )
             })()}
           </div>
 
-          <div className="border-t border-neutral-900 pt-4 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-            <div className="hidden grid-cols-[32px_minmax(0,1fr)_64px_64px_80px] gap-3 pb-3 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-600 sm:grid">
-              <span>Rank</span>
-              <span>Market</span>
-              <span className="text-right">Last</span>
-              <span className="text-right">24h</span>
-              <span className="text-right">Volume</span>
-            </div>
-
+          {/* Right — Compact ranked list */}
+          <div className="lg:col-span-7 lg:pl-12">
             <div className="space-y-0">
               {(useTrending ? useTrending.slice(1) : trendingSample.slice(1)).map((item, i) => {
-                const isReal = Boolean(useTrending) && 'market' in item
+                const isReal = useTrending && 'market' in item
                 const entry = item as MarketEntry
                 const sample = item as typeof trendingSample[0]
                 const marketTitle = isReal ? entry.market.title : sample.title
                 const prob = isReal ? deriveMarketMetrics(entry.market).longPositionShare : sample.prob
                 const change = isReal ? 0.05 : sample.change
                 const vol = isReal ? formatCurrency(entry.market.reserve) : sample.volume
-                const spec = isReal ? getSampleSpec(entry.market.title) : getSampleSpec(sample.title)
-                const handleFeaturedRowClick = isReal
-                  ? () => navigateToMarket(entry)
-                  : spec
-                    ? () => navigateToSampleSpec(spec, `featured-rank-${i + 2}`)
-                    : undefined
 
                 return (
-                  <button
+                  <div
                     key={marketTitle}
-                    type="button"
-                    className="group w-full border-t border-neutral-900/70 py-3 text-left transition-colors hover:bg-neutral-900/40 focus-visible:bg-neutral-900/40"
-                    onClick={handleFeaturedRowClick}
-                    disabled={!handleFeaturedRowClick}
-                    aria-label={handleFeaturedRowClick ? `Open ${marketTitle} market` : undefined}
+                    className="flex items-center gap-4 py-3 border-b border-neutral-800/30 last:border-0 cursor-pointer hover:bg-neutral-900/30 -mx-2 px-2 transition-colors"
+                    onClick={() => isReal ? navigateToMarket(entry) : undefined}
                   >
-                    <div className="flex items-start gap-3 sm:hidden">
-                      <span className="w-7 shrink-0 pt-0.5 text-sm font-mono text-neutral-700 tabular-nums">
-                        {String(i + 2).padStart(2, '0')}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium leading-snug text-white transition-colors group-hover:text-emerald-400 group-focus-visible:text-emerald-400">
-                          {marketTitle}
-                        </span>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
-                          <span className="font-mono tabular-nums text-white">{Math.round(prob * 100)}¢</span>
-                          <span className={change >= 0 ? 'text-emerald-500' : 'text-rose-500'}>
-                            {change >= 0 ? '▲' : '▼'}{Math.abs(Math.round(change * 100))}%
-                          </span>
-                          <span>{vol}</span>
-                          <span>{spec?.category || 'Open field'}</span>
-                        </div>
-                      </div>
+                    <span className="text-2xl font-black text-neutral-700 w-8 tabular-nums">{i + 2}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium text-white truncate block">{marketTitle}</span>
                     </div>
-
-                    <div className="hidden grid-cols-[32px_minmax(0,1fr)_64px_64px_80px] gap-3 sm:grid sm:items-center">
-                      <span className="text-sm font-mono text-neutral-700 tabular-nums">
-                        {String(i + 2).padStart(2, '0')}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium text-white transition-colors group-hover:text-emerald-400 group-focus-visible:text-emerald-400">
-                          {marketTitle}
-                        </span>
-                        <span className="mt-1 block text-[11px] uppercase tracking-[0.16em] text-neutral-600">
-                          {spec?.category || 'Open field'}
-                        </span>
-                      </span>
-                      <span className="text-right text-sm font-mono font-bold tabular-nums text-white">
+                    <div className="flex items-center gap-4 shrink-0">
+                      <Sparkline
+                        data={[30 + i * 3, 32 + i * 2, 35 + i, 38, 40 - i, Math.round(prob * 100)]}
+                        positive={change >= 0}
+                      />
+                      <span className="text-sm font-mono font-bold text-white w-12 text-right tabular-nums">
                         {Math.round(prob * 100)}¢
                       </span>
-                      <span className={`text-right text-xs font-mono tabular-nums ${change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      <span className={`text-xs font-mono w-12 text-right tabular-nums ${change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                         {change >= 0 ? '▲' : '▼'}{Math.abs(Math.round(change * 100))}%
                       </span>
-                      <span className="text-right text-xs tabular-nums text-neutral-500">{vol}</span>
+                      <span className="text-xs text-neutral-600 w-16 text-right hidden sm:block">{vol}</span>
                     </div>
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -1034,8 +638,8 @@ export default function LandingPage({ markets, dispatch }: Props) {
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="flex items-baseline justify-between mb-8">
             <div className="flex items-baseline gap-4">
-              <h2 className="text-3xl font-black text-white tracking-tight">Under the Radar</h2>
-              <span className="text-sm text-neutral-600">Low volume · Flying under the radar</span>
+              <h2 className="text-3xl font-black text-white tracking-tight">Pink Sheets</h2>
+              <span className="text-sm text-neutral-600">Low cap · High conviction</span>
             </div>
             <span className="text-xs text-neutral-600 uppercase tracking-wider hidden sm:block">Updated live</span>
           </div>
@@ -1096,19 +700,16 @@ export default function LandingPage({ markets, dispatch }: Props) {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 3: HOT DEBATES — HN/Reddit text-heavy + intelligence sidebar
-          Main column: heat indicators, YES/NO progress bars, plain text
-          Sidebar: position shifts, sharp takes, heat index, contrarian alerts
+          SECTION 3: HOT DEBATES — HN/Reddit text-heavy
+          Narrow column, heat indicators, YES/NO progress bars, plain text
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-6 py-20">
         <div className="flex items-baseline gap-4 mb-12">
-          <h2 className="text-3xl font-black text-white tracking-tight">Latest Discussions</h2>
+          <h2 className="text-3xl font-black text-white tracking-tight">Hot Debates</h2>
           <span className="text-sm text-neutral-600">Near 50/50 · Markets in conflict</span>
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-0">
-          {/* ── Left: Debate listings ── */}
-          <div className="lg:col-span-8 lg:pr-10">
+        <div className="max-w-4xl">
           {(() => {
             const debates = useHotDebates
               ? useHotDebates.map(entry => {
@@ -1139,13 +740,17 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   className="flex gap-5 py-6 border-b border-neutral-800/20 last:border-0 cursor-pointer group"
                   onClick={() => debate.entry ? navigateToMarket(debate.entry) : undefined}
                 >
-                  {/* Heat indicator — thin vertical bar */}
+                  {/* Heat indicator — thin vertical gradient bar */}
                   <div className="w-1 shrink-0 rounded-full overflow-hidden self-stretch">
                     <div
                       className="w-full h-full rounded-full"
                       style={{
-                        backgroundColor: heat > 0.7 ? '#f59e0b' : heat > 0.4 ? '#78716c' : '#404040',
-                        opacity: 0.45 + heat * 0.35,
+                        background: `linear-gradient(to bottom, ${
+                          heat > 0.7 ? '#f59e0b' : heat > 0.4 ? '#78716c' : '#404040'
+                        }, ${
+                          heat > 0.7 ? '#ef4444' : heat > 0.4 ? '#57534e' : '#262626'
+                        })`,
+                        opacity: 0.4 + heat * 0.6,
                       }}
                     />
                   </div>
@@ -1186,132 +791,20 @@ export default function LandingPage({ markets, dispatch }: Props) {
               )
             })
           })()}
-          </div>
-
-          {/* ── Right: Intelligence sidebar ── */}
-          <div className="lg:col-span-4 lg:pl-10 lg:border-l border-neutral-800/40 pt-8 lg:pt-0">
-
-            {/* ─── Position Shifts ─── */}
-            <div className="mb-8">
-              <h4 className="text-[11px] uppercase tracking-[0.2em] text-amber-500/80 font-semibold mb-4">Position Shifts</h4>
-              {[
-                { user: 'macro_watcher', action: 'flipped to YES', market: 'Great Decoupling', size: '$2.1K', time: '14m' },
-                { user: 'orbital_capital', action: 'doubled down NO', market: 'China GDP', size: '$4.8K', time: '31m' },
-                { user: 'energy_futures', action: 'flipped to NO', market: 'Climate migration', size: '$890', time: '1h' },
-                { user: 'reasoning_agent', action: 'new YES', market: 'Space economy', size: '$1.5K', time: '2h' },
-              ].map((shift, i) => (
-                <div key={i} className="py-2 border-b border-neutral-800/20 last:border-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <MockProfileLink
-                      handle={shift.user}
-                      className="truncate text-white hover:text-white"
-                      compact
-                      stopPropagation
-                    />
-                    <span className="text-[10px] text-neutral-600 tabular-nums shrink-0">{shift.time}</span>
-                  </div>
-                  <div className="text-xs text-neutral-500 mt-0.5">
-                    <span className={shift.action.includes('YES') || shift.action.includes('doubled') ? 'text-emerald-500/70' : 'text-rose-500/70'}>
-                      {shift.action}
-                    </span>
-                    {' '}{shift.market}
-                    <span className="text-neutral-600"> · {shift.size}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* ─── Sharp Takes ─── */}
-            <div className="mb-8">
-              <h4 className="text-[11px] uppercase tracking-[0.2em] text-neutral-500 font-semibold mb-4">Sharp Takes</h4>
-              {[
-                { quote: '"If fusion is an engineering problem, so was the Apollo program. Budget it accordingly."', author: 'energy_futures', stance: 'LONG' as const },
-                { quote: '"China\'s demographics are a 50-year headwind. GDP comparisons ignore dependency ratios."', author: 'macro_watcher', stance: 'SHORT' as const },
-                { quote: '"Climate migration isn\'t a future event. It\'s happening now in Bangladesh and the Sahel."', author: 'geo_realist', stance: 'LONG' as const },
-              ].map((take, i) => (
-                <div key={i} className="py-3 border-b border-neutral-800/20 last:border-0">
-                  <p className="text-[13px] text-neutral-300 leading-snug italic">{take.quote}</p>
-                  <div className="flex items-center gap-2 mt-1.5 text-[11px]">
-                    <MockProfileLink
-                      handle={take.author}
-                      className="text-neutral-500"
-                      compact
-                      showAvatar={false}
-                      stopPropagation
-                    />
-                    <span className={`font-medium ${take.stance === 'LONG' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {take.stance === 'LONG' ? '▲ YES' : '▼ NO'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* ─── Heat Index ─── */}
-            <div className="mb-8">
-              <h4 className="text-[11px] uppercase tracking-[0.2em] text-neutral-500 font-semibold mb-3">Heat Index</h4>
-              <div className="text-[10px] text-neutral-700 uppercase tracking-wider flex justify-between px-0.5 mb-2">
-                <span>Market</span>
-                <span>Spread · Vol/24h</span>
-              </div>
-              {[
-                { title: 'Great Decoupling', spread: 2, vol: '$6.2K', heat: 0.92 },
-                { title: 'China GDP', spread: 4, vol: '$4.1K', heat: 0.84 },
-                { title: 'Climate migration', spread: 1, vol: '$2.8K', heat: 0.96 },
-                { title: 'Space $1T', spread: 6, vol: '$3.5K', heat: 0.76 },
-                { title: 'Arctic ice-free', spread: 8, vol: '$1.9K', heat: 0.68 },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between py-1.5 text-sm">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div
-                      className="w-1.5 h-1.5 rounded-full shrink-0"
-                      style={{
-                        backgroundColor: item.heat > 0.9 ? '#f59e0b' : item.heat > 0.75 ? '#78716c' : '#525252',
-                        boxShadow: item.heat > 0.9 ? '0 0 4px #f59e0b80' : 'none',
-                      }}
-                    />
-                    <span className="text-neutral-300 truncate text-xs">{item.title}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 text-xs">
-                    <span className="font-mono text-neutral-500 tabular-nums">{item.spread}pt</span>
-                    <span className="font-mono text-neutral-600 tabular-nums">{item.vol}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* ─── Contrarian Alert ─── */}
-            <div>
-              <h4 className="text-[11px] uppercase tracking-[0.2em] text-rose-500/70 font-semibold mb-3">⚡ Contrarian Alert</h4>
-              <p className="text-xs text-neutral-500 mb-3">Where top traders diverge from the crowd</p>
-              {[
-                { market: 'China GDP surpasses US', crowd: 55, whales: 38, whaleSide: 'NO' },
-                { market: 'Space economy $1T', crowd: 47, whales: 71, whaleSide: 'YES' },
-              ].map((alert, i) => (
-                <div key={i} className="py-2.5 border-b border-neutral-800/20 last:border-0">
-                  <span className="text-xs text-white font-medium block mb-1.5">{alert.market}</span>
-                  <div className="flex items-center gap-3 text-[11px]">
-                    <span className="text-neutral-600">Crowd YES {alert.crowd}%</span>
-                    <span className="text-neutral-700">→</span>
-                    <span className={alert.whaleSide === 'YES' ? 'text-emerald-500' : 'text-rose-500'}>
-                      Top 10 traders: {alert.whaleSide} {alert.whaleSide === 'YES' ? alert.whales : 100 - alert.whales}%
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-          </div>
         </div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
           SECTION 4: NEW THIS WEEK — Asymmetric magazine layout
-          3-column grid, varied density, flat background
+          3-column grid, varied density, full-bleed gradient background
       ═══════════════════════════════════════════════════════════════════ */}
-      <section className="border-t border-neutral-900/70">
-        <div className="max-w-7xl mx-auto px-6 py-12">
-          <div className="flex items-baseline gap-4 mb-8">
+      <section className="relative overflow-hidden">
+        {/* Full-bleed gradient background with blur orb */}
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/20 via-neutral-950 to-neutral-950" />
+        <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-emerald-900/10 rounded-full blur-3xl" />
+
+        <div className="relative z-10 max-w-7xl mx-auto px-6 py-16">
+          <div className="flex items-baseline gap-4 mb-12">
             <h2 className="text-3xl font-black text-white tracking-tight">New This Week</h2>
             <span className="text-sm text-neutral-600">Recently created</span>
           </div>
@@ -1343,9 +836,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
             const compactItems = items.slice(5)
 
             return (
-              <div className="grid gap-8 lg:grid-cols-3 lg:gap-10">
+              <div className="grid lg:grid-cols-3 gap-10 lg:gap-12">
                 {/* Column 1 — Featured large item + smaller item below */}
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {featured && (
                     <div
                       className="cursor-pointer group"
@@ -1368,7 +861,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
 
                   {subFeatured && (
                     <div
-                      className="cursor-pointer border-t border-neutral-800/30 pt-6 group"
+                      className="pt-8 border-t border-neutral-800/30 cursor-pointer group"
                       onClick={() => subFeatured.entry ? navigateToMarket(subFeatured.entry) : undefined}
                     >
                       <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-600 font-medium">
@@ -1392,7 +885,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   {mediumItems.map((item) => (
                     <div
                       key={item.title}
-                      className="cursor-pointer border-b border-neutral-800/20 py-4 last:border-0 group"
+                      className="py-5 border-b border-neutral-800/20 last:border-0 cursor-pointer group"
                       onClick={() => item.entry ? navigateToMarket(item.entry) : undefined}
                     >
                       <div className="flex items-start justify-between gap-4 mb-1">
@@ -1453,7 +946,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="flex items-center gap-3 mb-8">
             <PulseDot color="emerald" />
-            <h2 className="text-3xl font-black text-white tracking-tight">Latest Discussions</h2>
+            <h2 className="text-3xl font-black text-white tracking-tight">The Debate</h2>
           </div>
 
           <div className="max-w-3xl space-y-0">
@@ -1465,54 +958,45 @@ export default function LandingPage({ markets, dispatch }: Props) {
 
               const handleClick = () => {
                 if (matchingEntry) {
-                  const isThesis = matchingEntry.market.kind === 'thesis' || spec?.type === 'thesis'
-                  navigate(isThesis ? `/thesis/${matchingEntry.market.id}` : `/market/${matchingEntry.market.id}/discussion`)
+                  navigate(`/market/${matchingEntry.market.id}/discuss`)
                 } else if (spec) {
                   const marketId = `discussion-${discussion.id}`
-                  dispatch(buildCreateMarketAction(spec, marketId))
-                  if (spec.type !== 'thesis') {
-                    setTimeout(() => navigate(`/market/${marketId}/discussion`), 0)
-                  }
+                  dispatch({
+                    type: 'CREATE_MARKET',
+                    id: marketId,
+                    title: spec.title,
+                    description: spec.description,
+                    seedWithUser: false,
+                  })
+                  setTimeout(() => navigate(`/market/${marketId}/discuss`), 0)
                 }
               }
 
               return (
-                <article
+                <button
                   key={discussion.id}
-                  className="py-3 border-b border-neutral-800/20 last:border-0"
+                  type="button"
+                  onClick={handleClick}
+                  className="block w-full text-left py-3 hover:bg-neutral-800/20 -mx-2 px-2 transition-colors cursor-pointer border-b border-neutral-800/20 last:border-0"
                 >
+                  <div className="text-sm text-white mb-1 leading-relaxed">{discussion.preview}</div>
                   <div className="flex items-center gap-1.5 text-xs text-neutral-600">
                     <span>in</span>
                     <span className="text-neutral-400">"{discussion.marketTitle}"</span>
                     <span>·</span>
-                    <MockProfileLink
-                      handle={discussion.author}
-                      className="text-neutral-400"
-                      compact
-                      showAvatar={false}
-                      stopPropagation
-                    />
+                    <span className="text-neutral-400">@{discussion.author}</span>
                     <span>·</span>
                     <span>{discussion.timestamp}</span>
                     <span>·</span>
                     <span>{discussion.replyCount} replies</span>
                     {discussion.replyCount > 15 && <span>🔥</span>}
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleClick}
-                    className="mt-1 block w-full cursor-pointer px-0 text-left transition-colors hover:text-white"
-                  >
-                    <div className="text-sm leading-relaxed text-white">{discussion.preview}</div>
-                  </button>
-                </article>
+                </button>
               )
             })}
           </div>
         </div>
       </section>
-        </>
-      )}
 
       {/* ═══════════════════════════════════════════════════════════════════
           DIFFERENTIATOR — Why Cascade is different
@@ -1550,11 +1034,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          Agent Feature Section — Trade with AI
-      ═══════════════════════════════════════════════════════════════════ */}
-      <AgentFeatureSection />
-
-      {/* ═══════════════════════════════════════════════════════════════════
           CTA — Create a market
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-6 py-20">
@@ -1590,7 +1069,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
           onClick={() => setShowCreateModal(false)}
         >
           <div
-            className="w-full max-w-lg p-6 bg-neutral-900 border border-neutral-800 rounded-lg"
+            className="w-full max-w-lg p-6 bg-neutral-950/80 backdrop-blur-sm rounded-md shadow-2xl ring-1 ring-white/10"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
@@ -1610,7 +1089,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   value={title}
                   onChange={event => setTitle(event.target.value)}
                   placeholder="Will AGI emerge before 2030?"
-                  className="mt-1 w-full px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
+                  className="mt-1 w-full px-4 py-3 bg-neutral-950/50 border-b border-neutral-700 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
                 />
               </label>
               <label className="block">
@@ -1620,7 +1099,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   onChange={event => setDescription(event.target.value)}
                   rows={3}
                   placeholder="Define the resolution criteria clearly."
-                  className="mt-1 w-full px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600 resize-y min-h-[88px]"
+                  className="mt-1 w-full px-4 py-3 bg-neutral-950/50 border-b border-neutral-700 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all resize-y min-h-[88px]"
                 />
               </label>
               <div className="grid grid-cols-2 gap-4">
@@ -1629,7 +1108,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   <select
                     value={initialSide}
                     onChange={event => setInitialSide(event.target.value as Side)}
-                    className="mt-1 w-full px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white focus:outline-none focus:border-neutral-600"
+                    className="mt-1 w-full px-4 py-3 bg-neutral-950/50 border-b border-neutral-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
                   >
                     <option value="LONG">LONG</option>
                     <option value="SHORT">SHORT</option>
@@ -1641,7 +1120,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                     value={initialSats}
                     onChange={event => setInitialSats(event.target.value)}
                     inputMode="decimal"
-                    className="mt-1 w-full px-4 py-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white focus:outline-none focus:border-neutral-600"
+                    className="mt-1 w-full px-4 py-3 bg-neutral-950/50 border-b border-neutral-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
                   />
                 </label>
               </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Dispatch } from 'react'
 import { Link } from 'react-router-dom'
 import type { MarketEntry } from './storage'
@@ -11,6 +11,7 @@ import BookmarkButton from './components/BookmarkButton'
 import { useBookmarks } from './useBookmarks'
 import MarketTabsShell, { type MarketTabKey } from './MarketTabsShell'
 import { MarketDiscussionPanel, generateMockThreads, type DiscussionThread } from './DiscussPage'
+import { trackMarketView, trackTradePlaced } from './analytics'
 
 type TradeAction = {
   type: 'TRADE'
@@ -146,6 +147,11 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
   const [showEmbedModal, setShowEmbedModal] = useState(false)
 
   const market = entry.market
+
+  useEffect(() => {
+    trackMarketView(market.id)
+  }, [market.id])
+
   const spec = getSampleSpec(market.title)
   const { isBookmarked, toggle, getCount } = useBookmarks([market.id])
 
@@ -235,6 +241,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
       side,
       amount,
     })
+    trackTradePlaced(market.id, side, amount)
   }
 
   return (

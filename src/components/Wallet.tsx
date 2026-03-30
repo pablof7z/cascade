@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { loadStoredKeys } from '../nostrKeys'
+import { trackWalletConnected } from '../analytics'
 import { loadOrCreateWallet, getWalletBalance, createDeposit, sendTokens, receiveToken } from '../walletStore'
 import type { NDKCashuDeposit } from '@nostr-dev-kit/wallet'
 
@@ -37,6 +38,7 @@ export default function Wallet() {
         const wallet = await loadOrCreateWallet()
         if (wallet) {
           setStatus('ready')
+          trackWalletConnected()
           await refreshBalance()
 
           // Listen for balance updates

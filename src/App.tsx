@@ -46,6 +46,8 @@ import EmbedPage from './EmbedPage'
 import EmbedLanding from './EmbedLanding'
 import TestnetBanner from './components/TestnetBanner'
 import Footer from './components/Footer'
+import AnalyticsDashboard from './AnalyticsDashboard'
+import { initAnalytics, destroyAnalytics, trackPageView } from './analytics'
 
 type ToastTone = 'good' | 'warn' | 'neutral'
 
@@ -366,6 +368,15 @@ function AppContent() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    initAnalytics()
+    return () => destroyAnalytics()
+  }, [])
+
+  useEffect(() => {
+    trackPageView(window.location.pathname)
+  }, [])
+
+  useEffect(() => {
     save(state.markets)
   }, [state.markets])
 
@@ -441,6 +452,7 @@ function AppContent() {
         <Route path="/field/:id/meeting" element={<MeetingView />} />
         <Route path="/dashboard/agents" element={<AgentDashboard />} />
         <Route path="/embed" element={<EmbedLanding />} />
+        <Route path="/analytics" element={<AnalyticsDashboard />} />
       </Routes>
       </main>
       <Footer />

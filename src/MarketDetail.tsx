@@ -238,7 +238,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-5 py-8 sm:px-6">
+    <div className="mx-auto max-w-7xl px-5 py-6 sm:px-6">
       <MarketTabsShell
         marketId={market.id}
         marketTitle={market.title}
@@ -270,7 +270,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-6">
+        <div className="space-y-5">
           {activeTab === 'overview' ? (
             <>
               <section className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)]">
@@ -281,7 +281,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                         <span>{market.kind === 'thesis' ? 'Thesis market' : 'Module market'}</span>
                         {spec?.category ? <span>• {spec.category}</span> : null}
                       </div>
-                      <h2 className={`mt-4 text-3xl font-semibold tracking-tight ${tilt.accent}`}>
+                      <h2 className={`mt-4 text-2xl font-semibold tracking-tight ${tilt.accent}`}>
                         {tilt.label}
                       </h2>
                       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-neutral-300 sm:text-base">
@@ -292,13 +292,13 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                     <div className="grid min-w-[220px] gap-3 sm:grid-cols-2 lg:grid-cols-1">
                       <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
                         <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">YES</div>
-                        <div className="mt-2 text-4xl font-semibold text-emerald-400">
+                        <div className="mt-2 text-3xl font-semibold text-emerald-400">
                           {(yesPrice * 100).toFixed(0)}¢
                         </div>
                       </div>
                       <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
                         <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">NO</div>
-                        <div className="mt-2 text-4xl font-semibold text-rose-400">
+                        <div className="mt-2 text-3xl font-semibold text-rose-400">
                           {(noPrice * 100).toFixed(0)}¢
                         </div>
                       </div>
@@ -334,7 +334,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                 <div className="grid gap-4">
                   <article className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-6">
                     <div className="text-xs uppercase tracking-[0.24em] text-neutral-600">Trade frame</div>
-                    <h3 className="mt-3 text-xl font-semibold text-white">
+                    <h3 className="mt-3 text-lg font-semibold text-white">
                       What has to be true for this trade to work
                     </h3>
                     <ul className="mt-4 space-y-3">
@@ -351,7 +351,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <div className="text-xs uppercase tracking-[0.24em] text-neutral-600">Debate pulse</div>
-                        <h3 className="mt-3 text-xl font-semibold text-white">
+                        <h3 className="mt-3 text-lg font-semibold text-white">
                           Discussion is a first-class signal here
                         </h3>
                       </div>
@@ -387,7 +387,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
               <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)]">
                 <article className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-6">
                   <div className="text-xs uppercase tracking-[0.24em] text-neutral-600">Positioning map</div>
-                  <h3 className="mt-3 text-xl font-semibold text-white">
+                  <h3 className="mt-3 text-lg font-semibold text-white">
                     Price, capital, and share balance
                   </h3>
                   <div className="mt-5 space-y-5">
@@ -521,7 +521,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                     </Link>
                   </div>
 
-                  <div className="mt-5 space-y-4">
+                  <div className="mt-5 space-y-3">
                     {topBullThread ? (
                       <Link
                         to={`/market/${market.id}/discussion/${topBullThread.id}`}
@@ -833,11 +833,11 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
         </div>
 
         <div className="lg:col-span-1">
-          <div className="sticky top-24 rounded-[28px] border border-neutral-800 bg-neutral-950 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.3)]">
+          <div className="sticky top-24 rounded-[28px] border border-neutral-800 bg-neutral-950 p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.24em] text-neutral-600">Trade ticket</p>
-                <h3 className="mt-2 text-xl font-semibold text-white">
+                <h3 className="mt-2 text-lg font-semibold text-white">
                   {selectedSide === 'LONG' ? 'Add YES exposure' : 'Add NO exposure'}
                 </h3>
               </div>
@@ -944,7 +944,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
 
             <button
               onClick={() => handleTrade(selectedSide)}
-              className={`mt-5 w-full rounded-2xl py-4 text-lg font-bold text-white transition-colors ${
+              className={`mt-4 w-full rounded-2xl py-4 text-lg font-bold text-white transition-colors ${
                 selectedSide === 'LONG'
                   ? 'bg-emerald-600 hover:bg-emerald-500'
                   : 'bg-rose-600 hover:bg-rose-500'

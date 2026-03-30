@@ -32,6 +32,16 @@ function FunnelBar({ label, value, max }: { label: string; value: number; max: n
   )
 }
 
+const HOMEPAGE_SOURCE_LABELS: Record<string, string> = {
+  hero_primary_cta: 'Hero CTA',
+  hero_agent_cta: 'Hero agent CTA',
+  featured_thesis: 'Featured thesis',
+  most_disputed_market: 'Most disputed markets',
+  most_disputed_discussion: 'Most disputed discussions',
+  latest_market: 'Latest markets',
+  latest_discussion: 'Latest discussions',
+}
+
 export default function AnalyticsDashboard() {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -71,7 +81,7 @@ export default function AnalyticsDashboard() {
 
   if (!summary) return null
 
-  const funnelMax = Math.max(summary.funnel.pageViews, 1)
+  const funnelMax = Math.max(summary.funnel.landingViews, 1)
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -103,42 +113,83 @@ export default function AnalyticsDashboard() {
 
       {/* Conversion funnel */}
       <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wider mb-3">
-        Conversion Funnel
+        {summary.funnel.windowDays}D Activation Funnel
       </h2>
       <div className="space-y-2 mb-8">
-        <FunnelBar label="Page Views" value={summary.funnel.pageViews} max={funnelMax} />
+        <FunnelBar label="Landing Views" value={summary.funnel.landingViews} max={funnelMax} />
+        <FunnelBar label="Homepage Engaged" value={summary.funnel.homepageEngaged} max={funnelMax} />
         <FunnelBar label="Market Views" value={summary.funnel.marketViews} max={funnelMax} />
+        <FunnelBar label="Discussion Opens" value={summary.funnel.discussionOpens} max={funnelMax} />
         <FunnelBar label="Trades Placed" value={summary.funnel.tradesPlaced} max={funnelMax} />
       </div>
 
-      {/* Top markets */}
-      <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wider mb-3">
-        Most Viewed Markets
-      </h2>
-      {summary.topMarkets.length === 0 ? (
-        <p className="text-neutral-600 text-sm mb-8">No market view data yet.</p>
-      ) : (
-        <table className="w-full text-sm mb-8">
-          <thead>
-            <tr className="text-neutral-500 border-b border-neutral-800">
-              <th className="text-left py-2 font-medium">#</th>
-              <th className="text-left py-2 font-medium">Market ID</th>
-              <th className="text-right py-2 font-medium">Views</th>
-            </tr>
-          </thead>
-          <tbody>
-            {summary.topMarkets.map((m, i) => (
-              <tr key={m.marketId} className="border-b border-neutral-900">
-                <td className="py-1.5 text-neutral-500">{i + 1}</td>
-                <td className="py-1.5 text-neutral-200 font-mono text-xs">{m.marketId}</td>
-                <td className="py-1.5 text-right tabular-nums text-neutral-300">
-                  {m.views.toLocaleString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] mb-8">
+        <div>
+          <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wider mb-3">
+            Homepage Sources
+          </h2>
+          {summary.homepageSources.length === 0 ? (
+            <p className="text-neutral-600 text-sm">No homepage engagement data yet.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-neutral-500 border-b border-neutral-800">
+                  <th className="text-left py-2 font-medium">Source</th>
+                  <th className="text-left py-2 font-medium">Dest</th>
+                  <th className="text-right py-2 font-medium">Sessions</th>
+                  <th className="text-right py-2 font-medium">Events</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.homepageSources.map((source) => (
+                  <tr key={`${source.source}-${source.destination}`} className="border-b border-neutral-900">
+                    <td className="py-1.5 text-neutral-200">{HOMEPAGE_SOURCE_LABELS[source.source] ?? source.source}</td>
+                    <td className="py-1.5 text-neutral-500 uppercase text-xs tracking-wider">
+                      {source.destination}
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums text-neutral-300">
+                      {source.sessions.toLocaleString()}
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums text-neutral-500">
+                      {source.events.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div>
+          <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wider mb-3">
+            Most Viewed Markets
+          </h2>
+          {summary.topMarkets.length === 0 ? (
+            <p className="text-neutral-600 text-sm">No market view data yet.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-neutral-500 border-b border-neutral-800">
+                  <th className="text-left py-2 font-medium">#</th>
+                  <th className="text-left py-2 font-medium">Market ID</th>
+                  <th className="text-right py-2 font-medium">Views</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.topMarkets.map((m, i) => (
+                  <tr key={m.marketId} className="border-b border-neutral-900">
+                    <td className="py-1.5 text-neutral-500">{i + 1}</td>
+                    <td className="py-1.5 text-neutral-200 font-mono text-xs">{m.marketId}</td>
+                    <td className="py-1.5 text-right tabular-nums text-neutral-300">
+                      {m.views.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
 
       <p className="text-xs text-neutral-600">
         Generated {new Date(summary.generatedAt).toLocaleString()}

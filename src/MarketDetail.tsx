@@ -11,7 +11,7 @@ import BookmarkButton from './components/BookmarkButton'
 import { useBookmarks } from './useBookmarks'
 import MarketTabsShell, { type MarketTabKey } from './MarketTabsShell'
 import { MarketDiscussionPanel, generateMockThreads, type DiscussionThread } from './DiscussPage'
-import { trackMarketView, trackTradePlaced } from './analytics'
+import { trackDiscussionInteraction, trackMarketView, trackTradePlaced } from './analytics'
 import { addPosition, getPositionsForMarket, type Position } from './positionStore'
 
 type TradeAction = {
@@ -153,6 +153,12 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
   useEffect(() => {
     trackMarketView(market.id)
   }, [market.id])
+
+  useEffect(() => {
+    if (activeTab === 'discussion') {
+      trackDiscussionInteraction(market.id, 'open_discussion')
+    }
+  }, [activeTab, market.id])
 
   // Load existing positions for this market on mount and after trades
   useEffect(() => {

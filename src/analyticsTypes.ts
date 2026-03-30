@@ -2,6 +2,7 @@
 
 export type AnalyticsEventType =
   | 'page_view'
+  | 'homepage_engagement'
   | 'market_view'
   | 'trade_placed'
   | 'discussion_interaction'
@@ -9,6 +10,17 @@ export type AnalyticsEventType =
   | 'session_start'
   | 'session_heartbeat'
   | 'session_end'
+
+export type HomepageEngagementSource =
+  | 'hero_primary_cta'
+  | 'hero_agent_cta'
+  | 'featured_thesis'
+  | 'most_disputed_market'
+  | 'most_disputed_discussion'
+  | 'latest_market'
+  | 'latest_discussion'
+
+export type HomepageEngagementDestination = 'join' | 'market' | 'discussion'
 
 export interface BaseEvent {
   type: AnalyticsEventType
@@ -19,6 +31,15 @@ export interface BaseEvent {
 export interface PageViewEvent extends BaseEvent {
   type: 'page_view'
   data: { path: string; referrer: string }
+}
+
+export interface HomepageEngagementEvent extends BaseEvent {
+  type: 'homepage_engagement'
+  data: {
+    source: HomepageEngagementSource
+    destination: HomepageEngagementDestination
+    marketId?: string
+  }
 }
 
 export interface MarketViewEvent extends BaseEvent {
@@ -58,6 +79,7 @@ export interface SessionEndEvent extends BaseEvent {
 
 export type AnalyticsEvent =
   | PageViewEvent
+  | HomepageEngagementEvent
   | MarketViewEvent
   | TradePlacedEvent
   | DiscussionInteractionEvent
@@ -70,7 +92,20 @@ export interface AnalyticsSummary {
   dailyActiveSessions: number
   weeklyActiveSessions: number
   topMarkets: { marketId: string; views: number }[]
-  funnel: { pageViews: number; marketViews: number; tradesPlaced: number }
+  funnel: {
+    windowDays: number
+    landingViews: number
+    homepageEngaged: number
+    marketViews: number
+    discussionOpens: number
+    tradesPlaced: number
+  }
+  homepageSources: {
+    source: HomepageEngagementSource
+    destination: HomepageEngagementDestination
+    sessions: number
+    events: number
+  }[]
   averageSessionDuration: number
   generatedAt: number
 }

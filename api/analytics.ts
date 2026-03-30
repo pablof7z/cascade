@@ -4,6 +4,7 @@ import path from 'node:path'
 
 const VALID_TYPES = new Set([
   'page_view',
+  'homepage_engagement',
   'market_view',
   'trade_placed',
   'discussion_interaction',

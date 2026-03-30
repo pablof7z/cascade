@@ -1,5 +1,10 @@
 // First-party analytics — anonymous, no PII, no cookies, no third-party services
-import type { AnalyticsEvent, AnalyticsEventType } from './analyticsTypes'
+import type {
+  AnalyticsEvent,
+  AnalyticsEventType,
+  HomepageEngagementDestination,
+  HomepageEngagementSource,
+} from './analyticsTypes'
 
 const FLUSH_INTERVAL = 10_000 // 10 seconds
 const HEARTBEAT_INTERVAL = 30_000 // 30 seconds
@@ -59,6 +64,14 @@ export function trackEvent(type: AnalyticsEventType, data: Record<string, unknow
 
 export function trackPageView(path: string) {
   trackEvent('page_view', { path, referrer: document.referrer })
+}
+
+export function trackHomepageEngagement(
+  source: HomepageEngagementSource,
+  destination: HomepageEngagementDestination,
+  marketId?: string,
+) {
+  trackEvent('homepage_engagement', marketId ? { source, destination, marketId } : { source, destination })
 }
 
 export function trackMarketView(marketId: string) {

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { deriveMarketMetrics, type Side } from './market'
 import type { MarketEntry } from './storage'
 import type { Action } from './App'
+import { trackHomepageEngagement } from './analytics'
 // lightweight-charts used by market detail pages
 
 type MarketType = 'module' | 'thesis'
@@ -392,6 +393,41 @@ export default function LandingPage({ markets, dispatch }: Props) {
     navigate(isThesis ? `/thesis/${entry.market.id}` : `/market/${entry.market.id}`)
   }
 
+  function navigateFromHomepage(source: 'featured_thesis' | 'most_disputed_market' | 'latest_market', entry: MarketEntry) {
+    trackHomepageEngagement(source, 'market', entry.market.id)
+    navigateToMarket(entry)
+  }
+
+  function openHomepageDiscussion(
+    source: 'most_disputed_discussion' | 'latest_discussion',
+    discussion: SampleDiscussion,
+  ) {
+    const matchingEntry = Object.values(markets).find((entry) => entry.market.title === discussion.marketTitle)
+    const spec = sampleMarketBank.find((market) => market.title === discussion.marketTitle)
+
+    if (matchingEntry) {
+      trackHomepageEngagement(source, 'discussion', matchingEntry.market.id)
+      navigate(`/market/${matchingEntry.market.id}/discuss`)
+      return
+    }
+
+    if (!spec) {
+      return
+    }
+
+    const marketId = `discussion-${discussion.id}`
+    trackHomepageEngagement(source, 'discussion', marketId)
+    dispatch({
+      type: 'CREATE_MARKET',
+      id: marketId,
+      title: spec.title,
+      description: spec.description,
+      seedWithUser: false,
+      creatorPubkey: 'system',
+    })
+    setTimeout(() => navigate(`/market/${marketId}/discuss`), 0)
+  }
+
   const featuredThesis = sampleTheses[0]
   const featuredProbability = 0.67
 
@@ -458,13 +494,17 @@ export default function LandingPage({ markets, dispatch }: Props) {
                 <div className="flex flex-wrap items-center gap-4 pt-4">
                   <Link
                     to="/join"
+                    onClick={() => trackHomepageEngagement('hero_primary_cta', 'join')}
                     className="px-8 py-4 bg-white text-neutral-950 font-semibold rounded-lg hover:bg-neutral-100 transition-colors text-lg"
                   >
                     Start Trading
                   </Link>
                   <Link
                     to="/join"
-                    onClick={() => setTimeout(() => document.querySelector<HTMLButtonElement>('[data-agent-btn]')?.click(), 100)}
+                    onClick={() => {
+                      trackHomepageEngagement('hero_agent_cta', 'join')
+                      setTimeout(() => document.querySelector<HTMLButtonElement>('[data-agent-btn]')?.click(), 100)
+                    }}
                     className="text-neutral-500 hover:text-neutral-300 transition-colors text-sm"
                   >
                     For agents →
@@ -484,8 +524,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
                       e => e.market.title === featuredThesis.title
                     )
                     if (existingEntry) {
-                      navigate(`/market/${existingEntry.market.id}`)
+                      navigateFromHomepage('featured_thesis', existingEntry)
                     } else {
+                      trackHomepageEngagement('featured_thesis', 'market', 'featured-great-decoupling')
                       dispatch({
                         type: 'CREATE_MARKET',
                         id: 'featured-great-decoupling',
@@ -792,7 +833,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
                         key={debate.title}
                         type="button"
                         className="grid w-full grid-cols-[minmax(0,1.4fr)_88px_76px_72px_88px] gap-3 py-4 text-left border-b border-neutral-800/20 last:border-0 hover:bg-neutral-900/30 transition-colors"
-                        onClick={() => debate.entry ? navigateToMarket(debate.entry) : undefined}
+                        onClick={() =>
+                          debate.entry ? navigateFromHomepage('most_disputed_market', debate.entry) : undefined
+                        }
                       >
                         <div className="min-w-0 pr-2">
                           <div className="flex items-center gap-2 mb-1">
@@ -849,7 +892,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
                         <button
                           type="button"
                           className="text-left w-full"
-                          onClick={() => debate.entry ? navigateToMarket(debate.entry) : undefined}
+                          onClick={() =>
+                            debate.entry ? navigateFromHomepage('most_disputed_market', debate.entry) : undefined
+                          }
                         >
                           <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-600 mb-2">
                             {debate.spread}pt spread
@@ -865,27 +910,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                               key={discussion.id}
                               type="button"
                               className="block w-full text-left"
-                              onClick={() => {
-                                const matchingEntry = Object.values(markets).find(
-                                  e => e.market.title === discussion.marketTitle
-                                )
-                                const spec = sampleMarketBank.find(s => s.title === discussion.marketTitle)
-
-                                if (matchingEntry) {
-                                  navigate(`/market/${matchingEntry.market.id}/discuss`)
-                                } else if (spec) {
-                                  const marketId = `discussion-${discussion.id}`
-                                  dispatch({
-                                    type: 'CREATE_MARKET',
-                                    id: marketId,
-                                    title: spec.title,
-                                    description: spec.description,
-                                    seedWithUser: false,
-                                    creatorPubkey: 'system',
-                                  })
-                                  setTimeout(() => navigate(`/market/${marketId}/discuss`), 0)
-                                }
-                              }}
+                              onClick={() => openHomepageDiscussion('most_disputed_discussion', discussion)}
                             >
                               <div className="text-sm text-neutral-300 leading-relaxed">
                                 {discussion.preview}
@@ -958,7 +983,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   {featured && (
                     <div
                       className="cursor-pointer group"
-                      onClick={() => featured.entry ? navigateToMarket(featured.entry) : undefined}
+                      onClick={() =>
+                        featured.entry ? navigateFromHomepage('latest_market', featured.entry) : undefined
+                      }
                     >
                       <span className="text-[10px] uppercase tracking-[0.2em] text-emerald-500/70 font-medium">
                         {featured.category} · {featured.timeAgo}
@@ -978,7 +1005,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   {subFeatured && (
                     <div
                       className="pt-8 border-t border-neutral-800/30 cursor-pointer group"
-                      onClick={() => subFeatured.entry ? navigateToMarket(subFeatured.entry) : undefined}
+                      onClick={() =>
+                        subFeatured.entry ? navigateFromHomepage('latest_market', subFeatured.entry) : undefined
+                      }
                     >
                       <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-600 font-medium">
                         {subFeatured.category} · {subFeatured.timeAgo}
@@ -1002,7 +1031,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                     <div
                       key={item.title}
                       className="py-5 border-b border-neutral-800/20 last:border-0 cursor-pointer group"
-                      onClick={() => item.entry ? navigateToMarket(item.entry) : undefined}
+                      onClick={() => item.entry ? navigateFromHomepage('latest_market', item.entry) : undefined}
                     >
                       <div className="flex items-start justify-between gap-4 mb-1">
                         <h4 className="text-sm font-semibold text-white leading-snug group-hover:text-emerald-400 transition-colors">
@@ -1031,7 +1060,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                     <div
                       key={item.title}
                       className="flex items-baseline gap-3 py-2 cursor-pointer group"
-                      onClick={() => item.entry ? navigateToMarket(item.entry) : undefined}
+                      onClick={() => item.entry ? navigateFromHomepage('latest_market', item.entry) : undefined}
                     >
                       <span className="text-xs font-mono text-neutral-700 tabular-nums w-4 text-right shrink-0">
                         {i + 1}
@@ -1078,19 +1107,8 @@ export default function LandingPage({ markets, dispatch }: Props) {
               const spec = sampleMarketBank.find(s => s.title === discussion.marketTitle)
 
               const handleClick = () => {
-                if (matchingEntry) {
-                  navigate(`/market/${matchingEntry.market.id}/discuss`)
-                } else if (spec) {
-                  const marketId = `discussion-${discussion.id}`
-                  dispatch({
-                    type: 'CREATE_MARKET',
-                    id: marketId,
-                    title: spec.title,
-                    description: spec.description,
-                    seedWithUser: false,
-                    creatorPubkey: 'system',
-                  })
-                  setTimeout(() => navigate(`/market/${marketId}/discuss`), 0)
+                if (matchingEntry || spec) {
+                  openHomepageDiscussion('latest_discussion', discussion)
                 }
               }
 

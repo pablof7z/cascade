@@ -1,5 +1,5 @@
 import { useEffect, useReducer } from 'react'
-import { BrowserRouter, Navigate, Routes, Route, useNavigate, useParams } from 'react-router-dom'
+import { BrowserRouter, Navigate, Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { TestnetProvider } from './testnetConfig'
 import './App.css'
 import {
@@ -381,6 +381,7 @@ function LegacyMarketDiscussionRedirect() {
 
 function AppContent() {
   const [state, dispatch] = useReducer(reducer, undefined, initState)
+  const location = useLocation()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -389,8 +390,8 @@ function AppContent() {
   }, [])
 
   useEffect(() => {
-    trackPageView(window.location.pathname)
-  }, [])
+    trackPageView(location.pathname)
+  }, [location.pathname])
 
   useEffect(() => {
     save(state.markets)

@@ -352,6 +352,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
       initialSide,
       initialSats: initialSeed,
       seedWithUser: true,
+      creatorPubkey: 'you',
     })
     setTitle('')
     setDescription('')
@@ -367,6 +368,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
       title: spec.title,
       description: spec.description,
       seedWithUser: false,
+      creatorPubkey: 'system',
     })
     setShowCreateModal(false)
   }
@@ -477,6 +479,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                         title: featuredThesis.title,
                         description: featuredThesis.description,
                         seedWithUser: false,
+                        creatorPubkey: 'system',
                       })
                     }
                   }}

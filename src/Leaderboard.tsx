@@ -2,12 +2,14 @@ import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import type { MarketEntry } from './storage'
 import { useBookmarks } from './useBookmarks'
+import { UserAvatar } from './components/UserAvatar'
 
 type LeaderboardTab = 'Top Predictors' | 'Top Creators' | 'Most Accurate' | 'Most Bookmarked'
 type TimeFilter = 'All Time' | 'This Month' | 'This Week'
 
 interface LeaderboardEntry {
   rank: number
+  pubkey: string
   displayName: string
   descriptor: string
   stat1: number
@@ -20,34 +22,34 @@ interface LeaderboardEntry {
 // Mock data generators
 function generatePredictors(): LeaderboardEntry[] {
   return [
-    { rank: 1, displayName: 'futurist_alice', descriptor: 'AI timelines', stat1: 8420, stat1Label: 'Total P&L', stat2: 156, stat2Label: 'Trades' },
-    { rank: 2, displayName: 'oracle_bob', descriptor: 'Macro catalysts', stat1: 6250, stat1Label: 'Total P&L', stat2: 98, stat2Label: 'Trades' },
-    { rank: 3, displayName: 'sigma_trader', descriptor: 'Energy & climate', stat1: 5180, stat1Label: 'Total P&L', stat2: 203, stat2Label: 'Trades' },
-    { rank: 4, displayName: 'cascader_99', descriptor: 'Signal hunter', stat1: 4720, stat1Label: 'Total P&L', stat2: 87, stat2Label: 'Trades' },
-    { rank: 5, displayName: 'ai_believer', descriptor: 'Labs & benchmarks', stat1: 3950, stat1Label: 'Total P&L', stat2: 142, stat2Label: 'Trades' },
-    { rank: 6, displayName: 'space_hodler', descriptor: 'Launch & defense', stat1: 3420, stat1Label: 'Total P&L', stat2: 65, stat2Label: 'Trades' },
-    { rank: 7, displayName: 'climate_prophet', descriptor: 'Policy watcher', stat1: 2890, stat1Label: 'Total P&L', stat2: 78, stat2Label: 'Trades' },
-    { rank: 8, displayName: 'tech_oracle', descriptor: 'Frontier theses', stat1: 2450, stat1Label: 'Total P&L', stat2: 112, stat2Label: 'Trades' },
+    { rank: 1, pubkey: 'mock_lb_01000000000000000000000000000000000000000000000000000001', displayName: 'futurist_alice', descriptor: 'AI timelines', stat1: 8420, stat1Label: 'Total P&L', stat2: 156, stat2Label: 'Trades' },
+    { rank: 2, pubkey: 'mock_lb_02000000000000000000000000000000000000000000000000000002', displayName: 'oracle_bob', descriptor: 'Macro catalysts', stat1: 6250, stat1Label: 'Total P&L', stat2: 98, stat2Label: 'Trades' },
+    { rank: 3, pubkey: 'mock_lb_03000000000000000000000000000000000000000000000000000003', displayName: 'sigma_trader', descriptor: 'Energy & climate', stat1: 5180, stat1Label: 'Total P&L', stat2: 203, stat2Label: 'Trades' },
+    { rank: 4, pubkey: 'mock_lb_04000000000000000000000000000000000000000000000000000004', displayName: 'cascader_99', descriptor: 'Signal hunter', stat1: 4720, stat1Label: 'Total P&L', stat2: 87, stat2Label: 'Trades' },
+    { rank: 5, pubkey: 'mock_lb_05000000000000000000000000000000000000000000000000000005', displayName: 'ai_believer', descriptor: 'Labs & benchmarks', stat1: 3950, stat1Label: 'Total P&L', stat2: 142, stat2Label: 'Trades' },
+    { rank: 6, pubkey: 'mock_lb_06000000000000000000000000000000000000000000000000000006', displayName: 'space_hodler', descriptor: 'Launch & defense', stat1: 3420, stat1Label: 'Total P&L', stat2: 65, stat2Label: 'Trades' },
+    { rank: 7, pubkey: 'mock_lb_07000000000000000000000000000000000000000000000000000007', displayName: 'climate_prophet', descriptor: 'Policy watcher', stat1: 2890, stat1Label: 'Total P&L', stat2: 78, stat2Label: 'Trades' },
+    { rank: 8, pubkey: 'mock_lb_08000000000000000000000000000000000000000000000000000008', displayName: 'tech_oracle', descriptor: 'Frontier theses', stat1: 2450, stat1Label: 'Total P&L', stat2: 112, stat2Label: 'Trades' },
   ]
 }
 
 function generateCreators(): LeaderboardEntry[] {
   return [
-    { rank: 1, displayName: 'market_maker_1', descriptor: 'Creates thin, arguable modules', stat1: 42, stat1Label: 'Markets', stat2: 125000, stat2Label: 'Volume' },
-    { rank: 2, displayName: 'thesis_builder', descriptor: 'Bundles modules into theses', stat1: 28, stat1Label: 'Markets', stat2: 89000, stat2Label: 'Volume' },
-    { rank: 3, displayName: 'future_shaper', descriptor: 'Seeds debates early', stat1: 24, stat1Label: 'Markets', stat2: 67500, stat2Label: 'Volume' },
-    { rank: 4, displayName: 'module_master', descriptor: 'Resolution criteria specialist', stat1: 19, stat1Label: 'Markets', stat2: 54200, stat2Label: 'Volume' },
-    { rank: 5, displayName: 'cascade_pro', descriptor: 'Rotates liquidity aggressively', stat1: 15, stat1Label: 'Markets', stat2: 41800, stat2Label: 'Volume' },
+    { rank: 1, pubkey: 'mock_lb_09000000000000000000000000000000000000000000000000000009', displayName: 'market_maker_1', descriptor: 'Creates thin, arguable modules', stat1: 42, stat1Label: 'Markets', stat2: 125000, stat2Label: 'Volume' },
+    { rank: 2, pubkey: 'mock_lb_10000000000000000000000000000000000000000000000000000010', displayName: 'thesis_builder', descriptor: 'Bundles modules into theses', stat1: 28, stat1Label: 'Markets', stat2: 89000, stat2Label: 'Volume' },
+    { rank: 3, pubkey: 'mock_lb_11000000000000000000000000000000000000000000000000000011', displayName: 'future_shaper', descriptor: 'Seeds debates early', stat1: 24, stat1Label: 'Markets', stat2: 67500, stat2Label: 'Volume' },
+    { rank: 4, pubkey: 'mock_lb_12000000000000000000000000000000000000000000000000000012', displayName: 'module_master', descriptor: 'Resolution criteria specialist', stat1: 19, stat1Label: 'Markets', stat2: 54200, stat2Label: 'Volume' },
+    { rank: 5, pubkey: 'mock_lb_13000000000000000000000000000000000000000000000000000013', displayName: 'cascade_pro', descriptor: 'Rotates liquidity aggressively', stat1: 15, stat1Label: 'Markets', stat2: 41800, stat2Label: 'Volume' },
   ]
 }
 
 function generateAccurate(): LeaderboardEntry[] {
   return [
-    { rank: 1, displayName: 'calibrated_cal', descriptor: 'High-conviction closer', stat1: 94.2, stat1Label: 'Accuracy %', stat2: 52, stat2Label: 'Resolved' },
-    { rank: 2, displayName: 'precise_pat', descriptor: 'Event-chain mapper', stat1: 91.8, stat1Label: 'Accuracy %', stat2: 38, stat2Label: 'Resolved' },
-    { rank: 3, displayName: 'truth_seeker', descriptor: 'Counter-consensus specialist', stat1: 89.5, stat1Label: 'Accuracy %', stat2: 67, stat2Label: 'Resolved' },
-    { rank: 4, displayName: 'bayesian_bob', descriptor: 'Belief updater', stat1: 87.3, stat1Label: 'Accuracy %', stat2: 44, stat2Label: 'Resolved' },
-    { rank: 5, displayName: 'signal_finder', descriptor: 'Catalyst watcher', stat1: 85.1, stat1Label: 'Accuracy %', stat2: 29, stat2Label: 'Resolved' },
+    { rank: 1, pubkey: 'mock_lb_14000000000000000000000000000000000000000000000000000014', displayName: 'calibrated_cal', descriptor: 'High-conviction closer', stat1: 94.2, stat1Label: 'Accuracy %', stat2: 52, stat2Label: 'Resolved' },
+    { rank: 2, pubkey: 'mock_lb_15000000000000000000000000000000000000000000000000000015', displayName: 'precise_pat', descriptor: 'Event-chain mapper', stat1: 91.8, stat1Label: 'Accuracy %', stat2: 38, stat2Label: 'Resolved' },
+    { rank: 3, pubkey: 'mock_lb_16000000000000000000000000000000000000000000000000000016', displayName: 'truth_seeker', descriptor: 'Counter-consensus specialist', stat1: 89.5, stat1Label: 'Accuracy %', stat2: 67, stat2Label: 'Resolved' },
+    { rank: 4, pubkey: 'mock_lb_17000000000000000000000000000000000000000000000000000017', displayName: 'bayesian_bob', descriptor: 'Belief updater', stat1: 87.3, stat1Label: 'Accuracy %', stat2: 44, stat2Label: 'Resolved' },
+    { rank: 5, pubkey: 'mock_lb_18000000000000000000000000000000000000000000000000000018', displayName: 'signal_finder', descriptor: 'Catalyst watcher', stat1: 85.1, stat1Label: 'Accuracy %', stat2: 29, stat2Label: 'Resolved' },
   ]
 }
 

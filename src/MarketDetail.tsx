@@ -60,7 +60,7 @@ function formatPercent(value: number) {
   return `${(value * 100).toFixed(1)}%`
 }
 
-function formatTimestamp(value: string) {
+function formatTimestamp(value: string | number) {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) {
     return value
@@ -193,8 +193,6 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
   const topParticipants = participantRows.slice(0, 3)
   const bullThreads = rankedThreads.filter((thread) => thread.stance === 'bull')
   const bearThreads = rankedThreads.filter((thread) => thread.stance === 'bear')
-  const topBullThread = bullThreads[0]
-  const topBearThread = bearThreads[0]
   const latestThread = rankedThreads[0]
   const totalReplies = rankedThreads.reduce((sum, thread) => sum + countReplies(thread.replies), 0)
   const activeParticipants = participantRows.filter((row) => row.grossExposure > 0).length
@@ -295,131 +293,104 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
         <div className="space-y-5">
           {activeTab === 'overview' ? (
             <>
-              <section className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)]">
-                <article className="overflow-hidden rounded-[28px] border border-neutral-800 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.2),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(245,158,11,0.12),_transparent_28%),linear-gradient(180deg,_rgba(24,24,27,1),_rgba(10,10,10,1))] p-6 sm:p-7">
-                  <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="max-w-2xl">
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-neutral-500">
-                        <span>{market.kind === 'thesis' ? 'Thesis market' : 'Module market'}</span>
-                        {spec?.category ? <span>• {spec.category}</span> : null}
-                      </div>
-                      <h2 className={`mt-4 text-2xl font-semibold tracking-tight ${tilt.accent}`}>
-                        {tilt.label}
-                      </h2>
-                      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-neutral-300 sm:text-base">
-                        {tilt.detail}
-                      </p>
+              <section className="border-t border-neutral-800 pt-5">
+                <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.75fr)]">
+                  <article>
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] uppercase tracking-[0.22em] text-neutral-500">
+                      <span>{market.kind === 'thesis' ? 'Thesis' : 'Market'}</span>
+                      {spec?.category ? <span>{spec.category}</span> : null}
+                      <span>{formatTimestamp(market.createdAt)}</span>
                     </div>
+                    <h2 className={`mt-4 text-3xl font-semibold tracking-tight ${tilt.accent}`}>
+                      {tilt.label}
+                    </h2>
+                    <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-300 sm:text-[15px]">
+                      {tilt.detail}
+                    </p>
+                    <div className="mt-6 grid gap-x-6 gap-y-3 border-y border-neutral-800 py-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
+                      <div>
+                        <div className="text-neutral-500">Move since open</div>
+                        <div className={`mt-1 text-lg font-semibold ${priceMove >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {formatSignedCents(priceMove)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-neutral-500">Active risk</div>
+                        <div className="mt-1 text-lg font-semibold text-white">
+                          {activeParticipants > 0 ? activeParticipants : participantRows.length} accounts
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-neutral-500">Average size</div>
+                        <div className="mt-1 text-lg font-semibold text-white">
+                          {averageTicketSize > 0 ? formatCompactCurrency(averageTicketSize) : '$0'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-neutral-500">Discussion</div>
+                        <div className="mt-1 text-lg font-semibold text-white">
+                          {discussionThreads.length} threads / {formatCompactNumber(totalReplies)} replies
+                        </div>
+                      </div>
+                    </div>
+                  </article>
 
-                    <div className="grid min-w-[220px] gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                      <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">YES</div>
-                        <div className="mt-2 text-3xl font-semibold text-emerald-400">
+                  <aside className="border-l border-neutral-800 pl-0 xl:pl-6">
+                    <div className="grid grid-cols-2 gap-4 border-b border-neutral-800 pb-4">
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.18em] text-neutral-500">Yes</div>
+                        <div className="mt-2 text-4xl font-semibold text-emerald-400">
                           {(yesPrice * 100).toFixed(0)}¢
                         </div>
                       </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">NO</div>
-                        <div className="mt-2 text-3xl font-semibold text-rose-400">
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.18em] text-neutral-500">No</div>
+                        <div className="mt-2 text-4xl font-semibold text-rose-400">
                           {(noPrice * 100).toFixed(0)}¢
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 px-5 py-4">
-                      <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Move since open</div>
-                      <div
-                        className={`mt-2 text-2xl font-semibold ${
-                          priceMove >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                        }`}
-                      >
-                        {formatSignedCents(priceMove)}
+                    <dl className="divide-y divide-neutral-800 text-sm">
+                      <div className="flex items-center justify-between py-3">
+                        <dt className="text-neutral-500">Reserve</dt>
+                        <dd className="font-medium text-white">{formatCurrency(market.reserve)}</dd>
                       </div>
-                    </div>
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 px-5 py-4">
-                      <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Active risk carriers</div>
-                      <div className="mt-2 text-2xl font-semibold text-white">
-                        {activeParticipants > 0 ? activeParticipants : participantRows.length}
+                      <div className="flex items-center justify-between py-3">
+                        <dt className="text-neutral-500">Executed volume</dt>
+                        <dd className="font-medium text-white">{formatCurrency(totalVolume)}</dd>
                       </div>
-                    </div>
-                    <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 px-5 py-4">
-                      <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Average ticket</div>
-                      <div className="mt-2 text-2xl font-semibold text-white">
-                        {averageTicketSize > 0 ? formatCompactCurrency(averageTicketSize) : '$0'}
+                      <div className="flex items-center justify-between py-3">
+                        <dt className="text-neutral-500">Last trade</dt>
+                        <dd className="font-medium text-white">
+                          {lastReceipt ? `${ACTOR_LABELS[lastReceipt.actor]} ${lastReceipt.side === 'LONG' ? 'YES' : 'NO'}` : 'Awaiting flow'}
+                        </dd>
                       </div>
-                    </div>
-                  </div>
-                </article>
-
-                <div className="grid gap-4">
-                  <article className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-6">
-                    <div className="text-xs uppercase tracking-[0.24em] text-neutral-600">Trade frame</div>
-                    <h3 className="mt-3 text-lg font-semibold text-white">
-                      What has to be true for this trade to work
-                    </h3>
-                    <ul className="mt-4 space-y-3">
-                      {tradeFrame.map((item) => (
-                        <li key={item} className="flex gap-3 text-sm leading-relaxed text-neutral-400">
-                          <span className="mt-1 h-2 w-2 rounded-full bg-neutral-500" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-
-                  <article className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.24em] text-neutral-600">Debate pulse</div>
-                        <h3 className="mt-3 text-lg font-semibold text-white">
-                          Discussion is a first-class signal here
-                        </h3>
+                      <div className="flex items-center justify-between py-3">
+                        <dt className="text-neutral-500">Shares leaning YES</dt>
+                        <dd className="font-medium text-white">{formatPercent(longPositionShare)}</dd>
                       </div>
-                      <Link
-                        to={`/market/${market.id}/discussion`}
-                        className="rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white hover:text-neutral-950"
-                      >
-                        Open discussion
-                      </Link>
-                    </div>
-                    <div className="mt-5 grid grid-cols-3 gap-3">
-                      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 px-4 py-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Threads</div>
-                        <div className="mt-2 text-2xl font-semibold text-white">{discussionThreads.length}</div>
-                      </div>
-                      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 px-4 py-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Replies</div>
-                        <div className="mt-2 text-2xl font-semibold text-white">
-                          {formatCompactNumber(totalReplies)}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 px-4 py-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Bull / Bear</div>
-                        <div className="mt-2 text-2xl font-semibold text-white">
-                          {bullThreads.length}/{bearThreads.length}
-                        </div>
-                      </div>
-                    </div>
-                  </article>
+                    </dl>
+                  </aside>
                 </div>
               </section>
 
-              <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)]">
-                <article className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-6">
-                  <div className="text-xs uppercase tracking-[0.24em] text-neutral-600">Positioning map</div>
-                  <h3 className="mt-3 text-lg font-semibold text-white">
-                    Price, capital, and share balance
-                  </h3>
-                  <div className="mt-5 space-y-5">
+              <section className="grid gap-8 border-t border-neutral-800 pt-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                <article>
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <h3 className="text-lg font-semibold text-white">Price and positioning</h3>
+                    <div className="text-sm text-neutral-500">Reserve {formatCurrency(market.reserve)}</div>
+                  </div>
+                  <div className="mt-4 h-72 border border-neutral-800 bg-neutral-950/60 p-4">
+                    <PriceChart data={entry.history} />
+                  </div>
+                  <div className="mt-5 space-y-4">
                     <div>
                       <div className="mb-2 flex items-center justify-between text-sm">
                         <span className="text-neutral-400">Implied probability</span>
                         <span className="font-medium text-white">{formatPercent(yesPrice)} YES</span>
                       </div>
-                      <div className="h-3 overflow-hidden rounded-full bg-neutral-900">
-                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${yesPrice * 100}%` }} />
+                      <div className="h-2 overflow-hidden bg-neutral-900">
+                        <div className="h-full bg-emerald-500" style={{ width: `${yesPrice * 100}%` }} />
                       </div>
                     </div>
                     <div>
@@ -427,8 +398,8 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                         <span className="text-neutral-400">Committed capital</span>
                         <span className="font-medium text-white">{formatPercent(longCapital)} YES</span>
                       </div>
-                      <div className="h-3 overflow-hidden rounded-full bg-neutral-900">
-                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${longCapital * 100}%` }} />
+                      <div className="h-2 overflow-hidden bg-neutral-900">
+                        <div className="h-full bg-emerald-500" style={{ width: `${longCapital * 100}%` }} />
                       </div>
                     </div>
                     <div>
@@ -436,70 +407,63 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                         <span className="text-neutral-400">Outstanding shares</span>
                         <span className="font-medium text-white">{formatPercent(longPositionShare)} YES</span>
                       </div>
-                      <div className="h-3 overflow-hidden rounded-full bg-neutral-900">
-                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${longPositionShare * 100}%` }} />
-                      </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 px-4 py-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">YES capital</div>
-                        <div className="mt-2 text-xl font-semibold text-emerald-400">
-                          {formatPercent(longCapital)}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 px-4 py-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">NO capital</div>
-                        <div className="mt-2 text-xl font-semibold text-rose-400">
-                          {formatPercent(shortCapital)}
-                        </div>
+                      <div className="h-2 overflow-hidden bg-neutral-900">
+                        <div className="h-full bg-emerald-500" style={{ width: `${longPositionShare * 100}%` }} />
                       </div>
                     </div>
                   </div>
                 </article>
 
-                <article className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-6">
-                  <div className="text-xs uppercase tracking-[0.24em] text-neutral-600">What moves price now</div>
-                  <h3 className="mt-3 text-xl font-semibold text-white">Three live pressure points</h3>
-                  <div className="mt-5 space-y-3">
-                    {catalystCards.map((card) => (
-                      <div
-                        key={card.eyebrow}
-                        className="rounded-2xl border border-neutral-800 bg-neutral-900/70 px-4 py-4"
-                      >
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-600">
-                          {card.eyebrow}
+                <article className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">What has to be true</h3>
+                    <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
+                      {tradeFrame.map((item) => (
+                        <div key={item} className="py-3 text-sm leading-7 text-neutral-300">
+                          {item}
                         </div>
-                        <div className="mt-2 font-medium text-white">{card.title}</div>
-                        <p className="mt-2 text-sm leading-relaxed text-neutral-400">{card.detail}</p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Live pressure points</h3>
+                    <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
+                      {catalystCards.map((card) => (
+                        <div key={card.eyebrow} className="py-4">
+                          <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">{card.eyebrow}</div>
+                          <div className="mt-2 font-medium text-white">{card.title}</div>
+                          <p className="mt-2 text-sm leading-6 text-neutral-400">{card.detail}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </article>
+              </section>
 
-                <article className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-6">
-                  <div className="text-xs uppercase tracking-[0.24em] text-neutral-600">Who is carrying risk</div>
-                  <h3 className="mt-3 text-xl font-semibold text-white">Largest positioned accounts</h3>
-                  <div className="mt-5 space-y-3">
+              <section className="grid gap-8 border-t border-neutral-800 pt-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                <article>
+                  <div className="flex items-center justify-between gap-4">
+                    <h3 className="text-lg font-semibold text-white">Largest positioned accounts</h3>
+                    <div className="text-sm text-neutral-500">{participantRows.length} tracked</div>
+                  </div>
+                  <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
                     {topParticipants.map((row) => (
-                      <div
-                        key={row.actor}
-                        className="rounded-2xl border border-neutral-800 bg-neutral-900/70 px-4 py-4"
-                      >
-                        <div className="flex items-center justify-between gap-3">
+                      <div key={row.actor} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                        <div>
                           <div className="font-medium text-white">{ACTOR_LABELS[row.actor]}</div>
-                          <div className="text-sm text-neutral-500">{formatCurrency(row.cash)} cash</div>
+                          <div className="mt-1 text-sm text-neutral-500">{formatCurrency(row.cash)} cash available</div>
                         </div>
-                        <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                        <div className="grid grid-cols-3 gap-6 text-sm">
                           <div>
-                            <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Long</div>
+                            <div className="text-neutral-500">Long</div>
                             <div className="mt-1 text-emerald-400">{row.long.toFixed(3)}</div>
                           </div>
                           <div>
-                            <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Short</div>
+                            <div className="text-neutral-500">Short</div>
                             <div className="mt-1 text-rose-400">{row.short.toFixed(3)}</div>
                           </div>
                           <div>
-                            <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Gross</div>
+                            <div className="text-neutral-500">Gross</div>
                             <div className="mt-1 text-white">{row.grossExposure.toFixed(3)}</div>
                           </div>
                         </div>
@@ -507,79 +471,54 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                     ))}
                   </div>
                 </article>
-              </section>
 
-              <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-                <article className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.24em] text-neutral-600">Price snapshot</div>
-                      <h3 className="mt-3 text-xl font-semibold text-white">
-                        Trendline plus reserve context
-                      </h3>
-                    </div>
-                    <div className="rounded-full border border-neutral-800 bg-neutral-900/80 px-4 py-2 text-sm text-neutral-400">
-                      Reserve {formatCurrency(market.reserve)}
-                    </div>
-                  </div>
-                  <div className="mt-5 h-72 rounded-[24px] border border-neutral-800 bg-neutral-900/60 p-4">
-                    <PriceChart data={entry.history} />
-                  </div>
-                </article>
-
-                <article className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.24em] text-neutral-600">Top arguments right now</div>
-                      <h3 className="mt-3 text-xl font-semibold text-white">
-                        The strongest case on each side
-                      </h3>
-                    </div>
+                <article>
+                  <div className="flex items-center justify-between gap-4">
+                    <h3 className="text-lg font-semibold text-white">Recent fills</h3>
                     <Link
-                      to={`/market/${market.id}/discussion`}
+                      to={`/market/${market.id}/activity`}
                       className="text-sm font-medium text-white transition-colors hover:text-neutral-300"
                     >
-                      See all threads
+                      Full activity
                     </Link>
                   </div>
-
-                  <div className="mt-5 space-y-3">
-                    {topBullThread ? (
-                      <Link
-                        to={`/market/${market.id}/discussion/${topBullThread.id}`}
-                        className="block rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-4 transition-colors hover:border-emerald-400/40"
-                      >
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-emerald-400">Bull case</div>
-                        <div className="mt-2 font-medium text-white">{topBullThread.title}</div>
-                        <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                          {topBullThread.content.slice(0, 150)}
-                          {topBullThread.content.length > 150 ? '...' : ''}
-                        </p>
-                      </Link>
-                    ) : null}
-
-                    {topBearThread ? (
-                      <Link
-                        to={`/market/${market.id}/discussion/${topBearThread.id}`}
-                        className="block rounded-2xl border border-rose-500/20 bg-rose-500/5 px-4 py-4 transition-colors hover:border-rose-400/40"
-                      >
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-rose-400">Bear case</div>
-                        <div className="mt-2 font-medium text-white">{topBearThread.title}</div>
-                        <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                          {topBearThread.content.slice(0, 150)}
-                          {topBearThread.content.length > 150 ? '...' : ''}
-                        </p>
-                      </Link>
-                    ) : null}
-
-                    {!topBullThread && !topBearThread ? (
-                      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 px-4 py-4 text-sm text-neutral-500">
-                        Discussion has not been seeded yet.
+                  <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
+                    {recentReceipts.length > 0 ? (
+                      recentReceipts.map((receipt) => (
+                        <div key={receipt.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                          <div>
+                            <div className="font-medium text-white">
+                              {ACTOR_LABELS[receipt.actor]} {receipt.kind === 'mint' ? 'bought' : 'redeemed'}{' '}
+                              {receipt.side}
+                            </div>
+                            <div className="mt-1 text-sm text-neutral-500">{formatTimestamp(receipt.createdAt)}</div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-6 text-sm">
+                            <div>
+                              <div className="text-neutral-500">Notional</div>
+                              <div className="mt-1 text-white">{formatCurrency(receipt.sats)}</div>
+                            </div>
+                            <div>
+                              <div className="text-neutral-500">Tokens</div>
+                              <div className="mt-1 text-white">{receipt.tokens.toFixed(3)}</div>
+                            </div>
+                            <div>
+                              <div className="text-neutral-500">Reserve after</div>
+                              <div className="mt-1 text-white">{formatCurrency(receipt.reserveAfter)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-4 text-sm text-neutral-500">
+                        No receipt history yet. Trading activity will populate this log.
                       </div>
-                    ) : null}
+                    )}
                   </div>
                 </article>
               </section>
+
+              <MarketDiscussionPanel marketId={market.id} marketTitle={market.title} variant="overview" />
             </>
           ) : null}
 
@@ -855,32 +794,34 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
         </div>
 
         <div className="lg:col-span-1">
-          <div className="sticky top-24 rounded-[28px] border border-neutral-800 bg-neutral-950 p-6">
+          <div className="sticky top-24 border-l border-neutral-800 pl-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-neutral-600">Trade ticket</p>
-                <h3 className="mt-2 text-lg font-semibold text-white">
+                <h3 className="text-lg font-semibold text-white">
                   {selectedSide === 'LONG' ? 'Add YES exposure' : 'Add NO exposure'}
                 </h3>
+                <p className="mt-2 text-sm text-neutral-500">
+                  Immediate LMSR execution. Check the tape and thread flow before you size up.
+                </p>
               </div>
               <div
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                className={`px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
                   selectedSide === 'LONG'
-                    ? 'bg-emerald-500/15 text-emerald-400'
-                    : 'bg-rose-500/15 text-rose-400'
+                    ? 'border border-emerald-500/30 text-emerald-400'
+                    : 'border border-rose-500/30 text-rose-400'
                 }`}
               >
                 {selectedSide === 'LONG' ? 'YES' : 'NO'}
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden border border-neutral-800 bg-neutral-800">
               <button
                 onClick={() => setSelectedSide('LONG')}
-                className={`rounded-2xl border px-4 py-4 text-left transition-colors ${
+                className={`px-4 py-4 text-left transition-colors ${
                   selectedSide === 'LONG'
-                    ? 'border-emerald-500 bg-emerald-500/10 text-white'
-                    : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white'
+                    ? 'bg-emerald-500/10 text-white'
+                    : 'bg-neutral-950 text-neutral-400 hover:text-white'
                 }`}
               >
                 <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">Buy YES</div>
@@ -890,10 +831,10 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
               </button>
               <button
                 onClick={() => setSelectedSide('SHORT')}
-                className={`rounded-2xl border px-4 py-4 text-left transition-colors ${
+                className={`px-4 py-4 text-left transition-colors ${
                   selectedSide === 'SHORT'
-                    ? 'border-rose-500 bg-rose-500/10 text-white'
-                    : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white'
+                    ? 'bg-rose-500/10 text-white'
+                    : 'bg-neutral-950 text-neutral-400 hover:text-white'
                 }`}
               >
                 <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">Buy NO</div>
@@ -903,9 +844,9 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
               </button>
             </div>
 
-            <div className="mt-5">
+            <div className="mt-5 border-t border-neutral-800 pt-5">
               <div className="mb-2 flex items-center justify-between text-sm">
-                <label className="text-neutral-500">Ticket size (sats)</label>
+                <label className="text-neutral-500">Size (sats)</label>
                 <div className="text-neutral-600">Quick sizes</div>
               </div>
               <div className="grid grid-cols-4 gap-2">
@@ -913,10 +854,10 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                   <button
                     key={quickAmount}
                     onClick={() => setAmount(quickAmount)}
-                    className={`rounded-xl border px-3 py-2 text-sm transition-colors ${
+                    className={`border px-3 py-2 text-sm transition-colors ${
                       amount === quickAmount
                         ? 'border-white/20 bg-white text-neutral-950'
-                        : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white'
+                        : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:text-white'
                     }`}
                   >
                     {quickAmount}
@@ -933,26 +874,26 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                   const nextAmount = Number(event.target.value)
                   setAmount(Number.isFinite(nextAmount) ? nextAmount : 0)
                 }}
-                className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-white focus:border-neutral-500 focus:outline-none"
+                className="w-full border border-neutral-800 bg-neutral-950 px-4 py-3 text-white focus:border-neutral-500 focus:outline-none"
                 min="1"
               />
             </div>
 
             {preview ? (
-              <div className="mt-5 space-y-3 rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4">
-                <div className="flex justify-between text-sm">
+              <div className="mt-5 divide-y divide-neutral-800 border-y border-neutral-800">
+                <div className="flex justify-between py-3 text-sm">
                   <span className="text-neutral-500">Cost</span>
                   <span className="text-white">{formatCurrency(preview.sats)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between py-3 text-sm">
                   <span className="text-neutral-500">Tokens</span>
                   <span className="text-white">{preview.tokens.toFixed(4)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between py-3 text-sm">
                   <span className="text-neutral-500">Average fill</span>
                   <span className="text-white">{(preview.avgPrice * 100).toFixed(1)}¢</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between py-3 text-sm">
                   <span className="text-neutral-500">Reserve after</span>
                   <span className="text-white">{formatCurrency(preview.reserveAfter)}</span>
                 </div>
@@ -966,7 +907,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
 
             <button
               onClick={() => handleTrade(selectedSide)}
-              className={`mt-4 w-full rounded-2xl py-4 text-lg font-bold text-white transition-colors ${
+              className={`mt-5 w-full py-4 text-lg font-bold text-white transition-colors ${
                 selectedSide === 'LONG'
                   ? 'bg-emerald-600 hover:bg-emerald-500'
                   : 'bg-rose-600 hover:bg-rose-500'
@@ -977,7 +918,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
 
             {/* Existing positions for this market */}
             {positions.length > 0 && (
-              <div className="mt-6 rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
+              <div className="mt-6 border-t border-neutral-800 pt-5">
                 <h4 className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-400">
                   Your Positions
                 </h4>

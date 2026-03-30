@@ -321,6 +321,18 @@ function formatTimeAgo(timestamp: number): string {
   return `${days}d ago`
 }
 
+function getDiscussionStats(threads: DiscussionThread[]) {
+  return threads.reduce(
+    (stats, thread) => {
+      stats.replies += countAllReplies(thread.replies)
+      if (thread.stance === 'bull') stats.bull += 1
+      if (thread.stance === 'bear') stats.bear += 1
+      return stats
+    },
+    { replies: 0, bull: 0, bear: 0 },
+  )
+}
+
 // Thread preview card for the list view (Reddit-style post list)
 function ThreadPreviewCard({ thread, marketId }: { thread: DiscussionThread; marketId: string }) {
   const totalReplies = countAllReplies(thread.replies)
@@ -439,6 +451,7 @@ export function MarketDiscussionPanel({
   }, [marketTitle, sortBy])
 
   const visibleThreads = variant === 'overview' ? threads.slice(0, 3) : threads
+  const discussionStats = useMemo(() => getDiscussionStats(threads), [threads])
 
   const sortOptions: { value: SortOption; label: string }[] = [
     { value: 'hot', label: 'Hot' },
@@ -448,37 +461,53 @@ export function MarketDiscussionPanel({
   ]
 
   return (
-    <section className="rounded-2xl border border-neutral-800 bg-neutral-950/70">
-      <div className="border-b border-neutral-800 px-6 py-6">
+    <section
+      className={
+        variant === 'overview' ? 'border-t border-neutral-800 pt-6' : 'rounded-2xl border border-neutral-800 bg-neutral-950/70'
+      }
+    >
+      <div className={variant === 'overview' ? 'pb-4' : 'border-b border-neutral-800 px-6 py-6'}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-neutral-600">
-              {variant === 'overview' ? 'Decision support' : 'Debate surface'}
-            </p>
-            <h2 className="mt-2 text-xl font-semibold text-white">
+            <h2 className="text-xl font-semibold text-white">
               {variant === 'overview'
-                ? 'Use the strongest arguments to underwrite the trade'
+                ? 'Latest discussion'
                 : 'Pressure-test the market before you size the position'}
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-400">
               {variant === 'overview'
-                ? 'This feed is part of the market, not garnish. Scan the live claims, find the strongest counterarguments, and move into the full discussion when you need the complete thread map.'
+                ? 'Scan the live thread feed directly from the overview. The discussion is part of price discovery, not a decorative summary block.'
                 : 'Discussion exists to sharpen conviction. The thread feed, key arguments, and compose controls are here to surface claims that should actually move price.'}
             </p>
           </div>
 
           {variant === 'overview' ? (
-            <Link
-              to={`/market/${marketId}/discussion`}
-              className="inline-flex items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-100"
-            >
-              Open full discussion
-            </Link>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-neutral-500">
+              <span>
+                <span className="font-medium text-white">{threads.length}</span> threads
+              </span>
+              <span>
+                <span className="font-medium text-white">{discussionStats.replies}</span> replies
+              </span>
+              <span>
+                <span className="font-medium text-emerald-400">{discussionStats.bull}</span> bull
+              </span>
+              <span>
+                <span className="font-medium text-rose-400">{discussionStats.bear}</span> bear
+              </span>
+              <Link
+                to={`/market/${marketId}/discussion`}
+                className="font-medium text-white transition-colors hover:text-neutral-300"
+              >
+                Open full discussion
+              </Link>
+            </div>
           ) : null}
         </div>
       </div>
 
-      <div className="border-b border-neutral-800 px-6 py-6">
+      {variant === 'discussion' ? (
+        <div className="border-b border-neutral-800 px-6 py-6">
         <h3 className="mb-4 text-xs uppercase tracking-wider text-neutral-600">Key arguments</h3>
         <div className="grid gap-6 md:grid-cols-2">
           <div>
@@ -504,7 +533,8 @@ export function MarketDiscussionPanel({
             </ul>
           </div>
         </div>
-      </div>
+        </div>
+      ) : null}
 
       {variant === 'discussion' ? (
         <div className="border-b border-neutral-800 px-6 py-4">
@@ -533,7 +563,7 @@ export function MarketDiscussionPanel({
           </div>
         </div>
       ) : (
-        <div className="border-b border-neutral-800 px-6 py-4">
+        <div className="border-y border-neutral-800 py-3">
           <div className="flex items-center justify-between gap-4">
             <div className="text-sm text-neutral-400">Top live threads</div>
             <Link
@@ -578,14 +608,14 @@ export function MarketDiscussionPanel({
         </div>
       ) : null}
 
-      <div className="divide-y divide-neutral-800/50 px-6">
+      <div className={variant === 'overview' ? 'divide-y divide-neutral-800/50' : 'divide-y divide-neutral-800/50 px-6'}>
         {visibleThreads.map((thread) => (
           <ThreadPreviewCard key={thread.id} thread={thread} marketId={marketId} />
         ))}
       </div>
 
       {visibleThreads.length === 0 ? (
-        <div className="px-6 py-12 text-center text-neutral-500">
+        <div className={variant === 'overview' ? 'py-12 text-center text-neutral-500' : 'px-6 py-12 text-center text-neutral-500'}>
           <p>No discussions yet. Be the first to share your analysis.</p>
         </div>
       ) : null}

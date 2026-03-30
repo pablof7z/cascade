@@ -3,7 +3,6 @@ import type { Field, FieldSource, MeetingEntry, MeetingEntryKind } from './field
 import type { MarketKind, ThesisSignal } from './market'
 import { getActorDisplayName } from './market'
 import { sampleTheses } from './marketCatalog'
-import MockProfileLink from './components/MockProfileLink'
 import { UserAvatar } from './components/UserAvatar'
 
 type PositionType = 'long' | 'short' | 'none'
@@ -493,6 +492,7 @@ function buildFieldArena(field: Field): ArenaData {
 
     return {
       id: entry.id,
+      authorPubkey: participant?.id ?? entry.authorId,
       author: participant?.id ?? entry.authorId,
       authorLabel: participant?.name ?? 'Unknown',
       role: participant?.role ?? 'Field participant',

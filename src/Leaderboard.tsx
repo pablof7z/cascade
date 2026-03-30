@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import type { MarketEntry } from './storage'
 import { useBookmarks } from './useBookmarks'
-import { UserAvatar } from './components/UserAvatar'
+
 
 type LeaderboardTab = 'Top Predictors' | 'Top Creators' | 'Most Accurate' | 'Most Bookmarked'
 type TimeFilter = 'All Time' | 'This Month' | 'This Week'
@@ -98,6 +98,7 @@ export default function Leaderboard({ markets = {} }: LeaderboardProps) {
           const market = markets[item.marketId]?.market
           return {
             rank: i + 1,
+            pubkey: `mock_pubkey_${i + 1}`,
             displayName: market?.title ?? item.marketId.slice(0, 12) + '…',
             descriptor: market?.description?.slice(0, 60) || 'Prediction market',
             stat1: item.count,

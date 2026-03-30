@@ -970,6 +970,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                     title: spec.title,
                     description: spec.description,
                     seedWithUser: false,
+                    creatorPubkey: 'system',
                   })
                   setTimeout(() => navigate(`/market/${marketId}/discuss`), 0)
                 }

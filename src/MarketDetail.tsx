@@ -12,7 +12,6 @@ import { useBookmarks } from './useBookmarks'
 import MarketTabsShell, { type MarketTabKey } from './MarketTabsShell'
 import { MarketDiscussionPanel, generateMockThreads, type DiscussionThread } from './DiscussPage'
 import { trackMarketView, trackTradePlaced } from './analytics'
-import { UserAvatar } from './components/UserAvatar'
 import { addPosition, getPositionsForMarket, type Position } from './positionStore'
 
 type TradeAction = {

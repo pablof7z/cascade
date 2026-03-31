@@ -477,10 +477,10 @@ export default function LandingPage({ markets, dispatch }: Props) {
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
               <div className="space-y-8">
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight">
-                  Prices for Beliefs
+                  The Market Thinks You're Wrong
                 </h1>
                 <p className="text-xl md:text-2xl text-neutral-400 max-w-lg leading-relaxed">
-                  Prediction markets that never close. Take a position on the ideas you argue about — interest rates, AI, elections, whatever — and watch the price move as the world catches up.
+                  Prove it. Take a position.
                 </p>
                 <div className="flex flex-wrap items-center gap-4 pt-4">
                   <Link

@@ -526,19 +526,21 @@ export function MarketDiscussionPanel({
       {variant === 'discussion' ? (
         <div className="border-b border-neutral-800 py-3">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex gap-1">
-              {sortOptions.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setSortBy(opt.value)}
-                  className={`px-4 py-3 text-sm font-medium transition-colors ${
-                    sortBy === opt.value
-                      ? '-mb-px border-b-2 border-white text-white'
-                      : 'text-neutral-500 hover:text-neutral-300'
-                  }`}
-                >
-                  {opt.label}
-                </button>
+            <div className="flex items-center gap-1">
+              {sortOptions.map((opt, i) => (
+                <span key={opt.value} className="flex items-center">
+                  {i > 0 && <span className="text-neutral-600 mx-1">·</span>}
+                  <button
+                    onClick={() => setSortBy(opt.value)}
+                    className={`text-sm transition-colors ${
+                      sortBy === opt.value
+                        ? 'text-white font-medium'
+                        : 'text-neutral-500 hover:text-neutral-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                </span>
               ))}
             </div>
             <button

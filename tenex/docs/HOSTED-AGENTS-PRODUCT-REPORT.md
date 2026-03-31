@@ -55,12 +55,46 @@ Fields exist because agent value requires human direction. Undirected agents are
 The workspace is built on five primitives:
 
 ### 4.1 Field
-The top-level organizing unit. A domain of conviction with active theses or questions.
+The top-level organizing unit. A domain where the user has **strong opinions** — contrarian, unpopular, or deeply held views that constitute their edge.
 
 - A user creates a field around an area they understand (e.g., "AI regulation," "2026 US midterms," "DeFi yield compression")
 - No field without human conviction — the system should treat topics without user opinion as out of bounds
 - Fields can be `active`, `draft`, or `concluded`
-- Each field has a conviction statement — the thesis being tested
+- The field is NOT a thesis statement — it's a living domain of conviction that evolves through interaction
+
+#### Field Creation Flow
+
+**Step 1: The user names a topic.** Just 2-4 words. "2026 midterms." Low friction.
+
+**Step 2: The system generates a broad situational briefing.** Using existing prediction markets, social signals, discussion chatter, and public data, the backend produces a current state-of-the-world snapshot for that topic. Example for "2026 midterms":
+- "Democrats at 42% odds to hold the Senate per Polymarket"
+- "Growing chatter on whether Vance will denounce the Iran conflict ahead of midterms"
+- "Contrarian view emerging: some analysts predicting a larger red wave than consensus"
+- Key markets, key narratives, key tensions — all presented as raw material
+
+This briefing serves two purposes: (1) it shows the user what the consensus thinks, which is exactly what they need to push against, and (2) it gives them material to react to rather than creating from scratch.
+
+**Step 3: The user records their strong opinions.** This is the critical moment. The user provides their edge — ideally via **voice/audio** rather than text. An audio recording gives the user space to think out loud, explore, contradict themselves, and express intuitions they couldn't nail down in a clean thesis statement. The system captures and processes this into the initial corpus.
+
+Why audio matters:
+- Lowers friction dramatically compared to writing a polished thesis
+- Captures nuance, hedges, and half-formed intuitions that text would flatten
+- Lets the user react naturally to the briefing material
+- Produces richer raw material for agents to work with
+- The agents' job is to take this raw, messy human intuition and augment it with research, data, and structure — not the other way around
+
+**Step 4: Agents are auto-assigned and begin working.** A starter council is attached automatically. They immediately begin processing the user's strong opinions alongside the situational briefing, and launch their first meeting — researching, finding supporting/contradicting evidence, identifying relevant markets, and forming initial positions informed by the user's stated edge.
+
+**The user's ongoing role:** At any point, the user can return to their field and find:
+- What conclusions the agents have reached
+- What research they've done
+- What meetings have happened
+- Where agents agree/disagree with the user's original opinions
+- What positions have been proposed
+
+The user then provides **direction**: reinforcing views, adding nuance, shutting down lines of thinking they disagree with, dropping new information. Every piece of user input is treated as **truth** by the agents — not as a suggestion to evaluate, but as ground truth that must be profoundly integrated into their reasoning. The agents may push back and present counter-evidence, but the user's stated positions carry decisive weight.
+
+**Key term: Strong Opinions.** This is the language that captures what the user brings. Not "thesis" (too academic), not "conviction" (too financial), not "belief" (too passive). Strong opinions — contrarian, unpopular, deeply held views that the user is willing to put capital behind.
 
 ### 4.2 Library
 First-class source materials that inform a field.
@@ -146,12 +180,13 @@ Capital overview:
 
 The main actions a user takes in the workspace:
 
-1. **Define a field** — declare a domain of conviction
-2. **Add source material** — drop books, articles, videos, notes into the library
-3. **Attach agents** — assign hosted or connected agents to a field
-4. **Join or watch meetings** — participate in or observe agent deliberation
-5. **Approve actions** — greenlight trades, market launches, thesis adjustments
-6. **Review capital and outcomes** — see how conviction maps to performance
+1. **Name a topic** — 2-4 words, the domain they know
+2. **React to the briefing** — see what the world thinks, identify where they disagree
+3. **Record strong opinions** — voice/audio preferred, text accepted. Raw, messy, intuitive. The agents will structure it.
+4. **Provide direction** — come back, see what agents found, reinforce/redirect/shut down lines of thinking
+5. **Drop sources** — add articles, links, notes that support or inform their views
+6. **Approve actions** — greenlight trades, market positions, capital deployment
+7. **Review and refine** — see how their strong opinions map to positions, evidence, and outcomes
 
 ---
 
@@ -166,14 +201,17 @@ The main actions a user takes in the workspace:
 
 ## 8. Design Principles
 
-1. **No field without human conviction.** Agents do not invent direction. They extend, challenge, and operationalize the user's edge.
-2. **Sources are first-class objects.** Not attachments. Agents read, quote, and reference them.
-3. **Deliberation is visible and persistent.** The meeting layer is the product's center of gravity.
-4. **Disagreement is legible, not hidden.** Show where the user is being challenged, not just where they're winning.
-5. **Markets are downstream.** They are outputs of fields and discussions, not the main organizing unit.
-6. **Hosted and connected agents feel the same** once inside the workspace. Two provisioning modes, one experience.
-7. **Every position traces to a reason.** Thesis → discussion → agent → wallet → position.
-8. **Don't lead with charts. Don't lead with profits.** Lead with conviction and evidence.
+1. **No field without strong opinions.** Agents do not invent direction. They extend, challenge, and operationalize the user's edge. The user's stated opinions are ground truth.
+2. **The user's voice is the primary input.** Audio-first, text-accepted. Lower the friction of expressing intuition. Agents structure what the user expresses — not the other way around.
+3. **Show the consensus so the user can push against it.** The situational briefing exists to give the user something to react to. The product is built for contrarians.
+4. **Sources are first-class objects.** Not attachments. Agents read, quote, and reference them.
+5. **Deliberation is visible and persistent.** The meeting layer is the product's center of gravity.
+6. **Disagreement is legible, not hidden.** Show where agents are being challenged by the user's views, and where agents push back with evidence.
+7. **User input is truth, not suggestion.** When the user provides direction, agents integrate it as decisive ground truth. Agents may present counter-evidence, but the user's position carries weight.
+8. **Markets are downstream.** They are outputs of fields and strong opinions, not the main organizing unit.
+9. **Hosted and connected agents feel the same** once inside the workspace. Two provisioning modes, one experience.
+10. **Every position traces to a strong opinion.** User's opinion → agent research → deliberation → position. The chain is always visible.
+11. **Don't lead with charts. Don't lead with profits.** Lead with strong opinions and evidence.
 
 ---
 

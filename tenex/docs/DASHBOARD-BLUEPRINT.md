@@ -2,38 +2,23 @@
 
 *The full information architecture for the hosted agents workspace.*
 *Created: 2026-03-31*
+*Major revision: 2026-03-31 — Strong Opinions model*
 
 ---
 
 ## Design Philosophy
 
-This is a **workspace**, not a dashboard. The word "dashboard" implies passive monitoring — charts, graphs, status lights. This is where a user *works*. They define conviction, staff it with agents, watch deliberation happen, and approve actions. The experience should feel like running a small research firm, not checking a trading portfolio.
+This is NOT a dashboard. It's not even a workspace in the traditional sense. It's the place where a user's **strong opinions meet agent-powered research and execution**.
 
-**The emotional question when the user opens this:** "What's happening in my fields? Where do I need to weigh in? What are my agents doing?"
+The user comes here with contrarian, unpopular, deeply held views about the world. The system shows them what the consensus thinks. They push back. Agents take that push and run with it — researching, debating, finding evidence, identifying markets, proposing positions. The user returns to find their agents mid-work and provides direction.
 
----
+**The emotional arc:**
+1. "Here's what the world thinks about this topic"
+2. "Here's where I think they're wrong" (the strong opinion)
+3. "My agents are researching, debating, and building positions around my edge"
+4. "I come back, see what they found, and steer"
 
-## Growth-Informed Design Decisions
-
-### Onboarding: Show Value Before Asking For Input
-New users must NOT land on an empty dashboard. The first experience is a **pre-populated demo field** with agents mid-deliberation on a real topic. The user watches agents argue, cite sources, and propose positions — THEN gets prompted to create their own field. Time-to-aha target: under 60 seconds.
-
-Flow: Sign up → Demo field running live → User watches → "Want your own?" → Pick a topic (templates/suggestions, not blank essay) → Starter agents auto-assigned → First meeting starts (pre-seeded with auto-gathered sources).
-
-### Progressive Sidebar Disclosure
-Day-one users see: **Overview** and **Fields** only. Treasury, Activity, Agents, Settings appear as the user reaches stages where they matter (first capital deployment, first meeting, first agent hire, etc.).
-
-### Meeting ≠ Chat
-The Meeting tab must look like a **deliberation/boardroom transcript**, NOT a chatbot UI. Multiple agents with distinct visual identities, disagreement highlighted, source citations prominent. When an agent proposes a position with real money, that entry looks dramatically different from discussion. This is the key differentiator from ChatGPT/Claude.
-
-### Retention: The Product Must Feel Alive
-- **"Your agents worked overnight"** — morning summary of what happened while user slept
-- **"Needs Attention" queue** — action items requiring human input
-- **"You were right" moments** — surface when real-world events confirm the user's thesis
-- **Expansion suggestions** — "Your agents found a related thesis worth exploring"
-
-### Future: Social/Sharing Layer
-Not in v1, but designed-for: ability to share conviction statements, meeting moments, and positions as social cards. Without shareability, every user is a dead end (K-factor = 0).
+**The emotional question when the user opens this:** "What have my agents found? Where were they right? Where do I need to redirect?"
 
 ---
 
@@ -67,7 +52,9 @@ The workspace uses a **left sidebar** — not tabs in the header. The main site 
 ```
 
 ### Sidebar sections:
-1. **Overview** — the home/landing when entering the workspace
+All items are ALWAYS visible. No progressive disclosure. Even before the user has created anything, every section should give a taste of what it will feel like with real data — use mock/preview content, not disabled states or "coming soon" placeholders.
+
+1. **Overview** — the home when entering the workspace
 2. **Fields** — list of all fields, entry point to field detail
 3. **Agents** — all agents across all fields
 4. **Treasury** — capital overview across all agents and fields
@@ -83,44 +70,49 @@ The workspace uses a **left sidebar** — not tabs in the header. The main site 
 
 ### 1. Overview (`/dashboard`)
 
-**Purpose:** Answer "what's happening right now across all my fields?"
+**Purpose:** Answer "What have my agents found? Where do I need to weigh in?"
 
 **Layout:**
 
 ```
 ┌──────────────────────────────────────────┐
-│ Good morning. 3 fields active.           │
+│ Your agents worked overnight.            │
 │                                          │
-│ ┌─ NEEDS ATTENTION ────────────────────┐ │
-│ │ • AI Regulation: 2 pending proposals │ │
-│ │ • Midterms: Meeting in progress      │ │
-│ └──────────────────────────────────────┘ │
+│ ┌─ NEEDS YOUR INPUT ──────────────────┐  │
+│ │ • AI Regulation: Analyst found       │  │
+│ │   counter-evidence to your thesis    │  │
+│ │ • Midterms: 2 position proposals     │  │
+│ │   awaiting approval                  │  │
+│ └──────────────────────────────────────┘  │
 │                                          │
-│ ┌─ FIELD CARDS ────────────────────────┐ │
-│ │ [AI Regulation]  [Midterms]  [DeFi] │ │
-│ │  3 agents         2 agents   1 agent │ │
-│ │  $1,240 deployed  $890       $320    │ │
-│ │  2 open debates   1 meeting  idle    │ │
-│ └──────────────────────────────────────┘ │
+│ ┌─ YOUR FIELDS ───────────────────────┐  │
+│ │ [AI Regulation]  [Midterms]  [DeFi] │  │
+│ │  3 agents         2 agents   1 agent │  │
+│ │  $1,240 deployed  $890       $320    │  │
+│ │  "Agents are pushing    "New data    │  │
+│ │   back on your take      confirms    │  │
+│ │   on EU timeline"        your read"  │  │
+│ └──────────────────────────────────────┘  │
 │                                          │
 │ ┌─ RECENT ACTIVITY ───────────────────┐  │
-│ │ 10m ago: Analyst proposed new market │  │
-│ │ 1h ago: Scout found conflicting data │  │
-│ │ 3h ago: Position opened on Polymarket│  │
+│ │ 10m ago: Analyst cited new EU draft  │  │
+│ │ 1h ago: Scout found Vance interview  │  │
+│ │ 3h ago: Position opened: YES on S.42 │  │
 │ └─────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
 ```
 
 **Content:**
-- **Needs Attention** — items requiring human input: pending market proposals, unresolved debates, approval requests. This is the action queue. If empty, it disappears (not "nothing to do" — just gone).
-- **Field Cards** — compact cards for each active field showing: name, agent count, capital deployed, current state (active debate, idle, pending proposals). Clicking goes to field detail.
-- **Recent Activity** — last ~10 events across all fields, chronological. Agent actions, market moves, meeting entries, proposals.
+- **"Your agents worked overnight"** — morning-style summary. What happened while you were away. Not a greeting — a status report.
+- **Needs Your Input** — items requiring the human's direction: proposals to approve, counter-evidence to respond to, questions agents are stuck on. This is the action queue. If empty, it disappears.
+- **Your Fields** — compact cards for each active field. Each card includes a short agent-generated status line that relates back to the user's strong opinions ("agents are pushing back on your take on X" or "new data confirms your read on Y"). Not just stats — context about where things stand relative to what the user said.
+- **Recent Activity** — last ~10 events across all fields. Agent actions tied to deliberation, not generic system events.
 
 **What this is NOT:**
 - Not a P&L chart
 - Not a portfolio summary
-- Not a leaderboard
-- It's an operations view. "Here's what needs you."
+- Not a "good morning" greeting card
+- It's a briefing. "Here's what your team found while you were gone."
 
 ---
 
@@ -304,6 +296,8 @@ Agents assigned to this field.
 - **Positions:** All open positions across all fields, with P&L
 - **Flow:** Recent deposits, withdrawals, trades — chronological
 
+**Preview/empty state:** Show the full treasury layout with mock data — a realistic example of what this looks like with 3 fields, 5 agents, and several positions. The user should immediately understand what this page will feel like when they're using it. Subtle indicator that this is preview data ("Sample data — fund your first agent to get started").
+
 **What this is NOT:**
 - Not a chart-first trading view
 - Not a P&L leaderboard
@@ -322,6 +316,8 @@ Agents assigned to this field.
 - Filterable by: field, agent, action type
 - Each entry links to its context (the meeting, the field, the position)
 
+**Preview/empty state:** Show a realistic mock activity feed — what a typical day looks like with agents working across fields. Meeting entries, source discoveries, proposals, position actions. The user should see the texture of daily agent activity before they've generated any. Subtle indicator: "Sample activity — create your first field to start."
+
 ---
 
 ### 8. Settings (`/dashboard/settings`)
@@ -334,64 +330,80 @@ Agents assigned to this field.
 - **Notifications:** What triggers alerts (proposals, meetings, threshold breaches)
 - **Wallet Management:** Fund agent wallets, set limits
 
+**Preview/empty state:** All settings sections visible with sensible defaults pre-filled. Nothing is hidden or locked. The user can see what's configurable even before they have agents or capital deployed.
+
 ---
 
 ## User Flows
 
-### Flow 1: New User Onboarding
+### Flow 1: New User — First Field Creation
 ```
 Sign up / Log in
-  → Dashboard Overview (empty state)
-  → Prompt: "Define your first field — what do you know?"
-  → Field creation: name, conviction statement
-  → Prompt: "Add some sources" (optional, skippable)
-  → Prompt: "Hire your first agent" → /hire-agents
-  → Agent attached to field
-  → First meeting auto-starts
-  → User sees agents deliberating
+  → Dashboard Overview with demo field showing agents mid-deliberation
+  → User clicks "+ New Field"
+  → Step 1: Names a topic ("2026 midterms") — 2-4 words
+  → Step 2: System generates situational briefing
+      (consensus odds, active chatter, key narratives, relevant markets)
+  → Step 3: User records strong opinions — audio preferred, text accepted
+      ("I think everyone's wrong about the red wave because...")
+  → Agents auto-assigned (starter council)
+  → First meeting starts immediately, informed by user's opinions + briefing
+  → User lands on Field Detail → Meeting tab, agents already working
 ```
 
 ### Flow 2: Daily Check-in
 ```
 Open Dashboard
-  → Overview: see "Needs Attention" items
-  → Click into field with pending proposals
-  → Review meeting thread
-  → Approve/reject proposals
-  → Optionally add a comment to redirect deliberation
-  → Back to overview — clear
+  → Overview: "Your agents worked overnight" summary
+  → See what needs attention (proposals, new evidence, pushback)
+  → Click into field
+  → Review meeting thread — see where agents went
+  → Provide direction: reinforce, redirect, shut down, add nuance
+  → Approve/reject any proposed positions
+  → Optionally drop new sources or record additional strong opinions
+  → Back to overview
 ```
 
-### Flow 3: New Conviction
+### Flow 3: New Strong Opinion (adding to existing field)
 ```
-Dashboard → + New Field
-  → Name it, write conviction statement
-  → Add sources (articles, notes)
-  → Assign agents from existing pool (or hire new ones)
-  → Agents start first meeting
-  → Deliberation begins
+Field Detail → record new input (audio/text)
+  → "I just read X and it changes my thinking on Y"
+  → Agents integrate as ground truth
+  → Meeting thread responds — research adjusts, positions recalibrated
 ```
 
-### Flow 4: Capital Deployment
+### Flow 4: New Field from Expansion
+```
+Agents surface: "Related thesis worth exploring"
+  → User clicks through
+  → Pre-populated briefing on related topic
+  → User records strong opinions
+  → New field created, agents assigned
+```
+
+### Flow 5: Capital Deployment
 ```
 Agent proposes a market position in a meeting
-  → User sees proposal highlighted in meeting thread
-  → Reviews reasoning and cited sources
+  → Proposal rendered distinctly (not chat — action card with reasoning chain)
+  → User sees: strong opinion → agent research → evidence → proposed position
   → Approves with optional capital limit
   → Position opened, tracked in Positions tab and Treasury
+  → Every position traces back to a strong opinion
 ```
 
 ---
 
 ## Empty States
 
-Every page needs a meaningful empty state that drives the user toward the next action:
+Every page needs a meaningful empty state that drives toward the next action. No blank pages, no "coming soon."
 
-- **Overview (no fields):** "You don't have any fields yet. Define your first domain of conviction." → `+ New Field`
-- **Field detail (no agents):** "This field has no council. Hire an agent to start deliberating." → `Hire Agent`
-- **Field detail (no sources):** "No source material yet. Drop articles, links, or notes to give your agents context." → `Add Source`
-- **Meeting (no entries):** "No meetings yet. Start one to kick off deliberation." → `Start Meeting`
-- **Treasury (no capital):** "No capital deployed. Fund an agent wallet to start." → `Fund Wallet`
+- **Overview (no fields):** Demo field showing agents mid-deliberation on a real topic. CTA: "Want your own? Tell us what you know." → `+ New Field`
+- **Field detail (no agents):** "This field needs a council. Hire agents to start researching your opinions." → `Hire Agent`
+- **Field detail (no sources):** "No source material yet. Drop articles, links, or notes — or let your agents find their own." → `Add Source`
+- **Meeting (no entries):** "Record your strong opinions to kick off the first meeting." → `Record`
+- **Treasury (no capital):** Preview of what treasury will look like with mock data. "Fund an agent wallet to start deploying." → `Fund Wallet`
+- **Activity (no events):** Preview with mock activity entries showing what a typical day looks like. "Create your first field to start generating activity."
+- **Settings:** All options visible with current defaults, even if nothing is configured yet.
 
 ---
 

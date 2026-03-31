@@ -74,13 +74,6 @@ const secondaryItems = [
   },
 ]
 
-const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded transition-colors ${
-    isActive
-      ? 'text-white bg-neutral-800'
-      : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
-  }`
-
 export default function AgentDashboard() {
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
@@ -93,7 +86,13 @@ export default function AgentDashboard() {
                 key={item.href}
                 to={item.href}
                 end={item.end}
-                className={navLinkClass}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded transition-colors ${
+                    isActive
+                      ? 'text-white bg-neutral-800'
+                      : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
+                  }`
+                }
               >
                 {item.icon}
                 {item.label}
@@ -109,7 +108,13 @@ export default function AgentDashboard() {
                 key={item.href}
                 to={item.href}
                 end={item.end}
-                className={navLinkClass}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded transition-colors ${
+                    isActive
+                      ? 'text-white bg-neutral-800'
+                      : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
+                  }`
+                }
               >
                 {item.icon}
                 {item.label}

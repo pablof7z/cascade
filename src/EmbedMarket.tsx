@@ -150,7 +150,7 @@ export default function EmbedMarket() {
           View on Contrarian →
         </a>
         <div className={`flex items-center gap-1.5 text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-          <CascadeLogo theme={theme} />
+          <ContrarianLogo theme={theme} />
           <span>Powered by Contrarian</span>
         </div>
       </div>

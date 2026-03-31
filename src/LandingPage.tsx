@@ -447,13 +447,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
     { title: 'Quantum supremacy in drug discovery', prob: 0.08, change: +0.02, volume: '$38', mcap: '$150', category: 'Tech' },
   ]
 
-  const hotDebateSample = [
-    { title: 'The Great Decoupling — AI productivity gains don\'t translate to wage growth', yes: 52, traders: 312, comments: 89 },
-    { title: 'China GDP surpasses US', yes: 48, traders: 412, comments: 67 },
-    { title: 'Climate migration reshapes global politics', yes: 51, traders: 189, comments: 43 },
-    { title: 'Space economy exceeds $1T by 2040', yes: 47, traders: 256, comments: 55 },
-  ]
-
   const newThisWeekSample = [
     { title: 'Quantum error correction milestone by 2027', category: 'Tech', prob: 0.33, timeAgo: '2h ago' },
     { title: 'EU passes comprehensive AI regulation', category: 'Governance', prob: 0.71, timeAgo: '5h ago' },
@@ -769,8 +762,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
 
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)] lg:gap-12">
           {(() => {
-            const debates = useHotDebates
-              ? useHotDebates.map(entry => {
+            if (!useHotDebates) return null
+
+            const debates = useHotDebates.map(entry => {
                   const metrics = deriveMarketMetrics(entry.market)
                   const yes = Math.round(metrics.longPositionShare * 100)
                   const discussionContext = getRelatedDiscussions(entry.market.title)
@@ -794,22 +788,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
                     entry,
                   }
                 })
-              : hotDebateSample.map(s => ({
-                  ...s,
-                  spread: Math.abs(s.yes - 50),
-                  volume: formatCurrency(s.traders * 28),
-                  marketCap: formatCurrency(s.traders * 110),
-                  chart: [
-                    Math.max(1, s.yes - 8),
-                    Math.max(1, s.yes - 5),
-                    Math.max(1, s.yes - 1),
-                    Math.min(99, s.yes + 2),
-                    Math.max(1, s.yes - 2),
-                    s.yes,
-                  ],
-                  discussionContext: getRelatedDiscussions(s.title),
-                  entry: null as MarketEntry | null,
-                }))
 
             return (
               <>
@@ -830,9 +808,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                         key={debate.title}
                         type="button"
                         className="grid w-full grid-cols-[minmax(0,1.4fr)_88px_76px_72px_88px] gap-3 py-4 text-left border-b border-neutral-800/20 last:border-0 hover:bg-neutral-900/30 transition-colors"
-                        onClick={() =>
-                          debate.entry ? navigateFromHomepage('most_disputed_market', debate.entry) : undefined
-                        }
+                        onClick={() => navigateFromHomepage('most_disputed_market', debate.entry)}
                       >
                         <div className="min-w-0 pr-2">
                           <div className="flex items-center gap-2 mb-1">
@@ -889,9 +865,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                         <button
                           type="button"
                           className="text-left w-full"
-                          onClick={() =>
-                            debate.entry ? navigateFromHomepage('most_disputed_market', debate.entry) : undefined
-                          }
+                          onClick={() => navigateFromHomepage('most_disputed_market', debate.entry)}
                         >
                           <div className="text-[10px] uppercase tracking-[0.18em] text-neutral-600 mb-2">
                             {debate.spread}pt spread

@@ -37,7 +37,7 @@ const PROFILES: Record<string, StoredProfile> = {
     displayName: 'You',
     role: 'account owner',
     bio: 'Running the demo book, launching thesis markets, and pressure-testing the public argument layer.',
-    location: 'Cascade local demo',
+    location: 'Contrarian local demo',
     conviction: 'Building a durable book around open-ended theses.',
     joined: 'Today',
     followers: 14,

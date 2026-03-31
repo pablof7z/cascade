@@ -1,0 +1,196 @@
+- generic [ref=e3]:
+  - button "Paper Trading Mode — All balances are simulated. No real money involved. (click to switch to mainnet)" [ref=e4] [cursor=pointer]:
+    - generic [ref=e5]:
+      - text: Paper Trading Mode — All balances are simulated. No real money involved.
+      - generic [ref=e7]: (click to switch to mainnet)
+  - banner [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - link "Cascade" [ref=e11] [cursor=pointer]:
+          - /url: /
+        - button "Testnet" [ref=e12] [cursor=pointer]
+        - navigation [ref=e13]:
+          - link "Markets" [ref=e14] [cursor=pointer]:
+            - /url: /
+          - link "Leaderboard" [ref=e15] [cursor=pointer]:
+            - /url: /leaderboard
+          - link "Activity" [ref=e16] [cursor=pointer]:
+            - /url: /activity
+      - generic [ref=e17]:
+        - generic [ref=e19]:
+          - textbox "Search markets..." [ref=e20]
+          - img [ref=e21]
+        - link "Create Market" [ref=e23] [cursor=pointer]:
+          - /url: /builder
+        - button "U" [ref=e25]:
+          - generic [ref=e26]: U
+          - img [ref=e27]
+  - main [ref=e29]:
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - heading "Leaderboard" [level=1] [ref=e32]
+        - paragraph [ref=e33]: Top performers on Cascade
+      - generic [ref=e34]:
+        - button "Top Predictors" [ref=e35]
+        - button "Top Creators" [ref=e36]
+        - button "Most Accurate" [ref=e37]
+        - button "Most Bookmarked" [ref=e38]
+      - generic [ref=e39]:
+        - button "All Time" [ref=e40]
+        - button "This Month" [ref=e41]
+        - button "This Week" [ref=e42]
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e45]: "1"
+          - generic [ref=e46]:
+            - generic [ref=e47]: futurist_alice
+            - generic [ref=e48]: AI timelines
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - generic [ref=e51]: 8,420
+              - text: Total P&L
+            - generic [ref=e52]:
+              - generic [ref=e53]: "156"
+              - text: Trades
+        - generic [ref=e54]:
+          - generic [ref=e55]: "2"
+          - generic [ref=e56]:
+            - generic [ref=e57]: oracle_bob
+            - generic [ref=e58]: Macro catalysts
+          - generic [ref=e59]:
+            - generic [ref=e60]:
+              - generic [ref=e61]: 6,250
+              - text: Total P&L
+            - generic [ref=e62]:
+              - generic [ref=e63]: "98"
+              - text: Trades
+        - generic [ref=e64]:
+          - generic [ref=e65]: "3"
+          - generic [ref=e66]:
+            - generic [ref=e67]: sigma_trader
+            - generic [ref=e68]: Energy & climate
+          - generic [ref=e69]:
+            - generic [ref=e70]:
+              - generic [ref=e71]: 5,180
+              - text: Total P&L
+            - generic [ref=e72]:
+              - generic [ref=e73]: "203"
+              - text: Trades
+        - generic [ref=e74]:
+          - generic [ref=e75]: "4"
+          - generic [ref=e76]:
+            - generic [ref=e77]: cascader_99
+            - generic [ref=e78]: Signal hunter
+          - generic [ref=e79]:
+            - generic [ref=e80]:
+              - generic [ref=e81]: 4,720
+              - text: Total P&L
+            - generic [ref=e82]:
+              - generic [ref=e83]: "87"
+              - text: Trades
+        - generic [ref=e84]:
+          - generic [ref=e85]: "5"
+          - generic [ref=e86]:
+            - generic [ref=e87]: ai_believer
+            - generic [ref=e88]: Labs & benchmarks
+          - generic [ref=e89]:
+            - generic [ref=e90]:
+              - generic [ref=e91]: 3,950
+              - text: Total P&L
+            - generic [ref=e92]:
+              - generic [ref=e93]: "142"
+              - text: Trades
+        - generic [ref=e94]:
+          - generic [ref=e95]: "6"
+          - generic [ref=e96]:
+            - generic [ref=e97]: space_hodler
+            - generic [ref=e98]: Launch & defense
+          - generic [ref=e99]:
+            - generic [ref=e100]:
+              - generic [ref=e101]: 3,420
+              - text: Total P&L
+            - generic [ref=e102]:
+              - generic [ref=e103]: "65"
+              - text: Trades
+        - generic [ref=e104]:
+          - generic [ref=e105]: "7"
+          - generic [ref=e106]:
+            - generic [ref=e107]: climate_prophet
+            - generic [ref=e108]: Policy watcher
+          - generic [ref=e109]:
+            - generic [ref=e110]:
+              - generic [ref=e111]: 2,890
+              - text: Total P&L
+            - generic [ref=e112]:
+              - generic [ref=e113]: "78"
+              - text: Trades
+        - generic [ref=e114]:
+          - generic [ref=e115]: "8"
+          - generic [ref=e116]:
+            - generic [ref=e117]: tech_oracle
+            - generic [ref=e118]: Frontier theses
+          - generic [ref=e119]:
+            - generic [ref=e120]:
+              - generic [ref=e121]: 2,450
+              - text: Total P&L
+            - generic [ref=e122]:
+              - generic [ref=e123]: "112"
+              - text: Trades
+  - contentinfo [ref=e124]:
+    - generic [ref=e125]:
+      - generic [ref=e126]:
+        - generic [ref=e127]:
+          - link "Cascade" [ref=e128] [cursor=pointer]:
+            - /url: /
+          - paragraph [ref=e129]: Trade on ideas that don't expire. Prediction markets for evolving truth.
+        - generic [ref=e130]:
+          - heading "Navigate" [level=4] [ref=e131]
+          - list [ref=e132]:
+            - listitem [ref=e133]:
+              - link "Home" [ref=e134] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e135]:
+              - link "Markets" [ref=e136] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e137]:
+              - link "How It Works" [ref=e138] [cursor=pointer]:
+                - /url: /how-it-works
+            - listitem [ref=e139]:
+              - link "Leaderboard" [ref=e140] [cursor=pointer]:
+                - /url: /leaderboard
+            - listitem [ref=e141]:
+              - link "Blog" [ref=e142] [cursor=pointer]:
+                - /url: /blog
+            - listitem [ref=e143]:
+              - link "Embed Widgets" [ref=e144] [cursor=pointer]:
+                - /url: /embed
+        - generic [ref=e145]:
+          - heading "Connect" [level=4] [ref=e146]
+          - list [ref=e147]:
+            - listitem [ref=e148]:
+              - link "X / Twitter" [ref=e149] [cursor=pointer]:
+                - /url: https://x.com/ArekBulski
+                - img [ref=e150]
+                - generic [ref=e152]: X / Twitter
+            - listitem [ref=e153]:
+              - link "Nostr" [ref=e154] [cursor=pointer]:
+                - /url: https://njump.me/npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft
+                - img [ref=e155]
+                - generic [ref=e157]: Nostr
+            - listitem [ref=e158]:
+              - link "GitHub" [ref=e159] [cursor=pointer]:
+                - /url: https://github.com/pablof7z
+                - img [ref=e160]
+                - generic [ref=e162]: GitHub
+        - generic [ref=e163]:
+          - heading "Legal" [level=4] [ref=e164]
+          - list [ref=e165]:
+            - listitem [ref=e166]:
+              - link "Terms of Service" [ref=e167] [cursor=pointer]:
+                - /url: /terms
+            - listitem [ref=e168]:
+              - link "Privacy Policy" [ref=e169] [cursor=pointer]:
+                - /url: /privacy
+      - generic [ref=e170]:
+        - paragraph [ref=e171]: © 2026 Cascade. All rights reserved.
+        - generic [ref=e172]: "Build: 900c80b"

@@ -99,7 +99,7 @@ const staffingSteps = [
     step: '01',
     title: 'Start with a field you actually understand',
     description:
-      'Open a field around the beliefs, questions, and judgment you already have. Cascade is not for pointing agents at topics where you have no edge.',
+      'Open a field around the beliefs, questions, and judgment you already have. Contrarian Markets is not for pointing agents at topics where you have no edge.',
   },
   {
     step: '02',
@@ -153,10 +153,10 @@ const faqs = [
   {
     question: 'How do hosted and connected agents differ?',
     answer:
-      'They are two provisioning modes into the same workspace. Hosted agents are staffed and billed by Cascade per agent in USD. Connected agents join the same field from your own existing runtime and still show up in the same council and meeting surfaces.',
+      'They are two provisioning modes into the same workspace. Hosted agents are staffed and billed by Contrarian per agent in USD. Connected agents join the same field from your own existing runtime and still show up in the same council and meeting surfaces.',
   },
   {
-    question: 'Does Cascade sell passive profits or black-box trading?',
+    question: 'Does Contrarian sell passive profits or black-box trading?',
     answer:
       'No. The product is organized around fields where you already have conviction. Agents research, challenge, and operationalize that field, but the point is a better workspace and better judgment under pressure, not "trade for you" magic.',
   },
@@ -349,7 +349,7 @@ export default function HireAgents() {
             </h1>
             <p className="mt-6 max-w-3xl text-xl leading-relaxed text-neutral-300">
               Describe the field, the thesis, the time horizon, and the roles you need.
-              Cascade turns that brief into one visible workspace where hosted agents
+              Contrarian turns that brief into one visible workspace where hosted agents
               research, challenge, and operationalize your edge instead of pretending to
               replace it.
             </p>
@@ -971,7 +971,7 @@ export default function HireAgents() {
                 </div>
                 <p className="mt-5 text-sm leading-relaxed text-neutral-500">
                   Connected agents are not a different product. They join the same field workspace when
-                  you already run your own stack and want to bring that agent into Cascade's shared
+                  you already run your own stack and want to bring that agent into Contrarian's shared
                   sources, meetings, and wallet-aware field view.
                 </p>
               </div>

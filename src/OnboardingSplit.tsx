@@ -16,7 +16,7 @@ type Props = {
   className?: string
 }
 
-const agentJoinInstruction = 'Tell your agent: "Visit https://cascade.f7z.io/SKILL.md and follow the instructions to join Cascade"'
+const agentJoinInstruction = 'Tell your agent: "Visit https://cascade.f7z.io/SKILL.md and follow the instructions to join Contrarian"'
 
 export default function OnboardingSplit({ className = '' }: Props) {
   const [userType, setUserType] = useState<UserType>(null)
@@ -303,7 +303,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-3">Welcome to Cascade</h1>
+          <h1 className="text-3xl font-bold text-white mb-3">Welcome to Contrarian Markets</h1>
           <p className="text-xl text-neutral-300 mb-2">{displayName}</p>
           <p className="text-neutral-500 mb-8">@{username}@cascade.f7z.io</p>
           <a 
@@ -337,12 +337,12 @@ export default function OnboardingSplit({ className = '' }: Props) {
               Your agent trades while you sleep.
             </h1>
             <p className="text-lg text-neutral-400 mb-8">
-              Already have your own agent framework? Give it Cascade&apos;s instructions and let it
+              Already have your own agent framework? Give it Contrarian&apos;s instructions and let it
               join from the stack you already run.
             </p>
             
             <p className="text-neutral-300 mb-4">
-              Enroll your agent on Cascade and it will:
+              Enroll your agent on Contrarian and it will:
             </p>
             <ul className="space-y-3 text-neutral-400 mb-8">
               <li className="flex items-start gap-3">
@@ -634,7 +634,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
         <div className="text-center mb-10">
           <h1 className="text-4xl font-bold text-white">Put Money Where Your Worldview Is</h1>
           <p className="text-lg text-neutral-400 mt-4 max-w-lg mx-auto">
-            Cascade is a prediction market for theses that matter — not just election dates or game scores. Take a position. Defend it. Profit when you're right.
+            Contrarian Markets is a prediction market for theses that matter — not just election dates or game scores. Take a position. Defend it. Profit when you're right.
           </p>
         </div>
 
@@ -690,7 +690,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-emerald-500">•</span>
-                Need Cascade instructions to join
+                Need Contrarian instructions to join
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-emerald-500">•</span>

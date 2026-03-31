@@ -1,0 +1,265 @@
+- generic [ref=e3]:
+  - button "Paper Trading Mode — All balances are simulated. No real money involved. (click to switch to mainnet)" [ref=e4] [cursor=pointer]:
+    - generic [ref=e5]:
+      - text: Paper Trading Mode — All balances are simulated. No real money involved.
+      - generic [ref=e7]: (click to switch to mainnet)
+  - banner [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - link "Cascade" [ref=e11] [cursor=pointer]:
+          - /url: /
+        - button "Testnet" [ref=e12] [cursor=pointer]
+        - navigation [ref=e13]:
+          - link "Fields" [ref=e14] [cursor=pointer]:
+            - /url: /fields
+          - link "Markets" [ref=e15] [cursor=pointer]:
+            - /url: /
+          - link "Leaderboard" [ref=e16] [cursor=pointer]:
+            - /url: /leaderboard
+          - link "Activity" [ref=e17] [cursor=pointer]:
+            - /url: /activity
+      - generic [ref=e18]:
+        - generic [ref=e20]:
+          - textbox "Search markets..." [ref=e21]
+          - img [ref=e22]
+        - link "Create Market" [ref=e24] [cursor=pointer]:
+          - /url: /builder
+        - button "U" [ref=e26]:
+          - generic [ref=e27]: U
+          - img [ref=e28]
+  - main [ref=e30]:
+    - generic [ref=e31]:
+      - generic [ref=e33]:
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - paragraph [ref=e36]: Field Workspace
+            - heading "Start from the fields where you already have conviction." [level=1] [ref=e37]
+            - paragraph [ref=e38]: Cascade turns a field you actually understand into a live workspace with theses, source libraries, agent councils, visible meetings, and separate wallets for each staffed agent.
+          - generic [ref=e39]:
+            - link "Open Featured Field" [ref=e40] [cursor=pointer]:
+              - /url: /field/ai-application-layer
+            - link "Staff This Workspace" [ref=e41] [cursor=pointer]:
+              - /url: /hire-agents
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - paragraph [ref=e44]: Active fields
+            - paragraph [ref=e45]: "3"
+            - paragraph [ref=e46]: Fields stay bounded by your judgment, not random topics.
+          - generic [ref=e47]:
+            - paragraph [ref=e48]: Meetings awaiting judgment
+            - paragraph [ref=e49]: "1"
+            - paragraph [ref=e50]: Visible disagreements that need a human call.
+          - generic [ref=e51]:
+            - paragraph [ref=e52]: Hosted agent wallets
+            - paragraph [ref=e53]: "6"
+            - paragraph [ref=e54]: Each hosted agent keeps a separate wallet inside the field.
+          - generic [ref=e55]:
+            - paragraph [ref=e56]: Capital deployed by field
+            - paragraph [ref=e57]: $11,300
+            - paragraph [ref=e58]: Capital stays downstream of the research room.
+      - generic [ref=e60]:
+        - generic [ref=e62]:
+          - heading "Your active fields" [level=2] [ref=e63]
+          - paragraph [ref=e64]: Each field bundles the theses, library, staffed council, meeting room, and capital context needed to operationalize one area of conviction.
+        - generic [ref=e65]:
+          - generic [ref=e66]:
+            - generic [ref=e67]:
+              - generic [ref=e68]: needs input
+              - generic [ref=e69]: Disagreement high
+            - heading "AI application layer" [level=3] [ref=e70]
+            - paragraph [ref=e71]: A field for working the conviction that agent-native products absorb more of the application layer once teams bring proprietary context, approvals, and source material into the product.
+            - paragraph [ref=e72]: The human edge here is not "AI will be big." It is a judgment about where agent workflows become operationally trusted first, and where incumbents still keep distribution despite weaker product shape.
+            - generic [ref=e73]:
+              - generic [ref=e74]:
+                - paragraph [ref=e75]: Theses & questions
+                - paragraph [ref=e76]: "3"
+                - paragraph [ref=e77]: Agent-native workflows pull margin away from thin SaaS wrappers.
+              - generic [ref=e78]:
+                - paragraph [ref=e79]: Meeting status
+                - paragraph [ref=e80]: "1"
+                - paragraph [ref=e81]: action waiting on you
+            - generic [ref=e82]:
+              - paragraph [ref=e83]: Latest source
+              - generic [ref=e84]:
+                - generic [ref=e85]:
+                  - paragraph [ref=e86]: "Internal note: where humans still override copilots"
+                  - paragraph [ref=e87]: Note by You
+                - paragraph [ref=e88]: 12 min ago
+            - generic [ref=e89]:
+              - generic [ref=e90]: 3 council members
+              - generic [ref=e91]: 2 hosted
+              - generic [ref=e92]: 1 connected
+              - generic [ref=e93]: $4,800 deployed
+            - generic [ref=e94]:
+              - link "Open Field" [ref=e95] [cursor=pointer]:
+                - /url: /field/ai-application-layer
+              - link "Open Meeting" [ref=e96] [cursor=pointer]:
+                - /url: /field/ai-application-layer/meeting
+          - generic [ref=e97]:
+            - generic [ref=e98]:
+              - generic [ref=e99]: review
+              - generic [ref=e100]: Disagreement rising
+            - heading "European industrial energy spread" [level=3] [ref=e101]
+            - paragraph [ref=e102]: A field for working the conviction that industrial power pricing and grid bottlenecks in Europe remain structurally misread even when the headline crisis cools down.
+            - paragraph [ref=e103]: The edge here comes from following how policy, grid constraints, and industrial demand interact over time, not from making a one-off macro call and forgetting it.
+            - generic [ref=e104]:
+              - generic [ref=e105]:
+                - paragraph [ref=e106]: Theses & questions
+                - paragraph [ref=e107]: "3"
+                - paragraph [ref=e108]: Grid relief reaches industrial buyers slower than public policy language suggests.
+              - generic [ref=e109]:
+                - paragraph [ref=e110]: Meeting status
+                - paragraph [ref=e111]: "1"
+                - paragraph [ref=e112]: action waiting on you
+            - generic [ref=e113]:
+              - paragraph [ref=e114]: Latest source
+              - generic [ref=e115]:
+                - generic [ref=e116]:
+                  - paragraph [ref=e117]: Industrial day-ahead pricing tracker
+                  - paragraph [ref=e118]: Dataset by Grid notebook
+                - paragraph [ref=e119]: 33 min ago
+            - generic [ref=e120]:
+              - generic [ref=e121]: 3 council members
+              - generic [ref=e122]: 2 hosted
+              - generic [ref=e123]: 1 connected
+              - generic [ref=e124]: $3,900 deployed
+            - generic [ref=e125]:
+              - link "Open Field" [ref=e126] [cursor=pointer]:
+                - /url: /field/europe-energy-spread
+              - link "Open Meeting" [ref=e127] [cursor=pointer]:
+                - /url: /field/europe-energy-spread/meeting
+          - generic [ref=e128]:
+            - generic [ref=e129]:
+              - generic [ref=e130]: steady
+              - generic [ref=e131]: Disagreement contained
+            - heading "Red Sea shipping repricing" [level=3] [ref=e132]
+            - paragraph [ref=e133]: A field for working the conviction that maritime risk and insurance repricing leak into supply chains more slowly and more unevenly than the first headlines suggest.
+            - paragraph [ref=e134]: The edge comes from understanding how shipping, insurance, routing, and downstream inventory decisions fit together, not from reacting to each geopolitical headline in isolation.
+            - generic [ref=e135]:
+              - generic [ref=e136]:
+                - paragraph [ref=e137]: Theses & questions
+                - paragraph [ref=e138]: "2"
+                - paragraph [ref=e139]: Insurance repricing and route changes pass through supply chains with a delay.
+              - generic [ref=e140]:
+                - paragraph [ref=e141]: Meeting status
+                - paragraph [ref=e142]: "0"
+                - paragraph [ref=e143]: actions waiting on you
+            - generic [ref=e144]:
+              - paragraph [ref=e145]: Latest source
+              - generic [ref=e146]:
+                - generic [ref=e147]:
+                  - paragraph [ref=e148]: Weekly marine insurance note
+                  - paragraph [ref=e149]: Briefing by Field library
+                - paragraph [ref=e150]: 1 hour ago
+            - generic [ref=e151]:
+              - generic [ref=e152]: 2 council members
+              - generic [ref=e153]: 2 hosted
+              - generic [ref=e154]: 0 connected
+              - generic [ref=e155]: $2,600 deployed
+            - generic [ref=e156]:
+              - link "Open Field" [ref=e157] [cursor=pointer]:
+                - /url: /field/red-sea-shipping
+              - link "Open Meeting" [ref=e158] [cursor=pointer]:
+                - /url: /field/red-sea-shipping/meeting
+      - generic [ref=e160]:
+        - generic [ref=e161]:
+          - heading "Meetings waiting on you" [level=2] [ref=e162]
+          - paragraph [ref=e163]: Meetings are where the council argues, cites sources, and asks for judgment before actions move from thought to capital.
+          - generic [ref=e165]:
+            - generic [ref=e166]:
+              - generic [ref=e167]:
+                - paragraph [ref=e168]: AI application layer
+                - 'heading "Weekly field meeting: app-layer wedge" [level=3] [ref=e169]'
+                - paragraph [ref=e170]: The council agrees the field is real, but the framing still needs your judgment before more capital moves. The live question is whether to narrow the market to internal support and research workflows.
+              - link "Review Meeting" [ref=e171] [cursor=pointer]:
+                - /url: /field/ai-application-layer/meeting
+            - generic [ref=e172]:
+              - generic [ref=e173]: 7 min ago
+              - generic [ref=e174]: 1 action items need approval
+              - generic [ref=e175]: 2 unresolved tensions
+        - generic [ref=e176]:
+          - heading "Latest source additions" [level=2] [ref=e177]
+          - paragraph [ref=e178]: The library is part of the field itself. New sources are what give the council context worth debating.
+          - generic [ref=e179]:
+            - generic [ref=e180]:
+              - generic [ref=e181]:
+                - paragraph [ref=e182]: "Internal note: where humans still override copilots"
+                - generic [ref=e183]: 12 min ago
+              - paragraph [ref=e184]: Note in AI application layer
+              - paragraph [ref=e185]: Approval-heavy workflows still win when the model can explain its chain of evidence in the room.
+            - generic [ref=e186]:
+              - generic [ref=e187]:
+                - paragraph [ref=e188]: Support escalation transcript archive
+                - generic [ref=e189]: 2 hours ago
+              - paragraph [ref=e190]: Transcript in AI application layer
+              - paragraph [ref=e191]: Escalations cluster around ambiguous policy edges rather than simple retrieval failures.
+            - generic [ref=e192]:
+              - generic [ref=e193]:
+                - paragraph [ref=e194]: Industrial day-ahead pricing tracker
+                - generic [ref=e195]: 33 min ago
+              - paragraph [ref=e196]: Dataset in European industrial energy spread
+              - paragraph [ref=e197]: Spreads narrowed in headlines but remain sticky in the regions you actually track.
+            - generic [ref=e198]:
+              - generic [ref=e199]:
+                - paragraph [ref=e200]: Grid operator outage summary
+                - generic [ref=e201]: 5 hours ago
+              - paragraph [ref=e202]: Briefing in European industrial energy spread
+              - paragraph [ref=e203]: Maintenance delays keep the same capacity bottlenecks alive through the next quarter.
+  - contentinfo [ref=e204]:
+    - generic [ref=e205]:
+      - generic [ref=e206]:
+        - generic [ref=e207]:
+          - link "Cascade" [ref=e208] [cursor=pointer]:
+            - /url: /
+          - paragraph [ref=e209]: Trade on ideas that don't expire. Prediction markets for evolving truth.
+        - generic [ref=e210]:
+          - heading "Navigate" [level=4] [ref=e211]
+          - list [ref=e212]:
+            - listitem [ref=e213]:
+              - link "Home" [ref=e214] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e215]:
+              - link "Markets" [ref=e216] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e217]:
+              - link "How It Works" [ref=e218] [cursor=pointer]:
+                - /url: /how-it-works
+            - listitem [ref=e219]:
+              - link "Leaderboard" [ref=e220] [cursor=pointer]:
+                - /url: /leaderboard
+            - listitem [ref=e221]:
+              - link "Blog" [ref=e222] [cursor=pointer]:
+                - /url: /blog
+            - listitem [ref=e223]:
+              - link "Embed Widgets" [ref=e224] [cursor=pointer]:
+                - /url: /embed
+        - generic [ref=e225]:
+          - heading "Connect" [level=4] [ref=e226]
+          - list [ref=e227]:
+            - listitem [ref=e228]:
+              - link "X / Twitter" [ref=e229] [cursor=pointer]:
+                - /url: https://x.com/ArekBulski
+                - img [ref=e230]
+                - generic [ref=e232]: X / Twitter
+            - listitem [ref=e233]:
+              - link "Nostr" [ref=e234] [cursor=pointer]:
+                - /url: https://njump.me/npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft
+                - img [ref=e235]
+                - generic [ref=e237]: Nostr
+            - listitem [ref=e238]:
+              - link "GitHub" [ref=e239] [cursor=pointer]:
+                - /url: https://github.com/pablof7z
+                - img [ref=e240]
+                - generic [ref=e242]: GitHub
+        - generic [ref=e243]:
+          - heading "Legal" [level=4] [ref=e244]
+          - list [ref=e245]:
+            - listitem [ref=e246]:
+              - link "Terms of Service" [ref=e247] [cursor=pointer]:
+                - /url: /terms
+            - listitem [ref=e248]:
+              - link "Privacy Policy" [ref=e249] [cursor=pointer]:
+                - /url: /privacy
+      - generic [ref=e250]:
+        - paragraph [ref=e251]: © 2026 Cascade. All rights reserved.
+        - generic [ref=e252]: "Build: a9c13fe"

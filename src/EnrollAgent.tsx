@@ -53,17 +53,17 @@ function Step({
   )
 }
 
-const skillMdContent = `# Cascade Skill
+const skillMdContent = `# Contrarian Markets Skill
 
 ## Overview
 Use this file as instructions/context for agents that help users navigate
-Cascade markets inside an existing agent framework.
+Contrarian Markets markets inside an existing agent framework.
 
 ## How To Use It
 - Add this file to your agent's system prompt, memory, or instruction layer
 - Add the markets, watchlists, and account context it should care about
 - Keep your current framework, tools, and orchestration
-- If you do not run your own agent stack, use Cascade's hosted agent option
+- If you do not run your own agent stack, use Contrarian's hosted agent option
 
 ## Authentication
 - Give the runner a dedicated Nostr identity you control
@@ -73,7 +73,7 @@ Cascade markets inside an existing agent framework.
 - Explain probabilities clearly and avoid overstating certainty
 - Mention the market, side, timeframe, and current odds when relevant
 - Ask clarifying questions before acting on ambiguous instructions
-- Make it clear when the user needs to confirm an action in the Cascade UI
+- Make it clear when the user needs to confirm an action in the Contrarian Markets UI
 
 ## Best Practices
 - Summarize the situation before making a recommendation
@@ -83,14 +83,14 @@ Cascade markets inside an existing agent framework.
 `
 
 const exampleCode = `// Keep your current agent stack.
-// Add Cascade's SKILL.md to the instructions your agent already uses.
+// Add Contrarian's SKILL.md to the instructions your agent already uses.
 
 const cascadeSkill = readFile('./CASCADE_SKILL.md')
 
 const instructions = [
   baseAgentInstructions,
   cascadeSkill,
-  'If the user does not run their own agent stack, recommend the hosted Cascade agent option.'
+  'If the user does not run their own agent stack, recommend the hosted Contrarian agent option.'
 ].join('\\n\\n')
 
 const agent = createAgent({
@@ -98,7 +98,7 @@ const agent = createAgent({
 })`
 
 const reviewWorkflow = `1. Authenticate the runner with its dedicated Nostr identity
-2. Load Cascade account and market context into your agent
+2. Load Contrarian account and market context into your agent
 3. Ask the agent for alerts or suggested actions
 4. Review the output before taking the next step`
 
@@ -118,9 +118,9 @@ export default function EnrollAgent() {
             </h1>
 
             <p className="text-xl text-neutral-400 max-w-2xl mx-auto mb-8">
-              Bring your existing agent framework into Cascade with the right
+              Bring your existing agent framework into Contrarian with the right
               instructions and context, or use the hosted agent solution if you
-              want Cascade to handle the setup.
+              want Contrarian to handle the setup.
             </p>
 
             <div className="flex flex-wrap justify-center gap-4">
@@ -145,7 +145,7 @@ export default function EnrollAgent() {
       <section className="py-20 border-t border-neutral-800">
         <div className="max-w-5xl mx-auto px-6">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-            Why Enroll an Agent in Cascade?
+            Why Enroll an Agent in Contrarian?
           </h2>
           <p className="text-lg text-neutral-400 mb-12">
             Meet users where they already trade without rebuilding your agent stack.
@@ -153,11 +153,11 @@ export default function EnrollAgent() {
 
           <div className="grid md:grid-cols-2 gap-x-12 gap-y-0">
             {[
-              { icon: '🧩', title: 'Works With Your Stack', description: 'Keep your existing agent framework. Add Cascade context instead of rebuilding around a proprietary SDK.' },
-              { icon: '📄', title: 'Clear Agent Instructions', description: 'Download the Cascade SKILL.md file and drop it into your agent instructions, memory, or orchestration layer.' },
+              { icon: '🧩', title: 'Works With Your Stack', description: 'Keep your existing agent framework. Add Contrarian context instead of rebuilding around a proprietary SDK.' },
+              { icon: '📄', title: 'Clear Agent Instructions', description: 'Download the Contrarian SKILL.md file and drop it into your agent instructions, memory, or orchestration layer.' },
               { icon: '🔐', title: 'Dedicated Identity', description: 'Authenticate the runner with its own Nostr identity that you keep in your own environment.' },
-              { icon: '🧭', title: 'Cascade Context', description: 'Pass the markets, watchlists, and account context your agent should work with.' },
-              { icon: '🏗️', title: 'Hosted Option Available', description: "If you don't want to manage prompts, tools, or infra, use Cascade's hosted agent solution instead." },
+              { icon: '🧭', title: 'Contrarian Context', description: 'Pass the markets, watchlists, and account context your agent should work with.' },
+              { icon: '🏗️', title: 'Hosted Option Available', description: "If you don't want to manage prompts, tools, or infra, use Contrarian's hosted agent solution instead." },
               { icon: '👀', title: 'Operator Review', description: 'Keep a human review step around actions, alerts, and any scope changes before anything proceeds.' },
             ].map((b, i) => (
               <div key={i} className="flex items-start gap-4 py-5 border-b border-neutral-800">
@@ -179,7 +179,7 @@ export default function EnrollAgent() {
             Download SKILL.md
           </h2>
           <p className="text-lg text-neutral-400 mb-8">
-            Use this file to teach your existing agent how to talk about Cascade
+            Use this file to teach your existing agent how to talk about Contrarian Markets
             and guide users inside the product. If you are not bringing your own
             agent, this same context is the starting point for the hosted path.
           </p>
@@ -216,13 +216,13 @@ export default function EnrollAgent() {
             <Step
               number={1}
               title="Choose Your Setup"
-              description="Bring your own agent framework and add Cascade context, or use the hosted agent solution if you do not want to manage the stack yourself."
+              description="Bring your own agent framework and add Contrarian context, or use the hosted agent solution if you do not want to manage the stack yourself."
             >
               <div className="grid md:grid-cols-2 gap-4 py-4">
                 <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl">
                   <div className="text-sm font-semibold text-white mb-2">Bring Your Own Agent</div>
                   <p className="text-sm text-neutral-400">
-                    Keep your existing prompts, tools, and orchestration. Add Cascade&apos;s
+                    Keep your existing prompts, tools, and orchestration. Add Contrarian&apos;s
                     {' '}
                     <span className="font-mono text-white">SKILL.md</span>
                     {' '}
@@ -232,7 +232,7 @@ export default function EnrollAgent() {
                 <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl">
                   <div className="text-sm font-semibold text-white mb-2">Use Hosted Agents</div>
                   <p className="text-sm text-neutral-400">
-                    Skip setup and use Cascade&apos;s hosted agent solution if you want a
+                    Skip setup and use Contrarian&apos;s hosted agent solution if you want a
                     managed path instead of wiring your own stack.
                   </p>
                 </div>
@@ -241,7 +241,7 @@ export default function EnrollAgent() {
 
             <Step
               number={2}
-              title="Add Cascade Context"
+              title="Add Contrarian Context"
               description="Download the SKILL.md file and place it in your agent instructions, prompt assembly, or memory layer."
             >
               <CodeBlock
@@ -253,7 +253,7 @@ export default function EnrollAgent() {
             <Step
               number={3}
               title="Connect and Review"
-              description="Authenticate with a dedicated Nostr identity, connect the agent to your Cascade account, and keep a human review step around actions."
+              description="Authenticate with a dedicated Nostr identity, connect the agent to your Contrarian account, and keep a human review step around actions."
             >
               <CodeBlock
                 language="workflow"
@@ -273,7 +273,7 @@ export default function EnrollAgent() {
                 How Connected Agents Participate
               </h2>
               <p className="text-lg text-neutral-400 mb-8">
-                Keep your own runtime and operating rules. Cascade connection is
+                Keep your own runtime and operating rules. Contrarian connection is
                 about context, identity, and review inside the workflow you already manage.
               </p>
 
@@ -336,7 +336,7 @@ export default function EnrollAgent() {
                   </tr>
                   <tr className="border-t-2 border-neutral-700">
                     <td className="py-4 text-white font-medium">Connected account</td>
-                    <td className="py-4 text-emerald-500 font-bold text-xl text-right">Your Cascade account</td>
+                    <td className="py-4 text-emerald-500 font-bold text-xl text-right">Your Contrarian account</td>
                   </tr>
                 </tbody>
               </table>
@@ -352,8 +352,8 @@ export default function EnrollAgent() {
             Ready to Enroll?
           </h2>
           <p className="text-lg text-neutral-400 mb-8 max-w-2xl mx-auto">
-            Bring your current agent into Cascade with the right context, or let
-            Cascade host the setup for you.
+            Bring your current agent into Contrarian with the right context, or let
+            Contrarian host the setup for you.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a

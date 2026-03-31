@@ -16,7 +16,7 @@ export function NavHeader() {
     <header className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link to="/" className="text-xl font-bold text-white">
-          Cascade
+          Contrarian Markets
         </Link>
         
         <nav className="hidden md:flex items-center gap-1">

@@ -29,7 +29,7 @@ function ProbabilityBar({ probability, theme }: { probability: number; theme: Th
   )
 }
 
-function CascadeLogo({ theme }: { theme: Theme }) {
+function ContrarianLogo({ theme }: { theme: Theme }) {
   const isDark = theme === 'dark'
   return (
     <svg width="16" height="16" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -147,11 +147,11 @@ export default function EmbedMarket() {
           rel="noopener noreferrer"
           className={`text-xs font-medium transition-colors ${isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-500'}`}
         >
-          View on Cascade →
+          View on Contrarian →
         </a>
         <div className={`flex items-center gap-1.5 text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
           <CascadeLogo theme={theme} />
-          <span>Powered by Cascade</span>
+          <span>Powered by Contrarian</span>
         </div>
       </div>
     </div>

@@ -36,7 +36,7 @@ export function TermsOfService() {
           </p>
         </div>
         <p className="text-neutral-400">
-          By using Cascade, you agree to participate in our prediction markets platform responsibly. 
+          By using Contrarian Markets, you agree to participate in our prediction markets platform responsibly. 
           Full terms and conditions will be published here shortly.
         </p>
         <p className="text-neutral-500 text-sm mt-6">
@@ -67,7 +67,7 @@ export function PrivacyPolicy() {
           </p>
         </div>
         <p className="text-neutral-400">
-          Cascade is built on Nostr, a decentralized protocol. We minimize data collection 
+          Contrarian Markets is built on Nostr, a decentralized protocol. We minimize data collection 
           and respect your privacy. Full privacy policy details will be published here shortly.
         </p>
         <p className="text-neutral-500 text-sm mt-6">

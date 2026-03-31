@@ -58,13 +58,13 @@ function DemoEmbed() {
         </div>
       </div>
       <div className="px-4 py-2.5 flex items-center justify-between bg-neutral-800/50 border-t border-neutral-800">
-        <span className="text-xs font-medium text-emerald-400">View on Cascade →</span>
+        <span className="text-xs font-medium text-emerald-400">View on Contrarian →</span>
         <div className="flex items-center gap-1.5 text-xs text-neutral-500">
           <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
             <circle cx="16" cy="16" r="14" stroke="#10b981" strokeWidth="2" fill="none" />
             <path d="M10 16L14 20L22 12" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <span>Powered by Cascade</span>
+          <span>Powered by Contrarian</span>
         </div>
       </div>
     </div>
@@ -142,7 +142,7 @@ export default function EmbedLanding() {
           <div className="grid md:grid-cols-2 gap-12 items-start">
             <ol className="space-y-8">
               {[
-                { title: 'Find a market on Cascade', desc: 'Browse our markets or create your own prediction question.' },
+                { title: 'Find a market on Contrarian', desc: 'Browse our markets or create your own prediction question.' },
                 { title: 'Click the Embed button', desc: 'Look for the embed icon on any market page.' },
                 { title: 'Copy the iframe code', desc: 'We generate the embed code automatically for you.' },
                 { title: 'Paste into your site', desc: 'Works with Substack, Medium, WordPress, Ghost, or any HTML.' },
@@ -247,8 +247,8 @@ export default function EmbedLanding() {
                   </div>
                 </div>
                 <div className="px-4 py-2.5 flex items-center justify-between bg-neutral-50 border-t border-neutral-100">
-                  <span className="text-xs font-medium text-emerald-600">View on Cascade →</span>
-                  <span className="text-xs text-neutral-400">Powered by Cascade</span>
+                  <span className="text-xs font-medium text-emerald-600">View on Contrarian →</span>
+                  <span className="text-xs text-neutral-400">Powered by Contrarian</span>
                 </div>
               </div>
               <span className="text-sm text-neutral-500">Light theme preview</span>

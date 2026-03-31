@@ -56,7 +56,7 @@ export default function Footer() {
           {/* Brand Column */}
           <div className="md:col-span-1">
             <Link to="/" className="inline-block">
-              <span className="text-xl font-bold text-white">Cascade</span>
+              <span className="text-xl font-bold text-white">Contrarian Markets</span>
             </Link>
             <p className="mt-3 text-sm text-neutral-500 leading-relaxed">
               Trade on ideas that don't expire. Prediction markets for evolving truth.
@@ -121,7 +121,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="mt-12 pt-6 border-t border-neutral-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-neutral-500">
-            © {currentYear} Cascade. All rights reserved.
+            © {currentYear} Contrarian Markets. All rights reserved.
           </p>
           <span className="text-xs text-neutral-600 font-mono">
             Build: {__COMMIT_HASH__}

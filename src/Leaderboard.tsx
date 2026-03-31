@@ -124,7 +124,7 @@ export default function Leaderboard({ markets = {} }: LeaderboardProps) {
     <div className="max-w-4xl mx-auto px-4 py-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Leaderboard</h1>
-        <p className="text-neutral-400 mt-1">Top performers on Cascade</p>
+        <p className="text-neutral-400 mt-1">Top performers on Contrarian</p>
       </div>
 
       {/* Tabs */}

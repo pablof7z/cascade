@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const instruction = 'Tell your agent: "Visit https://cascade.f7z.io/SKILL.md and follow the instructions to join Cascade"'
+const instruction = 'Tell your agent: "Visit https://cascade.f7z.io/SKILL.md and follow the instructions to join Contrarian"'
 
 export default function AgentInstallPrompt({ className = '' }: { className?: string }) {
   const [copied, setCopied] = useState(false)

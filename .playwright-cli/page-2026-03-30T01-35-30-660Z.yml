@@ -1,0 +1,137 @@
+- generic [ref=e3]:
+  - button "Paper Trading Mode — All balances are simulated. No real money involved. (click to switch to mainnet)" [ref=e4] [cursor=pointer]:
+    - generic [ref=e5]:
+      - text: Paper Trading Mode — All balances are simulated. No real money involved.
+      - generic [ref=e7]: (click to switch to mainnet)
+  - banner [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - link "Cascade" [ref=e11] [cursor=pointer]:
+          - /url: /
+        - button "Testnet" [ref=e12] [cursor=pointer]
+        - navigation [ref=e13]:
+          - link "Fields" [ref=e14] [cursor=pointer]:
+            - /url: /fields
+          - link "Markets" [ref=e15] [cursor=pointer]:
+            - /url: /
+          - link "Leaderboard" [ref=e16] [cursor=pointer]:
+            - /url: /leaderboard
+          - link "Activity" [ref=e17] [cursor=pointer]:
+            - /url: /activity
+      - generic [ref=e18]:
+        - generic [ref=e20]:
+          - textbox "Search markets..." [ref=e21]
+          - img [ref=e22]
+        - link "Build Thesis" [ref=e24] [cursor=pointer]:
+          - /url: /builder
+        - button "U" [ref=e26]:
+          - generic [ref=e27]: U
+          - img [ref=e28]
+  - main [ref=e30]:
+    - generic [ref=e31]:
+      - link "← Back to markets" [ref=e32] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e36]: "NO"
+          - generic [ref=e37]:
+            - generic [ref=e38]:
+              - heading "Neuro Optimist" [level=1] [ref=e39]
+              - generic [ref=e40]: Mock profile
+            - paragraph [ref=e41]: "@neuro_optimist · market participant"
+            - paragraph [ref=e42]: Local-only mock profile used to make public discussion surfaces clickable in the demo app.
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - generic [ref=e45]: Location
+            - generic [ref=e46]: Cascade local demo
+          - generic [ref=e47]:
+            - generic [ref=e48]: Joined
+            - generic [ref=e49]: Recently
+          - generic [ref=e50]:
+            - generic [ref=e51]: Followers
+            - generic [ref=e52]: "24"
+          - generic [ref=e53]:
+            - generic [ref=e54]: Win rate
+            - generic [ref=e55]: 54%
+          - generic [ref=e56]:
+            - generic [ref=e57]: P&L
+            - generic [ref=e58]: +$0.9K
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - generic [ref=e61]: Conviction
+          - paragraph [ref=e62]: Still building a public track record on this branch.
+          - generic [ref=e63]: Current focus
+          - generic [ref=e64]:
+            - generic [ref=e65]: Open-ended theses
+            - generic [ref=e66]: Signal markets
+            - generic [ref=e67]: Debate surfaces
+          - generic [ref=e68]: Recent notes
+          - generic [ref=e69]:
+            - generic [ref=e70]: Profile content is mocked locally so public identities can be opened from the app.
+            - generic [ref=e71]: The point of this page is navigation clarity, not production account plumbing.
+        - generic [ref=e72]:
+          - generic [ref=e73]: Known for
+          - generic [ref=e75]:
+            - generic [ref=e76]: The Great Decoupling — AI productivity gains don't translate to wage growth
+            - generic [ref=e77]: Public thesis or market this participant keeps returning to.
+          - generic [ref=e78]:
+            - generic [ref=e79]: Local-only note
+            - paragraph [ref=e80]: This page is intentionally mocked on this branch so public usernames and avatars can be opened from live app surfaces without reviving the old profile architecture.
+  - contentinfo [ref=e81]:
+    - generic [ref=e82]:
+      - generic [ref=e83]:
+        - generic [ref=e84]:
+          - link "Cascade" [ref=e85] [cursor=pointer]:
+            - /url: /
+          - paragraph [ref=e86]: Trade on ideas that don't expire. Prediction markets for evolving truth.
+        - generic [ref=e87]:
+          - heading "Navigate" [level=4] [ref=e88]
+          - list [ref=e89]:
+            - listitem [ref=e90]:
+              - link "Home" [ref=e91] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e92]:
+              - link "Markets" [ref=e93] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e94]:
+              - link "How It Works" [ref=e95] [cursor=pointer]:
+                - /url: /how-it-works
+            - listitem [ref=e96]:
+              - link "Leaderboard" [ref=e97] [cursor=pointer]:
+                - /url: /leaderboard
+            - listitem [ref=e98]:
+              - link "Blog" [ref=e99] [cursor=pointer]:
+                - /url: /blog
+            - listitem [ref=e100]:
+              - link "Embed Widgets" [ref=e101] [cursor=pointer]:
+                - /url: /embed
+        - generic [ref=e102]:
+          - heading "Connect" [level=4] [ref=e103]
+          - list [ref=e104]:
+            - listitem [ref=e105]:
+              - link "X / Twitter" [ref=e106] [cursor=pointer]:
+                - /url: https://x.com/ArekBulski
+                - img [ref=e107]
+                - generic [ref=e109]: X / Twitter
+            - listitem [ref=e110]:
+              - link "Nostr" [ref=e111] [cursor=pointer]:
+                - /url: https://njump.me/npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft
+                - img [ref=e112]
+                - generic [ref=e114]: Nostr
+            - listitem [ref=e115]:
+              - link "GitHub" [ref=e116] [cursor=pointer]:
+                - /url: https://github.com/pablof7z
+                - img [ref=e117]
+                - generic [ref=e119]: GitHub
+        - generic [ref=e120]:
+          - heading "Legal" [level=4] [ref=e121]
+          - list [ref=e122]:
+            - listitem [ref=e123]:
+              - link "Terms of Service" [ref=e124] [cursor=pointer]:
+                - /url: /terms
+            - listitem [ref=e125]:
+              - link "Privacy Policy" [ref=e126] [cursor=pointer]:
+                - /url: /privacy
+      - generic [ref=e127]:
+        - paragraph [ref=e128]: © 2026 Cascade. All rights reserved.
+        - generic [ref=e129]: "Build: d0acb3a"

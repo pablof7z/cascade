@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 /**
  * Testnet / Paper Trading Mode Configuration
  * 
- * Cascade supports both testnet (paper trading) and mainnet modes.
+ * Contrarian Markets supports both testnet (paper trading) and mainnet modes.
  * - Env var VITE_TESTNET_DEFAULT sets the default (defaults to true)
  * - User can toggle via UI, stored in localStorage
  */

@@ -101,7 +101,7 @@ export default function FieldsHome() {
                 Start from the fields where you already have conviction.
               </h1>
               <p className="mt-5 max-w-3xl text-lg leading-relaxed text-neutral-300">
-                Cascade turns a field you actually understand into a live workspace with
+                Contrarian turns a field you actually understand into a live workspace with
                 theses, source libraries, agent councils, visible meetings, and separate
                 wallets for each staffed agent.
               </p>

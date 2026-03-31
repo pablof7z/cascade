@@ -187,7 +187,7 @@ export default function AgentFeatureSection() {
                   color: 'text-blue-500',
                   title: 'Human-Directed Workflow',
                   description:
-                    'You define the thesis, permissions, and guardrails. Cascade keeps the process legible instead of hiding it behind a black box.',
+                    'You define the thesis, permissions, and guardrails. Contrarian Markets keeps the process legible instead of hiding it behind a black box.',
                 },
               ].map((feature, i) => (
                 <div key={i} className="flex items-start gap-4 py-4 border-b border-neutral-800 last:border-0">
@@ -217,7 +217,7 @@ export default function AgentFeatureSection() {
             </div>
 
             <p className="text-xs text-neutral-600">
-              Already have an agent stack? Give it Cascade&apos;s instructions and enroll it. Need the
+              Already have an agent stack? Give it Contrarian&apos;s instructions and enroll it. Need the
               agent too? Use hosted agents.
             </p>
           </div>

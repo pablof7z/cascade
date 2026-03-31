@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "chrome-cdp": {
+      "source": "pasky/chrome-cdp-skill",
+      "sourceType": "github",
+      "computedHash": "d9a2a1ff8b0df2a381a0ae630af0bfbc0bf642132d49aead946cf3724ecf5cb4"
+    },
     "copywriting": {
       "source": "coreyhaines31/marketingskills",
       "sourceType": "github",

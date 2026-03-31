@@ -1118,7 +1118,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          DIFFERENTIATOR — Why Cascade is different
+          DIFFERENTIATOR — Why Contrarian Markets is different
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="max-w-7xl mx-auto px-6 py-20 border-t border-neutral-800/30">
         <div className="grid lg:grid-cols-12 gap-12 items-start">
@@ -1128,7 +1128,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
               <span className="block text-neutral-600">prediction market.</span>
             </h2>
             <p className="text-lg text-neutral-400 leading-relaxed">
-              Traditional markets resolve to YES or NO. Cascade trades on evolving truth —
+              Traditional markets resolve to YES or NO. Contrarian trades on evolving truth —
               questions that compound, theses that grow, arguments that sharpen.
             </p>
           </div>

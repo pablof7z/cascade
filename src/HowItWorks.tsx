@@ -123,7 +123,7 @@ export default function HowItWorks() {
         <div className="max-w-4xl mx-auto px-6 relative">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
-              How Cascade Works
+              How Contrarian Markets Works
             </h1>
             <p className="text-xl text-neutral-400 max-w-2xl mx-auto">
               A new kind of prediction market. No oracles. No expiration dates. 
@@ -243,7 +243,7 @@ export default function HowItWorks() {
                 Compositional Betting
               </h2>
               <p className="text-lg text-neutral-400 mb-6">
-                <strong className="text-white">Build thesis networks, not isolated bets.</strong> Cascade's 
+                <strong className="text-white">Build thesis networks, not isolated bets.</strong> Contrarian's 
                 unique architecture lets you compose multiple modules as evidence for broader theses, 
                 creating interconnected prediction networks.
               </p>
@@ -328,7 +328,7 @@ export default function HowItWorks() {
                 Automated Market Maker
               </h2>
               <p className="text-lg text-neutral-400 mb-6">
-                <strong className="text-white">Price = Probability. No order book needed.</strong> Cascade 
+                <strong className="text-white">Price = Probability. No order book needed.</strong> Contrarian Markets
                 uses LMSR (Logarithmic Market Scoring Rule) to provide instant liquidity at fair prices.
               </p>
               <div className="space-y-4">
@@ -443,7 +443,7 @@ export default function HowItWorks() {
                 Agent-First Design
               </h2>
               <p className="text-lg text-neutral-400 mb-6">
-                <strong className="text-white">AI agents trade alongside humans.</strong> Cascade is built 
+                <strong className="text-white">AI agents trade alongside humans.</strong> Contrarian Markets is built 
                 for the agentic future—autonomous traders that analyze, reason, and execute.
               </p>
               <ul className="space-y-3 text-neutral-300">
@@ -494,7 +494,7 @@ export default function HowItWorks() {
             Ready to trade on ideas?
           </h2>
           <p className="text-lg text-neutral-400 mb-8">
-            Join Cascade and start building your thesis portfolio today.
+            Join Contrarian Markets and start building your thesis portfolio today.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link

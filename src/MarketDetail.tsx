@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import type { MarketEntry } from './storage'
 import type { ActorId, Side } from './market'
 import { ACTOR_LABELS, deriveMarketMetrics, priceLong, priceShort, previewTrade } from './market'
-import { getSampleSpec, getThesisDefinition } from './marketCatalog'
+import { getThesisDefinition } from './marketCatalog'
 import PriceChart from './PriceChart'
 import EmbedModal from './components/EmbedModal'
 import BookmarkButton from './components/BookmarkButton'
@@ -166,7 +166,6 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
     setPositions(getPositionsForMarket(market.id))
   }, [market.id, market.lastTrade?.id])
 
-  const spec = getSampleSpec(market.title)
   const thesis = getThesisDefinition(market)
   const relatedSignals = (thesis?.signals ?? []).map((signal) => {
     const matchingEntry =
@@ -209,8 +208,6 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
   )
 
   const topParticipants = participantRows.slice(0, 3)
-  const bullThreads = rankedThreads.filter((thread) => thread.stance === 'bull')
-  const bearThreads = rankedThreads.filter((thread) => thread.stance === 'bear')
   const latestThread = rankedThreads[0]
   const totalReplies = rankedThreads.reduce((sum, thread) => sum + countReplies(thread.replies), 0)
   const activeParticipants = participantRows.filter((row) => row.grossExposure > 0).length

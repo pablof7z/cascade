@@ -219,38 +219,36 @@ export default function FieldDetail() {
             </div>
           </dl>
 
-          <div className="mt-10 border-b border-neutral-800">
-            <div
-              className="flex flex-wrap gap-6"
-              role="tablist"
-              aria-label="Field detail sections"
-            >
-              {fieldDetailTabs.map((tab) => {
-                const isActive = activeTab === tab.id
+          <nav
+            className="mt-10 flex gap-1 border-b border-neutral-800"
+            role="tablist"
+            aria-label="Field detail sections"
+          >
+            {fieldDetailTabs.map((tab) => {
+              const isActive = activeTab === tab.id
 
-                return (
-                  <button
-                    key={tab.id}
-                    id={`field-detail-tab-${tab.id}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    aria-controls={`field-detail-panel-${tab.id}`}
-                    tabIndex={isActive ? 0 : -1}
-                    className={`border-b px-0 pb-4 text-sm font-medium uppercase tracking-[0.18em] transition-colors ${
-                      isActive
-                        ? 'border-white text-white'
-                        : 'border-transparent text-neutral-500 hover:text-neutral-200'
-                    }`}
-                    onClick={() => handleTabChange(tab.id)}
-                  >
-                    {tab.label}
-                    <span className="ml-2 text-[11px] text-neutral-600">{tabCounts[tab.id]}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+              return (
+                <button
+                  key={tab.id}
+                  id={`field-detail-tab-${tab.id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`field-detail-panel-${tab.id}`}
+                  tabIndex={isActive ? 0 : -1}
+                  className={`px-4 py-3 text-sm font-medium transition-colors ${
+                    isActive
+                      ? '-mb-px border-b-2 border-white text-white'
+                      : 'text-neutral-500 hover:text-neutral-300'
+                  }`}
+                  onClick={() => handleTabChange(tab.id)}
+                >
+                  {tab.label}
+                  <span className="ml-2 text-[11px] text-neutral-600">{tabCounts[tab.id]}</span>
+                </button>
+              )
+            })}
+          </nav>
         </div>
       </section>
 

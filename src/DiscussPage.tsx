@@ -461,25 +461,12 @@ export function MarketDiscussionPanel({
   ]
 
   return (
-    <section
-      className={
-        variant === 'overview' ? 'border-t border-neutral-800 pt-6' : 'rounded-2xl border border-neutral-800 bg-neutral-950/70'
-      }
-    >
-      <div className={variant === 'overview' ? 'pb-4' : 'border-b border-neutral-800 px-6 py-6'}>
+    <section className="border-t border-neutral-800 pt-6">
+      <div className="pb-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-white">
-              {variant === 'overview'
-                ? 'Latest discussion'
-                : 'Pressure-test the market before you size the position'}
-            </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-400">
-              {variant === 'overview'
-                ? 'Scan the live thread feed directly from the overview. The discussion is part of price discovery, not a decorative summary block.'
-                : 'Discussion exists to sharpen conviction. The thread feed, key arguments, and compose controls are here to surface claims that should actually move price.'}
-            </p>
-          </div>
+          <h2 className="text-lg font-semibold text-white">
+            {variant === 'overview' ? 'Discussion' : 'Discussion'}
+          </h2>
 
           {variant === 'overview' ? (
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-neutral-500">
@@ -499,7 +486,7 @@ export function MarketDiscussionPanel({
                 to={`/market/${marketId}/discussion`}
                 className="font-medium text-white transition-colors hover:text-neutral-300"
               >
-                Open full discussion
+                All threads
               </Link>
             </div>
           ) : null}
@@ -507,7 +494,7 @@ export function MarketDiscussionPanel({
       </div>
 
       {variant === 'discussion' ? (
-        <div className="border-b border-neutral-800 px-6 py-6">
+        <div className="border-b border-neutral-800 py-5">
         <h3 className="mb-4 text-xs uppercase tracking-wider text-neutral-600">Key arguments</h3>
         <div className="grid gap-6 md:grid-cols-2">
           <div>
@@ -537,16 +524,16 @@ export function MarketDiscussionPanel({
       ) : null}
 
       {variant === 'discussion' ? (
-        <div className="border-b border-neutral-800 px-6 py-4">
+        <div className="border-b border-neutral-800 py-3">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap gap-1">
+            <div className="flex gap-1">
               {sortOptions.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setSortBy(opt.value)}
-                  className={`px-3 py-1.5 text-sm transition-colors ${
+                  className={`px-4 py-3 text-sm font-medium transition-colors ${
                     sortBy === opt.value
-                      ? 'bg-neutral-800 text-white'
+                      ? '-mb-px border-b-2 border-white text-white'
                       : 'text-neutral-500 hover:text-neutral-300'
                   }`}
                 >
@@ -577,7 +564,7 @@ export function MarketDiscussionPanel({
       )}
 
       {variant === 'discussion' && showCompose ? (
-        <div className="border-b border-neutral-800 px-6 py-4">
+        <div className="border-b border-neutral-800 py-4">
           <input
             type="text"
             placeholder="Post title..."
@@ -608,14 +595,14 @@ export function MarketDiscussionPanel({
         </div>
       ) : null}
 
-      <div className={variant === 'overview' ? 'divide-y divide-neutral-800/50' : 'divide-y divide-neutral-800/50 px-6'}>
+      <div className="divide-y divide-neutral-800/50">
         {visibleThreads.map((thread) => (
           <ThreadPreviewCard key={thread.id} thread={thread} marketId={marketId} />
         ))}
       </div>
 
       {visibleThreads.length === 0 ? (
-        <div className={variant === 'overview' ? 'py-12 text-center text-neutral-500' : 'px-6 py-12 text-center text-neutral-500'}>
+        <div className="py-12 text-center text-neutral-500">
           <p>No discussions yet. Be the first to share your analysis.</p>
         </div>
       ) : null}

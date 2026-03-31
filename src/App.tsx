@@ -379,6 +379,18 @@ function LegacyMarketDiscussionRedirect() {
   )
 }
 
+// Legacy redirect: /field/:id -> /dashboard/field/:id
+function LegacyFieldRedirect() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/dashboard/field/${id ?? ''}`} replace />
+}
+
+// Legacy redirect: /field/:id/meeting -> /dashboard/field/:id/meeting
+function LegacyFieldMeetingRedirect() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/dashboard/field/${id ?? ''}/meeting`} replace />
+}
+
 function AppContent() {
   const [state, dispatch] = useReducer(reducer, undefined, initState)
   const location = useLocation()
@@ -463,10 +475,18 @@ function AppContent() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/hire-agents" element={<HireAgents />} />
         <Route path="/enroll-agent" element={<EnrollAgent />} />
-        <Route path="/fields" element={<FieldsHome />} />
-        <Route path="/field/:id" element={<FieldDetail />} />
-        <Route path="/field/:id/meeting" element={<MeetingView />} />
-        <Route path="/dashboard/agents" element={<AgentDashboard />} />
+        {/* Dashboard workspace routes — nested under AgentDashboard layout (sidebar) */}
+        <Route path="/dashboard" element={<AgentDashboard />}>
+          <Route index element={<Navigate to="fields" replace />} />
+          <Route path="fields" element={<FieldsHome />} />
+          <Route path="field/:id" element={<FieldDetail />} />
+          <Route path="field/:id/meeting" element={<MeetingView />} />
+          <Route path="agents" element={<div className="p-8 text-neutral-400 text-sm">Agents view coming soon.</div>} />
+        </Route>
+        {/* Legacy redirects — keep old URLs working */}
+        <Route path="/fields" element={<Navigate to="/dashboard/fields" replace />} />
+        <Route path="/field/:id/meeting" element={<LegacyFieldMeetingRedirect />} />
+        <Route path="/field/:id" element={<LegacyFieldRedirect />} />
         <Route path="/embed" element={<EmbedLanding />} />
         <Route path="/analytics" element={<AnalyticsDashboard />} />
       </Routes>

@@ -100,7 +100,7 @@ export default function MeetingView() {
           Return to the field workspace to open one of the seeded meeting views.
         </p>
         <Link
-          to="/fields"
+          to="/dashboard/fields"
           className="mt-8 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
         >
           Back to Fields
@@ -126,11 +126,11 @@ export default function MeetingView() {
       <section className="border-b border-neutral-800 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.12),_transparent_42%)]">
         <div className="mx-auto max-w-7xl px-6 py-14">
           <div className="mb-5 flex items-center gap-2 text-sm text-neutral-500">
-            <Link to="/fields" className="transition-colors hover:text-white">
+            <Link to="/dashboard/fields" className="transition-colors hover:text-white">
               Fields
             </Link>
             <span>/</span>
-            <Link to={`/field/${field.id}`} className="transition-colors hover:text-white">
+            <Link to={`/dashboard/field/${field.id}`} className="transition-colors hover:text-white">
               {field.name}
             </Link>
             <span>/</span>
@@ -158,7 +158,7 @@ export default function MeetingView() {
 
             <div className="flex flex-wrap gap-3">
               <Link
-                to={`/field/${field.id}`}
+                to={`/dashboard/field/${field.id}`}
                 className="rounded-xl border border-neutral-700 px-5 py-3 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
               >
                 Back to Field

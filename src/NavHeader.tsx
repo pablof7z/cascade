@@ -10,28 +10,30 @@ export default function NavHeader() {
   const [searchQuery, setSearchQuery] = useState('')
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
-  const isWorkspaceRoute =
-    path === '/fields' || path === '/dashboard/agents' || path.startsWith('/field/')
-  const isFieldRoute = isWorkspaceRoute || path === '/hire-agents'
-  const navItems = isFieldRoute
+
+  const isDashboardRoute =
+    path.startsWith('/dashboard') || path === '/hire-agents'
+
+  const navItems = isDashboardRoute
     ? [
-        { href: '/fields', label: 'Workspace' },
+        { href: '/dashboard/fields', label: 'Workspace' },
         { href: '/hire-agents', label: 'Hire Agents' },
         { href: '/', label: 'Markets' },
         { href: '/activity', label: 'Activity' },
       ]
     : [
-        { href: '/fields', label: 'Fields' },
         { href: '/', label: 'Markets' },
         { href: '/leaderboard', label: 'Leaderboard' },
         { href: '/activity', label: 'Activity' },
       ]
-  const primaryAction = isFieldRoute
+
+  const primaryAction = isDashboardRoute
     ? path === '/hire-agents'
-      ? { to: '/fields', label: 'View Fields' }
+      ? { to: '/dashboard/fields', label: 'View Fields' }
       : { to: '/hire-agents', label: 'Hire Agents' }
     : { to: '/builder', label: 'Build Thesis' }
-  const searchPlaceholder = isFieldRoute
+
+  const searchPlaceholder = isDashboardRoute
     ? 'Search fields, agents, or meetings...'
     : 'Search markets...'
 
@@ -50,14 +52,15 @@ export default function NavHeader() {
   }, [])
 
   const isActive = (href: string) => {
-    if (href === '/fields') {
-      return isWorkspaceRoute
+    if (href === '/dashboard/fields') {
+      return path.startsWith('/dashboard')
     }
-
     if (href === '/hire-agents') {
       return path === '/hire-agents'
     }
-
+    if (href === '/') {
+      return path === '/'
+    }
     return path === href
   }
 
@@ -71,8 +74,7 @@ export default function NavHeader() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      // Navigate to search results (implement search page later)
-      const destination = isFieldRoute ? '/fields' : '/'
+      const destination = isDashboardRoute ? '/dashboard/fields' : '/'
       navigate(`${destination}?search=${encodeURIComponent(searchQuery.trim())}`)
       setSearchQuery('')
     }
@@ -170,6 +172,13 @@ export default function NavHeader() {
               {userMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl py-1 z-50">
                   <Link
+                    to="/dashboard/fields"
+                    className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
                     to="/portfolio"
                     className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
                     onClick={() => setUserMenuOpen(false)}
@@ -191,13 +200,6 @@ export default function NavHeader() {
                     Bookmarks
                   </Link>
                   <Link
-                    to="/settings"
-                    className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
-                    onClick={() => setUserMenuOpen(false)}
-                  >
-                    Settings
-                  </Link>
-                  <Link
                     to="/wallet"
                     className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
                     onClick={() => setUserMenuOpen(false)}
@@ -209,7 +211,6 @@ export default function NavHeader() {
                     className="block w-full text-left px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
                     onClick={() => {
                       setUserMenuOpen(false)
-                      // Handle logout
                     }}
                   >
                     Logout

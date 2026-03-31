@@ -110,7 +110,7 @@ export default function FieldsHome() {
             <div className="flex flex-wrap gap-3">
               {featuredField ? (
                 <Link
-                  to={`/field/${featuredField.id}`}
+                  to={`/dashboard/field/${featuredField.id}`}
                   className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-emerald-400"
                 >
                   Open Featured Field
@@ -184,7 +184,7 @@ export default function FieldsHome() {
           <div className="border-t border-neutral-800">
             {filteredFields.length === 0 ? (
               <div className="py-6 text-sm text-neutral-500">
-                No fields match &quot;{searchQuery}&quot;. <Link to="/fields" className="text-white underline-offset-4 hover:underline">Clear search</Link>
+                No fields match &quot;{searchQuery}&quot;. <Link to="/dashboard/fields" className="text-white underline-offset-4 hover:underline">Clear search</Link>
               </div>
             ) : filteredFields.map((field) => {
               const source = latestSource(field)
@@ -292,13 +292,13 @@ export default function FieldsHome() {
 
                     <div className="mt-5 flex flex-wrap gap-3">
                       <Link
-                        to={`/field/${field.id}`}
+                        to={`/dashboard/field/${field.id}`}
                         className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
                       >
                         Open Field
                       </Link>
                       <Link
-                        to={`/field/${field.id}/meeting`}
+                        to={`/dashboard/field/${field.id}/meeting`}
                         className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
                       >
                         Open Meeting
@@ -351,7 +351,7 @@ export default function FieldsHome() {
                       <span>{field.meeting.tensions.length} unresolved tensions</span>
                     </div>
                     <Link
-                      to={`/field/${field.id}/meeting`}
+                      to={`/dashboard/field/${field.id}/meeting`}
                       className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
                     >
                       Review Meeting

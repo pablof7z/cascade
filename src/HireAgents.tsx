@@ -332,7 +332,7 @@ export default function HireAgents() {
 
   function saveAndReviewWorkspace() {
     if (saveBrief()) {
-      navigate(showcaseField ? `/field/${showcaseField.id}` : '/fields')
+      navigate(showcaseField ? `/field/${showcaseField.id}` : '/dashboard/fields')
     }
   }
 
@@ -368,7 +368,7 @@ export default function HireAgents() {
             </a>
             {showcaseField ? (
               <Link
-                to={`/field/${showcaseField.id}/meeting`}
+                to={`/dashboard/field/${showcaseField.id}/meeting`}
                 className="rounded-xl border border-neutral-700 px-6 py-3 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
               >
                 Open Example Meeting
@@ -811,13 +811,13 @@ export default function HireAgents() {
 
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
-                    to={`/field/${showcaseField.id}`}
+                    to={`/dashboard/field/${showcaseField.id}`}
                     className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
                   >
                     Open Field
                   </Link>
                   <Link
-                    to={`/field/${showcaseField.id}/meeting`}
+                    to={`/dashboard/field/${showcaseField.id}/meeting`}
                     className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
                   >
                     Open Meeting

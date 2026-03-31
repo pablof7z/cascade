@@ -151,7 +151,7 @@ export default function MockProfilePage() {
                 </button>
               )}
               <Link
-                to={recentActivity[0]?.to ?? '/fields'}
+                to={recentActivity[0]?.to ?? '/dashboard/fields'}
                 className="rounded-full border border-neutral-700 px-5 py-3 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
               >
                 Open latest thread
@@ -227,7 +227,7 @@ export default function MockProfilePage() {
                   <h2 className="mt-2 text-2xl font-semibold text-white">Where they show up when the debate gets live.</h2>
                 </div>
                 <Link
-                  to="/fields"
+                  to="/dashboard/fields"
                   className="text-sm font-medium text-neutral-400 transition-colors hover:text-white"
                 >
                   Browse all fields
@@ -266,7 +266,7 @@ export default function MockProfilePage() {
             <section className="border-t border-neutral-800 pt-8">
               <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Known for</p>
               <Link
-                to={recentActivity[1]?.to ?? '/fields'}
+                to={recentActivity[1]?.to ?? '/dashboard/fields'}
                 className="mt-3 block text-2xl font-semibold leading-tight text-white transition-colors hover:text-neutral-200"
               >
                 {profile.signatureMarkets[0]}
@@ -353,7 +353,7 @@ function buildActiveFields(
           matchedField.meeting.entries[0]?.headline ??
           matchedField.topics[0]?.title ??
           matchedField.meeting.title,
-        to: `/field/${matchedField.id}/meeting`,
+        to: `/dashboard/field/${matchedField.id}/meeting`,
         updatedAt: matchedField.meeting.updatedAt,
       })
       continue
@@ -365,7 +365,7 @@ function buildActiveFields(
       verb: profile.participationModes[index % profile.participationModes.length] ?? 'Shows up early',
       hookLabel: 'Search live fields',
       hookTitle: `See current debates connected to ${focusArea}`,
-      to: `/fields?search=${encodeURIComponent(focusArea)}`,
+      to: `/dashboard/fields?search=${encodeURIComponent(focusArea)}`,
       updatedAt: 'Live workspace',
     })
   }
@@ -393,7 +393,7 @@ function buildRecentActivity(
         profile.recentNotes[0] ??
         `${displayName} keeps showing up where the argument can still be sharpened in public.`,
       time: primaryField?.updatedAt ?? profile.lastActive,
-      to: primaryField?.to ?? '/fields',
+      to: primaryField?.to ?? '/dashboard/fields',
       cta: primaryField?.hookLabel ?? 'Open thread',
     },
     {
@@ -401,7 +401,7 @@ function buildRecentActivity(
       title: profile.signatureMarkets[0],
       detail: edge,
       time: profile.lastActive,
-      to: secondaryField?.to ?? primaryField?.to ?? '/fields',
+      to: secondaryField?.to ?? primaryField?.to ?? '/dashboard/fields',
       cta: 'See field context',
     },
     {
@@ -411,7 +411,7 @@ function buildRecentActivity(
         profile.recentNotes[1] ??
         `${displayName} uses notes to turn broad interest into clearer positions and better timing.`,
       time: secondaryField?.updatedAt ?? 'Earlier today',
-      to: secondaryField?.to ?? '/fields',
+      to: secondaryField?.to ?? '/dashboard/fields',
       cta: secondaryField?.hookLabel ?? 'Open field',
     },
   ]
@@ -472,7 +472,7 @@ function ensureActiveFields(
     verb: profile.participationModes[index % profile.participationModes.length] ?? 'Shows up early',
     hookLabel: 'Open live thread',
     hookTitle: `See current debate around ${focusArea}`,
-    to: `/fields?search=${encodeURIComponent(focusArea)}`,
+    to: `/dashboard/fields?search=${encodeURIComponent(focusArea)}`,
     updatedAt: 'Live workspace',
   }))
 }
@@ -491,7 +491,7 @@ function ensureRecentActivity(
       title: 'Current field discussion',
       detail: `${profile.displayName} keeps showing up where the argument can still be sharpened in public.`,
       time: profile.lastActive,
-      to: '/fields',
+      to: '/dashboard/fields',
       cta: 'Open thread',
     },
     {
@@ -499,7 +499,7 @@ function ensureRecentActivity(
       title: 'Current conviction',
       detail: profile.edge,
       time: profile.lastActive,
-      to: '/fields',
+      to: '/dashboard/fields',
       cta: 'See field context',
     },
     {
@@ -507,7 +507,7 @@ function ensureRecentActivity(
       title: 'Areas of conviction',
       detail: `${profile.displayName} uses notes to turn broad interest into clearer positions and better timing.`,
       time: 'Earlier today',
-      to: '/fields',
+      to: '/dashboard/fields',
       cta: 'Open field',
     },
   ]

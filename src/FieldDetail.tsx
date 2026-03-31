@@ -94,7 +94,7 @@ export default function FieldDetail() {
           Return to the workspace home to open one of the seeded field mockups.
         </p>
         <Link
-          to="/fields"
+          to="/dashboard/fields"
           className="mt-8 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
         >
           Back to Fields
@@ -129,7 +129,7 @@ export default function FieldDetail() {
       <section className="border-b border-neutral-800 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_42%)]">
         <div className="mx-auto max-w-7xl px-6 py-14">
           <div className="mb-5 flex items-center gap-2 text-sm text-neutral-500">
-            <Link to="/fields" className="transition-colors hover:text-white">
+            <Link to="/dashboard/fields" className="transition-colors hover:text-white">
               Fields
             </Link>
             <span>/</span>
@@ -164,7 +164,7 @@ export default function FieldDetail() {
 
             <div className="flex flex-wrap gap-3">
               <Link
-                to={`/field/${field.id}/meeting`}
+                to={`/dashboard/field/${field.id}/meeting`}
                 className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
               >
                 Open Meeting
@@ -377,7 +377,7 @@ export default function FieldDetail() {
                   </p>
                 </div>
                 <Link
-                  to={`/field/${field.id}/meeting`}
+                  to={`/dashboard/field/${field.id}/meeting`}
                   className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
                 >
                   Open Full Meeting

@@ -80,14 +80,14 @@ const attentionLabel: Record<FieldAttention, string> = {
 
 const entryKindLabel: Record<MeetingEntryKind, string> = {
   argument:        'argument',
-  counterargument: 'counter',
+  counterargument: '↩ counter',
   evidence:        'evidence',
   decision:        'decision',
 }
 
 const entryKindStyle: Record<MeetingEntryKind, string> = {
   argument:        'text-neutral-500',
-  counterargument: 'text-rose-400',
+  counterargument: 'text-rose-400 font-semibold',
   evidence:        'text-sky-400',
   decision:        'text-emerald-400',
 }
@@ -114,7 +114,11 @@ function MeetingEntryCard({ entry, field }: { entry: MeetingEntry; field: Field 
   const isCounter = entry.kind === 'counterargument'
 
   return (
-    <div className={`flex gap-4 py-5 ${isCounter ? 'pl-3 border-l-2 border-rose-800/60' : ''}`}>
+    <div className={`flex gap-4 py-5 ${
+      isCounter
+        ? 'pl-3 border-l-2 border-rose-700 bg-rose-950/20 -mx-6 px-6'
+        : ''
+    }`}>
       {/* Avatar */}
       <div className={`shrink-0 w-8 h-8 rounded-full ${color.bg} flex items-center justify-center text-xs font-bold text-white`}>
         {getAgentInitial(field, entry.authorId)}
@@ -122,6 +126,7 @@ function MeetingEntryCard({ entry, field }: { entry: MeetingEntry; field: Field 
 
       {/* Content */}
       <div className="flex-1 min-w-0">
+        {/* Identity + timestamp row */}
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-sm font-medium text-white">
             {getAgentName(field, entry.authorId)}
@@ -129,7 +134,7 @@ function MeetingEntryCard({ entry, field }: { entry: MeetingEntry; field: Field 
           <span className="text-xs text-neutral-500">
             {getAgentRole(field, entry.authorId)}
           </span>
-          <span className={`text-xs font-medium ${entryKindStyle[entry.kind]}`}>
+          <span className={`text-xs ${entryKindStyle[entry.kind]}`}>
             {entryKindLabel[entry.kind]}
           </span>
           <span className="text-xs text-neutral-600 ml-auto">{entry.at}</span>
@@ -140,20 +145,24 @@ function MeetingEntryCard({ entry, field }: { entry: MeetingEntry; field: Field 
         )}
         <p className="mt-1.5 text-sm text-neutral-400 leading-relaxed">{entry.body}</p>
 
+        {/* Source citations — prominent, not an afterthought */}
         {entry.citations && entry.citations.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {entry.citations.map((c, i) => {
-              const src = field.sourceLibrary.find(s => s.id === c.sourceId)
-              return (
-                <span
-                  key={i}
-                  title={c.note}
-                  className="text-xs bg-neutral-800 border border-neutral-700 px-2 py-0.5 rounded text-neutral-400"
-                >
-                  {src ? `${src.author}, ${src.addedAt.slice(0, 4)}` : c.sourceId}
-                </span>
-              )
-            })}
+          <div className="mt-3">
+            <span className="text-[10px] font-medium text-neutral-600 uppercase tracking-wider">Sources</span>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {entry.citations.map((c, i) => {
+                const src = field.sourceLibrary.find(s => s.id === c.sourceId)
+                return (
+                  <span
+                    key={i}
+                    title={c.note}
+                    className="text-xs bg-neutral-900 border border-neutral-700 px-2 py-0.5 rounded-sm text-neutral-400 hover:border-neutral-500 transition-colors cursor-default"
+                  >
+                    {src ? `${src.author}, ${src.addedAt.slice(0, 4)}` : c.sourceId}
+                  </span>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -163,6 +172,9 @@ function MeetingEntryCard({ entry, field }: { entry: MeetingEntry; field: Field 
 
 function MeetingTab({ field }: { field: Field }) {
   const actions = field.meeting.actions
+  const hasEntries = field.meeting.entries.length > 0
+  const hasActions = actions.length > 0
+  const noMeeting = !hasEntries && !hasActions
 
   return (
     <div className="max-w-3xl">
@@ -170,7 +182,7 @@ function MeetingTab({ field }: { field: Field }) {
       <div className="mb-4 pb-4 border-b border-neutral-800">
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-medium text-white">{field.meeting.title}</h2>
-          <span className={`text-xs px-2 py-0.5 rounded ${
+          <span className={`text-xs px-2 py-0.5 rounded-sm ${
             field.meeting.status === 'live'
               ? 'text-emerald-400 bg-emerald-950 border border-emerald-800'
               : field.meeting.status === 'awaiting-human'
@@ -185,7 +197,7 @@ function MeetingTab({ field }: { field: Field }) {
         {field.meeting.tensions.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {field.meeting.tensions.map((t, i) => (
-              <span key={i} className="text-xs text-neutral-500 bg-neutral-900 border border-neutral-800 px-2 py-1 rounded">
+              <span key={i} className="text-xs text-neutral-500 bg-neutral-900 border border-neutral-800 px-2 py-1 rounded-sm">
                 {t}
               </span>
             ))}
@@ -193,69 +205,95 @@ function MeetingTab({ field }: { field: Field }) {
         )}
       </div>
 
-      {/* Action proposals — dramatically different from discussion entries */}
-      {actions.length > 0 && (
-        <div className="mb-6 space-y-3">
+      {/* Empty state — no meeting in progress */}
+      {noMeeting && (
+        <div className="py-16 text-center border border-neutral-800 bg-neutral-900">
+          <p className="text-sm font-medium text-neutral-400 mb-1">No meeting in progress</p>
+          <p className="text-xs text-neutral-600 mb-6">Agents haven't started deliberating on this field yet.</p>
+          <button
+            type="button"
+            className="text-sm font-medium text-white bg-neutral-800 border border-neutral-700 hover:border-neutral-500 px-4 py-2 rounded-sm transition-colors"
+          >
+            Start deliberation
+          </button>
+        </div>
+      )}
+
+      {/* Action proposals — action cards, visually distinct from discussion */}
+      {hasActions && (
+        <div className="mb-8 space-y-4">
           <p className="text-xs font-medium text-neutral-500 uppercase tracking-widest">Action proposals</p>
           {actions.map(action => {
             const ownerName = getAgentName(field, action.ownerId)
-            const isLong = action.title.toLowerCase().includes('long') || action.title.toLowerCase().includes('buy')
-            const isShort = action.title.toLowerCase().includes('short') || action.title.toLowerCase().includes('sell')
-            const hasTrade = isLong || isShort
+            const titleLower = action.title.toLowerCase()
+            const isBuy = titleLower.includes('buy') || titleLower.includes('long')
+            const isSell = titleLower.includes('sell') || titleLower.includes('short')
+            const hasTrade = isBuy || isSell
+            const directionLabel = isBuy ? 'BUY YES' : isSell ? 'SELL / SHORT' : null
 
             return (
               <div
                 key={action.id}
-                className={`rounded-lg p-4 border ${
+                className={`border-2 bg-neutral-900 ${
                   hasTrade
-                    ? isLong
-                      ? 'border-emerald-700 bg-emerald-950/30'
-                      : 'border-rose-700 bg-rose-950/30'
-                    : 'border-sky-700 bg-sky-950/20'
+                    ? isBuy
+                      ? 'border-emerald-700'
+                      : 'border-rose-700'
+                    : 'border-neutral-700'
                 }`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {hasTrade && (
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                          isLong ? 'bg-emerald-700 text-white' : 'bg-rose-700 text-white'
-                        }`}>
-                          {isLong ? 'BUY LONG' : 'SELL SHORT'}
-                        </span>
-                      )}
-                      <p className="text-sm font-medium text-white">{action.title}</p>
-                    </div>
-                    <p className="mt-1.5 text-xs text-neutral-400 leading-relaxed">{action.rationale}</p>
-                    <p className="mt-1.5 text-xs text-neutral-500">Proposed by {ownerName}</p>
+                {/* Card header — direction + market name + status badge */}
+                <div className={`px-5 py-3 border-b flex items-center justify-between gap-4 ${
+                  hasTrade
+                    ? isBuy
+                      ? 'border-emerald-800 bg-emerald-950/40'
+                      : 'border-rose-800 bg-rose-950/40'
+                    : 'border-neutral-800 bg-neutral-800/50'
+                }`}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    {directionLabel && (
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-sm shrink-0 ${
+                        isBuy ? 'bg-emerald-600 text-white' : 'bg-rose-700 text-white'
+                      }`}>
+                        {directionLabel}
+                      </span>
+                    )}
+                    <p className="text-sm font-semibold text-white truncate">{action.title}</p>
                   </div>
-                  <span className={`shrink-0 text-xs px-2 py-0.5 rounded ${actionStatusStyle[action.status]}`}>
+                  <span className={`shrink-0 text-xs px-2 py-0.5 rounded-sm ${actionStatusStyle[action.status]}`}>
                     {actionStatusLabel[action.status]}
                   </span>
                 </div>
 
-                {action.status === 'needs-human' && (
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 px-3 py-1.5 rounded transition-colors"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-neutral-300 border border-neutral-700 hover:border-neutral-500 px-3 py-1.5 rounded transition-colors"
-                    >
-                      Reject
-                    </button>
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-neutral-500 hover:text-neutral-300 px-3 py-1.5 transition-colors"
-                    >
-                      Defer
-                    </button>
-                  </div>
-                )}
+                {/* Card body — rationale + actions */}
+                <div className="px-5 py-4">
+                  <p className="text-sm text-neutral-300 leading-relaxed">{action.rationale}</p>
+                  <p className="mt-3 text-xs text-neutral-600">Proposed by {ownerName}</p>
+
+                  {/* Approve / Reject buttons — prominently sized */}
+                  {action.status === 'needs-human' && (
+                    <div className="mt-5 flex items-center gap-3">
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-white bg-emerald-700 hover:bg-emerald-600 px-5 py-2 rounded-sm transition-colors"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-white bg-rose-800 hover:bg-rose-700 px-5 py-2 rounded-sm transition-colors"
+                      >
+                        Reject
+                      </button>
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-neutral-500 hover:text-neutral-300 px-4 py-2 transition-colors"
+                      >
+                        Defer
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )
           })}
@@ -263,15 +301,13 @@ function MeetingTab({ field }: { field: Field }) {
       )}
 
       {/* Deliberation transcript */}
-      <div className="divide-y divide-neutral-800/60">
-        {field.meeting.entries.length === 0 ? (
-          <p className="py-8 text-sm text-neutral-600 text-center">No deliberation entries yet.</p>
-        ) : (
-          field.meeting.entries.map(entry => (
+      {hasEntries && (
+        <div className="divide-y divide-neutral-800/60">
+          {field.meeting.entries.map(entry => (
             <MeetingEntryCard key={entry.id} entry={entry} field={field} />
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -42,12 +42,15 @@ import AgentDashboard from './AgentDashboard'
 import AgentsPage from './AgentsPage'
 import FieldsList from './FieldsList'
 import DashboardOverview from './DashboardOverview'
+import TreasuryPage from './TreasuryPage'
+import SettingsPage from './SettingsPage'
 import FieldDetail from './FieldDetail'
 import EmbedPage from './EmbedPage'
 import EmbedLanding from './EmbedLanding'
 import TestnetBanner from './components/TestnetBanner'
 import Footer from './components/Footer'
 import AnalyticsDashboard from './AnalyticsDashboard'
+import ActivityFeed from './ActivityFeed'
 import { initAnalytics, destroyAnalytics, trackPageView } from './analytics'
 
 type ToastTone = 'good' | 'warn' | 'neutral'
@@ -386,6 +389,8 @@ function LegacyFieldRedirect() {
   return <Navigate to={`/dashboard/field/${id ?? ''}`} replace />
 }
 
+
+
 // Legacy redirect: /field/:id/meeting -> /dashboard/field/:id/meeting
 function LegacyFieldMeetingRedirect() {
   const { id } = useParams<{ id: string }>()
@@ -482,6 +487,9 @@ function AppContent() {
           <Route path="fields" element={<FieldsList />} />
           <Route path="field/:id" element={<FieldDetail />} />
           <Route path="agents" element={<AgentsPage />} />
+          <Route path="treasury" element={<TreasuryPage />} />
+          <Route path="activity" element={<ActivityFeed />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
         {/* Legacy redirects — keep old URLs working */}
         <Route path="/fields" element={<Navigate to="/dashboard/fields" replace />} />

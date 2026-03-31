@@ -1,216 +1,241 @@
 import { Link } from 'react-router-dom'
-import { loadFieldWorkspace } from './fieldStorage'
-import type { Field, FieldAttention } from './fieldTypes'
 
-const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+// ─── Mock data ─────────────────────────────────────────────────────────────
 
-const attentionBadge: Record<FieldAttention, string> = {
-  steady: 'text-emerald-400 bg-emerald-950 border border-emerald-800',
-  review: 'text-amber-400 bg-amber-950 border border-amber-800',
-  'needs-input': 'text-sky-400 bg-sky-950 border border-sky-800',
-}
-const attentionLabel: Record<FieldAttention, string> = {
-  steady: 'Steady',
-  review: 'Review',
-  'needs-input': 'Needs input',
-}
-
-// Agent color identities used in demo card
-const DEMO_AGENT_COLORS = ['bg-emerald-500', 'bg-violet-500', 'bg-amber-500']
-
-const DEMO_FIELD = {
-  id: 'ai-application-layer',
-  name: 'AI application layer',
-  conviction: 'Agent-native workflows pull margin away from thin SaaS wrappers once teams bring proprietary context and approvals into the product.',
-  attention: 'needs-input' as FieldAttention,
-  agentCount: 3,
-  marketCount: 2,
-  capital: 4800,
-  lastActivity: '7 min ago',
-  agents: ['Mara Synthesis', 'Rowan Skeptic', 'Vale Operator'],
-  preview: 'Rowan is pushing back on the distribution-lag thesis. Mara just added evidence from the support archive.',
-}
-
-const ACTIVITY_FEED = [
-  { id: 1, time: '7 min ago', event: 'Rowan Skeptic posted a counterargument in AI application layer' },
-  { id: 2, time: '22 min ago', event: 'Iris Grid updated the industrial pricing evidence in European energy spread' },
-  { id: 3, time: '1 hour ago', event: 'Darya Routes refreshed the container routing tracker' },
-  { id: 4, time: '3 hours ago', event: 'Mara Synthesis added 2 new library sources' },
-  { id: 5, time: '5 hours ago', event: 'You approved action: Keep exposure flat in Red Sea shipping' },
-  { id: 6, time: 'Yesterday', event: 'European energy spread moved to Review status' },
+const DEMO_ACTION_QUEUE = [
+  {
+    id: '1',
+    type: 'counter-evidence' as const,
+    fieldId: 'ai-semis',
+    field: 'AI & Semiconductors',
+    description: 'Orion surfaced an EU regulatory draft that may undercut your export timeline thesis',
+    agent: 'Orion',
+    time: '2h ago',
+  },
+  {
+    id: '2',
+    type: 'proposal' as const,
+    fieldId: 'energy',
+    field: 'Energy Transition',
+    description: 'Vesper proposed LONG lithium futures — awaiting your approval',
+    agent: 'Vesper',
+    time: '4h ago',
+  },
+  {
+    id: '3',
+    type: 'question' as const,
+    fieldId: 'shipping',
+    field: 'Global Shipping',
+    description: 'Meridian and Solace are split on container rate normalization — need your read to break the tie',
+    agent: 'Meridian',
+    time: '6h ago',
+  },
 ]
 
-const ATTENTION_ITEMS = [
-  { id: 1, fieldId: 'ai-application-layer', fieldName: 'AI application layer', message: 'Pending action needs your approval', urgency: 'high' as const },
-  { id: 2, fieldId: 'europe-energy-spread', fieldName: 'European energy spread', message: 'Next grid report is the capital gate', urgency: 'medium' as const },
+const DEMO_FIELDS = [
+  {
+    id: 'ai-semis',
+    name: 'AI & Semiconductors',
+    tone: 'rose' as const,
+    statusLine: 'Agents are pushing back on your take on EU chip export timeline',
+    agents: 3,
+    markets: 4,
+    capital: '$52,400',
+  },
+  {
+    id: 'energy',
+    name: 'Energy Transition',
+    tone: 'emerald' as const,
+    statusLine: 'New enforcement data confirms your read on lithium supply constraints',
+    agents: 2,
+    markets: 3,
+    capital: '$34,200',
+  },
+  {
+    id: 'shipping',
+    name: 'Global Shipping',
+    tone: 'neutral' as const,
+    statusLine: 'Agents are monitoring. No new contradictions found.',
+    agents: 2,
+    markets: 2,
+    capital: '$18,720',
+  },
 ]
 
-function FieldCard({ field }: { field: Field }) {
-  const hostedCount = field.council.filter(a => a.provisioning === 'hosted').length
-  return (
-    <Link
-      to={`/dashboard/field/${field.id}`}
-      className="block border border-neutral-800 rounded bg-neutral-900 p-5 hover:border-neutral-600 hover:bg-neutral-800/60 transition-colors"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm font-medium text-white leading-snug">{field.name}</h3>
-        <span className={`shrink-0 text-xs px-2 py-0.5 rounded ${attentionBadge[field.attention]}`}>
-          {attentionLabel[field.attention]}
-        </span>
-      </div>
-      <p className="mt-2 text-xs text-neutral-400 line-clamp-2 leading-relaxed">
-        {field.conviction}
-      </p>
-      <div className="mt-4 flex items-center gap-4 text-xs text-neutral-500">
-        <span>{field.council.length} agents ({hostedCount} hosted)</span>
-        <span>{field.candidateMarkets.length} markets</span>
-        <span>{fmt.format(field.capital.deployedUsd)} deployed</span>
-      </div>
-      <div className="mt-3 text-xs text-neutral-600">
-        Updated {field.meeting.updatedAt}
-      </div>
-    </Link>
-  )
+const DEMO_ACTIVITY = [
+  { time: '10m ago', agent: 'Orion',   initials: 'OR', color: 'bg-sky-600',    action: 'cited new EU regulatory draft on chip controls',          field: 'AI & Semis' },
+  { time: '35m ago', agent: 'Vesper',  initials: 'VE', color: 'bg-violet-600', action: 'proposed LONG position on lithium futures',                field: 'Energy'     },
+  { time: '1h ago',  agent: 'You',     initials: 'YO', color: 'bg-neutral-600',action: 'reviewed counter-evidence and updated EU timeline stance',  field: 'AI & Semis' },
+  { time: '2h ago',  agent: 'Meridian',initials: 'ME', color: 'bg-amber-600',  action: 'challenged container rate forecast in meeting',            field: 'Shipping'   },
+  { time: '3h ago',  agent: 'Solace',  initials: 'SO', color: 'bg-emerald-600',action: 'added source: Bloomberg analysis on TSMC capex cuts',      field: 'AI & Semis' },
+  { time: '5h ago',  agent: 'Flux',    initials: 'FL', color: 'bg-rose-600',   action: 'opened SHORT position on Maersk Q3 guidance',             field: 'Shipping'   },
+  { time: '8h ago',  agent: 'Vesper',  initials: 'VE', color: 'bg-violet-600', action: 'found contradictory IEA report on battery demand forecasts',field: 'Energy'    },
+]
+
+// ─── Type constants ─────────────────────────────────────────────────────────
+
+const ACTION_TYPE_STYLES = {
+  'counter-evidence': {
+    label: 'Counter-evidence',
+    badge: 'bg-rose-500/10 text-rose-400 border border-rose-500/20',
+  },
+  proposal: {
+    label: 'Proposal',
+    badge: 'bg-sky-500/10 text-sky-400 border border-sky-500/20',
+  },
+  question: {
+    label: 'Question',
+    badge: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+  },
 }
 
-function DemoFieldCard() {
+const FIELD_STATUS_LINE_STYLES = {
+  rose:    'text-rose-400',
+  emerald: 'text-emerald-400',
+  neutral: 'text-neutral-500',
+}
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function AllClearBanner() {
   return (
-    <div className="border border-dashed border-neutral-700 rounded bg-neutral-900/50 p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-xs px-2 py-0.5 rounded bg-neutral-800 text-neutral-500 border border-neutral-700">
-          Demo
-        </span>
-        <span className="text-xs text-neutral-600">— this is what a live field looks like</span>
-      </div>
-
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm font-medium text-white leading-snug">{DEMO_FIELD.name}</h3>
-        <span className={`shrink-0 text-xs px-2 py-0.5 rounded ${attentionBadge[DEMO_FIELD.attention]}`}>
-          {attentionLabel[DEMO_FIELD.attention]}
-        </span>
-      </div>
-
-      <p className="mt-2 text-xs text-neutral-400 line-clamp-2 leading-relaxed">
-        {DEMO_FIELD.conviction}
-      </p>
-
-      {/* Mini deliberation preview */}
-      <div className="mt-4 border border-neutral-800 rounded bg-neutral-950 p-3 space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center text-[10px] font-bold text-white">R</div>
-          <span className="text-xs font-medium text-neutral-300">Rowan Skeptic</span>
-          <span className="text-xs text-neutral-600">counterargument · 13 min ago</span>
-        </div>
-        <p className="text-xs text-neutral-400 pl-7">Distribution may outrun workflow quality for another buying cycle...</p>
-        <div className="flex items-center gap-2 mt-1">
-          <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white">M</div>
-          <span className="text-xs font-medium text-neutral-300">Mara Synthesis</span>
-          <span className="text-xs text-neutral-600">evidence · 18 min ago</span>
-        </div>
-        <p className="text-xs text-neutral-400 pl-7">Source library keeps pointing to approval-heavy internal workflows... <span className="text-neutral-600">[Support archive, 2024]</span></p>
-      </div>
-
-      <div className="mt-4 flex items-center gap-4 text-xs text-neutral-500">
-        <div className="flex -space-x-1">
-          {DEMO_AGENT_COLORS.map((color, i) => (
-            <div key={i} className={`w-5 h-5 rounded-full ${color} border border-neutral-900`} />
-          ))}
-        </div>
-        <span>{DEMO_FIELD.agentCount} agents</span>
-        <span>{DEMO_FIELD.marketCount} markets</span>
-        <span>{fmt.format(DEMO_FIELD.capital)} deployed</span>
-      </div>
-
-      <div className="mt-4 pt-4 border-t border-neutral-800 flex items-center justify-between">
-        <p className="text-xs text-neutral-600">Your first field will look like this, with your agents and your data.</p>
-        <Link
-          to="/dashboard/fields"
-          className="text-xs font-medium text-white border border-neutral-700 px-3 py-1.5 rounded hover:border-neutral-500 transition-colors"
-        >
-          + Create your first field
-        </Link>
-      </div>
+    <div className="flex items-center gap-3 px-4 py-3 border border-neutral-800 text-neutral-500 text-sm">
+      <span className="text-emerald-500">✓</span>
+      No items need your input right now. Agents are working.
     </div>
   )
 }
 
-export default function DashboardOverview() {
-  const workspace = loadFieldWorkspace()
-  const fields = workspace.fields
-  const hasFields = fields.length > 0
+type ActionItem = typeof DEMO_ACTION_QUEUE[number]
 
-  const attentionItems = hasFields
-    ? ATTENTION_ITEMS.filter(item => fields.some(f => f.id === item.fieldId))
-    : []
+function ActionQueueItem({ item, isDemo }: { item: ActionItem; isDemo: boolean }) {
+  const styles = ACTION_TYPE_STYLES[item.type]
+  return (
+    <Link
+      to={`/dashboard/field/${item.fieldId}`}
+      className="flex items-start gap-4 px-4 py-3 hover:bg-neutral-900 transition-colors group"
+    >
+      <span className={`mt-0.5 shrink-0 text-xs px-1.5 py-0.5 rounded-sm font-medium ${styles.badge}`}>
+        {styles.label}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2 mb-0.5">
+          <span className="text-xs text-neutral-500">{item.field}</span>
+        </div>
+        <p className="text-sm text-neutral-300 leading-snug">{item.description}</p>
+        <p className="text-xs text-neutral-600 mt-1">
+          {item.agent} · {item.time}
+          {isDemo && <span className="ml-2 text-neutral-700">Preview</span>}
+        </p>
+      </div>
+      <span className="text-xs text-neutral-600 group-hover:text-neutral-400 transition-colors shrink-0 mt-0.5">
+        →
+      </span>
+    </Link>
+  )
+}
+
+type FieldItem = typeof DEMO_FIELDS[number]
+
+function FieldCard({ field, isDemo }: { field: FieldItem; isDemo: boolean }) {
+  const statusLineColor = FIELD_STATUS_LINE_STYLES[field.tone]
+  return (
+    <Link
+      to={`/dashboard/field/${field.id}`}
+      className="block bg-neutral-900 border border-neutral-800 p-5 hover:border-neutral-600 transition-colors"
+    >
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <span className="text-white font-medium text-sm">{field.name}</span>
+        {isDemo && (
+          <span className="shrink-0 text-xs text-neutral-600 border border-neutral-800 px-1.5 py-0.5">
+            Preview
+          </span>
+        )}
+      </div>
+      <p className={`text-sm italic leading-snug ${statusLineColor}`}>{field.statusLine}</p>
+      <p className="text-xs text-neutral-500 mt-3">
+        {field.agents} agents · {field.markets} markets · {field.capital}
+      </p>
+    </Link>
+  )
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
+
+export default function DashboardOverview() {
+  // In production this would come from real data; for now always show demo
+  const hasFields = false
+  const actionQueue = DEMO_ACTION_QUEUE
+  const fields = DEMO_FIELDS
+  const activity = DEMO_ACTIVITY
+  const isDemo = !hasFields
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-lg font-semibold text-white">Overview</h1>
-        <p className="mt-0.5 text-sm text-neutral-500">Your field workspace at a glance.</p>
+    <div className="p-6 max-w-4xl mx-auto space-y-8">
+
+      {/* Briefing headline */}
+      <div>
+        <h1 className="font-heading text-2xl text-white leading-tight">
+          Your agents worked overnight.
+        </h1>
+        <p className="text-neutral-500 text-sm mt-1">
+          {fields.length} field{fields.length !== 1 ? 's' : ''} active
+          {actionQueue.length > 0 ? ` · ${actionQueue.length} item${actionQueue.length !== 1 ? 's' : ''} need your input` : ''}
+        </p>
       </div>
 
-      {/* Needs Attention */}
-      {attentionItems.length > 0 && (
-        <section className="mb-6">
-          <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-widest mb-3">Needs attention</h2>
-          <div className="flex flex-wrap gap-3">
-            {attentionItems.map(item => (
-              <Link
-                key={item.id}
-                to={`/dashboard/field/${item.fieldId}`}
-                className="flex items-start gap-3 border border-neutral-800 rounded bg-neutral-900 px-4 py-3 hover:border-neutral-600 transition-colors min-w-0"
+      {/* Needs Your Input */}
+      <section>
+        <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">
+          Needs Your Input
+        </h2>
+        {actionQueue.length > 0 ? (
+          <div className="border border-neutral-800 divide-y divide-neutral-800">
+            {actionQueue.map(item => (
+              <ActionQueueItem key={item.id} item={item} isDemo={isDemo} />
+            ))}
+          </div>
+        ) : (
+          <AllClearBanner />
+        )}
+      </section>
+
+      {/* Your Fields */}
+      <section>
+        <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">
+          Your Fields
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {fields.map(field => (
+            <FieldCard key={field.id} field={field} isDemo={isDemo} />
+          ))}
+        </div>
+      </section>
+
+      {/* Recent Activity */}
+      <section>
+        <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">
+          Recent Activity
+        </h2>
+        <div className="divide-y divide-neutral-800">
+          {activity.map((item, i) => (
+            <div key={i} className="flex items-center gap-3 py-2.5">
+              <div
+                className={`w-6 h-6 rounded-full ${item.color} flex items-center justify-center text-[10px] font-bold text-white shrink-0`}
               >
-                <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${item.urgency === 'high' ? 'bg-sky-400' : 'bg-amber-400'}`} />
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-white truncate">{item.fieldName}</p>
-                  <p className="text-xs text-neutral-500 mt-0.5">{item.message}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
-        {/* Left: Fields */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-widest">
-              {hasFields ? 'Fields' : 'Your workspace'}
-            </h2>
-            {hasFields && (
-              <Link to="/dashboard/fields" className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors">
-                View all →
-              </Link>
-            )}
-          </div>
-
-          {hasFields ? (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-              {fields.map(field => (
-                <FieldCard key={field.id} field={field} />
-              ))}
-            </div>
-          ) : (
-            <DemoFieldCard />
-          )}
-        </div>
-
-        {/* Right: Activity feed */}
-        <div>
-          <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-widest mb-3">Recent activity</h2>
-          <div className="divide-y divide-neutral-800 border border-neutral-800 rounded">
-            {ACTIVITY_FEED.map(item => (
-              <div key={item.id} className="px-4 py-3">
-                <p className="text-xs text-neutral-300 leading-relaxed">{item.event}</p>
-                <p className="mt-1 text-xs text-neutral-600">{item.time}</p>
+                {item.initials}
               </div>
-            ))}
-          </div>
+              <span className="text-xs font-medium text-neutral-400 w-16 shrink-0">{item.agent}</span>
+              <p className="text-sm text-neutral-400 flex-1">{item.action}</p>
+              <span className="text-xs text-neutral-600 bg-neutral-900 border border-neutral-800 px-2 py-0.5 shrink-0">
+                {item.field}
+              </span>
+              <span className="text-xs text-neutral-600 w-16 text-right shrink-0 font-mono">{item.time}</span>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
+
     </div>
   )
 }

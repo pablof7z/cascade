@@ -38,7 +38,6 @@ const primaryItems = [
     href: '/dashboard/treasury',
     label: 'Treasury',
     end: false,
-    disabled: true,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -52,7 +51,7 @@ const secondaryItems = [
   {
     href: '/dashboard/activity',
     label: 'Activity',
-    disabled: true,
+    end: false,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -63,7 +62,7 @@ const secondaryItems = [
   {
     href: '/dashboard/settings',
     label: 'Settings',
-    disabled: true,
+    end: false,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -75,6 +74,13 @@ const secondaryItems = [
   },
 ]
 
+const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+  `flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded transition-colors ${
+    isActive
+      ? 'text-white bg-neutral-800'
+      : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
+  }`
+
 export default function AgentDashboard() {
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
@@ -83,31 +89,15 @@ export default function AgentDashboard() {
         <nav className="sticky top-16 flex flex-col flex-1 pt-5 pb-4 px-3">
           <div className="flex flex-col gap-0.5">
             {primaryItems.map((item) => (
-              item.disabled ? (
-                <span
-                  key={item.href}
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-neutral-600 cursor-default"
-                >
-                  {item.icon}
-                  {item.label}
-                </span>
-              ) : (
-                <NavLink
-                  key={item.href}
-                  to={item.href}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded transition-colors ${
-                      isActive
-                        ? 'text-white bg-neutral-800'
-                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
-                    }`
-                  }
-                >
-                  {item.icon}
-                  {item.label}
-                </NavLink>
-              )
+              <NavLink
+                key={item.href}
+                to={item.href}
+                end={item.end}
+                className={navLinkClass}
+              >
+                {item.icon}
+                {item.label}
+              </NavLink>
             ))}
           </div>
 
@@ -115,30 +105,15 @@ export default function AgentDashboard() {
 
           <div className="flex flex-col gap-0.5">
             {secondaryItems.map((item) => (
-              item.disabled ? (
-                <span
-                  key={item.href}
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-neutral-600 cursor-default"
-                >
-                  {item.icon}
-                  {item.label}
-                </span>
-              ) : (
-                <NavLink
-                  key={item.href}
-                  to={item.href}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded transition-colors ${
-                      isActive
-                        ? 'text-white bg-neutral-800'
-                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800/60'
-                    }`
-                  }
-                >
-                  {item.icon}
-                  {item.label}
-                </NavLink>
-              )
+              <NavLink
+                key={item.href}
+                to={item.href}
+                end={item.end}
+                className={navLinkClass}
+              >
+                {item.icon}
+                {item.label}
+              </NavLink>
             ))}
           </div>
 

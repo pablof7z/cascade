@@ -90,26 +90,26 @@ function countReplies(replies: ReplyNode[]): number {
 function getTiltCopy(probability: number) {
   if (probability >= 0.65) {
     return {
-      label: 'YES consensus is setting the pace',
+      label: 'Strong YES consensus',
       detail:
-        'Long conviction already owns the narrative. New YES buyers need a sharper catalyst than what is currently priced, and NO buyers are looking for a clean break in the thesis.',
+        'Most capital is positioned long. Price moves require new information or a catalyst for reversal.',
       accent: 'text-emerald-400',
     }
   }
 
   if (probability <= 0.35) {
     return {
-      label: 'NO consensus is controlling the tape',
+      label: 'Strong NO consensus',
       detail:
-        'The market is leaning against the thesis. YES buyers need genuinely new information, not just better rhetoric, to reverse the current positioning.',
+        'Most capital is positioned short. A reversal requires new evidence, not sentiment.',
       accent: 'text-rose-400',
     }
   }
 
   return {
-    label: 'Price is balanced and still vulnerable',
+    label: 'No clear consensus',
     detail:
-      'Neither side has locked the market. When the crowd is split, the next concrete update or strong rebuttal can reprice the contract quickly.',
+      'Neither side dominates. The next material update is likely to move the price.',
     accent: 'text-amber-300',
   }
 }
@@ -117,24 +117,24 @@ function getTiltCopy(probability: number) {
 function getTradeFrame(probability: number) {
   if (probability >= 0.65) {
     return [
-      'Buy YES only if you think the current upside is still underpriced after the recent move.',
-      'Buy NO if you believe optimism has outrun evidence and the market needs to mean-revert.',
-      'Use discussion to find the strongest rebuttal before adding to the crowded side.',
+      'YES is crowded. New buyers need a catalyst beyond what is priced.',
+      'NO offers value if you expect a reversion.',
+      'Check the discussion for counter-arguments before sizing.',
     ]
   }
 
   if (probability <= 0.35) {
     return [
-      'Buy NO if you think the market still has more downside to price in.',
-      'Buy YES if you have a specific catalyst that breaks the current bearish consensus.',
-      'Watch for fresh evidence rather than vague sentiment because the tape is already skeptical.',
+      'NO is crowded. Further downside requires new evidence.',
+      'YES requires a specific catalyst to break consensus.',
+      'Look for new evidence, not sentiment.',
     ]
   }
 
   return [
-    'This is a two-sided market, so edge comes from timing and evidence, not momentum alone.',
-    'Buy YES if you think the next hard update will push conviction above the midpoint.',
-    'Buy NO if you think the current debate is still overstating the upside case.',
+    'Neither side dominates. Edge comes from timing and evidence.',
+    'YES if you expect the next update to favor the thesis.',
+    'NO if you think the upside is overstated.',
   ]
 }
 
@@ -216,17 +216,17 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
           : `${formatPercent(shortCapital)} of committed capital is leaning NO`,
       detail:
         longCapital >= shortCapital
-          ? 'The crowd is carrying more upside exposure than downside insurance.'
-          : 'Downside protection is absorbing more capital than the upside case.',
+          ? 'Capital skews YES.'
+          : 'Capital skews NO.',
     },
     {
       eyebrow: 'Flow',
       title: lastReceipt
         ? `${ACTOR_LABELS[lastReceipt.actor]} last traded ${lastReceipt.side === 'LONG' ? 'YES' : 'NO'}`
-        : 'Waiting on the next decisive fill',
+        : 'No recent trades',
       detail: lastReceipt
         ? `${formatCurrency(lastReceipt.sats)} notional moved through the pool at ${formatTimestamp(lastReceipt.createdAt)}.`
-        : 'The activity tab will start filling once new receipts settle.',
+        : 'Activity will appear after the first trade.',
     },
     {
       eyebrow: 'Debate',
@@ -235,7 +235,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
         ? `${latestThread.author} is currently setting the discussion agenda with ${formatCompactNumber(
             getThreadScore(latestThread),
           )} net votes.`
-        : 'Open discussion to seed the first evidence-backed thread.',
+        : 'Start a thread from the Discussion tab.',
     },
   ]
 
@@ -368,7 +368,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                       <div className="flex items-center justify-between py-3">
                         <dt className="text-neutral-500">Last trade</dt>
                         <dd className="font-medium text-white">
-                          {lastReceipt ? `${ACTOR_LABELS[lastReceipt.actor]} ${lastReceipt.side === 'LONG' ? 'YES' : 'NO'}` : 'Awaiting flow'}
+                          {lastReceipt ? `${ACTOR_LABELS[lastReceipt.actor]} ${lastReceipt.side === 'LONG' ? 'YES' : 'NO'}` : 'None'}
                         </dd>
                       </div>
                       <div className="flex items-center justify-between py-3">
@@ -386,7 +386,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                     <h3 className="text-lg font-semibold text-white">Price and positioning</h3>
                     <div className="text-sm text-neutral-500">Reserve {formatCurrency(market.reserve)}</div>
                   </div>
-                  <div className="mt-4 h-72 border border-neutral-800 bg-neutral-950/60 p-4">
+                  <div className="mt-4 h-72 border-y border-neutral-800 py-4">
                     <PriceChart data={entry.history} />
                   </div>
                   <div className="mt-5 space-y-4">
@@ -422,7 +422,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
 
                 <article className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">What has to be true</h3>
+                    <h3 className="text-lg font-semibold text-white">Trading considerations</h3>
                     <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
                       {tradeFrame.map((item) => (
                         <div key={item} className="py-3 text-sm leading-7 text-neutral-300">
@@ -432,7 +432,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Live pressure points</h3>
+                    <h3 className="text-lg font-semibold text-white">Market signals</h3>
                     <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
                       {catalystCards.map((card) => (
                         <div key={card.eyebrow} className="py-4">
@@ -530,22 +530,24 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
 
           {activeTab === 'discussion' ? (
             <>
-              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-[24px] border border-neutral-800 bg-neutral-950 px-5 py-5">
-                  <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Live threads</div>
-                  <div className="mt-2 text-3xl font-semibold text-white">{discussionThreads.length}</div>
-                </div>
-                <div className="rounded-[24px] border border-neutral-800 bg-neutral-950 px-5 py-5">
-                  <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Replies</div>
-                  <div className="mt-2 text-3xl font-semibold text-white">{formatCompactNumber(totalReplies)}</div>
-                </div>
-                <div className="rounded-[24px] border border-neutral-800 bg-neutral-950 px-5 py-5">
-                  <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Bull threads</div>
-                  <div className="mt-2 text-3xl font-semibold text-emerald-400">{bullThreads.length}</div>
-                </div>
-                <div className="rounded-[24px] border border-neutral-800 bg-neutral-950 px-5 py-5">
-                  <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Bear threads</div>
-                  <div className="mt-2 text-3xl font-semibold text-rose-400">{bearThreads.length}</div>
+              <section className="border-t border-neutral-800 pt-5">
+                <div className="grid gap-x-6 gap-y-3 border-b border-neutral-800 pb-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
+                  <div>
+                    <div className="text-neutral-500">Threads</div>
+                    <div className="mt-1 text-lg font-semibold text-white">{discussionThreads.length}</div>
+                  </div>
+                  <div>
+                    <div className="text-neutral-500">Replies</div>
+                    <div className="mt-1 text-lg font-semibold text-white">{formatCompactNumber(totalReplies)}</div>
+                  </div>
+                  <div>
+                    <div className="text-neutral-500">Bull</div>
+                    <div className="mt-1 text-lg font-semibold text-emerald-400">{bullThreads.length}</div>
+                  </div>
+                  <div>
+                    <div className="text-neutral-500">Bear</div>
+                    <div className="mt-1 text-lg font-semibold text-rose-400">{bearThreads.length}</div>
+                  </div>
                 </div>
               </section>
 
@@ -559,126 +561,118 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
 
           {activeTab === 'charts' ? (
             <>
-              <section className="grid gap-4 md:grid-cols-4">
-                <div className="rounded-[24px] border border-neutral-800 bg-neutral-950 px-5 py-5">
-                  <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Current YES</div>
-                  <div className="mt-2 text-2xl font-semibold text-emerald-400">
-                    {(yesPrice * 100).toFixed(1)}¢
+              <section className="border-t border-neutral-800 pt-5">
+                <div className="grid gap-x-6 gap-y-3 border-b border-neutral-800 pb-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
+                  <div>
+                    <div className="text-neutral-500">Current YES</div>
+                    <div className="mt-1 text-lg font-semibold text-emerald-400">
+                      {(yesPrice * 100).toFixed(1)}¢
+                    </div>
                   </div>
-                </div>
-                <div className="rounded-[24px] border border-neutral-800 bg-neutral-950 px-5 py-5">
-                  <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Current NO</div>
-                  <div className="mt-2 text-2xl font-semibold text-rose-400">
-                    {(noPrice * 100).toFixed(1)}¢
+                  <div>
+                    <div className="text-neutral-500">Current NO</div>
+                    <div className="mt-1 text-lg font-semibold text-rose-400">
+                      {(noPrice * 100).toFixed(1)}¢
+                    </div>
                   </div>
-                </div>
-                <div className="rounded-[24px] border border-neutral-800 bg-neutral-950 px-5 py-5">
-                  <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Move vs open</div>
-                  <div
-                    className={`mt-2 text-2xl font-semibold ${
-                      priceMove >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                    }`}
-                  >
-                    {formatSignedCents(priceMove)}
+                  <div>
+                    <div className="text-neutral-500">Move vs open</div>
+                    <div
+                      className={`mt-1 text-lg font-semibold ${
+                        priceMove >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                      }`}
+                    >
+                      {formatSignedCents(priceMove)}
+                    </div>
                   </div>
-                </div>
-                <div className="rounded-[24px] border border-neutral-800 bg-neutral-950 px-5 py-5">
-                  <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Executed volume</div>
-                  <div className="mt-2 text-2xl font-semibold text-white">
-                    {formatCurrency(totalVolume)}
+                  <div>
+                    <div className="text-neutral-500">Executed volume</div>
+                    <div className="mt-1 text-lg font-semibold text-white">
+                      {formatCurrency(totalVolume)}
+                    </div>
                   </div>
                 </div>
               </section>
 
-              <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-5">
-                  <div className="mb-4 text-sm font-medium text-white">Price curve</div>
-                  <div className="h-80 rounded-[24px] border border-neutral-800 bg-neutral-900/60 p-4">
+              <section className="grid gap-8 border-t border-neutral-800 pt-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Price curve</h3>
+                  <div className="mt-4 h-80 border border-neutral-800 bg-neutral-950/60 p-4">
                     <PriceChart data={entry.history} />
                   </div>
                 </div>
-                <div className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-5">
-                  <div className="text-sm font-medium text-white">Latest execution</div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Latest execution</h3>
                   {market.lastTrade ? (
-                    <div className="mt-4 space-y-4 text-sm text-neutral-400">
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Trade</div>
-                        <div className="mt-1 font-medium text-white">
+                    <dl className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800 text-sm">
+                      <div className="flex items-center justify-between py-3">
+                        <dt className="text-neutral-500">Trade</dt>
+                        <dd className="font-medium text-white">
                           {ACTOR_LABELS[market.lastTrade.actor]}{' '}
                           {market.lastTrade.kind === 'BUY' ? 'bought' : 'redeemed'}{' '}
                           {market.lastTrade.side}
-                        </div>
+                        </dd>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Size</div>
-                          <div className="mt-1 text-white">{formatCurrency(market.lastTrade.sats)}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Tokens</div>
-                          <div className="mt-1 text-white">{market.lastTrade.tokens.toFixed(3)}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Start</div>
-                          <div className="mt-1 text-white">{(market.lastTrade.startPrice * 100).toFixed(2)}¢</div>
-                        </div>
-                        <div>
-                          <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">End</div>
-                          <div className="mt-1 text-white">{(market.lastTrade.endPrice * 100).toFixed(2)}¢</div>
-                        </div>
+                      <div className="flex items-center justify-between py-3">
+                        <dt className="text-neutral-500">Size</dt>
+                        <dd className="font-medium text-white">{formatCurrency(market.lastTrade.sats)}</dd>
                       </div>
-                    </div>
+                      <div className="flex items-center justify-between py-3">
+                        <dt className="text-neutral-500">Tokens</dt>
+                        <dd className="font-medium text-white">{market.lastTrade.tokens.toFixed(3)}</dd>
+                      </div>
+                      <div className="flex items-center justify-between py-3">
+                        <dt className="text-neutral-500">Start price</dt>
+                        <dd className="font-medium text-white">{(market.lastTrade.startPrice * 100).toFixed(2)}¢</dd>
+                      </div>
+                      <div className="flex items-center justify-between py-3">
+                        <dt className="text-neutral-500">End price</dt>
+                        <dd className="font-medium text-white">{(market.lastTrade.endPrice * 100).toFixed(2)}¢</dd>
+                      </div>
+                    </dl>
                   ) : (
                     <p className="mt-4 text-sm text-neutral-500">
-                      No fills yet. The first trade will establish the live execution trail.
+                      No fills yet.
                     </p>
                   )}
                 </div>
               </section>
 
-              <section className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-5">
-                <div className="mb-4 flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-white">Recent fills</h2>
-                    <p className="mt-1 text-sm text-neutral-400">
-                      Execution history is where price discovery becomes concrete.
-                    </p>
-                  </div>
+              <section className="border-t border-neutral-800 pt-6">
+                <div className="flex items-center justify-between gap-4">
+                  <h3 className="text-lg font-semibold text-white">Recent fills</h3>
                 </div>
-                <div className="space-y-3">
+                <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
                   {recentReceipts.length > 0 ? (
                     recentReceipts.map((receipt) => (
-                      <div
-                        key={receipt.id}
-                        className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-neutral-800 bg-neutral-900/70 px-4 py-3"
-                      >
+                      <div key={receipt.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                         <div>
                           <div className="font-medium text-white">
                             {ACTOR_LABELS[receipt.actor]} {receipt.kind === 'mint' ? 'bought' : 'redeemed'}{' '}
                             {receipt.side}
                           </div>
-                          <div className="mt-1 text-xs text-neutral-500">{formatTimestamp(receipt.createdAt)}</div>
+                          <div className="mt-1 text-sm text-neutral-500">{formatTimestamp(receipt.createdAt)}</div>
                         </div>
-                        <div className="flex flex-wrap gap-6 text-sm">
+                        <div className="grid grid-cols-3 gap-6 text-sm">
                           <div>
-                            <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Notional</div>
+                            <div className="text-neutral-500">Notional</div>
                             <div className="mt-1 text-white">{formatCurrency(receipt.sats)}</div>
                           </div>
                           <div>
-                            <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Tokens</div>
+                            <div className="text-neutral-500">Tokens</div>
                             <div className="mt-1 text-white">{receipt.tokens.toFixed(3)}</div>
                           </div>
                           <div>
-                            <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Reserve after</div>
+                            <div className="text-neutral-500">Reserve after</div>
                             <div className="mt-1 text-white">{formatCurrency(receipt.reserveAfter)}</div>
                           </div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-neutral-500">
-                      No receipt history yet. Trading activity will populate this log.
-                    </p>
+                    <div className="py-4 text-sm text-neutral-500">
+                      No receipt history yet.
+                    </div>
                   )}
                 </div>
               </section>
@@ -687,60 +681,42 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
 
           {activeTab === 'activity' ? (
             <>
-              <section className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-5">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-white">Recent market events</h2>
-                  <p className="mt-1 text-sm text-neutral-400">
-                    Follow what actually changed in the market before you mirror the crowd.
-                  </p>
-                </div>
-                <div className="space-y-3">
+              <section className="border-t border-neutral-800 pt-6">
+                <h3 className="text-lg font-semibold text-white">Events</h3>
+                <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
                   {recentEvents.length > 0 ? (
                     recentEvents.map((event) => (
-                      <div
-                        key={event.id}
-                        className="rounded-2xl border border-neutral-800 bg-neutral-900/70 px-4 py-4"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <div className="font-medium text-white">{event.label}</div>
-                            <p className="mt-1 text-sm leading-relaxed text-neutral-400">
-                              {event.detail}
-                            </p>
-                          </div>
-                          <div className="text-xs text-neutral-500">{formatTimestamp(event.createdAt)}</div>
+                      <div key={event.id} className="flex flex-wrap items-start justify-between gap-3 py-4">
+                        <div>
+                          <div className="font-medium text-white">{event.label}</div>
+                          <p className="mt-1 text-sm leading-relaxed text-neutral-400">
+                            {event.detail}
+                          </p>
                         </div>
+                        <div className="text-xs text-neutral-500">{formatTimestamp(event.createdAt)}</div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-neutral-500">
-                      No event stream yet. The activity tab will populate as soon as the market moves.
-                    </p>
+                    <div className="py-4 text-sm text-neutral-500">
+                      No events yet.
+                    </div>
                   )}
                 </div>
               </section>
 
-              <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-5">
-                  <div className="mb-4">
-                    <h2 className="text-lg font-semibold text-white">Receipt log</h2>
-                    <p className="mt-1 text-sm text-neutral-400">
-                      Every mint and redeem is visible here with reserves before and after.
-                    </p>
-                  </div>
-                  <div className="space-y-3">
+              <section className="grid gap-8 border-t border-neutral-800 pt-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Receipt log</h3>
+                  <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
                     {recentReceipts.length > 0 ? (
                       recentReceipts.map((receipt) => (
-                        <div
-                          key={receipt.id}
-                          className="flex items-start justify-between gap-4 rounded-2xl border border-neutral-800 bg-neutral-900/70 px-4 py-3"
-                        >
+                        <div key={receipt.id} className="flex items-start justify-between gap-4 py-4">
                           <div>
                             <div className="font-medium text-white">
                               {ACTOR_LABELS[receipt.actor]} {receipt.kind}
                             </div>
                             <div className="mt-1 text-sm text-neutral-400">
-                              {receipt.side} • {receipt.tokens.toFixed(3)} tokens
+                              {receipt.side} · {receipt.tokens.toFixed(3)} tokens
                             </div>
                           </div>
                           <div className="text-right text-sm">
@@ -752,41 +728,33 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-neutral-500">
-                        No receipts yet. Trades will appear here as soon as they settle.
-                      </p>
+                      <div className="py-4 text-sm text-neutral-500">
+                        No receipts yet.
+                      </div>
                     )}
                   </div>
                 </div>
 
-                <div className="rounded-[28px] border border-neutral-800 bg-neutral-950 p-5">
-                  <div className="mb-4">
-                    <h2 className="text-lg font-semibold text-white">Participant positioning</h2>
-                    <p className="mt-1 text-sm text-neutral-400">
-                      Exposure reveals who is actually carrying risk, not just posting about it.
-                    </p>
-                  </div>
-                  <div className="space-y-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Positioning</h3>
+                  <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
                     {participantRows.map((row) => (
-                      <div
-                        key={row.actor}
-                        className="rounded-2xl border border-neutral-800 bg-neutral-900/70 px-4 py-3"
-                      >
+                      <div key={row.actor} className="py-4">
                         <div className="flex items-center justify-between gap-3">
                           <div className="font-medium text-white">{ACTOR_LABELS[row.actor]}</div>
-                          <div className="text-sm text-neutral-500">Cash {formatCurrency(row.cash)}</div>
+                          <div className="text-sm text-neutral-500">{formatCurrency(row.cash)} cash</div>
                         </div>
-                        <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                        <div className="mt-3 grid grid-cols-3 gap-6 text-sm">
                           <div>
-                            <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Long</div>
+                            <div className="text-neutral-500">Long</div>
                             <div className="mt-1 text-emerald-400">{row.long.toFixed(3)}</div>
                           </div>
                           <div>
-                            <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Short</div>
+                            <div className="text-neutral-500">Short</div>
                             <div className="mt-1 text-rose-400">{row.short.toFixed(3)}</div>
                           </div>
                           <div>
-                            <div className="text-xs uppercase tracking-[0.2em] text-neutral-600">Gross</div>
+                            <div className="text-neutral-500">Gross</div>
                             <div className="mt-1 text-white">{row.grossExposure.toFixed(3)}</div>
                           </div>
                         </div>
@@ -807,7 +775,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                   {selectedSide === 'LONG' ? 'Add YES exposure' : 'Add NO exposure'}
                 </h3>
                 <p className="mt-2 text-sm text-neutral-500">
-                  Immediate LMSR execution. Check the tape and thread flow before you size up.
+                  Trades execute instantly via LMSR pricing.
                 </p>
               </div>
               <div
@@ -907,8 +875,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
             ) : null}
 
             <p className="mt-5 text-xs leading-relaxed text-neutral-500">
-              Trades execute immediately against the LMSR reserve in this demo market. Use the tabs
-              above to pressure-test the thesis before sizing up.
+              Demo market. Trades execute immediately against the LMSR reserve.
             </p>
 
             <button

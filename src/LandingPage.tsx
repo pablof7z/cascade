@@ -695,7 +695,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="flex items-baseline justify-between mb-8">
             <div className="flex items-baseline gap-4">
-              <h2 className="text-3xl font-black text-white tracking-tight">Under the Radar</h2>
+              <h2 className="text-3xl font-black text-white tracking-tight">Low Volume</h2>
               <span className="text-sm text-neutral-600">Smaller markets with lower volume and less attention.</span>
             </div>
             <span className="text-xs text-neutral-600 uppercase tracking-wider hidden sm:block">Updated live</span>
@@ -766,7 +766,6 @@ export default function LandingPage({ markets, dispatch }: Props) {
             <span className="text-sm text-neutral-600">Markets where the odds are close and opinion is split.</span>
           </div>
           <p className="text-sm text-neutral-500 leading-relaxed lg:text-right">
-            Watch the price action, then scan the latest posts driving each market.
           </p>
         </div>
 
@@ -844,7 +843,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                             </span>
                             {debate.spread <= 5 && (
                               <span className="text-[10px] uppercase tracking-[0.18em] text-amber-500">
-                                Razor-thin
+                                Tight spread
                               </span>
                             )}
                           </div>
@@ -921,7 +920,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                             </button>
                           )) : (
                             <div className="text-sm text-neutral-500 leading-relaxed">
-                              Fresh pricing, no thread yet. Start the first argument from the market page.
+                              No discussion yet.
                             </div>
                           )}
                         </div>

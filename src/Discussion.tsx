@@ -166,7 +166,7 @@ function buildThesisArena(
             label: 'Core thesis',
             eyebrow: 'No signal markets attached yet',
             detail:
-              'This thesis still needs explicit sub-questions that participants can attack, defend, and trade against.',
+              'No signal markets attached. Add signals to break down this thesis.',
           },
         ]
 
@@ -174,9 +174,9 @@ function buildThesisArena(
 
   return {
     eyebrow: 'Thesis arena',
-    title: 'The market should score the argument, not sit beside it',
+    title: 'Discussion',
     description:
-      'Participants need a place to press the causal chain, attack assumptions, and surface asymmetric information in public. That debate should be legible enough to move the score.',
+      'Debate the thesis. Higher-impact arguments are ranked first.',
     stats: [
       { label: 'Consensus', value: formatPercent(consensus) },
       { label: 'Reserve', value: formatCurrency(reserve) },
@@ -186,28 +186,27 @@ function buildThesisArena(
       {
         label: 'Long case',
         stance: 'long',
-        summary: `${marketTitle} works if second-order effects compound faster than institutions can absorb them.`,
+        summary: `The case for YES on ${marketTitle}.`,
         hook: leadSignal
-          ? `Most active attack surface: ${leadSignal.label}`
-          : 'Most active attack surface: define the first catalyst that matters',
+          ? `Top signal: ${leadSignal.label}`
+          : 'No signal markets linked yet',
       },
       {
         label: 'Short case',
         stance: 'short',
         summary:
-          'The short side is usually attacking narrative neatness: one clean story, too many hidden assumptions, not enough timing discipline.',
+          'The case against. Challenge assumptions, timing, and hidden risks.',
         hook: `Current disagreement spread: ${formatPercent(consensus)} long / ${formatPercent(
           1 - consensus,
         )} short`,
       },
     ],
-    nodesTitle: 'Pressure points',
+    nodesTitle: 'Connected signals',
     nodesDescription:
-      'These are the modules and causal hinges where persuasion can flip the thesis faster than passive price watching.',
+      'Signal markets linked to this thesis.',
     nodes,
-    composeCta: 'Publish to thesis arena',
-    composeHint:
-      'Post a falsifiable claim, attach it to a signal market, or challenge the strongest argument on the other side.',
+    composeCta: 'Post',
+    composeHint: '',
     composeTitle: 'Add to discussion',
     composePlaceholder: 'Share your argument...',
     stanceLabels: { long: 'LONG', short: 'SHORT', none: 'NEUTRAL' },
@@ -296,17 +295,17 @@ function buildModuleArena(marketTitle: string, consensus: number, reserve: numbe
           {
             id: 'module-resolution',
             label: 'Resolution thread',
-            eyebrow: 'Module market still needs connective tissue',
+            eyebrow: 'Not linked',
             detail:
-              'If this module matters, participants should explain which larger theses it can reprice and how a resolution would propagate.',
+              'No linked theses. Connect this signal to show how its resolution affects larger markets.',
           },
         ]
 
   return {
     eyebrow: 'Signal arena',
-    title: 'Modules should function like evidence battlegrounds',
+    title: 'Discussion',
     description:
-      'A module is not just a smaller market. It is where traders pressure-test the claims that larger theses are built on top of.',
+      'Debate the evidence behind this signal.',
     stats: [
       { label: 'Consensus', value: formatPercent(consensus) },
       { label: 'Reserve', value: formatCurrency(reserve) },
@@ -316,26 +315,25 @@ function buildModuleArena(marketTitle: string, consensus: number, reserve: numbe
       {
         label: 'YES case',
         stance: 'long',
-        summary: `A YES on ${marketTitle} should reprice the theses that currently treat it as a prerequisite, accelerant, or warning shot.`,
+        summary: `If YES, connected theses should reprice.`,
         hook: `Consensus today: ${formatPercent(consensus)} YES`,
       },
       {
         label: 'NO case',
         stance: 'short',
         summary:
-          'The NO side should force participants to separate actual progress from demos, narratives, and timelines that look cleaner than reality.',
+          'Challenge whether reported progress justifies the current price.',
         hook: `${clampNodeCount(nodes.length)} thesis thread${
           clampNodeCount(nodes.length) === 1 ? '' : 's'
         } depend on this module`,
       },
     ],
-    nodesTitle: 'Theses downstream',
+    nodesTitle: 'Connected theses',
     nodesDescription:
-      'If this module resolves decisively, these higher-level markets are the first places where persuasion and repricing should show up.',
+      'Theses that depend on this signal market.',
     nodes,
-    composeCta: 'Publish to signal arena',
-    composeHint:
-      'Explain why this module should transmit into a larger thesis, or attack the chain of reasoning that says it will.',
+    composeCta: 'Post',
+    composeHint: '',
     composeTitle: 'Add to discussion',
     composePlaceholder: 'Share your argument...',
     stanceLabels: { long: 'YES', short: 'NO', none: 'NEUTRAL' },
@@ -510,9 +508,9 @@ function buildFieldArena(field: Field): ArenaData {
 
   return {
     eyebrow: 'Field arena',
-    title: 'Keep the field conversation attached to the work',
+    title: 'Discussion',
     description:
-      'This thread is for field-level arguments, source pressure, and staffing decisions. The discussion should stay attached to the field itself, not scatter into adjacent views.',
+      'Arguments, evidence, and decisions for this field.',
     stats: [
       { label: 'Attention', value: fieldAttentionLabels[field.attention] },
       { label: 'Council', value: `${field.council.length} agents` },
@@ -534,7 +532,7 @@ function buildFieldArena(field: Field): ArenaData {
     ],
     nodesTitle: 'Open field threads',
     nodesDescription:
-      'These are the questions where public argument should keep pushing the field forward.',
+      'Active topics in this field.',
     nodes: field.topics.map((topic) => ({
       id: topic.id,
       label: topic.title,
@@ -542,10 +540,9 @@ function buildFieldArena(field: Field): ArenaData {
       detail: topic.summary,
     })),
     composeCta: 'Post to field discussion',
-    composeHint:
-      'Challenge the field framing, connect a source to a live question, or push the next action into the open.',
+    composeHint: '',
     composeTitle: 'Add to field discussion',
-    composePlaceholder: 'Push the field framing, challenge a source, or propose the next action...',
+    composePlaceholder: 'Add your argument...',
     stanceLabels: { long: 'THESIS', short: 'COUNTER', none: 'NOTE' },
     defaultTarget: field.topics[0]?.title ?? 'Field framing',
     posts,

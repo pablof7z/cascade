@@ -388,9 +388,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
   }
 
   function navigateToMarket(entry: MarketEntry) {
-    const spec = getSampleSpec(entry.market.title)
-    const isThesis = spec?.type === 'thesis'
-    navigate(isThesis ? `/thesis/${entry.market.id}` : `/market/${entry.market.id}`)
+    navigate(`/market/${entry.market.id}`)
   }
 
   function navigateFromHomepage(source: 'featured_thesis' | 'most_disputed_market' | 'latest_market', entry: MarketEntry) {

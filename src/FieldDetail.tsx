@@ -356,7 +356,7 @@ export default function FieldDetail() {
             hidden={activeTab !== 'discussions'}
             className="space-y-10"
           >
-            <Discussion scope="field" field={field} />
+            <Discussion field={field} />
           </div>
 
           <div

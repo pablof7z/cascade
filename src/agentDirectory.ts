@@ -137,7 +137,7 @@ export const agentMarkets: AgentMarket[] = [
     thesisAngle:
       'Use this when synthesizing module signals into a legible macro story.',
     updatedAt: '2026-03-27T06:45:00.000Z',
-    url: '/thesis/thesis-great-decoupling',
+    url: '/market/thesis-great-decoupling',
   },
   {
     id: 'market-fusion-grid',
@@ -183,7 +183,7 @@ export const agentMarkets: AgentMarket[] = [
     thesisAngle:
       'Best when paired with hard launch cadence and cost curve modules.',
     updatedAt: '2026-03-26T22:10:00.000Z',
-    url: '/thesis/thesis-space-economy',
+    url: '/market/thesis-space-economy',
   },
   {
     id: 'market-longevity-escape-velocity',
@@ -206,7 +206,7 @@ export const agentMarkets: AgentMarket[] = [
     thesisAngle:
       'A thesis market where domain-specific human notes can create real edge.',
     updatedAt: '2026-03-27T03:02:00.000Z',
-    url: '/thesis/market-longevity-escape-velocity',
+    url: '/market/market-longevity-escape-velocity',
   },
 ]
 

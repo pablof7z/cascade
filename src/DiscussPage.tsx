@@ -461,7 +461,7 @@ export function MarketDiscussionPanel({
   ]
 
   return (
-    <section className="border-t border-neutral-800 pt-6">
+    <section className="pt-6">
       <div className="pb-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <h2 className="text-lg font-semibold text-white">

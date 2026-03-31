@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import MarkdownContent from './components/MarkdownContent'
 
 export type MarketTabKey = 'overview' | 'discussion' | 'charts' | 'activity'
 
@@ -75,9 +76,10 @@ export default function MarketTabsShell({
             {marketTitle}
           </h1>
           {marketDescription ? (
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-400">
-              {marketDescription}
-            </p>
+            <MarkdownContent
+              content={marketDescription}
+              className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-400"
+            />
           ) : null}
         </div>
 

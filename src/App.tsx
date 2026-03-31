@@ -22,7 +22,6 @@ import { load, save, type MarketEntry } from './storage'
 import { recordTrade, recordMarketCreation } from './services/participantIndex'
 import LandingPage from './LandingPage'
 import MarketDetail from './MarketDetail'
-import ThesisDetail from './ThesisDetail'
 import ThreadPage from './ThreadPage'
 import ThesisBuilder from './ThesisBuilder'
 import Portfolio from './Portfolio'
@@ -349,11 +348,12 @@ function MarketDetailWrapper({
     return null
   }
   
-  return <MarketDetail key={`${id}-${activeTab}`} entry={entry} dispatch={dispatch} activeTab={activeTab} />
+  return <MarketDetail key={`${id}-${activeTab}`} entry={entry} markets={markets} dispatch={dispatch} activeTab={activeTab} />
 }
 
-function ThesisDetailWrapper({ markets, dispatch }: { markets: Record<string, MarketEntry>; dispatch: React.Dispatch<Action> }) {
-  return <ThesisDetail markets={markets} dispatch={dispatch} />
+function ThesisRedirect() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/market/${id ?? ''}`} replace />
 }
 
 function ThreadPageWrapper({ markets }: { markets: Record<string, MarketEntry> }) {
@@ -407,9 +407,7 @@ function AppContent() {
   const handleDispatch = (action: Action) => {
     if (action.type === 'CREATE_MARKET' && action.id) {
       dispatch(action)
-      const route =
-        action.kind === 'thesis' || action.thesis ? `/thesis/${action.id}` : `/market/${action.id}`
-      navigate(route)
+      navigate(`/market/${action.id}`)
       return
     }
     dispatch(action)
@@ -447,7 +445,7 @@ function AppContent() {
         />
         <Route path="/market/:id/discuss" element={<LegacyMarketDiscussionRedirect />} />
         <Route path="/market/:id/discuss/:threadId" element={<LegacyMarketDiscussionRedirect />} />
-        <Route path="/thesis/:id" element={<ThesisDetailWrapper markets={state.markets} dispatch={handleDispatch} />} />
+        <Route path="/thesis/:id" element={<ThesisRedirect />} />
         <Route path="/builder" element={<ThesisBuilder markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/onboarding" element={<Profile />} />
         <Route path="/portfolio" element={<Portfolio />} />

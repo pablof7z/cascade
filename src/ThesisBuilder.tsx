@@ -208,7 +208,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
       },
     })
 
-    navigate(`/thesis/${marketId}`)
+    navigate(`/market/${marketId}`)
   }
 
   const renderClaimStep = () => (

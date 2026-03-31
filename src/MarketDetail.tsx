@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import type { MarketEntry } from './storage'
 import type { ActorId, Side } from './market'
 import { ACTOR_LABELS, deriveMarketMetrics, priceLong, priceShort, previewTrade } from './market'
-import { getSampleSpec } from './marketCatalog'
+import { getSampleSpec, getThesisDefinition } from './marketCatalog'
 import PriceChart from './PriceChart'
 import EmbedModal from './components/EmbedModal'
 import BookmarkButton from './components/BookmarkButton'
@@ -25,6 +25,7 @@ type TradeAction = {
 
 interface Props {
   entry: MarketEntry
+  markets: Record<string, MarketEntry>
   dispatch: Dispatch<TradeAction>
   activeTab: MarketTabKey
 }
@@ -142,7 +143,7 @@ function getThreadScore(thread: DiscussionThread) {
   return thread.upvotes - thread.downvotes
 }
 
-export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
+export default function MarketDetail({ entry, markets, dispatch, activeTab }: Props) {
   const [amount, setAmount] = useState(100)
   const [selectedSide, setSelectedSide] = useState<Side>('LONG')
   const [showEmbedModal, setShowEmbedModal] = useState(false)
@@ -166,6 +167,17 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
   }, [market.id, market.lastTrade?.id])
 
   const spec = getSampleSpec(market.title)
+  const thesis = getThesisDefinition(market)
+  const relatedSignals = (thesis?.signals ?? []).map((signal) => {
+    const matchingEntry =
+      (signal.moduleMarketId ? markets[signal.moduleMarketId] : undefined) ??
+      Object.values(markets).find((candidate) => candidate.market.title === signal.moduleTitle)
+    return {
+      ...signal,
+      routeId: matchingEntry?.market.id,
+      probability: matchingEntry ? deriveMarketMetrics(matchingEntry.market).longPositionShare : undefined,
+    }
+  })
   const { isBookmarked, toggle, getCount } = useBookmarks([market.id])
 
   const yesPrice = priceLong(market.qLong, market.qShort, market.b)
@@ -268,7 +280,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
       <MarketTabsShell
         marketId={market.id}
         marketTitle={market.title}
-        marketDescription={market.description}
+        marketDescription={thesis?.argument ?? market.description}
         probability={yesPrice}
         reserve={market.reserve}
         tradeCount={market.quotes.length}
@@ -299,21 +311,16 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
         <div className="space-y-5">
           {activeTab === 'overview' ? (
             <>
-              <section className="border-t border-neutral-800 pt-5">
+              <section className="pt-5">
                 <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.75fr)]">
                   <article>
-                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] uppercase tracking-[0.22em] text-neutral-500">
-                      <span>{market.kind === 'thesis' ? 'Thesis' : 'Market'}</span>
-                      {spec?.category ? <span>{spec.category}</span> : null}
-                      <span>{formatTimestamp(market.createdAt)}</span>
-                    </div>
-                    <h2 className={`mt-4 text-3xl font-semibold tracking-tight ${tilt.accent}`}>
+                    <h2 className={`text-3xl font-semibold tracking-tight ${tilt.accent}`}>
                       {tilt.label}
                     </h2>
                     <p className="mt-3 max-w-3xl text-sm leading-7 text-neutral-300 sm:text-[15px]">
                       {tilt.detail}
                     </p>
-                    <div className="mt-6 grid gap-x-6 gap-y-3 border-y border-neutral-800 py-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="mt-6 grid gap-x-6 gap-y-3 py-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
                       <div>
                         <div className="text-neutral-500">Move since open</div>
                         <div className={`mt-1 text-lg font-semibold ${priceMove >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -342,7 +349,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                   </article>
 
                   <aside className="border-l border-neutral-800 pl-0 xl:pl-6">
-                    <div className="grid grid-cols-2 gap-4 border-b border-neutral-800 pb-4">
+                    <div className="grid grid-cols-2 gap-4 pb-4">
                       <div>
                         <div className="text-xs uppercase tracking-[0.18em] text-neutral-500">Yes</div>
                         <div className="mt-2 text-4xl font-semibold text-emerald-400">
@@ -386,7 +393,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                     <h3 className="text-lg font-semibold text-white">Price and positioning</h3>
                     <div className="text-sm text-neutral-500">Reserve {formatCurrency(market.reserve)}</div>
                   </div>
-                  <div className="mt-4 h-72 border-y border-neutral-800 py-4">
+                  <div className="mt-4 h-72 py-4">
                     <PriceChart data={entry.history} />
                   </div>
                   <div className="mt-5 space-y-4">
@@ -423,7 +430,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                 <article className="space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-white">Trading considerations</h3>
-                    <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
+                    <div className="mt-4 divide-y divide-neutral-800">
                       {tradeFrame.map((item) => (
                         <div key={item} className="py-3 text-sm leading-7 text-neutral-300">
                           {item}
@@ -433,7 +440,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-white">Market signals</h3>
-                    <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
+                    <div className="mt-4 divide-y divide-neutral-800">
                       {catalystCards.map((card) => (
                         <div key={card.eyebrow} className="py-4">
                           <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">{card.eyebrow}</div>
@@ -443,6 +450,57 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                       ))}
                     </div>
                   </div>
+                  {relatedSignals.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Connected signals</h3>
+                      <p className="mt-2 text-sm text-neutral-500">Signal markets linked to this thesis.</p>
+                      <div className="mt-4 divide-y divide-neutral-800">
+                        {relatedSignals.map((signal, index) => (
+                          <div key={`${signal.moduleTitle}-${index}`} className="py-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                {signal.routeId ? (
+                                  <Link
+                                    to={`/market/${signal.routeId}`}
+                                    className="font-medium text-white transition-colors hover:text-emerald-300"
+                                  >
+                                    {signal.moduleTitle}
+                                  </Link>
+                                ) : (
+                                  <div className="font-medium text-white">{signal.moduleTitle}</div>
+                                )}
+                                <div className="mt-1 text-sm text-neutral-500">
+                                  {signal.note || 'No rationale added for this signal yet.'}
+                                </div>
+                                {signal.probability !== undefined && (
+                                  <div className="mt-2 text-xs text-neutral-500">
+                                    Live YES {formatPercent(signal.probability)}
+                                  </div>
+                                )}
+                              </div>
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                                  signal.expectedOutcome === 'YES'
+                                    ? 'bg-emerald-500/10 text-emerald-300'
+                                    : 'bg-rose-500/10 text-rose-300'
+                                }`}
+                              >
+                                Expect {signal.expectedOutcome}
+                              </span>
+                            </div>
+                            {signal.probability !== undefined && (
+                              <div className="mt-3 h-1 bg-neutral-800 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-emerald-500/60"
+                                  style={{ width: `${signal.probability * 100}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </article>
               </section>
 
@@ -452,7 +510,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                     <h3 className="text-lg font-semibold text-white">Largest positioned accounts</h3>
                     <div className="text-sm text-neutral-500">{participantRows.length} tracked</div>
                   </div>
-                  <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
+                  <div className="mt-4 divide-y divide-neutral-800">
                     {topParticipants.map((row) => (
                       <div key={row.actor} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                         <div>
@@ -488,7 +546,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                       Full activity
                     </Link>
                   </div>
-                  <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
+                  <div className="mt-4 divide-y divide-neutral-800">
                     {recentReceipts.length > 0 ? (
                       recentReceipts.map((receipt) => (
                         <div key={receipt.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
@@ -530,27 +588,6 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
 
           {activeTab === 'discussion' ? (
             <>
-              <section className="border-t border-neutral-800 pt-5">
-                <div className="grid gap-x-6 gap-y-3 border-b border-neutral-800 pb-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <div className="text-neutral-500">Threads</div>
-                    <div className="mt-1 text-lg font-semibold text-white">{discussionThreads.length}</div>
-                  </div>
-                  <div>
-                    <div className="text-neutral-500">Replies</div>
-                    <div className="mt-1 text-lg font-semibold text-white">{formatCompactNumber(totalReplies)}</div>
-                  </div>
-                  <div>
-                    <div className="text-neutral-500">Bull</div>
-                    <div className="mt-1 text-lg font-semibold text-emerald-400">{bullThreads.length}</div>
-                  </div>
-                  <div>
-                    <div className="text-neutral-500">Bear</div>
-                    <div className="mt-1 text-lg font-semibold text-rose-400">{bearThreads.length}</div>
-                  </div>
-                </div>
-              </section>
-
               <MarketDiscussionPanel
                 marketId={market.id}
                 marketTitle={market.title}
@@ -561,40 +598,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
 
           {activeTab === 'charts' ? (
             <>
-              <section className="border-t border-neutral-800 pt-5">
-                <div className="grid gap-x-6 gap-y-3 border-b border-neutral-800 pb-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <div className="text-neutral-500">Current YES</div>
-                    <div className="mt-1 text-lg font-semibold text-emerald-400">
-                      {(yesPrice * 100).toFixed(1)}¢
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-neutral-500">Current NO</div>
-                    <div className="mt-1 text-lg font-semibold text-rose-400">
-                      {(noPrice * 100).toFixed(1)}¢
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-neutral-500">Move vs open</div>
-                    <div
-                      className={`mt-1 text-lg font-semibold ${
-                        priceMove >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                      }`}
-                    >
-                      {formatSignedCents(priceMove)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-neutral-500">Executed volume</div>
-                    <div className="mt-1 text-lg font-semibold text-white">
-                      {formatCurrency(totalVolume)}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="grid gap-8 border-t border-neutral-800 pt-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+              <section className="grid gap-8 pt-6 xl:grid-cols-[minmax(0,1fr)_320px]">
                 <div>
                   <h3 className="text-lg font-semibold text-white">Price curve</h3>
                   <div className="mt-4 h-80 border border-neutral-800 bg-neutral-950/60 p-4">
@@ -604,7 +608,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                 <div>
                   <h3 className="text-lg font-semibold text-white">Latest execution</h3>
                   {market.lastTrade ? (
-                    <dl className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800 text-sm">
+                    <dl className="mt-4 divide-y divide-neutral-800 text-sm">
                       <div className="flex items-center justify-between py-3">
                         <dt className="text-neutral-500">Trade</dt>
                         <dd className="font-medium text-white">
@@ -642,7 +646,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
                 <div className="flex items-center justify-between gap-4">
                   <h3 className="text-lg font-semibold text-white">Recent fills</h3>
                 </div>
-                <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
+                <div className="mt-4 divide-y divide-neutral-800">
                   {recentReceipts.length > 0 ? (
                     recentReceipts.map((receipt) => (
                       <div key={receipt.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
@@ -681,9 +685,9 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
 
           {activeTab === 'activity' ? (
             <>
-              <section className="border-t border-neutral-800 pt-6">
+              <section className="pt-6">
                 <h3 className="text-lg font-semibold text-white">Events</h3>
-                <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
+                <div className="mt-4 divide-y divide-neutral-800">
                   {recentEvents.length > 0 ? (
                     recentEvents.map((event) => (
                       <div key={event.id} className="flex flex-wrap items-start justify-between gap-3 py-4">
@@ -707,7 +711,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
               <section className="grid gap-8 border-t border-neutral-800 pt-6 xl:grid-cols-[minmax(0,1fr)_320px]">
                 <div>
                   <h3 className="text-lg font-semibold text-white">Receipt log</h3>
-                  <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
+                  <div className="mt-4 divide-y divide-neutral-800">
                     {recentReceipts.length > 0 ? (
                       recentReceipts.map((receipt) => (
                         <div key={receipt.id} className="flex items-start justify-between gap-4 py-4">
@@ -737,7 +741,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
 
                 <div>
                   <h3 className="text-lg font-semibold text-white">Positioning</h3>
-                  <div className="mt-4 divide-y divide-neutral-800 border-y border-neutral-800">
+                  <div className="mt-4 divide-y divide-neutral-800">
                     {participantRows.map((row) => (
                       <div key={row.actor} className="py-4">
                         <div className="flex items-center justify-between gap-3">
@@ -854,7 +858,7 @@ export default function MarketDetail({ entry, dispatch, activeTab }: Props) {
             </div>
 
             {preview ? (
-              <div className="mt-5 divide-y divide-neutral-800 border-y border-neutral-800">
+              <div className="mt-5 divide-y divide-neutral-800">
                 <div className="flex justify-between py-3 text-sm">
                   <span className="text-neutral-500">Cost</span>
                   <span className="text-white">{formatCurrency(preview.sats)}</span>

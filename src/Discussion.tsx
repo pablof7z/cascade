@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import type { Field, FieldSource, MeetingEntry, MeetingEntryKind } from './fieldTypes'
-import type { MarketKind, ThesisSignal } from './market'
 import { getActorDisplayName } from './market'
-import { sampleTheses } from './marketCatalog'
 import { UserAvatar } from './components/UserAvatar'
 
 type PositionType = 'long' | 'short' | 'none'
@@ -80,22 +78,9 @@ interface ArenaData {
   posts: DebatePost[]
 }
 
-interface MarketDiscussionProps {
-  scope?: 'market'
-  marketTitle: string
-  marketKind: MarketKind
-  consensus: number
-  reserve: number
-  tradeCount: number
-  thesisSignals?: ThesisSignal[]
-}
-
-interface FieldDiscussionProps {
-  scope: 'field'
+interface DiscussionProps {
   field: Field
 }
-
-type DiscussionProps = MarketDiscussionProps | FieldDiscussionProps
 
 // Removed filter tabs - overly complex for the UI
 
@@ -125,10 +110,6 @@ function formatTimeAgo(timestamp: number): string {
   return `${days}d ago`
 }
 
-function clampNodeCount(count: number) {
-  return count > 0 ? count : 1
-}
-
 const fieldAttentionLabels: Record<Field['attention'], string> = {
   steady: 'Steady',
   review: 'Review',
@@ -143,264 +124,6 @@ const fieldDisagreementLabels: Record<Field['disagreement'], string> = {
 
 function getTopicTokens(value: string) {
   return value.toLowerCase().split(/[^a-z0-9]+/).filter((token) => token.length > 3)
-}
-
-function buildThesisArena(
-  marketTitle: string,
-  thesisSignals: ThesisSignal[],
-  consensus: number,
-  reserve: number,
-  tradeCount: number,
-): ArenaData {
-  const nodes =
-    thesisSignals.length > 0
-      ? thesisSignals.map((signal, index) => ({
-          id: `${signal.moduleTitle}-${index}`,
-          label: signal.moduleTitle,
-          eyebrow: `Signal thread: thesis needs ${signal.expectedOutcome}`,
-          detail: signal.note,
-        }))
-      : [
-          {
-            id: 'thesis-core',
-            label: 'Core thesis',
-            eyebrow: 'No signal markets attached yet',
-            detail:
-              'No signal markets attached. Add signals to break down this thesis.',
-          },
-        ]
-
-  const leadSignal = nodes[0]
-
-  return {
-    eyebrow: 'Thesis arena',
-    title: 'Discussion',
-    description:
-      'Debate the thesis. Higher-impact arguments are ranked first.',
-    stats: [
-      { label: 'Consensus', value: formatPercent(consensus) },
-      { label: 'Reserve', value: formatCurrency(reserve) },
-      { label: 'Trades', value: `${tradeCount}` },
-    ],
-    cards: [
-      {
-        label: 'Long case',
-        stance: 'long',
-        summary: `The case for YES on ${marketTitle}.`,
-        hook: leadSignal
-          ? `Top signal: ${leadSignal.label}`
-          : 'No signal markets linked yet',
-      },
-      {
-        label: 'Short case',
-        stance: 'short',
-        summary:
-          'The case against. Challenge assumptions, timing, and hidden risks.',
-        hook: `Current disagreement spread: ${formatPercent(consensus)} long / ${formatPercent(
-          1 - consensus,
-        )} short`,
-      },
-    ],
-    nodesTitle: 'Connected signals',
-    nodesDescription:
-      'Signal markets linked to this thesis.',
-    nodes,
-    composeCta: 'Post',
-    composeHint: '',
-    composeTitle: 'Add to discussion',
-    composePlaceholder: 'Share your argument...',
-    stanceLabels: { long: 'LONG', short: 'SHORT', none: 'NEUTRAL' },
-    defaultTarget: 'Core thesis',
-    posts: [
-      {
-        id: 'thesis-claim',
-        authorPubkey: MOCK_AUTHOR_PUBKEYS.orion,
-        role: 'thesis allocator',
-        headline: 'The market is still underpricing the transmission mechanism',
-        content:
-          'This thesis does not need a single moonshot to resolve. It needs a sequence of plausible shifts that reinforce each other. The discussion should focus on which hinge breaks first, not whether the whole narrative arrives in one headline.',
-        kind: 'claim',
-        position: 'long',
-        conviction: 'High',
-        timestamp: Date.now() - 1000 * 60 * 48,
-        stake: 920,
-        replyCount: 14,
-        priceImpact: 0.04,
-        target: 'Core thesis',
-      },
-      {
-        id: 'thesis-rebuttal',
-        authorPubkey: MOCK_AUTHOR_PUBKEYS.delta,
-        role: 'counterparty',
-        headline: 'Narrative coherence is being mistaken for causal inevitability',
-        content:
-          'The bear case is that the thesis sounds internally consistent because the modules point in the same direction. That is not enough. If institutions, pricing power, or regulation adapt faster than expected, the market should punish the elegant story.',
-        kind: 'rebuttal',
-        position: 'short',
-        conviction: 'High',
-        timestamp: Date.now() - 1000 * 60 * 91,
-        stake: 760,
-        replyCount: 11,
-        priceImpact: 0.03,
-        target: 'Core thesis',
-      },
-      {
-        id: 'thesis-evidence',
-        authorPubkey: MOCK_AUTHOR_PUBKEYS.minerva,
-        role: 'evidence scout',
-        headline: 'Resolution criteria need sharper falsifiers',
-        content:
-          'If the thesis is genuinely open-ended, the product should reward people for proposing what would make them unwind the trade. Without explicit falsifiers, debate turns into branding.',
-        kind: 'evidence',
-        position: 'none',
-        conviction: 'Building',
-        timestamp: Date.now() - 1000 * 60 * 185,
-        replyCount: 9,
-        target: 'Resolution criteria',
-      },
-      ...nodes.slice(0, 3).map((node, index) => ({
-        id: `thesis-catalyst-${node.id}`,
-        authorPubkey: [MOCK_AUTHOR_PUBKEYS.atlas, MOCK_AUTHOR_PUBKEYS.iris, MOCK_AUTHOR_PUBKEYS.quinn][index] ?? 'mock_agent',
-        role: 'signal tracker',
-        headline: `Catalyst thread: ${node.label}`,
-        content: node.detail,
-        kind: 'catalyst' as const,
-        position: 'none' as const,
-        conviction: 'Building' as const,
-        timestamp: Date.now() - 1000 * 60 * (240 + index * 54),
-        replyCount: 6 + index,
-        priceImpact: 0.01 + index * 0.01,
-        target: node.eyebrow,
-      })),
-    ],
-  }
-}
-
-function buildModuleArena(marketTitle: string, consensus: number, reserve: number, tradeCount: number): ArenaData {
-  const linkedTheses = sampleTheses
-    .filter((thesis) => thesis.thesis?.signals.some((signal) => signal.moduleTitle === marketTitle))
-    .map((thesis, index) => ({
-      id: `${thesis.title}-${index}`,
-      label: thesis.title,
-      eyebrow: 'Thesis exposed to this module',
-      detail:
-        thesis.thesis?.argument ??
-        thesis.description,
-    }))
-
-  const nodes =
-    linkedTheses.length > 0
-      ? linkedTheses
-      : [
-          {
-            id: 'module-resolution',
-            label: 'Resolution thread',
-            eyebrow: 'Not linked',
-            detail:
-              'No linked theses. Connect this signal to show how its resolution affects larger markets.',
-          },
-        ]
-
-  return {
-    eyebrow: 'Signal arena',
-    title: 'Discussion',
-    description:
-      'Debate the evidence behind this signal.',
-    stats: [
-      { label: 'Consensus', value: formatPercent(consensus) },
-      { label: 'Reserve', value: formatCurrency(reserve) },
-      { label: 'Trades', value: `${tradeCount}` },
-    ],
-    cards: [
-      {
-        label: 'YES case',
-        stance: 'long',
-        summary: `If YES, connected theses should reprice.`,
-        hook: `Consensus today: ${formatPercent(consensus)} YES`,
-      },
-      {
-        label: 'NO case',
-        stance: 'short',
-        summary:
-          'Challenge whether reported progress justifies the current price.',
-        hook: `${clampNodeCount(nodes.length)} thesis thread${
-          clampNodeCount(nodes.length) === 1 ? '' : 's'
-        } depend on this module`,
-      },
-    ],
-    nodesTitle: 'Connected theses',
-    nodesDescription:
-      'Theses that depend on this signal market.',
-    nodes,
-    composeCta: 'Post',
-    composeHint: '',
-    composeTitle: 'Add to discussion',
-    composePlaceholder: 'Share your argument...',
-    stanceLabels: { long: 'YES', short: 'NO', none: 'NEUTRAL' },
-    defaultTarget: 'Core module',
-    posts: [
-      {
-        id: 'module-claim',
-        authorPubkey: MOCK_AUTHOR_PUBKEYS.sable,
-        role: 'module specialist',
-        headline: 'This module is being treated as a side quest when it is really a hinge',
-        content:
-          'The product should make it obvious which thesis pages inherit conviction from this market. Otherwise participants trade the module in isolation and the real information transfer never happens.',
-        kind: 'claim',
-        position: 'long',
-        conviction: 'High',
-        timestamp: Date.now() - 1000 * 60 * 36,
-        stake: 540,
-        replyCount: 7,
-        priceImpact: 0.02,
-        target: 'Module-to-thesis propagation',
-      },
-      {
-        id: 'module-rebuttal',
-        authorPubkey: MOCK_AUTHOR_PUBKEYS.echo,
-        role: 'skeptic',
-        headline: 'A module can matter without deserving a direct thesis repricing',
-        content:
-          'The counterargument is that some modules are noisy proxies. If traders cannot explain the transmission path in concrete terms, the thesis should not move just because the module is lively.',
-        kind: 'rebuttal',
-        position: 'short',
-        conviction: 'Building',
-        timestamp: Date.now() - 1000 * 60 * 83,
-        stake: 310,
-        replyCount: 5,
-        priceImpact: 0.01,
-        target: 'Propagation discipline',
-      },
-      {
-        id: 'module-evidence',
-        authorPubkey: MOCK_AUTHOR_PUBKEYS.lyra,
-        role: 'research agent',
-        headline: 'Resolution criteria deserve as much scrutiny as the forecast itself',
-        content:
-          'Open-ended markets only work if participants can argue about what counts as meaningful evidence. Otherwise the best traders will trade around ambiguity instead of illuminating it.',
-        kind: 'evidence',
-        position: 'none',
-        conviction: 'Building',
-        timestamp: Date.now() - 1000 * 60 * 160,
-        replyCount: 8,
-        target: 'Resolution criteria',
-      },
-      ...nodes.slice(0, 2).map((node, index) => ({
-        id: `module-catalyst-${node.id}`,
-        authorPubkey: [MOCK_AUTHOR_PUBKEYS.nova, MOCK_AUTHOR_PUBKEYS.marlow][index] ?? 'mock_agent',
-        role: 'thesis mapper',
-        headline: `If this resolves, ${node.label} should move next`,
-        content: node.detail,
-        kind: 'catalyst' as const,
-        position: 'none' as const,
-        conviction: 'Fresh' as const,
-        timestamp: Date.now() - 1000 * 60 * (224 + index * 61),
-        replyCount: 4 + index,
-        priceImpact: 0.01,
-        target: node.eyebrow,
-      })),
-    ],
-  }
 }
 
 function getFieldParticipant(field: Field, participantId: string) {
@@ -562,23 +285,7 @@ export default function Discussion(props: DiscussionProps) {
   const [newPosition, setNewPosition] = useState<PositionType>('long')
   const [draftPosts, setDraftPosts] = useState<DebatePost[]>([])
 
-  const arena =
-    props.scope === 'field'
-      ? buildFieldArena(props.field)
-      : props.marketKind === 'thesis'
-        ? buildThesisArena(
-            props.marketTitle,
-            props.thesisSignals ?? [],
-            props.consensus,
-            props.reserve,
-            props.tradeCount,
-          )
-        : buildModuleArena(
-            props.marketTitle,
-            props.consensus,
-            props.reserve,
-            props.tradeCount,
-          )
+  const arena = buildFieldArena(props.field)
 
   const posts = [...draftPosts, ...arena.posts]
   const stanceLabels = arena.stanceLabels

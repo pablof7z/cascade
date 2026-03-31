@@ -146,20 +146,22 @@ export default function Leaderboard({ markets = {} }: LeaderboardProps) {
       </nav>
 
       {/* Time filter */}
-      <div className="flex gap-1 border-b border-neutral-800 mb-6">
-        {timeFilters.map((filter) => (
-          <button
-            key={filter}
-            type="button"
-            className={`px-4 py-3 text-sm font-medium transition-colors ${
-              timeFilter === filter
-                ? '-mb-px border-b-2 border-white text-white'
-                : 'text-neutral-500 hover:text-neutral-300'
-            }`}
-            onClick={() => setTimeFilter(filter)}
-          >
-            {filter}
-          </button>
+      <div className="flex items-center gap-1 mb-6">
+        {timeFilters.map((filter, i) => (
+          <span key={filter} className="flex items-center">
+            {i > 0 && <span className="text-neutral-600 mx-1">·</span>}
+            <button
+              type="button"
+              className={`text-sm transition-colors ${
+                timeFilter === filter
+                  ? 'text-white font-medium'
+                  : 'text-neutral-500 hover:text-neutral-300'
+              }`}
+              onClick={() => setTimeFilter(filter)}
+            >
+              {filter}
+            </button>
+          </span>
         ))}
       </div>
 

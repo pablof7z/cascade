@@ -39,6 +39,7 @@ import WalletPage from './WalletPage'
 import HireAgents from './HireAgents'
 import EnrollAgent from './EnrollAgent'
 import AgentDashboard from './AgentDashboard'
+import AgentsPage from './AgentsPage'
 import FieldsHome from './FieldsHome'
 import FieldDetail from './FieldDetail'
 import MeetingView from './MeetingView'
@@ -481,7 +482,7 @@ function AppContent() {
           <Route path="fields" element={<FieldsHome />} />
           <Route path="field/:id" element={<FieldDetail />} />
           <Route path="field/:id/meeting" element={<MeetingView />} />
-          <Route path="agents" element={<div className="p-8 text-neutral-400 text-sm">Agents view coming soon.</div>} />
+          <Route path="agents" element={<AgentsPage />} />
         </Route>
         {/* Legacy redirects — keep old URLs working */}
         <Route path="/fields" element={<Navigate to="/dashboard/fields" replace />} />

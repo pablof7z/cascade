@@ -371,7 +371,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
       <div className="space-y-4 border-t border-neutral-800 pt-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <h3 className="text-lg font-semibold text-white">
-            Module markets
+            Signal markets
           </h3>
 
           <div className="w-full sm:max-w-xs">
@@ -388,7 +388,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
         {availableModules.length === 0 ? (
           <div className="py-6 text-sm text-neutral-500">
             <p className="mb-2 text-neutral-300">
-              No module markets exist yet.
+              No signal markets exist yet.
             </p>
             <Link
               to="/"

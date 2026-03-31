@@ -40,9 +40,9 @@ import HireAgents from './HireAgents'
 import EnrollAgent from './EnrollAgent'
 import AgentDashboard from './AgentDashboard'
 import AgentsPage from './AgentsPage'
-import FieldsHome from './FieldsHome'
+import FieldsList from './FieldsList'
+import DashboardOverview from './DashboardOverview'
 import FieldDetail from './FieldDetail'
-import MeetingView from './MeetingView'
 import EmbedPage from './EmbedPage'
 import EmbedLanding from './EmbedLanding'
 import TestnetBanner from './components/TestnetBanner'
@@ -478,10 +478,9 @@ function AppContent() {
         <Route path="/enroll-agent" element={<EnrollAgent />} />
         {/* Dashboard workspace routes — nested under AgentDashboard layout (sidebar) */}
         <Route path="/dashboard" element={<AgentDashboard />}>
-          <Route index element={<Navigate to="fields" replace />} />
-          <Route path="fields" element={<FieldsHome />} />
+          <Route index element={<DashboardOverview />} />
+          <Route path="fields" element={<FieldsList />} />
           <Route path="field/:id" element={<FieldDetail />} />
-          <Route path="field/:id/meeting" element={<MeetingView />} />
           <Route path="agents" element={<AgentsPage />} />
         </Route>
         {/* Legacy redirects — keep old URLs working */}

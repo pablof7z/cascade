@@ -1,101 +1,530 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import Discussion from './Discussion'
 import { loadField } from './fieldStorage'
 import type {
-  AgentProvisioning,
   Field,
+  FieldAgent,
   FieldAttention,
-  FieldDisagreement,
-  FieldSource,
-  FieldTopicStatus,
+  MeetingEntry,
+  MeetingEntryKind,
   MeetingActionStatus,
 } from './fieldTypes'
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
+// ─── Formatting ──────────────────────────────────────────────────────────────
 
-const attentionClasses: Record<FieldAttention, string> = {
-  steady: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
-  review: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-  'needs-input': 'border-sky-500/30 bg-sky-500/10 text-sky-300',
+const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+
+// ─── Agent color palette (derive from index) ────────────────────────────────
+
+const AGENT_COLORS = [
+  { bg: 'bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500' },
+  { bg: 'bg-violet-500',  text: 'text-violet-500',  border: 'border-violet-500' },
+  { bg: 'bg-amber-500',   text: 'text-amber-500',   border: 'border-amber-500' },
+  { bg: 'bg-sky-500',     text: 'text-sky-500',     border: 'border-sky-500' },
+  { bg: 'bg-rose-500',    text: 'text-rose-500',    border: 'border-rose-500' },
+  { bg: 'bg-indigo-500',  text: 'text-indigo-500',  border: 'border-indigo-500' },
+]
+
+function agentColor(index: number) {
+  return AGENT_COLORS[index % AGENT_COLORS.length]
 }
 
-const disagreementClasses: Record<FieldDisagreement, string> = {
-  contained: 'text-emerald-300',
-  rising: 'text-amber-300',
-  high: 'text-rose-300',
+function getAgentIndex(field: Field, agentId: string): number {
+  const idx = field.council.findIndex(a => a.id === agentId)
+  return idx >= 0 ? idx : 0
 }
 
-const topicStatusClasses: Record<FieldTopicStatus, string> = {
-  active: 'text-emerald-300',
-  watching: 'text-amber-300',
-  'needs-judgment': 'text-sky-300',
+function getAgentName(field: Field, authorId: string): string {
+  if (authorId === field.owner.id) return field.owner.name
+  return field.council.find(a => a.id === authorId)?.name ?? 'Unknown'
 }
 
-const actionStatusClasses: Record<MeetingActionStatus, string> = {
-  approved: 'text-emerald-300',
-  queued: 'text-amber-300',
-  'needs-human': 'text-sky-300',
+function getAgentRole(field: Field, authorId: string): string {
+  if (authorId === field.owner.id) return field.owner.role
+  return field.council.find(a => a.id === authorId)?.role ?? ''
 }
 
-const provisioningClasses: Record<AgentProvisioning, string> = {
-  hosted: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
-  connected: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
+function getAgentInitial(field: Field, authorId: string): string {
+  const name = getAgentName(field, authorId)
+  return name.charAt(0).toUpperCase()
 }
 
-const sourceKindLabels: Record<FieldSource['kind'], string> = {
-  article: 'Article',
-  book: 'Book',
-  briefing: 'Briefing',
-  dataset: 'Dataset',
-  memo: 'Memo',
-  note: 'Note',
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+
+type Tab = 'meeting' | 'positions' | 'library' | 'council'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'meeting',   label: 'Meeting' },
+  { id: 'positions', label: 'Positions' },
+  { id: 'library',   label: 'Library' },
+  { id: 'council',   label: 'Council' },
+]
+
+function parseTab(v: string | null): Tab {
+  return TABS.find(t => t.id === v)?.id ?? 'meeting'
+}
+
+// ─── Attention badge ──────────────────────────────────────────────────────────
+
+const attentionStyles: Record<FieldAttention, string> = {
+  steady:       'text-emerald-400 bg-emerald-950 border border-emerald-800',
+  review:       'text-amber-400   bg-amber-950   border border-amber-800',
+  'needs-input':'text-sky-400     bg-sky-950     border border-sky-800',
+}
+const attentionLabel: Record<FieldAttention, string> = {
+  steady:       'Steady',
+  review:       'Review',
+  'needs-input':'Needs input',
+}
+
+// ─── Entry kind decorations ───────────────────────────────────────────────────
+
+const entryKindLabel: Record<MeetingEntryKind, string> = {
+  argument:        'argument',
+  counterargument: 'counter',
+  evidence:        'evidence',
+  decision:        'decision',
+}
+
+const entryKindStyle: Record<MeetingEntryKind, string> = {
+  argument:        'text-neutral-500',
+  counterargument: 'text-rose-400',
+  evidence:        'text-sky-400',
+  decision:        'text-emerald-400',
+}
+
+// ─── Action status ────────────────────────────────────────────────────────────
+
+const actionStatusLabel: Record<MeetingActionStatus, string> = {
+  'needs-human': 'Needs your approval',
+  queued:        'Queued',
+  approved:      'Approved',
+}
+
+const actionStatusStyle: Record<MeetingActionStatus, string> = {
+  'needs-human': 'text-sky-400 bg-sky-950 border border-sky-800',
+  queued:        'text-amber-400 bg-amber-950 border border-amber-800',
+  approved:      'text-emerald-400 bg-emerald-950 border border-emerald-800',
+}
+
+// ─── Meeting Tab ──────────────────────────────────────────────────────────────
+
+function MeetingEntryCard({ entry, field }: { entry: MeetingEntry; field: Field }) {
+  const agentIdx = getAgentIndex(field, entry.authorId)
+  const color = agentColor(agentIdx)
+  const isCounter = entry.kind === 'counterargument'
+
+  return (
+    <div className={`flex gap-4 py-5 ${isCounter ? 'pl-3 border-l-2 border-rose-800/60' : ''}`}>
+      {/* Avatar */}
+      <div className={`shrink-0 w-8 h-8 rounded-full ${color.bg} flex items-center justify-center text-xs font-bold text-white`}>
+        {getAgentInitial(field, entry.authorId)}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-sm font-medium text-white">
+            {getAgentName(field, entry.authorId)}
+          </span>
+          <span className="text-xs text-neutral-500">
+            {getAgentRole(field, entry.authorId)}
+          </span>
+          <span className={`text-xs font-medium ${entryKindStyle[entry.kind]}`}>
+            {entryKindLabel[entry.kind]}
+          </span>
+          <span className="text-xs text-neutral-600 ml-auto">{entry.at}</span>
+        </div>
+
+        {entry.headline && (
+          <p className="mt-1.5 text-sm font-medium text-neutral-200">{entry.headline}</p>
+        )}
+        <p className="mt-1.5 text-sm text-neutral-400 leading-relaxed">{entry.body}</p>
+
+        {entry.citations && entry.citations.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {entry.citations.map((c, i) => {
+              const src = field.sourceLibrary.find(s => s.id === c.sourceId)
+              return (
+                <span
+                  key={i}
+                  title={c.note}
+                  className="text-xs bg-neutral-800 border border-neutral-700 px-2 py-0.5 rounded text-neutral-400"
+                >
+                  {src ? `${src.author}, ${src.addedAt.slice(0, 4)}` : c.sourceId}
+                </span>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MeetingTab({ field }: { field: Field }) {
+  const actions = field.meeting.actions
+
+  return (
+    <div className="max-w-3xl">
+      {/* Meeting header */}
+      <div className="mb-4 pb-4 border-b border-neutral-800">
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-medium text-white">{field.meeting.title}</h2>
+          <span className={`text-xs px-2 py-0.5 rounded ${
+            field.meeting.status === 'live'
+              ? 'text-emerald-400 bg-emerald-950 border border-emerald-800'
+              : field.meeting.status === 'awaiting-human'
+                ? 'text-sky-400 bg-sky-950 border border-sky-800'
+                : 'text-neutral-500 bg-neutral-800 border border-neutral-700'
+          }`}>
+            {field.meeting.status === 'live' ? 'Live' : field.meeting.status === 'awaiting-human' ? 'Awaiting you' : 'Watching'}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-neutral-500">{field.meeting.summary}</p>
+
+        {field.meeting.tensions.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {field.meeting.tensions.map((t, i) => (
+              <span key={i} className="text-xs text-neutral-500 bg-neutral-900 border border-neutral-800 px-2 py-1 rounded">
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Action proposals — dramatically different from discussion entries */}
+      {actions.length > 0 && (
+        <div className="mb-6 space-y-3">
+          <p className="text-xs font-medium text-neutral-500 uppercase tracking-widest">Action proposals</p>
+          {actions.map(action => {
+            const ownerName = getAgentName(field, action.ownerId)
+            const isLong = action.title.toLowerCase().includes('long') || action.title.toLowerCase().includes('buy')
+            const isShort = action.title.toLowerCase().includes('short') || action.title.toLowerCase().includes('sell')
+            const hasTrade = isLong || isShort
+
+            return (
+              <div
+                key={action.id}
+                className={`rounded-lg p-4 border ${
+                  hasTrade
+                    ? isLong
+                      ? 'border-emerald-700 bg-emerald-950/30'
+                      : 'border-rose-700 bg-rose-950/30'
+                    : 'border-sky-700 bg-sky-950/20'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {hasTrade && (
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                          isLong ? 'bg-emerald-700 text-white' : 'bg-rose-700 text-white'
+                        }`}>
+                          {isLong ? 'BUY LONG' : 'SELL SHORT'}
+                        </span>
+                      )}
+                      <p className="text-sm font-medium text-white">{action.title}</p>
+                    </div>
+                    <p className="mt-1.5 text-xs text-neutral-400 leading-relaxed">{action.rationale}</p>
+                    <p className="mt-1.5 text-xs text-neutral-500">Proposed by {ownerName}</p>
+                  </div>
+                  <span className={`shrink-0 text-xs px-2 py-0.5 rounded ${actionStatusStyle[action.status]}`}>
+                    {actionStatusLabel[action.status]}
+                  </span>
+                </div>
+
+                {action.status === 'needs-human' && (
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 px-3 py-1.5 rounded transition-colors"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-neutral-300 border border-neutral-700 hover:border-neutral-500 px-3 py-1.5 rounded transition-colors"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-neutral-500 hover:text-neutral-300 px-3 py-1.5 transition-colors"
+                    >
+                      Defer
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Deliberation transcript */}
+      <div className="divide-y divide-neutral-800/60">
+        {field.meeting.entries.length === 0 ? (
+          <p className="py-8 text-sm text-neutral-600 text-center">No deliberation entries yet.</p>
+        ) : (
+          field.meeting.entries.map(entry => (
+            <MeetingEntryCard key={entry.id} entry={entry} field={field} />
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Positions Tab ─────────────────────────────────────────────────────────────
+
+function PositionsTab({ field }: { field: Field }) {
+  const positions = field.positions
+  const candidates = field.candidateMarkets
+
+  return (
+    <div className="max-w-3xl">
+      {/* Active positions */}
+      <div className="mb-6">
+        <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-widest mb-3">Current positions</h2>
+        {positions.length === 0 ? (
+          <p className="text-sm text-neutral-600 py-4">No active positions yet.</p>
+        ) : (
+          <div className="border border-neutral-800 rounded divide-y divide-neutral-800">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-2">
+              <span className="text-xs text-neutral-600">Market / Thesis</span>
+              <span className="text-xs text-neutral-600 text-right">Exposure</span>
+              <span className="text-xs text-neutral-600 text-right">Status</span>
+            </div>
+            {positions.map(pos => (
+              <div key={pos.id} className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-3 items-start">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{pos.label}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">{pos.thesis}</p>
+                </div>
+                <span className="text-sm font-medium text-white tabular-nums whitespace-nowrap">
+                  {fmt.format(pos.exposureUsd)}
+                </span>
+                <span className={`text-xs tabular-nums whitespace-nowrap ${
+                  pos.status === 'active'   ? 'text-emerald-400' :
+                  pos.status === 'hedged'   ? 'text-amber-400' :
+                                              'text-neutral-500'
+                }`}>
+                  {pos.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Candidate markets */}
+      {candidates.length > 0 && (
+        <div>
+          <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-widest mb-3">Candidate markets</h2>
+          <div className="border border-neutral-800 rounded divide-y divide-neutral-800">
+            {candidates.map(m => (
+              <div key={m.id} className="px-4 py-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-white">{m.label}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">{m.framing}</p>
+                  </div>
+                  <span className={`shrink-0 text-xs px-2 py-0.5 rounded border ${
+                    m.status === 'ready'
+                      ? 'text-emerald-400 bg-emerald-950 border-emerald-800'
+                      : m.status === 'under-review'
+                        ? 'text-amber-400 bg-amber-950 border-amber-800'
+                        : 'text-neutral-500 bg-neutral-900 border-neutral-800'
+                  }`}>
+                    {m.status.replace('-', ' ')}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Library Tab ───────────────────────────────────────────────────────────────
+
+const sourceKindLabel: Record<string, string> = {
+  article:    'Article',
+  book:       'Book',
+  briefing:   'Briefing',
+  dataset:    'Dataset',
+  memo:       'Memo',
+  note:       'Note',
   transcript: 'Transcript',
-  video: 'Video',
+  video:      'Video',
 }
 
-type FieldDetailTab = 'markets' | 'discussions' | 'activity' | 'about'
+function LibraryTab({ field }: { field: Field }) {
+  const sources = field.sourceLibrary
 
-const fieldDetailTabs = [
-  { id: 'markets', label: 'Markets' },
-  { id: 'discussions', label: 'Discussions' },
-  { id: 'activity', label: 'Activity' },
-  { id: 'about', label: 'About' },
-] satisfies Array<{ id: FieldDetailTab; label: string }>
+  return (
+    <div className="max-w-3xl">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-widest">Source library</h2>
+        <span className="text-xs text-neutral-600">{sources.length} sources</span>
+      </div>
 
-function parseFieldDetailTab(value: string | null): FieldDetailTab {
-  return fieldDetailTabs.find((tab) => tab.id === value)?.id ?? 'markets'
+      {sources.length === 0 ? (
+        <p className="text-sm text-neutral-600 py-4">No sources added yet.</p>
+      ) : (
+        <div className="divide-y divide-neutral-800 border border-neutral-800 rounded">
+          {sources.map(source => (
+            <div key={source.id} className="px-4 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs text-neutral-500 bg-neutral-800 border border-neutral-700 px-1.5 py-0.5 rounded">
+                      {sourceKindLabel[source.kind] ?? source.kind}
+                    </span>
+                    <span className="text-xs text-neutral-500">{source.author}</span>
+                  </div>
+                  <p className="text-sm font-medium text-white">{source.title}</p>
+                  {source.note && (
+                    <p className="mt-1 text-xs text-neutral-400 leading-relaxed">{source.note}</p>
+                  )}
+                  {source.relevance && (
+                    <p className="mt-1 text-xs text-neutral-500 italic">{source.relevance}</p>
+                  )}
+                </div>
+                <span className="shrink-0 text-xs text-neutral-600">{source.addedAt}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
-function formatUsd(value: number) {
-  return currencyFormatter.format(value)
+// ─── Council Tab ───────────────────────────────────────────────────────────────
+
+function CouncilTab({ field }: { field: Field }) {
+  return (
+    <div className="max-w-3xl">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-medium text-neutral-500 uppercase tracking-widest">Council</h2>
+        <span className="text-xs text-neutral-600">{field.council.length} agents</span>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {field.council.map((agent: FieldAgent, idx: number) => {
+          const color = agentColor(idx)
+          return (
+            <div key={agent.id} className="border border-neutral-800 rounded bg-neutral-900 p-4">
+              <div className="flex items-start gap-3">
+                <div className={`shrink-0 w-9 h-9 rounded-full ${color.bg} flex items-center justify-center text-sm font-bold text-white`}>
+                  {agent.name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium text-white truncate">{agent.name}</p>
+                    <span className={`text-xs px-1.5 py-0.5 rounded border ${
+                      agent.provisioning === 'hosted'
+                        ? 'text-emerald-400 bg-emerald-950 border-emerald-800'
+                        : 'text-sky-400 bg-sky-950 border-sky-800'
+                    }`}>
+                      {agent.provisioning}
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-500 mt-0.5">{agent.role}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    <span className={`font-medium ${
+                      agent.status === 'active'      ? 'text-emerald-400' :
+                      agent.status === 'challenging' ? 'text-rose-400'    :
+                                                       'text-neutral-500'
+                    }`}>
+                      {agent.status}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {agent.focus && (
+                <p className="mt-3 text-xs text-neutral-400 leading-relaxed">{agent.focus}</p>
+              )}
+              {agent.recentContribution && (
+                <p className="mt-2 text-xs text-neutral-600 leading-relaxed italic">
+                  {agent.recentContribution}
+                </p>
+              )}
+
+              {agent.provisioning === 'hosted' && (
+                <div className="mt-3 pt-3 border-t border-neutral-800 grid grid-cols-3 gap-2">
+                  <div>
+                    <p className="text-[10px] text-neutral-600 uppercase tracking-wider">Balance</p>
+                    <p className="text-xs font-medium text-white mt-0.5">{fmt.format(agent.wallet.balanceUsd)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-neutral-600 uppercase tracking-wider">Allocated</p>
+                    <p className="text-xs font-medium text-white mt-0.5">{fmt.format(agent.wallet.allocatedUsd)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-neutral-600 uppercase tracking-wider">MTD</p>
+                    <p className="text-xs font-medium text-white mt-0.5">{fmt.format(agent.wallet.monthlySpendUsd)}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Capital context */}
+      <div className="mt-6 border border-neutral-800 rounded p-4">
+        <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-widest mb-3">Capital</h3>
+        <p className="text-xs text-neutral-500 mb-3">{field.capital.note}</p>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <p className="text-xs text-neutral-600 mb-1">Field wallet</p>
+            <p className="text-sm font-medium text-white">{fmt.format(field.capital.fieldWalletUsd)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-neutral-600 mb-1">Deployed</p>
+            <p className="text-sm font-medium text-white">{fmt.format(field.capital.deployedUsd)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-neutral-600 mb-1">Available</p>
+            <p className="text-sm font-medium text-emerald-400">{fmt.format(field.capital.availableUsd)}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-function getParticipantLabel(field: Field, participantId: string) {
-  if (participantId === field.owner.id) return field.owner.name
-  return field.council.find((agent) => agent.id === participantId)?.name ?? 'Unknown'
-}
+// ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function FieldDetail() {
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const field = id ? loadField(id) : undefined
-  const activeTab = parseFieldDetailTab(searchParams.get('tab'))
+  const activeTab = parseTab(searchParams.get('tab'))
+
+  function setTab(tab: Tab) {
+    const next = new URLSearchParams(searchParams)
+    if (tab === 'meeting') {
+      next.delete('tab')
+    } else {
+      next.set('tab', tab)
+    }
+    setSearchParams(next)
+  }
 
   if (!field) {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-24 text-center">
-        <p className="text-sm uppercase tracking-[0.18em] text-neutral-500">Field not found</p>
-        <h1 className="mt-4 text-3xl font-semibold text-white">That field does not exist.</h1>
-        <p className="mt-3 text-neutral-400">
-          Return to the workspace home to open one of the seeded field mockups.
-        </p>
+      <div className="p-8 text-center">
+        <p className="text-sm text-neutral-500 mb-4">Field not found.</p>
         <Link
           to="/dashboard/fields"
-          className="mt-8 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
+          className="text-sm font-medium text-white border border-neutral-700 px-3 py-1.5 rounded hover:border-neutral-500 transition-colors"
         >
           Back to Fields
         </Link>
@@ -103,529 +532,67 @@ export default function FieldDetail() {
     )
   }
 
-  const hostedCount = field.council.filter((agent) => agent.provisioning === 'hosted').length
-  const latestEntries = field.meeting.entries.slice(-2).reverse()
-  const tabCounts: Record<FieldDetailTab, number> = {
-    markets: field.topics.length + field.positions.length + field.candidateMarkets.length,
-    discussions: field.meeting.entries.length,
-    activity: field.meeting.actions.length,
-    about: field.sourceLibrary.length,
-  }
-
-  function handleTabChange(tab: FieldDetailTab) {
-    const nextSearchParams = new URLSearchParams(searchParams)
-
-    if (tab === 'markets') {
-      nextSearchParams.delete('tab')
-    } else {
-      nextSearchParams.set('tab', tab)
-    }
-
-    setSearchParams(nextSearchParams)
-  }
+  const hostedCount = field.council.filter(a => a.provisioning === 'hosted').length
 
   return (
-    <div className="min-h-screen bg-neutral-950">
-      <section className="border-b border-neutral-800 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_42%)]">
-        <div className="mx-auto max-w-7xl px-6 py-14">
-          <div className="mb-5 flex items-center gap-2 text-sm text-neutral-500">
-            <Link to="/dashboard/fields" className="transition-colors hover:text-white">
-              Fields
-            </Link>
-            <span>/</span>
-            <span className="text-neutral-300">{field.name}</span>
-          </div>
-
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-4xl">
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] ${attentionClasses[field.attention]}`}
-                >
-                  {field.attention.replace('-', ' ')}
-                </span>
-                <span
-                  className={`text-xs font-medium uppercase tracking-[0.18em] ${disagreementClasses[field.disagreement]}`}
-                >
-                  Disagreement {field.disagreement}
-                </span>
-              </div>
-
-              <h1 className="mt-5 text-4xl font-bold tracking-tight text-white md:text-5xl">
-                {field.name}
-              </h1>
-              <p className="mt-4 max-w-3xl text-lg leading-relaxed text-neutral-300">
-                {field.summary}
-              </p>
-              <p className="mt-4 max-w-3xl text-sm leading-relaxed text-neutral-500">
-                {field.conviction}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to={`/dashboard/field/${field.id}/meeting`}
-                className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
-              >
-                Open Meeting
-              </Link>
-              <Link
-                to="/hire-agents"
-                className="rounded-xl border border-neutral-700 px-5 py-3 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
-              >
-                Hire Hosted Agents
-              </Link>
-            </div>
-          </div>
-
-          <dl className="mt-10 grid border-y border-neutral-800 md:grid-cols-2 xl:grid-cols-4">
-            <div className="border-b border-neutral-800 px-0 py-4 md:px-4 xl:border-b-0 xl:border-r xl:border-neutral-800 xl:pl-0">
-              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                Active theses & questions
-              </dt>
-              <dd className="mt-2 text-3xl font-semibold text-white">{field.topics.length}</dd>
-              <p className="mt-1 text-sm text-neutral-500">The field stays anchored in live judgments.</p>
-            </div>
-            <div className="border-b border-neutral-800 px-0 py-4 md:px-4 xl:border-b-0 xl:border-r xl:border-neutral-800">
-              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                Library sources
-              </dt>
-              <dd className="mt-2 text-3xl font-semibold text-white">
-                {field.sourceLibrary.length}
-              </dd>
-              <p className="mt-1 text-sm text-neutral-500">
-                Sources are operating context, not attachments.
-              </p>
-            </div>
-            <div className="border-b border-neutral-800 px-0 py-4 md:border-b-0 md:px-4 xl:border-r xl:border-neutral-800">
-              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                Council members
-              </dt>
-              <dd className="mt-2 text-3xl font-semibold text-white">{field.council.length}</dd>
-              <p className="mt-1 text-sm text-neutral-500">
-                {hostedCount} hosted, {field.council.length - hostedCount} connected.
-              </p>
-            </div>
-            <div className="px-0 py-4 md:px-4 md:pr-0">
-              <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                Field wallet deployed
-              </dt>
-              <dd className="mt-2 text-3xl font-semibold text-white">
-                {formatUsd(field.capital.deployedUsd)}
-              </dd>
-              <p className="mt-1 text-sm text-neutral-500">
-                Every action traces back to this field and its meeting record.
-              </p>
-            </div>
-          </dl>
-
-          <nav
-            className="mt-10 flex gap-1 border-b border-neutral-800"
-            role="tablist"
-            aria-label="Field detail sections"
-          >
-            {fieldDetailTabs.map((tab) => {
-              const isActive = activeTab === tab.id
-
-              return (
-                <button
-                  key={tab.id}
-                  id={`field-detail-tab-${tab.id}`}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls={`field-detail-panel-${tab.id}`}
-                  tabIndex={isActive ? 0 : -1}
-                  className={`px-4 py-3 text-sm font-medium transition-colors ${
-                    isActive
-                      ? '-mb-px border-b-2 border-white text-white'
-                      : 'text-neutral-500 hover:text-neutral-300'
-                  }`}
-                  onClick={() => handleTabChange(tab.id)}
-                >
-                  {tab.label}
-                  <span className="ml-2 text-[11px] text-neutral-600">{tabCounts[tab.id]}</span>
-                </button>
-              )
-            })}
-          </nav>
+    <div className="min-h-full">
+      {/* Header */}
+      <div className="border-b border-neutral-800 px-6 pt-6 pb-0">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-xs text-neutral-500 mb-4">
+          <Link to="/dashboard" className="hover:text-neutral-300 transition-colors">Overview</Link>
+          <span>/</span>
+          <Link to="/dashboard/fields" className="hover:text-neutral-300 transition-colors">Fields</Link>
+          <span>/</span>
+          <span className="text-neutral-400">{field.name}</span>
         </div>
-      </section>
 
-      <div className="mx-auto grid max-w-7xl gap-10 px-6 py-12 lg:grid-cols-[1.35fr_0.95fr]">
-        <div className="space-y-10">
-          <div
-            id="field-detail-panel-markets"
-            role="tabpanel"
-            aria-labelledby="field-detail-tab-markets"
-            tabIndex={activeTab === 'markets' ? 0 : -1}
-            hidden={activeTab !== 'markets'}
-            className="space-y-10"
-          >
-            <>
-              <section className="border-t border-neutral-800 pt-6">
-                <h2 className="text-2xl font-semibold text-white">Theses and questions</h2>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                  These are the live questions the council is working, not a generic list of
-                  markets.
-                </p>
-
-                <div className="mt-6 border-t border-neutral-800">
-                  {field.topics.map((topic) => (
-                    <article
-                      key={topic.id}
-                      className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[auto_minmax(0,1fr)] md:gap-5"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em]">
-                        <span className="text-neutral-500">{topic.kind}</span>
-                        <span className={`font-medium ${topicStatusClasses[topic.status]}`}>
-                          {topic.status.replace('-', ' ')}
-                        </span>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-white">{topic.title}</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                          {topic.summary}
-                        </p>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-
-              <section className="border-t border-neutral-800 pt-6">
-                <h2 className="text-2xl font-semibold text-white">Current positions</h2>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                  These are the market expressions already carrying the field&apos;s conviction.
-                </p>
-
-                <div className="mt-6 border-t border-neutral-800">
-                  {field.positions.map((position) => (
-                    <article
-                      key={position.id}
-                      className="grid gap-2 border-b border-neutral-800 py-4"
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <p className="font-medium text-white">{position.label}</p>
-                        <span className="text-sm text-neutral-300">
-                          {formatUsd(position.exposureUsd)}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                        {position.thesis}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              </section>
-
-              <section className="border-t border-neutral-800 pt-6">
-                <h2 className="text-2xl font-semibold text-white">Candidate markets</h2>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                  New market proposals stay attached to the field instead of turning into a
-                  detached catalog.
-                </p>
-
-                <div className="mt-6 border-t border-neutral-800">
-                  {field.candidateMarkets.map((market) => (
-                    <article
-                      key={market.id}
-                      className="grid gap-2 border-b border-neutral-800 py-4"
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <p className="font-medium text-white">{market.label}</p>
-                        <span className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                          {market.status.replace('-', ' ')}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                        {market.framing}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            </>
-          </div>
-
-          <div
-            id="field-detail-panel-discussions"
-            role="tabpanel"
-            aria-labelledby="field-detail-tab-discussions"
-            tabIndex={activeTab === 'discussions' ? 0 : -1}
-            hidden={activeTab !== 'discussions'}
-            className="space-y-10"
-          >
-            <Discussion field={field} />
-          </div>
-
-          <div
-            id="field-detail-panel-activity"
-            role="tabpanel"
-            aria-labelledby="field-detail-tab-activity"
-            tabIndex={activeTab === 'activity' ? 0 : -1}
-            hidden={activeTab !== 'activity'}
-            className="space-y-10"
-          >
-            <section className="border-t border-neutral-800 pt-6">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h2 className="text-2xl font-semibold text-white">Meeting room snapshot</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                    The field stays live through visible debate, cited evidence, and explicit
-                    action proposals.
-                  </p>
-                </div>
-                <Link
-                  to={`/dashboard/field/${field.id}/meeting`}
-                  className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
-                >
-                  Open Full Meeting
-                </Link>
-              </div>
-
-              <div className="mt-6 grid gap-3 border-y border-neutral-800 py-4 text-sm text-neutral-400 sm:grid-cols-3">
-                <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-4">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                    Meeting
-                  </p>
-                  <p className="mt-2 font-medium text-white">{field.meeting.title}</p>
-                </div>
-                <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-4 sm:pb-0">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                    Summary
-                  </p>
-                  <p className="mt-2">{field.meeting.summary}</p>
-                </div>
-                <div className="sm:pl-4">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                    Updated
-                  </p>
-                  <p className="mt-2">{field.meeting.updatedAt}</p>
-                </div>
-              </div>
-
-              <div className="border-t border-neutral-800">
-                {latestEntries.map((entry) => (
-                  <article
-                    key={entry.id}
-                    className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[minmax(0,1fr)_9rem]"
-                  >
-                    <div>
-                      <p className="font-medium text-white">{entry.headline}</p>
-                      <p className="mt-2 text-sm text-neutral-400">
-                        {getParticipantLabel(field, entry.authorId)}
-                      </p>
-                      <p className="mt-3 text-sm leading-relaxed text-neutral-300">{entry.body}</p>
-                    </div>
-                    <div className="text-sm text-neutral-500 md:text-right">
-                      <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                        At
-                      </p>
-                      <p className="mt-2">{entry.at}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          </div>
-
-          <div
-            id="field-detail-panel-about"
-            role="tabpanel"
-            aria-labelledby="field-detail-tab-about"
-            tabIndex={activeTab === 'about' ? 0 : -1}
-            hidden={activeTab !== 'about'}
-            className="space-y-10"
-          >
-            <>
-              <section className="border-t border-neutral-800 pt-6">
-                <h2 className="text-2xl font-semibold text-white">Field framing</h2>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                  {field.recentUpdate}
-                </p>
-
-                <div className="mt-6 grid gap-6 border-y border-neutral-800 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                      Conviction
-                    </p>
-                    <p className="mt-3 text-sm leading-relaxed text-neutral-300">
-                      {field.conviction}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                      Live tensions
-                    </p>
-                    <div className="mt-3 space-y-3">
-                      {field.meeting.tensions.map((tension) => (
-                        <p key={tension} className="text-sm leading-relaxed text-neutral-400">
-                          {tension}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="border-t border-neutral-800 pt-6">
-                <h2 className="text-2xl font-semibold text-white">Source library</h2>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-                  The field library shapes how the council argues. Sources stay visible in the
-                  room, and each one has a reason for being here.
-                </p>
-
-                <div className="mt-6 border-t border-neutral-800">
-                  {field.sourceLibrary.map((source) => (
-                    <article
-                      key={source.id}
-                      className="grid gap-3 border-b border-neutral-800 py-4 md:grid-cols-[minmax(0,1fr)_12rem]"
-                    >
-                      <div>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                            {sourceKindLabels[source.kind]}
-                          </p>
-                          <p className="text-xs text-neutral-500">{source.author}</p>
-                        </div>
-                        <h3 className="mt-2 text-lg font-semibold text-white">{source.title}</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-neutral-300">
-                          {source.note}
-                        </p>
-                        <p className="mt-2 text-sm leading-relaxed text-neutral-500">
-                          {source.relevance}
-                        </p>
-                      </div>
-                      <div className="text-sm text-neutral-400 md:text-right">
-                        <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                          Added
-                        </p>
-                        <p className="mt-2">{source.addedAt}</p>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            </>
+        {/* Title row */}
+        <div className="flex items-start justify-between gap-4 mb-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className={`text-xs px-2 py-0.5 rounded ${attentionStyles[field.attention]}`}>
+                {attentionLabel[field.attention]}
+              </span>
+            </div>
+            <h1 className="text-xl font-semibold text-white">{field.name}</h1>
+            <p className="mt-1 text-sm text-neutral-400 max-w-2xl leading-relaxed">{field.conviction}</p>
           </div>
         </div>
 
-        <div className="space-y-10">
-          <section className="border-t border-neutral-800 pt-6">
-            <h2 className="text-2xl font-semibold text-white">Council</h2>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-400">
-              Hosted and connected agents work inside the same room. Hosted agents each keep a visible wallet.
-            </p>
-
-            <div className="mt-6 border-t border-neutral-800">
-              {field.council.map((agent) => (
-                <article
-                  key={agent.id}
-                  className="grid gap-4 border-b border-neutral-800 py-5"
-                >
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="max-w-xl">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] ${provisioningClasses[agent.provisioning]}`}
-                        >
-                          {agent.provisioning}
-                        </span>
-                        <span className="text-xs uppercase tracking-[0.18em] text-neutral-500">
-                          {agent.status}
-                        </span>
-                      </div>
-
-                      <h3 className="mt-4 text-xl font-semibold text-white">{agent.name}</h3>
-                      <p className="mt-1 text-sm text-neutral-400">{agent.role}</p>
-                      <p className="mt-4 text-sm leading-relaxed text-neutral-300">{agent.focus}</p>
-                      <p className="mt-3 text-sm leading-relaxed text-neutral-500">
-                        {agent.recentContribution}
-                      </p>
-                    </div>
-
-                    <dl className="grid gap-3 border-t border-neutral-800 pt-4 text-sm sm:grid-cols-3 xl:min-w-[22rem] xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
-                      <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-3">
-                        <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                          Wallet balance
-                        </dt>
-                        <dd className="mt-2 font-semibold text-white">
-                          {formatUsd(agent.wallet.balanceUsd)}
-                        </dd>
-                      </div>
-                      <div className="border-b border-neutral-800 pb-3 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:px-3 sm:pb-0">
-                        <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                          Allocated
-                        </dt>
-                        <dd className="mt-2 font-semibold text-white">
-                          {formatUsd(agent.wallet.allocatedUsd)}
-                        </dd>
-                      </div>
-                      <div className="sm:pl-3">
-                        <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                          Month to date
-                        </dt>
-                        <dd className="mt-2 font-semibold text-white">
-                          {formatUsd(agent.wallet.monthlySpendUsd)}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="border-t border-neutral-800 pt-6">
-            <h2 className="text-2xl font-semibold text-white">Capital context</h2>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-400">{field.capital.note}</p>
-
-            <dl className="mt-6 grid border-y border-neutral-800 text-sm sm:grid-cols-2">
-              <div className="border-b border-neutral-800 px-0 py-4 sm:border-b-0 sm:border-r sm:border-neutral-800 sm:pr-4">
-                <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                  Field wallet
-                </dt>
-                <dd className="mt-2 text-2xl font-semibold text-white">
-                  {formatUsd(field.capital.fieldWalletUsd)}
-                </dd>
-              </div>
-              <div className="px-0 py-4 sm:pl-4">
-                <dt className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                  Available
-                </dt>
-                <dd className="mt-2 text-2xl font-semibold text-white">
-                  {formatUsd(field.capital.availableUsd)}
-                </dd>
-              </div>
-            </dl>
-          </section>
-
-          <section className="border-t border-neutral-800 pt-6">
-            <h2 className="text-2xl font-semibold text-white">Action queue</h2>
-            <div className="mt-5 border-t border-neutral-800">
-              {field.meeting.actions.map((action) => (
-                <article
-                  key={action.id}
-                  className="grid gap-3 border-b border-neutral-800 py-4"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <p className="font-medium text-white">{action.title}</p>
-                    <span
-                      className={`text-xs font-medium uppercase tracking-[0.18em] ${actionStatusClasses[action.status]}`}
-                    >
-                      {action.status.replace('-', ' ')}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm text-neutral-400">
-                    Owner: {getParticipantLabel(field, action.ownerId)}
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-500">{action.rationale}</p>
-                </article>
-              ))}
-            </div>
-          </section>
+        {/* Stats row */}
+        <div className="flex items-center gap-5 mb-4 text-xs text-neutral-500">
+          <span>{field.council.length} agents ({hostedCount} hosted)</span>
+          <span>{field.candidateMarkets.length} markets</span>
+          <span>{fmt.format(field.capital.deployedUsd)} deployed</span>
+          <span>Updated {field.meeting.updatedAt}</span>
         </div>
+
+        {/* Tabs — underline style per AGENTS.md */}
+        <nav className="flex gap-1 border-b border-neutral-800 -mb-px">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'text-white border-b-2 border-white -mb-px'
+                  : 'text-neutral-500 hover:text-neutral-300'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Tab content */}
+      <div className="px-6 py-6">
+        {activeTab === 'meeting'   && <MeetingTab   field={field} />}
+        {activeTab === 'positions' && <PositionsTab field={field} />}
+        {activeTab === 'library'   && <LibraryTab   field={field} />}
+        {activeTab === 'council'   && <CouncilTab   field={field} />}
       </div>
     </div>
   )

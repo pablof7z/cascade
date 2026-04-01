@@ -523,7 +523,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
+    <div className="mx-auto max-w-4xl px-6 py-8 min-h-[80vh]">
       <nav className="mb-8">
         <Link to="/" className="text-sm text-neutral-400 hover:text-white">
           Back to Markets

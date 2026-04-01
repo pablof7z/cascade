@@ -13,6 +13,9 @@ import MarketTabsShell, { type MarketTabKey } from './MarketTabsShell'
 import { MarketDiscussionPanel, type DiscussionThread } from './DiscussPage'
 import { trackDiscussionInteraction, trackMarketView, trackTradePlaced } from './analytics'
 import { addPosition, getPositionsForMarket, type Position } from './positionStore'
+import { useNostr } from './context/NostrContext'
+import { subscribeToMarketUpdates } from './services/marketService'
+import type { Action } from './App'
 
 type TradeAction = {
   type: 'TRADE'
@@ -26,7 +29,7 @@ type TradeAction = {
 interface Props {
   entry: MarketEntry
   markets: Record<string, MarketEntry>
-  dispatch: Dispatch<TradeAction>
+  dispatch: Dispatch<TradeAction | Action>
   activeTab: MarketTabKey
 }
 
@@ -148,8 +151,20 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
   const [selectedSide, setSelectedSide] = useState<Side>('LONG')
   const [showEmbedModal, setShowEmbedModal] = useState(false)
   const [positions, setPositions] = useState<Position[]>([])
+  const { isReady } = useNostr()
 
   const market = entry.market
+
+  // Real-time Nostr subscription: stream state updates for this specific market
+  useEffect(() => {
+    if (!isReady || !market.id) return
+
+    const sub = subscribeToMarketUpdates(market.id, (updatedMarket, isDeletion) => {
+      dispatch({ type: 'SYNC_MARKET', marketId: market.id, market: updatedMarket, isDeletion })
+    })
+
+    return () => sub.stop()
+  }, [isReady, market.id, dispatch])
 
   useEffect(() => {
     trackMarketView(market.id)

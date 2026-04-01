@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 import { BrowserRouter, Navigate, Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { TestnetProvider } from './testnetConfig'
 import './App.css'
@@ -18,8 +18,25 @@ import {
   type TradeKind,
 } from './market'
 import type { HistoryPoint } from './PriceChart'
-import { load, save, type MarketEntry } from './storage'
+import {
+  load,
+  save,
+  mergeLocalAndNostr,
+  addPendingPublish,
+  getPendingPublishes,
+  removePendingPublish,
+  incrementPendingRetries,
+  type MarketEntry,
+} from './storage'
 import { recordTrade, recordMarketCreation } from './services/participantIndex'
+import {
+  publishMarketEventWithConcurrencyCheck,
+  publishDeletionEvent,
+  fetchAllMarkets,
+  normalizeMarketForMigration,
+  subscribeToAllMarkets,
+} from './services/marketService'
+import { useNostr } from './context/NostrContext'
 import LandingPage from './LandingPage'
 import MarketDetail from './MarketDetail'
 import ThreadPage from './ThreadPage'
@@ -97,6 +114,14 @@ export type Action =
     }
   | { type: 'DELETE_MARKET'; marketId: string }
   | { type: 'CLEAR_TOAST' }
+  | { type: 'HYDRATE_FROM_NOSTR'; markets: Market[] }
+  | {
+      type: 'SYNC_MARKET'
+      marketId: string
+      market: Market
+      isDeletion?: boolean
+    }
+  | { type: 'MARK_PUBLISHED'; marketId: string; publishedMarket: Market }
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
@@ -323,6 +348,89 @@ function reducer(state: State, action: Action): State {
     case 'CLEAR_TOAST':
       return { ...state, toast: undefined }
 
+    case 'HYDRATE_FROM_NOSTR': {
+      const merged = mergeLocalAndNostr(state.markets, action.markets)
+      return { ...state, markets: merged }
+    }
+
+    case 'SYNC_MARKET': {
+      const existing = state.markets[action.marketId]
+
+      // Handle deletion signal from another client
+      if (action.isDeletion) {
+        if (!existing) return state
+        return {
+          ...state,
+          markets: {
+            ...state.markets,
+            [action.marketId]: {
+              ...existing,
+              market: { ...existing.market, status: 'archived' as const },
+            },
+          },
+        }
+      }
+
+      if (!existing) {
+        // New market discovered via subscription
+        return {
+          ...state,
+          markets: {
+            ...state.markets,
+            [action.marketId]: { market: action.market, history: [] },
+          },
+        }
+      }
+
+      const existingVersion = existing.market.version ?? 0
+      const incomingVersion = action.market.version ?? 0
+
+      if (incomingVersion < existingVersion) {
+        // Incoming is stale — local is newer (pending offline trade)
+        return state
+      }
+
+      if (incomingVersion === existingVersion) {
+        const existingHash = existing.market.stateHash
+        const incomingHash = action.market.stateHash
+        if (incomingHash === existingHash) {
+          // Identical state, no update needed
+          return state
+        }
+        // Same version but different state — log and keep local
+        console.warn(`Version conflict for market ${action.marketId}: same version, different hash`)
+        return state
+      }
+
+      // incomingVersion > existingVersion — accept update, preserve local history
+      return {
+        ...state,
+        markets: {
+          ...state.markets,
+          [action.marketId]: {
+            market: action.market,
+            history: existing.history,
+          },
+        },
+      }
+    }
+
+    case 'MARK_PUBLISHED': {
+      // Update local market with the confirmed version/stateHash returned by the relay
+      const existing = state.markets[action.marketId]
+      if (!existing) return state
+      return {
+        ...state,
+        markets: {
+          ...state.markets,
+          [action.marketId]: {
+            ...existing,
+            market: action.publishedMarket,
+          },
+        },
+      }
+    }
+
     default:
       return state
   }
@@ -397,10 +505,20 @@ function LegacyFieldMeetingRedirect() {
   return <Navigate to={`/dashboard/field/${id ?? ''}/meeting`} replace />
 }
 
+// Interval between outbox retry sweeps (30 seconds)
+const OUTBOX_RETRY_INTERVAL_MS = 30_000
+
 function AppContent() {
   const [state, dispatch] = useReducer(reducer, undefined, initState)
   const location = useLocation()
   const navigate = useNavigate()
+  const { isReady: nostrReady, pubkey: nostrPubkey } = useNostr()
+
+  // Keep a ref to the latest markets so async callbacks never read stale closure state
+  const marketsRef = useRef(state.markets)
+  useEffect(() => {
+    marketsRef.current = state.markets
+  }, [state.markets])
 
   useEffect(() => {
     initAnalytics()
@@ -421,16 +539,120 @@ function AppContent() {
     return () => window.clearTimeout(timer)
   }, [state.toast])
 
-  // Handle market creation navigation
+  // Nostr hydration: fetch and merge markets from relays when service is ready
+  useEffect(() => {
+    if (!nostrReady) return
+    fetchAllMarkets()
+      .then((markets) => {
+        // Normalize any pre-Nostr markets before merging
+        const normalized = markets.map(normalizeMarketForMigration)
+        dispatch({ type: 'HYDRATE_FROM_NOSTR', markets: normalized })
+      })
+      .catch((err: unknown) => {
+        console.warn('Nostr hydration failed:', err)
+      })
+  }, [nostrReady])
+
+  // Nostr subscription: receive live market updates and deletion signals from other clients
+  useEffect(() => {
+    if (!nostrReady) return
+    const sub = subscribeToAllMarkets((market, isDeletion) => {
+      dispatch({ type: 'SYNC_MARKET', marketId: market.id, market, isDeletion })
+    })
+    return () => sub.stop()
+  }, [nostrReady])
+
+  // Outbox: retry failed publishes on a fixed timer (independent of signer state changes)
+  useEffect(() => {
+    if (!nostrReady || !nostrPubkey) return
+
+    function runOutboxRetry() {
+      const pending = getPendingPublishes()
+      for (const item of pending) {
+        publishMarketEventWithConcurrencyCheck(item.market)
+          .then((publishedMarket) => {
+            removePendingPublish(item.marketId)
+            dispatch({ type: 'MARK_PUBLISHED', marketId: item.marketId, publishedMarket })
+          })
+          .catch((err: unknown) => {
+            console.warn(`Outbox retry failed for market ${item.marketId}:`, err)
+            incrementPendingRetries(item.marketId)
+          })
+      }
+    }
+
+    // Run immediately on mount/signer-ready, then on a fixed interval
+    runOutboxRetry()
+    const intervalId = window.setInterval(runOutboxRetry, OUTBOX_RETRY_INTERVAL_MS)
+    return () => window.clearInterval(intervalId)
+  }, [nostrReady, nostrPubkey])
+
+  // Handle market creation navigation and async Nostr side effects
   const handleDispatch = (action: Action) => {
-    if (action.type === 'CREATE_MARKET' && action.id) {
-      dispatch(action)
-      navigate(`/market/${action.id}`)
+    if (action.type === 'CREATE_MARKET') {
+      // Pre-generate the ID so the publish callback can look up the market in
+      // marketsRef after React flushes the state update — no stale closure issues.
+      const marketId =
+        action.id ??
+        `market-${
+          typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID().slice(0, 8)
+            : Math.random().toString(36).slice(2, 10)
+        }`
+      const actionWithId: Action = { ...action, id: marketId }
+      dispatch(actionWithId)
+
+      navigate(`/market/${marketId}`)
+      if (nostrReady && nostrPubkey) {
+        // setTimeout(0) lets React flush the state update before we read marketsRef
+        setTimeout(() => {
+          const entry = marketsRef.current[marketId]
+          if (!entry) return
+          publishMarketEventWithConcurrencyCheck(entry.market)
+            .then((publishedMarket) => {
+              dispatch({ type: 'MARK_PUBLISHED', marketId, publishedMarket })
+            })
+            .catch((err: unknown) => {
+              console.warn('Nostr publish failed, queuing for retry:', err)
+              addPendingPublish(entry.market)
+            })
+        }, 0)
+      }
       return
     }
+
     dispatch(action)
+
+    if (action.type === 'TRADE') {
+      // Async: publish updated market state to Nostr after trade.
+      // Read from marketsRef (not state.markets) to get the post-reducer value.
+      if (nostrReady && nostrPubkey) {
+        setTimeout(() => {
+          const entry = marketsRef.current[action.marketId]
+          if (!entry) return
+          publishMarketEventWithConcurrencyCheck(entry.market)
+            .then((publishedMarket) => {
+              dispatch({ type: 'MARK_PUBLISHED', marketId: action.marketId, publishedMarket })
+            })
+            .catch((err: unknown) => {
+              console.warn('Nostr trade publish failed, queuing for retry:', err)
+              addPendingPublish(entry.market)
+            })
+        }, 0)
+      }
+    }
+
     if (action.type === 'DELETE_MARKET') {
       navigate('/')
+      // Async: publish archived market state + NIP-09 deletion event to Nostr
+      if (nostrReady && nostrPubkey) {
+        const entry = marketsRef.current[action.marketId]
+        if (entry) {
+          publishDeletionEvent(entry.market).catch((err: unknown) => {
+            console.warn('Nostr deletion publish failed:', err)
+          })
+        }
+      }
     }
   }
 

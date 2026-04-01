@@ -5,6 +5,8 @@ import { deriveMarketMetrics, type Side } from './market'
 import type { MarketEntry } from './storage'
 import type { Action } from './App'
 import { trackHomepageEngagement } from './analytics'
+import { useNostr } from './context/NostrContext'
+import { subscribeToAllMarkets } from './services/marketService'
 // lightweight-charts used by market detail pages
 
 type MarketType = 'module' | 'thesis'
@@ -312,13 +314,29 @@ type Props = {
 
 export default function LandingPage({ markets, dispatch }: Props) {
   const navigate = useNavigate()
+  const { isReady } = useNostr()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [initialSide, setInitialSide] = useState<Side>('LONG')
   const [initialSats, setInitialSats] = useState('150')
   const [showCreateModal, setShowCreateModal] = useState(false)
 
-  const entries = Object.values(markets)
+  // Live discovery: subscribe to new Cascade markets from Nostr
+  useEffect(() => {
+    if (!isReady) return
+
+    const sub = subscribeToAllMarkets((market) => {
+      const existing = markets[market.id]
+      if (!existing || market.version > (existing.market.version ?? 0)) {
+        dispatch({ type: 'SYNC_MARKET', marketId: market.id, market })
+      }
+    })
+
+    return () => sub.stop()
+  }, [isReady, dispatch]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Filter archived markets — only show active/resolved
+  const entries = Object.values(markets).filter(e => e.market.status !== 'archived')
 
   // Derive sorted lists for each section
   const trendingMarkets = useMemo(() => {

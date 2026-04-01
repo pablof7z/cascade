@@ -157,6 +157,14 @@ export type Market = {
   // Required fields for rich profiles
   creatorPubkey: string
   createdAt: number
+  // Nostr persistence fields
+  nostrEventId?: string         // Nostr event ID of the latest published event
+  backupPubkey?: string         // Fallback signer pubkey (immutable, set at creation)
+  version: number               // Increments with each state update (prevents clock-skew)
+  stateHash: string             // SHA-256 of LMSR state (detects concurrent trade conflicts)
+  lastUpdatedAt?: number        // Timestamp of last trade/update
+  status: 'active' | 'resolved' | 'archived'  // Market lifecycle status
+  deletedAt?: number            // When the market was archived
 }
 
 export type ExecutionPreview = {
@@ -368,6 +376,9 @@ export function createEmptyMarket(input: {
     events: [],
     creatorPubkey: input.creatorPubkey,
     createdAt: Date.now(),
+    version: 0,
+    stateHash: '',
+    status: 'active',
   } satisfies Market
 }
 

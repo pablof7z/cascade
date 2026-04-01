@@ -72,21 +72,21 @@ export default function Portfolio() {
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
+        <div className="bg-neutral-900 border border-neutral-800 p-4">
           <span className="text-xs text-neutral-500 uppercase tracking-wider">Total Invested</span>
           <span className="block text-xl font-bold text-white mt-1">{formatCurrency(totalInvested)}</span>
         </div>
-        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
+        <div className="bg-neutral-900 border border-neutral-800 p-4">
           <span className="text-xs text-neutral-500 uppercase tracking-wider">Current Value</span>
           <span className="block text-xl font-bold text-white mt-1">{formatCurrency(totalValue)}</span>
         </div>
-        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
+        <div className="bg-neutral-900 border border-neutral-800 p-4">
           <span className="text-xs text-neutral-500 uppercase tracking-wider">Total P&L</span>
-          <span className={`block text-xl font-bold mt-1 ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          <span className={`block text-xl font-bold mt-1 ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             {formatCurrency(totalPnl)} ({formatPercent(totalPnlPercent)})
           </span>
         </div>
-        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4">
+        <div className="bg-neutral-900 border border-neutral-800 p-4">
           <span className="text-xs text-neutral-500 uppercase tracking-wider">Positions / Win Rate</span>
           <span className="block text-xl font-bold text-white mt-1">
             {positions.length} <span className="text-sm text-neutral-400">/ {winRate.toFixed(0)}%</span>
@@ -96,14 +96,14 @@ export default function Portfolio() {
 
       {/* Position cards */}
       {positions.length === 0 ? (
-        <div className="text-center py-16 bg-neutral-800/50 border border-neutral-700 rounded-lg">
+        <div className="text-center py-16 bg-neutral-900 border border-neutral-800">
           <p className="text-neutral-400 text-lg mb-2">No positions yet</p>
           <p className="text-neutral-500 text-sm mb-4">
             Place your first trade on any market to see it here.
           </p>
           <Link
             to="/"
-            className="inline-block px-6 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 transition-colors"
+            className="inline-block border border-neutral-700 text-neutral-300 text-sm font-medium px-4 py-1.5 hover:text-white hover:border-neutral-500 transition-colors"
           >
             Browse Markets
           </Link>
@@ -114,14 +114,14 @@ export default function Portfolio() {
             <Link
               key={position.id}
               to={`/market/${encodeURIComponent(position.marketId)}`}
-              className="block bg-neutral-800 border border-neutral-700 rounded-lg p-4 hover:border-neutral-600 transition-colors"
+              className="block bg-neutral-900 border border-neutral-800 p-4 hover:border-neutral-600 transition-colors"
             >
               <div className="flex items-center gap-2 mb-2">
                 <span
-                  className={`px-2 py-0.5 text-xs font-medium rounded ${
+                  className={`px-2 py-0.5 text-xs font-medium ${
                     position.direction === 'yes'
-                      ? 'bg-green-900/50 text-green-300'
-                      : 'bg-red-900/50 text-red-300'
+                      ? 'text-emerald-400 border border-emerald-800/60'
+                      : 'text-rose-400 border border-rose-800/60'
                   }`}
                 >
                   {position.direction === 'yes' ? 'YES' : 'NO'}
@@ -146,7 +146,7 @@ export default function Portfolio() {
                 </div>
                 <div>
                   <span className="text-xs text-neutral-500 block">P&L</span>
-                  <span className={`text-sm ${position.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`text-sm ${position.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {formatCurrency(position.pnl)} ({formatPercent(position.pnlPercent)})
                   </span>
                 </div>

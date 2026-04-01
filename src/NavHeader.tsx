@@ -100,7 +100,7 @@ export default function NavHeader() {
           {isTestnet ? (
             <button
               onClick={toggle}
-              className="px-2 py-0.5 text-xs font-bold bg-amber-500 text-amber-950 rounded-full uppercase tracking-wide hover:bg-amber-400 transition-colors cursor-pointer"
+              className="px-2 py-0.5 text-xs font-bold border border-amber-500 text-amber-400 uppercase tracking-wide hover:border-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
               title="Click to switch to mainnet"
             >
               {TESTNET_LABELS.shortLabel}
@@ -108,7 +108,7 @@ export default function NavHeader() {
           ) : (
             <button
               onClick={toggle}
-              className="px-2 py-0.5 text-xs font-medium bg-green-600 text-white rounded-full uppercase tracking-wide hover:bg-green-500 transition-colors cursor-pointer"
+              className="px-2 py-0.5 text-xs font-medium border border-neutral-600 text-neutral-400 uppercase tracking-wide hover:border-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
               title="Click to switch to testnet"
             >
               Mainnet
@@ -133,7 +133,7 @@ export default function NavHeader() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="w-48 lg:w-64 px-4 py-1.5 pl-9 text-sm bg-neutral-900 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 transition-colors"
+                className="w-48 lg:w-64 px-4 py-1.5 pl-9 text-sm bg-neutral-900 border border-neutral-800 text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-600 transition-colors"
               />
               <svg
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500"
@@ -154,7 +154,7 @@ export default function NavHeader() {
           {/* Primary Action */}
           <Link
             to={primaryAction.to}
-            className="px-4 py-2 text-sm font-semibold text-neutral-950 bg-white hover:bg-neutral-100 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-neutral-950 bg-white hover:bg-neutral-200 transition-colors"
           >
             {primaryAction.label}
           </Link>
@@ -166,7 +166,7 @@ export default function NavHeader() {
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/50 rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/50 rounded-sm transition-colors"
               >
                 <div className="w-7 h-7 rounded-sm bg-neutral-700 flex items-center justify-center text-white text-xs font-mono font-bold">
                   {avatarInitials}
@@ -185,7 +185,7 @@ export default function NavHeader() {
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl py-1 z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-neutral-900 border border-neutral-700 shadow-xl py-1 z-50">
                   <Link
                     to="/dashboard/fields"
                     className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"

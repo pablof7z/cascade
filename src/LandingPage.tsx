@@ -504,7 +504,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   <Link
                     to="/join"
                     onClick={() => trackHomepageEngagement('hero_primary_cta', 'join')}
-                    className="px-8 py-4 bg-white text-neutral-950 font-semibold rounded-lg hover:bg-neutral-100 transition-colors text-lg"
+                    className="px-8 py-4 bg-white text-neutral-950 font-semibold hover:bg-neutral-100 transition-colors text-lg"
                   >
                     Start Trading
                   </Link>
@@ -1185,13 +1185,13 @@ export default function LandingPage({ markets, dispatch }: Props) {
             <button
               type="button"
               onClick={() => setShowCreateModal(true)}
-              className="px-8 py-4 bg-white text-neutral-950 font-semibold rounded-lg hover:bg-neutral-100 transition-colors text-lg"
+              className="px-8 py-4 bg-white text-neutral-950 font-semibold hover:bg-neutral-100 transition-colors text-lg"
             >
               Create market
             </button>
             <Link
               to="/builder"
-              className="px-8 py-4 border border-neutral-700 text-white font-medium rounded-lg hover:border-neutral-500 transition-colors text-lg"
+              className="px-8 py-4 border border-neutral-700 text-white font-medium hover:border-neutral-500 transition-colors text-lg"
             >
               Build thesis
             </Link>
@@ -1263,13 +1263,13 @@ export default function LandingPage({ markets, dispatch }: Props) {
               </div>
               <div className="flex gap-3 pt-2">
                 <button
-                  className="flex-1 px-4 py-3 bg-white text-neutral-950 font-medium rounded-lg hover:bg-neutral-100"
+                  className="flex-1 px-4 py-3 bg-white text-neutral-950 font-medium hover:bg-neutral-100"
                   type="submit"
                 >
                   Create market
                 </button>
                 <button
-                  className="px-4 py-3 border border-neutral-700 text-neutral-300 rounded-lg hover:border-neutral-600 hover:text-white"
+                  className="px-4 py-3 border border-neutral-700 text-neutral-300 hover:border-neutral-600 hover:text-white"
                   type="button"
                   onClick={handleLoadSampleMarket}
                 >

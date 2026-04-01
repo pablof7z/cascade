@@ -82,6 +82,10 @@ export function serializeMarketToEvent(market: Market): { content: string; tags:
   if (market.backupPubkey) {
     tags.push(['backup', market.backupPubkey])
   }
+  tags.push(['status', market.status])
+  if (market.resolutionOutcome) {
+    tags.push(['outcome', market.resolutionOutcome])
+  }
   return {
     content: JSON.stringify(market),
     tags,

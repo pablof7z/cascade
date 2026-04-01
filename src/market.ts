@@ -165,6 +165,8 @@ export type Market = {
   lastUpdatedAt?: number        // Timestamp of last trade/update
   status: 'active' | 'resolved' | 'archived'  // Market lifecycle status
   deletedAt?: number            // When the market was archived
+  resolutionOutcome?: 'YES' | 'NO'  // Set when status === 'resolved'
+  resolvedAt?: number               // Unix timestamp of resolution
 }
 
 export type ExecutionPreview = {

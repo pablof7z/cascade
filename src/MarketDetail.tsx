@@ -150,10 +150,12 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
   const [amount, setAmount] = useState(100)
   const [selectedSide, setSelectedSide] = useState<Side>('LONG')
   const [showEmbedModal, setShowEmbedModal] = useState(false)
+  const [showResolveConfirm, setShowResolveConfirm] = useState(false)
   const [positions, setPositions] = useState<Position[]>([])
-  const { isReady } = useNostr()
+  const { isReady, pubkey } = useNostr()
 
   const market = entry.market
+  const isCreator = !!pubkey && pubkey === market.creatorPubkey
 
   // Real-time Nostr subscription: stream state updates for this specific market
   useEffect(() => {
@@ -260,6 +262,11 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
     },
   ]
 
+  const handleResolve = (outcome: 'YES' | 'NO') => {
+    dispatch({ type: 'RESOLVE_MARKET', marketId: market.id, outcome })
+    setShowResolveConfirm(false)
+  }
+
   const handleTrade = (side: Side) => {
     if (!Number.isFinite(amount) || amount <= 0) {
       return
@@ -296,6 +303,17 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
         activeTab={activeTab}
         headerAction={
           <>
+            {market.status === 'resolved' && (
+              <span
+                className={`text-xs font-medium px-2 py-0.5 ${
+                  market.resolutionOutcome === 'YES'
+                    ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800'
+                    : 'bg-rose-900/30 text-rose-400 border border-rose-800'
+                }`}
+              >
+                RESOLVED {market.resolutionOutcome}
+              </span>
+            )}
             <BookmarkButton
               isBookmarked={isBookmarked(market.id)}
               count={getCount(market.id)}
@@ -782,175 +800,239 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
 
         <div className="lg:col-span-1">
           <div className="sticky top-24 border-l border-neutral-800 pl-5">
-            <div className="flex items-start justify-between gap-4">
+            {market.status === 'resolved' ? (
               <div>
-                <h3 className="text-lg font-semibold text-white">
-                  {selectedSide === 'LONG' ? 'Add YES exposure' : 'Add NO exposure'}
-                </h3>
-                <p className="mt-2 text-sm text-neutral-500">
-                  Trades execute instantly via LMSR pricing.
-                </p>
-              </div>
-              <div
-                className={`px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-                  selectedSide === 'LONG'
-                    ? 'border border-emerald-500/30 text-emerald-400'
-                    : 'border border-rose-500/30 text-rose-400'
-                }`}
-              >
-                {selectedSide === 'LONG' ? 'YES' : 'NO'}
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden border border-neutral-800 bg-neutral-800">
-              <button
-                onClick={() => setSelectedSide('LONG')}
-                className={`px-4 py-4 text-left transition-colors ${
-                  selectedSide === 'LONG'
-                    ? 'bg-emerald-500/10 text-white'
-                    : 'bg-neutral-950 text-neutral-400 hover:text-white'
-                }`}
-              >
-                <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">Buy YES</div>
-                <div className="mt-2 text-2xl font-semibold text-emerald-400">
-                  {(yesPrice * 100).toFixed(0)}¢
-                </div>
-              </button>
-              <button
-                onClick={() => setSelectedSide('SHORT')}
-                className={`px-4 py-4 text-left transition-colors ${
-                  selectedSide === 'SHORT'
-                    ? 'bg-rose-500/10 text-white'
-                    : 'bg-neutral-950 text-neutral-400 hover:text-white'
-                }`}
-              >
-                <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">Buy NO</div>
-                <div className="mt-2 text-2xl font-semibold text-rose-400">
-                  {(noPrice * 100).toFixed(0)}¢
-                </div>
-              </button>
-            </div>
-
-            <div className="mt-5 border-t border-neutral-800 pt-5">
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <label className="text-neutral-500">Size (sats)</label>
-                <div className="text-neutral-600">Quick sizes</div>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {[25, 100, 250, 500].map((quickAmount) => (
-                  <button
-                    key={quickAmount}
-                    onClick={() => setAmount(quickAmount)}
-                    className={`border px-3 py-2 text-sm transition-colors ${
-                      amount === quickAmount
-                        ? 'border-white/20 bg-white text-neutral-950'
-                        : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:text-white'
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`text-xs font-medium px-2 py-0.5 ${
+                      market.resolutionOutcome === 'YES'
+                        ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800'
+                        : 'bg-rose-900/30 text-rose-400 border border-rose-800'
                     }`}
                   >
-                    {quickAmount}
+                    RESOLVED {market.resolutionOutcome}
+                  </span>
+                </div>
+                <p className="mt-4 text-sm text-neutral-500">
+                  This market has been resolved. Trading is closed.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">
+                      {selectedSide === 'LONG' ? 'Add YES exposure' : 'Add NO exposure'}
+                    </h3>
+                    <p className="mt-2 text-sm text-neutral-500">
+                      Trades execute instantly via LMSR pricing.
+                    </p>
+                  </div>
+                  <div
+                    className={`px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+                      selectedSide === 'LONG'
+                        ? 'border border-emerald-500/30 text-emerald-400'
+                        : 'border border-rose-500/30 text-rose-400'
+                    }`}
+                  >
+                    {selectedSide === 'LONG' ? 'YES' : 'NO'}
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden border border-neutral-800 bg-neutral-800">
+                  <button
+                    onClick={() => setSelectedSide('LONG')}
+                    className={`px-4 py-4 text-left transition-colors ${
+                      selectedSide === 'LONG'
+                        ? 'bg-emerald-500/10 text-white'
+                        : 'bg-neutral-950 text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">Buy YES</div>
+                    <div className="mt-2 text-2xl font-semibold text-emerald-400">
+                      {(yesPrice * 100).toFixed(0)}¢
+                    </div>
                   </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <input
-                type="number"
-                value={amount}
-                onChange={(event) => {
-                  const nextAmount = Number(event.target.value)
-                  setAmount(Number.isFinite(nextAmount) ? nextAmount : 0)
-                }}
-                className="w-full border border-neutral-800 bg-neutral-950 px-4 py-3 text-white focus:border-neutral-500 focus:outline-none"
-                min="1"
-              />
-            </div>
-
-            {preview ? (
-              <div className="mt-5 divide-y divide-neutral-800">
-                <div className="flex justify-between py-3 text-sm">
-                  <span className="text-neutral-500">Cost</span>
-                  <span className="text-white">{formatCurrency(preview.sats)}</span>
+                  <button
+                    onClick={() => setSelectedSide('SHORT')}
+                    className={`px-4 py-4 text-left transition-colors ${
+                      selectedSide === 'SHORT'
+                        ? 'bg-rose-500/10 text-white'
+                        : 'bg-neutral-950 text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="text-xs uppercase tracking-[0.2em] text-neutral-500">Buy NO</div>
+                    <div className="mt-2 text-2xl font-semibold text-rose-400">
+                      {(noPrice * 100).toFixed(0)}¢
+                    </div>
+                  </button>
                 </div>
-                <div className="flex justify-between py-3 text-sm">
-                  <span className="text-neutral-500">Tokens</span>
-                  <span className="text-white">{preview.tokens.toFixed(4)}</span>
-                </div>
-                <div className="flex justify-between py-3 text-sm">
-                  <span className="text-neutral-500">Average fill</span>
-                  <span className="text-white">{(preview.avgPrice * 100).toFixed(1)}¢</span>
-                </div>
-                <div className="flex justify-between py-3 text-sm">
-                  <span className="text-neutral-500">Reserve after</span>
-                  <span className="text-white">{formatCurrency(preview.reserveAfter)}</span>
-                </div>
-              </div>
-            ) : null}
 
-            <p className="mt-5 text-xs leading-relaxed text-neutral-500">
-              Demo market. Trades execute immediately against the LMSR reserve.
-            </p>
-
-            <button
-              onClick={() => handleTrade(selectedSide)}
-              className={`mt-5 w-full py-4 text-lg font-bold text-white transition-colors ${
-                selectedSide === 'LONG'
-                  ? 'bg-emerald-600 hover:bg-emerald-500'
-                  : 'bg-rose-600 hover:bg-rose-500'
-              }`}
-            >
-              Buy {selectedSide === 'LONG' ? 'YES' : 'NO'}
-            </button>
-
-            {/* Existing positions for this market */}
-            {positions.length > 0 && (
-              <div className="mt-6 border-t border-neutral-800 pt-5">
-                <h4 className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-400">
-                  Your Positions
-                </h4>
-                <div className="space-y-3">
-                  {positions.map((pos) => {
-                    const currentPrice =
-                      pos.direction === 'yes' ? yesPrice : noPrice
-                    const marketValue = pos.quantity * currentPrice
-                    const pnl = marketValue - pos.costBasis
-                    const pnlPct =
-                      pos.costBasis > 0 ? (pnl / pos.costBasis) * 100 : 0
-                    return (
-                      <div
-                        key={pos.id}
-                        className="flex items-center justify-between text-sm"
+                <div className="mt-5 border-t border-neutral-800 pt-5">
+                  <div className="mb-2 flex items-center justify-between text-sm">
+                    <label className="text-neutral-500">Size (sats)</label>
+                    <div className="text-neutral-600">Quick sizes</div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[25, 100, 250, 500].map((quickAmount) => (
+                      <button
+                        key={quickAmount}
+                        onClick={() => setAmount(quickAmount)}
+                        className={`border px-3 py-2 text-sm transition-colors ${
+                          amount === quickAmount
+                            ? 'border-white/20 bg-white text-neutral-950'
+                            : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:text-white'
+                        }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`inline-block h-2 w-2 rounded-full ${
-                              pos.direction === 'yes'
-                                ? 'bg-emerald-500'
-                                : 'bg-rose-500'
-                            }`}
-                          />
-                          <span className="font-medium text-neutral-200">
-                            {pos.direction === 'yes' ? 'YES' : 'NO'}
-                          </span>
-                          <span className="text-neutral-500">
-                            {pos.quantity.toFixed(1)} shares @{' '}
-                            {formatCurrency(pos.entryPrice)}
-                          </span>
-                        </div>
-                        <span
-                          className={`font-medium ${
-                            pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                          }`}
-                        >
-                          {pnl >= 0 ? '+' : ''}
-                          {formatCurrency(pnl)} ({pnlPct >= 0 ? '+' : ''}
-                          {pnlPct.toFixed(1)}%)
-                        </span>
-                      </div>
-                    )
-                  })}
+                        {quickAmount}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+
+                <div className="mt-5">
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(event) => {
+                      const nextAmount = Number(event.target.value)
+                      setAmount(Number.isFinite(nextAmount) ? nextAmount : 0)
+                    }}
+                    className="w-full border border-neutral-800 bg-neutral-950 px-4 py-3 text-white focus:border-neutral-500 focus:outline-none"
+                    min="1"
+                  />
+                </div>
+
+                {preview ? (
+                  <div className="mt-5 divide-y divide-neutral-800">
+                    <div className="flex justify-between py-3 text-sm">
+                      <span className="text-neutral-500">Cost</span>
+                      <span className="text-white">{formatCurrency(preview.sats)}</span>
+                    </div>
+                    <div className="flex justify-between py-3 text-sm">
+                      <span className="text-neutral-500">Tokens</span>
+                      <span className="text-white">{preview.tokens.toFixed(4)}</span>
+                    </div>
+                    <div className="flex justify-between py-3 text-sm">
+                      <span className="text-neutral-500">Average fill</span>
+                      <span className="text-white">{(preview.avgPrice * 100).toFixed(1)}¢</span>
+                    </div>
+                    <div className="flex justify-between py-3 text-sm">
+                      <span className="text-neutral-500">Reserve after</span>
+                      <span className="text-white">{formatCurrency(preview.reserveAfter)}</span>
+                    </div>
+                  </div>
+                ) : null}
+
+                <p className="mt-5 text-xs leading-relaxed text-neutral-500">
+                  Demo market. Trades execute immediately against the LMSR reserve.
+                </p>
+
+                <button
+                  onClick={() => handleTrade(selectedSide)}
+                  className={`mt-5 w-full py-4 text-lg font-bold text-white transition-colors ${
+                    selectedSide === 'LONG'
+                      ? 'bg-emerald-600 hover:bg-emerald-500'
+                      : 'bg-rose-600 hover:bg-rose-500'
+                  }`}
+                >
+                  Buy {selectedSide === 'LONG' ? 'YES' : 'NO'}
+                </button>
+
+                {/* Creator resolution — only shown to market creator */}
+                {isCreator && (
+                  <div className="border-t border-neutral-800 pt-4 mt-4">
+                    <p className="text-xs text-neutral-500 uppercase tracking-wide mb-3">Resolve Market</p>
+                    {!showResolveConfirm ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowResolveConfirm(true)}
+                        className="text-sm text-neutral-400 hover:text-neutral-200 transition-colors"
+                      >
+                        Resolve this market
+                      </button>
+                    ) : (
+                      <div>
+                        <p className="text-sm text-neutral-300 mb-3">Select the outcome:</p>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleResolve('YES')}
+                            className="px-4 py-2 text-sm font-medium border border-emerald-700 text-emerald-400 hover:bg-emerald-900/20 transition-colors"
+                          >
+                            YES
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleResolve('NO')}
+                            className="px-4 py-2 text-sm font-medium border border-rose-700 text-rose-400 hover:bg-rose-900/20 transition-colors"
+                          >
+                            NO
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowResolveConfirm(false)}
+                            className="px-4 py-2 text-sm text-neutral-500 hover:text-neutral-300 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Existing positions for this market */}
+                {positions.length > 0 && (
+                  <div className="mt-6 border-t border-neutral-800 pt-5">
+                    <h4 className="mb-3 text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                      Your Positions
+                    </h4>
+                    <div className="space-y-3">
+                      {positions.map((pos) => {
+                        const currentPrice =
+                          pos.direction === 'yes' ? yesPrice : noPrice
+                        const marketValue = pos.quantity * currentPrice
+                        const pnl = marketValue - pos.costBasis
+                        const pnlPct =
+                          pos.costBasis > 0 ? (pnl / pos.costBasis) * 100 : 0
+                        return (
+                          <div
+                            key={pos.id}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-block h-2 w-2 rounded-full ${
+                                  pos.direction === 'yes'
+                                    ? 'bg-emerald-500'
+                                    : 'bg-rose-500'
+                                }`}
+                              />
+                              <span className="font-medium text-neutral-200">
+                                {pos.direction === 'yes' ? 'YES' : 'NO'}
+                              </span>
+                              <span className="text-neutral-500">
+                                {pos.quantity.toFixed(1)} shares @{' '}
+                                {formatCurrency(pos.entryPrice)}
+                              </span>
+                            </div>
+                            <span
+                              className={`font-medium ${
+                                pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                              }`}
+                            >
+                              {pnl >= 0 ? '+' : ''}
+                              {formatCurrency(pnl)} ({pnlPct >= 0 ? '+' : ''}
+                              {pnlPct.toFixed(1)}%)
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

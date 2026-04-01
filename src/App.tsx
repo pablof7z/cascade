@@ -35,6 +35,7 @@ import {
   fetchAllMarkets,
   normalizeMarketForMigration,
   subscribeToAllMarkets,
+  computeStateHash,
 } from './services/marketService'
 import { useNostr } from './context/NostrContext'
 import { initializePositions } from './positionStore'
@@ -123,6 +124,11 @@ export type Action =
       isDeletion?: boolean
     }
   | { type: 'MARK_PUBLISHED'; marketId: string; publishedMarket: Market }
+  | {
+      type: 'RESOLVE_MARKET'
+      marketId: string
+      outcome: 'YES' | 'NO'
+    }
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
@@ -432,6 +438,28 @@ function reducer(state: State, action: Action): State {
       }
     }
 
+    case 'RESOLVE_MARKET': {
+      const entry = state.markets[action.marketId]
+      if (!entry) return state
+      const market = entry.market
+      if (market.status !== 'active') return state
+      const resolvedMarket: Market = {
+        ...market,
+        status: 'resolved',
+        resolutionOutcome: action.outcome,
+        resolvedAt: Math.floor(Date.now() / 1000),
+        version: market.version + 1,
+        stateHash: computeStateHash(market),
+      }
+      return {
+        ...state,
+        markets: {
+          ...state.markets,
+          [action.marketId]: { ...entry, market: resolvedMarket },
+        },
+      }
+    }
+
     default:
       return state
   }
@@ -662,6 +690,24 @@ function AppContent() {
             console.warn('Nostr deletion publish failed:', err)
           })
         }
+      }
+    }
+
+    if (action.type === 'RESOLVE_MARKET') {
+      // Async: publish resolved market state to Nostr
+      if (nostrReady && nostrPubkey) {
+        setTimeout(() => {
+          const entry = marketsRef.current[action.marketId]
+          if (!entry) return
+          publishMarketEventWithConcurrencyCheck(entry.market)
+            .then((publishedMarket) => {
+              dispatch({ type: 'MARK_PUBLISHED', marketId: action.marketId, publishedMarket })
+            })
+            .catch((err: unknown) => {
+              console.warn('Nostr resolution publish failed, queuing for retry:', err)
+              addPendingPublish(entry.market)
+            })
+        }, 0)
       }
     }
   }

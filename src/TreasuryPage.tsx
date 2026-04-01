@@ -3,6 +3,7 @@
 // and agents.
 
 import React from 'react'
+import PnLCharts from './PnLCharts'
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -68,11 +69,7 @@ export default function TreasuryPage() {
 
       {/* ── By Agent ── */}
       <div>
-        <SectionHeading>By Agent</SectionHeading>
-        <EmptySection
-          headline="No agents funded"
-          detail="Agent wallet balances and deployed capital appear here."
-        />
+        <PnLCharts />
       </div>
 
       {/* ── Open Positions ── */}

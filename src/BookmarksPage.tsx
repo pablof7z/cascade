@@ -38,7 +38,7 @@ export default function BookmarksPage() {
           </p>
           <Link
             to="/"
-            className="inline-block px-4 py-2 bg-white text-neutral-950 font-medium rounded-lg hover:bg-neutral-100 transition-colors"
+            className="inline-block px-4 py-2 bg-white text-neutral-950 font-medium hover:bg-neutral-100 transition-colors"
           >
             Browse Markets
           </Link>

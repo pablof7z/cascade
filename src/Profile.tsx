@@ -83,7 +83,7 @@ export default function Profile() {
   if (!viewingPubkey && !isOwnProfile) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-12">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6 text-center">
+        <div className="bg-neutral-900 border border-neutral-800 p-6 text-center">
           <p className="text-neutral-400">Profile not found</p>
           <Link to="/" className="mt-4 inline-block text-blue-400 hover:underline">
             Return home
@@ -103,7 +103,7 @@ export default function Profile() {
   if (isOwnProfile && editing) {
     return (
       <div className="mx-auto max-w-lg px-6 py-12">
-        <form onSubmit={handleSubmit} className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+        <form onSubmit={handleSubmit} className="bg-neutral-900 border border-neutral-800 p-6">
           <h1 className="text-xl font-semibold text-white mb-6">Your profile</h1>
 
           <label className="block">
@@ -113,7 +113,7 @@ export default function Profile() {
               value={profile.displayName}
               onChange={(e) => setProfile(p => ({ ...p, displayName: e.target.value }))}
               placeholder="Your name"
-              className="mt-1 w-full px-4 py-3 bg-neutral-950 border border-neutral-700 rounded-lg text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500"
+              className="mt-1 w-full px-4 py-3 bg-neutral-950 border border-neutral-700 rounded-md text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500"
             />
           </label>
 
@@ -124,7 +124,7 @@ export default function Profile() {
               onChange={(e) => setProfile(p => ({ ...p, bio: e.target.value }))}
               placeholder="Optional"
               rows={3}
-              className="mt-1 w-full px-4 py-3 bg-neutral-950 border border-neutral-700 rounded-lg text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 resize-none"
+              className="mt-1 w-full px-4 py-3 bg-neutral-950 border border-neutral-700 rounded-md text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 resize-none"
             />
           </label>
 
@@ -132,7 +132,7 @@ export default function Profile() {
             <button
               type="submit"
               disabled={!profile.displayName.trim()}
-              className="flex-1 px-4 py-3 bg-white text-neutral-950 font-semibold rounded-lg hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 px-4 py-3 bg-white text-neutral-950 font-semibold hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Save
             </button>

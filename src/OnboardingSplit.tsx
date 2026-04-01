@@ -642,7 +642,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
           {/* Human card */}
           <button
             onClick={handleChooseHuman}
-            className="group text-left p-8 bg-neutral-900 border border-neutral-800 rounded-2xl hover:border-neutral-600 hover:bg-neutral-850 transition-all"
+            className="group text-left p-8 bg-neutral-900 border border-neutral-800 hover:border-neutral-600 hover:bg-neutral-850 transition-all"
           >
             <div className="w-14 h-14 mb-6 rounded-2xl bg-neutral-800 group-hover:bg-neutral-700 flex items-center justify-center transition-colors">
               <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -675,7 +675,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
           {/* Agent card */}
           <button
             onClick={handleChooseAgent}
-            className="group text-left p-8 bg-neutral-900 border border-neutral-800 rounded-2xl hover:border-neutral-600 hover:bg-neutral-850 transition-all"
+            className="group text-left p-8 bg-neutral-900 border border-neutral-800 hover:border-neutral-600 hover:bg-neutral-850 transition-all"
           >
             <div className="w-14 h-14 mb-6 rounded-2xl bg-neutral-800 group-hover:bg-neutral-700 flex items-center justify-center transition-colors">
               <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

@@ -71,7 +71,7 @@ export default function EmbedModal({ marketId, marketTitle, isOpen, onClose }: E
           <div className="flex gap-2">
             <button
               onClick={() => setTheme('dark')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
                 theme === 'dark'
                   ? 'bg-neutral-700 text-white'
                   : 'bg-neutral-800 text-neutral-400 hover:text-white'
@@ -81,7 +81,7 @@ export default function EmbedModal({ marketId, marketTitle, isOpen, onClose }: E
             </button>
             <button
               onClick={() => setTheme('light')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
                 theme === 'light'
                   ? 'bg-neutral-700 text-white'
                   : 'bg-neutral-800 text-neutral-400 hover:text-white'
@@ -120,7 +120,7 @@ export default function EmbedModal({ marketId, marketTitle, isOpen, onClose }: E
         {/* Copy button */}
         <button
           onClick={handleCopy}
-          className={`w-full py-3 rounded-lg font-medium transition-all ${
+          className={`w-full py-3 font-medium transition-all ${
             copied
               ? 'bg-emerald-600 text-white'
               : 'bg-emerald-600 hover:bg-emerald-500 text-white'

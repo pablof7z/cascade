@@ -287,21 +287,21 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
     <div className="space-y-8">
       <div>
         <h2 className="text-3xl font-semibold text-white">
-          Make your case
+          Go on record
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-neutral-500">
-          This is your argument — the reasoning that will stand or fall publicly. Write it like you're trying to convince a skeptic.
+          This is your public argument — the reasoning your reputation rides on. Write it like the other side is reading.
         </p>
       </div>
 
       <label className="block">
         <span className="text-sm font-medium text-neutral-400 mb-3 block">
-          The argument
+          Your case
         </span>
         <TiptapEditor
           value={thesisArgument}
           onChange={setThesisArgument}
-          placeholder="What's your reasoning? Why does this play out the way you say it does? Make it airtight."
+          placeholder="Lay out the logic. What happens, in what order, and why? A weak case gets taken apart in the comments. A strong one moves the price."
           className="border-b border-neutral-800 pb-4"
         />
       </label>
@@ -312,9 +312,18 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
     <div className="space-y-8">
       <div>
         <h2 className="text-3xl font-semibold text-white">
-          Add signals
+          Map the dominoes
         </h2>
+        <p className="mt-2 max-w-2xl text-sm text-neutral-500">
+          Select markets that should move if your thesis is right. For each one, call the direction. When those signals start breaking your way, capital follows.
+        </p>
       </div>
+
+      {selectedSignals.length === 0 ? (
+        <p className="text-sm text-neutral-500">
+          No signals yet. A thesis without signals is just an opinion — connect the dots and show how the future unfolds.
+        </p>
+      ) : null}
 
       {selectedSignals.length > 0 ? (
         <div className="space-y-5">
@@ -354,29 +363,37 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
                   </button>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => updateSignalOutcome(signal.moduleMarketId, 'YES')}
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                      signal.expectedOutcome === 'YES'
-                        ? 'bg-emerald-600 text-white'
-                        : 'border border-neutral-800 text-neutral-300 hover:border-neutral-600'
-                    }`}
-                  >
-                    Expect YES
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateSignalOutcome(signal.moduleMarketId, 'NO')}
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                      signal.expectedOutcome === 'NO'
-                        ? 'bg-rose-600 text-white'
-                        : 'border border-neutral-800 text-neutral-300 hover:border-neutral-600'
-                    }`}
-                  >
-                    Expect NO
-                  </button>
+                <div>
+                  <span className="text-sm font-medium text-neutral-400 mb-2 block">
+                    Your call
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => updateSignalOutcome(signal.moduleMarketId, 'YES')}
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                        signal.expectedOutcome === 'YES'
+                          ? 'bg-emerald-600 text-white'
+                          : 'border border-neutral-800 text-neutral-300 hover:border-neutral-600'
+                      }`}
+                    >
+                      YES
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateSignalOutcome(signal.moduleMarketId, 'NO')}
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                        signal.expectedOutcome === 'NO'
+                          ? 'bg-rose-600 text-white'
+                          : 'border border-neutral-800 text-neutral-300 hover:border-neutral-600'
+                      }`}
+                    >
+                      NO
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-neutral-500">
+                    Which way does this market resolve if your thesis plays out? YES means it resolves in favor; NO means it resolves against.
+                  </p>
                 </div>
 
                 <label className="block">
@@ -410,7 +427,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
               type="text"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search modules"
+              placeholder="Search markets to add as signals"
               className="w-full rounded-full border border-neutral-800 bg-transparent px-4 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
             />
           </div>

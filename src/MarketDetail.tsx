@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Dispatch } from 'react'
 import { Link } from 'react-router-dom'
 import type { MarketEntry } from './storage'
@@ -10,7 +10,7 @@ import EmbedModal from './components/EmbedModal'
 import BookmarkButton from './components/BookmarkButton'
 import { useBookmarks } from './useBookmarks'
 import MarketTabsShell, { type MarketTabKey } from './MarketTabsShell'
-import { MarketDiscussionPanel, generateMockThreads, type DiscussionThread } from './DiscussPage'
+import { MarketDiscussionPanel, type DiscussionThread } from './DiscussPage'
 import { trackDiscussionInteraction, trackMarketView, trackTradePlaced } from './analytics'
 import { addPosition, getPositionsForMarket, type Position } from './positionStore'
 
@@ -201,11 +201,8 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
     }))
     .sort((left, right) => right.grossExposure - left.grossExposure)
 
-  const discussionThreads = useMemo(() => generateMockThreads(market.title), [market.title])
-  const rankedThreads = useMemo(
-    () => [...discussionThreads].sort((left, right) => getThreadScore(right) - getThreadScore(left)),
-    [discussionThreads],
-  )
+  const discussionThreads: DiscussionThread[] = []
+  const rankedThreads: DiscussionThread[] = []
 
   const topParticipants = participantRows.slice(0, 3)
   const latestThread = rankedThreads[0]

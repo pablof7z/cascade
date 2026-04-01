@@ -24,7 +24,7 @@ export function NavHeader() {
             <Link
               key={path}
               to={path}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-3 py-2 text-sm font-medium transition-colors ${
                 location.pathname === path
                   ? 'bg-neutral-800 text-white'
                   : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
@@ -35,7 +35,7 @@ export function NavHeader() {
           ))}
         </nav>
 
-        <button className="px-4 py-2 rounded-lg border border-neutral-700 text-sm font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors">
+        <button className="px-4 py-2 border border-neutral-700 text-sm font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors">
           Connect
         </button>
       </div>

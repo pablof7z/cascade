@@ -323,7 +323,7 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
             />
             <button
               onClick={() => setShowEmbedModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-neutral-300 transition-colors hover:bg-white/10 hover:text-white"
+              className="inline-flex items-center gap-2 border border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-300 transition-colors hover:border-neutral-500 hover:text-white"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M5.5 3L2 8L5.5 13M10.5 3L14 8L10.5 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -506,7 +506,7 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
                                 )}
                               </div>
                               <span
-                                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                                className={`px-3 py-1 text-xs font-medium ${
                                   signal.expectedOutcome === 'YES'
                                     ? 'bg-emerald-500/10 text-emerald-300'
                                     : 'bg-rose-500/10 text-rose-300'

@@ -415,7 +415,7 @@ export default function Discussion(props: DiscussionProps) {
               name="discussion-position"
               value={newPosition}
               onChange={(event) => setNewPosition(event.target.value as PositionType)}
-              className="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-neutral-600"
+              className="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white text-sm focus:outline-none focus:border-neutral-600"
             >
               <option value="long">{stanceLabels.long}</option>
               <option value="short">{stanceLabels.short}</option>
@@ -424,14 +424,14 @@ export default function Discussion(props: DiscussionProps) {
             <input
               name="discussion-post"
               type="text"
-              className="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm placeholder-neutral-600 focus:outline-none focus:border-neutral-600"
+              className="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-md text-white text-sm placeholder-neutral-600 focus:outline-none focus:border-neutral-600"
               placeholder={arena.composePlaceholder}
               value={newPost}
               onChange={(event) => setNewPost(event.target.value)}
             />
             <button
               type="submit"
-              className="px-4 py-2 bg-white text-neutral-950 text-sm font-medium rounded-lg hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-white text-neutral-950 text-sm font-medium hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!newPost.trim()}
             >
               Post

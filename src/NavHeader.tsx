@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTestnet, TESTNET_LABELS } from './testnetConfig'
+import { useNostr } from './context/NostrContext'
 
 export default function NavHeader() {
   const location = useLocation()
@@ -37,8 +38,17 @@ export default function NavHeader() {
     ? 'Search fields, agents, or meetings...'
     : 'Search markets...'
 
-  // For now, simulate logged-in state (replace with real auth later)
-  const isLoggedIn = true
+  const { pubkey, isReady, reconnect } = useNostr()
+  const isLoggedIn = pubkey !== null
+
+  const avatarInitials = pubkey ? pubkey.slice(0, 4).toUpperCase() : ''
+  const abbreviatedPubkey = pubkey
+    ? `${pubkey.slice(0, 8)}...${pubkey.slice(-4)}`
+    : ''
+
+  const handleConnect = async () => {
+    await reconnect()
+  }
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -149,16 +159,21 @@ export default function NavHeader() {
             {primaryAction.label}
           </Link>
 
-          {/* User Menu or Join Button */}
-          {isLoggedIn ? (
+          {/* User Menu or Connect Button */}
+          {!isReady ? (
+            <div className="w-7 h-7 rounded-sm bg-neutral-800 animate-pulse" />
+          ) : isLoggedIn ? (
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/50 rounded-lg transition-colors"
               >
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                  U
+                <div className="w-7 h-7 rounded-sm bg-neutral-700 flex items-center justify-center text-white text-xs font-mono font-bold">
+                  {avatarInitials}
                 </div>
+                <span className="hidden sm:block text-xs font-mono text-neutral-400">
+                  {abbreviatedPubkey}
+                </span>
                 <svg
                   className={`w-4 h-4 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`}
                   fill="none"
@@ -213,18 +228,18 @@ export default function NavHeader() {
                       setUserMenuOpen(false)
                     }}
                   >
-                    Logout
+                    Disconnect
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <Link
-              to="/join"
-              className="px-4 py-2 text-sm font-semibold text-neutral-950 bg-white hover:bg-neutral-100 rounded-lg transition-colors"
+            <button
+              onClick={handleConnect}
+              className="text-xs font-medium text-white border border-neutral-700 px-3 py-1.5 hover:border-neutral-500 transition-colors"
             >
-              Join
-            </Link>
+              Connect Wallet
+            </button>
           )}
         </div>
       </div>

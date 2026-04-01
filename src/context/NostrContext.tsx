@@ -26,6 +26,7 @@ interface NostrContextValue {
   pubkey: string | null
   ndkInstance: NDK | null
   isReady: boolean
+  reconnect: () => Promise<void>
   publishEvent: (content: string, tags: string[][], kind?: number) => Promise<NDKEvent>
   fetchEvents: (filter: NDKFilter) => Promise<Set<NDKEvent>>
   subscribeToEvents: (filter: NDKFilter, callback: (event: NDKEvent) => void) => NDKSubscription
@@ -38,20 +39,27 @@ export function NostrContextProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false)
   const [pubkey, setPubkey] = useState<string | null>(null)
 
-  useEffect(() => {
+  const initService = async (testnet: boolean) => {
     setReady(false)
-    const relayUrls = isTestnet ? TESTNET_RELAYS : MAINNET_RELAYS
+    const relayUrls = testnet ? TESTNET_RELAYS : MAINNET_RELAYS
+    await initNostrService(relayUrls)
+    setPubkey(getPubkey())
+    setReady(serviceIsReady())
+  }
 
-    initNostrService(relayUrls).then(() => {
-      setPubkey(getPubkey())
-      setReady(serviceIsReady())
-    })
+  useEffect(() => {
+    initService(isTestnet)
   }, [isTestnet])
+
+  const reconnect = async () => {
+    await initService(isTestnet)
+  }
 
   const value: NostrContextValue = {
     pubkey,
     ndkInstance: ready ? getNDK() : null,
     isReady: ready,
+    reconnect,
     publishEvent: servicePublishEvent,
     fetchEvents: serviceFetchEvents,
     subscribeToEvents: serviceSubscribeToEvents,

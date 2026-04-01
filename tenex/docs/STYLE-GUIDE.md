@@ -42,11 +42,11 @@ No other accent colors without explicit approval.
 
 | Role | Font | Tailwind class |
 |------|------|----------------|
-| Headings | Instrument Serif | `font-heading` |
+| Headings | Inter | `font-heading` |
 | Body / UI | Inter | `font-sans` |
 | Numbers / data / prices | JetBrains Mono | `font-mono` |
 
-**Rationale:** Instrument Serif is elegant and modern — less old-fashioned than Playfair Display, better suited to dark-mode editorial UI. Inter is the industry standard for clean UI. JetBrains Mono provides legibility for numeric data.
+**Rationale:** Inter is used throughout for both headings and UI — clean, consistent, and well-suited to dark-mode editorial UI. JetBrains Mono provides legibility for numeric data.
 
 ### Type Scale
 

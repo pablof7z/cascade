@@ -223,24 +223,13 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
 
   const renderClaimStep = () => (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold text-white">
-          Market title
-        </h1>
-      </div>
-
-      <label className="block">
-        <span className="text-sm font-medium text-neutral-400 mb-3 block">
-          Title
-        </span>
-        <input
-          type="text"
-          value={thesisStatement}
-          onChange={(event) => setThesisStatement(event.target.value)}
-          placeholder="AGI will never exist"
-          className="w-full bg-transparent border-0 border-b border-neutral-800 px-0 py-4 text-3xl text-white placeholder-neutral-600 focus:outline-none focus:border-white sm:text-4xl"
-        />
-      </label>
+      <input
+        type="text"
+        value={thesisStatement}
+        onChange={(event) => setThesisStatement(event.target.value)}
+        placeholder="Market title"
+        className="w-full bg-transparent border-0 border-b border-neutral-800 px-0 py-4 text-3xl text-white placeholder-neutral-600 focus:outline-none focus:border-white sm:text-4xl"
+      />
 
       <div>
         <p className="text-sm font-medium text-neutral-400 mb-3">

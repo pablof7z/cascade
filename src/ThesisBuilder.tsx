@@ -19,12 +19,7 @@ const thesisExamples = [
   'The dollar milkshake theory will play out',
 ]
 
-const wizardSteps = [
-  { id: 'claim', label: 'Claim' },
-  { id: 'case', label: 'Case' },
-  { id: 'signals', label: 'Signals' },
-  { id: 'review', label: 'Review' },
-] as const
+type MarketDuration = 'infinite' | 'end-date'
 
 type AvailableModule = {
   id: string
@@ -74,7 +69,22 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
   const [thesisArgument, setThesisArgument] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSignals, setSelectedSignals] = useState<DraftSignal[]>([])
+  const [marketDuration, setMarketDuration] = useState<MarketDuration | null>(null)
 
+  const wizardSteps = useMemo(() => {
+    const steps = [{ id: 'claim', label: 'Claim' }]
+    if (marketDuration === 'infinite') {
+      steps.push({ id: 'case', label: 'Case' })
+    }
+    steps.push({ id: 'signals', label: 'Signals' })
+    steps.push({ id: 'review', label: 'Review' })
+    return steps
+  }, [marketDuration])
+
+  const caseStepIndex = useMemo(
+    () => wizardSteps.findIndex((s) => s.id === 'case'),
+    [wizardSteps],
+  )
   const availableModules = useMemo(
     () =>
       Object.values(markets)
@@ -124,8 +134,8 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
   const trimmedArgument = thesisArgument.trim()
   const canAdvance =
     step === 0
-      ? trimmedStatement.length > 0
-      : step === 1
+      ? trimmedStatement.length > 0 && marketDuration !== null
+      : step === caseStepIndex
         ? trimmedArgument.length > 0
         : true
 
@@ -215,7 +225,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-semibold text-white">
-          Name the thesis
+          Market title
         </h1>
       </div>
 
@@ -247,6 +257,38 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
               {example}
             </button>
           ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-sm font-medium text-neutral-400 mb-3">
+          Duration
+        </p>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => setMarketDuration('infinite')}
+            className={`flex-1 border px-5 py-4 text-left transition-colors ${
+              marketDuration === 'infinite'
+                ? 'border-white text-white'
+                : 'border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-neutral-200'
+            }`}
+          >
+            <div className="text-sm font-medium mb-1">Open ended</div>
+            <div className="text-xs text-neutral-500">No expiry — an infinite game</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMarketDuration('end-date')}
+            className={`flex-1 border px-5 py-4 text-left transition-colors ${
+              marketDuration === 'end-date'
+                ? 'border-white text-white'
+                : 'border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-neutral-200'
+            }`}
+          >
+            <div className="text-sm font-medium mb-1">Has end date</div>
+            <div className="text-xs text-neutral-500">Resolves on a specific date</div>
+          </button>
         </div>
       </div>
     </div>
@@ -507,20 +549,16 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
   )
 
   const renderStep = () => {
-    if (step === 0) {
-      return renderClaimStep()
-    }
+    const currentStepId = wizardSteps[step]?.id
 
-    if (step === 1) {
-      return renderCaseStep()
-    }
-
-    if (step === 2) {
-      return renderSignalsStep()
-    }
-
+    if (currentStepId === 'claim') return renderClaimStep()
+    if (currentStepId === 'case') return renderCaseStep()
+    if (currentStepId === 'signals') return renderSignalsStep()
     return renderReviewStep()
   }
+
+  const isLastStep = step === wizardSteps.length - 1
+  const createDisabled = !trimmedStatement || (marketDuration === 'infinite' && !trimmedArgument)
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8 min-h-[80vh]">
@@ -528,7 +566,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
         <Link to="/" className="text-sm text-neutral-400 hover:text-white">
           Back to Markets
         </Link>
-        <span className="ml-2 text-sm text-neutral-500">Build Thesis</span>
+        <span className="ml-2 text-sm text-neutral-500">Create Market</span>
       </nav>
 
       <div className="border-b border-neutral-800">
@@ -578,7 +616,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
           Back
         </button>
 
-        {step < wizardSteps.length - 1 ? (
+        {!isLastStep ? (
           <button
             type="button"
             onClick={goNext}
@@ -595,14 +633,14 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
           <button
             type="button"
             onClick={handleCreateThesis}
-            disabled={!trimmedStatement || !trimmedArgument}
+            disabled={createDisabled}
             className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
-              trimmedStatement && trimmedArgument
+              !createDisabled
                 ? 'bg-white text-neutral-950 hover:bg-neutral-100'
                 : 'cursor-not-allowed bg-neutral-800 text-neutral-500'
             }`}
           >
-            Launch thesis market
+            Launch market
           </button>
         )}
       </div>

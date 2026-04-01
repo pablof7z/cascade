@@ -1,7 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import type { Market } from '../market'
 import type { MarketEntry } from '../storage'
 import { mergeLocalAndNostr } from '../storage'
+import {
+  loadPositions,
+  savePositions,
+  addPosition,
+  removePosition,
+  getPositionsForMarket,
+} from '../positionStore'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -124,5 +131,58 @@ describe('mergeLocalAndNostr', () => {
   it('returns empty object when both inputs are empty', () => {
     const result = mergeLocalAndNostr({}, [])
     expect(result).toEqual({})
+  })
+})
+
+// ---------------------------------------------------------------------------
+// positionStore adapter — localStorage mode (anonymous user)
+// ---------------------------------------------------------------------------
+
+describe('positionStore adapter (anonymous / localStorage)', () => {
+  // Reset cache to empty state before each test via savePositions
+  beforeEach(() => {
+    savePositions([])
+  })
+
+  it('loadPositions returns empty array initially', () => {
+    expect(loadPositions()).toEqual([])
+  })
+
+  it('addPosition creates a new position with correct fields', () => {
+    const pos = addPosition('market-1', 'Test Market', 'yes', 5, 0.6)
+    expect(pos.marketId).toBe('market-1')
+    expect(pos.marketTitle).toBe('Test Market')
+    expect(pos.direction).toBe('yes')
+    expect(pos.quantity).toBe(5)
+    expect(pos.entryPrice).toBe(0.6)
+    expect(pos.costBasis).toBeCloseTo(3.0)
+    expect(pos.id).toBeTruthy()
+    expect(pos.timestamp).toBeGreaterThan(0)
+  })
+
+  it('addPosition merges into existing position on same market+direction', () => {
+    addPosition('market-2', 'Market Two', 'no', 10, 0.4)
+    const merged = addPosition('market-2', 'Market Two', 'no', 10, 0.6)
+    // Weighted average: (0.4*10 + 0.6*10) / 20 = 0.5
+    expect(merged.quantity).toBe(20)
+    expect(merged.entryPrice).toBeCloseTo(0.5)
+    const all = loadPositions()
+    // Only one entry for this market+direction
+    const forMarket = all.filter((p) => p.marketId === 'market-2')
+    expect(forMarket).toHaveLength(1)
+  })
+
+  it('getPositionsForMarket returns only positions for that market', () => {
+    addPosition('mkt-a', 'Market A', 'yes', 5, 0.5)
+    addPosition('mkt-b', 'Market B', 'no', 3, 0.7)
+    const result = getPositionsForMarket('mkt-a')
+    expect(result).toHaveLength(1)
+    expect(result[0].marketId).toBe('mkt-a')
+  })
+
+  it('removePosition removes the position by id', () => {
+    const pos = addPosition('mkt-del', 'Delete Market', 'yes', 2, 0.8)
+    removePosition(pos.id)
+    expect(loadPositions().find((p) => p.id === pos.id)).toBeUndefined()
   })
 })

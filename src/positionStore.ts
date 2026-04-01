@@ -1,9 +1,29 @@
 /**
- * Position persistence layer.
+ * Position persistence adapter layer.
  *
- * Stores user trade positions in localStorage with a clean schema
- * designed for eventual migration to Nostr events.
+ * Routes position operations to Nostr (kind 30078, NIP-78) when user is
+ * logged in, or falls back silently to localStorage for anonymous users.
+ *
+ * All public function signatures are preserved for backward compatibility
+ * with Portfolio.tsx, MarketDetail.tsx, and any other consumers.
+ *
+ * Call `initializePositions(pubkey, ndk)` once at app startup (from App.tsx)
+ * to wire up Nostr persistence. Until then, all operations use localStorage.
  */
+
+import type NDK from '@nostr-dev-kit/ndk'
+import type { NDKSubscription } from '@nostr-dev-kit/ndk'
+import {
+  fetchPositions,
+  publishPosition,
+  publishPositionRemoval,
+  computeWeightedAveragePosition,
+  subscribeToPositions,
+} from './services/positionService'
+
+// ---------------------------------------------------------------------------
+// Types (exported — public API, unchanged)
+// ---------------------------------------------------------------------------
 
 export type PositionDirection = 'yes' | 'no'
 
@@ -18,15 +38,56 @@ export type Position = {
   timestamp: number
 }
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const STORAGE_KEY = 'cascade-positions'
 
-/** Generate a unique position id */
-function uid(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+// ---------------------------------------------------------------------------
+// Internal state
+// ---------------------------------------------------------------------------
+
+/** In-memory cache — always in sync regardless of backing storage */
+let _positionsCache: Position[] = []
+
+/** True when user is logged in and Nostr transport is active */
+let _usingNostr = false
+
+/** True after first-login migration from localStorage has completed */
+let _migrationDone = false
+
+/** Live Nostr subscription handle — stopped and replaced on each init */
+let _subscription: NDKSubscription | null = null
+
+/** NDK instance for async operations (addPosition, removePosition) */
+let _ndk: NDK | null = null
+
+// ---------------------------------------------------------------------------
+// Cache change event emitter (lightweight, no external deps)
+// ---------------------------------------------------------------------------
+
+type CacheListener = () => void
+const _cacheListeners: Set<CacheListener> = new Set()
+
+/** Subscribe to cache changes. Returns unsubscribe function. */
+export function onPositionsChanged(listener: CacheListener): () => void {
+  _cacheListeners.add(listener)
+  return () => _cacheListeners.delete(listener)
 }
 
-/** Load all positions from localStorage */
-export function loadPositions(): Position[] {
+/** Notify all subscribers that the cache has changed. */
+function notifyCacheListeners(): void {
+  for (const listener of _cacheListeners) {
+    listener()
+  }
+}
+
+// ---------------------------------------------------------------------------
+// localStorage helpers (internal)
+// ---------------------------------------------------------------------------
+
+function loadFromLocalStorage(): Position[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
@@ -38,8 +99,7 @@ export function loadPositions(): Position[] {
   }
 }
 
-/** Persist the full position list */
-export function savePositions(positions: Position[]): void {
+function saveToLocalStorage(positions: Position[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(positions))
   } catch {
@@ -47,8 +107,152 @@ export function savePositions(positions: Position[]): void {
   }
 }
 
-/** Record a new trade. If the user already holds a position on the same
- *  market+direction we average into it; otherwise we create a new row. */
+// ---------------------------------------------------------------------------
+// Unique ID generator
+// ---------------------------------------------------------------------------
+
+function uid(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+// ---------------------------------------------------------------------------
+// Migration: localStorage → Nostr on first login
+// ---------------------------------------------------------------------------
+
+/**
+ * If localStorage contains positions and the user just logged in,
+ * publish each position to Nostr and clear localStorage on success.
+ * On publish failure (offline), keeps localStorage as backup.
+ */
+async function migrateFromLocalStorageIfNeeded(pubkey: string, ndk: NDK): Promise<void> {
+  if (_migrationDone) return
+
+  const localPositions = loadFromLocalStorage()
+  if (localPositions.length === 0) {
+    _migrationDone = true
+    return
+  }
+
+  console.info(`[positionStore] Migrating ${localPositions.length} positions from localStorage to Nostr`)
+
+  let successCount = 0
+  for (const position of localPositions) {
+    try {
+      await publishPosition(ndk, position)
+      successCount++
+    } catch (err) {
+      console.warn('[positionStore] Migration publish failed for position:', position.id, err)
+    }
+  }
+
+  if (successCount === localPositions.length) {
+    // All published successfully — clear localStorage
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // ignore
+    }
+    console.info('[positionStore] Migration complete — localStorage cleared')
+  } else {
+    console.warn(
+      `[positionStore] Migration partial: ${successCount}/${localPositions.length} published. localStorage kept as backup.`,
+    )
+  }
+
+  _migrationDone = true
+  void pubkey // pubkey is used implicitly via ndk signer
+}
+
+// ---------------------------------------------------------------------------
+// Initialization (called from App.tsx when Nostr context is ready)
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialize position persistence.
+ * - If user has pubkey: fetch from Nostr, subscribe to live updates, migrate localStorage if needed
+ * - If no pubkey (anonymous): load from localStorage, no Nostr ops
+ *
+ * This is non-blocking — callers should catch and log errors for graceful fallback.
+ */
+export async function initializePositions(pubkey: string | null, ndk: NDK | null): Promise<void> {
+  // Stop any existing subscription
+  if (_subscription) {
+    _subscription.stop()
+    _subscription = null
+  }
+
+  if (!pubkey || !ndk) {
+    // Anonymous user — use localStorage
+    _usingNostr = false
+    _ndk = null
+    _positionsCache = loadFromLocalStorage()
+    notifyCacheListeners()
+    return
+  }
+
+  _ndk = ndk
+
+  try {
+    // Fetch current positions from Nostr
+    const nostrPositions = await fetchPositions(ndk, pubkey)
+    _positionsCache = nostrPositions
+    _usingNostr = true
+    notifyCacheListeners()
+
+    // Subscribe to live updates (single subscription authority — only here)
+    _subscription = subscribeToPositions(ndk, pubkey, (positions) => {
+      _positionsCache = positions
+      notifyCacheListeners()
+    })
+
+    // Migrate any existing localStorage positions
+    await migrateFromLocalStorageIfNeeded(pubkey, ndk)
+  } catch (err) {
+    console.warn('[positionStore] Nostr init failed, falling back to localStorage:', err)
+    _usingNostr = false
+    _ndk = null
+    _positionsCache = loadFromLocalStorage()
+    notifyCacheListeners()
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public API (signatures preserved)
+// ---------------------------------------------------------------------------
+
+/** Load all positions — returns in-memory cache (Nostr or localStorage) */
+export function loadPositions(): Position[] {
+  return _positionsCache
+}
+
+/**
+ * Persist the full position list.
+ * Routes to Nostr when logged in, otherwise localStorage.
+ */
+export function savePositions(positions: Position[]): void {
+  _positionsCache = positions
+  notifyCacheListeners()
+
+  if (_usingNostr && _ndk) {
+    // Publish each position to Nostr asynchronously — non-blocking
+    for (const position of positions) {
+      publishPosition(_ndk, position).catch((err: unknown) => {
+        console.warn('[positionStore] Failed to publish position to Nostr:', err)
+      })
+    }
+    return
+  }
+
+  // Fallback: persist to localStorage
+  saveToLocalStorage(positions)
+}
+
+/**
+ * Record a new trade.
+ * If the user already holds a position on the same market+direction, average into it.
+ * Otherwise creates a new row.
+ * Publishes to Nostr or saves to localStorage based on auth state.
+ */
 export function addPosition(
   marketId: string,
   marketTitle: string,
@@ -63,16 +267,22 @@ export function addPosition(
   )
 
   if (existing) {
-    // Weighted-average entry price
-    const totalQty = existing.quantity + quantity
-    existing.entryPrice =
-      (existing.entryPrice * existing.quantity + entryPrice * quantity) /
-      totalQty
-    existing.quantity = totalQty
-    existing.costBasis = existing.entryPrice * totalQty
-    existing.timestamp = Date.now()
-    savePositions(positions)
-    return existing
+    // Use positionService weighted-average logic
+    const updated = computeWeightedAveragePosition(existing, quantity, entryPrice)
+    const updatedPositions = positions.map((p) => (p.id === existing.id ? updated : p))
+    _positionsCache = updatedPositions
+    notifyCacheListeners()
+
+    if (_usingNostr && _ndk) {
+      // Publish updated position to Nostr (replaces previous event via d-tag)
+      publishPosition(_ndk, updated).catch((err: unknown) => {
+        console.warn('[positionStore] Failed to publish updated position to Nostr:', err)
+      })
+    } else {
+      saveToLocalStorage(updatedPositions)
+    }
+
+    return updated
   }
 
   const pos: Position = {
@@ -85,17 +295,43 @@ export function addPosition(
     costBasis: entryPrice * quantity,
     timestamp: Date.now(),
   }
-  positions.push(pos)
-  savePositions(positions)
+
+  const updatedPositions = [...positions, pos]
+  _positionsCache = updatedPositions
+  notifyCacheListeners()
+
+  if (_usingNostr && _ndk) {
+    publishPosition(_ndk, pos).catch((err: unknown) => {
+      console.warn('[positionStore] Failed to publish new position to Nostr:', err)
+    })
+  } else {
+    saveToLocalStorage(updatedPositions)
+  }
+
   return pos
 }
 
 /** Get all positions for a specific market */
 export function getPositionsForMarket(marketId: string): Position[] {
-  return loadPositions().filter((p) => p.marketId === marketId)
+  return _positionsCache.filter((p) => p.marketId === marketId)
 }
 
 /** Remove a single position by id */
 export function removePosition(positionId: string): void {
-  savePositions(loadPositions().filter((p) => p.id !== positionId))
+  const position = _positionsCache.find((p) => p.id === positionId)
+  const updatedPositions = _positionsCache.filter((p) => p.id !== positionId)
+  _positionsCache = updatedPositions
+  notifyCacheListeners()
+
+  if (_usingNostr && _ndk) {
+    if (position) {
+      // Publish removal marker (quantity=0) to Nostr
+      publishPositionRemoval(_ndk, position).catch((err: unknown) => {
+        console.warn('[positionStore] Failed to publish position removal to Nostr:', err)
+      })
+    }
+    return
+  }
+
+  saveToLocalStorage(updatedPositions)
 }

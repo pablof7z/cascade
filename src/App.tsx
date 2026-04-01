@@ -37,6 +37,7 @@ import {
   subscribeToAllMarkets,
 } from './services/marketService'
 import { useNostr } from './context/NostrContext'
+import { initializePositions } from './positionStore'
 import LandingPage from './LandingPage'
 import MarketDetail from './MarketDetail'
 import ThreadPage from './ThreadPage'
@@ -512,7 +513,7 @@ function AppContent() {
   const [state, dispatch] = useReducer(reducer, undefined, initState)
   const location = useLocation()
   const navigate = useNavigate()
-  const { isReady: nostrReady, pubkey: nostrPubkey } = useNostr()
+  const { isReady: nostrReady, pubkey: nostrPubkey, ndkInstance } = useNostr()
 
   // Keep a ref to the latest markets so async callbacks never read stale closure state
   const marketsRef = useRef(state.markets)
@@ -561,6 +562,15 @@ function AppContent() {
     })
     return () => sub.stop()
   }, [nostrReady])
+
+  // Position persistence: initialize from Nostr when logged in, localStorage when anonymous
+  useEffect(() => {
+    if (!nostrReady) return
+    initializePositions(nostrPubkey ?? null, ndkInstance).catch((err: unknown) => {
+      console.error('Failed to initialize positions:', err)
+      // App continues; positions fall back to localStorage
+    })
+  }, [nostrReady, nostrPubkey, ndkInstance])
 
   // Outbox: retry failed publishes on a fixed timer (independent of signer state changes)
   useEffect(() => {

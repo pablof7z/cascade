@@ -192,7 +192,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
   }
 
   const handleCreateThesis = () => {
-    if (!trimmedStatement || !trimmedArgument) {
+    if (!trimmedStatement || (marketDuration === 'infinite' && !trimmedArgument)) {
       return
     }
 
@@ -241,7 +241,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
               key={example}
               type="button"
               onClick={() => setThesisStatement(example)}
-              className="rounded-full border border-neutral-800 px-3 py-1.5 text-sm text-neutral-300 transition-colors hover:border-neutral-600 hover:text-white"
+              className="border border-neutral-800 px-3 py-1.5 text-sm text-neutral-300 transition-colors hover:border-neutral-600 hover:text-white"
             >
               {example}
             </button>
@@ -371,7 +371,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
                     <button
                       type="button"
                       onClick={() => updateSignalOutcome(signal.moduleMarketId, 'YES')}
-                      className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
                         signal.expectedOutcome === 'YES'
                           ? 'bg-emerald-600 text-white'
                           : 'border border-neutral-800 text-neutral-300 hover:border-neutral-600'
@@ -382,7 +382,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
                     <button
                       type="button"
                       onClick={() => updateSignalOutcome(signal.moduleMarketId, 'NO')}
-                      className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
                         signal.expectedOutcome === 'NO'
                           ? 'bg-rose-600 text-white'
                           : 'border border-neutral-800 text-neutral-300 hover:border-neutral-600'
@@ -428,7 +428,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search markets to add as signals"
-              className="w-full rounded-full border border-neutral-800 bg-transparent px-4 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
+              className="w-full border border-neutral-800 bg-transparent px-4 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
             />
           </div>
         </div>
@@ -471,7 +471,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
                     type="button"
                     disabled={alreadySelected}
                     onClick={() => addSignal(module)}
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
                       alreadySelected
                         ? 'cursor-not-allowed text-neutral-500'
                         : 'border border-neutral-700 text-neutral-200 hover:border-neutral-500 hover:text-white'
@@ -627,7 +627,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
             type="button"
             onClick={goNext}
             disabled={!canAdvance}
-            className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
+            className={`px-5 py-2.5 text-sm font-semibold transition-colors ${
               canAdvance
                 ? 'bg-white text-neutral-950 hover:bg-neutral-100'
                 : 'cursor-not-allowed bg-neutral-800 text-neutral-500'
@@ -640,7 +640,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
             type="button"
             onClick={handleCreateThesis}
             disabled={createDisabled}
-            className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
+            className={`px-5 py-2.5 text-sm font-semibold transition-colors ${
               !createDisabled
                 ? 'bg-white text-neutral-950 hover:bg-neutral-100'
                 : 'cursor-not-allowed bg-neutral-800 text-neutral-500'

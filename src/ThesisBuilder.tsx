@@ -287,21 +287,21 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
     <div className="space-y-8">
       <div>
         <h2 className="text-3xl font-semibold text-white">
-          Write the case
+          Make your case
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-neutral-500">
-          Use headings, lists, quotes, and emphasis. The final thesis page renders this markdown directly.
+          This is your argument — the reasoning that will stand or fall publicly. Write it like you're trying to convince a skeptic.
         </p>
       </div>
 
       <label className="block">
         <span className="text-sm font-medium text-neutral-400 mb-3 block">
-          Argument
+          The argument
         </span>
         <TiptapEditor
           value={thesisArgument}
           onChange={setThesisArgument}
-          placeholder="Why does this thesis play out?"
+          placeholder="What's your reasoning? Why does this play out the way you say it does? Make it airtight."
           className="border-b border-neutral-800 pb-4"
         />
       </label>

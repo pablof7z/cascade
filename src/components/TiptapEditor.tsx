@@ -30,7 +30,7 @@ export default function TiptapEditor({
     content: markdownToHtml(value),
     editorProps: {
       attributes: {
-        class: 'focus:outline-none min-h-[200px] px-0 py-4 text-white',
+        class: 'focus:outline-none min-h-[280px] py-6 text-white prose-editor',
       },
     },
     onUpdate: ({ editor: nextEditor }) => {
@@ -53,73 +53,102 @@ export default function TiptapEditor({
   return (
     <div className={`tiptap-editor ${className}`}>
       {editor ? (
-        <div className="mb-2 flex flex-wrap gap-1 border-b border-neutral-800 pb-2">
+        <div className="mb-4 flex items-center gap-0.5">
           <ToolbarButton
             active={editor.isActive('bold')}
-            label="Bold"
+            title="Bold"
             onClick={() => editor.chain().focus().toggleBold().run()}
-          />
+          >
+            <IconBold />
+          </ToolbarButton>
           <ToolbarButton
             active={editor.isActive('italic')}
-            label="Italic"
+            title="Italic"
             onClick={() => editor.chain().focus().toggleItalic().run()}
-          />
+          >
+            <IconItalic />
+          </ToolbarButton>
+          <div className="mx-1.5 h-4 w-px bg-neutral-700" />
           <ToolbarButton
             active={editor.isActive('heading', { level: 2 })}
-            label="H2"
+            title="Heading 2"
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          />
+          >
+            <IconH2 />
+          </ToolbarButton>
           <ToolbarButton
             active={editor.isActive('heading', { level: 3 })}
-            label="H3"
+            title="Heading 3"
             onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          />
+          >
+            <IconH3 />
+          </ToolbarButton>
+          <div className="mx-1.5 h-4 w-px bg-neutral-700" />
           <ToolbarButton
             active={editor.isActive('bulletList')}
-            label="List"
+            title="Bullet list"
             onClick={() => editor.chain().focus().toggleBulletList().run()}
-          />
+          >
+            <IconList />
+          </ToolbarButton>
           <ToolbarButton
             active={editor.isActive('blockquote')}
-            label="Quote"
+            title="Blockquote"
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          />
+          >
+            <IconQuote />
+          </ToolbarButton>
         </div>
       ) : null}
       <EditorContent editor={editor} />
       <style>{`
         .tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
-          color: #6b7280;
+          color: #525252;
           content: attr(data-placeholder);
           float: left;
           height: 0;
           pointer-events: none;
         }
+        .tiptap-editor .ProseMirror {
+          line-height: 1.8;
+          font-size: 1.0625rem;
+        }
         .tiptap-editor .ProseMirror h2 {
-          font-size: 1.25rem;
+          font-size: 1.375rem;
           font-weight: 600;
-          margin-top: 1.5rem;
+          margin-top: 2rem;
           margin-bottom: 0.5rem;
+          color: #fff;
+          letter-spacing: -0.01em;
         }
         .tiptap-editor .ProseMirror h3 {
-          font-size: 1.1rem;
+          font-size: 1.125rem;
           font-weight: 600;
-          margin-top: 1rem;
-          margin-bottom: 0.5rem;
+          margin-top: 1.5rem;
+          margin-bottom: 0.375rem;
+          color: #fff;
         }
         .tiptap-editor .ProseMirror ul {
           list-style: disc;
           padding-left: 1.5rem;
-          margin: 0.5rem 0;
+          margin: 0.75rem 0;
+        }
+        .tiptap-editor .ProseMirror li {
+          margin: 0.25rem 0;
         }
         .tiptap-editor .ProseMirror blockquote {
-          border-left: 3px solid #525252;
-          padding-left: 1rem;
-          margin: 0.5rem 0;
+          border-left: 2px solid #404040;
+          padding-left: 1.25rem;
+          margin: 1rem 0;
           color: #a3a3a3;
+          font-style: italic;
         }
         .tiptap-editor .ProseMirror p {
-          margin: 0.5rem 0;
+          margin: 0.625rem 0;
+        }
+        .tiptap-editor .ProseMirror strong {
+          color: #fff;
+          font-weight: 600;
         }
       `}</style>
     </div>
@@ -128,24 +157,75 @@ export default function TiptapEditor({
 
 function ToolbarButton({
   active,
-  label,
+  title,
   onClick,
+  children,
 }: {
   active: boolean
-  label: string
+  title: string
   onClick: () => void
+  children: React.ReactNode
 }) {
   return (
     <button
       type="button"
+      title={title}
       onClick={onClick}
-      className={`rounded px-2 py-1 text-xs transition-colors ${
+      className={`flex h-7 w-7 items-center justify-center rounded transition-colors ${
         active
-          ? 'bg-neutral-700 text-white'
-          : 'text-neutral-400 hover:bg-neutral-800 hover:text-white'
+          ? 'text-white bg-neutral-700'
+          : 'text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800'
       }`}
     >
-      {label}
+      {children}
     </button>
+  )
+}
+
+function IconBold() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M6 4h8a4 4 0 0 1 0 8H6V4zm0 8h9a4 4 0 0 1 0 8H6v-8z" />
+    </svg>
+  )
+}
+
+function IconItalic() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M10 4h4l-4 16H6l4-16zm4 0h4v2h-4V4zM6 18h4v2H6v-2z" />
+    </svg>
+  )
+}
+
+function IconH2() {
+  return (
+    <svg width="16" height="14" viewBox="0 0 28 24" fill="currentColor">
+      <path d="M3 4v7h7V4h2v16h-2v-7H3v7H1V4h2zm12 10c0-2.21 1.79-4 4-4s4 1.79 4 4c0 1.2-.53 2.27-1.36 3H27v2h-8v-1.5l3.5-3.14A2 2 0 0 0 23 12a2 2 0 0 0-2 2h-2z" />
+    </svg>
+  )
+}
+
+function IconH3() {
+  return (
+    <svg width="16" height="14" viewBox="0 0 28 24" fill="currentColor">
+      <path d="M3 4v7h7V4h2v16h-2v-7H3v7H1V4h2zm11 4h6a2 2 0 0 1 2 2 2 2 0 0 1-1.5 1.94A2.5 2.5 0 0 1 22 14.5 2.5 2.5 0 0 1 19.5 17H14v-2h5.5a.5.5 0 0 0 .5-.5.5.5 0 0 0-.5-.5H14v-2h5a1 1 0 0 0 1-1 1 1 0 0 0-1-1h-5V8z" />
+    </svg>
+  )
+}
+
+function IconList() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
+    </svg>
+  )
+}
+
+function IconQuote() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1zm12 0c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
+    </svg>
   )
 }

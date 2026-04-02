@@ -137,30 +137,30 @@ export default function Wallet() {
 
   if (!keys) {
     return (
-      <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+      <div className="bg-neutral-900 border border-neutral-800 p-6">
         <p className="text-neutral-400">Create a profile first to use your wallet.</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+    <div className="bg-neutral-900 border border-neutral-800 p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-white">Wallet</h2>
-        <span className={`text-xs px-2 py-1 rounded ${
-          status === 'ready' ? 'bg-green-900 text-green-300' :
-          status === 'connecting' ? 'bg-yellow-900 text-yellow-300' :
-          status === 'error' ? 'bg-red-900 text-red-300' :
-          'bg-neutral-800 text-neutral-400'
+        <span className={`text-xs font-mono ${
+          status === 'ready' ? 'text-emerald-400' :
+          status === 'connecting' ? 'text-neutral-400' :
+          status === 'error' ? 'text-rose-400' :
+          'text-neutral-500'
         }`}>
-          {status === 'ready' ? 'Connected' :
-           status === 'connecting' ? 'Connecting...' :
-           status === 'error' ? 'Error' : 'Disconnected'}
+          {status === 'ready' ? '● Connected' :
+           status === 'connecting' ? '○ Connecting...' :
+           status === 'error' ? '✕ Error' : '— Disconnected'}
         </span>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-900/30 border border-red-800 rounded text-red-300 text-sm">
+        <div className="mb-4 p-3 bg-red-900/30 border border-red-800 text-red-300 text-sm">
           {error}
           <button onClick={() => setError(null)} className="ml-2 underline">dismiss</button>
         </div>
@@ -177,21 +177,21 @@ export default function Wallet() {
         <button
           onClick={() => { setShowDeposit(true); setShowSend(false); setShowReceive(false); }}
           disabled={status !== 'ready'}
-          className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Deposit
         </button>
         <button
           onClick={() => { setShowSend(true); setShowDeposit(false); setShowReceive(false); }}
           disabled={status !== 'ready' || balance === 0}
-          className="flex-1 px-4 py-2.5 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex-1 px-4 py-2.5 bg-neutral-700 hover:bg-neutral-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Send
         </button>
         <button
           onClick={() => { setShowReceive(true); setShowDeposit(false); setShowSend(false); }}
           disabled={status !== 'ready'}
-          className="flex-1 px-4 py-2.5 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex-1 px-4 py-2.5 bg-neutral-700 hover:bg-neutral-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Receive
         </button>
@@ -199,7 +199,7 @@ export default function Wallet() {
 
       {/* Deposit Panel */}
       {showDeposit && (
-        <div className="border border-neutral-700 rounded-lg p-4 mb-4">
+        <div className="border border-neutral-700 p-4 mb-4">
           <h3 className="text-sm font-medium text-white mb-3">Deposit via Lightning</h3>
           {!deposit ? (
             <>
@@ -208,13 +208,13 @@ export default function Wallet() {
                 placeholder="Amount in sats"
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
-                className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white placeholder:text-neutral-500 mb-3"
+                className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 text-white placeholder:text-neutral-500 mb-3"
               />
               <div className="flex gap-2">
                 <button
                   onClick={handleDeposit}
                   disabled={actionLoading || !depositAmount}
-                  className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-500 text-white rounded disabled:opacity-50"
+                  className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-500 text-white disabled:opacity-50"
                 >
                   {actionLoading ? 'Creating...' : 'Create Invoice'}
                 </button>
@@ -236,7 +236,7 @@ export default function Wallet() {
                   </div>
                 </div>
               )}
-              <div className="bg-neutral-950 p-3 rounded mb-3">
+              <div className="bg-neutral-950 p-3 mb-3">
                 <p className="text-xs text-neutral-400 mb-1">Lightning Invoice</p>
                 <p className="text-xs text-white font-mono break-all">{bolt11 || 'Generating...'}</p>
               </div>
@@ -245,7 +245,7 @@ export default function Wallet() {
                 {bolt11 && (
                   <button
                     onClick={() => copyToClipboard(bolt11)}
-                    className="flex-1 px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded"
+                    className="flex-1 px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-white"
                   >
                     Copy Invoice
                   </button>
@@ -264,7 +264,7 @@ export default function Wallet() {
 
       {/* Send Panel */}
       {showSend && (
-        <div className="border border-neutral-700 rounded-lg p-4 mb-4">
+        <div className="border border-neutral-700 p-4 mb-4">
           <h3 className="text-sm font-medium text-white mb-3">Send Cashu Tokens</h3>
           {!sendResult ? (
             <>
@@ -274,13 +274,13 @@ export default function Wallet() {
                 value={sendAmount}
                 onChange={(e) => setSendAmount(e.target.value)}
                 max={balance}
-                className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white placeholder:text-neutral-500 mb-3"
+                className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 text-white placeholder:text-neutral-500 mb-3"
               />
               <div className="flex gap-2">
                 <button
                   onClick={handleSend}
                   disabled={actionLoading || !sendAmount || parseInt(sendAmount) > balance}
-                  className="flex-1 px-3 py-2 bg-neutral-600 hover:bg-neutral-500 text-white rounded disabled:opacity-50"
+                  className="flex-1 px-3 py-2 bg-neutral-600 hover:bg-neutral-500 text-white disabled:opacity-50"
                 >
                   {actionLoading ? 'Sending...' : 'Send'}
                 </button>
@@ -294,14 +294,14 @@ export default function Wallet() {
             </>
           ) : (
             <>
-              <div className="bg-neutral-950 p-3 rounded mb-3">
+              <div className="bg-neutral-950 p-3 mb-3">
                 <p className="text-xs text-neutral-400 mb-1">Cashu Token (share this)</p>
                 <p className="text-xs text-white font-mono break-all">{sendResult}</p>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => copyToClipboard(sendResult)}
-                  className="flex-1 px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded"
+                  className="flex-1 px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-white"
                 >
                   Copy Token
                 </button>
@@ -319,20 +319,20 @@ export default function Wallet() {
 
       {/* Receive Panel */}
       {showReceive && (
-        <div className="border border-neutral-700 rounded-lg p-4 mb-4">
+        <div className="border border-neutral-700 p-4 mb-4">
           <h3 className="text-sm font-medium text-white mb-3">Receive Cashu Token</h3>
           <textarea
             placeholder="Paste cashu token here..."
             value={receiveToken_}
             onChange={(e) => setReceiveToken(e.target.value)}
             rows={3}
-            className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded text-white placeholder:text-neutral-500 mb-3 resize-none font-mono text-xs"
+            className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 text-white placeholder:text-neutral-500 mb-3 resize-none font-mono text-xs"
           />
           <div className="flex gap-2">
             <button
               onClick={handleReceive}
               disabled={actionLoading || !receiveToken_.trim()}
-              className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-500 text-white rounded disabled:opacity-50"
+              className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-500 text-white disabled:opacity-50"
             >
               {actionLoading ? 'Receiving...' : 'Receive'}
             </button>

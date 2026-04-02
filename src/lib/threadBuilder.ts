@@ -81,18 +81,18 @@ export async function convertSingleEventToThread(
 
 /**
  * Build the full thread hierarchy from a flat list of events.
- * Root events are those with no reply e-tag.
+ * Root events are direct replies to the market event (rootId === marketEventId, no replyTo).
  */
 export async function buildThreadHierarchy(
   rawEvents: NDKEvent[],
+  marketEventId: string,
 ): Promise<DiscussionThread[]> {
   const allEventsMap = new Map(rawEvents.map((e) => [e.id ?? '', e]))
 
   const rootEvents = rawEvents.filter((event) => {
     const tags = parseEventTags(event)
-    // NIP-22: a root-level post has a 'root' E-tag (pointing to the market event)
-    // but no 'reply' E-tag. A reply has both 'root' and 'reply' E-tags.
-    return tags.rootId !== undefined && tags.replyTo === undefined
+    // A post is a root of the market thread if its rootId IS the market event
+    return tags.rootId === marketEventId || tags.isRoot
   })
 
   return Promise.all(

@@ -195,7 +195,7 @@ export function MarketDiscussionPanel({
       try {
         const rawEvents = await fetchMarketPosts(marketEventId)
         if (!cancelled) {
-          const built = await buildThreadHierarchy(rawEvents)
+          const built = await buildThreadHierarchy(rawEvents, marketEventId)
           setThreads(built)
         }
       } catch (err) {

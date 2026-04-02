@@ -398,7 +398,7 @@ export default function ThreadPage({ markets }: Props) {
 
     setLoading(true)
     fetchMarketPosts(marketEventId)
-      .then((events) => buildThreadHierarchy(events))
+      .then((events) => buildThreadHierarchy(events, marketEventId))
       .then(async (built) => {
         if (cancelled) return
         setThreads(built)

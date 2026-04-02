@@ -298,7 +298,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
     return (
       <section className={className}>
         <div className="max-w-lg mx-auto text-center py-12">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-500/10 flex items-center justify-center">
+          <div className="w-20 h-20 mx-auto mb-6 bg-green-500/10 flex items-center justify-center">
             <svg className="w-10 h-10 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
@@ -509,7 +509,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
             {/* Avatar upload */}
             <div className="flex justify-center">
               <label className="cursor-pointer group">
-                <div className="w-24 h-24 rounded-full bg-neutral-800 border-2 border-dashed border-neutral-600 group-hover:border-neutral-400 flex items-center justify-center overflow-hidden transition-colors">
+                <div className="w-24 h-24 bg-neutral-800 border-2 border-dashed border-neutral-600 group-hover:border-neutral-400 flex items-center justify-center overflow-hidden transition-colors">
                   {avatarPreview ? (
                     <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
@@ -534,7 +534,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="How should we call you?"
-                className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 rounded-md text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
+                className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
                 required
               />
             </div>
@@ -549,7 +549,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
                   onChange={(e) => handleUsernameChange(e.target.value)}
                   onBlur={() => checkAvailability(username)}
                   placeholder="username"
-                  className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 rounded-md text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 pr-36 transition-colors"
+                  className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 pr-36 transition-colors"
                   required
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">
@@ -583,7 +583,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
                 onChange={(e) => setTagline(e.target.value)}
                 placeholder="What's your edge?"
                 maxLength={80}
-                className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 rounded-md text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
+                className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
               />
             </div>
 

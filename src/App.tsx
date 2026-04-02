@@ -805,7 +805,7 @@ function AppContent() {
       </main>
       <Footer />
       {state.toast ? (
-        <div className={`fixed bottom-6 right-6 z-50 max-w-sm px-5 py-4 rounded-xl border shadow-lg backdrop-blur-sm ${
+        <div className={`fixed bottom-6 right-6 z-50 max-w-sm px-5 py-4 border shadow-lg ${
           state.toast.tone === 'good'
             ? 'bg-green-900/80 border-green-700 text-green-100'
             : state.toast.tone === 'warn'

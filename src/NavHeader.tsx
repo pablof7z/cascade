@@ -75,7 +75,7 @@ export default function NavHeader() {
   }
 
   const linkClass = (href: string) =>
-    `px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+    `px-3 py-2 text-sm font-medium transition-colors ${
       isActive(href)
         ? 'text-white bg-neutral-800'
         : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'

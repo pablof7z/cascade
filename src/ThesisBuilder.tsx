@@ -392,7 +392,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
                     <button
                       type="button"
                       onClick={() => updateSignalOutcome(signal.moduleMarketId, 'YES')}
-                      className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                      className={`px-4 py-2 text-sm font-medium transition-colors ${
                         signal.expectedOutcome === 'YES'
                           ? 'bg-emerald-600 text-white'
                           : 'border border-neutral-800 text-neutral-300 hover:border-neutral-600'
@@ -403,7 +403,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
                     <button
                       type="button"
                       onClick={() => updateSignalOutcome(signal.moduleMarketId, 'NO')}
-                      className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                      className={`px-4 py-2 text-sm font-medium transition-colors ${
                         signal.expectedOutcome === 'NO'
                           ? 'bg-rose-600 text-white'
                           : 'border border-neutral-800 text-neutral-300 hover:border-neutral-600'
@@ -492,7 +492,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
                     type="button"
                     disabled={alreadySelected}
                     onClick={() => addSignal(module)}
-                    className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
                       alreadySelected
                         ? 'cursor-not-allowed text-neutral-500'
                         : 'border border-neutral-700 text-neutral-200 hover:border-neutral-500 hover:text-white'

@@ -113,7 +113,7 @@ export default function Profile() {
               value={profile.displayName}
               onChange={(e) => setProfile(p => ({ ...p, displayName: e.target.value }))}
               placeholder="Your name"
-              className="mt-1 w-full px-4 py-3 bg-neutral-950 border border-neutral-700 rounded-md text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500"
+              className="mt-1 w-full px-4 py-3 bg-neutral-950 border border-neutral-700 text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500"
             />
           </label>
 
@@ -124,7 +124,7 @@ export default function Profile() {
               onChange={(e) => setProfile(p => ({ ...p, bio: e.target.value }))}
               placeholder="Optional"
               rows={3}
-              className="mt-1 w-full px-4 py-3 bg-neutral-950 border border-neutral-700 rounded-md text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 resize-none"
+              className="mt-1 w-full px-4 py-3 bg-neutral-950 border border-neutral-700 text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 resize-none"
             />
           </label>
 

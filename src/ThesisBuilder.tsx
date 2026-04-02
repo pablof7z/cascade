@@ -70,6 +70,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSignals, setSelectedSignals] = useState<DraftSignal[]>([])
   const [marketDuration, setMarketDuration] = useState<MarketDuration | null>(null)
+  const [endDate, setEndDate] = useState<string>('')
 
   const wizardSteps = useMemo(() => {
     const steps = [{ id: 'claim', label: 'Claim' }]
@@ -134,7 +135,9 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
   const trimmedArgument = thesisArgument.trim()
   const canAdvance =
     step === 0
-      ? trimmedStatement.length > 0 && marketDuration !== null
+      ? trimmedStatement.length > 0 &&
+        marketDuration !== null &&
+        (marketDuration !== 'end-date' || endDate.length > 0)
       : step === caseStepIndex
         ? trimmedArgument.length > 0
         : true
@@ -206,6 +209,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
       seedWithUser: false,
       kind: 'thesis',
       creatorPubkey: 'you',
+      endDate: marketDuration === 'end-date' ? endDate : undefined,
       thesis: {
         statement: trimmedStatement,
         argument: trimmedArgument,
@@ -279,6 +283,23 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
             <div className="text-xs text-neutral-500">Resolves on a specific date</div>
           </button>
         </div>
+
+        {marketDuration === 'end-date' && (
+          <div className="mt-4">
+            <label className="block">
+              <span className="text-sm font-medium text-neutral-400 mb-2 block">
+                Resolves on
+              </span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(event) => setEndDate(event.target.value)}
+                min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
+                className="bg-transparent border-0 border-b border-neutral-800 px-0 py-2 text-sm text-white focus:outline-none focus:border-white [color-scheme:dark]"
+              />
+            </label>
+          </div>
+        )}
       </div>
     </div>
   )

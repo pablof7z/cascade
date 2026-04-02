@@ -99,6 +99,7 @@ export type Action =
       kind?: MarketKind
       thesis?: ThesisDefinition
       creatorPubkey: string
+      endDate?: string
     }
   | {
       type: 'TRADE'
@@ -213,6 +214,7 @@ function reducer(state: State, action: Action): State {
         kind: action.kind,
         thesis: action.thesis,
         creatorPubkey: action.creatorPubkey,
+        endDate: action.endDate,
       })
 
       if (!action.seedWithUser) {

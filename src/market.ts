@@ -167,6 +167,7 @@ export type Market = {
   deletedAt?: number            // When the market was archived
   resolutionOutcome?: 'YES' | 'NO'  // Set when status === 'resolved'
   resolvedAt?: number               // Unix timestamp of resolution
+  endDate?: string              // ISO date string (YYYY-MM-DD) for time-bounded markets
 }
 
 export type ExecutionPreview = {
@@ -351,6 +352,7 @@ export function createEmptyMarket(input: {
   kind?: MarketKind
   thesis?: ThesisDefinition
   creatorPubkey: string
+  endDate?: string
 }) {
   const kind = input.kind ?? (input.thesis ? 'thesis' : 'module')
   return {
@@ -381,6 +383,7 @@ export function createEmptyMarket(input: {
     version: 0,
     stateHash: '',
     status: 'active',
+    ...(input.endDate ? { endDate: input.endDate } : {}),
   } satisfies Market
 }
 

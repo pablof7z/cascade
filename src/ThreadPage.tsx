@@ -125,7 +125,7 @@ function ReplyThread({
     setSubmitting(true)
     setReplyError(null)
     try {
-      await publishMarketReply(marketId, replyContent.trim(), reply.id, rootId, reply.author)
+      await publishMarketReply(replyContent.trim(), reply.id, rootId, reply.author)
       setReplyContent('')
       setShowReplyBox(false)
     } catch (err) {
@@ -230,7 +230,7 @@ function OriginalPost({
     setReplyError(null)
     try {
       // Reply directly to the root post (parentId === rootId for top-level replies)
-      await publishMarketReply(marketId, replyContent.trim(), thread.id, thread.id, thread.author)
+      await publishMarketReply(replyContent.trim(), thread.id, thread.id, thread.author)
       setReplyContent('')
       setShowReplyBox(false)
     } catch (err) {
@@ -392,10 +392,12 @@ export default function ThreadPage({ markets }: Props) {
 
   useEffect(() => {
     if (!isReady || !marketId) return
+    const marketEventId = marketId ? markets[marketId]?.market.nostrEventId : undefined
+    if (!marketEventId) return
     let cancelled = false
 
     setLoading(true)
-    fetchMarketPosts(marketId)
+    fetchMarketPosts(marketEventId)
       .then((events) => buildThreadHierarchy(events))
       .then(async (built) => {
         if (cancelled) return
@@ -420,7 +422,7 @@ export default function ThreadPage({ markets }: Props) {
     return () => {
       cancelled = true
     }
-  }, [isReady, marketId])
+  }, [isReady, marketId, markets])
 
   // Subscribe to real-time reaction updates
   useEffect(() => {

@@ -90,7 +90,7 @@ export async function buildThreadHierarchy(
 
   const rootEvents = rawEvents.filter((event) => {
     const tags = parseEventTags(event)
-    return !tags.replyTo && !tags.rootId
+    return tags.isRoot || (!tags.replyTo && !tags.rootId)
   })
 
   return Promise.all(

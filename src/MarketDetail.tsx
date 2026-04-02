@@ -118,7 +118,7 @@ function getTiltCopy(probability: number) {
     label: 'No clear consensus',
     detail:
       'Neither side dominates. The next material update is likely to move the price.',
-    accent: 'text-amber-300',
+    accent: 'text-neutral-400',
   }
 }
 

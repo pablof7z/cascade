@@ -30,7 +30,7 @@ export default function BookmarkButton({
     <button
       type="button"
       onClick={handleClick}
-      className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-all ${
+      className={`flex items-center gap-1.5 px-2 py-1 transition-all ${
         isBookmarked
           ? 'text-amber-500 hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
           : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800'

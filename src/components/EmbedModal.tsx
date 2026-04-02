@@ -95,7 +95,7 @@ export default function EmbedModal({ marketId, marketTitle, isOpen, onClose }: E
         {/* Preview */}
         <div className="mb-4">
           <label className="block text-sm text-neutral-500 mb-2">Preview</label>
-          <div className={`rounded-xl overflow-hidden border ${theme === 'dark' ? 'border-neutral-700 bg-neutral-950' : 'border-neutral-200 bg-white'} p-3`}>
+          <div className={`overflow-hidden border ${theme === 'dark' ? 'border-neutral-700 bg-neutral-950' : 'border-neutral-200 bg-white'} p-3`}>
             <iframe
               src={embedUrl}
               width="100%"
@@ -111,7 +111,7 @@ export default function EmbedModal({ marketId, marketTitle, isOpen, onClose }: E
         <div className="mb-6">
           <label className="block text-sm text-neutral-500 mb-2">Embed Code</label>
           <div className="relative">
-            <pre className="bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-xs text-neutral-300 overflow-x-auto whitespace-pre-wrap break-all">
+            <pre className="bg-neutral-800 border border-neutral-700 p-3 text-xs text-neutral-300 overflow-x-auto whitespace-pre-wrap break-all">
               {iframeCode}
             </pre>
           </div>

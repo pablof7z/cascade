@@ -14,6 +14,7 @@ import { MarketDiscussionPanel, type DiscussionThread } from './DiscussPage'
 import { trackDiscussionInteraction, trackMarketView, trackTradePlaced } from './analytics'
 import { getPositionsForMarket, type Position } from './positionStore'
 import { useNostr } from './context/NostrContext'
+import { useTestnet } from './testnetConfig'
 import { subscribeToMarketUpdates } from './services/marketService'
 import { executeTrade } from './services/tradingService'
 import type { Action } from './App'
@@ -159,6 +160,7 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
   const [tradeLoading, setTradeLoading] = useState(false)
   const lastTradeAtRef = useRef<number>(0)
   const { isReady, pubkey } = useNostr()
+  const { isTestnet } = useTestnet()
 
   const market = entry.market
   const isCreator = !!pubkey && pubkey === market.creatorPubkey
@@ -289,7 +291,7 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
     setTradeLoading(true)
 
     try {
-      const result = await executeTrade(market, side, amount)
+      const result = await executeTrade(market, side, amount, !isTestnet)
 
       if (!result.success) {
         const { error } = result

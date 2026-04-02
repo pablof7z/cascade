@@ -6,8 +6,10 @@
  *   2. Wallet debit (when real-money mode is active)
  *   3. Position recording
  *
- * Controlled by the VITE_USE_REAL_MONEY feature flag.
- * When the flag is absent or falsy, trades record positions only (demo mode).
+ * Real-money mode is controlled by the `useRealMoney` parameter passed to
+ * `executeTrade`. When omitted it falls back to the VITE_USE_REAL_MONEY build-
+ * time env var. When that is also absent/falsy, demo mode is used (position
+ * recorded only, no wallet interaction).
  */
 
 import { getWalletBalance, sendTokens } from '../walletStore'
@@ -16,10 +18,10 @@ import { priceLong, priceShort, previewTrade } from '../market'
 import type { Market, Side } from '../market'
 
 // ---------------------------------------------------------------------------
-// Feature flag
+// Feature flag fallback (used when caller does not supply useRealMoney)
 // ---------------------------------------------------------------------------
 
-const USE_REAL_MONEY = import.meta.env.VITE_USE_REAL_MONEY === 'true'
+const ENV_USE_REAL_MONEY = import.meta.env.VITE_USE_REAL_MONEY === 'true'
 
 // ---------------------------------------------------------------------------
 // Error types
@@ -45,21 +47,24 @@ export type TradeResult =
  * In real-money mode: checks balance, debits wallet, then records position.
  * In demo mode: records position only (no wallet interaction).
  *
- * @param market  The market being traded.
- * @param side    'LONG' (YES) or 'SHORT' (NO).
- * @param amount  Amount in sats to spend.
+ * @param market        The market being traded.
+ * @param side          'LONG' (YES) or 'SHORT' (NO).
+ * @param amount        Amount in sats to spend.
+ * @param useRealMoney  Whether to debit the Cashu wallet. Defaults to the
+ *                      VITE_USE_REAL_MONEY env var (false when unset).
  * @returns TradeResult — success with optional token, or failure with typed error.
  */
 export async function executeTrade(
   market: Market,
   side: Side,
   amount: number,
+  useRealMoney: boolean = ENV_USE_REAL_MONEY,
 ): Promise<TradeResult> {
   if (!Number.isFinite(amount) || amount <= 0) {
     return { success: false, error: { kind: 'invalid_amount' } }
   }
 
-  if (USE_REAL_MONEY) {
+  if (useRealMoney) {
     // 1. Balance check
     let balance: number
     try {

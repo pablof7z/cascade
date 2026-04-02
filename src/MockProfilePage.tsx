@@ -25,12 +25,12 @@ export default function MockProfilePage() {
 
           <section
             data-testid="profile-hero"
-            className={`mt-6 rounded-[2rem] border px-6 py-8 sm:px-8 ${emptyTone.panel}`}
+            className={`mt-6 border px-6 py-8 sm:px-8 ${emptyTone.panel}`}
           >
             <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
               <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
                 <div
-                  className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.75rem] bg-gradient-to-br ${emptyTone.avatar} text-2xl font-bold text-white shadow-lg shadow-black/20`}
+                  className="flex h-20 w-20 shrink-0 items-center justify-center bg-neutral-700 text-2xl font-bold text-white"
                 >
                   Y
                 </div>
@@ -50,7 +50,7 @@ export default function MockProfilePage() {
                 <Link
                   to="/profile"
                   data-testid="edit-profile-button"
-                  className={`rounded-full px-5 py-3 text-sm font-semibold transition-colors ${emptyTone.button}`}
+                  className={`px-5 py-3 text-sm font-semibold transition-colors ${emptyTone.button}`}
                 >
                   Create profile
                 </Link>
@@ -103,12 +103,12 @@ export default function MockProfilePage() {
 
         <section
           data-testid="profile-hero"
-          className={`mt-6 rounded-[2rem] border px-6 py-8 sm:px-8 ${tone.panel}`}
+          className={`mt-6 border px-6 py-8 sm:px-8 ${tone.panel}`}
         >
           <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
               <div
-                className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.75rem] bg-gradient-to-br ${tone.avatar} text-2xl font-bold text-white shadow-lg shadow-black/20`}
+                className="flex h-20 w-20 shrink-0 items-center justify-center bg-neutral-700 text-2xl font-bold text-white"
               >
                 {initialsForHandle(profile.handle)}
               </div>
@@ -135,7 +135,7 @@ export default function MockProfilePage() {
                 <Link
                   to="/profile"
                   data-testid="edit-profile-button"
-                  className={`rounded-full px-5 py-3 text-sm font-semibold transition-colors ${tone.button}`}
+                  className={`px-5 py-3 text-sm font-semibold transition-colors ${tone.button}`}
                 >
                   Edit profile
                 </Link>
@@ -145,14 +145,14 @@ export default function MockProfilePage() {
                   onClick={() => setIsFollowing((current) => !current)}
                   data-testid={isFollowing ? 'following-button' : 'follow-button'}
                   aria-label={isFollowing ? 'Following' : 'Follow'}
-                  className={`rounded-full px-5 py-3 text-sm font-semibold transition-colors ${tone.button}`}
+                  className={`px-5 py-3 text-sm font-semibold transition-colors ${tone.button}`}
                 >
                   {isFollowing ? 'Following' : 'Follow'}
                 </button>
               )}
               <Link
                 to={recentActivity[0]?.to ?? '/dashboard/fields'}
-                className="rounded-full border border-neutral-700 px-5 py-3 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
+                className="border border-neutral-700 px-5 py-3 text-sm font-semibold text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
               >
                 Open latest thread
               </Link>
@@ -283,7 +283,7 @@ export default function MockProfilePage() {
                 {focusAreas.map((focus) => (
                   <span
                     key={focus}
-                    className={`rounded-full border px-3 py-1.5 text-sm ${tone.chip}`}
+                    className={`border px-3 py-1.5 text-sm ${tone.chip}`}
                   >
                     {focus}
                   </span>

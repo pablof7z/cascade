@@ -140,7 +140,7 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={() => setEditing(false)}
-                className="px-4 py-3 text-neutral-400 hover:text-white border border-neutral-700 hover:border-neutral-500 rounded-lg transition-colors"
+                className="px-4 py-3 text-neutral-400 hover:text-white border border-neutral-700 hover:border-neutral-500 transition-colors"
               >
                 Cancel
               </button>
@@ -156,7 +156,7 @@ export default function Profile() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-12 space-y-6">
       {/* Identity Card */}
-      <section className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+      <section className="bg-neutral-900 border border-neutral-800 p-6">
         <div className="flex items-start gap-4">
           <UserAvatar pubkey={displayPubkey} size="lg" />
           <div className="flex-1">
@@ -167,7 +167,7 @@ export default function Profile() {
               {isOwnProfile && (
                 <button
                   onClick={() => setEditing(true)}
-                  className="px-3 py-1.5 text-sm text-neutral-400 hover:text-white border border-neutral-700 hover:border-neutral-500 rounded-lg transition-colors"
+                  className="px-3 py-1.5 text-sm text-neutral-400 hover:text-white border border-neutral-700 hover:border-neutral-500 transition-colors"
                 >
                   Edit
                 </button>
@@ -186,7 +186,7 @@ export default function Profile() {
       </section>
 
       {/* Markets Created */}
-      <section className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+      <section className="bg-neutral-900 border border-neutral-800 p-6">
         <h2 className="text-lg font-semibold text-white mb-4">Markets Created</h2>
         {createdMarkets.length === 0 ? (
           <p className="text-neutral-500 text-sm">No markets created yet</p>
@@ -196,7 +196,7 @@ export default function Profile() {
               <Link
                 key={market.id}
                 to={`/market/${market.id}`}
-                className="block p-3 bg-neutral-800 rounded-lg hover:bg-neutral-700 transition-colors"
+                className="block p-3 bg-neutral-800 hover:bg-neutral-700 transition-colors"
               >
                 <p className="text-white font-medium">{market.title}</p>
                 <p className="text-xs text-neutral-400 mt-1">{market.kind === 'thesis' ? 'Thesis' : 'Market'}</p>
@@ -207,14 +207,14 @@ export default function Profile() {
       </section>
 
       {/* Trading Activity */}
-      <section className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+      <section className="bg-neutral-900 border border-neutral-800 p-6">
         <h2 className="text-lg font-semibold text-white mb-4">Trading Activity</h2>
         <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="bg-neutral-800 rounded-lg p-4">
+          <div className="bg-neutral-800 p-4">
             <p className="text-2xl font-bold text-white">{activity?.tradeCount ?? 0}</p>
             <p className="text-xs text-neutral-400">Total Trades</p>
           </div>
-          <div className="bg-neutral-800 rounded-lg p-4">
+          <div className="bg-neutral-800 p-4">
             <p className={`text-2xl font-bold ${(activity?.totalPnL ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {(activity?.totalPnL ?? 0) >= 0 ? '+' : ''}{activity?.totalPnL?.toFixed(0) ?? 0}
             </p>
@@ -240,7 +240,7 @@ export default function Profile() {
       </section>
 
       {/* Discussions */}
-      <section className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+      <section className="bg-neutral-900 border border-neutral-800 p-6">
         <h2 className="text-lg font-semibold text-white mb-4">Recent Discussions</h2>
         {(activity?.discussionPostIds?.length ?? 0) === 0 ? (
           <p className="text-neutral-500 text-sm">No discussion posts yet</p>
@@ -250,14 +250,14 @@ export default function Profile() {
       </section>
 
       {/* Reputation (Placeholder) */}
-      <section className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+      <section className="bg-neutral-900 border border-neutral-800 p-6">
         <h2 className="text-lg font-semibold text-white mb-4">Reputation</h2>
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-neutral-800 rounded-lg p-4">
+          <div className="bg-neutral-800 p-4">
             <p className="text-2xl font-bold text-neutral-500">—</p>
             <p className="text-xs text-neutral-400">Accuracy %</p>
           </div>
-          <div className="bg-neutral-800 rounded-lg p-4">
+          <div className="bg-neutral-800 p-4">
             <p className="text-2xl font-bold text-neutral-500">—</p>
             <p className="text-xs text-neutral-400">Calibration</p>
           </div>
@@ -273,7 +273,7 @@ export default function Profile() {
       )}
 
       {/* Social (Placeholder) */}
-      <section className="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+      <section className="bg-neutral-900 border border-neutral-800 p-6">
         <h2 className="text-lg font-semibold text-white mb-4">Social</h2>
         <div className="flex gap-6">
           <div>

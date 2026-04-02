@@ -233,9 +233,9 @@ export async function publishMarketEventWithConcurrencyCheck(
   }
 
   const { tags } = serializeMarketToEvent(updatedMarket)
-  await publishMarketTransport(updatedMarket, tags)
+  const publishedEvent = await publishMarketTransport(updatedMarket, tags)
 
-  return updatedMarket
+  return { ...updatedMarket, nostrEventId: publishedEvent.id }
 }
 
 // ---------------------------------------------------------------------------

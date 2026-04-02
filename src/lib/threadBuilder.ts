@@ -90,7 +90,9 @@ export async function buildThreadHierarchy(
 
   const rootEvents = rawEvents.filter((event) => {
     const tags = parseEventTags(event)
-    return tags.isRoot || (!tags.replyTo && !tags.rootId)
+    // NIP-22: a root-level post has a 'root' E-tag (pointing to the market event)
+    // but no 'reply' E-tag. A reply has both 'root' and 'reply' E-tags.
+    return tags.rootId !== undefined && tags.replyTo === undefined
   })
 
   return Promise.all(

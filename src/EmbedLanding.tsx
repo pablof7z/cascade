@@ -13,12 +13,12 @@ function CodeBlock({ code }: { code: string }) {
   
   return (
     <div className="relative group">
-      <pre className="bg-neutral-900 border border-neutral-700 rounded-lg p-4 overflow-x-auto text-sm font-mono text-neutral-300">
+      <pre className="bg-neutral-900 border border-neutral-700 p-4 overflow-x-auto text-sm font-mono text-neutral-300">
         <code>{code}</code>
       </pre>
       <button
         onClick={handleCopy}
-        className="absolute top-2 right-2 px-3 py-1.5 text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded border border-neutral-600 transition-colors"
+        className="absolute top-2 right-2 px-3 py-1.5 text-xs bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-600 transition-colors"
       >
         {copied ? '✓ Copied!' : 'Copy'}
       </button>
@@ -29,7 +29,7 @@ function CodeBlock({ code }: { code: string }) {
 // Demo embed component (simplified inline version)
 function DemoEmbed() {
   return (
-    <div className="w-full max-w-[380px] bg-neutral-900 border border-neutral-700 rounded-xl overflow-hidden shadow-2xl">
+    <div className="w-full max-w-[380px] bg-neutral-900 border border-neutral-700 overflow-hidden shadow-2xl">
       <div className="p-4">
         <h2 className="text-sm font-semibold text-white leading-tight mb-3">
           Will Bitcoin exceed $150K by end of 2026?
@@ -40,8 +40,8 @@ function DemoEmbed() {
             <span className="text-xs text-neutral-500">chance</span>
           </div>
           <div className="w-full">
-            <div className="h-2 rounded-full overflow-hidden bg-neutral-700">
-              <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400" style={{ width: '67%' }} />
+            <div className="h-2 overflow-hidden bg-neutral-700">
+              <div className="h-full bg-emerald-500" style={{ width: '67%' }} />
             </div>
             <div className="flex justify-between mt-1.5 text-xs">
               <span className="font-medium text-emerald-400">YES 67%</span>
@@ -51,8 +51,8 @@ function DemoEmbed() {
         </div>
         <div className="flex items-center gap-1.5 text-xs text-neutral-500">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex h-2 w-2 bg-emerald-500"></span>
           </span>
           Live
         </div>
@@ -91,7 +91,7 @@ export default function EmbedLanding() {
     <div className="min-h-screen bg-neutral-950">
       {/* Hero Section */}
       <section className="relative py-20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-neutral-950" />
         <div className="max-w-6xl mx-auto px-6 relative">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
@@ -108,13 +108,13 @@ export default function EmbedLanding() {
               <div className="flex flex-wrap gap-4">
                 <Link
                   to="/"
-                  className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-semibold rounded-lg transition-colors"
+                  className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-semibold transition-colors"
                 >
                   Browse Markets
                 </Link>
                 <a
                   href="#how-it-works"
-                  className="px-6 py-3 border border-neutral-700 hover:border-neutral-500 text-white font-medium rounded-lg transition-colors"
+                  className="px-6 py-3 border border-neutral-700 hover:border-neutral-500 text-white font-medium transition-colors"
                 >
                   See How It Works
                 </a>
@@ -218,7 +218,7 @@ export default function EmbedLanding() {
             </div>
             <div className="flex flex-col items-center gap-6">
               {/* Light theme demo — container is functional, showing actual widget preview */}
-              <div className="w-full max-w-[380px] bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-lg">
+              <div className="w-full max-w-[380px] bg-white border border-neutral-200 overflow-hidden shadow-lg">
                 <div className="p-4">
                   <h2 className="text-sm font-semibold text-neutral-900 leading-tight mb-3">
                     Will AI replace 50% of coding jobs by 2030?
@@ -229,8 +229,8 @@ export default function EmbedLanding() {
                       <span className="text-xs text-neutral-400">chance</span>
                     </div>
                     <div className="w-full">
-                      <div className="h-2 rounded-full overflow-hidden bg-neutral-200">
-                        <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400" style={{ width: '42%' }} />
+                      <div className="h-2 overflow-hidden bg-neutral-200">
+                        <div className="h-full bg-emerald-500" style={{ width: '42%' }} />
                       </div>
                       <div className="flex justify-between mt-1.5 text-xs">
                         <span className="font-medium text-emerald-600">YES 42%</span>
@@ -240,8 +240,8 @@ export default function EmbedLanding() {
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-neutral-400">
                     <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      <span className="animate-ping absolute inline-flex h-full w-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex h-2 w-2 bg-emerald-500"></span>
                     </span>
                     Live
                   </div>
@@ -297,13 +297,13 @@ export default function EmbedLanding() {
           <div className="flex flex-wrap justify-center gap-4">
             <Link
               to="/"
-              className="px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-semibold rounded-lg transition-colors text-lg"
+              className="px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-semibold transition-colors text-lg"
             >
               Browse Markets
             </Link>
             <Link
               to="/builder"
-              className="px-8 py-4 border border-neutral-700 text-white font-medium rounded-lg hover:border-neutral-500 transition-colors text-lg"
+              className="px-8 py-4 border border-neutral-700 text-white font-medium hover:border-neutral-500 transition-colors text-lg"
             >
               Create a Market
             </Link>

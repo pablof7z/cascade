@@ -257,8 +257,8 @@ function PulseDot({ color = 'emerald' }: { color?: 'emerald' | 'amber' | 'rose' 
   }
   return (
     <span className="relative flex h-2 w-2">
-      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${colorClasses[color]} opacity-75`} />
-      <span className={`relative inline-flex rounded-full h-2 w-2 ${colorClasses[color]}`} />
+      <span className={`animate-ping absolute inline-flex h-full w-full ${colorClasses[color]} opacity-75`} />
+      <span className={`relative inline-flex h-2 w-2 ${colorClasses[color]}`} />
     </span>
   )
 }
@@ -488,7 +488,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
           HERO — Provocative statement + Featured Market
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="relative min-h-[80vh] flex flex-col">
-        <div className="absolute inset-0 bg-gradient-to-b from-neutral-900/50 via-neutral-950 to-neutral-950" />
+        <div className="absolute inset-0 bg-neutral-950" />
 
         <div className="relative z-10 flex-1 flex items-center">
           <div className="max-w-7xl mx-auto w-full px-6 py-16">
@@ -929,9 +929,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
           3-column grid, varied density, full-bleed gradient background
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="relative overflow-hidden">
-        {/* Full-bleed gradient background with blur orb */}
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/20 via-neutral-950 to-neutral-950" />
-        <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-emerald-900/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-neutral-950" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 py-16">
           <div className="flex items-baseline gap-4 mb-12">
@@ -1206,7 +1204,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
           onClick={() => setShowCreateModal(false)}
         >
           <div
-            className="w-full max-w-lg p-6 bg-neutral-950/80 backdrop-blur-sm rounded-md shadow-2xl ring-1 ring-white/10"
+            className="w-full max-w-lg p-6 bg-neutral-900 border border-neutral-800 shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
@@ -1226,7 +1224,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   value={title}
                   onChange={event => setTitle(event.target.value)}
                   placeholder="Will AGI emerge before 2030?"
-                  className="mt-1 w-full px-4 py-3 bg-neutral-950/50 border-b border-neutral-700 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                  className="mt-1 w-full px-4 py-3 bg-neutral-950 border-b border-neutral-700 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-600 transition-all"
                 />
               </label>
               <label className="block">
@@ -1236,7 +1234,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   onChange={event => setDescription(event.target.value)}
                   rows={3}
                   placeholder="Define the resolution criteria clearly."
-                  className="mt-1 w-full px-4 py-3 bg-neutral-950/50 border-b border-neutral-700 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all resize-y min-h-[88px]"
+                  className="mt-1 w-full px-4 py-3 bg-neutral-950 border-b border-neutral-700 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-600 transition-all resize-y min-h-[88px]"
                 />
               </label>
               <div className="grid grid-cols-2 gap-4">
@@ -1245,7 +1243,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   <select
                     value={initialSide}
                     onChange={event => setInitialSide(event.target.value as Side)}
-                    className="mt-1 w-full px-4 py-3 bg-neutral-950/50 border-b border-neutral-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                    className="mt-1 w-full px-4 py-3 bg-neutral-950 border-b border-neutral-700 text-white focus:outline-none focus:border-emerald-600 transition-all"
                   >
                     <option value="LONG">LONG</option>
                     <option value="SHORT">SHORT</option>
@@ -1257,7 +1255,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                     value={initialSats}
                     onChange={event => setInitialSats(event.target.value)}
                     inputMode="decimal"
-                    className="mt-1 w-full px-4 py-3 bg-neutral-950/50 border-b border-neutral-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                    className="mt-1 w-full px-4 py-3 bg-neutral-950 border-b border-neutral-700 text-white focus:outline-none focus:border-emerald-600 transition-all"
                   />
                 </label>
               </div>

@@ -115,9 +115,9 @@ function ThreadPreviewCard({ thread, marketId }: { thread: DiscussionThread; mar
             <span className="text-neutral-700">•</span>
             <span className="text-neutral-500">{typeLabels[thread.type]}</span>
             <span className="text-neutral-700">•</span>
-            <span className={`font-medium ${thread.isAgent ? 'text-amber-500' : 'text-neutral-400'}`}>
+            <span className={`font-medium ${thread.isAgent ? 'text-neutral-300' : 'text-neutral-400'}`}>
               {thread.author}
-              {thread.isAgent && <span className="ml-1 text-amber-600">[agent]</span>}
+              {thread.isAgent && <span className="ml-1 text-neutral-500">[agent]</span>}
             </span>
             <span className="text-neutral-700">•</span>
             <span className="text-neutral-600">{formatTimeAgo(thread.timestamp)}</span>

@@ -365,7 +365,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-500">
                         <span>Current YES {formatPercent(module.probability)}</span>
                         {lean ? (
-                          <span className={isContrarian ? 'text-amber-300' : undefined}>
+                          <span className={isContrarian ? 'text-rose-400' : undefined}>
                             {isContrarian
                               ? `Current market leans ${lean}`
                               : `Current market leans ${lean}`}

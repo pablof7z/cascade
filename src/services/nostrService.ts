@@ -4,16 +4,17 @@
  * Handles NDK initialization and core Nostr operations.
  * Relay URLs are injected by NostrContextProvider at startup.
  *
- * Event structure for market discussion posts:
- *   kind: 1 (text note)
- *   tags: [["m", "market-uuid"], ["market", "market-uuid"]]
+ * Event structure for market discussion posts (NIP-22, kind 1111):
+ *   kind: 1111 (NIP-22 comment)
+ *   tags: [["e", "<kind-982-event-id>", "<relay>", "root"], ["k", "982"], ["p", "<market-creator-pubkey>"], ["stance", ...], ["type", ...]]
  *   content: "Post text"
  *
- * The "m" tag is the queryable market identifier (NDK filter: {'#m': [marketId]}).
- * The "market" tag is additional metadata for filtering/organization.
+ * The "e" tag with "root" marker references the kind 982 market event (non-replaceable).
+ * The "k" tag indicates the kind of the referenced root event (982 for markets).
+ * Replies use NIP-10: ["e", rootId, relay, "root"], ["e", parentId, relay, "reply"], ["k", "1111"]
  *
  * Reactions (NIP-25) use kind 7 events:
- *   tags: [["e", eventId], ["p", authorPubkey], ["m", marketId]]
+ *   tags: [["e", eventId], ["p", authorPubkey]]
  *   content: "+"
  */
 
@@ -138,69 +139,71 @@ export function subscribeToEvents(
 }
 
 /**
- * Publish a new top-level market discussion post.
- * Tags: ["m", marketId], ["stance", stance], ["type", type]
+ * Publish a new top-level market discussion post (NIP-22 kind 1111).
+ * Tags: ["e", marketEventId, relay, "root"], ["k", "982"], ["p", marketCreatorPubkey], ["stance", stance], ["type", type]
  */
 export async function publishMarketPost(
-  marketId: string,
   title: string,
   content: string,
   stance: 'bull' | 'bear' | 'neutral',
   type: 'argument' | 'evidence' | 'rebuttal' | 'analysis',
+  marketEventId: string,
+  marketCreatorPubkey: string,
 ): Promise<NDKEvent> {
   const fullContent = title ? `${title}\n\n${content}` : content
   const tags: string[][] = [
-    ['m', marketId],
+    ['e', marketEventId, '', 'root'],
+    ['k', '982'],
+    ['p', marketCreatorPubkey],
     ['stance', stance],
     ['type', type],
     ['subject', title],
   ]
-  return publishEvent(fullContent, tags, 1)
+  return publishEvent(fullContent, tags, 1111)
 }
 
 /**
- * Publish a reply to an existing market discussion post.
- * Tags: ["m", marketId], ["e", rootId, "", "root"], ["e", parentId, "", "reply"], ["p", parentAuthorPubkey]
+ * Publish a reply to an existing market discussion post (NIP-22 kind 1111).
+ * Tags: ["e", rootEventId, "", "root"], ["e", parentEventId, "", "reply"], ["k", "1111"], ["p", parentAuthorPubkey]
  */
 export async function publishMarketReply(
-  marketId: string,
   content: string,
   parentEventId: string,
   rootEventId: string,
   parentAuthorPubkey: string,
 ): Promise<NDKEvent> {
   const tags: string[][] = [
-    ['m', marketId],
     ['e', rootEventId, '', 'root'],
     ['e', parentEventId, '', 'reply'],
+    ['k', '1111'],
     ['p', parentAuthorPubkey],
   ]
-  return publishEvent(content, tags, 1)
+  return publishEvent(content, tags, 1111)
 }
 
 /**
- * Fetch existing posts for a market (kind 1 events with matching #m tag).
+ * Fetch existing posts for a market (kind 1111 events referencing the market's kind 982 event via e-tag).
  */
 export async function fetchMarketPosts(
-  marketId: string,
+  marketEventId: string,
   limit = 100
 ): Promise<NDKEvent[]> {
   if (!_ndk) throw new Error('Nostr service not initialized')
-  const filter: NDKFilter = { kinds: [1], '#m': [marketId], limit }
+  const filter: NDKFilter = { kinds: [1111], '#e': [marketEventId], limit }
   const eventsSet = await _ndk.fetchEvents(filter)
   return Array.from(eventsSet)
 }
 
 /**
- * Subscribe to new posts for a market in real-time.
+ * Subscribe to new posts for a market in real-time (kind 1111 events referencing market via e-tag).
  * Returns the NDKSubscription so the caller can stop() it on cleanup.
  */
 export function subscribeToMarketPosts(
-  marketId: string,
+  marketEventId: string,
   callback: (event: NDKEvent) => void
 ): NDKSubscription {
   if (!_ndk) throw new Error('Nostr service not initialized')
-  const filter: NDKFilter = { kinds: [1], '#m': [marketId] }
+  const filter: NDKFilter = { kinds: [1111], '#e': [marketEventId] }
   const sub = _ndk.subscribe(filter, { closeOnEose: false })
   sub.on('event', callback)
   return sub
@@ -214,12 +217,14 @@ export function parseEventTags(event: NDKEvent): {
   type?: 'argument' | 'evidence' | 'rebuttal' | 'analysis'
   replyTo?: string
   rootId?: string
+  isRoot?: boolean
 } {
   const result: {
     stance?: 'bull' | 'bear' | 'neutral'
     type?: 'argument' | 'evidence' | 'rebuttal' | 'analysis'
     replyTo?: string
     rootId?: string
+    isRoot?: boolean
   } = {}
 
   for (const tag of event.tags) {
@@ -244,6 +249,9 @@ export function parseEventTags(event: NDKEvent): {
       }
     }
   }
+
+  // isRoot: true when there is no replyTo and no rootId (i.e. a direct child of the market event)
+  result.isRoot = !result.replyTo && !result.rootId
 
   return result
 }

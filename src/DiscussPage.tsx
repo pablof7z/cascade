@@ -156,12 +156,16 @@ interface MarketDiscussionPanelProps {
   marketId: string
   marketTitle: string
   variant?: 'overview' | 'discussion'
+  marketEventId?: string
+  marketCreatorPubkey?: string
 }
 
 export function MarketDiscussionPanel({
   marketId,
   marketTitle: _marketTitle,
   variant = 'discussion',
+  marketEventId,
+  marketCreatorPubkey,
 }: MarketDiscussionPanelProps) {
   const [sortBy, setSortBy] = useState<SortOption>('hot')
   const [showCompose, setShowCompose] = useState(false)
@@ -181,7 +185,7 @@ export function MarketDiscussionPanel({
 
   // Fetch initial posts
   useEffect(() => {
-    if (!isReady || !marketId) return
+    if (!isReady || !marketEventId) return
 
     let cancelled = false
 
@@ -189,7 +193,7 @@ export function MarketDiscussionPanel({
       setLoading(true)
       setError(null)
       try {
-        const rawEvents = await fetchMarketPosts(marketId)
+        const rawEvents = await fetchMarketPosts(marketEventId)
         if (!cancelled) {
           const built = await buildThreadHierarchy(rawEvents)
           setThreads(built)
@@ -209,15 +213,15 @@ export function MarketDiscussionPanel({
     return () => {
       cancelled = true
     }
-  }, [marketId, isReady])
+  }, [marketEventId, isReady])
 
   // Subscribe to live post updates
   useEffect(() => {
-    if (!isReady || !marketId) return
+    if (!isReady || !marketEventId) return
 
     const seenIds = new Set<string>()
 
-    const subscription = subscribeToMarketPosts(marketId, async (newEvent) => {
+    const subscription = subscribeToMarketPosts(marketEventId, async (newEvent) => {
       const eventId = newEvent.id ?? ''
       if (!eventId || seenIds.has(eventId)) return
       seenIds.add(eventId)
@@ -237,7 +241,7 @@ export function MarketDiscussionPanel({
     return () => {
       subscription.stop()
     }
-  }, [marketId, isReady])
+  }, [marketEventId, isReady])
 
   // Fetch initial reaction counts once threads are loaded
   useEffect(() => {
@@ -309,10 +313,11 @@ export function MarketDiscussionPanel({
 
   async function handleComposeSubmit() {
     if (!composeTitle.trim() || !composeContent.trim()) return
+    if (!marketEventId || !marketCreatorPubkey) return
     setComposeSubmitting(true)
     setComposeError(null)
     try {
-      await publishMarketPost(marketId, composeTitle.trim(), composeContent.trim(), composeStance, composeType)
+      await publishMarketPost(composeTitle.trim(), composeContent.trim(), composeStance, composeType, marketEventId, marketCreatorPubkey)
       setComposeTitle('')
       setComposeContent('')
       setComposeStance('bull')
@@ -511,6 +516,8 @@ export default function DiscussPage({ markets }: Props) {
           marketId={market.id}
           marketTitle={market.title}
           variant="discussion"
+          marketEventId={market.nostrEventId}
+          marketCreatorPubkey={market.creatorPubkey}
         />
       </div>
       

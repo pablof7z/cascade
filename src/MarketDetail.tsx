@@ -642,7 +642,7 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
                 </article>
               </section>
 
-              <MarketDiscussionPanel marketId={market.id} marketTitle={market.title} variant="overview" />
+              <MarketDiscussionPanel marketId={market.id} marketTitle={market.title} variant="overview" marketEventId={market.nostrEventId} marketCreatorPubkey={market.creatorPubkey} />
             </>
           ) : null}
 
@@ -652,6 +652,8 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
                 marketId={market.id}
                 marketTitle={market.title}
                 variant="discussion"
+                marketEventId={market.nostrEventId}
+                marketCreatorPubkey={market.creatorPubkey}
               />
             </>
           ) : null}

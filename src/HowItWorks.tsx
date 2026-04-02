@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom'
 // Visual diagram components
 function ModuleCard({ title, probability }: { title: string; probability: number }) {
   return (
-    <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-4 hover:border-emerald-500/50 transition-colors">
+    <div className="bg-neutral-800/50 border border-neutral-700 p-4 hover:border-emerald-500/50 transition-colors">
       <div className="text-xs text-neutral-500 mb-1">MODULE</div>
       <div className="text-sm text-white font-medium mb-2">{title}</div>
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-1.5 bg-neutral-700 rounded-full overflow-hidden">
+        <div className="flex-1 h-1.5 bg-neutral-700 overflow-hidden">
           <div 
-            className="h-full bg-emerald-500 rounded-full" 
+            className="h-full bg-emerald-500" 
             style={{ width: `${probability}%` }} 
           />
         </div>
@@ -21,7 +21,7 @@ function ModuleCard({ title, probability }: { title: string; probability: number
 
 function ThesisCard({ title, modules }: { title: string; modules: string[] }) {
   return (
-    <div className="bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/30 rounded-xl p-5">
+    <div className="bg-amber-500/10 border border-amber-500/30 p-5">
       <div className="text-xs text-amber-500 mb-1">THESIS</div>
       <div className="text-lg text-white font-semibold mb-3">{title}</div>
       <div className="flex flex-wrap gap-2">
@@ -92,20 +92,20 @@ function ConvergenceDiagram() {
   return (
     <div className="grid grid-cols-4 gap-2 items-center">
       <div className="text-center">
-        <div className="w-12 h-12 mx-auto rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center mb-2">
+        <div className="w-12 h-12 mx-auto bg-amber-500/20 border border-amber-500/50 flex items-center justify-center mb-2">
           <span className="text-lg">📰</span>
         </div>
         <span className="text-xs text-neutral-400">Reality reveals</span>
       </div>
       <div className="text-center text-neutral-600">→</div>
       <div className="text-center">
-        <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center mb-2">
+        <div className="w-12 h-12 mx-auto bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center mb-2">
           <span className="text-lg">⚡</span>
         </div>
         <span className="text-xs text-neutral-400">Arbitrage</span>
       </div>
       <div className="text-center">
-        <div className="w-12 h-12 mx-auto rounded-full bg-blue-500/20 border border-blue-500/50 flex items-center justify-center mb-2">
+        <div className="w-12 h-12 mx-auto bg-blue-500/20 border border-blue-500/50 flex items-center justify-center mb-2">
           <span className="text-lg">🎯</span>
         </div>
         <span className="text-xs text-neutral-400">Convergence</span>
@@ -119,7 +119,7 @@ export default function HowItWorks() {
     <div className="min-h-screen bg-neutral-950">
       {/* Hero */}
       <section className="relative py-20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-emerald-500/5" />
         <div className="max-w-4xl mx-auto px-6 relative">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
@@ -138,7 +138,7 @@ export default function HowItWorks() {
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="inline-block px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-500 text-sm mb-4">
+              <div className="inline-block px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-sm mb-4">
                 Building Block
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -202,7 +202,7 @@ export default function HowItWorks() {
               </div>
             </div>
             <div className="order-1 lg:order-2">
-              <div className="inline-block px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-500 text-sm mb-4">
+              <div className="inline-block px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-500 text-sm mb-4">
                 Composition
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -236,7 +236,7 @@ export default function HowItWorks() {
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="inline-block px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded-full text-cyan-500 text-sm mb-4">
+              <div className="inline-block px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 text-cyan-500 text-sm mb-4">
                 Core Innovation
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -266,11 +266,11 @@ export default function HowItWorks() {
                 </li>
               </ul>
             </div>
-            <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6">
+            <div className="bg-neutral-900/50 border border-neutral-800 p-6">
               <h4 className="text-sm text-neutral-500 mb-4 uppercase tracking-wide">Thesis Network</h4>
               <div className="space-y-4">
                 {/* Top-level thesis */}
-                <div className="bg-gradient-to-r from-cyan-500/10 to-transparent border border-cyan-500/30 rounded-lg p-4">
+                <div className="bg-cyan-500/10 border border-cyan-500/30 p-4">
                   <div className="text-xs text-cyan-500 mb-1">THESIS</div>
                   <div className="text-white font-medium">AI dominates coding by 2027</div>
                 </div>
@@ -321,7 +321,7 @@ export default function HowItWorks() {
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="inline-block px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-500 text-sm mb-4">
+              <div className="inline-block px-3 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-500 text-sm mb-4">
                 Market Mechanics
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -332,8 +332,8 @@ export default function HowItWorks() {
                 uses LMSR (Logarithmic Market Scoring Rule) to provide instant liquidity at fair prices.
               </p>
               <div className="space-y-4">
-                <div className="flex items-start gap-4 p-4 bg-neutral-900/50 rounded-lg border border-neutral-800">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                <div className="flex items-start gap-4 p-4 bg-neutral-900/50 border border-neutral-800">
+                  <div className="w-10 h-10 bg-blue-500/20 flex items-center justify-center shrink-0">
                     <span className="text-blue-500">∞</span>
                   </div>
                   <div>
@@ -341,8 +341,8 @@ export default function HowItWorks() {
                     <p className="text-sm text-neutral-400">Trade any size instantly—no waiting for counterparty</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-4 p-4 bg-neutral-900/50 rounded-lg border border-neutral-800">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                <div className="flex items-start gap-4 p-4 bg-neutral-900/50 border border-neutral-800">
+                  <div className="w-10 h-10 bg-blue-500/20 flex items-center justify-center shrink-0">
                     <span className="text-blue-500">⚖️</span>
                   </div>
                   <div>
@@ -352,7 +352,7 @@ export default function HowItWorks() {
                 </div>
               </div>
             </div>
-            <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6">
+            <div className="bg-neutral-900/50 border border-neutral-800 p-6">
               <h4 className="text-sm text-neutral-500 mb-4 uppercase tracking-wide">Price Curve</h4>
               <PricingDiagram />
               <p className="text-xs text-neutral-500 mt-4 text-center">
@@ -368,16 +368,16 @@ export default function HowItWorks() {
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="order-2 lg:order-1">
-              <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6">
+              <div className="bg-neutral-900/50 border border-neutral-800 p-6">
                 <h4 className="text-sm text-neutral-500 mb-6 uppercase tracking-wide">Resolution Flow</h4>
                 <ConvergenceDiagram />
-                <div className="mt-8 p-4 bg-neutral-800/50 rounded-lg">
+                <div className="mt-8 p-4 bg-neutral-800/50">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-neutral-400">Market probability</span>
                     <span className="text-emerald-500 font-medium">97% YES</span>
                   </div>
-                  <div className="h-2 bg-neutral-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: '97%' }} />
+                  <div className="h-2 bg-neutral-700 overflow-hidden">
+                    <div className="h-full bg-emerald-500" style={{ width: '97%' }} />
                   </div>
                   <p className="text-xs text-neutral-500 mt-2">
                     As reality becomes clear, price converges to 0% or 100%
@@ -386,7 +386,7 @@ export default function HowItWorks() {
               </div>
             </div>
             <div className="order-1 lg:order-2">
-              <div className="inline-block px-3 py-1 bg-rose-500/10 border border-rose-500/30 rounded-full text-rose-500 text-sm mb-4">
+              <div className="inline-block px-3 py-1 bg-rose-500/10 border border-rose-500/30 text-rose-500 text-sm mb-4">
                 Trustless
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -436,7 +436,7 @@ export default function HowItWorks() {
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="inline-block px-3 py-1 bg-violet-500/10 border border-violet-500/30 rounded-full text-violet-500 text-sm mb-4">
+              <div className="inline-block px-3 py-1 bg-violet-500/10 border border-violet-500/30 text-violet-500 text-sm mb-4">
                 Future-Ready
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -461,9 +461,9 @@ export default function HowItWorks() {
                 </li>
               </ul>
             </div>
-            <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6">
+            <div className="bg-neutral-900/50 border border-neutral-800 p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                <div className="w-10 h-10 bg-violet-500 flex items-center justify-center">
                   <span className="text-white text-sm">🤖</span>
                 </div>
                 <div>
@@ -499,13 +499,13 @@ export default function HowItWorks() {
           <div className="flex flex-wrap justify-center gap-4">
             <Link
               to="/join"
-              className="px-8 py-4 bg-white text-neutral-950 font-semibold rounded-lg hover:bg-neutral-100 transition-colors text-lg"
+              className="px-8 py-4 bg-white text-neutral-950 font-semibold hover:bg-neutral-100 transition-colors text-lg"
             >
               Start Trading
             </Link>
             <Link
               to="/"
-              className="px-8 py-4 border border-neutral-700 text-white font-medium rounded-lg hover:border-neutral-500 transition-colors text-lg"
+              className="px-8 py-4 border border-neutral-700 text-white font-medium hover:border-neutral-500 transition-colors text-lg"
             >
               Explore Markets
             </Link>

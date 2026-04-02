@@ -13,7 +13,7 @@ function ProbabilityBar({ probability, theme }: { probability: number; theme: Th
     <div className="w-full">
       <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-neutral-700' : 'bg-neutral-200'}`}>
         <div 
-          className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+          className="h-full bg-emerald-500 transition-all duration-500"
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -84,7 +84,7 @@ export default function EmbedMarket() {
 
   if (loading) {
     return (
-      <div className={`w-full h-full min-h-[150px] flex items-center justify-center ${containerClasses} border rounded-xl`}>
+      <div className={`w-full h-full min-h-[150px] flex items-center justify-center ${containerClasses} border`}>
         <div className={`animate-pulse ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
           Loading...
         </div>
@@ -94,7 +94,7 @@ export default function EmbedMarket() {
 
   if (!entry) {
     return (
-      <div className={`w-full h-full min-h-[150px] flex items-center justify-center ${containerClasses} border rounded-xl`}>
+      <div className={`w-full h-full min-h-[150px] flex items-center justify-center ${containerClasses} border`}>
         <div className={isDark ? 'text-neutral-500' : 'text-neutral-400'}>
           Market not found
         </div>
@@ -106,7 +106,7 @@ export default function EmbedMarket() {
   const probability = priceLong(market.qLong, market.qShort, market.b)
 
   return (
-    <div className={`w-full max-w-[400px] min-w-[280px] ${containerClasses} border rounded-xl overflow-hidden`}>
+    <div className={`w-full max-w-[400px] min-w-[280px] ${containerClasses} border overflow-hidden`}>
       {/* Main content */}
       <div className="p-4">
         {/* Title */}

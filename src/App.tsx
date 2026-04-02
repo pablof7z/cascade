@@ -45,7 +45,7 @@ import ThreadPage from './ThreadPage'
 import ThesisBuilder from './ThesisBuilder'
 import Portfolio from './Portfolio'
 import Profile from './Profile'
-import MockProfilePage from './MockProfilePage'
+import ProfilePage from './ProfilePage'
 import Leaderboard from './Leaderboard'
 import BookmarksPage from './BookmarksPage'
 import Activity from './Activity'
@@ -772,7 +772,7 @@ function AppContent() {
         <Route path="/onboarding" element={<Profile />} />
         <Route path="/portfolio" element={<Portfolio />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/u/:handle" element={<MockProfilePage />} />
+        <Route path="/u/:pubkey" element={<ProfilePage />} />
         <Route path="/profile/:npub" element={<Profile />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/bookmarks" element={<BookmarksPage />} />

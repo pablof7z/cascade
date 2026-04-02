@@ -533,3 +533,42 @@ export async function fetchPayoutEvents(winnerId: string): Promise<NDKEvent[]> {
   const eventsSet = await _ndk.fetchEvents(filter)
   return Array.from(eventsSet)
 }
+
+/**
+ * Fetch kind 0 (metadata) event for a given pubkey.
+ * Returns the metadata object or null if not found.
+ */
+export async function fetchKind0Metadata(
+  ndk: NDK,
+  pubkey: string
+): Promise<{ name: string; about: string; picture: string; banner: string; website: string; nip05: string } | null> {
+  try {
+    const event = await ndk.fetchEvent({
+      kinds: [0],
+      authors: [pubkey],
+    })
+
+    if (!event) {
+      return null
+    }
+
+    // Parse kind 0 content as JSON
+    try {
+      const metadata = JSON.parse(event.content)
+      return {
+        name: metadata.name || '',
+        about: metadata.about || '',
+        picture: metadata.picture || '',
+        banner: metadata.banner || '',
+        website: metadata.website || '',
+        nip05: metadata.nip05 || '',
+      }
+    } catch {
+      // Malformed JSON in kind 0 — return null
+      return null
+    }
+  } catch (error) {
+    console.error(`Error fetching kind 0 for ${pubkey}:`, error)
+    return null
+  }
+}

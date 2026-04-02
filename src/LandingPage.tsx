@@ -249,10 +249,9 @@ function Sparkline({ data, positive, size = 'default' }: { data: number[]; posit
 }
 
 // Animated pulse dot
-function PulseDot({ color = 'emerald' }: { color?: 'emerald' | 'amber' | 'rose' }) {
+function PulseDot({ color = 'emerald' }: { color?: 'emerald' | 'rose' }) {
   const colorClasses = {
     emerald: 'bg-emerald-500',
-    amber: 'bg-amber-500',
     rose: 'bg-rose-500',
   }
   return (
@@ -523,7 +522,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
 
               {/* Right — Featured thesis as raw typography, not a card */}
               <div className="space-y-6">
-                <span className="text-xs font-medium text-amber-500 uppercase tracking-[0.2em]">
+                <span className="text-xs font-medium text-neutral-500 uppercase tracking-[0.2em]">
                   Featured Thesis
                 </span>
                 <h2
@@ -561,7 +560,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                   <span>$24.5K vol</span>
                   <span>312 traders</span>
                   <span>89 comments</span>
-                  <span className="flex items-center gap-1.5"><PulseDot color="amber" /> 47 active</span>
+                  <span className="flex items-center gap-1.5"><PulseDot color="emerald" /> 47 active</span>
                 </div>
               </div>
             </div>
@@ -746,7 +745,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                 <span className="text-[10px] text-neutral-600 uppercase tracking-wider shrink-0">{row.category}</span>
                 <span className="text-white truncate font-medium">{row.title}</span>
               </div>
-              <div className="col-span-2 text-right font-mono font-bold text-amber-400 tabular-nums">
+              <div className="col-span-2 text-right font-mono font-bold text-neutral-200 tabular-nums">
                 {Math.round(row.prob * 100)}¢
               </div>
               <div className={`col-span-2 text-right font-mono tabular-nums hidden sm:block ${
@@ -834,7 +833,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
                               {debate.comments} posts
                             </span>
                             {debate.spread <= 5 && (
-                              <span className="text-[10px] uppercase tracking-[0.18em] text-amber-500">
+                              <span className="text-[10px] uppercase tracking-[0.18em] text-emerald-500">
                                 Tight spread
                               </span>
                             )}
@@ -871,7 +870,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
 
                 <aside className="border-t border-neutral-800/30 pt-6 lg:border-t-0 lg:border-l lg:border-neutral-800/30 lg:pt-0 lg:pl-8">
                   <div className="flex items-center gap-2 mb-5">
-                    <PulseDot color="amber" />
+                    <PulseDot color="emerald" />
                     <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-400">
                       Recent Discussion
                     </h3>
@@ -1158,7 +1157,7 @@ export default function LandingPage({ markets, dispatch }: Props) {
               </p>
             </div>
             <div className="space-y-3">
-              <div className="text-4xl font-bold text-amber-500">◆</div>
+              <div className="text-4xl font-bold text-neutral-400">◆</div>
               <h3 className="text-lg font-semibold text-white">Modular theses</h3>
               <p className="text-sm text-neutral-500 leading-relaxed">
                 Stack predictions. Your thesis on AI depends on AGI timing and labor economics.

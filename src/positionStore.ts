@@ -36,6 +36,8 @@ export type Position = {
   entryPrice: number
   costBasis: number
   timestamp: number
+  /** Nostr pubkey of the position owner. Set when logged in; undefined for anonymous positions. */
+  ownerPubkey?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -62,6 +64,9 @@ let _subscription: NDKSubscription | null = null
 
 /** NDK instance for async operations (addPosition, removePosition) */
 let _ndk: NDK | null = null
+
+/** Current user's pubkey — set in initializePositions, used to stamp ownerPubkey on new positions */
+let _currentPubkey: string | null = null
 
 // ---------------------------------------------------------------------------
 // Cache change event emitter (lightweight, no external deps)
@@ -185,12 +190,14 @@ export async function initializePositions(pubkey: string | null, ndk: NDK | null
     // Anonymous user — use localStorage
     _usingNostr = false
     _ndk = null
+    _currentPubkey = null
     _positionsCache = loadFromLocalStorage()
     notifyCacheListeners()
     return
   }
 
   _ndk = ndk
+  _currentPubkey = pubkey
 
   try {
     // Fetch current positions from Nostr
@@ -294,6 +301,7 @@ export function addPosition(
     entryPrice,
     costBasis: entryPrice * quantity,
     timestamp: Date.now(),
+    ..._currentPubkey ? { ownerPubkey: _currentPubkey } : {},
   }
 
   const updatedPositions = [...positions, pos]

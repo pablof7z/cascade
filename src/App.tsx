@@ -71,6 +71,8 @@ import TestnetBanner from './components/TestnetBanner'
 import Footer from './components/Footer'
 import AnalyticsDashboard from './AnalyticsDashboard'
 import { initAnalytics, destroyAnalytics, trackPageView } from './analytics'
+import { loadOrCreateVault, getVaultPubkey } from './vaultStore'
+import { initResolutionService, resolveMarket } from './services/resolutionService'
 
 type ToastTone = 'good' | 'warn' | 'neutral'
 
@@ -128,6 +130,7 @@ export type Action =
       type: 'RESOLVE_MARKET'
       marketId: string
       outcome: 'YES' | 'NO'
+      outcomePrice: number
     }
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -555,6 +558,21 @@ function AppContent() {
   }, [])
 
   useEffect(() => {
+    initResolutionService()
+    loadOrCreateVault()
+      .then((ok) => {
+        if (ok) {
+          console.log('[vault] Initialized. Pubkey:', getVaultPubkey())
+        } else {
+          console.warn('[vault] Initialization failed or wallet unavailable')
+        }
+      })
+      .catch((err: unknown) => {
+        console.error('[vault] Initialization error:', err)
+      })
+  }, [])
+
+  useEffect(() => {
     trackPageView(location.pathname)
   }, [location.pathname])
 
@@ -694,6 +712,12 @@ function AppContent() {
     }
 
     if (action.type === 'RESOLVE_MARKET') {
+      // Trigger payout distribution via resolution queue
+      const entry = marketsRef.current[action.marketId]
+      if (entry) {
+        resolveMarket(entry.market, action.outcome, action.outcomePrice)
+      }
+
       // Async: publish resolved market state to Nostr
       if (nostrReady && nostrPubkey) {
         setTimeout(() => {

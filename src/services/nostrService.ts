@@ -19,6 +19,7 @@
 
 import NDK, {
   NDKEvent,
+  NDKKind,
   NDKNip07Signer,
   type NDKFilter,
   type NDKSubscription,
@@ -439,4 +440,88 @@ export async function fetchDeletionEvents(marketId: string): Promise<Set<NDKEven
     '#d': [`market:${marketId}`],
   }
   return fetchEvents(filter)
+}
+
+// ---------------------------------------------------------------------------
+// Payout events — kind 30079 parameterized replaceable events
+// One event per (marketId, winnerId) pair; d-tag namespaced under cascade:payout.
+// ---------------------------------------------------------------------------
+
+/** Event kind for Cascade payout records. */
+export const PAYOUT_EVENT_KIND = 30079
+
+export type PayoutEventParams = {
+  marketId: string
+  marketTitle: string
+  winnerId: string
+  positionId: string
+  quantity: number
+  costBasis: number
+  outcomePrice: number
+  payoutSats: number
+  rakeSats: number
+  netSats: number
+  outcome: 'YES' | 'NO'
+  resolvedAt: number
+  createdAt: number
+}
+
+/**
+ * Publish a kind 30079 payout record to Nostr.
+ *
+ * d-tag: `cascade:payout:<marketId>:<winnerId>:<timestamp>`
+ *
+ * All numeric fields are stored as string tags so they survive relay
+ * round-trips without precision loss.
+ */
+export async function publishPayoutEvent(params: PayoutEventParams): Promise<NDKEvent> {
+  if (!_ndk) throw new Error('Nostr service not initialized')
+  if (!_ndk.signer) throw new Error('No signer available — cannot publish in read-only mode')
+
+  const dTag = `cascade:payout:${params.marketId}:${params.winnerId}:${params.createdAt}`
+
+  const tags: string[][] = [
+    ['d', dTag],
+    ['c', 'cascade'],
+    ['market', params.marketId],
+    ['market-title', params.marketTitle],
+    ['winner', params.winnerId],
+    ['position', params.positionId],
+    ['quantity', String(params.quantity)],
+    ['cost-basis', String(params.costBasis)],
+    ['outcome-price', String(params.outcomePrice)],
+    ['payout-sats', String(params.payoutSats)],
+    ['rake-sats', String(params.rakeSats)],
+    ['net-sats', String(params.netSats)],
+    ['outcome', params.outcome],
+    ['resolved-at', String(params.resolvedAt)],
+  ]
+
+  const event = new NDKEvent(_ndk)
+  event.kind = PAYOUT_EVENT_KIND
+  event.content = JSON.stringify({
+    marketTitle: params.marketTitle,
+    outcome: params.outcome,
+    payoutSats: params.payoutSats,
+    rakeSats: params.rakeSats,
+    netSats: params.netSats,
+  })
+  event.tags = tags
+
+  await event.publish()
+  return event
+}
+
+/**
+ * Fetch payout events (kind 30079) for a specific winner pubkey.
+ */
+export async function fetchPayoutEvents(winnerId: string): Promise<NDKEvent[]> {
+  if (!_ndk) throw new Error('Nostr service not initialized')
+  const filter: NDKFilter = {
+    kinds: [PAYOUT_EVENT_KIND as NDKKind],
+    '#winner': [winnerId],
+    '#c': ['cascade'],
+  }
+  const eventsSet = await _ndk.fetchEvents(filter)
+  return Array.from(eventsSet)
 }

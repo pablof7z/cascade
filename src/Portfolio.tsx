@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { loadPositions, type Position } from './positionStore'
 import { load as loadMarkets } from './storage'
 import { priceLong, priceShort } from './market'
+import { fetchPayoutEvents, getPubkey } from './services/nostrService'
+import type { NDKEvent } from '@nostr-dev-kit/ndk'
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
@@ -44,8 +46,46 @@ function enrichPositions(positions: Position[]): EnrichedPosition[] {
   })
 }
 
+// ---------------------------------------------------------------------------
+// Payout history helpers
+// ---------------------------------------------------------------------------
+
+type PayoutRecord = {
+  marketId: string
+  marketTitle: string
+  outcome: 'YES' | 'NO'
+  payoutSats: number
+  rakeSats: number
+  netSats: number
+  resolvedAt: number
+}
+
+function parsePayoutEvent(event: NDKEvent): PayoutRecord | null {
+  try {
+    const tag = (name: string) => event.tags.find((t) => t[0] === name)?.[1] ?? ''
+    const marketId = tag('market')
+    const marketTitle = tag('market-title')
+    const outcome = tag('outcome') as 'YES' | 'NO'
+    const payoutSats = parseInt(tag('payout-sats'), 10)
+    const rakeSats = parseInt(tag('rake-sats'), 10)
+    const netSats = parseInt(tag('net-sats'), 10)
+    const resolvedAt = parseInt(tag('resolved-at'), 10)
+
+    if (!marketId || !outcome || isNaN(payoutSats)) return null
+    return { marketId, marketTitle, outcome, payoutSats, rakeSats, netSats, resolvedAt }
+  } catch {
+    return null
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function Portfolio() {
   const [positions, setPositions] = useState<EnrichedPosition[]>([])
+  const [payouts, setPayouts] = useState<PayoutRecord[]>([])
+  const [payoutsLoading, setPayoutsLoading] = useState(false)
 
   useEffect(() => {
     setPositions(enrichPositions(loadPositions()))
@@ -54,6 +94,25 @@ export default function Portfolio() {
     const onFocus = () => setPositions(enrichPositions(loadPositions()))
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
+  useEffect(() => {
+    const pubkey = getPubkey()
+    if (!pubkey) return
+
+    setPayoutsLoading(true)
+    fetchPayoutEvents(pubkey)
+      .then((events) => {
+        const records = events
+          .map(parsePayoutEvent)
+          .filter((r): r is PayoutRecord => r !== null)
+          .sort((a, b) => b.resolvedAt - a.resolvedAt)
+        setPayouts(records)
+      })
+      .catch((err: unknown) => {
+        console.warn('[Portfolio] Failed to fetch payout events:', err)
+      })
+      .finally(() => setPayoutsLoading(false))
   }, [])
 
   const totalInvested = positions.reduce((s, p) => s + p.costBasis, 0)
@@ -93,6 +152,52 @@ export default function Portfolio() {
           </span>
         </div>
       </div>
+
+      {/* Payout history */}
+      {(payoutsLoading || payouts.length > 0) && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-3">Closed Positions</h2>
+          {payoutsLoading ? (
+            <p className="text-neutral-500 text-sm py-4">Loading payout history…</p>
+          ) : (
+            <div className="divide-y divide-neutral-800 border border-neutral-800">
+              {payouts.map((payout, idx) => (
+                <div key={`${payout.marketId}-${payout.resolvedAt}-${idx}`} className="p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className={`px-2 py-0.5 text-xs font-medium ${
+                        payout.outcome === 'YES'
+                          ? 'text-emerald-400 border border-emerald-800/60'
+                          : 'text-rose-400 border border-rose-800/60'
+                      }`}
+                    >
+                      {payout.outcome}
+                    </span>
+                    <span className="text-xs text-neutral-500">
+                      {new Date(payout.resolvedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h3 className="text-white font-medium text-sm mb-2">{payout.marketTitle}</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <span className="text-xs text-neutral-500 block">Payout</span>
+                      <span className="text-sm text-white font-mono">{payout.payoutSats} sats</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-neutral-500 block">Rake</span>
+                      <span className="text-sm text-neutral-400 font-mono">−{payout.rakeSats} sats</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-neutral-500 block">Net</span>
+                      <span className="text-sm text-emerald-400 font-mono">{payout.netSats} sats</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Position cards */}
       {positions.length === 0 ? (

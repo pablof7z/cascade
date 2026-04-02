@@ -140,7 +140,12 @@ export function parsePositionEvent(event: NDKEvent): ParseResult {
     return { ok: false, error: 'Position missing timestamp field', reason: 'invalid_position' }
   }
 
-  return { ok: true, position: raw as Position }
+  const position = raw as Position
+  // Stamp ownerPubkey from the Nostr event author — this is the canonical owner identity
+  if (event.pubkey) {
+    position.ownerPubkey = event.pubkey
+  }
+  return { ok: true, position }
 }
 
 // ---------------------------------------------------------------------------

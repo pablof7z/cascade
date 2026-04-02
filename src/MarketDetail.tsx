@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Dispatch } from 'react'
 import { Link } from 'react-router-dom'
 import type { MarketEntry } from './storage'
@@ -12,10 +12,13 @@ import { useBookmarks } from './useBookmarks'
 import MarketTabsShell, { type MarketTabKey } from './MarketTabsShell'
 import { MarketDiscussionPanel, type DiscussionThread } from './DiscussPage'
 import { trackDiscussionInteraction, trackMarketView, trackTradePlaced } from './analytics'
-import { addPosition, getPositionsForMarket, type Position } from './positionStore'
+import { getPositionsForMarket, type Position } from './positionStore'
 import { useNostr } from './context/NostrContext'
 import { subscribeToMarketUpdates } from './services/marketService'
+import { executeTrade } from './services/tradingService'
 import type { Action } from './App'
+
+const TRADE_DEBOUNCE_MS = 2000
 
 type TradeAction = {
   type: 'TRADE'
@@ -152,6 +155,9 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
   const [showEmbedModal, setShowEmbedModal] = useState(false)
   const [showResolveConfirm, setShowResolveConfirm] = useState(false)
   const [positions, setPositions] = useState<Position[]>([])
+  const [tradeError, setTradeError] = useState<string | null>(null)
+  const [tradeLoading, setTradeLoading] = useState(false)
+  const lastTradeAtRef = useRef<number>(0)
   const { isReady, pubkey } = useNostr()
 
   const market = entry.market
@@ -263,32 +269,57 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
   ]
 
   const handleResolve = (outcome: 'YES' | 'NO') => {
-    dispatch({ type: 'RESOLVE_MARKET', marketId: market.id, outcome })
+    dispatch({ type: 'RESOLVE_MARKET', marketId: market.id, outcome, outcomePrice: 1.0 })
     setShowResolveConfirm(false)
   }
 
-  const handleTrade = (side: Side) => {
+  const handleTrade = async (side: Side) => {
     if (!Number.isFinite(amount) || amount <= 0) {
       return
     }
 
-    dispatch({
-      type: 'TRADE',
-      marketId: market.id,
-      actor: 'you',
-      kind: 'BUY',
-      side,
-      amount,
-    })
+    // 2-second debounce — prevent double-click duplicates
+    const now = Date.now()
+    if (now - lastTradeAtRef.current < TRADE_DEBOUNCE_MS) {
+      return
+    }
+    lastTradeAtRef.current = now
 
-    // Persist position to localStorage
-    const direction = side === 'LONG' ? 'yes' : 'no'
-    const price = side === 'LONG' ? yesPrice : noPrice
-    const tokens = preview ? preview.tokens : amount / price
-    addPosition(market.id, market.title, direction, tokens, price)
-    setPositions(getPositionsForMarket(market.id))
+    setTradeError(null)
+    setTradeLoading(true)
 
-    trackTradePlaced(market.id, side, amount)
+    try {
+      const result = await executeTrade(market, side, amount)
+
+      if (!result.success) {
+        const { error } = result
+        if (error.kind === 'insufficient_balance') {
+          setTradeError(`Insufficient balance: you have ${error.balance} sats, need ${error.required}.`)
+        } else if (error.kind === 'wallet_unavailable') {
+          setTradeError('Wallet unavailable. Please reconnect your wallet.')
+        } else if (error.kind === 'send_failed') {
+          setTradeError(`Payment failed: ${error.reason}`)
+        } else {
+          setTradeError('Invalid trade amount.')
+        }
+        return
+      }
+
+      // Dispatch the market state update
+      dispatch({
+        type: 'TRADE',
+        marketId: market.id,
+        actor: 'you',
+        kind: 'BUY',
+        side,
+        amount,
+      })
+
+      setPositions(getPositionsForMarket(market.id))
+      trackTradePlaced(market.id, side, amount)
+    } finally {
+      setTradeLoading(false)
+    }
   }
 
   return (
@@ -928,15 +959,22 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
                   Demo market. Trades execute immediately against the LMSR reserve.
                 </p>
 
+                {tradeError && (
+                  <p className="mt-4 text-xs text-rose-400">
+                    {tradeError}
+                  </p>
+                )}
+
                 <button
-                  onClick={() => handleTrade(selectedSide)}
-                  className={`mt-5 w-full py-4 text-lg font-bold text-white transition-colors ${
+                  onClick={() => { void handleTrade(selectedSide) }}
+                  disabled={tradeLoading}
+                  className={`mt-5 w-full py-4 text-lg font-bold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                     selectedSide === 'LONG'
                       ? 'bg-emerald-600 hover:bg-emerald-500'
                       : 'bg-rose-600 hover:bg-rose-500'
                   }`}
                 >
-                  Buy {selectedSide === 'LONG' ? 'YES' : 'NO'}
+                  {tradeLoading ? 'Placing…' : `Buy ${selectedSide === 'LONG' ? 'YES' : 'NO'}`}
                 </button>
 
                 {/* Creator resolution — only shown to market creator */}

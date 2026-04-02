@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { loadStoredKeys } from '../nostrKeys'
 import { trackWalletConnected } from '../analytics'
 import { loadOrCreateWallet, getWalletBalance, createDeposit, sendTokens, receiveToken } from '../walletStore'
+import { getVaultBalance } from '../vaultStore'
 import type { NDKCashuDeposit } from '@nostr-dev-kit/wallet'
 
 type WalletStatus = 'disconnected' | 'connecting' | 'ready' | 'error'
@@ -10,6 +11,7 @@ type WalletStatus = 'disconnected' | 'connecting' | 'ready' | 'error'
 export default function Wallet() {
   const [status, setStatus] = useState<WalletStatus>('disconnected')
   const [balance, setBalance] = useState(0)
+  const [vaultBalance, setVaultBalance] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showDeposit, setShowDeposit] = useState(false)
   const [showSend, setShowSend] = useState(false)
@@ -57,6 +59,14 @@ export default function Wallet() {
 
     init()
   }, [keys, refreshBalance])
+
+  useEffect(() => {
+    getVaultBalance()
+      .then(setVaultBalance)
+      .catch((err: unknown) => {
+        console.warn('[Wallet] Failed to fetch vault balance:', err)
+      })
+  }, [])
 
   const handleDeposit = async () => {
     const amount = parseInt(depositAmount)
@@ -343,6 +353,19 @@ export default function Wallet() {
               Cancel
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Platform vault balance */}
+      {vaultBalance !== null && (
+        <div className="border border-neutral-800 p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-neutral-500 uppercase tracking-wider">Platform Vault Balance</span>
+            <span className="text-sm font-mono text-white">{vaultBalance.toLocaleString()} sats</span>
+          </div>
+          <p className="text-xs text-neutral-600 mt-1">
+            Funds held in escrow for market payouts
+          </p>
         </div>
       )}
 

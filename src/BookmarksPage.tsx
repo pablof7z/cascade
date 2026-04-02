@@ -1,11 +1,16 @@
 import { Link } from 'react-router-dom'
 import { useBookmarks } from './useBookmarks'
 import BookmarkButton from './components/BookmarkButton'
+import type { MarketEntry } from './storage'
+
+interface Props {
+  markets?: Record<string, MarketEntry>
+}
 
 /**
  * My Bookmarks page - displays all markets the user has bookmarked.
  */
-export default function BookmarksPage() {
+export default function BookmarksPage({ markets = {} }: Props) {
   const { bookmarkedIds, toggle, getCount } = useBookmarks()
 
   return (
@@ -45,30 +50,34 @@ export default function BookmarksPage() {
         </div>
       ) : (
         <div>
-          {bookmarkedIds.map((marketId) => (
-            <div
-              key={marketId}
-              className="flex items-center justify-between py-3 px-1 border-b border-neutral-800/40 hover:bg-neutral-900/30 transition-colors"
-            >
-              <Link
-                to={`/market/${marketId}`}
-                className="flex-1 min-w-0 text-white font-medium hover:text-neutral-300 transition-colors truncate"
+          {bookmarkedIds.map((marketId) => {
+            const entry = markets[marketId]
+            const title = entry?.market?.title ?? entry?.market?.id ?? marketId
+            return (
+              <div
+                key={marketId}
+                className="flex items-center justify-between py-3 px-1 border-b border-neutral-800/40 hover:bg-neutral-900/30 transition-colors"
               >
-                {marketId}
-              </Link>
-              <div className="flex items-center gap-3 ml-4">
-                <span className="text-xs text-neutral-500">
-                  {getCount(marketId)} bookmarks
-                </span>
-                <BookmarkButton
-                  isBookmarked={true}
-                  count={getCount(marketId)}
-                  onToggle={() => toggle(marketId)}
-                  showCount={false}
-                />
+                <Link
+                  to={`/market/${marketId}`}
+                  className="flex-1 min-w-0 text-white font-medium hover:text-neutral-300 transition-colors truncate"
+                >
+                  {title}
+                </Link>
+                <div className="flex items-center gap-3 ml-4">
+                  <span className="text-xs text-neutral-500">
+                    {getCount(marketId)} bookmarks
+                  </span>
+                  <BookmarkButton
+                    isBookmarked={true}
+                    count={getCount(marketId)}
+                    onToggle={() => toggle(marketId)}
+                    showCount={false}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

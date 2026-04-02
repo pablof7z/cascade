@@ -775,7 +775,7 @@ function AppContent() {
         <Route path="/u/:pubkey" element={<ProfilePage />} />
         <Route path="/profile/:npub" element={<Profile />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
-        <Route path="/bookmarks" element={<BookmarksPage />} />
+        <Route path="/bookmarks" element={<BookmarksPage markets={state.markets} />} />
         <Route path="/activity" element={<Activity />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/how-it-works" element={<HowItWorks />} />

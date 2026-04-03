@@ -1,368 +1,304 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
-import type { Market } from '../market'
 import {
-  computeStateHash,
-  serializeMarketToEvent,
   parseMarketEvent,
-  validateMarketEvent,
-  normalizeMarketForMigration,
-  isMarketDeleted,
-  ConcurrencyError,
+  fetchAllMarkets,
+  publishDeletionEvent,
 } from '../services/marketService'
+
+// ---------------------------------------------------------------------------
+// Module mocks
+// ---------------------------------------------------------------------------
+
+vi.mock('../services/nostrService', () => ({
+  fetchAllMarketsTransport: vi.fn(),
+  subscribeToAllCascadeMarkets: vi.fn(),
+  subscribeToMarketTransport: vi.fn(),
+  publishEvent: vi.fn().mockResolvedValue({}),
+}))
+
+import {
+  fetchAllMarketsTransport,
+  publishEvent,
+} from '../services/nostrService'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeMarket(overrides: Partial<Market> = {}): Market {
-  return {
-    id: 'market-test-001',
-    title: 'Test market',
-    description: 'A test prediction market',
-    b: 0.0001,
-    qLong: 0,
-    qShort: 0,
-    reserve: 1000,
-    participants: {
-      you: { cash: 1000, long: 0, short: 0 },
-    },
-    quotes: [],
-    proofs: [],
-    spentProofs: [],
-    receipts: [],
-    events: [],
-    creatorPubkey: 'creator-pub-key-abcdef1234567890',
-    createdAt: 1700000000,
-    version: 0,
-    stateHash: '',
-    status: 'active',
-    ...overrides,
-  }
-}
-
-function makeEvent(market: Market, overrides: Partial<{
+function makeEvent(overrides: Partial<{
+  kind: number
+  id: string
   pubkey: string
-  dTag: string
+  created_at: number
   content: string
-  versionTag: string
+  dTag: string
+  titleTag: string
+  descriptionTag: string
+  mintTag: string
+  imageTag: string
 }> = {}): NDKEvent {
-  const dTag = overrides.dTag ?? `market:${market.id}`
-  const content = overrides.content ?? JSON.stringify(market)
-  const pubkey = overrides.pubkey ?? market.creatorPubkey
-  const versionTag = overrides.versionTag ?? String(market.version)
+  const dTag = overrides.dTag ?? 'test-market-slug'
+  const titleTag = overrides.titleTag ?? 'Test Market'
+  const descriptionTag = overrides.descriptionTag ?? 'A test market'
+  const mintTag = overrides.mintTag ?? 'https://mint.example.com'
 
   return {
-    pubkey,
-    content,
+    kind: overrides.kind ?? 982,
+    id: overrides.id ?? 'event-id-abc123def456',
+    pubkey: overrides.pubkey ?? 'creator-pub-key-abcdef1234567890',
+    created_at: overrides.created_at ?? 1700000000,
+    content: overrides.content ?? '# Test Market\n\nDescription here.',
     getMatchingTags: (tag: string) => {
-      if (tag === 'd') return [['d', dTag]]
-      if (tag === 'version') return [['version', versionTag]]
+      if (tag === 'd') return dTag ? [['d', dTag]] : []
+      if (tag === 'title') return titleTag ? [['title', titleTag]] : []
+      if (tag === 'description') return descriptionTag ? [['description', descriptionTag]] : []
+      if (tag === 'mint') return mintTag ? [['mint', mintTag]] : []
+      if (tag === 'image' && overrides.imageTag) return [['image', overrides.imageTag]]
       return []
     },
   } as unknown as NDKEvent
 }
 
 // ---------------------------------------------------------------------------
-// computeStateHash
-// ---------------------------------------------------------------------------
-
-describe('computeStateHash', () => {
-  it('returns an 8-character hex string', () => {
-    const market = makeMarket()
-    const hash = computeStateHash(market)
-    expect(hash).toMatch(/^[0-9a-f]{8}$/)
-  })
-
-  it('is deterministic — same input gives same hash', () => {
-    const market = makeMarket()
-    expect(computeStateHash(market)).toBe(computeStateHash(market))
-  })
-
-  it('different LMSR state produces different hash', () => {
-    const a = makeMarket({ qLong: 0, qShort: 0, reserve: 1000 })
-    const b = makeMarket({ qLong: 100, qShort: 50, reserve: 900 })
-    expect(computeStateHash(a)).not.toBe(computeStateHash(b))
-  })
-
-  it('metadata fields (version, title) do not affect hash', () => {
-    const a = makeMarket({ version: 1, title: 'Alpha' })
-    const b = makeMarket({ version: 99, title: 'Beta' })
-    // Same LMSR state → same hash despite different metadata
-    expect(computeStateHash(a)).toBe(computeStateHash(b))
-  })
-})
-
-// ---------------------------------------------------------------------------
-// serializeMarketToEvent
-// ---------------------------------------------------------------------------
-
-describe('serializeMarketToEvent', () => {
-  it('includes a d-tag with market: prefix', () => {
-    const market = makeMarket()
-    const { tags } = serializeMarketToEvent(market)
-    const dTag = tags.find(t => t[0] === 'd')
-    expect(dTag).toBeDefined()
-    expect(dTag![1]).toBe(`market:${market.id}`)
-  })
-
-  it('includes a c-tag with cascade value', () => {
-    const market = makeMarket()
-    const { tags } = serializeMarketToEvent(market)
-    const cTag = tags.find(t => t[0] === 'c')
-    expect(cTag![1]).toBe('cascade')
-  })
-
-  it('includes version tag', () => {
-    const market = makeMarket({ version: 5 })
-    const { tags } = serializeMarketToEvent(market)
-    const vTag = tags.find(t => t[0] === 'version')
-    expect(vTag![1]).toBe('5')
-  })
-
-  it('includes stateHash tag', () => {
-    const market = makeMarket({ stateHash: 'abc12345' })
-    const { tags } = serializeMarketToEvent(market)
-    const hashTag = tags.find(t => t[0] === 'stateHash')
-    expect(hashTag![1]).toBe('abc12345')
-  })
-
-  it('includes backup tag when backupPubkey is set', () => {
-    const market = makeMarket({ backupPubkey: 'backup-key-xyz' })
-    const { tags } = serializeMarketToEvent(market)
-    const backupTag = tags.find(t => t[0] === 'backup')
-    expect(backupTag![1]).toBe('backup-key-xyz')
-  })
-
-  it('does not include backup tag when backupPubkey is absent', () => {
-    const market = makeMarket()
-    const { tags } = serializeMarketToEvent(market)
-    const backupTag = tags.find(t => t[0] === 'backup')
-    expect(backupTag).toBeUndefined()
-  })
-
-  it('content is valid JSON encoding of the market', () => {
-    const market = makeMarket()
-    const { content } = serializeMarketToEvent(market)
-    expect(() => JSON.parse(content)).not.toThrow()
-    const parsed = JSON.parse(content)
-    expect(parsed.id).toBe(market.id)
-  })
-})
-
-// ---------------------------------------------------------------------------
 // parseMarketEvent
 // ---------------------------------------------------------------------------
 
 describe('parseMarketEvent', () => {
-  it('returns ok:true for valid event', () => {
-    const market = makeMarket()
-    const event = makeEvent(market)
+  it('returns ok:true for a valid kind 982 event', () => {
+    const event = makeEvent()
     const result = parseMarketEvent(event)
     expect(result.ok).toBe(true)
-    if (result.ok) {
-      expect(result.market.id).toBe(market.id)
-    }
   })
 
-  it('returns ok:false with missing_d_tag when d-tag is absent', () => {
-    const market = makeMarket()
-    const event = {
-      pubkey: market.creatorPubkey,
-      content: JSON.stringify(market),
-      getMatchingTags: () => [],
-    } as unknown as NDKEvent
+  it('parses slug from d-tag', () => {
+    const event = makeEvent({ dTag: 'my-market-slug' })
+    const result = parseMarketEvent(event)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.market.slug).toBe('my-market-slug')
+  })
 
+  it('parses eventId from event.id', () => {
+    const event = makeEvent({ id: 'nostr-event-id-xyz' })
+    const result = parseMarketEvent(event)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.market.eventId).toBe('nostr-event-id-xyz')
+  })
+
+  it('parses title from title tag', () => {
+    const event = makeEvent({ titleTag: 'My Custom Title' })
+    const result = parseMarketEvent(event)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.market.title).toBe('My Custom Title')
+  })
+
+  it('parses description from description tag', () => {
+    const event = makeEvent({ descriptionTag: 'Custom description' })
+    const result = parseMarketEvent(event)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.market.description).toBe('Custom description')
+  })
+
+  it('parses mint from mint tag', () => {
+    const event = makeEvent({ mintTag: 'https://mint.contrarian.markets' })
+    const result = parseMarketEvent(event)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.market.mint).toBe('https://mint.contrarian.markets')
+  })
+
+  it('parses image from image tag when present', () => {
+    const event = makeEvent({ imageTag: 'https://example.com/banner.jpg' })
+    const result = parseMarketEvent(event)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.market.image).toBe('https://example.com/banner.jpg')
+  })
+
+  it('image is undefined when image tag absent', () => {
+    const event = makeEvent()
+    const result = parseMarketEvent(event)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.market.image).toBeUndefined()
+  })
+
+  it('parses creatorPubkey from event.pubkey', () => {
+    const event = makeEvent({ pubkey: 'my-pubkey-abc' })
+    const result = parseMarketEvent(event)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.market.creatorPubkey).toBe('my-pubkey-abc')
+  })
+
+  it('parses createdAt from event.created_at', () => {
+    const event = makeEvent({ created_at: 1700000123 })
+    const result = parseMarketEvent(event)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.market.createdAt).toBe(1700000123)
+  })
+
+  it('returns ok:false with invalid_kind for non-982 event', () => {
+    const event = makeEvent({ kind: 30000 })
+    const result = parseMarketEvent(event)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toBe('invalid_kind')
+  })
+
+  it('returns ok:false with missing_d_tag when d-tag absent', () => {
+    const event = makeEvent({ dTag: '' })
     const result = parseMarketEvent(event)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.reason).toBe('missing_d_tag')
   })
 
-  it('returns ok:false when d-tag does not start with market:', () => {
-    const market = makeMarket()
-    const event = makeEvent(market, { dTag: 'post:something-else' })
+  it('market has status active by default', () => {
+    const event = makeEvent()
     const result = parseMarketEvent(event)
-    expect(result.ok).toBe(false)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.market.status).toBe('active')
   })
 
-  it('returns ok:false with invalid_json when content is not JSON', () => {
-    const market = makeMarket()
-    const event = makeEvent(market, { content: 'not-valid-json' })
-    const result = parseMarketEvent(event)
-    expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.reason).toBe('invalid_json')
-  })
-
-  it('returns ok:false with invalid_market when market is missing id', () => {
-    const market = makeMarket()
-    const { id: _, ...marketWithoutId } = market
-    const event = makeEvent(market, { content: JSON.stringify(marketWithoutId) })
-    const result = parseMarketEvent(event)
-    expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.reason).toBe('invalid_market')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// validateMarketEvent
-// ---------------------------------------------------------------------------
-
-describe('validateMarketEvent', () => {
-  it('returns valid:true for event signed by creator', () => {
-    const market = makeMarket()
-    const event = makeEvent(market)
-    const result = validateMarketEvent(event)
-    expect(result.valid).toBe(true)
-    if (result.valid) expect(result.isDeletion).toBe(false)
-  })
-
-  it('returns valid:true for event signed by backupPubkey', () => {
-    const market = makeMarket({ backupPubkey: 'backup-pub-key-xyz' })
-    const event = makeEvent(market, { pubkey: 'backup-pub-key-xyz', versionTag: '1' })
-    const result = validateMarketEvent(event)
-    expect(result.valid).toBe(true)
-  })
-
-  it('returns valid:false when signed by unauthorized pubkey', () => {
-    const market = makeMarket()
-    const event = makeEvent(market, { pubkey: 'unauthorized-attacker-pubkey' })
-    const result = validateMarketEvent(event)
-    expect(result.valid).toBe(false)
-    if (!result.valid) expect(result.reason).toContain('unauthorized')
-  })
-
-  it('returns valid:false when event has no pubkey', () => {
-    const market = makeMarket()
+  it('market has default mint when mint tag absent', () => {
     const event = {
-      pubkey: '',
-      content: JSON.stringify(market),
-      getMatchingTags: (tag: string) => tag === 'd' ? [['d', `market:${market.id}`]] : [],
-    } as unknown as NDKEvent
-    const result = validateMarketEvent(event)
-    expect(result.valid).toBe(false)
-  })
-
-  it('returns valid:true with isDeletion:true for archived market by creator', () => {
-    const market = makeMarket({ status: 'archived' })
-    const event = makeEvent(market)
-    const result = validateMarketEvent(event)
-    expect(result.valid).toBe(true)
-    if (result.valid) expect(result.isDeletion).toBe(true)
-  })
-
-  it('returns valid:false for archived market signed by unauthorized key', () => {
-    const market = makeMarket({ status: 'archived' })
-    const event = makeEvent(market, { pubkey: 'unauthorized-key' })
-    const result = validateMarketEvent(event)
-    expect(result.valid).toBe(false)
-  })
-
-  it('returns valid:false when backup signer attempts version rollback', () => {
-    // Scenario: The market content claims version 5, but the backup signer's
-    // event version tag says 2 — meaning they are re-publishing an old event.
-    // eventVersion (2) < market.version (5) → rollback detected.
-    const market = makeMarket({
-      version: 5,
-      backupPubkey: 'backup-pub-key-xyz',
-    })
-    const event = {
-      pubkey: 'backup-pub-key-xyz',
-      content: JSON.stringify(market),  // market says version 5
+      kind: 982,
+      id: 'ev-id',
+      pubkey: 'pk',
+      created_at: 1700000000,
+      content: '',
       getMatchingTags: (tag: string) => {
-        if (tag === 'd') return [['d', `market:${market.id}`]]
-        if (tag === 'version') return [['version', '2']] // tag claims old version 2
+        if (tag === 'd') return [['d', 'slug']]
         return []
       },
     } as unknown as NDKEvent
-    const result = validateMarketEvent(event)
-    expect(result.valid).toBe(false)
-    if (!result.valid) expect(result.reason).toContain('rollback')
+    const result = parseMarketEvent(event)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.market.mint).toBeTruthy()
   })
 })
 
 // ---------------------------------------------------------------------------
-// normalizeMarketForMigration
+// fetchAllMarkets
 // ---------------------------------------------------------------------------
 
-describe('normalizeMarketForMigration', () => {
-  it('adds version:0 to legacy market without version', () => {
-    const legacy = makeMarket()
-    const legacyWithoutVersion = { ...legacy, version: undefined } as unknown as Market
-    const normalized = normalizeMarketForMigration(legacyWithoutVersion)
-    expect(normalized.version).toBe(0)
+describe('fetchAllMarkets', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
-  it('preserves existing version', () => {
-    const market = makeMarket({ version: 3 })
-    const normalized = normalizeMarketForMigration(market)
-    expect(normalized.version).toBe(3)
+  it('returns parsed markets from valid events', async () => {
+    const event = makeEvent({ id: 'mkt-event-001', dTag: 'mkt-slug-001' })
+    vi.mocked(fetchAllMarketsTransport).mockResolvedValueOnce(new Set([event]))
+
+    const result = await fetchAllMarkets()
+    expect(result).toHaveLength(1)
+    expect(result[0].slug).toBe('mkt-slug-001')
+    expect(result[0].eventId).toBe('mkt-event-001')
   })
 
-  it('adds status:active to legacy market without status', () => {
-    const legacy = makeMarket()
-    const legacyWithoutStatus = { ...legacy, status: undefined } as unknown as Market
-    const normalized = normalizeMarketForMigration(legacyWithoutStatus)
-    expect(normalized.status).toBe('active')
+  it('skips events that fail parsing (non-982 kind)', async () => {
+    const bad = makeEvent({ kind: 30000, dTag: 'bad-slug' })
+    vi.mocked(fetchAllMarketsTransport).mockResolvedValueOnce(new Set([bad]))
+
+    const result = await fetchAllMarkets()
+    expect(result).toHaveLength(0)
   })
 
-  it('preserves existing status', () => {
-    const market = makeMarket({ status: 'resolved' })
-    const normalized = normalizeMarketForMigration(market)
-    expect(normalized.status).toBe('resolved')
+  it('skips events missing d-tag', async () => {
+    const bad = makeEvent({ dTag: '' })
+    vi.mocked(fetchAllMarketsTransport).mockResolvedValueOnce(new Set([bad]))
+
+    const result = await fetchAllMarkets()
+    expect(result).toHaveLength(0)
   })
 
-  it('computes stateHash when missing', () => {
-    const market = makeMarket({ stateHash: '' })
-    const normalized = normalizeMarketForMigration(market)
-    expect(normalized.stateHash).not.toBe('')
+  it('passes the limit parameter to transport', async () => {
+    vi.mocked(fetchAllMarketsTransport).mockResolvedValueOnce(new Set())
+    await fetchAllMarkets(25)
+    expect(fetchAllMarketsTransport).toHaveBeenCalledWith(25)
   })
 
-  it('preserves existing stateHash', () => {
-    const market = makeMarket({ stateHash: 'deadbeef' })
-    const normalized = normalizeMarketForMigration(market)
-    expect(normalized.stateHash).toBe('deadbeef')
+  it('uses limit=50 by default', async () => {
+    vi.mocked(fetchAllMarketsTransport).mockResolvedValueOnce(new Set())
+    await fetchAllMarkets()
+    expect(fetchAllMarketsTransport).toHaveBeenCalledWith(50)
   })
 
-  it('is idempotent — calling twice gives same result', () => {
-    const market = makeMarket({ version: 2, status: 'active', stateHash: 'cafebabe' })
-    const first = normalizeMarketForMigration(market)
-    const second = normalizeMarketForMigration(first)
-    expect(second.version).toBe(first.version)
-    expect(second.status).toBe(first.status)
-    expect(second.stateHash).toBe(first.stateHash)
+  it('handles mixed valid/invalid events — returns only valid', async () => {
+    const good = makeEvent({ dTag: 'good-slug', id: 'good-id' })
+    const bad = makeEvent({ kind: 1, dTag: 'bad-slug' })
+
+    vi.mocked(fetchAllMarketsTransport).mockResolvedValueOnce(new Set([good, bad]))
+
+    const result = await fetchAllMarkets()
+    expect(result).toHaveLength(1)
+    expect(result[0].slug).toBe('good-slug')
   })
 })
 
 // ---------------------------------------------------------------------------
-// isMarketDeleted
+// publishDeletionEvent
 // ---------------------------------------------------------------------------
 
-describe('isMarketDeleted', () => {
-  it('returns false for active market', () => {
-    expect(isMarketDeleted(makeMarket({ status: 'active' }))).toBe(false)
+describe('publishDeletionEvent', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
-  it('returns false for resolved market', () => {
-    expect(isMarketDeleted(makeMarket({ status: 'resolved' }))).toBe(false)
+  it('calls publishEvent with kind 5', async () => {
+    const market = {
+      eventId: 'market-event-id-xyz',
+      slug: 'my-market',
+      title: 'Test',
+      description: '',
+      mint: 'https://mint.example.com',
+      b: 0.0001,
+      qLong: 0,
+      qShort: 0,
+      reserve: 0,
+      participants: {},
+      quotes: [],
+      proofs: [],
+      spentProofs: [],
+      receipts: [],
+      events: [],
+      creatorPubkey: 'pk',
+      createdAt: 1700000000,
+      status: 'active' as const,
+    }
+
+    await publishDeletionEvent(market)
+
+    expect(publishEvent).toHaveBeenCalledOnce()
+    const [, tags, kind] = vi.mocked(publishEvent).mock.calls[0]
+    expect(kind).toBe(5)
+    const eTag = (tags as string[][]).find((t) => t[0] === 'e')
+    expect(eTag).toBeDefined()
+    expect(eTag![1]).toBe('market-event-id-xyz')
   })
 
-  it('returns true for archived market', () => {
-    expect(isMarketDeleted(makeMarket({ status: 'archived' }))).toBe(true)
-  })
-})
+  it('deletion event e-tag references market.eventId', async () => {
+    const market = {
+      eventId: 'specific-event-id',
+      slug: 'market-slug',
+      title: 'T',
+      description: '',
+      mint: 'https://mint.example.com',
+      b: 0.0001,
+      qLong: 0,
+      qShort: 0,
+      reserve: 0,
+      participants: {},
+      quotes: [],
+      proofs: [],
+      spentProofs: [],
+      receipts: [],
+      events: [],
+      creatorPubkey: 'pk',
+      createdAt: 1700000000,
+      status: 'active' as const,
+    }
 
-// ---------------------------------------------------------------------------
-// ConcurrencyError
-// ---------------------------------------------------------------------------
+    await publishDeletionEvent(market)
 
-describe('ConcurrencyError', () => {
-  it('is an instance of Error', () => {
-    const error = new ConcurrencyError('test')
-    expect(error).toBeInstanceOf(Error)
-  })
-
-  it('has name ConcurrencyError', () => {
-    const error = new ConcurrencyError('test')
-    expect(error.name).toBe('ConcurrencyError')
+    const [, tags] = vi.mocked(publishEvent).mock.calls[0]
+    const eTag = (tags as string[][]).find((t) => t[0] === 'e')
+    expect(eTag![1]).toBe('specific-event-id')
   })
 })

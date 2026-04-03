@@ -167,29 +167,29 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
 
   // Real-time Nostr subscription: stream state updates for this specific market
   useEffect(() => {
-    if (!isReady || !market.id) return
+    if (!isReady || !market.eventId) return
 
-    const sub = subscribeToMarketUpdates(market.id, (updatedMarket, isDeletion) => {
-      dispatch({ type: 'SYNC_MARKET', marketId: market.id, market: updatedMarket, isDeletion })
+    const sub = subscribeToMarketUpdates(market.eventId, (updatedMarket, isDeletion) => {
+      dispatch({ type: 'SYNC_MARKET', marketId: market.slug, market: updatedMarket, isDeletion })
     })
 
     return () => sub.stop()
-  }, [isReady, market.id, dispatch])
+  }, [isReady, market.eventId, market.slug, dispatch])
 
   useEffect(() => {
-    trackMarketView(market.id)
-  }, [market.id])
+    trackMarketView(market.slug)
+  }, [market.slug])
 
   useEffect(() => {
     if (activeTab === 'discussion') {
-      trackDiscussionInteraction(market.id, 'open_discussion')
+      trackDiscussionInteraction(market.slug, 'open_discussion')
     }
-  }, [activeTab, market.id])
+  }, [activeTab, market.slug])
 
   // Load existing positions for this market on mount and after trades
   useEffect(() => {
-    setPositions(getPositionsForMarket(market.id))
-  }, [market.id, market.lastTrade?.id])
+    setPositions(getPositionsForMarket(market.slug))
+  }, [market.slug, market.lastTrade?.id])
 
   const thesis = getThesisDefinition(market)
   const relatedSignals = (thesis?.signals ?? []).map((signal) => {
@@ -198,11 +198,11 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
       Object.values(markets).find((candidate) => candidate.market.title === signal.moduleTitle)
     return {
       ...signal,
-      routeId: matchingEntry?.market.id,
+      routeId: matchingEntry?.market.slug,
       probability: matchingEntry ? deriveMarketMetrics(matchingEntry.market).longPositionShare : undefined,
     }
   })
-  const { isBookmarked, toggle, getCount } = useBookmarks([market.id])
+  const { isBookmarked, toggle, getCount } = useBookmarks([market.slug])
 
   const yesPrice = priceLong(market.qLong, market.qShort, market.b)
   const noPrice = priceShort(market.qLong, market.qShort, market.b)
@@ -271,7 +271,7 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
   ]
 
   const handleResolve = (outcome: 'YES' | 'NO') => {
-    dispatch({ type: 'RESOLVE_MARKET', marketId: market.id, outcome, outcomePrice: 1.0 })
+    dispatch({ type: 'RESOLVE_MARKET', marketId: market.slug, outcome, outcomePrice: 1.0 })
     setShowResolveConfirm(false)
   }
 
@@ -310,15 +310,15 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
       // Dispatch the market state update
       dispatch({
         type: 'TRADE',
-        marketId: market.id,
+        marketId: market.slug,
         actor: 'you',
         kind: 'BUY',
         side,
         amount,
       })
 
-      setPositions(getPositionsForMarket(market.id))
-      trackTradePlaced(market.id, side, amount)
+      setPositions(getPositionsForMarket(market.slug))
+      trackTradePlaced(market.slug, side, amount)
     } finally {
       setTradeLoading(false)
     }
@@ -327,7 +327,7 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
   return (
     <div className="mx-auto max-w-7xl px-5 py-6 sm:px-6">
       <MarketTabsShell
-        marketId={market.id}
+        marketId={market.slug}
         marketTitle={market.title}
         marketDescription={thesis?.argument ?? market.description}
         probability={yesPrice}
@@ -348,9 +348,9 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
               </span>
             )}
             <BookmarkButton
-              isBookmarked={isBookmarked(market.id)}
-              count={getCount(market.id)}
-              onToggle={() => toggle(market.id)}
+              isBookmarked={isBookmarked(market.slug)}
+              count={getCount(market.slug)}
+              onToggle={() => toggle(market.slug)}
               size="md"
               showCount
             />
@@ -600,7 +600,7 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
                   <div className="flex items-center justify-between gap-4">
                     <h3 className="text-lg font-semibold text-white">Recent fills</h3>
                     <Link
-                      to={`/market/${market.id}/activity`}
+                      to={`/market/${market.slug}/activity`}
                       className="text-sm font-medium text-white transition-colors hover:text-neutral-300"
                     >
                       Full activity
@@ -642,17 +642,17 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
                 </article>
               </section>
 
-              <MarketDiscussionPanel marketId={market.id} marketTitle={market.title} variant="overview" marketEventId={market.nostrEventId} marketCreatorPubkey={market.creatorPubkey} />
+              <MarketDiscussionPanel marketId={market.slug} marketTitle={market.title} variant="overview" marketEventId={market.eventId} marketCreatorPubkey={market.creatorPubkey} />
             </>
           ) : null}
 
           {activeTab === 'discussion' ? (
             <>
               <MarketDiscussionPanel
-                marketId={market.id}
+                marketId={market.slug}
                 marketTitle={market.title}
                 variant="discussion"
-                marketEventId={market.nostrEventId}
+                marketEventId={market.eventId}
                 marketCreatorPubkey={market.creatorPubkey}
               />
             </>
@@ -1081,7 +1081,7 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
       </div>
 
       <EmbedModal
-        marketId={market.id}
+        marketId={market.slug}
         marketTitle={market.title}
         isOpen={showEmbedModal}
         onClose={() => setShowEmbedModal(false)}

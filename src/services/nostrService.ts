@@ -347,84 +347,91 @@ export async function resolveAuthorName(pubkey: string): Promise<{
 }
 
 // ---------------------------------------------------------------------------
-// Market Transport — kind 30000 NIP-33 parameterized replaceable events
-// App-level filter: ['c', 'cascade'] scopes queries to Cascade markets only.
-// Domain logic (parsing, validation, concurrency) lives in marketService.ts.
+// Market Transport — kind 982 non-replaceable events
+// Markets are immutable once published — no versioning, no JSON, no app-filter tag.
+// Domain logic (parsing) lives in marketService.ts.
 // ---------------------------------------------------------------------------
 
 /**
- * Publish a kind 30000 market event.
- * Requires an active NIP-07 signer (throws in read-only mode).
+ * Publish a kind 982 non-replaceable market event (immutable, final).
+ * Content is markdown. Tags include d-tag (slug), title, description, mint, optional category and image.
+ * Returns the published NDKEvent — callers should store event.id as the canonical market identifier.
+ * Requires active NIP-07 signer (throws in read-only mode).
  */
-export async function publishMarket(market: Market, tags: string[][]): Promise<NDKEvent> {
+export async function publishMarket(
+  market: Market,
+  markdown: string,
+  options?: { imageUrl?: string; category?: string },
+): Promise<NDKEvent> {
   if (!_ndk) throw new Error('Nostr service not initialized')
   if (!_ndk.signer) throw new Error('No signer available — cannot publish in read-only mode')
 
   const event = new NDKEvent(_ndk)
-  event.kind = 30000
-  event.content = JSON.stringify(market)
-  event.tags = tags
+  event.kind = 982 as NDKKind
+  event.content = markdown
 
+  const tags: string[][] = [
+    ['d', market.slug],
+    ['title', market.title],
+    ['description', market.description],
+    ['mint', market.mint],
+  ]
+
+  if (options?.category) {
+    tags.push(['c', options.category])
+  }
+  if (options?.imageUrl) {
+    tags.push(['image', options.imageUrl])
+  }
+
+  event.tags = tags
   await event.publish()
   return event
 }
 
 /**
- * Fetch all Cascade markets (kind 30000, '#c': ['cascade']).
+ * Fetch all Cascade markets (kind 982).
  * Returns raw NDKEvents — caller (marketService) is responsible for parsing.
  */
 export async function fetchAllMarketsTransport(limit = 50): Promise<Set<NDKEvent>> {
   const filter: NDKFilter = {
-    kinds: [30000],
-    '#c': ['cascade'],
+    kinds: [982 as NDKKind],
     limit,
   }
   return fetchEvents(filter)
 }
 
 /**
- * Fetch a single Cascade market by market ID (d-tag: market:{marketId}).
- * Returns the NDKEvent with the highest version tag, using created_at as tiebreaker.
+ * Fetch a single Cascade market by Nostr event ID.
  * Returns null if no matching market is found.
  */
-export async function fetchMarketById(marketId: string): Promise<NDKEvent | null> {
+export async function fetchMarketByEventId(eventId: string): Promise<NDKEvent | null> {
   const filter: NDKFilter = {
-    kinds: [30000],
-    '#d': [`market:${marketId}`],
-    '#c': ['cascade'],
+    kinds: [982 as NDKKind],
+    ids: [eventId],
   }
   const events = await fetchEvents(filter)
   if (events.size === 0) return null
-
-  return Array.from(events).reduce((latest, current) => {
-    const latestVersion = parseInt(latest.getMatchingTags('version')[0]?.[1] ?? '0', 10)
-    const currentVersion = parseInt(current.getMatchingTags('version')[0]?.[1] ?? '0', 10)
-
-    if (currentVersion !== latestVersion) {
-      return currentVersion > latestVersion ? current : latest
-    }
-    return (current.created_at ?? 0) > (latest.created_at ?? 0) ? current : latest
-  })
+  return Array.from(events)[0]
 }
 
 /**
- * Subscribe to real-time updates for a single Cascade market (by d-tag).
+ * Subscribe to real-time updates for a single Cascade market (by event ID).
  * Returns the NDKSubscription so the caller can stop() it on cleanup.
  */
 export function subscribeToMarketTransport(
-  marketId: string,
+  eventId: string,
   callback: (event: NDKEvent) => void,
 ): NDKSubscription {
   const filter: NDKFilter = {
-    kinds: [30000],
-    '#d': [`market:${marketId}`],
-    '#c': ['cascade'],
+    kinds: [982 as NDKKind],
+    ids: [eventId],
   }
   return subscribeToEvents(filter, callback)
 }
 
 /**
- * Subscribe to all new Cascade market events (kind 30000 with '#c': ['cascade']).
+ * Subscribe to all new Cascade market events (kind 982).
  * Useful for LandingPage live discovery — set limit: 0 to get only new events.
  * Returns the NDKSubscription so the caller can stop() it on cleanup.
  */
@@ -432,20 +439,19 @@ export function subscribeToAllCascadeMarkets(
   callback: (event: NDKEvent) => void,
 ): NDKSubscription {
   const filter: NDKFilter = {
-    kinds: [30000],
-    '#c': ['cascade'],
+    kinds: [982 as NDKKind],
     limit: 0,
   }
   return subscribeToEvents(filter, callback)
 }
 
 /**
- * Fetch NIP-09 deletion events for a market (kind 5 with d-tag).
+ * Fetch NIP-09 deletion events for a market (kind 5 with e-tag).
  */
-export async function fetchDeletionEvents(marketId: string): Promise<Set<NDKEvent>> {
+export async function fetchDeletionEvents(eventId: string): Promise<Set<NDKEvent>> {
   const filter: NDKFilter = {
     kinds: [5],
-    '#d': [`market:${marketId}`],
+    '#e': [eventId],
   }
   return fetchEvents(filter)
 }

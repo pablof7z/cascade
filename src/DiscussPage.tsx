@@ -503,7 +503,7 @@ export default function DiscussPage({ markets }: Props) {
     <div className="min-h-screen bg-neutral-950">
       <div className="mx-auto max-w-5xl px-4 pb-32 pt-8">
         <MarketTabsShell
-          marketId={market.id}
+          marketId={market.slug}
           marketTitle={market.title}
           marketDescription={market.description}
           probability={probability}
@@ -513,10 +513,10 @@ export default function DiscussPage({ markets }: Props) {
         />
 
         <MarketDiscussionPanel
-          marketId={market.id}
+          marketId={market.slug}
           marketTitle={market.title}
           variant="discussion"
-          marketEventId={market.nostrEventId}
+          marketEventId={market.eventId}
           marketCreatorPubkey={market.creatorPubkey}
         />
       </div>

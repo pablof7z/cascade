@@ -54,9 +54,9 @@ export function getPendingPublishes(): PendingPublish[] {
 export function addPendingPublish(market: Market): void {
   const pending = getPendingPublishes()
   // Replace existing entry for this market if present (idempotent)
-  const filtered = pending.filter((p) => p.marketId !== market.id)
+  const filtered = pending.filter((p) => p.marketId !== market.slug)
   filtered.push({
-    marketId: market.id,
+    marketId: market.slug,
     market,
     createdAt: Date.now(),
     retries: 0,
@@ -93,7 +93,8 @@ export function incrementPendingRetries(marketId: string): void {
 
 // ---------------------------------------------------------------------------
 // Merge — combine localStorage state with Nostr-fetched markets
-// Version wins: higher version takes precedence; same version uses latest timestamp
+// Kind 982 events are immutable — use createdAt for tie-breaking.
+// Newer createdAt wins; if equal, keep local.
 // ---------------------------------------------------------------------------
 
 export function mergeLocalAndNostr(
@@ -103,33 +104,28 @@ export function mergeLocalAndNostr(
   const merged: Record<string, MarketEntry> = { ...local }
 
   for (const nostrMarket of nostrMarkets) {
-    const localEntry = merged[nostrMarket.id]
+    const localEntry = merged[nostrMarket.slug]
 
     if (!localEntry) {
       // New market discovered on Nostr — add it
-      merged[nostrMarket.id] = {
+      merged[nostrMarket.slug] = {
         market: nostrMarket,
         history: [],
       }
       continue
     }
 
-    const localVersion = localEntry.market.version ?? 0
-    const nostrVersion = nostrMarket.version ?? 0
     const localTimestamp = localEntry.market.createdAt ?? 0
     const nostrTimestamp = nostrMarket.createdAt ?? 0
 
-    // Higher version wins; same version → later timestamp wins
-    if (
-      nostrVersion > localVersion ||
-      (nostrVersion === localVersion && nostrTimestamp > localTimestamp)
-    ) {
-      merged[nostrMarket.id] = {
+    // Newer timestamp wins; if equal, keep local
+    if (nostrTimestamp > localTimestamp) {
+      merged[nostrMarket.slug] = {
         market: nostrMarket,
         history: localEntry.history, // Preserve local history for chart continuity
       }
     }
-    // Else keep local (may have pending/offline trades)
+    // Else keep local
   }
 
   return merged

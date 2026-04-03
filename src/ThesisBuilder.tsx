@@ -93,7 +93,7 @@ export default function ThesisBuilder({ markets, dispatch }: Props) {
         .map((entry) => {
           const metrics = deriveMarketMetrics(entry.market)
           return {
-            id: entry.market.id,
+            id: entry.market.slug,
             title: entry.market.title,
             description: entry.market.description,
             probability: metrics.longOdds,

@@ -145,13 +145,13 @@ async function _executeResolution(job: ResolutionJob): Promise<ResolutionResult>
   const resolvedAt = Date.now()
 
   // 1. Find all positions for this market
-  const positions = getPositionsForMarket(market.id)
+  const positions = getPositionsForMarket(market.slug)
 
   // 2. Compute what each winner is owed
   const winnerPayouts = computeWinnerPayouts(positions, outcome, outcomePrice)
 
   if (winnerPayouts.length === 0) {
-    console.info('[resolutionService] No winners for market:', market.id)
+    console.info('[resolutionService] No winners for market:', market.slug)
     return { success: true, payoutsDistributed: 0 }
   }
 
@@ -162,7 +162,7 @@ async function _executeResolution(job: ResolutionJob): Promise<ResolutionResult>
 
   if (vaultBalance < totalObligation) {
     console.error('[resolutionService] Insufficient vault balance', {
-      marketId: market.id,
+      marketId: market.slug,
       balance: vaultBalance,
       required: totalObligation,
     })
@@ -175,10 +175,10 @@ async function _executeResolution(job: ResolutionJob): Promise<ResolutionResult>
   // 4. Log all pending payouts before sending anything (crash recovery)
   const createdAt = Date.now()
   const txEntries: TxLogEntry[] = winnerPayouts.map((w) => {
-    const id = txEntryId(market.id, w.position.id)
+    const id = txEntryId(market.slug, w.position.id)
     const entry: TxLogEntry = {
       id,
-      marketId: market.id,
+      marketId: market.slug,
       winnerId: w.position.ownerPubkey ?? w.position.id,
       positionId: w.position.id,
       payoutSats: w.netSats,
@@ -214,7 +214,7 @@ async function _executeResolution(job: ResolutionJob): Promise<ResolutionResult>
 
       // 6. Publish Nostr payout event (non-blocking; failure is logged only)
       publishPayoutEvent({
-        marketId: market.id,
+        marketId: market.slug,
         marketTitle: market.title,
         winnerId: recipientId,
         positionId: winner.position.id,
@@ -239,7 +239,7 @@ async function _executeResolution(job: ResolutionJob): Promise<ResolutionResult>
     }
   }
 
-  console.info('[resolutionService] Resolution complete for market:', market.id, {
+  console.info('[resolutionService] Resolution complete for market:', market.slug, {
     outcome,
     sentCount,
     failedCount,
@@ -272,7 +272,7 @@ export function initResolutionService(): void {
   setResolutionRunner(async (job: ResolutionJob) => {
     const result = await _executeResolution(job)
     if (!result.success) {
-      console.error('[resolutionService] Resolution failed for market:', job.market.id, result.error)
+      console.error('[resolutionService] Resolution failed for market:', job.market.slug, result.error)
     }
   })
 }

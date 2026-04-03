@@ -14,11 +14,13 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeMarket(id: string, overrides: Partial<Market> = {}): Market {
+function makeMarket(slug: string, overrides: Partial<Market> = {}): Market {
   return {
-    id,
-    title: `Market ${id}`,
+    eventId: '',
+    slug,
+    title: `Market ${slug}`,
     description: 'Test market',
+    mint: 'https://mint.example.com',
     b: 0.0001,
     qLong: 0,
     qShort: 0,
@@ -31,8 +33,6 @@ function makeMarket(id: string, overrides: Partial<Market> = {}): Market {
     events: [],
     creatorPubkey: 'creator-key',
     createdAt: 1700000000,
-    version: 0,
-    stateHash: 'aabbccdd',
     status: 'active',
     ...overrides,
   }
@@ -52,67 +52,57 @@ describe('mergeLocalAndNostr', () => {
     const nostr = [makeMarket('mkt-new')]
     const result = mergeLocalAndNostr(local, nostr)
     expect(result['mkt-new']).toBeDefined()
-    expect(result['mkt-new'].market.id).toBe('mkt-new')
+    expect(result['mkt-new'].market.slug).toBe('mkt-new')
     expect(result['mkt-new'].history).toEqual([])
   })
 
-  it('keeps local market when it has higher version', () => {
-    const localMarket = makeMarket('mkt-1', { version: 5, reserve: 900 })
+  it('keeps local market when it has a later createdAt', () => {
+    const localMarket = makeMarket('mkt-1', { createdAt: 1700000200, reserve: 900 })
     const local = { 'mkt-1': makeEntry(localMarket) }
-    const nostrMarket = makeMarket('mkt-1', { version: 3, reserve: 1000 })
+    const nostrMarket = makeMarket('mkt-1', { createdAt: 1700000100, reserve: 1000 })
     const result = mergeLocalAndNostr(local, [nostrMarket])
-    // Local wins (higher version)
-    expect(result['mkt-1'].market.version).toBe(5)
+    // Local wins (later createdAt)
     expect(result['mkt-1'].market.reserve).toBe(900)
   })
 
-  it('uses Nostr market when it has higher version', () => {
-    const localMarket = makeMarket('mkt-1', { version: 2, reserve: 1000 })
+  it('uses Nostr market when it has a later createdAt', () => {
+    const localMarket = makeMarket('mkt-1', { createdAt: 1700000000, reserve: 1000 })
     const local = { 'mkt-1': makeEntry(localMarket) }
-    const nostrMarket = makeMarket('mkt-1', { version: 7, reserve: 850 })
+    const nostrMarket = makeMarket('mkt-1', { createdAt: 1700000200, reserve: 850 })
     const result = mergeLocalAndNostr(local, [nostrMarket])
-    // Nostr wins (higher version)
-    expect(result['mkt-1'].market.version).toBe(7)
+    // Nostr wins (later createdAt)
     expect(result['mkt-1'].market.reserve).toBe(850)
   })
 
   it('preserves local history when Nostr market wins', () => {
-    const localMarket = makeMarket('mkt-1', { version: 1 })
+    const localMarket = makeMarket('mkt-1', { createdAt: 1700000000 })
     const history = [{ time: 1700000001, priceLong: 0.55, reserve: 990 }]
     const local = { 'mkt-1': { market: localMarket, history } }
-    const nostrMarket = makeMarket('mkt-1', { version: 3 })
+    const nostrMarket = makeMarket('mkt-1', { createdAt: 1700000300 })
     const result = mergeLocalAndNostr(local, [nostrMarket])
     // History from local is preserved even when Nostr market data wins
     expect(result['mkt-1'].history).toBe(history)
   })
 
-  it('uses Nostr market when same version but later createdAt', () => {
-    const localMarket = makeMarket('mkt-1', { version: 1, createdAt: 1700000000 })
+  it('keeps local market when same createdAt (tie goes to local)', () => {
+    const localMarket = makeMarket('mkt-1', { createdAt: 1700000000, reserve: 999 })
     const local = { 'mkt-1': makeEntry(localMarket) }
-    const nostrMarket = makeMarket('mkt-1', { version: 1, createdAt: 1700000100 })
+    const nostrMarket = makeMarket('mkt-1', { createdAt: 1700000000, reserve: 888 })
     const result = mergeLocalAndNostr(local, [nostrMarket])
-    expect(result['mkt-1'].market.createdAt).toBe(1700000100)
-  })
-
-  it('keeps local market when same version and same timestamp', () => {
-    const localMarket = makeMarket('mkt-1', { version: 1, createdAt: 1700000000, reserve: 999 })
-    const local = { 'mkt-1': makeEntry(localMarket) }
-    const nostrMarket = makeMarket('mkt-1', { version: 1, createdAt: 1700000000, reserve: 888 })
-    const result = mergeLocalAndNostr(local, [nostrMarket])
-    // Local unchanged (same version + same timestamp → no replacement)
+    // Local unchanged (same timestamp → no replacement)
     expect(result['mkt-1'].market.reserve).toBe(999)
   })
 
   it('handles multiple Nostr markets correctly', () => {
-    const local = { 'mkt-a': makeEntry(makeMarket('mkt-a', { version: 1 })) }
+    const local = { 'mkt-a': makeEntry(makeMarket('mkt-a', { createdAt: 1700000000 })) }
     const nostr = [
-      makeMarket('mkt-a', { version: 3 }),
+      makeMarket('mkt-a', { createdAt: 1700000300, reserve: 500 }),
       makeMarket('mkt-b'),
       makeMarket('mkt-c'),
     ]
     const result = mergeLocalAndNostr(local, nostr)
     expect(Object.keys(result)).toHaveLength(3)
-    expect(result['mkt-a'].market.version).toBe(3)
+    expect(result['mkt-a'].market.reserve).toBe(500) // Nostr won with later createdAt
     expect(result['mkt-b']).toBeDefined()
     expect(result['mkt-c']).toBeDefined()
   })

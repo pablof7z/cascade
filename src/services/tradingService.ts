@@ -136,5 +136,5 @@ function _recordPosition(market: Market, side: Side, amount: number): void {
   const tokens = preview ? preview.tokens : amount / price
   const direction = side === 'LONG' ? 'yes' : 'no'
 
-  addPosition(market.id, market.title, direction, tokens, price)
+  addPosition(market.slug, market.title, direction, tokens, price)
 }

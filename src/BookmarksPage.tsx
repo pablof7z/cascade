@@ -52,7 +52,7 @@ export default function BookmarksPage({ markets = {} }: Props) {
         <div>
           {bookmarkedIds.map((marketId) => {
             const entry = markets[marketId]
-            const title = entry?.market?.title ?? entry?.market?.id ?? marketId
+            const title = entry?.market?.title ?? entry?.market?.slug ?? marketId
             return (
               <div
                 key={marketId}

@@ -57,11 +57,11 @@ export default function Activity() {
           if (market.status === 'archived') continue
 
           activityItems.push({
-            id: market.id,
+            id: market.slug,
             timestamp: event.created_at ?? market.createdAt ?? 0,
             actor: abbreviatePubkey(event.pubkey ?? market.creatorPubkey ?? ''),
             action: `created ${market.kind ?? 'market'}`,
-            marketId: market.id,
+            marketId: market.slug,
             marketName: market.title,
             marketType: market.kind ?? 'module',
           })

@@ -138,9 +138,12 @@ export type ThesisDefinition = {
 }
 
 export type Market = {
-  id: string
+  eventId: string               // Nostr event ID — canonical identifier, used for routing/linking
+  slug: string                  // d-tag value — human-readable SEO slug
   title: string
   description: string
+  mint: string                  // Cashu mint URL
+  image?: string                // Optional banner image URL
   kind?: MarketKind
   thesis?: ThesisDefinition
   b: number
@@ -154,15 +157,8 @@ export type Market = {
   receipts: Receipt[]
   events: MarketEvent[]
   lastTrade?: LastTrade
-  // Required fields for rich profiles
   creatorPubkey: string
   createdAt: number
-  // Nostr persistence fields
-  nostrEventId?: string         // Nostr event ID of the latest published event
-  backupPubkey?: string         // Fallback signer pubkey (immutable, set at creation)
-  version: number               // Increments with each state update (prevents clock-skew)
-  stateHash: string             // SHA-256 of LMSR state (detects concurrent trade conflicts)
-  lastUpdatedAt?: number        // Timestamp of last trade/update
   status: 'active' | 'resolved' | 'archived'  // Market lifecycle status
   deletedAt?: number            // When the market was archived
   resolutionOutcome?: 'YES' | 'NO'  // Set when status === 'resolved'
@@ -346,9 +342,11 @@ export function deriveActorMetrics(market: Market, actor: ActorId): ActorMetrics
 }
 
 export function createEmptyMarket(input: {
-  id?: string
+  slug?: string
   title: string
   description: string
+  mint?: string
+  image?: string
   kind?: MarketKind
   thesis?: ThesisDefinition
   creatorPubkey: string
@@ -356,9 +354,12 @@ export function createEmptyMarket(input: {
 }) {
   const kind = input.kind ?? (input.thesis ? 'thesis' : 'module')
   return {
-    id: input.id ?? makeId('market'),
+    eventId: '',
+    slug: input.slug ?? makeId('market'),
     title: input.title,
     description: input.description,
+    mint: input.mint ?? 'https://mint.contrarian.markets',
+    ...(input.image ? { image: input.image } : {}),
     kind,
     thesis:
       kind === 'thesis'
@@ -380,8 +381,6 @@ export function createEmptyMarket(input: {
     events: [],
     creatorPubkey: input.creatorPubkey,
     createdAt: Date.now(),
-    version: 0,
-    stateHash: '',
     status: 'active',
     ...(input.endDate ? { endDate: input.endDate } : {}),
   } satisfies Market

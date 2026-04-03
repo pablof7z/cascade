@@ -392,7 +392,7 @@ export default function ThreadPage({ markets }: Props) {
 
   useEffect(() => {
     if (!isReady || !marketId) return
-    const marketEventId = marketId ? markets[marketId]?.market.nostrEventId : undefined
+    const marketEventId = marketId ? markets[marketId]?.market.eventId : undefined
     if (!marketEventId) return
     let cancelled = false
 

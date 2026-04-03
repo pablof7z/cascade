@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { nip19 } from "nostr-tools";
-import { NDKEvent } from "@nostr-dev-kit/ndk";
+import { NDKEvent, NDKKind } from "@nostr-dev-kit/ndk";
 import { useNostr } from "./context";
 import { fetchKind0Metadata } from "./services/nostrService";
 import { fetchPositions } from "./services/positionService";
@@ -19,7 +19,8 @@ interface ProfileData {
 }
 
 interface Market {
-  id: string;
+  eventId: string;
+  slug: string;
   title: string;
   description: string;
   createdAt: number;
@@ -104,26 +105,31 @@ const ProfilePage: React.FC = () => {
     });
   }, [normalizedPubkey, ndkInstance]);
 
-  // Fetch kind 30000 markets (authored by this user)
+  // Fetch kind 982 markets (authored by this user)
   useEffect(() => {
     if (!normalizedPubkey || !ndkInstance) return;
 
     setLoadingMarkets(true);
     ndkInstance
       .fetchEvents({
-        kinds: [30000],
+        kinds: [982 as NDKKind],
         authors: [normalizedPubkey],
       })
       .then((events) => {
-        const marketList = Array.from(events).map((event: NDKEvent) => {
-          const content = JSON.parse(event.content || "{}") as { title?: string; description?: string };
-          return {
-            id: `${normalizedPubkey}:${event.dTag}`,
-            title: content.title || "Untitled Market",
-            description: content.description || "",
-            createdAt: event.created_at || Date.now() / 1000,
-          };
-        });
+        const marketList = Array.from(events)
+          .filter((event: NDKEvent) => event.id != null)
+          .map((event: NDKEvent) => {
+            const slug = event.getMatchingTags("d")[0]?.[1] ?? "";
+            const title = event.getMatchingTags("title")[0]?.[1] ?? "Untitled Market";
+            const description = event.getMatchingTags("description")[0]?.[1] ?? "";
+            return {
+              eventId: event.id as string,
+              slug,
+              title,
+              description,
+              createdAt: event.created_at ?? Date.now() / 1000,
+            };
+          });
         setMarkets(marketList.sort((a: Market, b: Market) => b.createdAt - a.createdAt));
         setLoadingMarkets(false);
       })
@@ -263,7 +269,7 @@ const ProfilePage: React.FC = () => {
             ) : (
               <div className="space-y-4">
                 {markets.map((market) => (
-                  <MarketListItem key={market.id} market={market} />
+                  <MarketListItem key={market.eventId} market={market} />
                 ))}
               </div>
             )}

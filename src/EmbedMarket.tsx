@@ -142,7 +142,7 @@ export default function EmbedMarket() {
       {/* Footer */}
       <div className={`px-4 py-2.5 flex items-center justify-between ${isDark ? 'bg-neutral-800/50 border-t border-neutral-800' : 'bg-neutral-50 border-t border-neutral-100'}`}>
         <a
-          href={`${baseUrl}/market/${market.id}`}
+          href={`${baseUrl}/market/${market.slug}`}
           target="_blank"
           rel="noopener noreferrer"
           className={`text-xs font-medium transition-colors ${isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-500'}`}

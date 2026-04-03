@@ -326,9 +326,9 @@ export default function LandingPage({ markets, dispatch }: Props) {
     if (!isReady) return
 
     const sub = subscribeToAllMarkets((market) => {
-      const existing = markets[market.id]
-      if (!existing || market.version > (existing.market.version ?? 0)) {
-        dispatch({ type: 'SYNC_MARKET', marketId: market.id, market })
+      const existing = markets[market.slug]
+      if (!existing || market.createdAt > existing.market.createdAt) {
+        dispatch({ type: 'SYNC_MARKET', marketId: market.slug, market })
       }
     })
 
@@ -406,11 +406,11 @@ export default function LandingPage({ markets, dispatch }: Props) {
   }
 
   function navigateToMarket(entry: MarketEntry) {
-    navigate(`/market/${entry.market.id}`)
+    navigate(`/market/${entry.market.slug}`)
   }
 
   function navigateFromHomepage(source: 'featured_thesis' | 'most_disputed_market' | 'latest_market', entry: MarketEntry) {
-    trackHomepageEngagement(source, 'market', entry.market.id)
+    trackHomepageEngagement(source, 'market', entry.market.slug)
     navigateToMarket(entry)
   }
 
@@ -422,8 +422,8 @@ export default function LandingPage({ markets, dispatch }: Props) {
     const spec = sampleMarketBank.find((market) => market.title === discussion.marketTitle)
 
     if (matchingEntry) {
-      trackHomepageEngagement(source, 'discussion', matchingEntry.market.id)
-      navigate(`/market/${matchingEntry.market.id}/discuss`)
+      trackHomepageEngagement(source, 'discussion', matchingEntry.market.slug)
+      navigate(`/market/${matchingEntry.market.slug}/discuss`)
       return
     }
 

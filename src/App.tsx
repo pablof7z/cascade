@@ -30,13 +30,11 @@ import {
 } from './storage'
 import { recordTrade, recordMarketCreation } from './services/participantIndex'
 import {
-  publishMarketEventWithConcurrencyCheck,
   publishDeletionEvent,
   fetchAllMarkets,
-  normalizeMarketForMigration,
   subscribeToAllMarkets,
-  computeStateHash,
 } from './services/marketService'
+import { publishMarket } from './services/nostrService'
 import { useNostr } from './context/NostrContext'
 import { initializePositions } from './positionStore'
 import LandingPage from './LandingPage'
@@ -208,7 +206,7 @@ function reducer(state: State, action: Action): State {
       }
 
       const market = createEmptyMarket({
-        id: action.id,
+        slug: action.id,
         title,
         description: description || 'User-created scenario market with fully transparent fake settlement.',
         kind: action.kind,
@@ -224,11 +222,11 @@ function reducer(state: State, action: Action): State {
         }
         // Track market creation in participant index
         if (market.creatorPubkey) {
-          recordMarketCreation(market.creatorPubkey, market.id)
+          recordMarketCreation(market.creatorPubkey, market.slug)
         }
         return {
           ...state,
-          markets: { ...state.markets, [market.id]: entry },
+          markets: { ...state.markets, [market.slug]: entry },
           toast: {
             title: 'Market ready',
             body: `${title} is live. Everyone starts flat until the first trade lands.`,
@@ -259,12 +257,12 @@ function reducer(state: State, action: Action): State {
       }
       // Track market creation and initial trade in participant index
       if (market.creatorPubkey) {
-        recordMarketCreation(market.creatorPubkey, market.id)
-        recordTrade(market.creatorPubkey, market.id, 0) // Initial seed trade
+        recordMarketCreation(market.creatorPubkey, market.slug)
+        recordTrade(market.creatorPubkey, market.slug, 0) // Initial seed trade
       }
       return {
         ...state,
-        markets: { ...state.markets, [market.id]: entry },
+        markets: { ...state.markets, [market.slug]: entry },
         toast: {
           title: 'Market rebalanced!',
           body: `${seeded.detail} ${ACTOR_LABELS.you} opened the market.`,
@@ -394,27 +392,11 @@ function reducer(state: State, action: Action): State {
         }
       }
 
-      const existingVersion = existing.market.version ?? 0
-      const incomingVersion = action.market.version ?? 0
-
-      if (incomingVersion < existingVersion) {
-        // Incoming is stale — local is newer (pending offline trade)
+      // Kind 982 events are immutable — newer createdAt wins
+      if (action.market.createdAt <= existing.market.createdAt) {
         return state
       }
 
-      if (incomingVersion === existingVersion) {
-        const existingHash = existing.market.stateHash
-        const incomingHash = action.market.stateHash
-        if (incomingHash === existingHash) {
-          // Identical state, no update needed
-          return state
-        }
-        // Same version but different state — log and keep local
-        console.warn(`Version conflict for market ${action.marketId}: same version, different hash`)
-        return state
-      }
-
-      // incomingVersion > existingVersion — accept update, preserve local history
       return {
         ...state,
         markets: {
@@ -453,8 +435,6 @@ function reducer(state: State, action: Action): State {
         status: 'resolved',
         resolutionOutcome: action.outcome,
         resolvedAt: Math.floor(Date.now() / 1000),
-        version: market.version + 1,
-        stateHash: computeStateHash(market),
       }
       return {
         ...state,
@@ -593,9 +573,7 @@ function AppContent() {
     if (!nostrReady) return
     fetchAllMarkets()
       .then((markets) => {
-        // Normalize any pre-Nostr markets before merging
-        const normalized = markets.map(normalizeMarketForMigration)
-        dispatch({ type: 'HYDRATE_FROM_NOSTR', markets: normalized })
+        dispatch({ type: 'HYDRATE_FROM_NOSTR', markets })
       })
       .catch((err: unknown) => {
         console.warn('Nostr hydration failed:', err)
@@ -606,7 +584,7 @@ function AppContent() {
   useEffect(() => {
     if (!nostrReady) return
     const sub = subscribeToAllMarkets((market, isDeletion) => {
-      dispatch({ type: 'SYNC_MARKET', marketId: market.id, market, isDeletion })
+      dispatch({ type: 'SYNC_MARKET', marketId: market.slug, market, isDeletion })
     })
     return () => sub.stop()
   }, [nostrReady])
@@ -627,8 +605,9 @@ function AppContent() {
     function runOutboxRetry() {
       const pending = getPendingPublishes()
       for (const item of pending) {
-        publishMarketEventWithConcurrencyCheck(item.market)
-          .then((publishedMarket) => {
+        publishMarket(item.market, '')
+          .then((ndkEvent) => {
+            const publishedMarket: Market = { ...item.market, eventId: ndkEvent.id ?? '' }
             removePendingPublish(item.marketId)
             dispatch({ type: 'MARK_PUBLISHED', marketId: item.marketId, publishedMarket })
           })
@@ -648,27 +627,28 @@ function AppContent() {
   // Handle market creation navigation and async Nostr side effects
   const handleDispatch = (action: Action) => {
     if (action.type === 'CREATE_MARKET') {
-      // Pre-generate the ID so the publish callback can look up the market in
+      // Pre-generate the slug so the publish callback can look up the market in
       // marketsRef after React flushes the state update — no stale closure issues.
-      const marketId =
+      const marketSlug =
         action.id ??
         `market-${
           typeof crypto !== 'undefined' && 'randomUUID' in crypto
             ? crypto.randomUUID().slice(0, 8)
             : Math.random().toString(36).slice(2, 10)
         }`
-      const actionWithId: Action = { ...action, id: marketId }
+      const actionWithId: Action = { ...action, id: marketSlug }
       dispatch(actionWithId)
 
-      navigate(`/market/${marketId}`)
+      navigate(`/market/${marketSlug}`)
       if (nostrReady && nostrPubkey) {
         // setTimeout(0) lets React flush the state update before we read marketsRef
         setTimeout(() => {
-          const entry = marketsRef.current[marketId]
+          const entry = marketsRef.current[marketSlug]
           if (!entry) return
-          publishMarketEventWithConcurrencyCheck(entry.market)
-            .then((publishedMarket) => {
-              dispatch({ type: 'MARK_PUBLISHED', marketId, publishedMarket })
+          publishMarket(entry.market, '')
+            .then((ndkEvent) => {
+              const publishedMarket: Market = { ...entry.market, eventId: ndkEvent.id ?? '' }
+              dispatch({ type: 'MARK_PUBLISHED', marketId: marketSlug, publishedMarket })
             })
             .catch((err: unknown) => {
               console.warn('Nostr publish failed, queuing for retry:', err)
@@ -688,8 +668,9 @@ function AppContent() {
         setTimeout(() => {
           const entry = marketsRef.current[action.marketId]
           if (!entry) return
-          publishMarketEventWithConcurrencyCheck(entry.market)
-            .then((publishedMarket) => {
+          publishMarket(entry.market, '')
+            .then((ndkEvent) => {
+              const publishedMarket: Market = { ...entry.market, eventId: ndkEvent.id ?? '' }
               dispatch({ type: 'MARK_PUBLISHED', marketId: action.marketId, publishedMarket })
             })
             .catch((err: unknown) => {
@@ -725,8 +706,9 @@ function AppContent() {
         setTimeout(() => {
           const entry = marketsRef.current[action.marketId]
           if (!entry) return
-          publishMarketEventWithConcurrencyCheck(entry.market)
-            .then((publishedMarket) => {
+          publishMarket(entry.market, '')
+            .then((ndkEvent) => {
+              const publishedMarket: Market = { ...entry.market, eventId: ndkEvent.id ?? '' }
               dispatch({ type: 'MARK_PUBLISHED', marketId: action.marketId, publishedMarket })
             })
             .catch((err: unknown) => {

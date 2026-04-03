@@ -56,13 +56,13 @@ export function enqueueResolution(market: Market, outcome: 'YES' | 'NO', outcome
 
   _tail = _tail.then(async () => {
     if (!_runner) {
-      console.warn('[resolutionQueue] No runner registered — skipping job for market:', market.id)
+      console.warn('[resolutionQueue] No runner registered — skipping job for market:', market.slug)
       return
     }
     try {
       await _runner(job)
     } catch (err) {
-      console.error('[resolutionQueue] Resolution job failed for market:', market.id, err)
+      console.error('[resolutionQueue] Resolution job failed for market:', market.slug, err)
       // Swallow error — queue continues processing subsequent jobs
     }
   })

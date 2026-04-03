@@ -1,9 +1,8 @@
 /**
  * Integration tests covering:
  * 1. Hydration flow — fetchAllMarkets filters invalid/unauthorized events
- * 2. Outbox retry behavior — pending publishes are retried on a timer
- * 3. Delete synchronization — incoming deletion events archive local markets
- * 4. Read-only mode — browsing works without a NIP-07 signer
+ * 2. Delete synchronization — incoming deletion events are handled
+ * 3. Read-only mode — browsing works without a NIP-07 signer
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
@@ -22,15 +21,13 @@ vi.mock('../services/nostrService', () => ({
   fetchAllMarketsTransport: vi.fn(),
   subscribeToAllCascadeMarkets: vi.fn(),
   subscribeToMarketTransport: vi.fn(),
-  fetchMarketById: vi.fn(),
-  publishMarket: vi.fn().mockResolvedValue({}),
+  fetchMarketByEventId: vi.fn(),
   publishEvent: vi.fn().mockResolvedValue({}),
 }))
 
 import {
   fetchAllMarketsTransport,
   subscribeToAllCascadeMarkets,
-  publishMarket,
   publishEvent,
 } from '../services/nostrService'
 
@@ -40,9 +37,11 @@ import {
 
 function makeMarket(overrides: Partial<Market> = {}): Market {
   return {
-    id: 'mkt-integ-001',
+    eventId: 'evt-integ-001',
+    slug: 'integration-test-market',
     title: 'Integration test market',
-    description: 'Test',
+    description: 'Test market description',
+    mint: 'https://mint.contrarian.markets',
     b: 0.0001,
     qLong: 0,
     qShort: 0,
@@ -55,8 +54,6 @@ function makeMarket(overrides: Partial<Market> = {}): Market {
     events: [],
     creatorPubkey: 'creator-pub-key-abcdef1234567890',
     createdAt: 1700000000,
-    version: 1,
-    stateHash: 'aabbccdd',
     status: 'active',
     ...overrides,
   }
@@ -67,21 +64,28 @@ function makeEvent(
   overrides: Partial<{
     pubkey: string
     dTag: string
-    content: string
-    versionTag: string
+    title: string
+    description: string
+    mint: string
   }> = {},
 ): NDKEvent {
-  const dTag = overrides.dTag ?? `market:${market.id}`
-  const content = overrides.content ?? JSON.stringify(market)
+  const dTag = overrides.dTag ?? market.slug
+  const title = overrides.title ?? market.title
+  const description = overrides.description ?? market.description
+  const mint = overrides.mint ?? market.mint
   const pubkey = overrides.pubkey ?? market.creatorPubkey
-  const versionTag = overrides.versionTag ?? String(market.version)
 
   return {
+    kind: 982,
+    id: market.eventId,
     pubkey,
-    content,
+    content: '',
+    created_at: market.createdAt,
     getMatchingTags: (tag: string) => {
       if (tag === 'd') return [['d', dTag]]
-      if (tag === 'version') return [['version', versionTag]]
+      if (tag === 'title') return [['title', title]]
+      if (tag === 'description') return [['description', description]]
+      if (tag === 'mint') return [['mint', mint]]
       return []
     },
   } as unknown as NDKEvent
@@ -103,34 +107,29 @@ describe('Hydration flow (fetchAllMarkets)', () => {
 
     const result = await fetchAllMarkets()
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe(market.id)
+    expect(result[0].eventId).toBe(market.eventId)
+    expect(result[0].slug).toBe(market.slug)
   })
 
-  it('skips events with unparseable content', async () => {
+  it('skips events without a d-tag', async () => {
     const market = makeMarket()
-    const badEvent = makeEvent(market, { content: 'not-json' })
+    const badEvent = makeEvent(market, { dTag: '' })
     vi.mocked(fetchAllMarketsTransport).mockResolvedValueOnce(new Set([badEvent]))
 
     const result = await fetchAllMarkets()
     expect(result).toHaveLength(0)
   })
 
-  it('skips events signed by unauthorized pubkey (authority check)', async () => {
+  it('returns market even when pubkey differs from creator (kind 982 has no authority check)', async () => {
+    // Kind 982 is non-replaceable — anyone can publish a market event.
+    // Authority checks (e.g. isOwner) happen at the App level, not service level.
     const market = makeMarket()
-    const unauthorizedEvent = makeEvent(market, { pubkey: 'attacker-pubkey-xyz' })
-    vi.mocked(fetchAllMarketsTransport).mockResolvedValueOnce(new Set([unauthorizedEvent]))
+    const otherPubkeyEvent = makeEvent(market, { pubkey: 'attacker-pubkey-xyz' })
+    vi.mocked(fetchAllMarketsTransport).mockResolvedValueOnce(new Set([otherPubkeyEvent]))
 
     const result = await fetchAllMarkets()
-    expect(result).toHaveLength(0)
-  })
-
-  it('skips archived (deleted) markets', async () => {
-    const archivedMarket = makeMarket({ status: 'archived' })
-    const event = makeEvent(archivedMarket)
-    vi.mocked(fetchAllMarketsTransport).mockResolvedValueOnce(new Set([event]))
-
-    const result = await fetchAllMarkets()
-    expect(result).toHaveLength(0)
+    expect(result).toHaveLength(1)
+    expect(result[0].eventId).toBe(market.eventId)
   })
 
   it('passes the limit parameter to the transport', async () => {
@@ -145,108 +144,31 @@ describe('Hydration flow (fetchAllMarkets)', () => {
     expect(fetchAllMarketsTransport).toHaveBeenCalledWith(50)
   })
 
-  it('handles mixed valid/invalid events — returns only valid', async () => {
-    const good = makeMarket({ id: 'mkt-good-1' })
-    const bad = makeMarket({ id: 'mkt-bad-1' })
+  it('handles mixed valid/invalid events — skips events missing d-tag', async () => {
+    const valid = makeMarket({ eventId: 'evt-good-1', slug: 'good-market' })
+    const noDTag = makeMarket({ eventId: 'evt-bad-1', slug: 'bad-market' })
 
-    const goodEvent = makeEvent(good)
-    const unauthorizedEvent = makeEvent(bad, { pubkey: 'hacker-pubkey' })
-    const malformedEvent = makeEvent(bad, { content: '{}' }) // no id in JSON
+    const validEvent = makeEvent(valid)
+    const noDTagEvent = makeEvent(noDTag, { dTag: '' })
 
     vi.mocked(fetchAllMarketsTransport).mockResolvedValueOnce(new Set([
-      goodEvent,
-      unauthorizedEvent,
-      malformedEvent,
+      validEvent,
+      noDTagEvent,
     ]))
 
     const result = await fetchAllMarkets()
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('mkt-good-1')
+    expect(result[0].eventId).toBe('evt-good-1')
   })
 })
 
 // ---------------------------------------------------------------------------
-// 2. Outbox retry behavior
-// ---------------------------------------------------------------------------
-// Note: The outbox retry is a React effect (useEffect + setInterval) inside
-// AppContent. We test the underlying service functions it calls rather than
-// the component itself, since testing React timer effects reliably requires
-// complex setup. These tests verify the building blocks are correct.
-
-describe('Outbox retry building blocks', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('publishDeletionEvent calls publishMarket with archived status (phase 1)', async () => {
-    const market = makeMarket()
-    await publishDeletionEvent(market)
-
-    expect(publishMarket).toHaveBeenCalledOnce()
-    const calledWith = vi.mocked(publishMarket).mock.calls[0][0] as Market
-    expect(calledWith.status).toBe('archived')
-    expect(calledWith.version).toBe(market.version + 1)
-  })
-
-  it('publishDeletionEvent calls publishEvent for NIP-09 kind 5 (phase 2)', async () => {
-    const market = makeMarket()
-    await publishDeletionEvent(market)
-
-    expect(publishEvent).toHaveBeenCalledOnce()
-    const [, tags, kind] = vi.mocked(publishEvent).mock.calls[0]
-    expect(kind).toBe(5)
-    const eTag = (tags as string[][]).find(t => t[0] === 'e')
-    const aTag = (tags as string[][]).find(t => t[0] === 'a')
-    expect(eTag).toBeDefined()
-    expect(eTag![1]).toBe(market.id)
-    expect(aTag).toBeDefined()
-    expect(aTag![1]).toContain(market.id)
-  })
-
-  it('publishDeletionEvent runs phase 1 before phase 2', async () => {
-    const calls: string[] = []
-    vi.mocked(publishMarket).mockImplementationOnce(async () => {
-      calls.push('publishMarket')
-      return {} as import('@nostr-dev-kit/ndk').NDKEvent
-    })
-    vi.mocked(publishEvent).mockImplementationOnce(async () => {
-      calls.push('publishEvent')
-      return {} as import('@nostr-dev-kit/ndk').NDKEvent
-    })
-
-    await publishDeletionEvent(makeMarket())
-    expect(calls).toEqual(['publishMarket', 'publishEvent'])
-  })
-})
-
-// ---------------------------------------------------------------------------
-// 3. Delete synchronization (subscribeToAllMarkets)
+// 2. Delete synchronization (subscribeToAllMarkets)
 // ---------------------------------------------------------------------------
 
 describe('Delete synchronization (subscribeToAllMarkets)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('delivers isDeletion:true for archived market events', () => {
-    const archivedMarket = makeMarket({ status: 'archived' })
-    const event = makeEvent(archivedMarket)
-
-    let capturedIsDeletion: boolean | null = null
-    let capturedMarket: Market | null = null
-
-    vi.mocked(subscribeToAllCascadeMarkets).mockImplementationOnce((cb) => {
-      cb(event)
-      return { stop: vi.fn() } as unknown as ReturnType<typeof subscribeToAllCascadeMarkets>
-    })
-
-    subscribeToAllMarkets((market, isDeletion) => {
-      capturedMarket = market
-      capturedIsDeletion = isDeletion
-    })
-
-    expect(capturedMarket).not.toBeNull()
-    expect(capturedIsDeletion).toBe(true)
   })
 
   it('delivers isDeletion:false for active market events', () => {
@@ -267,29 +189,14 @@ describe('Delete synchronization (subscribeToAllMarkets)', () => {
     expect(capturedIsDeletion).toBe(false)
   })
 
-  it('does NOT invoke callback for unauthorized deletion events', () => {
-    const archivedMarket = makeMarket({ status: 'archived' })
-    const unauthorizedEvent = makeEvent(archivedMarket, { pubkey: 'attacker-pub' })
-
-    const callback = vi.fn()
-
-    vi.mocked(subscribeToAllCascadeMarkets).mockImplementationOnce((cb) => {
-      cb(unauthorizedEvent)
-      return { stop: vi.fn() } as unknown as ReturnType<typeof subscribeToAllCascadeMarkets>
-    })
-
-    subscribeToAllMarkets(callback)
-    expect(callback).not.toHaveBeenCalled()
-  })
-
-  it('does NOT invoke callback for malformed events', () => {
+  it('does NOT invoke callback for events without d-tag', () => {
     const market = makeMarket()
-    const malformedEvent = makeEvent(market, { content: 'invalid-json' })
+    const noDTagEvent = makeEvent(market, { dTag: '' })
 
     const callback = vi.fn()
 
     vi.mocked(subscribeToAllCascadeMarkets).mockImplementationOnce((cb) => {
-      cb(malformedEvent)
+      cb(noDTagEvent)
       return { stop: vi.fn() } as unknown as ReturnType<typeof subscribeToAllCascadeMarkets>
     })
 
@@ -306,6 +213,37 @@ describe('Delete synchronization (subscribeToAllMarkets)', () => {
     const sub = subscribeToAllMarkets(vi.fn())
     sub.stop()
     expect(stopFn).toHaveBeenCalledOnce()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 3. Deletion publishing (publishDeletionEvent)
+// ---------------------------------------------------------------------------
+
+describe('Deletion publishing (publishDeletionEvent)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('publishes a NIP-09 kind 5 deletion event referencing the market eventId', async () => {
+    const market = makeMarket()
+    await publishDeletionEvent(market)
+
+    expect(publishEvent).toHaveBeenCalledOnce()
+    const [, tags, kind] = vi.mocked(publishEvent).mock.calls[0]
+    expect(kind).toBe(5)
+    const eTag = (tags as string[][]).find(t => t[0] === 'e')
+    expect(eTag).toBeDefined()
+    expect(eTag![1]).toBe(market.eventId)
+  })
+
+  it('includes the market eventId in the deletion event tags', async () => {
+    const market = makeMarket({ eventId: 'evt-delete-test-abc' })
+    await publishDeletionEvent(market)
+
+    const [, tags] = vi.mocked(publishEvent).mock.calls[0]
+    const eTag = (tags as string[][]).find(t => t[0] === 'e')
+    expect(eTag![1]).toBe('evt-delete-test-abc')
   })
 })
 
@@ -331,16 +269,16 @@ describe('Read-only mode (no signer)', () => {
   })
 
   it('fetchAllMarkets returns market data when transport succeeds', async () => {
-    const market = makeMarket({ id: 'readonly-mkt' })
+    const market = makeMarket({ eventId: 'readonly-mkt', slug: 'readonly-market' })
     vi.mocked(fetchAllMarketsTransport).mockResolvedValueOnce(new Set([makeEvent(market)]))
 
     const result = await fetchAllMarkets()
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('readonly-mkt')
+    expect(result[0].eventId).toBe('readonly-mkt')
   })
 
   it('subscribeToAllMarkets delivers events to read-only observer', () => {
-    const market = makeMarket({ id: 'readonly-sub-mkt' })
+    const market = makeMarket({ eventId: 'readonly-sub-mkt', slug: 'readonly-sub-market' })
     const event = makeEvent(market)
 
     const received: Market[] = []
@@ -352,7 +290,7 @@ describe('Read-only mode (no signer)', () => {
 
     subscribeToAllMarkets((m) => received.push(m))
     expect(received).toHaveLength(1)
-    expect(received[0].id).toBe('readonly-sub-mkt')
+    expect(received[0].eventId).toBe('readonly-sub-mkt')
   })
 
   it('fetchAllMarkets returns empty array when transport returns no events', async () => {

@@ -96,7 +96,7 @@ export default function Profile() {
   const displayPubkey = viewingPubkey || currentUserPubkey || ''
   const createdMarkets = markets.filter(m => m.creatorPubkey === displayPubkey)
   const marketsWithPositions = activity?.marketIds
-    .map(id => markets.find(m => m.id === id))
+    .map(id => markets.find(m => m.slug === id))
     .filter(Boolean) as Market[] ?? []
 
   // Profile editing form (own profile only)
@@ -194,8 +194,8 @@ export default function Profile() {
           <div className="space-y-3">
             {createdMarkets.slice(0, 5).map(market => (
               <Link
-                key={market.id}
-                to={`/market/${market.id}`}
+                key={market.slug}
+                to={`/market/${market.slug}`}
                 className="block p-3 bg-neutral-800 hover:bg-neutral-700 transition-colors"
               >
                 <p className="text-white font-medium">{market.title}</p>
@@ -227,8 +227,8 @@ export default function Profile() {
             <div className="space-y-2">
               {marketsWithPositions.slice(0, 3).map(market => (
                 <Link
-                  key={market.id}
-                  to={`/market/${market.id}`}
+                  key={market.slug}
+                  to={`/market/${market.slug}`}
                   className="block p-2 bg-neutral-800 rounded hover:bg-neutral-700 transition-colors text-sm text-white"
                 >
                   {market.title}

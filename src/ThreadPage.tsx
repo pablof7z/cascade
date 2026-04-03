@@ -377,7 +377,7 @@ function applyReactionCounts(
 }
 
 export default function ThreadPage({ markets }: Props) {
-  const { id: marketId, threadId } = useParams<{ id: string; threadId: string }>()
+  const { slug: marketId, threadId } = useParams<{ slug: string; threadId: string }>()
   const navigate = useNavigate()
   const { isReady } = useNostr()
 

@@ -460,26 +460,26 @@ function MarketDetailWrapper({
   dispatch: React.Dispatch<Action>
   activeTab: 'overview' | 'discussion' | 'charts' | 'activity'
 }) {
-  const { id } = useParams<{ id: string }>()
+  const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
-  const entry = id ? markets[id] : undefined
+  const entry = slug ? markets[slug] : undefined
   
   useEffect(() => {
-    if (!id || !entry) {
+    if (!slug || !entry) {
       navigate('/', { replace: true })
     }
-  }, [id, entry, navigate])
+  }, [slug, entry, navigate])
   
   if (!entry) {
     return null
   }
   
-  return <MarketDetail key={`${id}-${activeTab}`} entry={entry} markets={markets} dispatch={dispatch} activeTab={activeTab} />
+  return <MarketDetail key={`${slug}-${activeTab}`} entry={entry} markets={markets} dispatch={dispatch} activeTab={activeTab} />
 }
 
 function ThesisRedirect() {
-  const { id } = useParams<{ id: string }>()
-  return <Navigate to={`/market/${id ?? ''}`} replace />
+  const { slug } = useParams<{ slug: string }>()
+  return <Navigate to={`/market/${slug ?? ''}`} replace />
 }
 
 function ThreadPageWrapper({ markets }: { markets: Record<string, MarketEntry> }) {
@@ -487,9 +487,9 @@ function ThreadPageWrapper({ markets }: { markets: Record<string, MarketEntry> }
 }
 
 function LegacyMarketDiscussionRedirect() {
-  const { id, threadId } = useParams<{ id: string; threadId?: string }>()
+  const { slug, threadId } = useParams<{ slug: string; threadId?: string }>()
 
-  if (!id) {
+  if (!slug) {
     return <Navigate to="/" replace />
   }
 
@@ -498,8 +498,8 @@ function LegacyMarketDiscussionRedirect() {
       replace
       to={
         threadId
-          ? `/market/${id}/discussion/${threadId}`
-          : `/market/${id}/discussion`
+          ? `/market/${slug}/discussion/${threadId}`
+          : `/market/${slug}/discussion`
       }
     />
   )
@@ -728,28 +728,28 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<LandingPage markets={state.markets} dispatch={handleDispatch} />} />
         <Route
-          path="/market/:id"
+          path="/market/:slug"
           element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} activeTab="overview" />}
         />
         <Route
-          path="/market/:id/discussion"
+          path="/market/:slug/discussion"
           element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} activeTab="discussion" />}
         />
         <Route
-          path="/market/:id/discussion/:threadId"
+          path="/market/:slug/discussion/:threadId"
           element={<ThreadPageWrapper markets={state.markets} />}
         />
         <Route
-          path="/market/:id/charts"
+          path="/market/:slug/charts"
           element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} activeTab="charts" />}
         />
         <Route
-          path="/market/:id/activity"
+          path="/market/:slug/activity"
           element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} activeTab="activity" />}
         />
-        <Route path="/market/:id/discuss" element={<LegacyMarketDiscussionRedirect />} />
-        <Route path="/market/:id/discuss/:threadId" element={<LegacyMarketDiscussionRedirect />} />
-        <Route path="/thesis/:id" element={<ThesisRedirect />} />
+        <Route path="/market/:slug/discuss" element={<LegacyMarketDiscussionRedirect />} />
+        <Route path="/market/:slug/discuss/:threadId" element={<LegacyMarketDiscussionRedirect />} />
+        <Route path="/thesis/:slug" element={<ThesisRedirect />} />
         <Route path="/builder" element={<ThesisBuilder markets={state.markets} dispatch={handleDispatch} />} />
         <Route path="/onboarding" element={<Profile />} />
         <Route path="/portfolio" element={<Portfolio />} />
@@ -808,7 +808,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* Embed route renders standalone without app shell */}
-          <Route path="/embed/market/:id" element={<EmbedPage />} />
+          <Route path="/embed/market/:slug" element={<EmbedPage />} />
           {/* All other routes render with full app shell */}
           <Route path="/*" element={<AppContent />} />
         </Routes>

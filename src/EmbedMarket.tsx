@@ -40,7 +40,7 @@ function ContrarianLogo({ theme }: { theme: Theme }) {
 }
 
 export default function EmbedMarket() {
-  const { id } = useParams<{ id: string }>()
+  const { slug } = useParams<{ slug: string }>()
   const [searchParams] = useSearchParams()
   const theme: Theme = searchParams.get('theme') === 'light' ? 'light' : 'dark'
   
@@ -51,28 +51,28 @@ export default function EmbedMarket() {
   // Load market data
   useEffect(() => {
     const markets = load()
-    if (markets && id && markets[id]) {
-      setEntry(markets[id])
+    if (markets && slug && markets[slug]) {
+      setEntry(markets[slug])
       setLastUpdate(new Date())
     }
     setLoading(false)
-  }, [id])
+  }, [slug])
 
   // Simulate live updates (poll every 5 seconds)
   // In production, this would use Nostr subscription
   useEffect(() => {
-    if (!id) return
+    if (!slug) return
 
     const interval = setInterval(() => {
       const markets = load()
-      if (markets && markets[id]) {
-        setEntry(markets[id])
+      if (markets && markets[slug]) {
+        setEntry(markets[slug])
         setLastUpdate(new Date())
       }
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [id])
+  }, [slug])
 
   const isDark = theme === 'dark'
   const baseUrl = window.location.origin

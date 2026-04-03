@@ -541,6 +541,23 @@ export async function fetchPayoutEvents(winnerId: string): Promise<NDKEvent[]> {
 }
 
 /**
+ * Fetch all payout events (kind 30079) across the platform.
+ * Unlike fetchPayoutEvents which filters by winner pubkey, this fetches
+ * events from ALL winners (global resolution activity).
+ * Filters by #c: cascade tag.
+ * Returns all payout events sorted by created_at descending.
+ */
+export async function fetchAllPayoutEvents(): Promise<NDKEvent[]> {
+  if (!_ndk) throw new Error('Nostr service not initialized')
+  const filter: NDKFilter = {
+    kinds: [PAYOUT_EVENT_KIND as NDKKind],
+    '#c': ['cascade'],
+  }
+  const eventsSet = await _ndk.fetchEvents(filter)
+  return Array.from(eventsSet).sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0))
+}
+
+/**
  * Fetch kind 0 (metadata) event for a given pubkey.
  * Returns the metadata object or null if not found.
  */

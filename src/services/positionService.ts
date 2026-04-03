@@ -309,6 +309,49 @@ export async function fetchPositions(ndk: NDK, pubkey: string): Promise<Position
 }
 
 /**
+ * Fetch all positions across the platform from Nostr.
+ * Unlike fetchPositions which filters by author pubkey, this fetches
+ * kind 30078 events from ALL authors (global trade activity).
+ * Filters by cascade:position d-tag prefix and #c: cascade tag.
+ * Returns valid, non-zero-quantity positions sorted by timestamp descending.
+ */
+export async function fetchAllPositions(ndk: NDK): Promise<Position[]> {
+  const filter: NDKFilter = {
+    kinds: [POSITION_EVENT_KIND],
+    '#c': ['cascade'],
+  }
+
+  const eventsSet = await ndk.fetchEvents(filter)
+  const positions: Position[] = []
+
+  for (const event of eventsSet) {
+    // Skip events that aren't position events
+    const dTag = event.getMatchingTags('d')[0]?.[1]
+    if (!dTag || !dTag.startsWith('cascade:position:')) continue
+
+    const parseResult = parsePositionEvent(event)
+    if (!parseResult.ok) {
+      console.warn('[positionService] Failed to parse position event:', parseResult.error)
+      continue
+    }
+
+    const validationResult = validatePositionEvent(event)
+    if (!validationResult.valid) {
+      console.warn('[positionService] Position event failed validation:', validationResult.reason)
+      continue
+    }
+
+    // Skip removal markers (quantity = 0)
+    if (parseResult.position.quantity <= 0) continue
+
+    positions.push(parseResult.position)
+  }
+
+  // Sort by timestamp descending (most recent first)
+  return positions.sort((a, b) => b.timestamp - a.timestamp)
+}
+
+/**
  * Subscribe to live position updates for a user.
  * Calls callback with the full updated position list on each new event.
  * Caller is responsible for cleanup (subscription.stop()).

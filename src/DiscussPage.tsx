@@ -489,10 +489,10 @@ export function MarketDiscussionPanel({
 }
 
 export default function DiscussPage({ markets }: Props) {
-  const { id } = useParams<{ id: string }>()
-  const entry = id ? markets[id] : undefined
+  const { slug } = useParams<{ slug: string }>()
+  const entry = slug ? markets[slug] : undefined
 
-  if (!entry || !id) {
+  if (!entry || !slug) {
     return null
   }
 
@@ -539,13 +539,13 @@ export default function DiscussPage({ markets }: Props) {
           </div>
           <div className="flex gap-2">
             <Link
-              to={`/market/${id}`}
+              to={`/market/${slug}`}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium"
             >
               Buy YES
             </Link>
             <Link
-              to={`/market/${id}`}
+              to={`/market/${slug}`}
               className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium"
             >
               Buy NO

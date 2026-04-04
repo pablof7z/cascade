@@ -88,6 +88,10 @@ const _cache: BookmarkCache = {
 
 const _listeners: Set<() => void> = new Set()
 
+// Sequence counter for pending publishes — guarantees uniqueness even for
+// multiple publishes in the same second (avoids race condition with timestamps).
+let _pendingPublishSeq = 0
+
 // ---------------------------------------------------------------------------
 // Observer Pattern
 // ---------------------------------------------------------------------------
@@ -174,7 +178,7 @@ function addPendingPublish(pubkey: string, marketEventIds: string[]): void {
   const entry: PendingBookmarkPublish = {
     pubkey,
     marketEventIds,
-    createdAt: Math.floor(Date.now() / 1000),
+    createdAt: ++_pendingPublishSeq,
     retries: 0,
   }
   if (index >= 0) {
@@ -229,6 +233,8 @@ export async function initializeBookmarks(
   pubkey: string | null,
   ndk: NDK | null,
 ): Promise<void> {
+  // Capture the pubkey before any async work — used to detect user switches.
+  const initiatingPubkey = pubkey
   _cache.pubkey = pubkey
 
   // Update cache key to new user (if changed)
@@ -264,6 +270,8 @@ export async function initializeBookmarks(
 
   // Merge logic: Nostr wins
   if (nostrList) {
+    // Guard: if user switched during fetch, discard stale data
+    if (_cache.pubkey !== initiatingPubkey) return
     _cache.marketEventIds = extractMarketEventIds(nostrList)
     _cache.source = 'nostr'
     _cache.nostrEventId = nostrList.eventId
@@ -272,6 +280,8 @@ export async function initializeBookmarks(
     // Mark as migrated so we don't queue another publish
     setMigrationFlag(pubkey, true)
   } else if (legacyIds.length > 0) {
+    // Guard: if user switched during fetch, discard stale data
+    if (_cache.pubkey !== initiatingPubkey) return
     _cache.marketEventIds = legacyIds
     _cache.source = 'legacy'
     _cache.nostrEventId = null

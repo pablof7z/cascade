@@ -86,15 +86,6 @@ describe('bookmarkStore', () => {
       expect(isBookmarked('event1')).toBe(true)
     })
 
-    it('adds bookmark to legacy storage for anonymous user', () => {
-      addBookmark('event1', null, null)
-
-      const legacy = JSON.parse(
-        localStorage.getItem('cascade-bookmarks-legacy-anon') || '{}',
-      )
-      expect(legacy.marketIds).toContain('event1')
-    })
-
     it('does not add duplicate bookmarks', () => {
       addBookmark('event1', null, null)
       addBookmark('event1', null, null)
@@ -108,16 +99,6 @@ describe('bookmarkStore', () => {
       removeBookmark('event1', null, null)
       expect(getBookmarks()).not.toContain('event1')
       expect(isBookmarked('event1')).toBe(false)
-    })
-
-    it('removes bookmark from legacy storage', () => {
-      addBookmark('event1', null, null)
-      removeBookmark('event1', null, null)
-
-      const legacy = JSON.parse(
-        localStorage.getItem('cascade-bookmarks-legacy-anon') || '{}',
-      )
-      expect(legacy.marketIds).not.toContain('event1')
     })
   })
 

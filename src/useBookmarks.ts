@@ -10,6 +10,14 @@ import {
 } from './bookmarkStore'
 import { useNostr } from './context/NostrContext'
 
+/**
+ * Bookmark ID semantics: Bookmarks currently store market slugs (e.g. "bitcoin-2025")
+ * as the identifier, NOT 64-char hex eventIds. This works because the app's routing
+ * and market lookups use slugs as keys. If real eventIds are ever stored in bookmarks
+ * (e.g. from relay-sourced data), BookmarksPage must resolve them back to slugs before
+ * rendering or routing — the current slug-based lookups will break with eventIds.
+ */
+
 export function useBookmarks(_marketIds?: string[]) {
   const { pubkey, ndkInstance: ndk } = useNostr()
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([])

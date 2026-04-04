@@ -11,6 +11,7 @@
  */
 
 import type NDK from '@nostr-dev-kit/ndk'
+import type { NDKEvent } from '@nostr-dev-kit/ndk'
 import {
   parseBookmarkEvent,
   serializeBookmarksToEvent,
@@ -283,12 +284,17 @@ export async function initializeBookmarks(
       _cache.migrationPending = false
     }
   } else {
+    _cache.marketEventIds = []
+    _cache.nostrEventId = null
+    _cache.migrationPending = false
     _cache.source = 'none'
   }
 
   // Process pending publishes AFTER merge logic (retry or publish if online)
+  // Pass nostrCreatedAt so stale pending entries (older than the Nostr event) are skipped.
+  const nostrCreatedAt = nostrList?.createdAt
   if (pubkey) {
-    await processPendingPublishes(pubkey, ndk)
+    await processPendingPublishes(pubkey, ndk, nostrCreatedAt)
   }
 
   notifyCacheListeners()
@@ -301,11 +307,20 @@ export async function initializeBookmarks(
 async function processPendingPublishes(
   pubkey: string,
   ndk: NDK | null,
+  nostrCreatedAt?: number,
 ): Promise<void> {
   const pending = getPendingPublishes()
   const entry = pending.find((p) => p.pubkey === pubkey)
 
   if (!entry) return
+
+  // Guard: only process pending if it is newer than the existing Nostr event.
+  // This prevents stale local state from overwriting newer remote data.
+  if (nostrCreatedAt !== undefined && entry.createdAt <= nostrCreatedAt) {
+    console.info('Bookmark publish: pending is stale, skipping')
+    removePendingPublish(pubkey)
+    return
+  }
 
   // Max 3 retries per entry
   if (entry.retries >= 3) {
@@ -343,7 +358,7 @@ async function publishBookmarksEvent(
   _pubkey: string,
   marketEventIds: string[],
   ndk: NDK,
-): Promise<void> {
+): Promise<NDKEvent> {
   if (!ndk.signer) {
     throw new Error(
       'No signer available — cannot publish bookmarks in read-only mode',
@@ -353,7 +368,7 @@ async function publishBookmarksEvent(
   const { content, tags } = serializeBookmarksToEvent(marketEventIds)
 
   // Publish via nostrService (which throws on failure)
-  await publishEvent(content, tags, 10003)
+  return publishEvent(content, tags, 10003)
 }
 
 // ---------------------------------------------------------------------------
@@ -392,11 +407,14 @@ export function addBookmark(
   // Queue Nostr publish if authenticated
   if (pubkey && ndk) {
     addPendingPublish(pubkey, _cache.marketEventIds)
-    // Fire async publish (do not await—return immediately)
-    publishBookmarksEvent(pubkey, _cache.marketEventIds, ndk).catch((err) => {
-      console.warn('Background bookmark publish failed:', err)
-      // Entry stays in pending for retry
-    })
+    // Fire async publish; remove pending entry only after success to avoid
+    // clobbering newer Nostr data if publish is slow or fails.
+    publishBookmarksEvent(pubkey, _cache.marketEventIds, ndk)
+      .then(() => removePendingPublish(pubkey))
+      .catch((err) => {
+        console.warn('Background bookmark publish failed:', err)
+        // Keep entry in pending for retry
+      })
   }
 
   notifyCacheListeners()
@@ -421,9 +439,12 @@ export function removeBookmark(
   // Queue Nostr publish if authenticated
   if (pubkey && ndk) {
     addPendingPublish(pubkey, _cache.marketEventIds)
-    publishBookmarksEvent(pubkey, _cache.marketEventIds, ndk).catch((err) => {
-      console.warn('Background bookmark publish failed:', err)
-    })
+    publishBookmarksEvent(pubkey, _cache.marketEventIds, ndk)
+      .then(() => removePendingPublish(pubkey))
+      .catch((err) => {
+        console.warn('Background bookmark publish failed:', err)
+        // Keep entry in pending for retry
+      })
   }
 
   notifyCacheListeners()

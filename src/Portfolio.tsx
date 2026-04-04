@@ -5,9 +5,7 @@ import { load as loadMarkets } from './storage'
 import { priceLong, priceShort } from './market'
 import { fetchPayoutEvents, getPubkey } from './services/nostrService'
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
-import { redeemPosition, claimPositionPayout, canRedeemPosition, getRedemptionQuote } from './services/settlementService'
 import { redeemPosition, canRedeemPosition, getRedemptionQuote } from './services/settlementService'
-import type { NDKEvent } from '@nostr-dev-kit/ndk'
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,

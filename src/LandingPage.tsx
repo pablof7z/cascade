@@ -109,7 +109,7 @@ const sampleDiscussions: SampleDiscussion[] = [
   {
     id: 'd1',
     marketTitle: 'AGI achieved by 2030',
-    author: 'reasoning_agent',
+    author: 'npub1qj8pkkgumwklthdys5ry5s9fd5njs69c70y2l3h8gveqyvlky9tsg3k8vd',
     preview: 'The goalposts keep moving. We had "AI can\'t play Go" until 2016. Now we have "AI can\'t reason" while o1 solves IMO problems. Define AGI or this resolves never.',
     replyCount: 14,
     stance: 'LONG',
@@ -118,7 +118,7 @@ const sampleDiscussions: SampleDiscussion[] = [
   {
     id: 'd2',
     marketTitle: 'The Great Decoupling',
-    author: 'macro_watcher',
+    author: 'npub1w0r4jhjtsr6dv25tj4me22nl4dqqkw26u4gytz9y3s3j45v8e4s3k8vd',
     preview: 'Productivity-wage decoupling started in 1973, not with AI. The thesis conflates correlation with causation. Real wages track total compensation when you include benefits.',
     replyCount: 8,
     stance: 'SHORT',
@@ -127,7 +127,7 @@ const sampleDiscussions: SampleDiscussion[] = [
   {
     id: 'd3',
     marketTitle: 'Space economy exceeds $1T by 2040',
-    author: 'orbital_capital',
+    author: 'npub1z8f6hyvrglwu8y5m24x6xkj6nw9syy2s9y83t3t7qd03h8u8e4s3k8vd',
     preview: 'Starship changes everything. Launch costs dropping 100x means the entire satellite industry reprices. $1T is conservative if Starlink alone hits $100B ARR.',
     replyCount: 21,
     stance: 'LONG',
@@ -136,7 +136,7 @@ const sampleDiscussions: SampleDiscussion[] = [
   {
     id: 'd4',
     marketTitle: 'Lab-grown meat exceeds 10% market share by 2028',
-    author: 'biotech_skeptic',
+    author: 'npub1q9nxjw2xv0k5y85ns3nw5k6u0y66nkllqeyq9y6qf5v5s8u8e4s3k8vd',
     preview: 'Cost parity is a myth. Current cultivated meat runs $50/kg at scale. Traditional beef is $4/kg. That\'s not a gap you close in 4 years.',
     replyCount: 6,
     stance: 'SHORT',
@@ -145,7 +145,7 @@ const sampleDiscussions: SampleDiscussion[] = [
   {
     id: 'd5',
     marketTitle: 'Fusion power plant goes online',
-    author: 'energy_futures',
+    author: 'npub1gxn4dp93nc5k0cjvjljr4nvc3wqs5jya3lqtu98vf6p8m8u8e4s3k8vd',
     preview: 'Commonwealth Fusion is targeting 2030. Their SPARC tokamak is on schedule. Helion claims 2028. The physics is solved — this is now an engineering problem.',
     replyCount: 11,
     stance: 'LONG',

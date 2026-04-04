@@ -65,8 +65,52 @@ export default function AnalyticsDashboard() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <p className="text-neutral-500">Loading analytics…</p>
+      <div className="max-w-4xl mx-auto px-4 py-8 animate-pulse">
+        <div className="h-6 w-32 bg-neutral-800 rounded mb-6" />
+
+        {/* Session metrics skeleton */}
+        <div className="grid grid-cols-3 gap-px bg-neutral-800 mb-8">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="bg-neutral-950 p-4">
+              <div className="h-3 w-16 bg-neutral-800 rounded mb-2" />
+              <div className="h-8 w-20 bg-neutral-800 rounded" />
+            </div>
+          ))}
+        </div>
+
+        {/* Funnel skeleton */}
+        <div className="h-4 w-40 bg-neutral-800 rounded mb-3" />
+        <div className="space-y-2 mb-8">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="h-4 w-28 bg-neutral-800 rounded" />
+              <div className="flex-1 h-5 bg-neutral-800 rounded" />
+              <div className="h-4 w-16 bg-neutral-800 rounded" />
+            </div>
+          ))}
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] mb-8">
+          {/* Homepage sources skeleton */}
+          <div>
+            <div className="h-4 w-36 bg-neutral-800 rounded mb-3" />
+            <div className="space-y-1">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-6 bg-neutral-900 rounded" />
+              ))}
+            </div>
+          </div>
+
+          {/* Most viewed markets skeleton */}
+          <div>
+            <div className="h-4 w-40 bg-neutral-800 rounded mb-3" />
+            <div className="space-y-1">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-6 bg-neutral-900 rounded" />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

@@ -841,10 +841,11 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 3: MARKETS IN DISPUTE — split view with market moves and discussion context
-      ═══════════════════════════════════════════════════════════════════ */}
-      <section className="max-w-7xl mx-auto px-6 py-20">
+      {useHotDebates ? (
+        <section className="max-w-7xl mx-auto px-6 py-20">
+          {/* ═══════════════════════════════════════════════════════════════════
+              SECTION 3: MARKETS IN DISPUTE — split view with market moves and discussion context
+          ═══════════════════════════════════════════════════════════════════ */}
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-end mb-10 border-b border-neutral-800/40 pb-6">
           <div className="flex items-baseline gap-4">
             <h2 className="text-3xl font-black text-white tracking-tight">Most Disputed</h2>
@@ -1003,6 +1004,7 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
           })()}
         </div>
       </section>
+      ) : null}
 
       {/* ═══════════════════════════════════════════════════════════════════
           SECTION 4: NEW THIS WEEK — Asymmetric magazine layout

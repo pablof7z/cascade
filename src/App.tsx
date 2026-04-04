@@ -71,7 +71,7 @@ import TestnetBanner from './components/TestnetBanner'
 import Footer from './components/Footer'
 import AnalyticsDashboard from './AnalyticsDashboard'
 import { initAnalytics, destroyAnalytics, trackPageView } from './analytics'
-import { loadOrCreateVault, getVaultPubkey } from './vaultStore'
+import { loadOrCreateVault } from './vaultStore'
 import { initResolutionService, resolveMarket } from './services/resolutionService'
 
 type ToastTone = 'good' | 'warn' | 'neutral'
@@ -582,7 +582,6 @@ function AppContent() {
     loadOrCreateVault()
       .then((ok) => {
         if (ok) {
-          console.log('[vault] Initialized. Pubkey:', getVaultPubkey())
         } else {
           console.warn('[vault] Initialization failed or wallet unavailable')
         }

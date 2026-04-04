@@ -52,7 +52,6 @@ export default function OnboardingSplit({ className = '' }: Props) {
         checkAvailability(cleanUsername)
       }
       if (profile.avatar) {
-        console.log('Setting avatar from Telegram:', profile.avatar)
         setAvatarPreview(profile.avatar)
       }
       setConnectedWith('telegram')

@@ -85,6 +85,7 @@ type Toast = {
 type State = {
   markets: Record<string, MarketEntry>
   toast?: Toast
+  marketsLoading: boolean
 }
 
 export type Action =
@@ -119,7 +120,7 @@ export type Action =
     }
   | { type: 'DELETE_MARKET'; marketId: string }
   | { type: 'CLEAR_TOAST' }
-  | { type: 'HYDRATE_FROM_NOSTR'; markets: Market[] }
+  | { type: 'HYDRATE_FROM_NOSTR'; markets: Market[]; marketsLoading?: boolean }
   | {
       type: 'SYNC_MARKET'
       marketId: string
@@ -195,6 +196,7 @@ function initState(): State {
   const persisted = load()
   return {
     markets: persisted ?? {},
+    marketsLoading: true,
   }
 }
 
@@ -362,7 +364,7 @@ function reducer(state: State, action: Action): State {
 
     case 'HYDRATE_FROM_NOSTR': {
       const merged = mergeLocalAndNostr(state.markets, action.markets)
-      return { ...state, markets: merged }
+      return { ...state, markets: merged, marketsLoading: action.marketsLoading ?? false }
     }
 
     case 'SYNC_MARKET': {
@@ -609,10 +611,11 @@ function AppContent() {
     if (!nostrReady) return
     fetchAllMarkets()
       .then((markets) => {
-        dispatch({ type: 'HYDRATE_FROM_NOSTR', markets })
+        dispatch({ type: 'HYDRATE_FROM_NOSTR', markets, marketsLoading: false })
       })
       .catch((err: unknown) => {
         console.warn('Nostr hydration failed:', err)
+        dispatch({ type: 'HYDRATE_FROM_NOSTR', markets: [], marketsLoading: false })
       })
   }, [nostrReady])
 
@@ -771,7 +774,7 @@ function AppContent() {
       <NavHeader />
       <main className="flex-1">
       <Routes>
-        <Route path="/" element={<LandingPage markets={state.markets} dispatch={handleDispatch} />} />
+        <Route path="/" element={<LandingPage markets={state.markets} dispatch={handleDispatch} isLoadingMarkets={state.marketsLoading} />} />
         <Route
           path="/market/:slug"
           element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} activeTab="overview" />}

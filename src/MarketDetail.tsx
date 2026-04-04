@@ -347,6 +347,10 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
                 RESOLVED {market.resolutionOutcome}
               </span>
             )}
+            <span className="flex items-center gap-1 text-xs text-emerald-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live
+            </span>
             <BookmarkButton
               isBookmarked={isBookmarked(market.slug)}
               count={getCount(market.slug)}

@@ -45,6 +45,7 @@ const ProfilePage: React.FC = () => {
   const [positions, setPositions] = useState<Position[]>([]);
   const [loadingMarkets, setLoadingMarkets] = useState(true);
   const [loadingPositions, setLoadingPositions] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [activeTab, setActiveTab] = useState<"markets" | "positions">("markets");
 
@@ -79,6 +80,7 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     if (!normalizedPubkey || !ndkInstance) return;
 
+    setLoadingProfile(true);
     fetchKind0Metadata(ndkInstance, normalizedPubkey).then((metadata) => {
       if (metadata) {
         setProfile({
@@ -102,6 +104,7 @@ const ProfilePage: React.FC = () => {
           nip05: "",
         });
       }
+      setLoadingProfile(false);
     });
   }, [normalizedPubkey, ndkInstance]);
 
@@ -183,11 +186,17 @@ const ProfilePage: React.FC = () => {
       {/* Profile Header */}
       <div className="px-6 py-8 border-b border-neutral-800">
         <div className="flex gap-6">
-          <UserAvatar pubkey={normalizedPubkey} size="lg" />
+          {loadingProfile ? (
+            <div className="w-24 h-24 bg-neutral-800 rounded-sm animate-pulse" />
+          ) : (
+            <UserAvatar pubkey={normalizedPubkey} size="lg" />
+          )}
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-semibold">{profile?.name || "Unknown"}</h1>
-              {isOwnProfile && (
+              <h1 className="text-3xl font-semibold">
+                {loadingProfile ? "Loading..." : (profile?.name || "Unknown")}
+              </h1>
+              {isOwnProfile && !loadingProfile && (
                 <button
                   onClick={() => setShowEditModal(true)}
                   className="text-sm font-medium px-3 py-1 border border-neutral-600 rounded-sm hover:border-white transition"

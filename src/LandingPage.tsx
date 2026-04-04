@@ -307,9 +307,10 @@ function TradesTicker({ trades }: { trades: typeof sampleTrades }) {
 type Props = {
   markets: Record<string, MarketEntry>
   dispatch: Dispatch<Action>
+  isLoadingMarkets?: boolean
 }
 
-export default function LandingPage({ markets, dispatch }: Props) {
+export default function LandingPage({ markets, dispatch, isLoadingMarkets: _isLoadingMarkets }: Props) {
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -565,6 +566,13 @@ export default function LandingPage({ markets, dispatch }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Syncing indicator */}
+      {_isLoadingMarkets && (
+        <div className="max-w-7xl mx-auto px-6 py-3">
+          <p className="text-xs text-neutral-500">Syncing markets…</p>
+        </div>
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════════
           SECTION 1: TRENDING MARKETS — Sidebar layout

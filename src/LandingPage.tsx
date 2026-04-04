@@ -575,10 +575,16 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets: _isLo
                     if (existingEntry) {
                       navigateFromHomepage('featured_thesis', existingEntry)
                     } else {
-                      trackHomepageEngagement('featured_thesis', 'market', 'featured-great-decoupling')
+                      const slug = `${featuredThesis.type}-${featuredThesis.title
+                        .toLowerCase()
+                        .replace(/[^a-z0-9\s-]/g, '')
+                        .trim()
+                        .replace(/\s+/g, '-')
+                        .replace(/-+/g, '-')}`
+                      trackHomepageEngagement('featured_thesis', 'market', slug)
                       dispatch({
                         type: 'CREATE_MARKET',
-                        id: 'featured-great-decoupling',
+                        id: slug,
                         title: featuredThesis.title,
                         description: featuredThesis.description,
                         seedWithUser: false,

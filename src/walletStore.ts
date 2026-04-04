@@ -2,7 +2,7 @@ import NDK, { NDKPrivateKeySigner, NDKKind } from '@nostr-dev-kit/ndk'
 import { NDKCashuWallet, NDKCashuDeposit } from '@nostr-dev-kit/wallet'
 import { loadStoredKeys } from './nostrKeys'
 
-const DEFAULT_MINT = 'https://mint.minibits.cash/Bitcoin'
+const DEFAULT_MINT = import.meta.env.VITE_CASHU_MINT_URL || 'https://mint.minibits.cash/Bitcoin'
 const WALLET_RELAYS = ['wss://relay.damus.io', 'wss://relay.primal.net', 'wss://nos.lol']
 
 let ndkInstance: NDK | null = null

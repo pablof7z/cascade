@@ -95,7 +95,7 @@ const sampleModules: SampleMarketSpec[] = [
   },
 ]
 
-type SampleDiscussion = {
+type Discussion = {
   id: string
   marketTitle: string
   author: string
@@ -104,54 +104,6 @@ type SampleDiscussion = {
   stance: 'LONG' | 'SHORT' | null
   timestamp: string
 }
-
-const sampleDiscussions: SampleDiscussion[] = [
-  {
-    id: 'd1',
-    marketTitle: 'AGI achieved by 2030',
-    author: 'npub1qj8pkkgumwklthdys5ry5s9fd5njs69c70y2l3h8gveqyvlky9tsg3k8vd',
-    preview: 'The goalposts keep moving. We had "AI can\'t play Go" until 2016. Now we have "AI can\'t reason" while o1 solves IMO problems. Define AGI or this resolves never.',
-    replyCount: 14,
-    stance: 'LONG',
-    timestamp: '2h ago',
-  },
-  {
-    id: 'd2',
-    marketTitle: 'The Great Decoupling',
-    author: 'npub1w0r4jhjtsr6dv25tj4me22nl4dqqkw26u4gytz9y3s3j45v8e4s3k8vd',
-    preview: 'Productivity-wage decoupling started in 1973, not with AI. The thesis conflates correlation with causation. Real wages track total compensation when you include benefits.',
-    replyCount: 8,
-    stance: 'SHORT',
-    timestamp: '4h ago',
-  },
-  {
-    id: 'd3',
-    marketTitle: 'Space economy exceeds $1T by 2040',
-    author: 'npub1z8f6hyvrglwu8y5m24x6xkj6nw9syy2s9y83t3t7qd03h8u8e4s3k8vd',
-    preview: 'Starship changes everything. Launch costs dropping 100x means the entire satellite industry reprices. $1T is conservative if Starlink alone hits $100B ARR.',
-    replyCount: 21,
-    stance: 'LONG',
-    timestamp: '6h ago',
-  },
-  {
-    id: 'd4',
-    marketTitle: 'Lab-grown meat exceeds 10% market share by 2028',
-    author: 'npub1q9nxjw2xv0k5y85ns3nw5k6u0y66nkllqeyq9y6qf5v5s8u8e4s3k8vd',
-    preview: 'Cost parity is a myth. Current cultivated meat runs $50/kg at scale. Traditional beef is $4/kg. That\'s not a gap you close in 4 years.',
-    replyCount: 6,
-    stance: 'SHORT',
-    timestamp: '8h ago',
-  },
-  {
-    id: 'd5',
-    marketTitle: 'Fusion power plant goes online',
-    author: 'npub1gxn4dp93nc5k0cjvjljr4nvc3wqs5jya3lqtu98vf6p8m8u8e4s3k8vd',
-    preview: 'Commonwealth Fusion is targeting 2030. Their SPARC tokamak is on schedule. Helion claims 2028. The physics is solved — this is now an engineering problem.',
-    replyCount: 11,
-    stance: 'LONG',
-    timestamp: '12h ago',
-  },
-]
 
 const sampleTheses: SampleMarketSpec[] = [
   {
@@ -217,7 +169,7 @@ function normalizeText(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 }
 
-function getRelatedDiscussions(discussions: SampleDiscussion[], title: string, limit = 2) {
+function getRelatedDiscussions(discussions: Discussion[], title: string, limit = 2) {
   const normalizedTitle = normalizeText(title)
 
   return discussions.filter((discussion) => {
@@ -285,7 +237,7 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
   const [showCreateModal, setShowCreateModal] = useState(false)
 
   // State for real discussions from Nostr
-  const [discussions, setDiscussions] = useState<SampleDiscussion[]>([])
+  const [discussions, setDiscussions] = useState<Discussion[]>([])
   const [discussionsLoading, setDiscussionsLoading] = useState(false)
 
   // Filter archived markets — only show active/resolved
@@ -330,7 +282,7 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
 
     async function loadDiscussions() {
       try {
-        const allDiscussions: SampleDiscussion[] = []
+        const allDiscussions: Discussion[] = []
 
         // Fetch discussions for each hot debate market (limit to 5 for performance)
         const marketsToFetch = hotDebates.slice(0, 5)
@@ -462,7 +414,7 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
 
   function openHomepageDiscussion(
     source: 'most_disputed_discussion' | 'latest_discussion',
-    discussion: SampleDiscussion,
+    discussion: Discussion,
   ) {
     const matchingEntry = Object.values(markets).find((entry) => entry.market.title === discussion.marketTitle)
     const spec = sampleMarketBank.find((market) => market.title === discussion.marketTitle)
@@ -492,24 +444,6 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
 
   const featuredProbability = featuredEntry ? deriveMarketMetrics(featuredEntry.market).longPositionShare : 0.5
 
-  // Sample data for sections when real markets are sparse
-  const trendingSample = [
-    { title: 'AGI achieved by 2030', prob: 0.42, change: +0.12, volume: '$18.2K', trades: 847 },
-    { title: 'First Mars landing with crew by 2035', prob: 0.35, change: +0.05, volume: '$12.1K', trades: 523 },
-    { title: 'China GDP surpasses US', prob: 0.55, change: -0.04, volume: '$9.8K', trades: 412 },
-    { title: 'Fusion power plant goes online', prob: 0.28, change: -0.08, volume: '$7.4K', trades: 289 },
-    { title: 'Lab-grown meat exceeds 10% market share by 2028', prob: 0.15, change: +0.03, volume: '$5.1K', trades: 194 },
-  ]
-
-  const pinkSheetSample = [
-    { title: 'Arctic ice-free summer by 2030', prob: 0.18, change: +0.06, volume: '$340', mcap: '$1.2K', category: 'Climate' },
-    { title: 'Brain-computer interface reaches 1M users', prob: 0.22, change: -0.02, volume: '$180', mcap: '$890', category: 'Biotech' },
-    { title: 'US implements UBI pilot program', prob: 0.31, change: +0.11, volume: '$95', mcap: '$620', category: 'Governance' },
-    { title: 'Climate migration reshapes global politics', prob: 0.44, change: +0.03, volume: '$72', mcap: '$410', category: 'Climate' },
-    { title: 'Biological longevity escape velocity achieved', prob: 0.12, change: -0.01, volume: '$55', mcap: '$280', category: 'Biotech' },
-    { title: 'Quantum supremacy in drug discovery', prob: 0.08, change: +0.02, volume: '$38', mcap: '$150', category: 'Tech' },
-  ]
-
   const newThisWeekSample = [
     { title: 'Quantum error correction milestone by 2027', category: 'Tech', prob: 0.33, timeAgo: '2h ago' },
     { title: 'EU passes comprehensive AI regulation', category: 'Governance', prob: 0.71, timeAgo: '5h ago' },
@@ -521,11 +455,8 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
     { title: 'India becomes world\'s 3rd largest economy', category: 'Geopolitics', prob: 0.62, timeAgo: '5d ago' },
   ]
 
-  // Use real data when available, fall back to sample
-  const useTrending = trendingMarkets.length >= 3 ? trendingMarkets : null
-  const usePinkSheet = pinkSheetMarkets.length >= 3 ? pinkSheetMarkets : null
-  const useHotDebates = hotDebates.length >= 3 ? hotDebates : null
   const useNewThisWeek = newThisWeek.length >= 3 ? newThisWeek : null
+  const useHotDebates = hotDebates.length >= 3 ? hotDebates : null
 
   return (
     <div className="min-h-screen bg-neutral-950">
@@ -645,8 +576,8 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
           {/* Left — Dominant market */}
           <div className="lg:col-span-5 lg:pr-12 lg:border-r border-neutral-800/50 pb-8 lg:pb-0">
             {(() => {
-              if (useTrending && useTrending[0]) {
-                const entry = useTrending[0]
+              if (trendingMarkets.length > 0) {
+                const entry = trendingMarkets[0]
                 const metrics = deriveMarketMetrics(entry.market)
                 return (
                   <div
@@ -691,28 +622,9 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
                   </div>
                 )
               }
-              // Fallback sample
-              const item = trendingSample[0]
+              // Empty state
               return (
-                <div className="cursor-pointer group">
-                  <span className="text-xs text-emerald-500 uppercase tracking-[0.15em] font-medium">#1 by volume</span>
-                  <h3 className="text-2xl md:text-3xl font-bold text-white mt-2 mb-4 group-hover:text-emerald-400 transition-colors leading-snug">
-                    {item.title}
-                  </h3>
-                  <div className="flex items-baseline gap-3 mb-3">
-                    <span className="text-5xl font-black text-emerald-500 tabular-nums">
-                      {Math.round(item.prob * 100)}¢
-                    </span>
-                    <span className={`text-sm ${item.change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                      {item.change >= 0 ? '+' : ''}{Math.round(item.change * 100)}%
-                    </span>
-                    <Sparkline data={[30, 32, 35, 38, 40, 42]} positive={item.change >= 0} size="large" />
-                  </div>
-                  <div className="flex gap-6 text-sm text-neutral-500">
-                    <span>{item.volume} vol</span>
-                    <span>{item.trades} trades</span>
-                  </div>
-                </div>
+                <div className="text-sm text-neutral-500 italic">No trending markets yet</div>
               )
             })()}
           </div>
@@ -720,37 +632,32 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
           {/* Right — Compact ranked list */}
           <div className="lg:col-span-7 lg:pl-12">
             <div className="space-y-0">
-              {(useTrending ? useTrending.slice(1) : trendingSample.slice(1)).map((item, i) => {
-                const isReal = useTrending && 'market' in item
-                const entry = item as MarketEntry
-                const sample = item as typeof trendingSample[0]
-                const marketTitle = isReal ? entry.market.title : sample.title
-                const prob = isReal ? deriveMarketMetrics(entry.market).longPositionShare : sample.prob
-                const change = isReal ? 0.05 : sample.change
-                const vol = isReal ? formatCurrency(entry.market.reserve) : sample.volume
+              {trendingMarkets.slice(1).map((entry, i) => {
+                const metrics = deriveMarketMetrics(entry.market)
+                const prob = metrics.longPositionShare
 
                 return (
                   <div
-                    key={marketTitle}
+                    key={entry.market.slug}
                     className="flex items-center gap-4 py-3 border-b border-neutral-800/30 last:border-0 cursor-pointer hover:bg-neutral-900/30 -mx-2 px-2 transition-colors"
-                    onClick={() => isReal ? navigateToMarket(entry) : undefined}
+                    onClick={() => navigateToMarket(entry)}
                   >
                     <span className="text-2xl font-black text-neutral-700 w-8 tabular-nums">{i + 2}</span>
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium text-white truncate block">{marketTitle}</span>
+                      <span className="text-sm font-medium text-white truncate block">{entry.market.title}</span>
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
                       <Sparkline
                         data={[30 + i * 3, 32 + i * 2, 35 + i, 38, 40 - i, Math.round(prob * 100)]}
-                        positive={change >= 0}
+                        positive={prob > 0.5}
                       />
                       <span className="text-sm font-mono font-bold text-white w-12 text-right tabular-nums">
                         {Math.round(prob * 100)}¢
                       </span>
-                      <span className={`text-xs font-mono w-12 text-right tabular-nums ${change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {change >= 0 ? '▲' : '▼'}{Math.abs(Math.round(change * 100))}%
+                      <span className="text-xs font-mono w-12 text-right tabular-nums text-neutral-500">
+                        +0%
                       </span>
-                      <span className="text-xs text-neutral-600 w-16 text-right hidden sm:block">{vol}</span>
+                      <span className="text-xs text-neutral-600 w-16 text-right hidden sm:block">{formatCurrency(entry.market.reserve)}</span>
                     </div>
                   </div>
                 )
@@ -797,48 +704,47 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
           </div>
 
           {/* Table rows */}
-          {(usePinkSheet
-            ? usePinkSheet.map(entry => {
-                const metrics = deriveMarketMetrics(entry.market)
-                return {
-                  title: entry.market.title,
-                  prob: metrics.longPositionShare,
-                  change: 0.03,
-                  volume: formatCurrency(entry.market.reserve * 0.3),
-                  mcap: formatCurrency(entry.market.reserve),
-                  category: getSampleSpec(entry.market.title)?.category || '',
-                  entry,
-                }
-              })
-            : pinkSheetSample.map(s => ({ ...s, entry: null as MarketEntry | null }))
-          ).map((row, i) => (
-            <div
-              key={row.title}
-              className={`grid grid-cols-12 gap-2 px-3 py-3 text-sm cursor-pointer transition-colors hover:bg-neutral-800/30 ${
-                i % 2 === 0 ? 'bg-neutral-800/10' : ''
-              }`}
-              onClick={() => row.entry ? navigateToMarket(row.entry) : undefined}
-            >
-              <div className="col-span-5 sm:col-span-4 flex items-center gap-2 min-w-0">
-                <span className="text-[10px] text-neutral-600 uppercase tracking-wider shrink-0">{row.category}</span>
-                <span className="text-white truncate font-medium">{row.title}</span>
+          {pinkSheetMarkets.length === 0 ? (
+            <div className="text-sm text-neutral-500 italic py-4">No markets in this category yet</div>
+          ) : (
+            pinkSheetMarkets.map(entry => {
+              const metrics = deriveMarketMetrics(entry.market)
+              return {
+                title: entry.market.title,
+                prob: metrics.longPositionShare,
+                change: 0,
+                volume: formatCurrency(entry.market.reserve * 0.3),
+                mcap: formatCurrency(entry.market.reserve),
+                category: getSampleSpec(entry.market.title)?.category || '',
+                entry,
+              }
+            }).map((row, i) => (
+              <div
+                key={row.entry.market.slug}
+                className={`grid grid-cols-12 gap-2 px-3 py-3 text-sm cursor-pointer transition-colors hover:bg-neutral-800/30 ${
+                  i % 2 === 0 ? 'bg-neutral-800/10' : ''
+                }`}
+                onClick={() => navigateToMarket(row.entry)}
+              >
+                <div className="col-span-5 sm:col-span-4 flex items-center gap-2 min-w-0">
+                  <span className="text-[10px] text-neutral-600 uppercase tracking-wider shrink-0">{row.category}</span>
+                  <span className="text-white truncate font-medium">{row.title}</span>
+                </div>
+                <div className="col-span-2 text-right font-mono font-bold text-neutral-200 tabular-nums">
+                  {Math.round(row.prob * 100)}¢
+                </div>
+                <div className="col-span-2 text-right font-mono tabular-nums hidden sm:block text-neutral-500">
+                  --
+                </div>
+                <div className="col-span-2 text-right font-mono text-neutral-500 tabular-nums hidden md:block">
+                  {row.volume}
+                </div>
+                <div className="col-span-3 sm:col-span-2 text-right font-mono text-neutral-400 tabular-nums">
+                  {row.mcap}
+                </div>
               </div>
-              <div className="col-span-2 text-right font-mono font-bold text-neutral-200 tabular-nums">
-                {Math.round(row.prob * 100)}¢
-              </div>
-              <div className={`col-span-2 text-right font-mono tabular-nums hidden sm:block ${
-                row.change >= 0 ? 'text-emerald-500' : 'text-rose-500'
-              }`}>
-                {row.change >= 0 ? '+' : ''}{(row.change * 100).toFixed(1)}%
-              </div>
-              <div className="col-span-2 text-right font-mono text-neutral-500 tabular-nums hidden md:block">
-                {row.volume}
-              </div>
-              <div className="col-span-3 sm:col-span-2 text-right font-mono text-neutral-400 tabular-nums">
-                {row.mcap}
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
 
@@ -1164,7 +1070,7 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
             {discussionsLoading ? (
               <div className="text-sm text-neutral-600 py-4">Syncing discussions...</div>
             ) : (
-              (discussions.length > 0 ? discussions : sampleDiscussions).map(discussion => {
+              discussions.map(discussion => {
               const matchingEntry = Object.values(markets).find(
                 e => e.market.title === discussion.marketTitle
               )

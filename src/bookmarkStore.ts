@@ -88,10 +88,6 @@ const _cache: BookmarkCache = {
 
 const _listeners: Set<() => void> = new Set()
 
-// Sequence counter for pending publishes — guarantees uniqueness even for
-// multiple publishes in the same second (avoids race condition with timestamps).
-let _pendingPublishSeq = 0
-
 // ---------------------------------------------------------------------------
 // Observer Pattern
 // ---------------------------------------------------------------------------
@@ -178,7 +174,7 @@ function addPendingPublish(pubkey: string, marketEventIds: string[]): void {
   const entry: PendingBookmarkPublish = {
     pubkey,
     marketEventIds,
-    createdAt: ++_pendingPublishSeq,
+    createdAt: Math.floor(Date.now() / 1000),
     retries: 0,
   }
   if (index >= 0) {
@@ -294,6 +290,8 @@ export async function initializeBookmarks(
       _cache.migrationPending = false
     }
   } else {
+    // Guard: if user switched during fetch, discard stale data
+    if (_cache.pubkey !== initiatingPubkey) return
     _cache.marketEventIds = []
     _cache.nostrEventId = null
     _cache.migrationPending = false
@@ -302,6 +300,8 @@ export async function initializeBookmarks(
 
   // Process pending publishes AFTER merge logic (retry or publish if online)
   // Pass nostrCreatedAt so stale pending entries (older than the Nostr event) are skipped.
+  // Guard: if user switched during fetch, skip processing stale pending entries.
+  if (_cache.pubkey !== initiatingPubkey) return
   const nostrCreatedAt = nostrList?.createdAt
   if (pubkey) {
     await processPendingPublishes(pubkey, ndk, nostrCreatedAt)
@@ -417,10 +417,18 @@ export function addBookmark(
   // Queue Nostr publish if authenticated
   if (pubkey && ndk) {
     addPendingPublish(pubkey, _cache.marketEventIds)
-    // Fire async publish; remove pending entry only after success to avoid
-    // clobbering newer Nostr data if publish is slow or fails.
+    // Capture the createdAt of our pending entry before the async publish fires.
+    // This prevents race conditions: if another add/remove fires before our publish
+    // succeeds, we won't accidentally remove the newer pending entry.
+    const pendingEntry = getPendingPublishes().find((p) => p.pubkey === pubkey)
+    const ourCreatedAt = pendingEntry?.createdAt
     publishBookmarksEvent(pubkey, _cache.marketEventIds, ndk)
-      .then(() => removePendingPublish(pubkey))
+      .then(() => {
+        const current = getPendingPublishes().find((p) => p.pubkey === pubkey)
+        if (current && current.createdAt === ourCreatedAt) {
+          removePendingPublish(pubkey)
+        }
+      })
       .catch((err) => {
         console.warn('Background bookmark publish failed:', err)
         // Keep entry in pending for retry

@@ -581,8 +581,7 @@ function AppContent() {
     initResolutionService()
     loadOrCreateVault()
       .then((ok) => {
-        if (ok) {
-        } else {
+        if (!ok) {
           console.warn('[vault] Initialization failed or wallet unavailable')
         }
       })

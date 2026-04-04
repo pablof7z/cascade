@@ -865,10 +865,8 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
                     title: entry.market.title,
                     yes,
                     traders: entry.market.quotes.length,
-                    comments: Math.floor(entry.market.quotes.length * 1.5),
+                    comments: discussionContext.reduce((sum, d) => sum + d.replyCount, 0),
                     spread: Math.abs(yes - 50),
-                    volume: formatCurrency(entry.market.reserve * 0.3),
-                    marketCap: formatCurrency(entry.market.reserve),
                     chart: [
                       Math.max(1, yes - 9),
                       Math.max(1, yes - 5),
@@ -919,7 +917,6 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
                           </h3>
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-xs text-neutral-500">
                             <span>{debate.traders} traders</span>
-                            <span>{debate.marketCap} market cap</span>
                             <span className="text-neutral-400">NO {no}%</span>
                           </div>
                         </div>
@@ -934,10 +931,6 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
 
                         <div className="text-right font-mono text-xs text-neutral-500 tabular-nums pt-0.5">
                           {debate.spread}pt
-                        </div>
-
-                        <div className="text-right font-mono text-xs text-neutral-500 tabular-nums pt-0.5 hidden sm:block">
-                          {debate.volume}
                         </div>
                       </button>
                     )

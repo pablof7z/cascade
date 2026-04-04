@@ -63,8 +63,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const lines = valid.map((e) => JSON.stringify(e)).join('\n') + '\n'
     await fs.appendFile(storePath, lines, 'utf-8')
   } catch (err) {
-    console.error('Analytics write error:', err)
-    return res.status(500).json({ error: 'Failed to store events' })
+    // Gracefully degrade when filesystem is unavailable (e.g., Vercel serverless)
+    console.error('Analytics write error (non-critical):', err)
+    return res.status(204).end()
   }
 
   return res.status(204).end()

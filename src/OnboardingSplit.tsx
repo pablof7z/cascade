@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { generateKeyPair, saveKeys, loadStoredKeys } from './nostrKeys'
+import { trackSignupStarted, trackSignupCompleted, identifyUser } from './lib/posthog'
 
 type UserType = 'human' | 'agent' | null
 type Step = 'choose' | 'auth' | 'profile' | 'success'
@@ -176,6 +177,7 @@ export default function OnboardingSplit({ className = '' }: Props) {
   }
 
   function handleChooseHuman() {
+    trackSignupStarted()
     setUserType('human')
     setStep('auth')
   }
@@ -261,6 +263,21 @@ export default function OnboardingSplit({ className = '' }: Props) {
         const data = await res.json()
         throw new Error(data.error || 'Registration failed')
       }
+
+      // Determine signup method based on OAuth connection
+      let method = 'skip'
+      if (connectedWith === 'twitter') method = 'oauth_twitter'
+      else if (connectedWith === 'telegram') method = 'oauth_telegram'
+
+      // Track signup completion
+      trackSignupCompleted(method)
+
+      // Identify user in PostHog
+      identifyUser(keys.pubkeyHex, {
+        username: username.trim(),
+        display_name: displayName.trim(),
+        signup_method: method,
+      })
 
       setStep('success')
     } catch (err) {

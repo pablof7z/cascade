@@ -12,6 +12,7 @@ import { useBookmarks } from './useBookmarks'
 import MarketTabsShell, { type MarketTabKey } from './MarketTabsShell'
 import { MarketDiscussionPanel, type DiscussionThread } from './DiscussPage'
 import { trackDiscussionInteraction, trackMarketView, trackTradePlaced } from './analytics'
+import { trackFirstTradeStarted, trackFirstTradeCompleted } from './lib/posthog'
 import { getPositionsForMarket, type Position } from './positionStore'
 import { useNostr } from './context/NostrContext'
 import { useTestnet } from './testnetConfig'
@@ -319,6 +320,12 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
       }
 
       // Dispatch the market state update
+      // Track first trade started (only once)
+      if (!localStorage.getItem('_cascade_first_trade_started')) {
+        localStorage.setItem('_cascade_first_trade_started', '1')
+        trackFirstTradeStarted()
+      }
+
       dispatch({
         type: 'TRADE',
         marketId: market.slug,
@@ -330,6 +337,12 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
 
       setPositions(getPositionsForMarket(market.slug))
       trackTradePlaced(market.slug, side, amount)
+      
+      // Track first trade completed (only once)
+      if (!localStorage.getItem('_cascade_first_trade_completed')) {
+        localStorage.setItem('_cascade_first_trade_completed', '1')
+        trackFirstTradeCompleted(market.slug, side, amount)
+      }
     } finally {
       setTradeLoading(false)
     }

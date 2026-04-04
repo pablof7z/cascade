@@ -71,6 +71,7 @@ import TestnetBanner from './components/TestnetBanner'
 import Footer from './components/Footer'
 import AnalyticsDashboard from './AnalyticsDashboard'
 import { initAnalytics, destroyAnalytics, trackPageView } from './analytics'
+import { initPosthog, trackPageView as posthogTrackPageView } from './lib/posthog'
 import { loadOrCreateVault } from './vaultStore'
 import { initResolutionService, resolveMarket } from './services/resolutionService'
 
@@ -574,6 +575,7 @@ function AppContent() {
 
   useEffect(() => {
     initAnalytics()
+    initPosthog()
     return () => destroyAnalytics()
   }, [])
 
@@ -592,6 +594,7 @@ function AppContent() {
 
   useEffect(() => {
     trackPageView(location.pathname)
+    posthogTrackPageView(location.pathname)
   }, [location.pathname])
 
   useEffect(() => {

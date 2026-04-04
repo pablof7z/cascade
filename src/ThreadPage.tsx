@@ -140,9 +140,9 @@ function ReplyThread({
       <div className="py-3">
         <div className="flex items-center gap-3 mb-2">
           <VoteButtons upvotes={reply.upvotes} downvotes={reply.downvotes} eventId={reply.id} authorPubkey={reply.pubkey} marketId={marketId} />
-          <span className={`text-sm font-medium ${reply.isAgent ? 'text-amber-500' : 'text-neutral-300'}`}>
+          <span className={`text-sm font-medium ${reply.isAgent ? 'text-emerald-400' : 'text-neutral-300'}`}>
             {reply.author}
-            {reply.isAgent && <span className="ml-1 text-xs text-amber-600">[agent]</span>}
+            {reply.isAgent && <span className="ml-1 text-xs text-emerald-600">[agent]</span>}
           </span>
           <span className="text-xs text-neutral-600">{formatTimeAgo(reply.timestamp)}</span>
           {reply.replies.length > 0 && (
@@ -264,9 +264,9 @@ function OriginalPost({
           
           {/* Author line */}
           <div className="flex items-center gap-2 mb-4 text-sm">
-            <span className={`font-medium ${thread.isAgent ? 'text-amber-500' : 'text-neutral-300'}`}>
+            <span className={`font-medium ${thread.isAgent ? 'text-emerald-400' : 'text-neutral-300'}`}>
               {thread.author}
-              {thread.isAgent && <span className="ml-1 text-xs text-amber-600">[agent]</span>}
+              {thread.isAgent && <span className="ml-1 text-xs text-emerald-600">[agent]</span>}
             </span>
             <span className="text-neutral-700">•</span>
             <span className="text-neutral-500">{formatTimeAgo(thread.timestamp)}</span>

@@ -58,7 +58,8 @@ interface LegacyBookmarkData {
 interface PendingBookmarkPublish {
   pubkey: string
   marketEventIds: string[]
-  createdAt: number
+  createdAt: number // epoch seconds — used for stale-vs-Nostr comparison
+  seq: number // monotonic counter — used as in-flight guard token
   retries: number
 }
 
@@ -87,6 +88,9 @@ const _cache: BookmarkCache = {
 }
 
 const _listeners: Set<() => void> = new Set()
+
+// Monotonic sequence counter for in-flight publish guard
+let _pendingPublishSeq = 0
 
 // ---------------------------------------------------------------------------
 // Observer Pattern
@@ -175,6 +179,7 @@ function addPendingPublish(pubkey: string, marketEventIds: string[]): void {
     pubkey,
     marketEventIds,
     createdAt: Math.floor(Date.now() / 1000),
+    seq: ++_pendingPublishSeq,
     retries: 0,
   }
   if (index >= 0) {
@@ -304,9 +309,11 @@ export async function initializeBookmarks(
   if (_cache.pubkey !== initiatingPubkey) return
   const nostrCreatedAt = nostrList?.createdAt
   if (pubkey) {
-    await processPendingPublishes(pubkey, ndk, nostrCreatedAt)
+    await processPendingPublishes(pubkey, ndk, nostrCreatedAt, initiatingPubkey ?? undefined)
   }
 
+  // Guard: re-check pubkey before notifying to avoid emitting stale notifications.
+  if (_cache.pubkey !== initiatingPubkey) return
   notifyCacheListeners()
 }
 
@@ -318,6 +325,7 @@ async function processPendingPublishes(
   pubkey: string,
   ndk: NDK | null,
   nostrCreatedAt?: number,
+  initiatingPubkey?: string,
 ): Promise<void> {
   const pending = getPendingPublishes()
   const entry = pending.find((p) => p.pubkey === pubkey)
@@ -344,6 +352,11 @@ async function processPendingPublishes(
 
   try {
     await publishBookmarksEvent(pubkey, entry.marketEventIds, ndk)
+    // Guard: if user switched during publish, skip cache mutations to avoid
+    // clearing stale data for the current user.
+    if (initiatingPubkey !== undefined && _cache.pubkey !== initiatingPubkey) {
+      return
+    }
     removePendingPublish(pubkey)
     setMigrationFlag(pubkey, true)
     _cache.migrationPending = false
@@ -417,15 +430,15 @@ export function addBookmark(
   // Queue Nostr publish if authenticated
   if (pubkey && ndk) {
     addPendingPublish(pubkey, _cache.marketEventIds)
-    // Capture the createdAt of our pending entry before the async publish fires.
+    // Capture the monotonic seq of our pending entry before the async publish fires.
     // This prevents race conditions: if another add/remove fires before our publish
     // succeeds, we won't accidentally remove the newer pending entry.
     const pendingEntry = getPendingPublishes().find((p) => p.pubkey === pubkey)
-    const ourCreatedAt = pendingEntry?.createdAt
+    const ourSeq = pendingEntry?.seq
     publishBookmarksEvent(pubkey, _cache.marketEventIds, ndk)
       .then(() => {
         const current = getPendingPublishes().find((p) => p.pubkey === pubkey)
-        if (current && current.createdAt === ourCreatedAt) {
+        if (current && current.seq === ourSeq) {
           removePendingPublish(pubkey)
         }
       })
@@ -457,15 +470,15 @@ export function removeBookmark(
   // Queue Nostr publish if authenticated
   if (pubkey && ndk) {
     addPendingPublish(pubkey, _cache.marketEventIds)
-    // Capture the createdAt of our pending entry before the async publish fires.
+    // Capture the monotonic seq of our pending entry before the async publish fires.
     // This prevents race conditions: if another add/remove fires before our publish
     // succeeds, we won't accidentally remove the newer pending entry.
     const pendingEntry = getPendingPublishes().find((p) => p.pubkey === pubkey)
-    const ourCreatedAt = pendingEntry?.createdAt
+    const ourSeq = pendingEntry?.seq
     publishBookmarksEvent(pubkey, _cache.marketEventIds, ndk)
       .then(() => {
         const current = getPendingPublishes().find((p) => p.pubkey === pubkey)
-        if (current && current.createdAt === ourCreatedAt) {
+        if (current && current.seq === ourSeq) {
           removePendingPublish(pubkey)
         }
       })

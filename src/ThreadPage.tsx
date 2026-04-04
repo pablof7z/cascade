@@ -281,7 +281,7 @@ function OriginalPost({
           {thread.evidence && thread.evidence.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {thread.evidence.map((e, i) => (
-                <span key={i} className="text-xs text-blue-400 bg-blue-950/30 px-2 py-1">
+                <span key={i} className="text-xs text-neutral-400 bg-neutral-800 px-2 py-1">
                   📎 {e}
                 </span>
               ))}

@@ -1,1016 +1,1763 @@
-# React-to-Svelte Full Port — Comprehensive Porting Strategy
+# React-to-Svelte 5 + SvelteKit Port
 
 ## Executive Summary
 
-Cascade is a React 19 + react-router-dom application with 45+ TSX components, custom Vite middleware for agent/analytics APIs, NDK 3.0.3 for Nostr integration, and localStorage-backed service layer. This plan outlines a **phased, incremental port to SvelteKit + Svelte 5**, migrating components in dependency order (simple → complex), enabling **concurrent React/Svelte routing during transition**, and removing React only after Phase 4 completes. The migration preserves all pure TS services (marketService, nostrService, positionService, etc.) and reuses Tailwind + NDK without modification.
+Cascade will transition from React 19 + Vite to Svelte 5 + SvelteKit while maintaining backward compatibility during transition. This phased approach ports 41 TSX components across 5 phases, reusing all vanilla TypeScript services (14 services, no React dependencies). API routes migrate from Vite middleware to SvelteKit `src/routes/api/`, and NDK integration transitions from `useNostr()` hook pattern to Svelte stores + `setContext/getContext`. Services, state utilities, and Nostr integration remain unchanged. React and Svelte pages coexist via dual-route strategy (React pages on `/legacy/*`, Svelte on `/`). Full React removal occurs after Phase 4 completion.
 
----
+## Context
+
+### Current Architecture
+- **Framework:** React 19 + React Router 7 + Vite
+- **Components:** 41 TSX files (26 pages, 11 components, 14 services, 5 stores, 1 hook, 8 utils)
+- **State:** React Context (NostrContext) + localStorage stores (profileStore, walletStore, positionStore, bookmarkStore)
+- **APIs:** 13 routes in Vite middleware (vite.config.ts:33–222), handling agent directory, analytics, market data
+- **Styling:** Tailwind CSS v4 via @tailwindcss/vite plugin
+- **Deployment:** Vercel, custom serverless functions in `api/` directory
+- **Testing:** Vitest + React Testing Library
+- **Build:** `tsc -b && vite build` → static HTML served by Vercel
+
+### Why Port to Svelte
+1. **Smaller bundle:** Svelte compiles away the framework; React remains; eliminates ~45KB gzipped overhead post-port
+2. **Reactivity model:** Svelte's `$state` and `$derived` runes simplify Nostr subscription state management vs React hooks
+3. **SvelteKit SSR:** Unified TypeScript server/client colocation, built-in API routes, edge function compatibility with Vercel Adapter
+4. **File-based routing:** Eliminates React Router dependency, 100% type-safe route matching
+5. **Better DX:** Scoped styling, two-way binding, less boilerplate for form state
+
+### Key Constraints
+- **Services are vanilla TS:** All 14 services (nostrService, marketService, positionService, etc.) have zero React dependencies and will be reused as-is
+- **Tailwind v4 works:** SvelteKit's Vite base supports @tailwindcss/vite without changes
+- **TipTap has no official Svelte wrapper:** Custom wrapper needed (minimal, ~40 lines)
+- **lightweight-charts community package:** svelte-lightweight-charts exists but unmaintained; use vanilla API via Svelte actions
+- **NDK Svelte integration:** @nostr-dev-kit/svelte provides Svelte stores; NostrContext pattern maps cleanly to `setContext/getContext`
+- **Dual-serving:** During phases 1–4, React pages remain at `/legacy/*`, Svelte pages at `/`. After Phase 4, remove React layer.
 
 ## Approach
 
-### Why SvelteKit + Svelte 5?
+### Phasing Strategy
 
-1. **File-based routing** — replaces react-router-dom with SvelteKit's `src/routes/` structure; eliminates manual route config
-2. **Reactive stores** — replaces React Context with Svelte stores (`writable`, `derived`); eliminates useContext/Context boilerplate
-3. **Form actions** — SvelteKit's `+page.server.ts` replaces useEffect + fetch patterns for data loading
-4. **Incremental adoption** — SvelteKit can wrap the entire app; React routes coexist during transition
-5. **Smaller bundle** — Svelte compiles to minimal JS; React removal saves ~50KB gzipped
+**Phase 1 (Proof of Concept):** Validate Svelte + SvelteKit + NDK integration with 4 loading-state components. Proves subscription patterns, store integration, and Nostr event handling. Success = all 4 POC components fetch and display Nostr data correctly.
 
-### Why This Approach Over Alternatives
+**Phase 2 (Stateless Foundation):** Port 10 simple display components (no forms, no complex state). Validates component patterns, styling consistency, test setup. Success = all 10 render correctly, pass accessibility checks.
 
-| Approach | Rejection Reason |
-|----------|------------------|
-| **Parallel build** (React + Svelte as separate bundles) | Increases build complexity, duplication, requires routing glue layer. File-based routing coexistence is simpler. |
-| **Incremental Component Rewrite** (no routing change) | Keeps react-router-dom; doesn't leverage SvelteKit's strengths; no bundle size wins; mixing paradigms is awkward. |
-| **Micro-frontends** (isolate Svelte in iframe) | Overkill; adds iframes, context bridge complexity; defeats purpose of single app. |
-| **Complete rewrite** (all at once) | Risky; blocks shipping; high breakage surface. Phased approach lets us ship working pages incrementally. |
+**Phase 3 (Medium Complexity):** Port 6 components with routing, charts, and light state. Validates form handling, chart integration, route transitions. Success = routes work, data flows correctly, performance meets baseline.
 
-### Strategy Summary
+**Phase 4 (Complex Features):** Port remaining 5 pages (ThesisBuilder, TiptapEditor, Wallet, App.tsx, routing orchestration) + all 13 API routes. Validates form state, TipTap wrapper, dependency injection, full feature parity. Success = all pages functional, API routes fully migrated.
 
-1. **Phase 1 (PoC)**: Port 4 isolated pages (Activity, AnalyticsDashboard, ProfilePage, ThreadPage) → establish Svelte + SvelteKit patterns, store structure, NDK integration
-2. **Phase 2 (Simple pages)**: Port static/low-state pages (LandingPage, HowItWorks, LegalPages, NotFoundPage) → confidence + coverage
-3. **Phase 3 (Routing/Params)**: Port pages with route parameters and derived state (MarketDetail, Portfolio, Leaderboard) → handle dynamic routing in SvelteKit
-4. **Phase 4 (Complex)**: Port App.tsx routing orchestration, state machine (reducer), WalletPage, ThesisBuilder → full app interactivity
-5. **Phase 5 (Polish)**: Nav, styling alignment, bundle optimization, remove React completely
+**Phase 5 (Polish & Removal):** Accessibility audit, performance tuning, React layer removal, deployment validation.
 
-**During transition (Phases 1–4):**
-- SvelteKit is the primary build system and router
-- SvelteKit's fallback routes (`+page.svelte`) serve React pages at their original URLs
-- Routing between old (React) and new (Svelte) pages works seamlessly
-- No user-facing disruption; gradual migration
+### Why This Phasing
+1. **Phase 1 de-risks:** If Svelte + NDK subscriptions fail, no investment in other phases
+2. **Phase 2 establishes patterns:** Simple components show the "Svelte way" without noise
+3. **Phase 3 integrates routing + state:** Validates form state and route transitions early
+4. **Phase 4 unblocks shipping:** All features available; Phase 5 is pure polish
+5. **No waterfall:** Phases 1 & 2 can run in parallel with SvelteKit setup (Phase 0)
+
+### Dual-Route Strategy During Transition
+
+During phases 1–4, both React and Svelte pages serve simultaneously:
+
+```
+/                      → SvelteKit (Svelte pages)
+/legacy/*              → React Router (backward compatibility)
+/api/*                 → SvelteKit server routes (new), fallback to Vite middleware (old)
+```
+
+**Routing Logic (src/routes/+page.server.ts):**
+- SvelteKit `+page.svelte` files act as primary routes
+- Old React routes remain in React Router within `/legacy` layout
+- Shared layout components (NavHeader, Footer) initially imported into both, later unified
 
 **After Phase 4:**
-- Remove react, react-dom, react-router-dom, @vitejs/plugin-react from package.json
-- Delete src/context/, src/App.tsx, all React component files
-- Clean up Vite config (remove @vitejs/plugin-react)
+1. Remove `/legacy` routes
+2. Remove React dependencies from package.json
+3. Update build to SvelteKit only
+4. Validation: smoke tests, E2E on Vercel staging
 
----
+## File Changes
 
-## Phased Breakdown with Dependencies
+### Phase 0: SvelteKit Setup (Parallel)
 
-### Phase 1: Proof of Concept (4 pages)
+#### `svelte.config.js`
+- **Action:** Create
+- **What:** SvelteKit config with Vercel adapter, Tailwind v4 integration, TypeScript preprocessing
+- **Why:** Entry point for SvelteKit build system; Vercel adapter handles serverless deployment
 
-**Pages to port:** Activity, AnalyticsDashboard, ProfilePage, ThreadPage
+#### `src/routes/+layout.svelte`
+- **Action:** Create
+- **What:** Root layout component with NavHeader, Footer, global styles, Nostr context setup
+- **Why:** Shared layout for all Svelte pages; provides Nostr state to entire app via setContext
 
-**Why these?**
-- **Activity.tsx**: Bulk fetches events, renders list with filters; no route params; establishes fetch + list pattern
-- **AnalyticsDashboard.tsx**: Minimal state, simple fetch + render; uses /api/analytics (custom middleware endpoint)
-- **ProfilePage.tsx**: Uses route params (pubkey), normalizes npub/hex, fetches Kind 0 + positions; establishes load() function + params pattern
-- **ThreadPage.tsx**: Nested replies, subscriptions, optimistic updates; establishes subscription + reactive updates pattern
+#### `src/routes/+page.svelte`
+- **Action:** Create
+- **What:** Landing page (temporary redirect or wrapper until Phase 3 routing complete)
+- **Why:** Root route entry point
 
-**Deliverables:**
-- `svelte.config.js` (new)
-- `src/routes/+layout.svelte` (top-level layout wrapping all pages)
-- `src/routes/activity/+page.svelte` + `+page.ts`
-- `src/routes/analytics/+page.svelte` + `+page.ts`
-- `src/routes/profile/[pubkey]/+page.svelte` + `+page.ts`
-- `src/routes/threads/[id]/+page.svelte` + `+page.ts`
-- `src/lib/stores/nostr.ts` (Nostr context → Svelte store; replaces NostrContext.tsx)
-- `src/lib/stores/ui.ts` (UI state store; replaces scattered useState calls)
-- Updated `vite.config.ts` → `vite.config.js` (SvelteKit standard)
-- Migrate `/api/analytics` and `/api/agent` Vite plugins to SvelteKit `src/routes/api/` routes
+#### `src/lib/stores/nostr.ts`
+- **Action:** Create
+- **What:** Svelte stores for Nostr state: `pubkey`, `ndkInstance`, `isReady`, subscription handlers, managed subscription cleanup
+- **Why:** Replaces NostrContext; provides reactive state to all components via Svelte's rune syntax. Stores are global and simpler than setContext; no dual state system needed.
+- **Subscription Cleanup Pattern:** Implement `createManagedSubscription()` helper to prevent memory leaks:
+  ```typescript
+  import { writable } from 'svelte/store'
+  import type { NDKSubscription } from '@nostr-dev-kit/ndk'
 
-**Blockers & Decisions:**
-- **SvelteKit adapter**: Use `adapter-auto` for dev (automatic, works with Vite dev server). For production, use `adapter-node` (Node.js runtime, handles /api/* routes)
-- **@nostr-dev-kit/svelte**: Check if v3.0.3 has Svelte bindings. If not, create wrapper stores around NDK instance.
+  // Global registry to track and cleanup subscriptions
+  const subscriptions = new Map<string, NDKSubscription>()
 
----
-
-### Phase 2: Simple Pages (5 pages)
-
-**Pages to port:** HowItWorks, LandingPage, LegalPages, NotFoundPage, Blog
-
-**Why?**
-- No route params (except NotFoundPage as catch-all)
-- Minimal state (mostly static renders)
-- No subscriptions
-- Quick wins; builds confidence
-
-**Dependencies:** Phase 1 complete (stores, routing patterns established)
-
-**Changes:**
-- `src/routes/how-it-works/+page.svelte`
-- `src/routes/legal/[type]/+page.svelte` (LegalPages as parameterized route)
-- `src/routes/blog/+page.svelte`
-- `src/routes/+error.svelte` (NotFoundPage; SvelteKit 404 handler)
-
----
-
-### Phase 3: Dynamic Routing & Params (5 pages)
-
-**Pages to port:** MarketDetail, AgentsPage, Portfolio, Leaderboard, SettingsPage
-
-**Why?**
-- Dynamic route params: `/market/[id]`, `/agents/[agentId]`, `/portfolio/[pubkey]`
-- Derived state from route + store
-- Load functions with fetch + cache
-- Error handling for invalid params
-
-**Dependencies:** Phase 1 & 2 complete
-
-**Changes:**
-- `src/routes/market/[id]/+page.svelte` + `+page.ts`
-- `src/routes/agents/[id]/+page.svelte` + `+page.ts`
-- `src/routes/portfolio/[pubkey]/+page.svelte` + `+page.ts`
-- `src/routes/leaderboard/+page.svelte` + `+page.ts`
-- `src/routes/settings/+page.svelte` + `+page.ts`
-
----
-
-### Phase 4: Complex State & Interactivity (5 pages + App orchestration)
-
-**Pages to port:** App.tsx (router orchestration), WalletPage, ThesisBuilder, DashboardOverview, TreasuryPage
-
-**Why App.tsx is critical:**
-- Manages global market state (`useReducer` → Svelte store with reducer functions)
-- Toast notifications (action → store)
-- Market subscriptions & syncing
-- Publishing, trading, resolution
-
-**Why these pages?**
-- **WalletPage**: Form input, wallet state mutations
-- **ThesisBuilder**: Rich form, editor (TipTap), complex state
-- **DashboardOverview**: Market overview with subscriptions
-- **TreasuryPage**: Finance calculations
-
-**Dependencies:** Phase 1, 2, 3 complete
-
-**Changes:**
-- `src/lib/stores/market.ts` (App.tsx reducer → writable store with update functions)
-- `src/lib/stores/toast.ts` (toast notifications)
-- `src/routes/+layout.svelte` (root layout with toast renderer)
-- `src/routes/wallet/+page.svelte` + `+page.ts`
-- `src/routes/create/+page.svelte` + `+page.ts` (ThesisBuilder)
-- `src/routes/dashboard/+page.svelte` + `+page.ts`
-- `src/routes/treasury/+page.svelte` + `+page.ts`
-- Delete `src/App.tsx`, `src/context/NostrContext.tsx`
-
-**Routing changes:**
-- Remove react-router-dom; replace with SvelteKit file-based routing
-- All navigation: `navigate()` → `goto()` or `<a href="/path">`
-
----
-
-### Phase 5: Polish & Optimization
-
-**Tasks:**
-- Migrate NavHeader component (shared across all pages)
-- Verify Tailwind 4.2.2 compatibility with Svelte 5
-- Update `tailwind.config.js` to include Svelte file patterns: `"./src/**/*.{js,ts,jsx,tsx,svelte}"`
-- Unit tests: Vitest continues; add Vitest + SvelteKit integration
-- E2E tests: Playwright (add or update existing)
-- Remove React dependencies entirely
-- Bundle optimization: analyze with `vite-plugin-visualizer`
-- Accessibility audit: test with axe-core or Lighthouse
-- Performance testing: Lighthouse, Core Web Vitals
-
----
-
-## SvelteKit Setup Instructions
-
-### 1. Install Dependencies
-
-```bash
-npm install -D svelte @sveltejs/kit @sveltejs/adapter-auto
-npm install @nostr-dev-kit/svelte  # Check if exists; if not, wrap NDK manually
-```
-
-### 2. Create `svelte.config.js`
-
-```javascript
-import adapter from '@sveltejs/adapter-auto';
-
-export default {
-  kit: {
-    adapter: adapter(),
-    // Use adapter-node for production with /api/* routes
-    // adapter: adapter({ out: 'build', precompress: true })
-  },
-};
-```
-
-For production, switch to `adapter-node`:
-
-```javascript
-import adapter from '@sveltejs/adapter-node';
-
-export default {
-  kit: {
-    adapter: adapter({
-      out: 'build',
-      precompress: false,
-    }),
-  },
-};
-```
-
-### 3. Migrate Vite Config
-
-**Current:** `vite.config.ts` with React plugin + custom middleware
-**Goal:** `vite.config.js` with SvelteKit integration
-
-SvelteKit automatically uses its own Vite config. Custom `vite.config.js` is optional but can extend it:
-
-```javascript
-import { defineConfig } from 'vite';
-import { sveltekit } from '@sveltejs/kit/vite';
-
-export default defineConfig({
-  plugins: [sveltekit()],
-  define: {
-    __COMMIT_HASH__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'dev'),
-  },
-});
-```
-
-**Custom API plugins** (agentApiPlugin, analyticsApiPlugin) are no longer needed in dev because they move to SvelteKit routes. In production, keep them as **SvelteKit API routes** (`src/routes/api/+server.ts`).
-
-### 4. Create SvelteKit Routes Directory
-
-```
-src/
-├── routes/
-│   ├── +layout.svelte         # Root layout (header, toast)
-│   ├── +layout.ts             # Root load function (auth, init)
-│   ├── +error.svelte          # Error page (404, 500)
-│   ├── +page.svelte           # Home page (landing)
-│   ├── api/
-│   │   ├── agent/
-│   │   │   └── +server.ts     # /api/agent/* endpoints
-│   │   └── analytics/
-│   │       └── +server.ts     # /api/analytics endpoints
-│   ├── activity/
-│   │   ├── +page.svelte
-│   │   └── +page.ts
-│   ├── analytics/
-│   │   ├── +page.svelte
-│   │   └── +page.ts
-│   ├── profile/
-│   │   └── [pubkey]/
-│   │       ├── +page.svelte
-│   │       └── +page.ts
-│   ├── market/
-│   │   └── [id]/
-│   │       ├── +page.svelte
-│   │       └── +page.ts
-│   └── ... (other routes)
-└── lib/
-    └── stores/
-        ├── nostr.ts       # Replaces NostrContext
-        ├── ui.ts          # UI state
-        ├── market.ts      # Market state (from App.tsx reducer)
-        └── toast.ts       # Toast notifications
-```
-
-### 5. Update `tailwind.config.js`
-
-```javascript
-export default {
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx,svelte}",  // Add .svelte
-  ],
-  theme: { /* ... */ },
-  plugins: [],
-};
-```
-
-### 6. Update `tsconfig.json`
-
-SvelteKit auto-generates TypeScript config. Update to reference it:
-
-```json
-{
-  "extends": "./.svelte-kit/tsconfig.json",
-  "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "resolveJsonModule": true,
-    "allowJs": true,
-    "noEmit": true,
-  },
-  "include": ["src"]
-}
-```
-
-### 7. Migrate `package.json` Scripts
-
-```json
-{
-  "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "preview": "vite preview",
-    "lint": "eslint .",
-    "test": "vitest",
-    "test:run": "vitest --run",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
-    "check": "svelte-kit sync && tsc"
+  export function createManagedSubscription(id: string, sub: NDKSubscription) {
+    subscriptions.set(id, sub)
+    return () => {
+      sub.stop()
+      subscriptions.delete(id)
+    }
   }
-}
-```
 
----
+  export function cleanupAllSubscriptions() {
+    for (const sub of subscriptions.values()) {
+      sub.stop()
+    }
+    subscriptions.clear()
+  }
+  ```
+- **Usage in components:** Call `createManagedSubscription()` in a `$effect` and return the cleanup function to auto-stop subscriptions
 
-## Store Migration Guide: Context → Svelte Stores
+#### `src/lib/utils/nostr-init.ts`
+- **Action:** Create
+- **What:** Server-side initialization function (not a component) that initializes nostrService and populates stores. Replaces NostrContext.svelte.
+- **Why:** Stores provide global state; dual state (stores + context) is unnecessary complexity. Initialize in `src/routes/+layout.ts` load function instead:
+  ```typescript
+  import { initNostrService, getNDK, getPubkey } from '$lib/services/nostrService'
+  import { pubkey, ndkInstance, isReady } from '$lib/stores/nostr'
 
-### Current Pattern (React Context)
-
-```typescript
-// src/context/NostrContext.tsx
-const NostrContext = createContext<NostrContextValue | null>(null);
-
-export function NostrContextProvider({ children }) {
-  const [pubkey, setPubkey] = useState<string | null>(null);
-  const [isReady, setIsReady] = useState(false);
-  // ...
-  return <NostrContext.Provider value={value}>{children}</NostrContext.Provider>;
-}
-
-// Usage in components
-const { pubkey, ndkInstance } = useNostr();
-```
-
-### New Pattern (Svelte Stores)
-
-```typescript
-// src/lib/stores/nostr.ts
-import { writable, readable, derived } from 'svelte/store';
-import type NDK from '@nostr-dev-kit/ndk';
-
-interface NostrState {
-  pubkey: string | null;
-  isReady: boolean;
-  ndkInstance: NDK | null;
-}
-
-const initialState: NostrState = {
-  pubkey: null,
-  isReady: false,
-  ndkInstance: null,
-};
-
-export const nostr = writable<NostrState>(initialState);
-
-// Derived store for convenience
-export const pubkey = derived(nostr, ($nostr) => $nostr.pubkey);
-export const isReady = derived(nostr, ($nostr) => $nostr.isReady);
-
-// Initialization function (call in +layout.ts)
-export async function initializeNostr(testnet: boolean) {
-  const relayUrls = testnet
-    ? ['wss://relay.nostr.band', 'wss://nos.lol']
-    : ['wss://nostr.wine', 'wss://nos.lol'];
-  
-  const ndk = await initNostrService(relayUrls);
-  nostr.set({
-    pubkey: getPubkey(),
-    isReady: true,
-    ndkInstance: ndk,
-  });
-}
-
-// Update function
-export function setNDK(ndkInstance: NDK) {
-  nostr.update((state) => ({ ...state, ndkInstance }));
-}
-```
-
-### Usage in Svelte Components
-
-```svelte
-<!-- src/routes/activity/+page.svelte -->
-<script lang="ts">
-  import { nostr } from '$lib/stores/nostr';
-
-  let items = [];
-  let loading = true;
-
-  onMount(async () => {
-    const ndk = $nostr.ndkInstance;
-    if (!ndk) return;
+  export const load = async () => {
+    const relayUrls = import.meta.env.PUBLIC_TESTNET === 'true' 
+      ? ['wss://relay.nostr.band', 'wss://nos.lol']
+      : ['wss://nostr.wine', 'wss://nos.lol']
     
-    items = await fetchActivityItems(ndk);
-    loading = false;
-  });
-</script>
-
-{#if loading}
-  <p>Loading...</p>
-{:else}
-  {#each items as item (item.id)}
-    <div>{item.title}</div>
-  {/each}
-{/if}
-```
-
-### Reactive Derived Stores (Replace useCallback + useMemo)
-
-```typescript
-// src/lib/stores/market.ts
-import { writable, derived } from 'svelte/store';
-
-export const markets = writable<Record<string, Market>>({});
-
-// Derived: markets with calculated metrics
-export const marketsWithMetrics = derived(markets, ($markets) =>
-  Object.entries($markets).map(([id, market]) => ({
-    ...market,
-    priceLong: priceLong(market.qLong, market.qShort, market.b),
-  }))
-);
-
-// Usage in component
-import { marketsWithMetrics } from '$lib/stores/market';
-
-// In Svelte component:
-// {#each $marketsWithMetrics as market (market.id)}
-//   <div>{market.priceLong}</div>
-// {/each}
-```
-
-### Async Data Loading (Replace useEffect + fetch)
-
-**Old pattern (React):**
-```typescript
-useEffect(() => {
-  setLoading(true);
-  fetch('/api/analytics/summary')
-    .then((r) => r.json())
-    .then(setSummary)
-    .catch(setError)
-    .finally(() => setLoading(false));
-}, []);
-```
-
-**New pattern (SvelteKit):**
-```typescript
-// src/routes/analytics/+page.ts
-export async function load({ fetch }) {
-  const response = await fetch('/api/analytics/summary');
-  if (!response.ok) throw error(500, 'Failed to load analytics');
-  
-  return {
-    summary: await response.json(),
-  };
-}
-```
-
-```svelte
-<!-- src/routes/analytics/+page.svelte -->
-<script lang="ts">
-  import type { PageData } from './$types';
-  
-  export let data: PageData;
-</script>
-
-<div>
-  <p>Daily Active: {data.summary.dailyActiveSessions}</p>
-</div>
-```
-
----
-
-## Coexistence Implementation: Concurrent React + Svelte Routing
-
-### How It Works
-
-1. **SkeliteKit is the primary router** — all requests go through `src/routes/`
-2. **React pages are served as fallback** — unmigrated React pages remain in `src/` and are bundled with the app
-3. **Routing glue** — SvelteKit routes for new pages; React pages accessible via wildcard routes
-4. **No rebuild needed** — React/Svelte coexist in the same bundle
-
-### Implementation
-
-#### Option A: Vite Dev Adapter (Simplest)
-
-Use SkeliteKit's `adapter-auto` in dev (automatically serves React fallback via Vite plugin).
-
-**Setup:**
-1. SkeliteKit routes are created first (`src/routes/activity/+page.svelte`, etc.)
-2. React App.tsx remains; routes not yet ported fall back to React's router
-3. In dev, navigating to an unmigrated route triggers Vite's React plugin
-
-**Limitation:** Only works in dev with `vite dev`. For production, requires different approach.
-
-#### Option B: Explicit Fallback Route (Production-Ready)
-
-Create a catch-all SkeliteKit route that renders the React app for unmigrated paths.
-
-**File: `src/routes/[...slug]/+page.svelte`**
-```svelte
-<script lang="ts">
-  import { browser } from '$app/environment';
-  import ReactApp from './ReactApp.svelte';
-  
-  // This route catches all unmigrated paths
-  // Renders React App which uses its own router
-</script>
-
-<ReactApp />
-```
-
-**File: `src/routes/[...slug]/ReactApp.svelte`**
-```svelte
-<script lang="ts">
-  import { onMount } from 'svelte';
-  
-  let AppComponent: any;
-  let appContainer: HTMLDivElement;
-  
-  onMount(async () => {
-    // Dynamically import and render React App
-    const { default: App } = await import('../../App');
-    const root = ReactDOM.createRoot(appContainer);
-    root.render(<App />);
-    
-    return () => root.unmount();
-  });
-</script>
-
-<div bind:this={appContainer} />
-```
-
-**Advantage:** Seamless fallback; old routes work as-is.
-**Disadvantage:** Doubles bundle size (React + Svelte); increases complexity.
-
-#### Option C: Planned Deprecation (Recommended)
-
-1. **Phase 1–3:** Port high-traffic pages first → most users hit Svelte routes
-2. **Phase 4:** Port remaining complex pages and App.tsx
-3. **Phase 5:** Delete React entirely
-
-During Phase 1–4, keep React in bundle but mark old routes as "legacy" (redirect prompts or deprecation notices). Once all pages are ported, delete React code.
-
-**Implementation:**
-- Create SkeliteKit routes incrementally
-- In `+layout.svelte`, detect old routes and show "this route is legacy" message (optional)
-- After Phase 4, delete src/App.tsx and fallback routes; remove React from package.json
-
----
-
-## File Migration Reference
-
-| Old File | New File | Type | Notes |
-|----------|----------|------|-------|
-| `src/Activity.tsx` | `src/routes/activity/+page.svelte` | Page | List + filters → reactive list |
-| `src/AnalyticsDashboard.tsx` | `src/routes/analytics/+page.svelte` | Page | Fetch in +page.ts → use load() |
-| `src/ProfilePage.tsx` | `src/routes/profile/[pubkey]/+page.svelte` | Page | Route param handling |
-| `src/ThreadPage.tsx` | `src/routes/threads/[id]/+page.svelte` | Page | Subscriptions → reactive store |
-| `src/LandingPage.tsx` | `src/routes/+page.svelte` | Page | Static render |
-| `src/HowItWorks.tsx` | `src/routes/how-it-works/+page.svelte` | Page | Static render |
-| `src/LegalPages.tsx` | `src/routes/legal/[type]/+page.svelte` | Page | Parameterized route |
-| `src/MarketDetail.tsx` | `src/routes/market/[id]/+page.svelte` | Page | Subscriptions + params |
-| `src/Portfolio.tsx` | `src/routes/portfolio/[pubkey]/+page.svelte` | Page | Derived state |
-| `src/WalletPage.tsx` | `src/routes/wallet/+page.svelte` | Page | Form submission |
-| `src/ThesisBuilder.tsx` | `src/routes/create/+page.svelte` | Page | Rich form + editor |
-| `src/App.tsx` | `src/lib/stores/market.ts` | Store | Reducer → store + functions |
-| `src/context/NostrContext.tsx` | `src/lib/stores/nostr.ts` | Store | Context → writable + derived |
-| `src/NavHeader.tsx` | `src/lib/components/NavHeader.svelte` | Component | Reusable nav component |
-| `src/components/*.tsx` | `src/lib/components/*.svelte` | Components | Straightforward conversion |
-
----
-
-## API Routes Migration
-
-### Current Setup (Vite Middleware)
-
-```typescript
-// vite.config.ts
-function agentApiPlugin() {
-  return {
-    name: 'cascade-agent-api-mock',
-    configureServer(server: ViteDevServer) {
-      server.middlewares.use((req, res, next) => {
-        if (req.url?.startsWith('/api/agent')) {
-          // Handle /api/agent/* requests
-        }
-      });
-    },
-  };
-}
-```
-
-### New Setup (SkeliteKit Routes)
-
-**File: `src/routes/api/agent/+server.ts`**
-```typescript
-import { json, error } from '@sveltejs/kit';
-import { listAgentMarkets, getAgentMarket } from '../../../agentDirectory';
-import type { RequestHandler } from './$types';
-
-export const GET: RequestHandler = async ({ url }) => {
-  const pathname = new URL(url).pathname;
-
-  if (pathname === '/api/agent/markets') {
-    const markets = listAgentMarkets({
-      kind: url.searchParams.get('kind') || undefined,
-      // ... other params
-    });
-    return json({ data: markets, meta: { count: markets.length } });
+    await initNostrService(relayUrls)
+    pubkey.set(getPubkey())
+    ndkInstance.set(getNDK())
+    isReady.set(true)
   }
+  ```
+- **Why:** SvelteKit +layout.ts load function runs once at app startup, perfect for initialization
 
-  if (pathname.startsWith('/api/agent/markets/')) {
-    const marketId = pathname.split('/').at(-1);
-    const data = getAgentMarket(marketId || '');
-    if (!data) return error(404, 'market not found');
-    return json({ data });
+#### `tsconfig.json`
+- **Action:** Modify
+- **What:** Add SvelteKit paths: `{ "$lib": "./src/lib" }`, `{ "$routes": "./src/routes" }`, update jsx to ts
+- **Why:** SvelteKit convention; enables clean imports
+
+#### `vite.config.ts`
+- **Action:** Delete (or archive)
+- **What:** Vite-specific config no longer needed; SvelteKit has its own build system
+- **Why:** SvelteKit uses `svelte.config.js` for build config
+
+#### `package.json` - Dependencies
+- **Action:** Modify
+- **What:**
+  - **Add:** `svelte@5.x`, `@sveltejs/kit@2.x`, `@sveltejs/adapter-vercel@5.x`, `@nostr-dev-kit/svelte@latest`, `svelte-check@3.x`, `svelte-preprocess@5.x`
+  - **Remove:** `react@19.x`, `react-dom@19.x`, `react-router-dom@7.x`, `@vitejs/plugin-react@6.x`, `@tiptap/react@3.x`, `@types/react*`
+  - **Update:** `@tiptap/core`, `@tiptap/starter-kit`, `@tiptap/pm`, `@tiptap/extension-placeholder` (use core, not react)
+  - **Keep:** All NDK packages, services, Tailwind, PostHog, markdown-it, lightweight-charts
+- **Why:** Enables Svelte framework + removes React; TipTap shifts to core API
+
+#### `package.json` - Scripts
+- **Action:** Modify
+- **What:** Change build/dev/preview:
+  ```json
+  "dev": "vite dev",
+  "build": "svelte-check && vite build",
+  "preview": "vite preview"
+  ```
+- **Why:** SvelteKit's Vite integration replaces standalone Vite
+
+#### `.env.local`
+- **Action:** Verify
+- **What:** Ensure contains relay URLs, testnet flag (parsed in +layout.server.ts)
+- **Why:** Build-time config for relay selection
+
+#### `src/lib/utils/tiptap-wrapper.ts`
+- **Action:** Create
+- **What:** Helper class wrapping TipTap core API for Svelte component consumption:
+  ```typescript
+  import { Editor } from '@tiptap/core'
+  import Placeholder from '@tiptap/extension-placeholder'
+  import StarterKit from '@tiptap/starter-kit'
+  import { htmlToMarkdown, markdownToHtml } from './markdown'
+
+  export class TipTapEditor {
+    editor: Editor
+    constructor(element: HTMLElement, initialContent: string) {
+      this.editor = new Editor({
+        element,
+        extensions: [
+          StarterKit.configure({ heading: { levels: [2, 3] } }),
+          Placeholder.configure({ placeholder: 'Start writing...' }),
+        ],
+        content: markdownToHtml(initialContent),
+      })
+    }
+    getContent() { return htmlToMarkdown(this.editor.getHTML()) }
+    setContent(content: string) { this.editor.commands.setContent(markdownToHtml(content)) }
+    destroy() { this.editor.destroy() }
   }
+  ```
+- **Why:** TipTap core is DOM-based; wrapper provides clean interface for Svelte components
 
-  return error(404, 'unknown agent endpoint');
-};
-```
+#### `src/lib/utils/lightweight-charts-action.ts`
+- **Action:** Create
+- **What:** Svelte action for lightweight-charts integration with data update support:
+  ```typescript
+  import { createChart, type IChartApi, type ISeriesApi } from 'lightweight-charts'
 
-**File: `src/routes/api/analytics/+server.ts`**
-```typescript
-import { json, error } from '@sveltejs/kit';
-import { readFileSync, appendFileSync } from 'fs';
-import type { RequestHandler } from './$types';
+  export function chart(node: HTMLElement, options: any) {
+    const instance = createChart(node, options)
+    let series: ISeriesApi<'Line'> | null = null
 
-export const POST: RequestHandler = async ({ request }) => {
-  const events = await request.json();
-  if (!Array.isArray(events)) {
-    return error(400, 'expected array');
+    return {
+      update(newOptions: any) {
+        instance.applyOptions(newOptions)
+      },
+      // For updating chart data when reactive props change
+      setSeries(data: any[], config?: any) {
+        if (series) series.remove()
+        series = instance.addLineSeries(config || {})
+        series.setData(data)
+        instance.timeScale().fitContent()
+      },
+      destroy() {
+        instance.remove()
+      }
+    }
   }
+  ```
+- **Why:** Svelte actions provide lifecycle hooks for DOM manipulation; `update()` and `setSeries()` enable reactive data updates
 
-  // Write to JSONL file
-  const lines = events.map((e) => JSON.stringify(e)).join('\n') + '\n';
-  appendFileSync('data/analytics.jsonl', lines);
-
-  return new Response(null, { status: 204 });
-};
-
-export const GET: RequestHandler = async ({ url }) => {
-  if (url.pathname === '/api/analytics/summary') {
-    // Compute summary from JSONL
-    // ... (existing logic)
+#### `src/app.d.ts`
+- **Action:** Create
+- **What:** SvelteKit ambient types for app locals, page data:
+  ```typescript
+  declare global {
+    namespace App {
+      interface Locals {
+        pubkey?: string | null
+        ndkInstance?: NDK | null
+      }
+      interface PageData {
+        pubkey?: string | null
+      }
+    }
   }
-  return error(404, 'unknown analytics endpoint');
-};
-```
+  ```
+- **Why:** TypeScript support for SvelteKit's data flow
 
----
+### Phase 1: Proof of Concept (4 Files)
 
-## Testing Strategy During Transition
+#### `src/routes/activity/+page.svelte`
+- **Action:** Create (port Activity.tsx)
+- **What:** Rewrite Activity.tsx:
+  - Replace `useState/useEffect` with `$state` and `$effect`
+  - Replace `react-router` Link with SvelteKit `goto` or `<a>` tags
+  - Fetch via `fetchAllMarketsTransport`, `fetchAllPositions`, `parseMarketEvent` (reused services)
+  - Subscribe via `subscribeToEvents` from nostrService (no change needed)
+  - Bind filter state to reactive variable: `let filter: ActivityFilter = $state('All')`
+  - Use `#each` for loops instead of `.map()`
+- **Why:** First test of subscription + fetch + state management in Svelte
 
-### Unit Tests (Vitest continues as-is)
+#### `src/routes/activity/+page.server.ts`
+- **Action:** Create
+- **What:** Server-side data pre-fetch (optional; can defer to client load function):
+  ```typescript
+  import type { PageLoad } from './$types'
+  export const load: PageLoad = async ({ parent }) => {
+    const { pubkey, ndk } = await parent()
+    // Pre-fetch recent activity
+    return { initialData: [] }
+  }
+  ```
+- **Why:** Leverage SvelteKit's streaming; improves perceived performance
 
-Pure TS services remain unchanged:
-- `src/services/marketService.ts`
-- `src/services/nostrService.ts`
-- etc.
+#### `src/routes/analytics/+page.svelte`
+- **Action:** Create (port AnalyticsDashboard.tsx)
+- **What:** Rewrite AnalyticsDashboard.tsx:
+  - Replace hooks with `$state` for filters, chart data
+  - Replace `fetch()` call with `fetch('/api/analytics/summary')`
+  - Use Svelte action for chart rendering (lightweight-charts)
+  - Bind form inputs directly: `bind:value={filter.kind}`
+- **Why:** Tests data fetch from API + chart rendering
 
-No changes needed to existing `vitest.config.ts`. Tests pass through unchanged.
+#### `src/routes/profile/[pubkey]/+page.svelte`
+- **Action:** Create (port ProfilePage.tsx)
+- **What:** Rewrite ProfilePage.tsx:
+  - Accept `pubkey` from route params via `$page.params.pubkey`
+  - Fetch kind:0 metadata via `fetchEvents({ kinds: [0], authors: [pubkey] })`
+  - Fetch positions via `positionService.fetchPositions(ndk, pubkey)` (service reused)
+  - Subscribe to metadata updates via `subscribeToEvents`
+  - Render profile strip, credibility stats, positions grid
+- **Why:** Tests parameterized routing + multi-source data fetch
 
-### Integration Tests (Vitest + SvelteKit)
+#### `src/routes/thread/[marketId]/+page.svelte`
+- **Action:** Create (port ThreadPage.tsx)
+- **What:** Rewrite ThreadPage.tsx:
+  - Fetch market by ID via `fetchMarketByEventId`
+  - Subscribe to discussion events (kind 1111) via `subscribeToEvents`
+  - Render thread with live updates
+  - Handle reply submission via form action
+- **Why:** Tests live subscriptions + form submission
 
-For new Svelte components, add tests:
+**Phase 1 Success Criteria:**
+- All 4 pages load without errors
+- Nostr data fetches and displays correctly
+- Live subscriptions trigger reactivity
+- No React Console warnings
+- Lighthouse score ≥90
 
-```typescript
-// src/routes/activity/+page.test.ts
-import { render, screen } from '@testing-library/svelte';
-import Page from './+page.svelte';
+### Phase 2: Stateless Foundation (10 Files)
 
-describe('Activity page', () => {
-  it('renders loading state', () => {
-    render(Page, { props: { data: { items: [] } } });
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
-  });
-});
-```
+#### `src/routes/+layout.svelte` (Refinement)
+- **Action:** Modify
+- **What:** Add shared NavHeader, Footer, global styles, theme detection
+- **Why:** Refinement based on Phase 1 patterns
 
-### E2E Tests (Playwright)
+#### `src/lib/components/Footer.svelte`
+- **Action:** Create (port Footer.tsx)
+- **What:** Static footer with links, copyright
+- **Why:** No state; straightforward port
 
-Add Playwright tests for user flows:
+#### `src/lib/components/TestnetBanner.svelte`
+- **Action:** Create (port TestnetBanner.tsx)
+- **What:** Banner showing testnet status, derived from context store
+- **Why:** Tests context consumption
 
-```typescript
-// tests/activity.spec.ts
-import { test, expect } from '@playwright/test';
+#### `src/lib/components/UserAvatar.svelte`
+- **Action:** Create (port UserAvatar.tsx)
+- **What:** Avatar with deterministic color from pubkey, badge
+- **Why:** Reusable UI component
 
-test('Activity page filters work', async ({ page }) => {
-  await page.goto('/activity');
-  await expect(page).toHaveTitle('Cascade');
-  
-  const filter = page.getByRole('button', { name: /Trades/i });
-  await filter.click();
-  
-  // Verify filtered items appear
-});
-```
+#### `src/lib/components/BookmarkButton.svelte`
+- **Action:** Create (port BookmarkButton.tsx)
+- **What:** Button toggling bookmark state via bookmarkService, updates UI
+- **Why:** Tests store integration
 
-Install Playwright if not already present:
-```bash
-npm install -D @playwright/test
-npx playwright install
-```
+#### `src/lib/components/EmbedModal.svelte`
+- **Action:** Create (port EmbedModal.tsx)
+- **What:** Modal for embedding markets, copy-to-clipboard logic
+- **Why:** Tests modal patterns (using Svelte transitions)
 
----
+#### `src/routes/help/+page.svelte`
+- **Action:** Create (port HowItWorks.tsx)
+- **What:** Static help page with sections, images, links
+- **Why:** No state; pure presentation
+
+#### `src/routes/legal/privacy/+page.svelte`
+- **Action:** Create (port PrivacyPolicy.tsx from LegalPages.tsx)
+- **What:** Legal text rendered from markdown
+- **Why:** Tests markdown rendering
+
+#### `src/routes/legal/terms/+page.svelte`
+- **Action:** Create (port TermsOfService.tsx from LegalPages.tsx)
+- **What:** Legal text rendered from markdown
+- **Why:** Tests markdown rendering
+
+#### `src/routes/blog/+page.svelte`
+- **Action:** Create (port Blog.tsx)
+- **What:** List of blog posts, link to full posts
+- **Why:** Tests data listing
+
+**Phase 2 Success Criteria:**
+- All 10 components render correctly
+- No build warnings or TS errors
+- Styles match React versions pixel-perfectly
+- Accessibility: all interactive elements labeled, keyboard navigable
+
+### Phase 3: Medium Complexity (6 Files + Routing)
+
+#### `src/routes/market/[marketId]/+page.svelte`
+- **Action:** Create (port MarketDetail.tsx)
+- **What:**
+  - Fetch market by ID
+  - Render market info, price chart (via lightweight-charts action)
+  - Handle buy/sell form submission
+  - Live price updates via subscription
+- **Why:** Tests routing params + chart + form + subscriptions
+
+#### `src/routes/portfolio/+page.svelte`
+- **Action:** Create (port Portfolio.tsx)
+- **What:**
+  - Fetch user's positions via `positionService.fetchPositions(ndk, pubkey)`
+  - Calculate PnL via market service
+  - Render positions grid with charts
+  - Handle redemption
+- **Why:** Tests multi-data-source rendering + chart integration
+
+#### `src/routes/dashboard/+page.svelte`
+- **Action:** Create (port DashboardOverview.tsx)
+- **What:**
+  - Render market overview, recent activity, performance metrics
+  - Data aggregation from multiple services
+- **Why:** Tests data aggregation patterns
+
+#### `src/routes/discuss/+page.svelte`
+- **Action:** Create (port DiscussPage.tsx)
+- **What:**
+  - Render market discussions, sort/filter options
+  - Live updates to discussion threads
+- **Why:** Tests filtering + sorting + live data
+
+#### `src/routes/settings/+page.svelte`
+- **Action:** Create (port SettingsPage.tsx)
+- **What:**
+  - Profile settings form, profile picture upload, relay configuration
+  - Settings stored in profileStore (vanilla TS, reused)
+  - Form submission via POST /api/profile
+- **Why:** Tests form state + API submission
+
+#### `src/lib/components/MarketCard.svelte`
+- **Action:** Create (no direct React equivalent; extract from multiple pages)
+- **What:**
+  - Reusable market card component: title, price, 24h change, yes/no buttons
+  - Used in dashboard, browse, search results
+- **Why:** DRY principle; used by multiple pages
+
+**Phase 3 Success Criteria:**
+- All routes load with data
+- Forms submit correctly, validation works
+- Charts render and respond to data updates
+- No performance regressions vs React versions
+- Route transitions are smooth
+
+### Phase 4: Complex Features (5 Files + API Routes)
+
+#### `src/routes/build/+page.svelte`
+- **Action:** Create (port ThesisBuilder.tsx)
+- **What:**
+  - Form for creating markets: title, description, category, tags
+  - TipTap editor integration via wrapper component
+  - Form state management with validation
+  - Submit to POST /api/markets endpoint
+- **Why:** Tests form + TipTap + complex state
+
+#### `src/lib/components/TiptapEditor.svelte`
+- **Action:** Create (port TiptapEditor.tsx)
+- **What:**
+  - Svelte wrapper for TiptapEditor class
+  - Props: value, onChange, placeholder
+  - Use `bind:value` for two-way binding
+  - Cleanup on destroy
+  ```svelte
+  <script lang="ts">
+    import { onMount } from 'svelte'
+    import { TipTapEditor } from '$lib/utils/tiptap-wrapper'
+    let container: HTMLDivElement
+    let editor: TipTapEditor
+    let value: string
+    onMount(() => {
+      editor = new TipTapEditor(container, value)
+      return () => editor.destroy()
+    })
+    function handleChange() {
+      if (editor) value = editor.getContent()
+    }
+  </script>
+  ```
+- **Why:** Custom wrapper for TipTap core API
+
+#### `src/routes/wallet/+page.svelte`
+- **Action:** Create (port WalletPage.tsx + Wallet.tsx component)
+- **What:**
+  - Display wallet balance (from walletStore)
+  - Deposit/withdraw interface
+  - Transaction history (via depositService, withdrawService)
+  - QR code for receiving (use svelte-qr or canvas)
+- **Why:** Tests wallet state + service integration + QR rendering
+
+#### `src/routes/+page.svelte` (Refinement)
+- **Action:** Modify (port LandingPage.tsx)
+- **What:** Root landing page with hero, market showcase, call-to-action
+- **Why:** Gateway page; completes primary navigation
+
+#### `src/routes/(legacy)/+layout.svelte`
+- **Action:** Create
+- **What:** React Router wrapper (layout only) for `/legacy/*` routes
+- **Why:** Backward compatibility during transition; removed after Phase 4
+
+#### API Routes Migration (13 files total)
+All migrate from Vite middleware (`vite.config.ts:33–222`) to SvelteKit `src/routes/api/*`:
+
+##### `src/routes/api/agent/markets/+server.ts`
+- **Action:** Create
+- **What:**
+  ```typescript
+  import type { RequestHandler } from './$types'
+  import { listAgentMarkets, type AgentMarketKind, type LiquidityState } from '$lib/agentDirectory'
+
+  export const GET: RequestHandler = async ({ url }) => {
+    const kind = url.searchParams.get('kind') as AgentMarketKind | undefined
+    const ownerId = url.searchParams.get('ownerId') ?? undefined
+    const tag = url.searchParams.get('tag') ?? undefined
+    const liquidityState = url.searchParams.get('liquidityState') as LiquidityState | undefined
+    const minReserve = url.searchParams.get('minReserve') ? Number(url.searchParams.get('minReserve')) : undefined
+    const limit = url.searchParams.get('limit') ? Number(url.searchParams.get('limit')) : undefined
+
+    const data = listAgentMarkets({ kind, ownerId, tag, liquidityState, minReserve, limit })
+    return new Response(JSON.stringify({ data, meta: { count: data.length } }), {
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    })
+  }
+  ```
+- **Why:** Serverless route; direct replacement for middleware
+
+##### `src/routes/api/agent/markets/[marketId]/+server.ts`
+- **Action:** Create
+- **What:** Fetch single market by ID
+- **Why:** Dynamic route replacement
+
+##### `src/routes/api/agent/liquidity/+server.ts`
+- **Action:** Create
+- **What:** Liquidity report for market
+- **Why:** Route replacement
+
+##### `src/routes/api/agent/owned-markets/+server.ts`
+- **Action:** Create
+- **What:** List markets owned by user
+- **Why:** Route replacement
+
+##### `src/routes/api/agent/search/+server.ts`
+- **Action:** Create
+- **What:** Search markets with filters
+- **Why:** Route replacement
+
+##### `src/routes/api/analytics/+server.ts`
+- **Action:** Create
+- **What:**
+  ```typescript
+  export const POST: RequestHandler = async ({ request }) => {
+    const events = await request.json()
+    // Append to analytics.jsonl (use node:fs in +server.ts context)
+    return new Response(null, { status: 204 })
+  }
+  export const GET: RequestHandler = async () => {
+    // Compute summary from analytics.jsonl
+    return new Response(JSON.stringify(summary), {
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+  ```
+- **Why:** Analytics ingestion + summary endpoint
+
+##### `src/routes/api/markets/+server.ts`
+- **Action:** Create
+- **What:** POST to create market, calls `publishMarket` service
+- **Why:** Market creation endpoint
+
+##### `src/routes/api/markets/[marketId]/+server.ts`
+- **Action:** Create
+- **What:** GET market, DELETE market (for owner)
+- **Why:** Market detail + deletion
+
+##### `src/routes/api/profile/+server.ts`
+- **Action:** Create
+- **What:** POST to update profile (name, about, picture), calls kind:0 publish
+- **Why:** Profile updates
+
+##### `src/routes/api/trades/+server.ts`
+- **Action:** Create
+- **What:** POST to place trade, calls trading service
+- **Why:** Trade execution
+
+##### `src/routes/api/positions/+server.ts`
+- **Action:** Create
+- **What:** GET user positions (server-side or client-side with user pubkey)
+- **Why:** Positions endpoint
+
+##### `src/routes/api/bookmarks/+server.ts`
+- **Action:** Create
+- **What:** POST/DELETE bookmarks (NIP-51), calls bookmarkService
+- **Why:** Bookmark management
+
+##### `src/routes/api/wallet/deposit/+server.ts`
+- **Action:** Create
+- **What:** POST to request deposit address, calls depositService
+- **Why:** Deposit flow
+
+##### `src/routes/api/wallet/withdraw/+server.ts`
+- **Action:** Create
+- **What:** POST to request withdrawal, calls withdrawService
+- **Why:** Withdrawal flow
+
+**Phase 4 Success Criteria:**
+- All complex pages functional (forms, TipTap, wallet)
+- All 13 API routes working identically to Vite middleware
+- No performance regressions
+- Feature parity with React version
+
+### Phase 5: Polish & Removal
+
+#### `src/routes/legacy/+layout.svelte`
+- **Action:** Delete
+- **What:** Remove React Router wrapper
+- **Why:** Phase 4 complete; React no longer needed
+
+#### `App.tsx`
+- **Action:** Delete
+- **What:** Remove main React component
+- **Why:** Replaced by SvelteKit layout
+
+#### `context/NostrContext.tsx`
+- **Action:** Delete
+- **What:** Remove React context
+- **Why:** Replaced by Svelte stores
+
+#### `main.tsx`
+- **Action:** Delete
+- **What:** Remove React entry point
+- **Why:** SvelteKit has own entry
+
+#### `package.json`
+- **Action:** Modify
+- **What:** Remove all React packages, React Router, @vitejs/plugin-react, testing-library/react
+- **Why:** Full React removal
+
+#### `vite.config.ts`
+- **Action:** Delete
+- **What:** Already handled by SvelteKit
+- **Why:** Consolidate to svelte.config.js
+
+#### `tailwind.config.js`
+- **Action:** Modify
+- **What:** Update content paths to `src/**/*.{svelte,ts}` instead of `.tsx`
+- **Why:** SvelteKit file structure
+
+#### `tsconfig.app.json`
+- **Action:** Modify
+- **What:** Remove `jsx: "react-jsx"`, add `svelte` to lib array
+- **Why:** TypeScript for Svelte
+
+#### Accessibility Audit
+- **Action:** Verify
+- **What:** Run axe-core or Wave on all pages, fix violations
+- **Why:** Maintain accessibility standards
+
+#### Performance Optimization
+- **Action:** Tune
+- **What:** SvelteKit code splitting, lazy loading, image optimization
+- **Why:** Leverage SvelteKit capabilities
 
 ## Execution Order
 
-These steps **must** be followed in dependency order. Each step is independently verifiable.
+### Phase 0: SvelteKit Setup (Day 1 - Parallel)
+1. Install SvelteKit: `npm install -D svelte @sveltejs/kit`
+2. Create `svelte.config.js` with Vercel adapter config
+3. Create `src/routes/+layout.svelte` with NostrContextProvider setup and global styles
+4. Create `src/lib/stores/nostr.ts` with Svelte stores
+5. Update `tsconfig.json` with SvelteKit paths
+6. Create `src/app.d.ts` with type definitions
+7. Update `package.json` dependencies (add SvelteKit, Svelte, @nostr-dev-kit/svelte; remove React from main, keep @types/node)
+8. Create `src/lib/utils/tiptap-wrapper.ts` for TipTap integration
+9. Create `src/lib/utils/lightweight-charts-action.ts` for chart integration
+10. **Verify:** `npm run dev` starts dev server on localhost:5173, no errors
+11. **Verify:** SvelteKit Vite preprocessing works, TypeScript compiles
 
-### Phase 1: SkeliteKit Foundation (Prerequisite)
+### Phase 1: Proof of Concept (Days 2–3)
+1. Create `src/routes/activity/+page.svelte` — port Activity.tsx
+   - **Verify:** `localhost:5173/activity` loads, fetches activities, filters work
+2. Create `src/routes/analytics/+page.svelte` — port AnalyticsDashboard.tsx
+   - **Verify:** `localhost:5173/analytics` loads, fetches summary, chart renders
+3. Create `src/routes/profile/[pubkey]/+page.svelte` — port ProfilePage.tsx
+   - **Verify:** `localhost:5173/profile/npub1...` loads profile data, positions display
+4. Create `src/routes/thread/[marketId]/+page.svelte` — port ThreadPage.tsx
+   - **Verify:** `localhost:5173/thread/marketId` loads, live updates appear
+5. Run `npm run test:run` on Phase 1 components (basic existence + data binding tests)
+6. **Verify:** Lighthouse score ≥90 on all 4 pages
+7. **Sign-off:** Phase 1 POC validated; proceed to Phase 2
 
-1. **Install SkeliteKit packages**
-   - Run: `npm install -D svelte @sveltejs/kit @sveltejs/adapter-auto`
-   - Verify: `node_modules/@sveltejs/kit` exists; `npx svelte --version` returns 5.x.x
+### Phase 2: Stateless Foundation (Days 4–5)
+1. Create `src/lib/components/Footer.svelte` — port Footer.tsx
+2. Create `src/lib/components/TestnetBanner.svelte` — port TestnetBanner.tsx
+3. Create `src/lib/components/UserAvatar.svelte` — port UserAvatar.tsx
+4. Create `src/lib/components/BookmarkButton.svelte` — port BookmarkButton.tsx
+5. Create `src/lib/components/EmbedModal.svelte` — port EmbedModal.tsx
+6. Create `src/routes/help/+page.svelte` — port HowItWorks.tsx
+7. Create `src/routes/legal/privacy/+page.svelte` — port PrivacyPolicy.tsx
+8. Create `src/routes/legal/terms/+page.svelte` — port TermsOfService.tsx
+9. Create `src/routes/blog/+page.svelte` — port Blog.tsx
+10. Run accessibility audit (axe-core on each page)
+11. **Verify:** All 10 components render; no accessibility violations
+12. **Sign-off:** Phase 2 foundation validated
 
-2. **Create `svelte.config.js` with adapter-auto**
-   - File: `.tenex/plans/svelte-port.md` specifies content
-   - Verify: `cat svelte.config.js` shows `adapter: adapter()`
+### Phase 3: Medium Complexity + Routing (Days 6–8)
+1. Create `src/routes/market/[marketId]/+page.svelte` — port MarketDetail.tsx
+   - **Verify:** Dynamic routing works, chart renders, form submits
+2. Create `src/routes/portfolio/+page.svelte` — port Portfolio.tsx
+   - **Verify:** Positions load, charts render, PnL calculated
+3. Create `src/routes/dashboard/+page.svelte` — port DashboardOverview.tsx
+   - **Verify:** All metrics display, no data missing
+4. Create `src/routes/discuss/+page.svelte` — port DiscussPage.tsx
+   - **Verify:** Discussions load, filtering works
+5. Create `src/routes/settings/+page.svelte` — port SettingsPage.tsx
+   - **Verify:** Form submits, settings persist via profileStore
+6. Create `src/lib/components/MarketCard.svelte` — extract reusable component
+7. Update `src/routes/+layout.svelte` to include NavHeader, Footer, global layout
+8. **Verify:** All routes accessible, data flows correctly, no errors
+9. **Sign-off:** Phase 3 routing validated
 
-3. **Create `src/routes/` directory structure**
-   - Run: `mkdir -p src/routes/{activity,analytics,profile,threads,api/{agent,analytics}} src/lib/{stores,components}`
-   - Verify: `ls -la src/routes/` shows subdirectories
+### Phase 4: Complex Features & API Routes (Days 9–12)
+1. Create `src/lib/components/TiptapEditor.svelte` — wrapper for TipTap
+   - **Verify:** Editor renders, content syncs, toolbar works
+2. Create `src/routes/build/+page.svelte` — port ThesisBuilder.tsx
+   - **Verify:** Form submits market creation, content saved
+3. Create `src/routes/wallet/+page.svelte` — port Wallet.tsx + WalletPage.tsx
+   - **Verify:** Wallet displays, QR renders, deposit/withdraw flow works
+4. Migrate API routes (all 13):
+   - `src/routes/api/agent/markets/+server.ts`
+   - `src/routes/api/agent/markets/[marketId]/+server.ts`
+   - `src/routes/api/agent/liquidity/+server.ts`
+   - `src/routes/api/agent/owned-markets/+server.ts`
+   - `src/routes/api/agent/search/+server.ts`
+   - `src/routes/api/analytics/+server.ts`
+   - `src/routes/api/markets/+server.ts`
+   - `src/routes/api/markets/[marketId]/+server.ts`
+   - `src/routes/api/profile/+server.ts`
+   - `src/routes/api/trades/+server.ts`
+   - `src/routes/api/positions/+server.ts`
+   - `src/routes/api/bookmarks/+server.ts`
+   - `src/routes/api/wallet/deposit/+server.ts`
+   - `src/routes/api/wallet/withdraw/+server.ts`
+   - **Verify:** Each route responds identically to old Vite middleware
+5. Finalize `src/routes/+page.svelte` (landing page)
+6. Create `/legacy/*` wrapper for fallback to React (if needed during transition)
+7. **Verify:** All pages functional, no regressions, API routes pass integration tests
+8. **Sign-off:** Phase 4 complete; feature parity achieved
 
-4. **Migrate Vite config → `vite.config.js` (SveliteKit standard)**
-   - Delete: `vite.config.ts`
-   - Create: `vite.config.js` with SkeliteKit plugin as specified above
-   - Verify: `npm run build` succeeds; `npm run dev` starts without errors
-
-5. **Create root layout `src/routes/+layout.svelte`**
-   - Include: Navigation, toast notifications, global styles
-   - Import: `$lib/stores/nostr`, `$lib/stores/ui`
-   - Verify: `npm run dev` loads without JS errors; `/` page renders
-
-6. **Create `src/routes/+layout.ts` (root load function)**
-   - Initialize Nostr store
-   - Verify: `npm run dev` → navigate `/` → check browser devtools console for no errors
-
-7. **Create `src/lib/stores/nostr.ts`**
-   - Content: writable `nostr` store, `initializeNostr()`, setter functions
-   - Verify: `npm run dev` → open browser devtools → `$lib/stores/nostr` is importable
-
-8. **Migrate API routes: Create `src/routes/api/agent/+server.ts` and `src/routes/api/analytics/+server.ts`**
-   - Copy logic from vite.config.ts plugins → SkeliteKit routes
-   - Verify: `curl http://localhost:5173/api/agent/markets` returns JSON; `npm run dev` has no warnings
-
-9. **Update `tailwind.config.js` to include `.svelte` files**
-   - Change: `content: ["./src/**/*.{js,ts,jsx,tsx}"]` → `["./src/**/*.{js,ts,jsx,tsx,svelte}"]`
-   - Verify: Svelte components use Tailwind classes correctly; `npm run dev` shows no missing classes
-
-### Phase 2: Proof of Concept — 4 Pages
-
-10. **Port Activity.tsx → `src/routes/activity/+page.svelte` + `+page.ts`**
-    - **+page.ts**: Async `load()` function to fetch activity items
-    - **+page.svelte**: Render list, filter tabs, handle errors
-    - Verify: `npm run dev` → navigate `/activity` → page renders without errors; filtering works
-
-11. **Port AnalyticsDashboard.tsx → `src/routes/analytics/+page.svelte` + `+page.ts`**
-    - Use SkeliteKit's `load()` to call `/api/analytics/summary`
-    - Render metrics with skeleton loading
-    - Verify: `npm run dev` → `/analytics` loads data and renders metrics
-
-12. **Port ProfilePage.tsx → `src/routes/profile/[pubkey]/+page.svelte` + `+page.ts`**
-    - Extract route param: `const { pubkey } = params`
-    - Normalize npub → hex in `load()`
-    - Fetch Kind 0 + positions in `load()`
-    - Render profile, markets, positions; handle tabs
-    - Verify: `/profile/npub1...` and `/profile/hex...` both work; data loads correctly
-
-13. **Port ThreadPage.tsx → `src/routes/threads/[id]/+page.svelte` + `+page.ts`**
-    - Fetch initial thread in `load()`
-    - Subscribe to reactions/replies in component's `onMount()`
-    - Handle optimistic updates via store
-    - Verify: `/threads/[id]` loads; voting updates optimistically; subscriptions work
-
-14. **Manual testing: Cold start from React landing, navigate to new Svelte pages**
-    - Start: `npm run dev`, open `http://localhost:5173/`
-    - Actions: Click to Activity, Analytics, Profile, Thread — verify no 404s, data loads
-    - Verify: Network tab shows `/api/*` calls; store state updates reflect in UI
-
-15. **Run Playwright smoke test**
-    - Create: `tests/poc-pages.spec.ts` with basic navigation checks
-    - Run: `npm run test` or `npx playwright test`
-    - Verify: All 4 pages load; no JS errors in console
-
-### Phase 3: Simple Pages
-
-16. **Port LandingPage.tsx → `src/routes/+page.svelte`**
-    - Verify: `/` loads landing page correctly
-
-17. **Port HowItWorks.tsx → `src/routes/how-it-works/+page.svelte`**
-    - Verify: `/how-it-works` renders without errors
-
-18. **Port LegalPages.tsx → `src/routes/legal/[type]/+page.svelte`**
-    - Extract param: `const { type } = params` → determine tos or privacy
-    - Verify: `/legal/tos` and `/legal/privacy` work
-
-19. **Port NotFoundPage.tsx → `src/routes/+error.svelte`**
-    - SkeliteKit automatically shows this for 404s
-    - Verify: Navigate to `/nonexistent` → error page appears
-
-20. **Port Blog.tsx → `src/routes/blog/+page.svelte`**
-    - Verify: `/blog` renders list of blog posts
-
-### Phase 4: Dynamic Routing & Complex State
-
-21. **Port MarketDetail.tsx → `src/routes/market/[id]/+page.svelte` + `+page.ts`**
-    - Load market data in `+page.ts`
-    - Subscribe to market updates in component
-    - Verify: `/market/[id]` with real IDs loads; subscriptions update state
-
-22. **Port AgentsPage.tsx → `src/routes/agents/[id]/+page.svelte` + `+page.ts`**
-    - Verify: `/agents/[id]` loads agent details
-
-23. **Port Portfolio.tsx → `src/routes/portfolio/[pubkey]/+page.svelte` + `+page.ts`**
-    - Verify: `/portfolio/[pubkey]` renders user portfolio
-
-24. **Port Leaderboard.tsx → `src/routes/leaderboard/+page.svelte` + `+page.ts`**
-    - Verify: `/leaderboard` fetches and renders rankings
-
-25. **Port SettingsPage.tsx → `src/routes/settings/+page.svelte`**
-    - Verify: `/settings` page renders and form submissions work
-
-26. **Create `src/lib/stores/market.ts` (migrate App.tsx reducer)**
-    - Implement writable store for markets
-    - Export reducer functions: `createMarket()`, `tradeMarket()`, `deleteMarket()`, etc.
-    - Verify: Store updates reflect in components that subscribe
-
-27. **Port App.tsx logic → market store + load functions**
-    - Move market state machine → store
-    - Move toast logic → `src/lib/stores/toast.ts`
-    - Verify: Market creation, trading, deletion work via store mutations
-
-28. **Port WalletPage.tsx → `src/routes/wallet/+page.svelte` + `+page.ts`**
-    - Handle form submission with SkeliteKit form actions
-    - Verify: Wallet interactions work; balance updates
-
-29. **Port ThesisBuilder.tsx → `src/routes/create/+page.svelte` + `+page.ts`**
-    - Integrate TipTap editor (can stay as-is; Svelte-compatible)
-    - Handle form submission → create market
-    - Verify: Market creation form works end-to-end
-
-30. **Port DashboardOverview.tsx → `src/routes/dashboard/+page.svelte` + `+page.ts`**
-    - Verify: Dashboard renders market overview
-
-31. **Port TreasuryPage.tsx → `src/routes/treasury/+page.svelte` + `+page.ts`**
-    - Verify: Treasury data loads and calculations display
-
-### Phase 5: Polish & Cleanup
-
-32. **Migrate NavHeader component → `src/lib/components/NavHeader.svelte`**
-    - Update all routes to import and render NavHeader
-    - Verify: Navigation works across all pages
-
-33. **Audit Tailwind styles for Svelte 5 compatibility**
-    - Check: All custom classes from tailwind.config.js apply correctly
-    - Run: `npm run dev` → inspect element → all styles render
-
-34. **Remove React dependencies from `package.json`**
-    - Delete: `react`, `react-dom`, `react-router-dom`, `@vitejs/plugin-react`
-    - Run: `npm ci` → `npm run build`
-    - Verify: Build succeeds; bundle size is smaller
-
-35. **Delete React source files**
-    - Remove: `src/App.tsx`, `src/context/`, `src/*.tsx` (except components that might be reused)
-    - Keep: `src/services/`, `src/lib/`, `src/routes/`
-    - Run: `npm run build`
-    - Verify: No import errors; build succeeds
-
-36. **Run full test suite**
-    - Run: `npm run test:run` (Vitest)
-    - Run: `npx playwright test` (E2E)
-    - Verify: All tests pass
-
-37. **Bundle analysis & optimization**
-    - Install: `npm install -D vite-plugin-visualizer`
-    - Run: `npm run build && npx vite-plugin-visualizer`
-    - Verify: No React bundles; Svelte is ~40KB gzipped; total bundle < original
-
-38. **Deploy to Vercel**
-    - Update: `vercel.json` to point to SkeliteKit build output
-    - Run: `npm run build` locally
-    - Verify: Artifact builds; Vercel preview works; all routes load
-
----
+### Phase 5: Polish & Removal (Days 13–14)
+1. Run full test suite: `npm run test:run`
+2. Accessibility audit: axe-core on all Svelte pages
+3. Performance audit: Lighthouse, bundle analysis (confirm React removal shrinks bundle)
+4. Delete React layer:
+   - Remove `App.tsx`, `main.tsx`, `context/NostrContext.tsx`, `vite.config.ts`
+   - Remove `/legacy` routes and wrapper
+   - Remove from `package.json`: all React packages, React Router, react testing libraries
+   - Delete `src/test/**/*.tsx` (React-specific tests)
+5. Update `tsconfig.app.json`: remove `jsx: "react-jsx"`
+6. Update `tailwind.config.js`: change content glob to `src/**/*.{svelte,ts}`
+7. Deploy to Vercel staging; validate zero errors
+8. Run E2E smoke tests on staging
+9. **Sign-off:** Ready for production
 
 ## Verification
 
-After each phase, verify:
+### Phase-End Verification
+- **Phase 0:** SvelteKit dev server runs, no TypeScript errors
+- **Phase 1:** All 4 POC pages fetch data, render correctly, Lighthouse ≥90
+- **Phase 2:** All 10 stateless components render, accessibility ≥95 (WCAG AA)
+- **Phase 3:** All routes with params work, forms submit, charts render
+- **Phase 4:** All complex features work, API routes respond like old Vite middleware
+- **Phase 5:** No React packages remain, bundle smaller, all E2E tests pass
 
-1. **Cold start (new user):** Open browser, no cached state, all pages load
-2. **Routing:** All old routes still work (via React fallback or exact Svelte routes)
-3. **State persistence:** localStorage is read/written correctly (bookmarks, profiles, etc.)
-4. **Nostr integration:** kind 0, kind 30000, kind 30078 queries work; subscriptions update UI
-5. **API endpoints:** `/api/agent/*` and `/api/analytics` respond correctly
-6. **Performance:** Lighthouse audit > 85 (mobile)
-7. **Accessibility:** axe-core audit passes; keyboard navigation works
-8. **Error handling:** Invalid routes → 404 page; failed fetches → error state
-
-### Full End-to-End Verification (Phase 5 completion)
-
+### Build Verification
 ```bash
-# Build production artifact
-npm run build
-
-# Test build artifact locally
-npm run preview
-
-# Lighthouse on http://localhost:4173
-# npx lighthouse http://localhost:4173
-
-# Playwright full suite
-npx playwright test
-
-# Bundle analysis
-npx vite-plugin-visualizer --open
-
-# Git diff: confirm no React files remain in src/
-git diff HEAD -- src/ | grep -E '^\-' | grep -v .map
+npm run build        # Should produce .svelte-kit/build/
+npm run preview      # Should serve static files correctly
 ```
 
-Expected: No React file deletions in git diff (they were already gone).
+### Deployment Verification
+1. Deploy to Vercel staging
+2. Run smoke tests:
+   - Load landing page → should see hero + market showcase
+   - Navigate to profile/:pubkey → should fetch and render kind:0 data
+   - Create market → form submits, kind:982 event created
+   - Check `/api/analytics/summary` → returns JSON
+3. Lighthouse on 5 key pages: ≥90
+4. No 5xx errors in logs
+5. No React Console warnings or errors
+
+## Risk Mitigation
+
+### TipTap Integration Risk
+**Risk:** No official @tiptap/react successor; core API is DOM-based.
+**Mitigation:** Create custom wrapper class (TiptapEditor); wrap in Svelte component with onMount/destroy lifecycle. Proven pattern; minimal (~40 lines).
+
+### Chart Integration Risk
+**Risk:** svelte-lightweight-charts unmaintained; community package may be outdated.
+**Mitigation:** Use vanilla lightweight-charts API via Svelte action. Chart instances created in DOM; no wrapper needed beyond Svelte action for lifecycle.
+
+### Bundle Size Risk
+**Risk:** Svelte removal of React should shrink bundle, but if it doesn't, Phase 5 is blocked.
+**Mitigation:** Measure bundle before Phase 0, after Phase 5. If size increases >10%, audit dependencies. Expected: ~45KB gzip reduction.
+
+### Testnet/Mainnet Switching Risk
+**Risk:** Relay selection (testnet vs mainnet) must work correctly; old code uses context.
+**Mitigation:** Store relay URLs in env vars (already in .env.local). Svelte store computed from $page.url.searchParams or stored flag. Test both modes before Phase 1 sign-off.
+
+### State Persistence Risk
+**Risk:** localStorage stores (profileStore, walletStore, etc.) must work in SvelteKit; might differ in SSR context.
+**Mitigation:** Keep all stores vanilla TS (no React hooks); they work identically. If SSR needed, wrap localStorage calls in browser check: `typeof window !== 'undefined'`.
+
+### API Route Compatibility Risk
+**Risk:** Vite middleware params parsed differently than SvelteKit URL.
+**Mitigation:** Test each new API route against old Vite middleware with same request; verify identical response. Script: loop through 10 random requests, compare payloads.
+
+## Dependency & Package Changes
+
+### Add to package.json
+```json
+"svelte": "^5.0.0",
+"@sveltejs/kit": "^2.0.0",
+"@sveltejs/adapter-vercel": "^5.0.0",
+"@nostr-dev-kit/svelte": "^0.6.0",
+"svelte-check": "^3.0.0",
+"svelte-preprocess": "^5.0.0",
+"@tiptap/core": "^3.21.0",
+"@tiptap/pm": "^3.21.0",
+"@tiptap/starter-kit": "^3.21.0",
+"@tiptap/extension-placeholder": "^3.21.0",
+"svelte-qr": "^0.3.0",
+"vitest": "^3.2.4"
+```
+
+### Remove from package.json
+```json
+"react": "^19.2.4",
+"react-dom": "^19.2.4",
+"react-router-dom": "^7.13.1",
+"@tiptap/react": "^3.21.0",
+"@vitejs/plugin-react": "^6.0.1",
+"@testing-library/react": "^16.3.2",
+"@testing-library/user-event": "^14.6.1",
+"@types/react": "^19.2.14",
+"@types/react-dom": "^19.2.3",
+"eslint-plugin-react-hooks": "^7.0.1",
+"eslint-plugin-react-refresh": "^0.5.2"
+```
+
+### Keep (No Changes)
+```json
+"@nostr-dev-kit/ndk": "^3.0.3",
+"@nostr-dev-kit/wallet": "^1.0.0",
+"@noble/hashes": "^2.0.1",
+"@noble/secp256k1": "^3.0.0",
+"lightweight-charts": "^5.1.0",
+"markdown-it": "^14.1.1",
+"posthog-js": "^1.364.7",
+"@tailwindcss/vite": "^4.2.2",
+"tailwindcss": "^4.2.2",
+"typescript": "~5.9.3",
+"vite": "^8.0.1",
+"vitest": "^3.2.4"
+```
+
+## Form Handling: SvelteKit Form Actions vs Client-Side Fetch
+
+### Trade-off Documentation (Critical Architectural Choice)
+
+Svelte 5 + SvelteKit provides two paths for form submission. **Choose based on whether the operation requires Nostr wallet signing:**
+
+#### 1. SvelteKit Form Actions (Progressive Enhancement)
+**Use for:** Public operations, read-only queries, admin/moderation actions.
+**Pros:**
+- Works without JavaScript (progressive enhancement)
+- Built-in CSRF protection
+- Automatic form state management
+- Server-side validation feedback
+
+**Example: Update user profile (no signing needed)**
+```svelte
+<script lang="ts">
+  import { enhance } from '$app/forms'
+
+  let name = $state('')
+  let about = $state('')
+</script>
+
+<form method="POST" use:enhance>
+  <input name="name" bind:value={name} />
+  <textarea name="about" bind:value={about}></textarea>
+  <button>Save Profile</button>
+</form>
+```
+
+**Server handler (src/routes/profile/+page.server.ts):**
+```typescript
+export const actions = {
+  default: async ({ request, locals }) => {
+    const data = await request.formData()
+    const name = data.get('name')
+    const about = data.get('about')
+    // Validate and update profile store
+    return { success: true }
+  }
+}
+```
+
+#### 2. Client-Side Fetch (Required for Nostr Signing)
+**Use for:** Operations requiring Nostr wallet signature (events, market creation, trades).
+**Why:** Wallet signing happens in browser via NIP-07 extension; server cannot access private keys.
+
+**Example: Create market (requires Nostr signing)**
+```svelte
+<script lang="ts">
+  import { publishEvent } from '$lib/services/nostrService'
+
+  let title = $state('')
+  let content = $state('')
+  let loading = $state(false)
+
+  async function handleCreateMarket(e: Event) {
+    e.preventDefault()
+    loading = true
+    try {
+      // Client-side: sign with NIP-07 extension
+      const event = await publishEvent(content, [['title', title]], 982)
+      // Server: optional backend update (market indexing, notifications)
+      await fetch('/api/markets', {
+        method: 'POST',
+        body: JSON.stringify({ eventId: event.id, title, content }),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      title = ''
+      content = ''
+    } catch (err) {
+      console.error(err)
+    } finally {
+      loading = false
+    }
+  }
+</script>
+
+<form onsubmit={handleCreateMarket}>
+  <input bind:value={title} placeholder="Market Title" />
+  <TiptapEditor bind:value={content} />
+  <button disabled={loading}>Create Market</button>
+</form>
+```
+
+### Hybrid Pattern
+Some operations need both: sign client-side, then record server-side.
+
+```svelte
+async function handleTrade(direction: 'yes' | 'no') {
+  // 1. Client-side: sign trade event
+  const event = await publishEvent(
+    JSON.stringify({ direction, amount: 100 }),
+    [['k', '982']],
+    1111
+  )
+
+  // 2. Server-side: record trade for indexing, notifications
+  const response = await fetch('/api/trades', {
+    method: 'POST',
+    body: JSON.stringify({ eventId: event.id, direction, amount: 100 }),
+    headers: { 'Content-Type': 'application/json' }
+  })
+
+  if (response.ok) {
+    // Update local positions
+    positions = [...positions, ...]
+  }
+}
+```
+
+### Summary for Cascade
+- **Form actions:** Settings page, profile updates, admin operations
+- **Client-side fetch:** Market creation, trades, bookmarks, profile kind:0 updates (requires signing)
+- **Hybrid:** Trading flow (sign event client, index server)
 
 ---
 
-## Rollback Plan
+## Component Migration Patterns
 
-If a phase encounters insurmountable blockers:
+### Pattern 1: Subscription-Based Component
 
-1. **Before Phase 1:** Ensure all uncommitted work is stashed; SkeliteKit is isolated in separate branch
-   - Branch: `git checkout -b svelte-port-prep`
-   - If abort: `git checkout main && git branch -D svelte-port-prep`
+**React (Activity.tsx):**
+```typescript
+export default function Activity() {
+  const { subscribeToEvents } = useNostr()
+  const [activities, setActivities] = useState<ActivityItem[]>([])
+  const [filter, setFilter] = useState<ActivityFilter>('All')
 
-2. **During Phase 2–3:** If Nostr stores or API routes malfunction
-   - Revert: Stash changes, keep React app running
-   - Fallback: Use Option A (Vite dev adapter) to serve React as primary; Svelte as secondary
+  useEffect(() => {
+    const sub = subscribeToEvents(
+      { kinds: [982, 1111, 30000], limit: 50 },
+      (event) => {
+        setActivities((prev) => [parseEvent(event), ...prev].slice(0, 100))
+      }
+    )
+    return () => sub.stop()
+  }, [subscribeToEvents])
 
-3. **During Phase 4:** If market state machine is incompatible
-   - Revert: Keep `src/App.tsx` and React Context
-   - Migrate piecemeal: Port individual components while keeping App.tsx orchestration
+  return (
+    <div>
+      {activities.filter(matchesFilter).map((a) => (
+        <ActivityRow key={a.id} item={a} />
+      ))}
+    </div>
+  )
+}
+```
 
-4. **Complete abort:**
-   - Command: `git reset --hard origin/main`
-   - Result: Back to full React setup; Svelte exploration can restart with lessons learned
+**Svelte (+page.svelte):**
+```svelte
+<script lang="ts">
+  import { page } from '$app/stores'
+  import { getNDK, subscribeToEvents } from '$lib/services/nostrService'
+  import { parseEvent } from '$lib/utils/parse'
+
+  type ActivityFilter = 'All' | 'New Markets' | 'Trades' | 'Resolutions'
+
+  let activities: ActivityItem[] = $state([])
+  let filter: ActivityFilter = $state('All')
+
+  let subscription: NDKSubscription | null = null
+
+  $effect.pre(() => {
+    const ndk = getNDK()
+    if (!ndk) return
+
+    subscription = subscribeToEvents(
+      { kinds: [982, 1111, 30000], limit: 50 },
+      (event) => {
+        activities = [parseEvent(event), ...activities].slice(0, 100)
+      }
+    )
+
+    return () => subscription?.stop()
+  })
+
+  $derived filtered = activities.filter((a) => matchesFilter(a, filter))
+</script>
+
+<div>
+  {#each filtered as item (item.id)}
+    <ActivityRow {item} />
+  {/each}
+</div>
+```
+
+**Key Differences:**
+- `useState` → `$state`
+- `useEffect` cleanup → `$effect` return cleanup
+- `.map()` → `{#each}`
+- `useContext` → `getNDK()` directly (service, not context)
+
+### Pattern 2: Data Fetch with Loading State
+
+**React (ProfilePage.tsx):**
+```typescript
+export default function ProfilePage() {
+  const { pubkey: paramPubkey } = useParams<{ pubkey: string }>()
+  const [profile, setProfile] = useState<ProfileData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetch = async () => {
+      const events = await fetchEvents({
+        kinds: [0],
+        authors: [paramPubkey],
+      })
+      if (events.size > 0) {
+        const event = Array.from(events)[0]
+        setProfile(JSON.parse(event.content))
+      }
+      setLoading(false)
+    }
+    fetch()
+  }, [paramPubkey])
+
+  if (loading) return <div>Loading...</div>
+  if (!profile) return <div>Not found</div>
+
+  return <ProfileDisplay profile={profile} />
+}
+```
+
+**Svelte (+page.svelte) — Correct Pattern (Svelte 5):**
+```svelte
+<script lang="ts">
+  import { page } from '$app/stores'
+  import { fetchEvents } from '$lib/services/nostrService'
+
+  const pubkey = $page.params.pubkey
+
+  let profile: ProfileData | null = $state(null)
+  let loading: boolean = $state(true)
+
+  // CORRECT: Separate async function called FROM the effect, not IN it
+  async function loadProfile(pk: string) {
+    loading = true
+    try {
+      const events = await fetchEvents({
+        kinds: [0],
+        authors: [pk],
+      })
+      if (events.size > 0) {
+        const event = Array.from(events)[0]
+        profile = JSON.parse(event.content)
+      } else {
+        profile = null
+      }
+    } finally {
+      loading = false
+    }
+  }
+
+  // CORRECT: $effect is synchronous; it calls the async function
+  $effect.pre(() => {
+    loadProfile(pubkey)
+  })
+</script>
+
+{#if loading}
+  <div>Loading...</div>
+{:else if !profile}
+  <div>Not found</div>
+{:else}
+  <ProfileDisplay {profile} />
+{/if}
+```
+
+**Key Differences:**
+- `useParams` → `$page.params`
+- `useEffect(() => { const fetch = async () => {...}; fetch() })` → separate `async function` + synchronous `$effect.pre()` that calls it
+  - ⚠️ **Important:** `$effect` must be synchronous; async functions must be called FROM the effect body, not await'd within it
+- Conditional rendering: `{#if}` blocks instead of ternary
+- **Reactivity:** `$effect.pre()` re-runs whenever `pubkey` (a reactive value it references) changes
+
+### Pattern 3: Form Submission with Action
+
+**React (ThesisBuilder.tsx):**
+```typescript
+export default function ThesisBuilder() {
+  const { publishEvent } = useNostr()
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await publishEvent(content, [['title', title]], 982)
+      // Redirect or show success
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+      />
+      <TiptapEditor value={content} onChange={setContent} />
+      <button disabled={loading}>Create Market</button>
+    </form>
+  )
+}
+```
+
+**Svelte (+page.svelte with form action):**
+```svelte
+<script lang="ts">
+  import { enhance } from '$app/forms'
+  import TiptapEditor from '$lib/components/TiptapEditor.svelte'
+
+  let title: string = $state('')
+  let content: string = $state('')
+  let loading: boolean = $state(false)
+
+  async function handleSubmit(event: SubmitEvent) {
+    const form = event.target as HTMLFormElement
+    loading = true
+    const response = await fetch('/api/markets', {
+      method: 'POST',
+      body: JSON.stringify({ title, content, kind: 982 }),
+      headers: { 'Content-Type': 'application/json' }
+    })
+    loading = false
+    if (response.ok) {
+      title = ''
+      content = ''
+      // Show success
+    }
+  }
+</script>
+
+<form onsubmit={handleSubmit}>
+  <input type="text" bind:value={title} />
+  <TiptapEditor bind:value={content} />
+  <button disabled={loading}>Create Market</button>
+</form>
+```
+
+**Key Differences:**
+- `onChange` callbacks → `bind:value` (two-way binding)
+- `onSubmit` with `e.preventDefault()` → `onsubmit` (lowercase, implicit prevent default in Svelte)
+- Form submission to API route (SvelteKit convention; can also use `enhance` from `$app/forms`)
+- `useNostr()` call removed; service used directly
+
+### Pattern 3b: Effect Dependencies and Reactivity Semantics (Svelte 5)
+
+**Understanding $effect Re-runs:**
+
+In Svelte 5, `$effect` re-runs whenever ANY reactive value it references changes. This is automatic — no explicit dependency array needed like React's `useEffect`.
+
+```svelte
+<script lang="ts">
+  let marketId: string = $state('')
+  let filter: 'all' | 'yes' | 'no' = $state('all')
+
+  let events: any[] = $state([])
+  let loading: boolean = $state(false)
+
+  async function fetchMarketEvents(id: string, f: string) {
+    loading = true
+    const result = await fetch(`/api/market/${id}/events?filter=${f}`)
+    events = await result.json()
+    loading = false
+  }
+
+  // This effect re-runs whenever marketId OR filter change
+  // (because the effect function references both)
+  $effect.pre(() => {
+    fetchMarketEvents(marketId, filter)
+  })
+</script>
+```
+
+**Why $effect.pre()?**
+- `$effect.pre()` runs **before** the component renders, ideal for data fetching
+- `$effect()` runs **after** render, ideal for DOM side-effects (e.g., focus, scrolling)
+
+**Avoiding Unnecessary Re-runs:**
+If you want the effect to run only when `marketId` changes (not `filter`), restructure:
+
+```svelte
+<script lang="ts">
+  let marketId: string = $state('')
+  let filter: 'all' | 'yes' | 'no' = $state('all')
+
+  // Derived: computed from marketId only
+  let events = $derived.by(async () => {
+    const result = await fetch(`/api/market/${marketId}/events`)
+    return await result.json()
+  })
+
+  // Separate filter logic
+  let filtered = $derived(events.filter(e => filter === 'all' || e.stance === filter))
+</script>
+```
+
+(Note: `$derived.by()` with async requires careful error handling; use plain `$effect.pre()` + state for clearer control.)
+
+### Pattern 4: Chart Rendering
+
+**React (PriceChart.tsx):**
+```typescript
+import { createChart } from 'lightweight-charts'
+
+export default function PriceChart({ data }: { data: PricePoint[] }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<IChartApi | null>(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    const chart = createChart(containerRef.current, {
+      width: containerRef.current.clientWidth,
+      height: 300,
+      timeScale: { timeVisible: true },
+    })
+
+    const series = chart.addLineSeries({ color: '#22c55e' })
+    series.setData(data)
+    chart.timeScale().fitContent()
+
+    const handleResize = () => {
+      if (containerRef.current) {
+        chart.applyOptions({
+          width: containerRef.current.clientWidth,
+        })
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      chart.remove()
+    }
+  }, [data])
+
+  return <div ref={containerRef} style={{ width: '100%', height: 300 }} />
+}
+```
+
+**Svelte (component with action):**
+```svelte
+<script lang="ts">
+  import { chart } from '$lib/utils/lightweight-charts-action'
+  import type { PricePoint } from '$lib/types'
+
+  let { data }: { data: PricePoint[] } = $props()
+
+  let containerDiv: HTMLDivElement
+
+  $effect(() => {
+    if (!containerDiv) return
+    const instance = chart(containerDiv, {
+      width: containerDiv.clientWidth,
+      height: 300,
+      timeScale: { timeVisible: true },
+    })
+    const series = instance.addLineSeries({ color: '#22c55e' })
+    series.setData(data)
+    instance.timeScale().fitContent()
+    return () => instance.remove()
+  })
+</script>
+
+<div bind:this={containerDiv} style="width: 100%; height: 300px;" />
+```
+
+**Key Differences:**
+- `useRef` → `bind:this`
+- `useEffect` → `$effect`
+- Manual resize listener → handled by action or component (Svelte reactive)
+
+### Pattern 5: Component Props (Svelte 5 $props())
+
+**React (UserAvatar.tsx):**
+```typescript
+type UserAvatarProps = {
+  pubkey: string
+  size?: 'sm' | 'md' | 'lg'
+  showLabel?: boolean
+}
+
+export default function UserAvatar({ pubkey, size = 'md', showLabel = false }: UserAvatarProps) {
+  const bg = getColorFromPubkey(pubkey)
+  const initials = pubkey.slice(0, 4).toUpperCase()
+
+  return (
+    <div className={`avatar avatar-${size}`} style={{ backgroundColor: bg }}>
+      {initials}
+      {showLabel && <span className="label">{abbreviate(pubkey)}</span>}
+    </div>
+  )
+}
+```
+
+**Svelte (component.svelte) — Idiomatic Svelte 5 $props():**
+```svelte
+<script lang="ts">
+  import { getColorFromPubkey, abbreviate } from '$lib/utils/pubkey'
+
+  type Props = {
+    pubkey: string
+    size?: 'sm' | 'md' | 'lg'
+    showLabel?: boolean
+  }
+
+  const { pubkey, size = 'md', showLabel = false }: Props = $props()
+
+  const bg = getColorFromPubkey(pubkey)
+  const initials = pubkey.slice(0, 4).toUpperCase()
+</script>
+
+<div class={`avatar avatar-${size}`} style="background-color: {bg}">
+  {initials}
+  {#if showLabel}
+    <span class="label">{abbreviate(pubkey)}</span>
+  {/if}
+</div>
+
+<style>
+  .avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.25rem;
+  }
+  .avatar-sm { width: 1.5rem; height: 1.5rem; }
+  .avatar-md { width: 2rem; height: 2rem; }
+  .avatar-lg { width: 3rem; height: 3rem; }
+</style>
+```
+
+**Key Differences:**
+- Props destructuring in script with `$props()` rune (Svelte 5 idiom)
+- No prop types file needed (type defined inline)
+- Two-way binding implicit (if parent passes `bind:pubkey`, automatically synced)
+- Scoped styles (no className overhead)
+
+## Testing Migration Strategy
+
+### Vitest Setup (No Changes)
+Vitest already in use; no migration needed. Tests remain in `src/test/` with same tooling.
+
+### Testing React Components → Svelte Components
+
+**Before (React Testing Library):**
+```typescript
+import { render, screen } from '@testing-library/react'
+import Activity from '../Activity'
+
+test('Activity renders and filters', async () => {
+  const { rerender } = render(<Activity />)
+  // Mock subscription
+  expect(screen.getByText(/activity/i)).toBeInTheDocument()
+})
+```
+
+**After (Vitest + Svelte Testing Library):**
+```typescript
+import { render, screen } from '@testing-library/svelte'
+import Activity from '../routes/activity/+page.svelte'
+
+test('Activity renders and filters', async () => {
+  const { component } = render(Activity)
+  // Tests same assertions
+  expect(screen.getByText(/activity/i)).toBeInTheDocument()
+})
+```
+
+**Action:** Update test files to use Svelte Testing Library instead of React Testing Library. Process:
+1. Replace `@testing-library/react` with `@testing-library/svelte`
+2. Update imports: `import { render, screen } from '@testing-library/svelte'`
+3. Remove `<Component />` JSX syntax; pass Svelte component directly
+4. Remove cleanup (Svelte Testing Library handles it)
+
+### Testing Svelte Actions
+
+Actions are pure functions; test them separately from components.
+
+**Example: Test lightweight-charts action**
+```typescript
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { chart } from '../lightweight-charts-action'
+
+describe('chart action', () => {
+  let container: HTMLDivElement
+  let mockCreateChart: any
+
+  beforeEach(() => {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    // Mock lightweight-charts if needed
+    mockCreateChart = vi.fn().mockReturnValue({
+      addLineSeries: vi.fn().mockReturnValue({
+        setData: vi.fn(),
+        remove: vi.fn(),
+      }),
+      applyOptions: vi.fn(),
+      timeScale: vi.fn().mockReturnValue({ fitContent: vi.fn() }),
+      remove: vi.fn(),
+    })
+  })
+
+  afterEach(() => {
+    container.remove()
+  })
+
+  it('should create chart instance', () => {
+    const result = chart(container, { width: 400, height: 300 })
+    expect(result.destroy).toBeDefined()
+  })
+
+  it('should update chart on update() call', () => {
+    const instance = chart(container, { width: 400 })
+    instance.update({ height: 500 })
+    // Assert that applyOptions was called
+  })
+
+  it('should cleanup on destroy', () => {
+    const instance = chart(container, {})
+    instance.destroy()
+    // Assert remove() was called on chart
+  })
+})
+```
+
+**Example: Test TipTap wrapper**
+```typescript
+import { describe, it, expect } from 'vitest'
+import { TipTapEditor } from '../tiptap-wrapper'
+
+describe('TipTapEditor', () => {
+  it('should initialize with content', () => {
+    const container = document.createElement('div')
+    const editor = new TipTapEditor(container, '# Heading')
+    expect(editor.getContent()).toContain('Heading')
+    editor.destroy()
+  })
+
+  it('should update content', () => {
+    const container = document.createElement('div')
+    const editor = new TipTapEditor(container, '')
+    editor.setContent('New content')
+    expect(editor.getContent()).toContain('New content')
+    editor.destroy()
+  })
+})
+```
+
+### New Dependencies for Testing
+```json
+"@testing-library/svelte": "^4.0.0"
+```
+
+## Build & Deployment Changes
+
+### Local Development
+```bash
+npm run dev
+```
+Starts SvelteKit Vite dev server on `localhost:5173`.
+
+### Build Process
+```bash
+npm run build
+```
+Produces `.svelte-kit/build/` (static HTML + JS + assets).
+
+### Deployment to Vercel
+
+**vercel.json (update if needed):**
+```json
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".svelte-kit/build",
+  "framework": "sveltekit"
+}
+```
+
+**Environment Variables:**
+Existing `.env.local` variables (relay URLs, testnet flag) read at build time via `$env/static/private` in SvelteKit, or at runtime via `import.meta.env.PUBLIC_*` for client-side.
+
+### Performance & Bundle Size
+
+**Expected Size Reduction:**
+- React + React Router removed: ~45KB gzipped saved
+- Svelte compiler overhead: ~3KB gzipped added
+- Net: ~42KB gzipped smaller
+
+**Verification:**
+```bash
+npm run build
+du -h .svelte-kit/build/_app/immutable/chunks/
+```
+Compare before (React) and after (Svelte).
+
+## Alternative & Rejected Approaches
+
+### Alternative 1: Gradual Migration with Parallel Build
+Keep React and Svelte in same build, route `/` to Svelte, `/legacy/*` to React, use micro-frontend approach.
+**Rejected:** Complexity of dual bundling, bundle duplication, no clear removal path. Simpler to route at HTTP level.
+
+### Alternative 2: Use `@tiptap/svelte` (Non-Existent Package)
+Hoped for official Svelte wrapper.
+**Rejected:** Doesn't exist; core API suffices via custom wrapper.
+
+### Alternative 3: SvelteKit SSR + Hydration for Performance
+Full server-rendering of pages for faster FCP.
+**Rejected:** Nostr data inherently client-side (requires wallet connection); SSR adds complexity without benefit. SvelteKit pre-rendering on build is sufficient.
+
+### Alternative 4: Keep Vite + Svelte (No SvelteKit)
+Possible; Svelte 5 works with Vite directly.
+**Rejected:** SvelteKit provides file-based routing, server routes, and Vercel integration out-of-box. Adding these manually is larger effort.
+
+## Success Criteria
+
+### End-of-Phase Verification
+
+| Phase | Criteria | Verification Method |
+|-------|----------|---------------------|
+| 0 | SvelteKit boots, no TS errors | `npm run dev` starts server, `npm run build` succeeds |
+| 1 | All 4 POC pages load + fetch + render correctly | Load in browser, inspect data, Lighthouse ≥90 |
+| 2 | All 10 components render, accessibility ≥95 | `npm run test`, axe-core audit |
+| 3 | Routes, forms, charts work | Test all routes, submit forms, verify data |
+| 4 | API routes match Vite middleware | Compare req/response for 10 random calls |
+| 5 | React fully removed, bundle smaller, E2E pass | Dependency audit, `du -h`, E2E smoke tests |
+
+### Final Sign-Off
+- [ ] Zero React packages in package.json
+- [ ] Bundle size decreased by ≥40KB gzipped
+- [ ] All Svelte pages pass Lighthouse ≥90
+- [ ] All Svelte pages pass WCAG AA accessibility audit
+- [ ] E2E smoke tests pass on Vercel staging
+- [ ] No Console errors or warnings (React or otherwise)
+- [ ] All 13 API routes respond identically to Vite middleware
+- [ ] Deployment to production succeeds
+
+## Implementation Checklist
+
+### Phase 0
+- [ ] Install SvelteKit, Svelte, adapter-vercel
+- [ ] Create svelte.config.js
+- [ ] Create src/routes/+layout.svelte with NostrContextProvider
+- [ ] Create src/lib/stores/nostr.ts
+- [ ] Create src/lib/utils/tiptap-wrapper.ts
+- [ ] Create src/lib/utils/lightweight-charts-action.ts
+- [ ] Update tsconfig.json
+- [ ] Update package.json (add dependencies)
+- [ ] Verify npm run dev works
+- [ ] Verify npm run build succeeds
+
+### Phase 1
+- [ ] Port Activity.tsx → src/routes/activity/+page.svelte
+- [ ] Port AnalyticsDashboard.tsx → src/routes/analytics/+page.svelte
+- [ ] Port ProfilePage.tsx → src/routes/profile/[pubkey]/+page.svelte
+- [ ] Port ThreadPage.tsx → src/routes/thread/[marketId]/+page.svelte
+- [ ] Test all 4 pages (data load, render, Lighthouse)
+- [ ] Run Phase 1 tests
+- [ ] Sign-off: POC validated
+
+### Phase 2
+- [ ] Port Footer, TestnetBanner, UserAvatar, BookmarkButton, EmbedModal
+- [ ] Port HowItWorks, Privacy, Terms, Blog pages
+- [ ] Accessibility audit on all 10 components
+- [ ] Sign-off: Stateless foundation validated
+
+### Phase 3
+- [ ] Port MarketDetail, Portfolio, DashboardOverview, DiscussPage, SettingsPage
+- [ ] Create MarketCard reusable component
+- [ ] Update src/routes/+layout.svelte with NavHeader, Footer
+- [ ] Test all routes, forms, charts
+- [ ] Sign-off: Routing validated
+
+### Phase 4
+- [ ] Create TiptapEditor.svelte wrapper
+- [ ] Port ThesisBuilder, WalletPage, update landing page
+- [ ] Migrate all 13 API routes to SvelteKit
+- [ ] Test all API routes match Vite middleware
+- [ ] Create /legacy wrapper (if needed for transition)
+- [ ] Sign-off: Feature parity achieved
+
+### Phase 5
+- [ ] Run full test suite
+- [ ] Accessibility audit (all pages)
+- [ ] Performance audit (Lighthouse, bundle)
+- [ ] Remove React dependencies and files
+- [ ] Deploy to Vercel staging
+- [ ] Run E2E smoke tests on staging
+- [ ] Sign-off: Ready for production
 
 ---
 
-## Success Metrics
+## Appendix: Code Snippets
 
-✅ **Phase 1 PoC shipped:** 4 pages in Svelte; Activity, Analytics, Profile, Thread load and render correctly
-✅ **Phase 2 simple pages:** 5 static/simple pages migrated; test coverage > 80%
-✅ **Phase 3 dynamic routing:** 5 parameterized pages work; route transitions smooth
-✅ **Phase 4 complex state:** Market trading, creation, deletion work via Svelte stores
-✅ **Phase 5 polish:** Bundle size < original; Lighthouse 90+; all tests pass; React removed
-✅ **Users ship new UI:** Zero broken URLs; analytics show engagement on new routes; error rates normal
+### svelte.config.js
+```javascript
+import adapter from '@sveltejs/adapter-vercel'
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'
 
----
+export default {
+  preprocess: vitePreprocess(),
+  kit: {
+    adapter: adapter(),
+    alias: {
+      $lib: 'src/lib',
+      $routes: 'src/routes',
+    },
+  },
+}
+```
 
-## Known Blockers & Mitigations
+### src/routes/+layout.svelte
+```svelte
+<script lang="ts">
+  import { NostrContextProvider } from '$lib/context/NostrContext.svelte'
+  import NavHeader from '$lib/components/NavHeader.svelte'
+  import Footer from '$lib/components/Footer.svelte'
+  import '../app.css'
+</script>
 
-| Blocker | Status | Mitigation |
-|---------|--------|-----------|
-| @nostr-dev-kit/svelte doesn't exist | Likely | Wrap NDK in Svelte stores manually; use existing NDK 3.0.3 as-is |
-| TipTap editor (React) in ThesisBuilder | Likely | TipTap has Svelte bindings (@tiptap/extension-svelte); replace @tiptap/react |
-| Lightweight-charts (React wrapper) | Possible | Use base library directly or find @lightweight-charts/svelte |
-| Custom analytics middleware in Vite | Expected | Migrate to SkeliteKit routes; well-defined path |
-| localStorage + NIP-46 signing | Low | Pure TS services; no React dependency; works as-is |
+<NostrContextProvider>
+  <NavHeader />
+  <main>
+    <slot />
+  </main>
+  <Footer />
+</NostrContextProvider>
 
----
+<style>
+  :global(body) {
+    @apply bg-neutral-950 text-white;
+  }
+</style>
+```
 
-## Additional Notes for Implementation Team
+### src/lib/stores/nostr.ts
+```typescript
+import { writable, derived } from 'svelte/store'
+import type NDK from '@nostr-dev-kit/ndk'
 
-1. **Keep services pure TS:** Never import React or Svelte into `src/services/`. Services are UI-agnostic.
+export const pubkey = writable<string | null>(null)
+export const ndkInstance = writable<NDK | null>(null)
+export const isReady = writable(false)
 
-2. **Store everything in Svelte stores:** Avoid component-local state for data that multiple pages need (e.g., nostr pubkey, market state, UI toasts).
+export const isLoggedIn = derived(pubkey, ($pubkey) => $pubkey !== null)
+```
 
-3. **Use `+layout.ts` load functions:** Prefer SkeliteKit's `load()` over `onMount()` + `fetch()` for data that blocks page render.
+### src/lib/context/NostrContext.svelte
+```svelte
+<script lang="ts">
+  import { setContext } from 'svelte'
+  import { initNostrService, getNDK, getPubkey } from '$lib/services/nostrService'
+  import { pubkey, ndkInstance, isReady } from '$lib/stores/nostr'
 
-4. **Subscriptions in `onMount()`:** Use `subscribeToEvents()` from services in `onMount()` → unsubscribe in cleanup. Stores update reactively.
+  const TESTNET_RELAYS = [
+    'wss://relay.nostr.band',
+    'wss://nos.lol',
+    'wss://relay.primal.net',
+  ]
+  const MAINNET_RELAYS = [
+    'wss://nostr.wine',
+    'wss://nos.lol',
+    'wss://relay.primal.net',
+  ]
 
-5. **Form actions with `+page.server.ts`:** SkeliteKit's form actions handle mutation logic server-side; prefer over client-side mutations.
+  const relayUrls = import.meta.env.PUBLIC_TESTNET === 'true' ? TESTNET_RELAYS : MAINNET_RELAYS
 
-6. **Type safety:** SkeliteKit auto-generates `PageData` and `PageLoad` types. Use them:
-   ```svelte
-   <script lang="ts">
-     import type { PageData } from './$types';
-     export let data: PageData;
-   </script>
-   ```
+  onMount(async () => {
+    await initNostrService(relayUrls)
+    pubkey.set(getPubkey())
+    ndkInstance.set(getNDK())
+    isReady.set(true)
+  })
 
-7. **Commit strategy:** 
-   - Commit each phase separately (5 commits total: foundation, PoC, simple, dynamic, complex, polish)
-   - Each commit should pass tests and be deployable
-   - PR = entire phase; not per-component
+  setContext('nostr', {
+    pubkey: { subscribe: pubkey.subscribe },
+    ndkInstance: { subscribe: ndkInstance.subscribe },
+    isReady: { subscribe: isReady.subscribe },
+  })
+</script>
 
-8. **Communication:**
-   - Announce Phase 1 PoC completion to stakeholders
-   - Show Lighthouse scores + bundle size wins
-   - Gather feedback before Phase 2
+<slot />
+```
 
----
+### src/routes/api/markets/+server.ts
+```typescript
+import type { RequestHandler } from './$types'
+import { publishMarket } from '$lib/services/nostrService'
 
-## References
+export const POST: RequestHandler = async ({ request, locals }) => {
+  const { title, content, kind } = await request.json()
 
-- [SkeliteKit Docs](https://kit.svelte.dev/)
-- [Svelte 5 Docs](https://svelte.dev/)
-- [SvelteKit Routing](https://kit.svelte.dev/docs/routing)
-- [SvelteKit Load Functions](https://kit.svelte.dev/docs/load)
-- [Svelte Stores](https://svelte.dev/docs/svelte/stores)
-- [NDK Docs](https://ndk.fun/)
-- [Tailwind CSS with Svelte](https://tailwindcss.com/docs/guides/sveltekit)
+  try {
+    const event = await publishMarket(content, [['title', title]], kind)
+    return new Response(JSON.stringify({ eventId: event.id }), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  } catch (e) {
+    return new Response(JSON.stringify({ error: 'Failed to publish market' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+}
+```

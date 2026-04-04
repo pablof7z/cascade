@@ -17,6 +17,9 @@ import {
   fetchEvents as serviceFetchEvents,
   subscribeToEvents as serviceSubscribeToEvents,
 } from '../services/nostrService'
+import { clearCache } from '../bookmarkStore'
+
+const KEYS_STORAGE_KEY = 'cascade-nostr-keys'
 
 // Relay URLs per network
 const TESTNET_RELAYS = ['wss://relay.damus.io']
@@ -27,6 +30,7 @@ interface NostrContextValue {
   ndkInstance: NDK | null
   isReady: boolean
   reconnect: () => Promise<void>
+  disconnect: () => void
   publishEvent: (content: string, tags: string[][], kind?: number) => Promise<NDKEvent>
   fetchEvents: (filter: NDKFilter) => Promise<Set<NDKEvent>>
   subscribeToEvents: (filter: NDKFilter, callback: (event: NDKEvent) => void) => NDKSubscription
@@ -55,11 +59,22 @@ export function NostrContextProvider({ children }: { children: ReactNode }) {
     await initService(isTestnet)
   }
 
+  const disconnect = () => {
+    // Remove stored keys from localStorage
+    localStorage.removeItem(KEYS_STORAGE_KEY)
+    // Clear bookmark cache to prevent cross-user data leakage
+    clearCache()
+    // Reset context state
+    setPubkey(null)
+    setReady(false)
+  }
+
   const value: NostrContextValue = {
     pubkey,
     ndkInstance: ready ? getNDK() : null,
     isReady: ready,
     reconnect,
+    disconnect,
     publishEvent: servicePublishEvent,
     fetchEvents: serviceFetchEvents,
     subscribeToEvents: serviceSubscribeToEvents,

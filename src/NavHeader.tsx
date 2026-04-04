@@ -38,7 +38,7 @@ export default function NavHeader() {
     ? 'Search fields, agents, or meetings...'
     : 'Search markets...'
 
-  const { pubkey, isReady, reconnect } = useNostr()
+  const { pubkey, isReady, reconnect, disconnect } = useNostr()
   const isLoggedIn = pubkey !== null
 
   const avatarInitials = pubkey ? pubkey.slice(0, 4).toUpperCase() : ''
@@ -225,6 +225,7 @@ export default function NavHeader() {
                   <button
                     className="block w-full text-left px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
                     onClick={() => {
+                      disconnect()
                       setUserMenuOpen(false)
                     }}
                   >

@@ -43,7 +43,6 @@ export default function OnboardingSplit({ className = '' }: Props) {
   const applyTelegramProfile = (profileBase64: string) => {
     try {
       const profile: SocialProfile = JSON.parse(atob(profileBase64))
-      console.log('Telegram profile received:', profile)
       setDisplayName(profile.name)
       if (profile.username) {
         const cleanUsername = profile.username.toLowerCase().replace(/[^a-z0-9_-]/g, '')

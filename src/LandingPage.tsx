@@ -857,8 +857,6 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
 
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)] lg:gap-12">
           {(() => {
-            if (!useHotDebates) return null
-
             const debates = useHotDebates.map(entry => {
                   const metrics = deriveMarketMetrics(entry.market)
                   const yes = Math.round(metrics.longPositionShare * 100)

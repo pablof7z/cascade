@@ -223,6 +223,46 @@ export function parseBookmarkEvent(event: NDKEvent): ParseResult {
 export function extractMarketEventIds(list: BookmarksList): string[] {
   return list.entries.map((e) => e.marketEventId)
 }
+
+/**
+ * Resolve market slugs to event IDs during migration.
+ * Called when migrating from legacy storage (which stores slugs) to Nostr (which stores eventIds).
+ * 
+ * For each slug, queries the market cache or relay to find the corresponding kind 30000 event.
+ * If resolution fails for a slug, logs warning and skips that bookmark (partial migration is OK).
+ * 
+ * @param slugs — Array of market slugs from legacy storage
+ * @param ndk — NDK instance for relay queries
+ * @returns Array of eventIds (subset of input slugs; failed ones omitted)
+ */
+export async function resolveSlugsToEventIds(
+  slugs: string[],
+  ndk: NDK,
+): Promise<string[]> {
+  const eventIds: string[] = []
+
+  for (const slug of slugs) {
+    try {
+      // Query for kind 30000 events with d-tag matching slug
+      const events = await ndk.fetchEvents({
+        kinds: [30000],
+        filters: [{ '#d': [slug] }],
+      })
+
+      if (events && events.size > 0) {
+        const event = Array.from(events)[0]
+        eventIds.push(event.id)
+      } else {
+        console.warn(`Market slug not found, skipping bookmark: ${slug}`)
+      }
+    } catch (err) {
+      console.warn(`Failed to resolve slug to eventId: ${slug}`, err)
+      // Continue with other slugs, don't fail entire migration
+    }
+  }
+
+  return eventIds
+}
 ```
 
 **Why**: Service layer owns event serialization. Pure functions enable testing in isolation and allow the adapter to focus on state management and retry logic. No return-error-objects pattern—throwing is explicit.
@@ -440,14 +480,29 @@ export async function initializeBookmarks(
   }
 
   // Migration step: move cascade-bookmarks → cascade-bookmarks-legacy (one-time)
+  // Note: legacy data uses SLUGS. During migration, resolve slugs → eventIds for Nostr storage.
   const oldKey = localStorage.getItem('cascade-bookmarks')
   if (oldKey && !localStorage.getItem(LEGACY_STORAGE_KEY)) {
     try {
       const oldData = JSON.parse(oldKey) as { marketIds: string[]; counts: Record<string, number> }
-      localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(oldData))
+      
+      // Resolve slugs to eventIds if authenticated (have NDK)
+      let resolvedEventIds = oldData.marketIds
+      if (pubkey && ndk) {
+        resolvedEventIds = await resolveSlugsToEventIds(oldData.marketIds, ndk)
+        if (resolvedEventIds.length === 0 && oldData.marketIds.length > 0) {
+          console.warn('No slugs resolved to eventIds; keeping original slugs as fallback')
+          resolvedEventIds = oldData.marketIds
+        }
+      }
+
+      // Store resolved eventIds in legacy backup
+      const migratedData = { marketIds: resolvedEventIds, counts: oldData.counts }
+      localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(migratedData))
       localStorage.removeItem('cascade-bookmarks')
-    } catch {
+    } catch (err) {
       // Malformed old data — skip migration
+      console.warn('Failed to migrate bookmarks:', err)
       localStorage.removeItem('cascade-bookmarks')
     }
   }

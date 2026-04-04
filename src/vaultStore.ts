@@ -32,7 +32,6 @@ let _vaultPubkey: string | null = null
 export async function loadOrCreateVault(): Promise<boolean> {
   const wallet = await loadOrCreateWallet()
   if (!wallet) {
-    console.warn('[vaultStore] Failed to initialize vault wallet')
     return false
   }
 
@@ -50,7 +49,7 @@ export async function loadOrCreateVault(): Promise<boolean> {
         }
       }
     } catch (err) {
-      console.warn('[vaultStore] Could not derive vault pubkey:', err)
+      // Pubkey derivation failed — vault will use unknown pubkey
     }
   }
 

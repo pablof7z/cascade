@@ -72,7 +72,6 @@ import Footer from './components/Footer'
 import AnalyticsDashboard from './AnalyticsDashboard'
 import { initAnalytics, destroyAnalytics, trackPageView } from './analytics'
 import { initPosthog, trackPageView as posthogTrackPageView } from './lib/posthog'
-import { loadOrCreateVault } from './vaultStore'
 import { initResolutionService, resolveMarket } from './services/resolutionService'
 
 type ToastTone = 'good' | 'warn' | 'neutral'
@@ -581,15 +580,6 @@ function AppContent() {
 
   useEffect(() => {
     initResolutionService()
-    loadOrCreateVault()
-      .then((ok) => {
-        if (!ok) {
-          console.warn('[vault] Initialization failed or wallet unavailable')
-        }
-      })
-      .catch((err: unknown) => {
-        console.error('[vault] Initialization error:', err)
-      })
   }, [])
 
   useEffect(() => {

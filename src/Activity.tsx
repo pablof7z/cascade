@@ -305,6 +305,25 @@ export default function Activity() {
 
       {/* Activity appears as it streams in from Nostr */}
 
+      {/* Loading skeleton */}
+      {loading && (
+        <div className="animate-pulse divide-y divide-neutral-800">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-start gap-4 py-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-4 w-24 bg-neutral-800 rounded" />
+                  <div className="h-3 w-12 bg-neutral-800 rounded" />
+                </div>
+                <div className="h-4 w-40 bg-neutral-800 rounded mb-2" />
+                <div className="h-3 w-32 bg-neutral-800 rounded" />
+              </div>
+              <div className="h-4 w-16 bg-neutral-800 rounded" />
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Error state */}
       {!loading && error && (
         <p className="text-neutral-500 text-sm py-8 text-center">{error}</p>

@@ -36,7 +36,7 @@ import {
   subscribeToAllMarkets,
   parseMarketEvent,
 } from './services/marketService'
-import { publishMarket } from './services/nostrService'
+import { publishMarket, fetchMarketByEventId } from './services/nostrService'
 import { useNostr } from './context/NostrContext'
 import { initializePositions } from './positionStore'
 import { initializeBookmarks } from './bookmarkStore'
@@ -574,9 +574,78 @@ function LegacyMarketRedirect({ markets }: { markets: Record<string, MarketEntry
   return <Navigate to="/" replace />
 }
 
-// Redirect /discuss/:id to home (proper discussion routing is TBD)
+// Redirect /discuss/:id to /market/:slug/discussion/:id
+// Fetches the kind 1111 event to find the associated market slug
 function DiscussRedirect() {
-  return <Navigate to="/" replace />
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { isReady, ndkInstance } = useNostr()
+  const [status, setStatus] = useState<'loading' | 'done'>('loading')
+
+  useEffect(() => {
+    if (!isReady || !ndkInstance || !id || status === 'done') return
+
+    const ndk = ndkInstance
+    const threadId = id
+
+    async function findAndRedirect() {
+      try {
+        // Fetch the kind 1111 event by its ID
+        const event = await ndk.fetchEvent({ ids: [threadId], kinds: [1111 as NDKKind] })
+        if (!event) {
+          navigate('/', { replace: true })
+          setStatus('done')
+          return
+        }
+
+        // Extract the 'e' tag (market event ID) - getMatchingTags returns array of arrays
+        const eTags = event.getMatchingTags('e')
+        if (eTags.length === 0 || !eTags[0][1]) {
+          navigate('/', { replace: true })
+          setStatus('done')
+          return
+        }
+
+        const marketEventId = eTags[0][1]
+
+        // Fetch the market by event ID
+        const marketEvent = await fetchMarketByEventId(marketEventId)
+        if (!marketEvent) {
+          navigate('/', { replace: true })
+          setStatus('done')
+          return
+        }
+
+        // Parse to get slug
+        const parseResult = parseMarketEvent(marketEvent)
+        if (!parseResult.ok) {
+          navigate('/', { replace: true })
+          setStatus('done')
+          return
+        }
+
+        navigate(`/market/${parseResult.market.slug}/discussion/${threadId}`, { replace: true })
+        setStatus('done')
+      } catch (err) {
+        console.error('[DiscussRedirect] Error:', err)
+        navigate('/', { replace: true })
+        setStatus('done')
+      }
+    }
+
+    findAndRedirect()
+  }, [isReady, ndkInstance, id, navigate, status])
+
+  // Show loading while fetching
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-neutral-400">Loading discussion...</div>
+      </div>
+    )
+  }
+
+  return null
 }
 
 // Interval between outbox retry sweeps (30 seconds)

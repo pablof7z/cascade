@@ -10,6 +10,7 @@ export default function NavHeader() {
   const { isTestnet, toggle } = useTestnet()
   const [searchQuery, setSearchQuery] = useState('')
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
 
   const isDashboardRoute =
@@ -114,6 +115,23 @@ export default function NavHeader() {
               Mainnet
             </button>
           )}
+
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="block md:hidden p-2 text-neutral-400 hover:text-white transition-colors"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
 
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
@@ -221,6 +239,13 @@ export default function NavHeader() {
                   >
                     Wallet
                   </Link>
+                  <Link
+                    to="/dashboard/settings"
+                    className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    Settings
+                  </Link>
                   <div className="border-t border-neutral-700 my-1" />
                   <button
                     className="block w-full text-left px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
@@ -244,6 +269,39 @@ export default function NavHeader() {
           )}
         </div>
       </div>
+
+      {/* Mobile Navigation Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-neutral-800 bg-neutral-950/98">
+          <nav className="flex flex-col py-2">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={linkClass(item.href).replace('px-3 py-2', 'px-6 py-3')}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
+            <div className="border-t border-neutral-800 my-2" />
+            <Link
+              to="/wallet"
+              className="px-6 py-3 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Wallet
+            </Link>
+            <Link
+              to="/dashboard/settings"
+              className="px-6 py-3 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Settings
+            </Link>
+          </nav>
+        </div>
+      )}
     </header>
   )
 }

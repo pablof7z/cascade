@@ -123,6 +123,46 @@ export async function fetchEvents(filter: NDKFilter): Promise<Set<NDKEvent>> {
 }
 
 /**
+ * Fetch a single event by its ID.
+ * Returns null if not found.
+ */
+export async function fetchEventById(eventId: string): Promise<NDKEvent | null> {
+  if (!_ndk) throw new Error('Nostr service not initialized')
+  const events = await _ndk.fetchEvents({ ids: [eventId], limit: 1 })
+  if (events.size === 0) return null
+  return Array.from(events)[0]
+}
+
+/**
+ * Extract the market event ID from a kind 1111 event's tags.
+ * Returns the event ID from the "e" tag with "root" marker, or null if not found.
+ */
+export function extractMarketEventId(event: NDKEvent): string | null {
+  for (const tag of event.tags) {
+    if (tag[0] === 'e' && tag[3] === 'root') {
+      return tag[1]
+    }
+  }
+  return null
+}
+
+/**
+ * Extract the market slug (d-tag) from a kind 1111 event's "a" tag.
+ * Returns the d-tag from "a" tag in format "982:<pubkey>:<d-tag>", or null if not found.
+ */
+export function extractMarketSlug(event: NDKEvent): string | null {
+  for (const tag of event.tags) {
+    if (tag[0] === 'a') {
+      const parts = tag[1].split(':')
+      if (parts.length >= 3 && parts[0] === '982') {
+        return parts[2]
+      }
+    }
+  }
+  return null
+}
+
+/**
  * Subscribe to live events matching the given filter.
  * Calls callback for each new event received.
  * Returns the NDKSubscription so the caller can stop() it on cleanup.

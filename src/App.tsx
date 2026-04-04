@@ -516,7 +516,6 @@ function LegacyFieldRedirect() {
 }
 
 
-
 // Legacy redirect: /field/:id/meeting -> /dashboard/field/:id/meeting
 function LegacyFieldMeetingRedirect() {
   const { id } = useParams<{ id: string }>()
@@ -548,33 +547,29 @@ function LegacyMarketRedirect({ markets }: { markets: Record<string, MarketEntry
     return <Navigate to={`/market/${id}`} replace />
   }
 
-  // Market not found - redirect to home
-  return <Navigate to="/" replace />
-}
+  // Market not found - detect if this looks like a numeric ID
+  const isNumericId = /^\d+$/.test(id)
 
-// Legacy redirect: /discuss/:id -> redirect to home
-// Since we don't have market context, redirect to home
-function LegacyDiscussRedirect({ markets }: { markets: Record<string, MarketEntry> }) {
-  const { id: threadId } = useParams<{ id: string }>()
-
-  useEffect(() => {
-    if (!threadId) return
-
-    // We can't find threads without market context, so redirect to home
-    // User can search for the discussion from the home page
-    window.location.replace('/')
-  }, [threadId, markets])
-
-  if (!threadId) {
-    return <Navigate to="/" replace />
+  if (isNumericId) {
+    // For numeric IDs that aren't found, show a "market not found" page
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+        <h1 className="text-2xl font-semibold text-white mb-4">Market Not Found</h1>
+        <p className="text-neutral-400 mb-6">
+          The market with ID &quot;{id}&quot; could not be found. It may have been removed or the link may be outdated.
+        </p>
+        <a
+          href="/"
+          className="text-sm text-neutral-400 hover:text-white border border-neutral-700 px-4 py-2"
+        >
+          Go to Home
+        </a>
+      </div>
+    )
   }
 
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh] px-4">
-      <div className="text-neutral-400 mb-4">Discussion thread: {threadId}</div>
-      <div className="text-neutral-600 text-sm">Redirecting to home...</div>
-    </div>
-  )
+  // For non-numeric IDs that aren't found, redirect to home
+  return <Navigate to="/" replace />
 }
 
 // Interval between outbox retry sweeps (30 seconds)
@@ -612,6 +607,8 @@ function AppContent() {
       '/fields',
       '/field/',
       '/thesis/',
+      '/settings',
+      '/discuss/',
     ]
     return pathname === '/' || knownPrefixes.some(prefix => pathname.startsWith(prefix))
   }
@@ -877,7 +874,7 @@ function AppContent() {
         </Route>
         {/* Legacy redirects — keep old URLs working */}
         <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
-        <Route path="/discuss/:id" element={<LegacyDiscussRedirect markets={state.markets} />} />
+        <Route path="/discuss/:id" element={<Navigate to="/" replace />} />
         <Route path="/fields" element={<Navigate to="/dashboard/fields" replace />} />
         <Route path="/field/:id/meeting" element={<LegacyFieldMeetingRedirect />} />
         <Route path="/field/:id" element={<LegacyFieldRedirect />} />

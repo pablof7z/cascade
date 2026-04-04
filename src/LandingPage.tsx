@@ -276,7 +276,7 @@ type Props = {
   isLoadingMarkets?: boolean
 }
 
-export default function LandingPage({ markets, dispatch, isLoadingMarkets: _isLoadingMarkets }: Props) {
+export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Props) {
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -673,6 +673,23 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets: _isLo
                   </div>
                 )
               }
+              // Loading skeleton
+              if (isLoadingMarkets) {
+                return (
+                  <div className="animate-pulse">
+                    <div className="h-3 w-16 bg-neutral-800 rounded" />
+                    <div className="h-8 w-full max-w-md bg-neutral-800 rounded mt-2 mb-4" />
+                    <div className="flex items-baseline gap-3 mb-3">
+                      <div className="h-14 w-24 bg-neutral-800 rounded" />
+                      <div className="h-6 w-16 bg-neutral-800 rounded" />
+                    </div>
+                    <div className="flex gap-6">
+                      <div className="h-4 w-16 bg-neutral-800 rounded" />
+                      <div className="h-4 w-16 bg-neutral-800 rounded" />
+                    </div>
+                  </div>
+                )
+              }
               // Fallback sample
               const item = trendingSample[0]
               return (
@@ -737,6 +754,19 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets: _isLo
                   </div>
                 )
               })}
+              {/* Loading skeleton for ranked list */}
+              {isLoadingMarkets && [1, 2, 3, 4, 5].map((_, i) => (
+                <div key={`skeleton-${i}`} className="flex items-center gap-4 py-3 border-b border-neutral-800/30 last:border-0 -mx-2 px-2 animate-pulse">
+                  <div className="w-8 h-8 bg-neutral-800 rounded" />
+                  <div className="flex-1">
+                    <div className="h-4 w-32 bg-neutral-800 rounded" />
+                  </div>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="w-12 h-4 bg-neutral-800 rounded" />
+                    <div className="w-8 h-4 bg-neutral-800 rounded" />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

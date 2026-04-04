@@ -22,7 +22,7 @@ import { clearCache } from '../bookmarkStore'
 const KEYS_STORAGE_KEY = 'cascade-nostr-keys'
 
 // Relay URLs per network
-const TESTNET_RELAYS = ['wss://relay.damus.io']
+const TESTNET_RELAYS = ['wss://relay.damus.io', 'wss://relay.nostr.band']
 const MAINNET_RELAYS = ['wss://relay.damus.io', 'wss://nostr.wine']
 
 interface NostrContextValue {

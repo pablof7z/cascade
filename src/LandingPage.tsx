@@ -1131,7 +1131,10 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets: _isLo
           </div>
 
           <div className="max-w-4xl space-y-0">
-            {sampleDiscussions.map(discussion => {
+            {discussionsLoading ? (
+              <div className="text-sm text-neutral-600 py-4">Syncing discussions...</div>
+            ) : (
+              (discussions.length > 0 ? discussions : sampleDiscussions).map(discussion => {
               const matchingEntry = Object.values(markets).find(
                 e => e.market.title === discussion.marketTitle
               )
@@ -1172,7 +1175,7 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets: _isLo
                   </div>
                 </button>
               )
-            })}
+            }))}
           </div>
         </div>
       </section>

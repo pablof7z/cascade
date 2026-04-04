@@ -243,14 +243,16 @@ export async function resolveSlugsToEventIds(
 
   for (const slug of slugs) {
     try {
-      // Query for kind 30000 events with d-tag matching slug
+      // Query for kind 982 events (market kind after kind-982 migration) with d-tag matching slug
       const events = await ndk.fetchEvents({
-        kinds: [30000],
+        kinds: [982],
         filters: [{ '#d': [slug] }],
       })
 
       if (events && events.size > 0) {
-        const event = Array.from(events)[0]
+        // Sort by created_at DESC, take most recent (kind 982 events are non-replaceable)
+        const sorted = Array.from(events).sort((a, b) => b.created_at - a.created_at)
+        const event = sorted[0]
         eventIds.push(event.id)
       } else {
         console.warn(`Market slug not found, skipping bookmark: ${slug}`)
@@ -491,8 +493,7 @@ export async function initializeBookmarks(
       if (pubkey && ndk) {
         resolvedEventIds = await resolveSlugsToEventIds(oldData.marketIds, ndk)
         if (resolvedEventIds.length === 0 && oldData.marketIds.length > 0) {
-          console.warn('No slugs resolved to eventIds; keeping original slugs as fallback')
-          resolvedEventIds = oldData.marketIds
+          console.warn('No slugs resolved to eventIds; skipping these bookmarks during migration')
         }
       }
 
@@ -546,7 +547,7 @@ export async function initializeBookmarks(
     _cache.source = 'nostr'
     _cache.nostrEventId = nostrList.eventId
     _cache.migrationPending = false
-  } else if (legacy.marketIds.length > 0) {
+  } else if (legacy.marketIds.length > 0 && !hasPendingPublish) {
     // Nostr is empty; use legacy and queue migration
     _cache.marketEventIds = legacy.marketIds
     _cache.source = 'legacy'

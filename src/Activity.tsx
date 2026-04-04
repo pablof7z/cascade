@@ -127,6 +127,9 @@ export default function Activity() {
     let cancelled = false
 
     async function loadNewMarkets() {
+      const ndk = getNDK()
+      if (!ndk) return
+
       try {
         const events = await fetchAllMarketsTransport(50)
         if (cancelled) return
@@ -211,6 +214,9 @@ export default function Activity() {
     let cancelled = false
 
     async function loadResolutions() {
+      const ndk = getNDK()
+      if (!ndk) return
+
       try {
         const events = await fetchAllPayoutEvents()
         if (cancelled) return

@@ -190,16 +190,6 @@ const sampleTheses: SampleMarketSpec[] = [
 
 const sampleMarketBank = [...sampleModules, ...sampleTheses]
 
-// Sample recent trades
-const sampleTrades = [
-  { market: 'AGI by 2030', side: 'YES', amount: 500, user: 'reasoning_agent', timeAgo: '2m' },
-  { market: 'Fusion power plant', side: 'NO', amount: 250, user: 'energy_bear', timeAgo: '5m' },
-  { market: 'Mars landing 2035', side: 'YES', amount: 1000, user: 'space_bull', timeAgo: '8m' },
-  { market: 'Lab-grown meat', side: 'NO', amount: 150, user: 'biotech_skeptic', timeAgo: '12m' },
-  { market: 'UBI pilot program', side: 'YES', amount: 300, user: 'policy_watcher', timeAgo: '15m' },
-  { market: 'BCI reaches 1M users', side: 'YES', amount: 200, user: 'neuro_optimist', timeAgo: '18m' },
-]
-
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -276,49 +266,6 @@ function PulseDot({ color = 'emerald' }: { color?: 'emerald' | 'rose' }) {
       <span className={`animate-ping absolute inline-flex h-full w-full ${colorClasses[color]} opacity-75`} />
       <span className={`relative inline-flex h-2 w-2 ${colorClasses[color]}`} />
     </span>
-  )
-}
-
-// Animated trades ticker
-function TradesTicker({ trades }: { trades: typeof sampleTrades }) {
-  const [visibleTrades, setVisibleTrades] = useState(trades.slice(0, 4))
-  const [fadeIndex, setFadeIndex] = useState(-1)
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setFadeIndex(0)
-      setTimeout(() => {
-        setVisibleTrades(prev => {
-          const remaining = prev.slice(1)
-          const nextIndex = (trades.indexOf(prev[prev.length - 1]) + 1) % trades.length
-          return [...remaining, trades[nextIndex]]
-        })
-        setFadeIndex(-1)
-      }, 300)
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [trades])
-
-  return (
-    <div className="flex gap-6 overflow-hidden">
-      {visibleTrades.map((trade, i) => (
-        <div
-          key={`${trade.user}-${trade.market}-${i}`}
-          className={`text-sm whitespace-nowrap transition-all duration-300 ${
-            i === fadeIndex ? 'opacity-0 -translate-x-4' : 'opacity-100 translate-x-0'
-          }`}
-        >
-          <span className="text-white">@{trade.user}</span>
-          {' bought '}
-          <span className={trade.side === 'YES' ? 'text-emerald-500' : 'text-rose-500'}>
-            {trade.side}
-          </span>
-          {' on '}
-          <span className="text-neutral-300">{trade.market}</span>
-          <span className="text-neutral-500"> — {trade.timeAgo}</span>
-        </div>
-      ))}
-    </div>
   )
 }
 
@@ -671,18 +618,11 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets: _isLo
             <PulseDot color="emerald" />
             <span className="text-xs text-neutral-500 uppercase tracking-wider font-medium">Live</span>
           </div>
-          <div className="overflow-hidden text-sm text-neutral-400">
-            <TradesTicker trades={sampleTrades} />
-          </div>
+          <div className="overflow-hidden text-sm text-neutral-400" />
         </div>
       </div>
 
-      {/* Syncing indicator */}
-      {_isLoadingMarkets && (
-        <div className="max-w-7xl mx-auto px-6 py-3">
-          <p className="text-xs text-neutral-500">Syncing markets…</p>
-        </div>
-      )}
+      {/* Markets appear as they stream in from Nostr */}
 
       {/* ═══════════════════════════════════════════════════════════════════
           SECTION 1: TRENDING MARKETS — Sidebar layout

@@ -292,10 +292,7 @@ export default function Activity() {
         ))}
       </nav>
 
-      {/* Loading state */}
-      {loading && (
-        <p className="text-neutral-500 text-sm py-8 text-center">Loading activity…</p>
-      )}
+      {/* Activity appears as it streams in from Nostr */}
 
       {/* Error state */}
       {!loading && error && (

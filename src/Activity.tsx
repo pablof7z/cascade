@@ -67,7 +67,9 @@ export default function Activity() {
   const [resolutions, setResolutions] = useState<ResolutionItem[]>([])
   const [marketsMap, setMarketsMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error] = useState<string | null>(null)
+  const [marketsError, setMarketsError] = useState<string | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
 
   // Fetch user name from kind 0 event
   const getUserName = useCallback(async (pubkey: string): Promise<string> => {
@@ -130,6 +132,9 @@ export default function Activity() {
       const ndk = getNDK()
       if (!ndk) return
 
+      // Clear previous relay error on new fetch attempt
+      if (!cancelled) setMarketsError(null)
+
       try {
         const events = await fetchAllMarketsTransport(50)
         if (cancelled) return
@@ -153,10 +158,16 @@ export default function Activity() {
         }
 
         activityItems.sort((a, b) => b.timestamp - a.timestamp)
-        if (!cancelled) setItems(activityItems)
+        if (!cancelled) {
+          setItems(activityItems)
+          // If empty on first load, likely relay issue
+          if (activityItems.length === 0) {
+            setMarketsError("Couldn't reach relay — check your connection")
+          }
+        }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load activity')
+          setMarketsError(err instanceof Error ? err.message : "Couldn't reach relay — check your connection")
         }
       }
     }
@@ -165,7 +176,7 @@ export default function Activity() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [retryKey])
 
   // Load trades activity
   useEffect(() => {
@@ -307,7 +318,18 @@ export default function Activity() {
       {/* New Markets tab */}
       {!loading && !error && activeFilter === 'New Markets' && (
         <>
-          {filteredItems.length === 0 ? (
+          {marketsError ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-4">
+              <p className="text-rose-400 text-sm">{marketsError}</p>
+              <button
+                type="button"
+                onClick={() => setRetryKey(k => k + 1)}
+                className="px-4 py-2 text-sm font-medium bg-neutral-800 text-white hover:bg-neutral-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          ) : items.length === 0 ? (
             <p className="text-neutral-500 text-sm py-8 text-center">No markets found</p>
           ) : (
             <div className="divide-y divide-neutral-800">

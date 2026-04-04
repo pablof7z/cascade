@@ -11,7 +11,7 @@ interface Props {
  * My Bookmarks page - displays all markets the user has bookmarked.
  */
 export default function BookmarksPage({ markets = {} }: Props) {
-  const { bookmarkedIds, toggle, getCount } = useBookmarks()
+  const { bookmarkedIds, toggle } = useBookmarks()
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -65,12 +65,9 @@ export default function BookmarksPage({ markets = {} }: Props) {
                   {title}
                 </Link>
                 <div className="flex items-center gap-3 ml-4">
-                  <span className="text-xs text-neutral-500">
-                    {getCount(marketId)} bookmarks
-                  </span>
                   <BookmarkButton
                     isBookmarked={true}
-                    count={getCount(marketId)}
+                    count={1}
                     onToggle={() => toggle(marketId)}
                     showCount={false}
                   />

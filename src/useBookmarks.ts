@@ -1,56 +1,70 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
-  loadBookmarks,
+  getBookmarks,
+  isBookmarked as checkIsBookmarked,
   addBookmark,
   removeBookmark,
-  initializeSampleCounts,
-  type BookmarkData,
+  refreshBookmarks,
+  onBookmarksChanged,
+  initializeBookmarks,
 } from './bookmarkStore'
+import { useNostr } from './context/NostrContext'
 
-/**
- * React hook for managing bookmarks with reactive state updates.
- */
-export function useBookmarks(marketIds?: string[]) {
-  const [data, setData] = useState<BookmarkData>(loadBookmarks)
+export function useBookmarks(_marketIds?: string[]) {
+  const { pubkey, ndkInstance: ndk } = useNostr()
+  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([])
 
-  // Initialize sample counts for demo when marketIds are provided
+  // Initialize on mount or when pubkey changes
   useEffect(() => {
-    if (marketIds && marketIds.length > 0) {
-      initializeSampleCounts(marketIds)
-      setData(loadBookmarks())
-    }
-  }, [marketIds?.join(',')])
+    initializeBookmarks(pubkey, ndk)
+  }, [pubkey, ndk])
 
-  const toggle = useCallback((marketId: string) => {
-    const isCurrentlyBookmarked = data.marketIds.includes(marketId)
-    const newData = isCurrentlyBookmarked
-      ? removeBookmark(marketId)
-      : addBookmark(marketId)
-    setData(newData)
-  }, [data.marketIds])
+  // Listen to bookmark changes
+  useEffect(() => {
+    const unsubscribe = onBookmarksChanged(() => {
+      setBookmarkedIds(getBookmarks())
+    })
+    // Initial sync
+    setBookmarkedIds(getBookmarks())
+    return unsubscribe
+  }, [])
 
-  const isBookmarked = useCallback((marketId: string) => {
-    return data.marketIds.includes(marketId)
-  }, [data.marketIds])
+  const toggle = useCallback(
+    (marketId: string) => {
+      if (checkIsBookmarked(marketId)) {
+        removeBookmark(marketId, pubkey, ndk)
+      } else {
+        addBookmark(marketId, pubkey, ndk)
+      }
+    },
+    [pubkey, ndk],
+  )
 
-  const getCount = useCallback((marketId: string) => {
-    return data.counts[marketId] || 0
-  }, [data.counts])
+  const getCount = useCallback(
+    (marketId: string) => {
+      // For now, return bookmark count (1 if bookmarked, 0 otherwise)
+      // In future, this could aggregate global counts from Nostr relay
+      return checkIsBookmarked(marketId) ? 1 : 0
+    },
+    [],
+  )
 
-  // Get markets sorted by bookmark count (descending)
-  const getTopBookmarked = useCallback((limit?: number) => {
-    const sorted = Object.entries(data.counts)
-      .sort(([, a], [, b]) => b - a)
-      .map(([id, count]) => ({ marketId: id, count }))
-    return limit ? sorted.slice(0, limit) : sorted
-  }, [data.counts])
+  const getTopBookmarked = useCallback(
+    (limit?: number) => {
+      // Return bookmarked IDs as { marketId, count } objects
+      // Shallow copy to avoid mutation
+      const items = bookmarkedIds.map((id) => ({ marketId: id, count: 1 }))
+      return limit ? items.slice(0, limit) : items
+    },
+    [bookmarkedIds],
+  )
 
   return {
-    bookmarkedIds: data.marketIds,
+    bookmarkedIds,
     toggle,
-    isBookmarked,
+    isBookmarked: (id: string) => checkIsBookmarked(id),
     getCount,
     getTopBookmarked,
-    refresh: () => setData(loadBookmarks()),
+    refresh: () => refreshBookmarks(pubkey, ndk),
   }
 }

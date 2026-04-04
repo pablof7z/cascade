@@ -1,90 +1,471 @@
 /**
- * Bookmark storage using localStorage with future Nostr kind 30001 compatibility.
- * Stores market IDs that the user has bookmarked.
+ * Bookmark Store — Adapter Layer for NIP-51 Migration
+ *
+ * Manages:
+ * - localStorage state (legacy backup + pending outbox)
+ * - Migration from legacy to Nostr
+ * - Merge logic (Nostr wins)
+ * - Retry/fallback for publish failures
+ *
+ * Stateful decisions live here. Service layer is pure.
  */
 
-const STORAGE_KEY = 'cascade-bookmarks'
+import type NDK from '@nostr-dev-kit/ndk'
+import {
+  parseBookmarkEvent,
+  serializeBookmarksToEvent,
+  extractMarketEventIds,
+  type BookmarksList,
+} from './services/bookmarkService'
+import { publishEvent } from './services/nostrService'
 
-export type BookmarkData = {
+// ---------------------------------------------------------------------------
+// Storage Keys
+// ---------------------------------------------------------------------------
+
+// Per-user keys prevent data leakage between authenticated sessions
+// Anonymous mode uses a single shared key
+function getLegacyKey(pubkey: string | null): string {
+  return pubkey
+    ? `cascade-bookmarks-legacy-${pubkey}`
+    : 'cascade-bookmarks-legacy-anon'
+}
+
+function getMigrationFlagKey(pubkey: string | null): string {
+  return pubkey
+    ? `cascade-bookmarks-migrated-${pubkey}`
+    : 'cascade-bookmarks-migrated-anon'
+}
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/**
+ * Legacy bookmark data (loaded from old storage key).
+ * No timestamps—preserved as-is for failsafe.
+ */
+interface LegacyBookmarkData {
   marketIds: string[]
-  // Track aggregate bookmark counts (would come from relay in production)
   counts: Record<string, number>
 }
 
-function getDefaultData(): BookmarkData {
-  return { marketIds: [], counts: {} }
+/**
+ * Pending bookmark publish entry.
+ * Queued when migration happens or when offline user logs in.
+ */
+interface PendingBookmarkPublish {
+  pubkey: string
+  marketEventIds: string[]
+  createdAt: number
+  retries: number
 }
 
-export function loadBookmarks(): BookmarkData {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return getDefaultData()
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object') return getDefaultData()
-    return {
-      marketIds: Array.isArray(parsed.marketIds) ? parsed.marketIds : [],
-      counts: parsed.counts && typeof parsed.counts === 'object' ? parsed.counts : {},
-    }
-  } catch {
-    return getDefaultData()
+/**
+ * In-memory cache of current bookmarks.
+ * Can come from: legacy (if no Nostr event), Nostr event, or merged result.
+ */
+interface BookmarkCache {
+  pubkey: string | null // Cache is user-scoped; null = anonymous
+  marketEventIds: string[] // The authoritative list
+  source: 'none' | 'legacy' | 'nostr' | 'merged'
+  nostrEventId: string | null // If fetched from Nostr, the event ID
+  migrationPending: boolean // True if legacy exists but Nostr publish pending
+}
+
+// ---------------------------------------------------------------------------
+// Module State
+// ---------------------------------------------------------------------------
+
+const _cache: BookmarkCache = {
+  pubkey: null,
+  marketEventIds: [],
+  source: 'none',
+  nostrEventId: null,
+  migrationPending: false,
+}
+
+const _listeners: Set<() => void> = new Set()
+
+// ---------------------------------------------------------------------------
+// Observer Pattern
+// ---------------------------------------------------------------------------
+
+/**
+ * Notify all listeners that the cache has changed.
+ */
+function notifyCacheListeners(): void {
+  for (const listener of _listeners) {
+    listener()
   }
 }
 
-export function saveBookmarks(data: BookmarkData): void {
+/**
+ * Subscribe to bookmark changes.
+ * Returns unsubscribe function.
+ */
+export function onBookmarksChanged(listener: () => void): () => void {
+  _listeners.add(listener)
+  return () => {
+    _listeners.delete(listener)
+  }
+}
+
+/**
+ * Clear the in-memory cache.
+ * Called on logout to prevent cross-user data leakage.
+ */
+export function clearCache(): void {
+  _cache.pubkey = null
+  _cache.marketEventIds = []
+  _cache.source = 'none'
+  _cache.nostrEventId = null
+  _cache.migrationPending = false
+  notifyCacheListeners()
+}
+
+// ---------------------------------------------------------------------------
+// Legacy Storage Helpers
+// ---------------------------------------------------------------------------
+
+function loadLegacyBookmarks(pubkey: string | null): LegacyBookmarkData | null {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    const raw = localStorage.getItem(getLegacyKey(pubkey))
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    return {
+      marketIds: Array.isArray(parsed.marketIds) ? parsed.marketIds : [],
+      counts:
+        parsed.counts && typeof parsed.counts === 'object' ? parsed.counts : {},
+    }
+  } catch {
+    return null
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pending Publish Helpers
+// ---------------------------------------------------------------------------
+
+function getPendingPublishes(): PendingBookmarkPublish[] {
+  try {
+    const raw = localStorage.getItem('cascade-bookmarks-pending')
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function savePendingPublishes(pending: PendingBookmarkPublish[]): void {
+  try {
+    localStorage.setItem('cascade-bookmarks-pending', JSON.stringify(pending))
   } catch {
     // quota exceeded — silently ignore
   }
 }
 
-export function addBookmark(marketId: string): BookmarkData {
-  const data = loadBookmarks()
-  if (!data.marketIds.includes(marketId)) {
-    data.marketIds.push(marketId)
-    // Simulate incrementing global count
-    data.counts[marketId] = (data.counts[marketId] || 0) + 1
+function addPendingPublish(pubkey: string, marketEventIds: string[]): void {
+  const pending = getPendingPublishes()
+  const index = pending.findIndex((p) => p.pubkey === pubkey)
+  const entry: PendingBookmarkPublish = {
+    pubkey,
+    marketEventIds,
+    createdAt: Math.floor(Date.now() / 1000),
+    retries: 0,
   }
-  saveBookmarks(data)
-  return data
-}
-
-export function removeBookmark(marketId: string): BookmarkData {
-  const data = loadBookmarks()
-  data.marketIds = data.marketIds.filter(id => id !== marketId)
-  // Note: In production with Nostr, count would be aggregate from all users
-  // Here we just decrement to simulate, but floor at 0
-  if (data.counts[marketId]) {
-    data.counts[marketId] = Math.max(0, data.counts[marketId] - 1)
+  if (index >= 0) {
+    pending[index] = entry
+  } else {
+    pending.push(entry)
   }
-  saveBookmarks(data)
-  return data
+  savePendingPublishes(pending)
 }
 
-export function isBookmarked(marketId: string): boolean {
-  const data = loadBookmarks()
-  return data.marketIds.includes(marketId)
+function removePendingPublish(pubkey: string): void {
+  const pending = getPendingPublishes().filter((p) => p.pubkey !== pubkey)
+  savePendingPublishes(pending)
 }
 
-export function getBookmarkCount(marketId: string): number {
-  const data = loadBookmarks()
-  return data.counts[marketId] || 0
+function incrementPendingRetries(pubkey: string): void {
+  const pending = getPendingPublishes()
+  const entry = pending.find((p) => p.pubkey === pubkey)
+  if (entry) {
+    entry.retries++
+    savePendingPublishes(pending)
+  }
 }
 
-// Initialize with some sample counts for demo purposes
-export function initializeSampleCounts(marketIds: string[]): void {
-  const data = loadBookmarks()
-  let hasNewCounts = false
-  
-  for (const id of marketIds) {
-    if (data.counts[id] === undefined) {
-      // Random count between 5-50 for demo
-      data.counts[id] = Math.floor(Math.random() * 45) + 5
-      hasNewCounts = true
+function getMigrationFlag(pubkey: string | null): boolean {
+  return localStorage.getItem(getMigrationFlagKey(pubkey)) === 'true'
+}
+
+function setMigrationFlag(pubkey: string | null, migrated: boolean): void {
+  if (migrated) {
+    localStorage.setItem(getMigrationFlagKey(pubkey), 'true')
+  } else {
+    localStorage.removeItem(getMigrationFlagKey(pubkey))
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Initialization with Merge Logic
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialize bookmark state for a user.
+ * Loads from legacy storage and/or Nostr, then merges.
+ * Must be called when:
+ * - App mounts (for anonymous users)
+ * - User signs in (for authenticated users)
+ * - User logs out (with null pubkey)
+ *
+ * Merge strategy: Nostr wins. If no Nostr event, use legacy. If neither, empty.
+ */
+export async function initializeBookmarks(
+  pubkey: string | null,
+  ndk: NDK | null,
+): Promise<void> {
+  _cache.pubkey = pubkey
+
+  // Update cache key to new user (if changed)
+  // Load legacy data
+  const legacy = loadLegacyBookmarks(pubkey)
+  const legacyIds = legacy?.marketIds ?? []
+
+  // Load from Nostr if authenticated
+  let nostrList: BookmarksList | null = null
+
+  if (pubkey && ndk) {
+    try {
+      const events = await ndk.fetchEvents({
+        kinds: [10003],
+        authors: [pubkey],
+      })
+
+      if (events && events.size > 0) {
+        // Sort by created_at DESC, take most recent
+        const sorted = Array.from(events).sort(
+          (a, b) => (b.created_at ?? 0) - (a.created_at ?? 0),
+        )
+        const result = parseBookmarkEvent(sorted[0])
+        if (result.ok) {
+          nostrList = result.list
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch bookmarks from Nostr:', err)
+      // Fall back to legacy data
     }
   }
-  
-  if (hasNewCounts) {
-    saveBookmarks(data)
+
+  // Merge logic: Nostr wins
+  if (nostrList) {
+    _cache.marketEventIds = extractMarketEventIds(nostrList)
+    _cache.source = 'nostr'
+    _cache.nostrEventId = nostrList.eventId
+    _cache.migrationPending = false
+
+    // Mark as migrated so we don't queue another publish
+    setMigrationFlag(pubkey, true)
+  } else if (legacyIds.length > 0) {
+    _cache.marketEventIds = legacyIds
+    _cache.source = 'legacy'
+    _cache.nostrEventId = null
+
+    // Queue migration publish if authenticated
+    if (pubkey && ndk && !getMigrationFlag(pubkey)) {
+      _cache.migrationPending = true
+      addPendingPublish(pubkey, legacyIds)
+    } else {
+      _cache.migrationPending = false
+    }
+  } else {
+    _cache.source = 'none'
+  }
+
+  // Process pending publishes AFTER merge logic (retry or publish if online)
+  if (pubkey) {
+    await processPendingPublishes(pubkey, ndk)
+  }
+
+  notifyCacheListeners()
+}
+
+/**
+ * Process pending publishes: retry failed publishes or publish queued bookmarks.
+ * Internal helper, called during init.
+ */
+async function processPendingPublishes(
+  pubkey: string,
+  ndk: NDK | null,
+): Promise<void> {
+  const pending = getPendingPublishes()
+  const entry = pending.find((p) => p.pubkey === pubkey)
+
+  if (!entry) return
+
+  // Max 3 retries per entry
+  if (entry.retries >= 3) {
+    console.warn('Bookmark publish: max retries exceeded, giving up')
+    removePendingPublish(pubkey)
+    return
+  }
+
+  // If ndk is null, we can't publish — just keep the entry for later
+  if (!ndk) return
+
+  try {
+    await publishBookmarksEvent(pubkey, entry.marketEventIds, ndk)
+    removePendingPublish(pubkey)
+    setMigrationFlag(pubkey, true)
+    _cache.migrationPending = false
+  } catch (err) {
+    console.warn('Bookmark publish failed:', err)
+    incrementPendingRetries(pubkey)
+    // Keep entry in pending for next retry
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Nostr Event Publishing
+// ---------------------------------------------------------------------------
+
+/**
+ * Publish bookmarks as a kind 10003 event.
+ * Throws on failure.
+ *
+ * Internal helper—called by processPendingPublishes and direct user interactions.
+ */
+async function publishBookmarksEvent(
+  _pubkey: string,
+  marketEventIds: string[],
+  ndk: NDK,
+): Promise<void> {
+  if (!ndk.signer) {
+    throw new Error(
+      'No signer available — cannot publish bookmarks in read-only mode',
+    )
+  }
+
+  const { content, tags } = serializeBookmarksToEvent(marketEventIds)
+
+  // Publish via nostrService (which throws on failure)
+  await publishEvent(content, tags, 10003)
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Get current bookmarked market event IDs.
+ */
+export function getBookmarks(): string[] {
+  return [..._cache.marketEventIds]
+}
+
+/**
+ * Check if a market event ID is bookmarked.
+ */
+export function isBookmarked(marketEventId: string): boolean {
+  return _cache.marketEventIds.includes(marketEventId)
+}
+
+/**
+ * Add a bookmark for a market event ID.
+ * Updates cache and queues Nostr publish if authenticated.
+ * Does NOT write to legacy storage (read-only after migration).
+ * Does NOT publish immediately (async publish happens in background).
+ */
+export function addBookmark(
+  marketEventId: string,
+  pubkey: string | null,
+  ndk: NDK | null,
+): void {
+  if (_cache.marketEventIds.includes(marketEventId)) return
+
+  _cache.marketEventIds = [..._cache.marketEventIds, marketEventId]
+
+  // Queue Nostr publish if authenticated
+  if (pubkey && ndk) {
+    addPendingPublish(pubkey, _cache.marketEventIds)
+    // Fire async publish (do not await—return immediately)
+    publishBookmarksEvent(pubkey, _cache.marketEventIds, ndk).catch((err) => {
+      console.warn('Background bookmark publish failed:', err)
+      // Entry stays in pending for retry
+    })
+  }
+
+  notifyCacheListeners()
+}
+
+/**
+ * Remove a bookmark for a market event ID.
+ * Updates cache and queues Nostr publish if authenticated.
+ * Does NOT write to legacy storage (read-only after migration).
+ */
+export function removeBookmark(
+  marketEventId: string,
+  pubkey: string | null,
+  ndk: NDK | null,
+): void {
+  if (!_cache.marketEventIds.includes(marketEventId)) return
+
+  _cache.marketEventIds = _cache.marketEventIds.filter(
+    (id) => id !== marketEventId,
+  )
+
+  // Queue Nostr publish if authenticated
+  if (pubkey && ndk) {
+    addPendingPublish(pubkey, _cache.marketEventIds)
+    publishBookmarksEvent(pubkey, _cache.marketEventIds, ndk).catch((err) => {
+      console.warn('Background bookmark publish failed:', err)
+    })
+  }
+
+  notifyCacheListeners()
+}
+
+/**
+ * Get count of bookmarks.
+ */
+export function getBookmarkCount(): number {
+  return _cache.marketEventIds.length
+}
+
+/**
+ * Refresh bookmarks from Nostr (fetch latest kind 10003).
+ * Called periodically or on user request.
+ * Re-merges and updates cache.
+ */
+export async function refreshBookmarks(
+  pubkey: string | null,
+  ndk: NDK | null,
+): Promise<void> {
+  if (!pubkey || !ndk) return // Anonymous users cannot refresh
+
+  try {
+    const events = await ndk.fetchEvents({ kinds: [10003], authors: [pubkey] })
+    if (!events || events.size === 0) return
+
+    const sorted = Array.from(events).sort(
+      (a, b) => (b.created_at ?? 0) - (a.created_at ?? 0),
+    )
+    const event = sorted[0]
+    const result = parseBookmarkEvent(event)
+    if (!result.ok) return
+
+    const nostrList = result.list
+    _cache.marketEventIds = extractMarketEventIds(nostrList)
+    _cache.source = 'nostr'
+    _cache.nostrEventId = nostrList.eventId
+    _cache.migrationPending = false
+
+    notifyCacheListeners()
+  } catch (err) {
+    console.warn('Refresh bookmarks failed:', err)
   }
 }

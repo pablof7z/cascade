@@ -37,6 +37,7 @@ import {
 import { publishMarket } from './services/nostrService'
 import { useNostr } from './context/NostrContext'
 import { initializePositions } from './positionStore'
+import { initializeBookmarks } from './bookmarkStore'
 import LandingPage from './LandingPage'
 import MarketDetail from './MarketDetail'
 import ThreadPage from './ThreadPage'
@@ -65,6 +66,7 @@ import SettingsPage from './SettingsPage'
 import FieldDetail from './FieldDetail'
 import EmbedPage from './EmbedPage'
 import EmbedLanding from './EmbedLanding'
+import NotFoundPage from './NotFoundPage'
 import TestnetBanner from './components/TestnetBanner'
 import Footer from './components/Footer'
 import AnalyticsDashboard from './AnalyticsDashboard'
@@ -528,6 +530,40 @@ function AppContent() {
   const navigate = useNavigate()
   const { isReady: nostrReady, pubkey: nostrPubkey, ndkInstance } = useNostr()
 
+  // 404 detection: check if pathname matches any known route pattern
+  const isKnownRoute = (pathname: string): boolean => {
+    const knownPrefixes = [
+      '/market/',
+      '/builder',
+      '/onboarding',
+      '/portfolio',
+      '/profile',
+      '/u/',
+      '/leaderboard',
+      '/bookmarks',
+      '/activity',
+      '/blog',
+      '/how-it-works',
+      '/wallet',
+      '/join',
+      '/terms',
+      '/privacy',
+      '/hire-agents',
+      '/enroll-agent',
+      '/dashboard',
+      '/embed',
+      '/analytics',
+      '/fields',
+      '/field/',
+      '/thesis/',
+    ]
+    return pathname === '/' || knownPrefixes.some(prefix => pathname.startsWith(prefix))
+  }
+
+  if (!isKnownRoute(location.pathname)) {
+    return <NotFoundPage />
+  }
+
   // Keep a ref to the latest markets so async callbacks never read stale closure state
   const marketsRef = useRef(state.markets)
   useEffect(() => {
@@ -595,6 +631,15 @@ function AppContent() {
     initializePositions(nostrPubkey ?? null, ndkInstance).catch((err: unknown) => {
       console.error('Failed to initialize positions:', err)
       // App continues; positions fall back to localStorage
+    })
+  }, [nostrReady, nostrPubkey, ndkInstance])
+
+  // Bookmark persistence: initialize from Nostr when logged in, localStorage when anonymous
+  useEffect(() => {
+    if (!nostrReady) return
+    initializeBookmarks(nostrPubkey ?? null, ndkInstance).catch((err: unknown) => {
+      console.error('Failed to initialize bookmarks:', err)
+      // App continues; bookmarks fall back to localStorage
     })
   }, [nostrReady, nostrPubkey, ndkInstance])
 

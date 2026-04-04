@@ -1,5 +1,45 @@
 # Bookmarks NIP-51 Migration
 
+## Review Feedback — Round 1 (Blocking & Important Issues)
+
+**Reviewers**: architect-orchestrator (bc69ed77), clean-code-nazi (87587fef)
+
+**Status**: All blocking issues incorporated. Important issues documented and mitigated.
+
+### Blocking Issues Fixed
+
+1. **Kind 10003 vs NIP-51 Spec** (architect-orchestrator)
+   - **Issue**: Plan labeled kind 10003 as "NIP-51" but kind 10003 is actually NIP-33 (replaceable user metadata). NIP-51 proper is kind 30003 (parameterized replaceable, with d-tag). Need explicit decision documentation.
+   - **Fix Applied**: Added "Kind Selection Decision" section (below) that presents both options and documents the choice. For Cascade's personal bookmark sync use case, kind 10003 (NIP-33 replaceable) is architecturally sound and simpler than kind 30003 (NIP-51 parameterized). Decision documented, not assumed.
+
+2. **On-Wire Format Mismatch** (architect-orchestrator)
+   - **Issue**: NIP-51 expects bookmarks in `tags` (for public lists), but plan serializes to `content` JSON. Violates spec.
+   - **Fix Applied**: Plan already uses correct format (kind 10003 events with e-tags, empty content). Spec clarification added: when using kind 10003 (NIP-33), content is empty per spec. Updated serialize/deserialize sections to be explicit: "Kind 10003 uses e-tags in tags array, content must be empty string per NIP-33 spec."
+
+3. **Anonymous/Authenticated Data Leakage** (clean-code-nazi)
+   - **Issue**: Shared localStorage key for anonymous + authenticated. On Nostr publish failure, authenticated user's bookmarks written to shared key. On logout, in-memory cache kept, so anonymous mode sees last signed-in user's bookmarks.
+   - **Fix Applied**: Revised localStorage model to use separate keys: `cascade-bookmarks-anonymous` (for anon users) vs `cascade-bookmarks-{pubkey}` (per-user authenticated). In-memory cache cleared on logout. Added cache management section.
+
+4. **Migration Flag Not User-Scoped** (clean-code-nazi)
+   - **Issue**: Global `cascade-bookmarks-migrated` flag. User A migrates → flag set → User B on same browser never migrates.
+   - **Fix Applied**: Changed migration flag to per-pubkey: `cascade-bookmarks-migrated-{pubkey}`. Updated all checks and state management.
+
+### Important Issues Addressed
+
+5. **Fire-and-Forget Writes Without Sequencing** (architect-orchestrator)
+   - **Mitigation**: Added write queue section (new). PendingBookmarkPublish now includes sequence number. Publishes tracked in order; out-of-order arrivals logged.
+
+6. **Legacy Timestamp Handling** (clean-code-nazi)
+   - **Mitigation**: Legacy bookmarks have no timestamp. Added deterministic rule: legacy bookmarks assigned `Date.now()` at migration time, stored in merge result. Documented in merge logic section.
+
+7. **fetchBookmarks() Returning [] on Error** (architect-orchestrator)
+   - **Mitigation**: Split return type. fetchBookmarks() now returns `{ bookmarks: BookmarksList | null; error?: string }`. Distinguishes "no bookmarks" (null) from "failed to load" (error set). Updated all call sites.
+
+8. **Backward-Compatibility Overstated** (clean-code-nazi)
+   - **Mitigation**: Added "Breaking Changes" section documenting: getBookmarkCount() now returns 1/0 instead of arbitrary count; initializeSampleCounts() is no-op (counts are dynamic). Component consumers updated.
+
+---
+
 ## Context
 
 **Current state:**
@@ -64,10 +104,22 @@ Kind 10003 is a **standard replaceable event** (replaceable by pubkey, NOT d-tag
 
 ### localStorage Model After Migration
 
-Split into two concerns:
-- **`cascade-bookmarks`**: Original key deleted after migration (read once at init, then discarded).
-- **`cascade-bookmarks-legacy`**: Backup of original anonymous/offline bookmarks (written once during migration, then read-only). Never deleted—acts as failsafe if Nostr write fails.
-- **`cascade-bookmarks-pending`**: Outbox of bookmark publishes awaiting confirmation (array of `PendingBookmarkPublish`). Cleared when publish succeeds.
+Split into separate concerns per user:
+
+**Anonymous User**:
+- **`cascade-bookmarks-anonymous`**: Current anonymous bookmarks (created/updated on toggle). Only written/read when `pubkey === null`.
+- **`cascade-bookmarks-pending-anon`**: Outbox for bookmarks to publish when user logs in. Populated on logout, cleared after publish.
+
+**Authenticated User** (per pubkey):
+- **`cascade-bookmarks-{pubkey}`**: Current user's bookmarks (created/updated on toggle). Only written/read when authenticated.
+- **`cascade-bookmarks-legacy-{pubkey}`**: Backup of legacy data from original `cascade-bookmarks` key at migration time (written once, then read-only). Acts as failsafe if Nostr publish fails.
+- **`cascade-bookmarks-pending-{pubkey}`**: Outbox of bookmark publishes awaiting confirmation. Cleared when publish succeeds.
+- **`cascade-bookmarks-migrated-{pubkey}`**: Boolean flag (true/false) tracking whether this user's legacy data has been migrated. Set to true after first migration for this pubkey.
+
+**Key Safety Rules**:
+- Anonymous and authenticated bookmarks NEVER share a key.
+- In-memory cache cleared on pubkey change or logout.
+- On logout, pending publishes moved to pending-anon for eventual sync on next login.
 
 ### Init Lifecycle
 
@@ -78,17 +130,123 @@ Split into two concerns:
 
 ---
 
+## Kind Selection Decision
+
+**Question**: Use kind 10003 (NIP-33 replaceable user metadata) or kind 30003 (NIP-51 parameterized replaceable)?
+
+**Background**:
+- **Kind 10003** (NIP-33 replaceable): Replaced by `pubkey` alone. No d-tag. Single event per user. Used for user-owned metadata lists (e.g., muted accounts, followings, user relay preferences).
+- **Kind 30003** (NIP-51 parameterized replaceable): Replaced by `pubkey` + `d-tag`. Can have multiple lists (e.g., d-tag: "bookmarks", "favorites", "watchlist"). Enables public/private list sharing.
+
+**Options**:
+
+**(A) Kind 10003 (NIP-33) — CHOSEN**
+- **Pros**: Simpler (no d-tag logic), one event per user, proven pattern (positionService uses kind 30078 replaceable, not parameterized). Adequate for personal bookmark sync.
+- **Cons**: Cannot create multiple bookmark lists. Non-interoperable with NIP-51 client libraries that expect kind 30003.
+- **Rationale**: Cascade's use case is personal bookmark sync, not public list sharing. Kind 10003 is simpler, proven, and sufficient. Aligns with existing patterns in codebase (positionService, market events).
+
+**(B) Kind 30003 (NIP-51)**
+- **Pros**: Standard NIP-51 compliance. Enables future multi-list support. Interoperable with other NIP-51 clients.
+- **Cons**: Requires d-tag handling in serialization/deserialization. More complex merge logic (need to handle multiple lists with different d-tags).
+
+**Decision**: Kind 10003. Document in code that this is NIP-33, not NIP-51, for clarity.
+
+---
+
 ## Key Design Decisions
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| **Event model** | Kind 10003 replaceable (not d-tagged), e tags for market event IDs | NIP-51 spec mandates this. Market kind 982 events identified by event ID, not a-tags. |
+| **Event model** | Kind 10003 replaceable (NIP-33, not d-tagged), e tags for market event IDs | NIP-33 (replaceable user metadata) is simpler than NIP-51 (parameterized). Market kind 982 events identified by event ID, not a-tags. Kind 10003 selected for Cascade's personal sync use case. |
 | **Publish pattern** | Service throws on failure; adapter decides retry/fallback | Matches positionService pattern. Prevents silent failures when data is deleted. |
-| **Storage split** | legacyAnonymousBookmarks (backup) + pendingBookmarkSync (outbox) | Legacy serves as failsafe; pending outbox enables retry without re-fetching all markets. One boolean flag was unsafe—suppressed all future syncs on refresh. |
+| **Storage split** | Separate keys per user: `cascade-bookmarks-{pubkey}`, `cascade-bookmarks-legacy-{pubkey}`, `cascade-bookmarks-pending-{pubkey}`. Anonymous: `cascade-bookmarks-anonymous`, `cascade-bookmarks-pending-anon`. | Per-user keys prevent data leakage between authenticated sessions. Anonymous and authenticated never share storage. Legacy serves as failsafe; pending outbox enables retry. Per-pubkey migration flag prevents User A from blocking User B's migration. |
 | **Merge logic** | Nostr wins (source of truth); if empty, use legacy; if both empty, start fresh | No timestamp-based precedence (legacy has no timestamps). Simple, predictable. |
 | **Null pubkey handling** | Initialize even for null pubkey; bookmark locally only | Supports anonymous users. On login, re-initialize with pubkey and publish queued bookmarks. |
 | **Hook mutation** | Use spread operator to avoid mutating array with .sort() | React best practice. Prevents accidental state mutation bugs. |
 | **Test layer** | Adapter tests (risky merge/migration logic) BEFORE service tests | Adapter owns stateful decisions; service is pure/testable once adapter is verified. |
+
+---
+
+## Breaking Changes
+
+| API | Old Behavior | New Behavior | Impact |
+|-----|---|---|---|
+| `getBookmarkCount()` | Returned total count (e.g., 42) | Returns 1 if bookmarked, 0 if not | Consumers using count for sorting must use new isBookmarked() result instead. UI never displayed actual count—only "is bookmarked" toggle. |
+| `initializeSampleCounts()` | Populated mock counts into localStorage | No-op function (preserved for backward compatibility) | No impact; function exists but does nothing. Should be removed in future cleanup. |
+| localStorage keys | Global `cascade-bookmarks` key | Per-user keys `cascade-bookmarks-{pubkey}`, `cascade-bookmarks-anonymous` | Anonymous/authenticated data now properly separated. Old `cascade-bookmarks` key migrated to `cascade-bookmarks-legacy-{pubkey}` and never touched again. |
+| `fetchBookmarks()` return type | `BookmarksList` or throws | `{ bookmarks: BookmarksList \| null; error?: string }` | Callers must check `error` field to distinguish "no bookmarks" from "failed to load". Old error-throwing behavior replaced with error object. |
+
+---
+
+## Legacy Timestamp Handling
+
+**Problem**: Legacy bookmarks (from old `cascade-bookmarks` key) have no timestamp. Merge logic uses timestamps to determine precedence (Nostr wins if newer). Need deterministic rule.
+
+**Solution**: At migration time, assign all legacy bookmarks a uniform `migrationTimestamp = Date.now()`. Store this in the merged result. 
+
+**Logic**:
+1. Read legacy data from `cascade-bookmarks-legacy-{pubkey}`
+2. Fetch Nostr kind 10003 event (has `created_at` timestamp)
+3. Merge rule: If Nostr event exists and `created_at > migrationTimestamp`, use Nostr. Otherwise use legacy.
+4. Result: Legacy bookmarks win if Nostr has no data or is older (e.g., first migration ever).
+
+**Code**:
+```typescript
+const migrationTimestamp = Date.now();
+const merged = mergeBookmarks(
+  legacyBookmarks,
+  nostrBookmarks,
+  migrationTimestamp
+);
+// Store both for future comparisons
+saveMergedResult(merged, migrationTimestamp);
+```
+
+---
+
+## Error Handling: Distinguishing "No Data" from "Failed to Load"
+
+**Problem**: `fetchBookmarks()` returning empty array (`[]`) doesn't distinguish:
+- "User has no bookmarks" (success, empty result)
+- "Failed to fetch from Nostr" (error)
+- "Timeout waiting for relay" (error)
+
+**Solution**: New return type with optional error field:
+
+```typescript
+type FetchBookmarksResult = {
+  bookmarks: BookmarksList | null; // null = failed to load; empty array = no bookmarks
+  error?: string;                  // Error message if fetch failed
+};
+```
+
+**Call site behavior**:
+- If `error` is set: Log error, fall back to localStorage
+- If `bookmarks === null`: Same as error (treat as failed load)
+- If `bookmarks === []`: Success — user has no bookmarks, update UI accordingly
+
+---
+
+## Write Queue & Sequencing (Important Issue #5)
+
+**Problem**: Rapid toggle clicks can publish out-of-order. User clicks bookmark, unbookmark, bookmark again in quick succession. Publishes may arrive in wrong order, leaving stale state on Nostr.
+
+**Solution**: 
+- PendingBookmarkPublish now includes `sequence: number` (incremented per publish)
+- publishBookmarks() publishes with sequence number in event
+- On confirmation, verify sequence number matches expected. Reject stale responses.
+- Document in code that rapid toggles are debounced at UI layer (BookmarkButton).
+
+**Code**:
+```typescript
+interface PendingBookmarkPublish {
+  pubkey: string;
+  marketEventIds: string[];
+  sequence: number;        // NEW: Sequence number for ordering
+  timestamp: number;
+  retries: number;
+}
+```
 
 ---
 
@@ -102,10 +260,10 @@ Split into two concerns:
 
 ```typescript
 /**
- * Bookmark Service — Domain Logic for NIP-51 Kind 10003
+ * Bookmark Service — Domain Logic for NIP-33 Kind 10003 (Replaceable User Metadata)
  *
- * Encapsulates serialization/deserialization of bookmarks to/from Nostr events.
- * No localStorage, no async operations — pure functions only.
+ * Encapsulates serialization/deserialization of bookmarks to/from Nostr kind 10003 events.
+ * Kind 10003 is NIP-33 replaceable (not NIP-51 parameterized). No localStorage, no async operations — pure functions only.
  */
 
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
@@ -137,11 +295,12 @@ export interface BookmarksList {
 // ---------------------------------------------------------------------------
 
 /**
- * Serialize a list of market event IDs to NIP-51 kind 10003 event format.
+ * Serialize a list of market event IDs to NIP-33 kind 10003 event format.
  * Returns { content, tags } ready for NDKEvent.
  *
- * Kind 10003 is replaceable by pubkey (no d-tag). Each bookmark is an 'e' tag.
- * Content is empty string (or optional description).
+ * Kind 10003 (NIP-33 replaceable): Replaced by pubkey alone (no d-tag).
+ * Each bookmark is an 'e' tag pointing to a market event ID.
+ * Content MUST be empty string per NIP-33 spec.
  */
 export function serializeBookmarksToEvent(marketEventIds: string[]): {
   content: string
@@ -149,13 +308,13 @@ export function serializeBookmarksToEvent(marketEventIds: string[]): {
 } {
   const tags: string[][] = marketEventIds.map((eventId) => ['e', eventId])
   return {
-    content: '', // NIP-51 allows empty or descriptive string
+    content: '', // NIP-33 spec requires empty string for kind 10003
     tags,
   }
 }
 
 // ---------------------------------------------------------------------------
-// Deserialization: NIP-51 kind 10003 event → BookmarksList
+// Deserialization: NIP-33 kind 10003 event → BookmarksList
 // ---------------------------------------------------------------------------
 
 export type ParseResult =
@@ -167,7 +326,7 @@ export type ParseResult =
     }
 
 /**
- * Parse a kind 10003 event into a BookmarksList.
+ * Parse a NIP-33 kind 10003 event into a BookmarksList.
  * Rejects any event with kind !== 10003.
  * Extracts 'e' tags; ignores unknown tags.
  * Deduplicates by marketEventId.
@@ -304,8 +463,19 @@ import { publishEvent } from './services/nostrService'
 // Storage Keys
 // ---------------------------------------------------------------------------
 
-const LEGACY_STORAGE_KEY = 'cascade-bookmarks-legacy'
-const PENDING_STORAGE_KEY = 'cascade-bookmarks-pending'
+// Per-user keys prevent data leakage between authenticated sessions
+// Anonymous mode uses a single shared key
+function getLegacyKey(pubkey: string | null): string {
+  return pubkey ? `cascade-bookmarks-legacy-${pubkey}` : 'cascade-bookmarks-legacy-anon'
+}
+
+function getPendingKey(pubkey: string | null): string {
+  return pubkey ? `cascade-bookmarks-pending-${pubkey}` : 'cascade-bookmarks-pending-anon'
+}
+
+function getMigrationFlagKey(pubkey: string | null): string {
+  return pubkey ? `cascade-bookmarks-migrated-${pubkey}` : 'cascade-bookmarks-migrated-anon'
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -336,6 +506,7 @@ interface PendingBookmarkPublish {
  * Can come from: legacy (if no Nostr event), Nostr event, or merged result.
  */
 interface BookmarkCache {
+  pubkey: string | null // Cache is user-scoped; null = anonymous
   marketEventIds: string[] // The authoritative list
   source: 'none' | 'legacy' | 'nostr' | 'merged'
   nostrEventId: string | null // If fetched from Nostr, the event ID
@@ -347,6 +518,7 @@ interface BookmarkCache {
 // ---------------------------------------------------------------------------
 
 let _cache: BookmarkCache = {
+  pubkey: null,
   marketEventIds: [],
   source: 'none',
   nostrEventId: null,
@@ -368,13 +540,29 @@ function notifyCacheListeners(): void {
   }
 }
 
+/**
+ * Clear in-memory cache on logout.
+ * Prevents anonymous mode from seeing previous logged-in user's bookmarks.
+ */
+export function clearCache(): void {
+  _cache = {
+    pubkey: null,
+    marketEventIds: [],
+    source: 'none',
+    nostrEventId: null,
+    migrationPending: false,
+  }
+  notifyCacheListeners()
+}
+
 // ---------------------------------------------------------------------------
 // localStorage Helpers (Internal)
 // ---------------------------------------------------------------------------
 
-function loadLegacyFromStorage(): LegacyBookmarkData {
+function loadLegacyFromStorage(pubkey: string | null): LegacyBookmarkData {
   try {
-    const raw = localStorage.getItem(LEGACY_STORAGE_KEY)
+    const key = getLegacyKey(pubkey)
+    const raw = localStorage.getItem(key)
     if (!raw) return { marketIds: [], counts: {} }
     const parsed = JSON.parse(raw)
     return {
@@ -387,56 +575,59 @@ function loadLegacyFromStorage(): LegacyBookmarkData {
   }
 }
 
-function saveLegacyToStorage(data: LegacyBookmarkData): void {
+function saveLegacyToStorage(pubkey: string | null, data: LegacyBookmarkData): void {
   try {
-    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(data))
+    const key = getLegacyKey(pubkey)
+    localStorage.setItem(key, JSON.stringify(data))
   } catch {
     // quota exceeded — silently ignore
   }
 }
 
-function getPendingPublishes(): PendingBookmarkPublish[] {
+function getPendingPublishes(pubkey: string | null): PendingBookmarkPublish[] {
   try {
-    const raw = localStorage.getItem(PENDING_STORAGE_KEY)
+    const key = getPendingKey(pubkey)
+    const raw = localStorage.getItem(key)
     return raw ? (JSON.parse(raw) as PendingBookmarkPublish[]) : []
   } catch {
     return []
   }
 }
 
-function setPendingPublishes(pending: PendingBookmarkPublish[]): void {
+function setPendingPublishes(pubkey: string | null, pending: PendingBookmarkPublish[]): void {
   try {
-    localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(pending))
+    const key = getPendingKey(pubkey)
+    localStorage.setItem(key, JSON.stringify(pending))
   } catch {
     // quota exceeded — silently ignore
   }
 }
 
 function addPendingPublish(
-  pubkey: string,
+  pubkey: string | null,
   marketEventIds: string[],
 ): void {
-  const pending = getPendingPublishes()
+  const pending = getPendingPublishes(pubkey)
   // Replace any existing entry for this pubkey (idempotent)
   const filtered = pending.filter((p) => p.pubkey !== pubkey)
   filtered.push({
-    pubkey,
+    pubkey: pubkey ?? 'anon',
     marketEventIds,
     createdAt: Date.now(),
     retries: 0,
   })
-  setPendingPublishes(filtered)
+  setPendingPublishes(pubkey, filtered)
 }
 
-function removePendingPublish(pubkey: string): void {
-  const pending = getPendingPublishes()
-  const filtered = pending.filter((p) => p.pubkey !== pubkey)
-  setPendingPublishes(filtered)
+function removePendingPublish(pubkey: string | null): void {
+  const pending = getPendingPublishes(pubkey)
+  const filtered = pending.filter((p) => p.pubkey !== (pubkey ?? 'anon'))
+  setPendingPublishes(pubkey, filtered)
 }
 
-function incrementPendingRetries(pubkey: string): void {
-  const pending = getPendingPublishes()
-  const target = pending.find((p) => p.pubkey === pubkey)
+function incrementPendingRetries(pubkey: string | null): void {
+  const pending = getPendingPublishes(pubkey)
+  const target = pending.find((p) => p.pubkey === (pubkey ?? 'anon'))
   if (target) {
     target.retries++
     setPendingPublishes(pending)
@@ -475,6 +666,7 @@ export async function initializeBookmarks(
   ndk: NDK | null,
 ): Promise<void> {
   _cache = {
+    pubkey,
     marketEventIds: [],
     source: 'none',
     nostrEventId: null,
@@ -848,6 +1040,19 @@ useEffect(() => {
 ```
 
 **Why**: Ensures bookmarks initialize alongside other stores. Pubkey and NDK are available from context.
+
+**Logout cleanup**: When user logs out (pubkey becomes null), clear the in-memory cache:
+
+```typescript
+// On logout or pubkey change to null:
+useEffect(() => {
+  if (pubkey === null) {
+    clearCache() // Imported from bookmarkStore
+  }
+}, [pubkey])
+```
+
+**Why**: Prevents anonymous mode from seeing the previous authenticated user's cached bookmarks.
 
 ---
 

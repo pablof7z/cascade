@@ -24,23 +24,22 @@ interface LeaderboardProps {
 export default function Leaderboard({ markets = {} }: LeaderboardProps) {
   const [activeTab, setActiveTab] = useState<LeaderboardTab>('Top Predictors')
 
-  const marketIds = useMemo(() => Object.keys(markets), [markets])
-  const { getTopBookmarked } = useBookmarks(marketIds)
+  const { bookmarkedIds } = useBookmarks()
 
   const bookmarkedEntries = useMemo((): BookmarkedEntry[] => {
     if (activeTab !== 'Most Bookmarked') return []
-    return getTopBookmarked(10).map((item, i) => {
-      const market = markets[item.marketId]?.market
+    return bookmarkedIds.slice(0, 10).map((marketId, i) => {
+      const market = markets[marketId]?.market
       return {
         rank: i + 1,
-        marketId: item.marketId,
-        displayName: market?.title ?? item.marketId.slice(0, 12) + '…',
+        marketId,
+        displayName: market?.title ?? marketId.slice(0, 12) + '…',
         descriptor: market?.description?.slice(0, 60) || 'Prediction market',
-        bookmarks: item.count,
+        bookmarks: 1,
         yesPercent: market ? Math.round((market.qLong / (market.qLong + market.qShort)) * 100) : 0,
       }
     })
-  }, [activeTab, getTopBookmarked, markets])
+  }, [activeTab, bookmarkedIds, markets])
 
   const emptyStateText: Record<Exclude<LeaderboardTab, 'Most Bookmarked'>, { sub: string }> = {
     'Top Predictors': { sub: 'Rankings will appear when traders have positions.' },

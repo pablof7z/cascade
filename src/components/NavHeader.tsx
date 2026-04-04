@@ -1,7 +1,18 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { loadStoredKeys } from '../nostrKeys';
 
 export function NavHeader() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  function handleConnect() {
+    const keys = loadStoredKeys();
+    if (keys) {
+      navigate('/profile');
+    } else {
+      navigate('/join');
+    }
+  }
   
   const navItems = [
     { path: '/', label: 'Markets' },
@@ -35,7 +46,10 @@ export function NavHeader() {
           ))}
         </nav>
 
-        <button className="px-4 py-2 border border-neutral-700 text-sm font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors">
+        <button
+          onClick={handleConnect}
+          className="px-4 py-2 border border-neutral-700 text-sm font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+        >
           Connect
         </button>
       </div>

@@ -291,6 +291,12 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
   // Filter archived markets — only show active/resolved
   const entries = Object.values(markets).filter(e => e.market.status !== 'archived')
 
+  // Featured market: entry with highest reserve
+  const featuredEntry = useMemo(
+    () => (entries.length > 0 ? [...entries].sort((a, b) => b.market.reserve - a.market.reserve)[0] : null),
+    [entries]
+  )
+
   // Derive sorted lists for each section
   const trendingMarkets = useMemo(() => {
     return [...entries]
@@ -484,8 +490,7 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
     setTimeout(() => navigate(`/market/${marketId}/discuss`), 0)
   }
 
-  const featuredThesis = sampleTheses[0]
-  const featuredProbability = 0.67
+  const featuredProbability = featuredEntry ? deriveMarketMetrics(featuredEntry.market).longPositionShare : 0.5
 
   // Sample data for sections when real markets are sparse
   const trendingSample = [
@@ -561,55 +566,51 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets }: Pro
                 </div>
               </div>
 
-              {/* Right — Featured thesis as raw typography, not a card */}
-              <div className="space-y-6">
-                <span className="text-xs font-medium text-neutral-500 uppercase tracking-[0.2em]">
-                  Featured Thesis
-                </span>
-                <h2
-                  className="text-3xl md:text-4xl font-bold text-white leading-snug cursor-pointer hover:text-emerald-400 transition-colors"
-                  onClick={() => {
-                    const existingEntry = Object.values(markets).find(
-                      e => e.market.title === featuredThesis.title
-                    )
-                    if (existingEntry) {
-                      navigateFromHomepage('featured_thesis', existingEntry)
-                    } else {
-                      const slug = `${featuredThesis.type}-${featuredThesis.title
-                        .toLowerCase()
-                        .replace(/[^a-z0-9\s-]/g, '')
-                        .trim()
-                        .replace(/\s+/g, '-')
-                        .replace(/-+/g, '-')}`
-                      trackHomepageEngagement('featured_thesis', 'market', slug)
-                      dispatch({
-                        type: 'CREATE_MARKET',
-                        id: slug,
-                        title: featuredThesis.title,
-                        description: featuredThesis.description,
-                        seedWithUser: false,
-                        creatorPubkey: 'system',
-                      })
-                    }
-                  }}
-                >
-                  {featuredThesis.title}
-                </h2>
-                <div className="flex items-baseline gap-4">
-                  <span className="text-6xl font-black text-emerald-500 tabular-nums">
-                    {Math.round(featuredProbability * 100)}¢
+              {/* Right — Featured market as raw typography, not a card */}
+              {featuredEntry ? (
+                <div className="space-y-6">
+                  <span className="text-xs font-medium text-neutral-500 uppercase tracking-[0.2em]">
+                    Featured Thesis
                   </span>
-                  <span className="text-lg text-emerald-500/70">YES</span>
-                  <span className="text-sm text-emerald-500">+12% today</span>
-                  <Sparkline data={[45, 48, 52, 55, 58, 62, 67]} positive={true} size="large" />
+                  <h2
+                    className="text-3xl md:text-4xl font-bold text-white leading-snug cursor-pointer hover:text-emerald-400 transition-colors"
+                    onClick={() => navigateFromHomepage('featured_thesis', featuredEntry)}
+                  >
+                    {featuredEntry.market.title}
+                  </h2>
+                  <div className="flex items-baseline gap-4">
+                    <span className="text-6xl font-black text-emerald-500 tabular-nums">
+                      {Math.round(featuredProbability * 100)}¢
+                    </span>
+                    <span className="text-lg text-emerald-500/70">YES</span>
+                  </div>
+                  <div className="flex gap-8 text-sm text-neutral-500">
+                    <span>{formatCurrency(featuredEntry.market.reserve)} vol</span>
+                    <span>{featuredEntry.market.quotes?.length ?? 0} traders</span>
+                  </div>
                 </div>
-                <div className="flex gap-8 text-sm text-neutral-500">
-                  <span>$24.5K vol</span>
-                  <span>312 traders</span>
-                  <span>89 comments</span>
-                  <span className="flex items-center gap-1.5"><PulseDot color="emerald" /> 47 active</span>
+              ) : (
+                <div className="space-y-6">
+                  <span className="text-xs font-medium text-neutral-500 uppercase tracking-[0.2em]">
+                    Featured Thesis
+                  </span>
+                  <h2 className="text-3xl md:text-4xl font-bold text-white leading-snug">
+                    Be the first to create a market
+                  </h2>
+                  <p className="text-neutral-400">
+                    No markets yet. Create the first prediction market and start trading.
+                  </p>
+                  <button
+                    onClick={() => {
+                      trackHomepageEngagement('featured_empty_cta', 'create')
+                      setShowCreateModal(true)
+                    }}
+                    className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors"
+                  >
+                    Create a Market
+                  </button>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

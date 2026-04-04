@@ -15,12 +15,13 @@ export type HomepageEngagementSource =
   | 'hero_primary_cta'
   | 'hero_agent_cta'
   | 'featured_thesis'
+  | 'featured_empty_cta'
   | 'most_disputed_market'
   | 'most_disputed_discussion'
   | 'latest_market'
   | 'latest_discussion'
 
-export type HomepageEngagementDestination = 'join' | 'market' | 'discussion'
+export type HomepageEngagementDestination = 'join' | 'market' | 'discussion' | 'create'
 
 export interface BaseEvent {
   type: AnalyticsEventType

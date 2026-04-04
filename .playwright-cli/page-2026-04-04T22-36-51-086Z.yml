@@ -1,0 +1,33 @@
+- generic [ref=e3]:
+  - button "Chevron Left" [ref=e6] [cursor=pointer]:
+    - img [ref=e7]
+  - generic [ref=e11]:
+    - generic [ref=e12]:
+      - link [ref=e13] [cursor=pointer]:
+        - /url: https://verysmallwoods.substack.com
+        - img [ref=e14]
+      - heading "Sign in to VerySmallWoods" [level=2] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - paragraph [ref=e22]: This page is private - try signing in with a different email, or letting the author know they've linked to a private page.
+        - textbox "Email" [active] [ref=e24]
+        - link "Sign in with password" [ref=e27] [cursor=pointer]:
+          - /url: javascript:void(0)
+        - button "Continue" [ref=e28] [cursor=pointer]
+      - generic [ref=e30]:
+        - text: First time here?
+        - link "Create an account" [ref=e31] [cursor=pointer]:
+          - /url: https://verysmallwoods.substack.com/subscribe?redirect=%2Fpublish&for_pub=verysmallwoods&error=This%20page%20is%20private%20-%20try%20signing%20in%20with%20a%20different%20email%2C%20or%20letting%20the%20author%20know%20they've%20linked%20to%20a%20private%20page.&change_user=false
+  - generic [ref=e33] [cursor=pointer]:
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - heading "Stay signed in" [level=3] [ref=e36]
+        - generic [ref=e37]: Download the Substack app for Android or iOS
+      - generic [ref=e43]:
+        - link [ref=e44]:
+          - /url: https://substack.com/app/app-store-redirect?utm_campaign=app-marketing&utm_content=sign-in-page&utm_source=badge&force=ios
+          - img [ref=e45]
+        - link [ref=e46]:
+          - /url: https://substack.com/app/app-store-redirect?utm_campaign=app-marketing&utm_content=sign-in-page&utm_source=badge&force=android
+          - img [ref=e47]
+    - img [ref=e49]

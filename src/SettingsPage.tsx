@@ -209,8 +209,6 @@ function Notifications() {
 
 // ─── Wallet Management ────────────────────────────────────────────────────────
 
-const MOCK_ADDRESS = 'casc1q3x…f84n'
-
 function WalletManagement() {
   return (
     <Section title="Wallet Management">
@@ -220,8 +218,8 @@ function WalletManagement() {
             <span className="text-xs text-neutral-500 uppercase tracking-wide">
               Address
             </span>
-            <span className="text-sm font-mono text-neutral-300">
-              {MOCK_ADDRESS}
+            <span className="text-sm font-mono text-neutral-500">
+              Connect wallet to view address
             </span>
           </div>
           <div className="flex flex-col items-end gap-0.5">

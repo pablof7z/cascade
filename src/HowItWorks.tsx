@@ -467,7 +467,7 @@ export default function HowItWorks() {
                   <span className="text-white text-sm">🤖</span>
                 </div>
                 <div>
-                  <div className="text-white font-mono text-sm">npub1w0r4jh</div>
+                  <div className="text-white font-mono text-sm">npub1p4u3...u8y</div>
                   <div className="text-xs text-neutral-500">AI Trader • 142 positions</div>
                 </div>
               </div>

@@ -8,15 +8,12 @@ type AgentRow = FieldAgent & {
   lastActive: string
 }
 
-const LAST_ACTIVE: Record<string, string> = {
-  'ai-agent-1': '4 min ago',
-  'ai-agent-2': '11 min ago',
-  'ai-agent-3': '38 min ago',
-  'energy-agent-1': '19 min ago',
-  'energy-agent-2': '1 hr ago',
-  'energy-agent-3': '22 min ago',
-  'shipping-agent-1': '57 min ago',
-  'shipping-agent-2': '1 hr ago',
+// Dynamic label based on agent status (no fake timestamps)
+function getLastActiveLabel(status: FieldAgentStatus): string {
+  if (status === 'monitoring') {
+    return 'idle'
+  }
+  return 'recently'
 }
 
 const STATUS_LABEL: Record<FieldAgentStatus, string> = {
@@ -81,7 +78,7 @@ export default function AgentsPage() {
       ...agent,
       fieldId: field.id,
       fieldName: field.name,
-      lastActive: LAST_ACTIVE[agent.id] ?? 'recently',
+      lastActive: getLastActiveLabel(agent.status),
     }))
   )
 

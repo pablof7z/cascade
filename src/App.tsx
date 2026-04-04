@@ -1,5 +1,6 @@
-import { useEffect, useReducer, useRef } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { BrowserRouter, Navigate, Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom'
+import type { NDKKind } from '@nostr-dev-kit/ndk'
 import { TestnetProvider } from './testnetConfig'
 import './App.css'
 import {
@@ -33,6 +34,7 @@ import {
   publishDeletionEvent,
   fetchAllMarkets,
   subscribeToAllMarkets,
+  parseMarketEvent,
 } from './services/marketService'
 import { publishMarket } from './services/nostrService'
 import { useNostr } from './context/NostrContext'
@@ -572,6 +574,11 @@ function LegacyMarketRedirect({ markets }: { markets: Record<string, MarketEntry
   return <Navigate to="/" replace />
 }
 
+// Redirect /discuss/:id to home (proper discussion routing is TBD)
+function DiscussRedirect() {
+  return <Navigate to="/" replace />
+}
+
 // Interval between outbox retry sweeps (30 seconds)
 const OUTBOX_RETRY_INTERVAL_MS = 30_000
 
@@ -874,7 +881,7 @@ function AppContent() {
         </Route>
         {/* Legacy redirects — keep old URLs working */}
         <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
-        <Route path="/discuss/:id" element={<Navigate to="/" replace />} />
+        <Route path="/discuss/:id" element={<DiscussRedirect />} />
         <Route path="/fields" element={<Navigate to="/dashboard/fields" replace />} />
         <Route path="/field/:id/meeting" element={<LegacyFieldMeetingRedirect />} />
         <Route path="/field/:id" element={<LegacyFieldRedirect />} />

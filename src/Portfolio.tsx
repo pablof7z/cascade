@@ -5,6 +5,9 @@ import { load as loadMarkets } from './storage'
 import { priceLong, priceShort } from './market'
 import { fetchPayoutEvents, getPubkey } from './services/nostrService'
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
+import { redeemPosition, claimPositionPayout, canRedeemPosition, getRedemptionQuote } from './services/settlementService'
+import { redeemPosition, canRedeemPosition, getRedemptionQuote } from './services/settlementService'
+import type { NDKEvent } from '@nostr-dev-kit/ndk'
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
@@ -86,6 +89,11 @@ export default function Portfolio() {
   const [positions, setPositions] = useState<EnrichedPosition[]>([])
   const [payouts, setPayouts] = useState<PayoutRecord[]>([])
   const [payoutsLoading, setPayoutsLoading] = useState(false)
+  // Settlement state (Phase 7)
+  const [redeemingPosition, setRedeemingPosition] = useState<Position | null>(null)
+  const [redemptionAmount, setRedemptionAmount] = useState<number | null>(null)
+  const [redemptionLoading, setRedemptionLoading] = useState(false)
+  const [redemptionMessage, setRedemptionMessage] = useState<string | null>(null)
 
   useEffect(() => {
     setPositions(enrichPositions(loadPositions()))
@@ -121,6 +129,54 @@ export default function Portfolio() {
   const totalPnlPercent = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0
   const winners = positions.filter((p) => p.pnl > 0).length
   const winRate = positions.length > 0 ? (winners / positions.length) * 100 : 0
+
+  // Phase 7: Settlement handlers
+  const handleRedeem = async (position: Position) => {
+    if (!canRedeemPosition(position)) {
+      setRedemptionMessage('This position cannot be redeemed.')
+      return
+    }
+    setRedeemingPosition(position)
+    setRedemptionLoading(true)
+    setRedemptionMessage(null)
+    try {
+      const quote = await getRedemptionQuote(position)
+      setRedemptionAmount(quote.amount)
+    } catch {
+      setRedemptionMessage('Failed to get redemption quote. Please try again.')
+      setRedemptionAmount(null)
+    } finally {
+      setRedemptionLoading(false)
+    }
+  }
+
+  const confirmRedeem = async () => {
+    if (!redeemingPosition) return
+    setRedemptionLoading(true)
+    setRedemptionMessage(null)
+    try {
+      const result = await redeemPosition(redeemingPosition)
+      if (result.success) {
+        setRedemptionMessage(`Redeemed! Received ${redemptionAmount} sats.`)
+        setRedeemingPosition(null)
+        setRedemptionAmount(null)
+        // Refresh positions
+        setPositions(enrichPositions(loadPositions()))
+      } else {
+        setRedemptionMessage(result.message || 'Redemption failed.')
+      }
+    } catch {
+      setRedemptionMessage('Redemption failed. Please try again.')
+    } finally {
+      setRedemptionLoading(false)
+    }
+  }
+
+  const cancelRedeem = () => {
+    setRedeemingPosition(null)
+    setRedemptionAmount(null)
+    setRedemptionMessage(null)
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -199,6 +255,65 @@ export default function Portfolio() {
         </div>
       )}
 
+      {/* Phase 7: Redemption confirmation */}
+      {redeemingPosition && (
+        <div className="bg-neutral-900 border border-emerald-700/60 p-4 mb-4">
+          <h3 className="text-white font-medium mb-3">Confirm Redemption</h3>
+          <div className="text-sm text-neutral-400 mb-4">
+            <p className="mb-1">
+              <span className="text-neutral-500">Position:</span>{' '}
+              <span className="text-white">{redeemingPosition.marketTitle}</span>
+            </p>
+            <p className="mb-1">
+              <span className="text-neutral-500">Direction:</span>{' '}
+              <span className={redeemingPosition.direction === 'yes' ? 'text-emerald-400' : 'text-rose-400'}>
+                {redeemingPosition.direction === 'yes' ? 'YES' : 'NO'}
+              </span>
+            </p>
+            <p className="mb-1">
+              <span className="text-neutral-500">Shares:</span>{' '}
+              <span className="text-white">{redeemingPosition.quantity.toFixed(1)}</span>
+            </p>
+            <p className="text-lg text-emerald-400 font-medium mt-3">
+              You will receive:{' '}
+              {redemptionLoading ? (
+                <span className="text-neutral-400">Calculating...</span>
+              ) : (
+                <>
+                  {redemptionAmount !== null ? (
+                    `${redemptionAmount} sats`
+                  ) : (
+                    <span className="text-rose-400">Failed to get quote</span>
+                  )}
+                </>
+              )}
+            </p>
+          </div>
+          {redemptionMessage && (
+            <p className={`text-sm mb-3 ${redemptionMessage.includes('Redeemed') ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {redemptionMessage}
+            </p>
+          )}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={confirmRedeem}
+              disabled={redemptionLoading || redemptionAmount === null}
+              className="flex-1 bg-emerald-700 text-white text-sm font-medium px-4 py-2 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {redemptionLoading ? 'Processing...' : 'Confirm'}
+            </button>
+            <button
+              type="button"
+              onClick={cancelRedeem}
+              className="flex-1 border border-neutral-700 text-neutral-300 text-sm font-medium px-4 py-2 hover:border-neutral-500 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Position cards */}
       {positions.length === 0 ? (
         <div className="text-center py-16 bg-neutral-900 border border-neutral-800">
@@ -256,6 +371,25 @@ export default function Portfolio() {
                   </span>
                 </div>
               </div>
+              {/* Phase 7: Redeem button */}
+              {canRedeemPosition(position) && !position.settled && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleRedeem(position)
+                  }}
+                  className="mt-3 w-full border border-emerald-700 text-emerald-400 text-xs font-medium px-3 py-1.5 hover:bg-emerald-900/20 transition-colors"
+                >
+                  Redeem
+                </button>
+              )}
+              {position.settled && (
+                <span className="mt-3 block w-full text-center border border-neutral-700 text-neutral-500 text-xs font-medium px-3 py-1.5">
+                  Settled
+                </span>
+              )}
             </Link>
           ))}
         </div>

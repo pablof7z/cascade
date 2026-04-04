@@ -28,7 +28,6 @@ export interface SettlementResult {
  */
 export async function getRedemptionQuote(
   position: Position,
-  mintUrl: string = MINT_URL
 ): Promise<RedemptionQuote> {
   // Mid-market price: average of long and short prices
   // For simplicity, we use the entry price as approximation
@@ -144,8 +143,8 @@ export async function claimPositionPayout(
   // Winner receives 1.0 * quantity in sats
   // Loser receives 0
   const isWinner =
-    (resolutionOutcome === 1 && position.direction === 'LONG') ||
-    (resolutionOutcome === 0 && position.direction === 'SHORT')
+    (resolutionOutcome === 1 && position.direction === 'yes') ||
+    (resolutionOutcome === 0 && position.direction === 'no')
 
   if (!isWinner) {
     return {

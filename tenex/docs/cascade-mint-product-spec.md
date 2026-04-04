@@ -2,8 +2,34 @@
 
 > Custom Cashu mint for the Cascade prediction market platform
 
-**Status:** Draft  
-**Tags:** #cashu #mint #specification #lmsr #trading
+**Status:** Decisions Confirmed — Implementation Pending 31933 Sig  
+**Tags:** #cashu #mint #specification #lmsr #trading  
+**Last updated:** 2026-04-04 15:05 UTC — Added Section 0 (confirmed decisions), updated Section 2 and 8 (CDK Rust, pure bearer, two keysets)
+
+---
+
+## 0. Decisions Confirmed by Pablo (2026-04-02)
+
+The following decisions are final. Implementation can proceed once the mint-engineer agent is assigned via 31933 event.
+
+| # | Decision | Choice | Source |
+|---|----------|--------|--------|
+| 1 | Fee model | Flat 1% on trades | Section 2 |
+| 2 | Token model | **Pure bearer tokens** (NOT escrow accounts) | Pablo override conv fb86ff |
+| 3 | Implementation | CDK Rust (NOT cashu-ts or Nutshell) | Pablo conv fb86ff |
+| 4 | Keyset strategy | **TWO keysets per market** (one per outcome) | Pablo conv fb86ff |
+| 5 | Lightning | **Required** — on/off-ramp for real sats | Section 2 |
+| 6 | Rake model | **Rake stays in mint** — becomes mint liquidity | Proxy Decision 5 |
+| 7 | P2PK (NUT-11) | Not required | Section 2 |
+| 8 | Timed redemption | Not required | Section 2 |
+| 9 | Token unit | Satoshis (1 token = 1 sat) | Section 2 |
+
+**⚠️ Open Questions (Section 9)** — these remain unresolved and should be addressed before or during implementation:
+1. Liquidity bootstrapping — who funds the initial LMSR reserve?
+2. Maximum market size — should there be a cap on outstanding shares?
+3. Multi-market reserve pooling — pooled or segregated reserves?
+4. Settlement timeout — how long do winners have to claim payouts?
+5. Partial redemption — can users sell fractions of shares mid-market?
 
 ---
 
@@ -22,6 +48,9 @@ The mint is not a generic Cashu mint. It is purpose-built for prediction market 
 | Fee model | **Flat 1% on trades** | KISS — simple, predictable, easy to reason about |
 | Operator | **Cascade-operated** | Single operator, full control, no federation complexity |
 | Lightning | **Required** | On/off-ramp for real sats; users deposit/withdraw via Lightning |
+| Token model | **Pure bearer tokens** | Users hold ecash directly; no per-user escrow accounts in mint DB |
+| Rake model | **Rake stays in mint** | Fees accumulate as mint liquidity; Cascade extracts via melt when needed |
+| Keyset strategy | **TWO keysets per market** | One keyset per outcome (LONG/SHORT); not one global keyset |
 | P2PK (NUT-11) | **Not required** | No need for pubkey-locked tokens at mint level |
 | Timed redemption | **Not required** | No HTLC or timelock conditions on proofs |
 | Token unit | **Satoshis** | 1 token = 1 sat; no synthetic CAS denomination |
@@ -304,16 +333,19 @@ Build the custom mint with LMSR integration:
 
 ## 8. Technology Choices
 
+> **Chosen implementation: CDK Rust** — confirmed by Pablo (conv fb86ff). mint-engineer agent is being created to implement this.
+
 ### Mint Implementation Options
 
 | Option | Language | Maturity | Pros | Cons |
 |--------|----------|----------|------|------|
-| **Nutshell fork** | Python | High | Reference impl, well-tested crypto | Python performance, harder to customize deeply |
-| **Moksha** | Rust | Medium | Performance, type safety | Smaller community, steeper learning curve |
-| **cashu-ts** | TypeScript | Medium | Same stack as frontend, fast iteration | Less battle-tested for production mints |
-| **Custom (Go/Rust)** | Go/Rust | N/A | Full control, optimal performance | Build everything from scratch |
+| ~~Nutshell fork~~ | Python | High | Reference impl, well-tested crypto | Python performance, harder to customize deeply |
+| ~~Moksha~~ | Rust | Medium | Performance, type safety | Smaller community, steeper learning curve |
+| ~~cashu-ts~~ | TypeScript | Medium | Same stack as frontend, fast iteration | Less battle-tested for production mints |
+| **CDK Rust** ✅ | Rust | High | Cashu Dev Kit — official SDK, battle-tested, Rust performance | Needs mint-engineer agent to implement |
+| Custom (Go/Rust) | Go/Rust | N/A | Full control, optimal performance | Build everything from scratch |
 
-**Recommendation for MVP:** Fork Nutshell or build on `cashu-ts`. The custom endpoints (`/v1/cascade/*`) are straightforward to add, and the standard Cashu plumbing (blind signatures, DLEQ, keyset management) is already handled.
+**Chosen for MVP: CDK Rust** — Cashu Dev Kit provides battle-tested blind signatures, DLEQ proofs, and keyset management out of the box. The mint-engineer agent will build on this. Custom endpoints (`/v1/cascade/*`) add the LMSR layer and prediction market mechanics.
 
 ---
 

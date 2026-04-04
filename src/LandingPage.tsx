@@ -5,7 +5,26 @@ import { deriveMarketMetrics, type Side } from './market'
 import type { MarketEntry } from './storage'
 import type { Action } from './App'
 import { trackHomepageEngagement } from './analytics'
+import { fetchMarketPosts, resolveAuthorName } from './services/nostrService'
 // lightweight-charts used by market detail pages
+
+/**
+ * Format a timestamp as a relative time string (e.g., "2m ago", "4h ago").
+ */
+function formatTimeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months}mo ago`
+  const years = Math.floor(months / 12)
+  return `${years}y ago`
+}
 
 type MarketType = 'module' | 'thesis'
 
@@ -208,10 +227,10 @@ function normalizeText(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 }
 
-function getRelatedDiscussions(title: string, limit = 2) {
+function getRelatedDiscussions(discussions: SampleDiscussion[], title: string, limit = 2) {
   const normalizedTitle = normalizeText(title)
 
-  return sampleDiscussions.filter((discussion) => {
+  return discussions.filter((discussion) => {
     const normalizedMarketTitle = normalizeText(discussion.marketTitle)
     return normalizedTitle.includes(normalizedMarketTitle) || normalizedMarketTitle.includes(normalizedTitle)
   }).slice(0, limit)
@@ -318,6 +337,10 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets: _isLo
   const [initialSats, setInitialSats] = useState('150')
   const [showCreateModal, setShowCreateModal] = useState(false)
 
+  // State for real discussions from Nostr
+  const [discussions, setDiscussions] = useState<SampleDiscussion[]>([])
+  const [discussionsLoading, setDiscussionsLoading] = useState(false)
+
   // Filter archived markets — only show active/resolved
   const entries = Object.values(markets).filter(e => e.market.status !== 'archived')
 
@@ -344,6 +367,93 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets: _isLo
       .slice(0, 5)
       .map(x => x.entry)
   }, [entries])
+
+  // Fetch real discussions from Nostr for hot debate markets
+  useEffect(() => {
+    if (!hotDebates || hotDebates.length === 0) return
+
+    let cancelled = false
+    setDiscussionsLoading(true)
+
+    async function loadDiscussions() {
+      try {
+        const allDiscussions: SampleDiscussion[] = []
+
+        // Fetch discussions for each hot debate market (limit to 5 for performance)
+        const marketsToFetch = hotDebates.slice(0, 5)
+
+        for (const entry of marketsToFetch) {
+          const marketEventId = entry.market.eventId
+          if (!marketEventId) continue
+
+          try {
+            const events = await fetchMarketPosts(marketEventId, 20)
+
+            for (const event of events) {
+              // Get root posts only (not replies)
+              const tags = event.tags
+              const hasReplyMarker = tags.some(
+                tag => tag[0] === 'e' && tag[3] === 'reply'
+              )
+              if (hasReplyMarker) continue
+
+              // Count replies to this post
+              const replyCount = events.filter(
+                e => e.tags.some(
+                  tag => tag[0] === 'e' && tag[1] === event.id && tag[3] === 'reply'
+                )
+              ).length
+
+              // Resolve author name
+              const authorInfo = await resolveAuthorName(event.pubkey)
+              const author = authorInfo.name ?? authorInfo.npub.slice(0, 16)
+
+              // Extract stance from tags
+              const stanceTag = tags.find(tag => tag[0] === 'stance')
+              const stance = stanceTag?.[1] === 'bull' ? 'LONG' :
+                            stanceTag?.[1] === 'bear' ? 'SHORT' : null
+
+              // Extract preview from content
+              const content = event.content || ''
+              const preview = content.length > 150 ? content.slice(0, 150) + '...' : content
+
+              if (!cancelled) {
+                allDiscussions.push({
+                  id: event.id ?? `temp-${allDiscussions.length}`,
+                  marketTitle: entry.market.title,
+                  author,
+                  preview,
+                  replyCount,
+                  stance: stance ?? 'LONG',
+                  timestamp: formatTimeAgo((event.created_at ?? 0) * 1000),
+                })
+              }
+            }
+          } catch (err) {
+            console.warn('Failed to fetch discussions for market:', entry.market.title, err)
+          }
+        }
+
+        if (!cancelled) {
+          // Sort by most recent (alphabetically for now since timestamps are strings)
+          allDiscussions.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+          setDiscussions(allDiscussions)
+        }
+      } catch (err) {
+        console.warn('Failed to load discussions:', err)
+      } finally {
+        if (!cancelled) {
+          setDiscussionsLoading(false)
+        }
+      }
+    }
+
+    loadDiscussions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [hotDebates])
 
   const newThisWeek = useMemo(() => {
     return [...entries]
@@ -775,7 +885,7 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets: _isLo
             const debates = useHotDebates.map(entry => {
                   const metrics = deriveMarketMetrics(entry.market)
                   const yes = Math.round(metrics.longPositionShare * 100)
-                  const discussionContext = getRelatedDiscussions(entry.market.title)
+                  const discussionContext = getRelatedDiscussions(discussions, entry.market.title)
                   return {
                     title: entry.market.title,
                     yes,
@@ -884,7 +994,11 @@ export default function LandingPage({ markets, dispatch, isLoadingMarkets: _isLo
                         </button>
 
                         <div className="space-y-3">
-                          {debate.discussionContext.length > 0 ? debate.discussionContext.map((discussion) => (
+                          {discussionsLoading ? (
+                            <div className="text-sm text-neutral-500 leading-relaxed">
+                              Loading discussions...
+                            </div>
+                          ) : debate.discussionContext.length > 0 ? debate.discussionContext.map((discussion) => (
                             <button
                               key={discussion.id}
                               type="button"

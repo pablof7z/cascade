@@ -439,8 +439,18 @@ export function removeBookmark(
   // Queue Nostr publish if authenticated
   if (pubkey && ndk) {
     addPendingPublish(pubkey, _cache.marketEventIds)
+    // Capture the createdAt of our pending entry before the async publish fires.
+    // This prevents race conditions: if another add/remove fires before our publish
+    // succeeds, we won't accidentally remove the newer pending entry.
+    const pendingEntry = getPendingPublishes().find((p) => p.pubkey === pubkey)
+    const ourCreatedAt = pendingEntry?.createdAt
     publishBookmarksEvent(pubkey, _cache.marketEventIds, ndk)
-      .then(() => removePendingPublish(pubkey))
+      .then(() => {
+        const current = getPendingPublishes().find((p) => p.pubkey === pubkey)
+        if (current && current.createdAt === ourCreatedAt) {
+          removePendingPublish(pubkey)
+        }
+      })
       .catch((err) => {
         console.warn('Background bookmark publish failed:', err)
         // Keep entry in pending for retry

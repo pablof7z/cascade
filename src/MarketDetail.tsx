@@ -17,6 +17,7 @@ import { useNostr } from './context/NostrContext'
 import { useTestnet } from './testnetConfig'
 import { subscribeToMarketUpdates } from './services/marketService'
 import { executeTrade } from './services/tradingService'
+import { discoverMintForMarket, type MintInfo } from './services/mintDiscoveryService'
 import type { Action } from './App'
 
 const TRADE_DEBOUNCE_MS = 2000
@@ -158,6 +159,7 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
   const [positions, setPositions] = useState<Position[]>([])
   const [tradeError, setTradeError] = useState<string | null>(null)
   const [tradeLoading, setTradeLoading] = useState(false)
+  const [mintInfo, setMintInfo] = useState<MintInfo | null>(null)
   const lastTradeAtRef = useRef<number>(0)
   const { isReady, pubkey } = useNostr()
   const { isTestnet } = useTestnet()
@@ -190,6 +192,15 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
   useEffect(() => {
     setPositions(getPositionsForMarket(market.slug))
   }, [market.slug, market.lastTrade?.id])
+
+  // Load mint info for this market
+  useEffect(() => {
+    async function loadMintInfo() {
+      const info = await discoverMintForMarket(market)
+      setMintInfo(info)
+    }
+    loadMintInfo()
+  }, [market.mint])
 
   const thesis = getThesisDefinition(market)
   const relatedSignals = (thesis?.signals ?? []).map((signal) => {
@@ -370,6 +381,17 @@ export default function MarketDetail({ entry, markets, dispatch, activeTab }: Pr
           </>
         }
       />
+
+      {/* Mint info display */}
+      <div className="mb-4 text-xs text-neutral-500">
+        Mint: {mintInfo?.name || 'Loading...'}
+        {!mintInfo?.supportsCascade && mintInfo && (
+          <span className="ml-2 text-rose-500">⚠ Does not support Cascade trades</span>
+        )}
+        {!mintInfo && (
+          <span className="ml-2 text-rose-500">⚠ Mint unavailable</span>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">

@@ -38,6 +38,10 @@ export type Position = {
   timestamp: number
   /** Nostr pubkey of the position owner. Set when logged in; undefined for anonymous positions. */
   ownerPubkey?: string
+  /** ecash token received when opening position - needed for redemption/settlement */
+  positionProof?: string
+  /** Whether position has been redeemed/claimed */
+  settled?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -266,6 +270,7 @@ export function addPosition(
   direction: PositionDirection,
   quantity: number,
   entryPrice: number,
+  positionProof?: string,
 ): Position {
   const positions = loadPositions()
 
@@ -302,6 +307,7 @@ export function addPosition(
     costBasis: entryPrice * quantity,
     timestamp: Date.now(),
     ..._currentPubkey ? { ownerPubkey: _currentPubkey } : {},
+    ...(positionProof ? { positionProof } : {}),
   }
 
   const updatedPositions = [...positions, pos]

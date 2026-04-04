@@ -523,6 +523,60 @@ function LegacyFieldMeetingRedirect() {
   return <Navigate to={`/dashboard/field/${id ?? ''}/meeting`} replace />
 }
 
+// Legacy redirect: /market/:id (numeric) -> find market by slug and redirect
+function LegacyMarketRedirect({ markets }: { markets: Record<string, MarketEntry> }) {
+  const { id } = useParams<{ id: string }>()
+
+  useEffect(() => {
+    if (!id) return
+
+    // Check if this ID exists as a market slug in our local store
+    if (markets[id]) {
+      // Already a valid slug, redirect to the same URL (no-op but updates URL)
+      window.location.replace(`/market/${id}`)
+    }
+    // If not found in local store, let the component render the not found state
+  }, [id, markets])
+
+  if (!id) {
+    return <Navigate to="/" replace />
+  }
+
+  // Check if market exists in local store
+  if (markets[id]) {
+    // Show the market
+    return <Navigate to={`/market/${id}`} replace />
+  }
+
+  // Market not found - redirect to home
+  return <Navigate to="/" replace />
+}
+
+// Legacy redirect: /discuss/:id -> redirect to home
+// Since we don't have market context, redirect to home
+function LegacyDiscussRedirect({ markets }: { markets: Record<string, MarketEntry> }) {
+  const { id: threadId } = useParams<{ id: string }>()
+
+  useEffect(() => {
+    if (!threadId) return
+
+    // We can't find threads without market context, so redirect to home
+    // User can search for the discussion from the home page
+    window.location.replace('/')
+  }, [threadId, markets])
+
+  if (!threadId) {
+    return <Navigate to="/" replace />
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[50vh] px-4">
+      <div className="text-neutral-400 mb-4">Discussion thread: {threadId}</div>
+      <div className="text-neutral-600 text-sm">Redirecting to home...</div>
+    </div>
+  )
+}
+
 // Interval between outbox retry sweeps (30 seconds)
 const OUTBOX_RETRY_INTERVAL_MS = 30_000
 
@@ -766,6 +820,11 @@ function AppContent() {
       <main className="flex-1">
       <Routes>
         <Route path="/" element={<LandingPage markets={state.markets} dispatch={handleDispatch} isLoadingMarkets={state.marketsLoading} />} />
+        {/* Legacy /market/:id route - handles numeric IDs by redirecting to slug-based URL */}
+        <Route
+          path="/market/:id"
+          element={<LegacyMarketRedirect markets={state.markets} />}
+        />
         <Route
           path="/market/:slug"
           element={<MarketDetailWrapper markets={state.markets} dispatch={handleDispatch} activeTab="overview" />}
@@ -817,6 +876,8 @@ function AppContent() {
           <Route path="settings" element={<SettingsPage />} />
         </Route>
         {/* Legacy redirects — keep old URLs working */}
+        <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
+        <Route path="/discuss/:id" element={<LegacyDiscussRedirect markets={state.markets} />} />
         <Route path="/fields" element={<Navigate to="/dashboard/fields" replace />} />
         <Route path="/field/:id/meeting" element={<LegacyFieldMeetingRedirect />} />
         <Route path="/field/:id" element={<LegacyFieldRedirect />} />

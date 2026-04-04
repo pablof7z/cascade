@@ -94,6 +94,9 @@ export default function Activity() {
     let cancelled = false
 
     async function loadMarkets() {
+      const ndk = getNDK()
+      if (!ndk) return
+
       try {
         const events = await fetchAllMarketsTransport(500)
         if (cancelled) return

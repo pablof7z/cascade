@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { loadStoredKeys } from './nostrKeys'
+import { getWalletBalance } from './walletStore'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -210,6 +212,17 @@ function Notifications() {
 // ─── Wallet Management ────────────────────────────────────────────────────────
 
 function WalletManagement() {
+  const [balance, setBalance] = useState<number | null>(null)
+
+  const keys = loadStoredKeys()
+
+  useEffect(() => {
+    if (!keys) return
+    getWalletBalance().then(setBalance).catch(() => setBalance(0))
+  }, [keys])
+
+  const truncatedNpub = keys ? `${keys.npub.slice(0, 12)}...${keys.npub.slice(-8)}` : null
+
   return (
     <Section title="Wallet Management">
       <div className="flex flex-col gap-4">
@@ -218,15 +231,17 @@ function WalletManagement() {
             <span className="text-xs text-neutral-500 uppercase tracking-wide">
               Address
             </span>
-            <span className="text-sm font-mono text-neutral-500">
-              Connect wallet to view address
+            <span className="text-sm font-mono text-neutral-300">
+              {truncatedNpub ?? 'Not connected'}
             </span>
           </div>
           <div className="flex flex-col items-end gap-0.5">
             <span className="text-xs text-neutral-500 uppercase tracking-wide">
               Balance
             </span>
-            <span className="text-sm font-mono text-white">$0.00</span>
+            <span className="text-sm font-mono text-white">
+              {balance !== null ? `${balance.toFixed(2)}` : '...'}
+            </span>
           </div>
         </div>
 

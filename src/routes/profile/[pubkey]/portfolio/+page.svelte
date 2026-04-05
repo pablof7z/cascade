@@ -9,6 +9,7 @@
   import type { NDKEvent } from '@nostr-dev-kit/ndk'
   import type { Market } from '../../../../market'
   import type { MarketEntry } from '../../../../storage'
+  import { formatMarketSlug } from '$lib/marketSlug'
 
   // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,7 @@
       return {
         ...pos,
         marketName: market?.title ?? 'Unknown Market',
+        marketSlug: market ? `${market.slug}--${market.creatorPubkey.slice(0, 12)}` : pos.marketId,
         currentPrice,
         entryValue,
         currentValue,
@@ -84,7 +86,7 @@
 
     // Load markets for enrichment
     const marketsData = await loadMarkets()
-    markets = new Map(marketsData.map(m => [m.id, m]))
+    markets = new Map(marketsData.map(m => [m.market.slug, m]))
 
     // Fetch payout events
     myPubkey = getPubkey()
@@ -222,7 +224,7 @@
               {#each unsettledPositions as pos (pos.id)}
                 <tr class="text-sm">
                   <td class="px-4 py-3">
-                    <a href="/thread/{pos.marketId}" class="text-white hover:text-neutral-300">
+                    <a href="/markets/{pos.marketSlug}" class="text-white hover:text-neutral-300">
                       {pos.marketName}
                     </a>
                   </td>

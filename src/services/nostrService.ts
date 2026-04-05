@@ -470,6 +470,37 @@ export async function fetchMarketBySlug(slug: string): Promise<NDKEvent | null> 
 }
 
 /**
+ * Fetch a Cascade market by its slug (d-tag) and optional pubkey prefix.
+ * If no pubkeyPrefix is provided, returns the first match (backwards compatible).
+ */
+export async function fetchMarketBySlugAndPubkey(
+  slug: string,
+  pubkeyPrefix?: string
+): Promise<NDKEvent | null> {
+  const filter: NDKFilter = {
+    kinds: [982 as NDKKind],
+    '#d': [slug],
+  }
+  const events = await fetchEvents(filter)
+  
+  if (events.size === 0) return null
+  
+  // If no pubkey prefix, return first match (backwards compatible)
+  if (!pubkeyPrefix) {
+    return Array.from(events)[0] || null;
+  }
+  
+  // Find event where pubkey starts with the provided prefix
+  for (const event of events) {
+    if (event.pubkey.startsWith(pubkeyPrefix)) {
+      return event;
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Subscribe to real-time updates for a single Cascade market (by event ID).
  * Returns the NDKSubscription so the caller can stop() it on cleanup.
  */

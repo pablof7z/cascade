@@ -186,6 +186,39 @@
   }
 </script>
 
+<svelte:head>
+  {#if profile}
+    <title>{profile.name || 'Trader'} on Cascade</title>
+    <meta name="description" content="{profile.name || 'A trader'} is trading prediction markets on Cascade.{profile.about ? ' ' + profile.about.slice(0, 100) : ''}" />
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="profile" />
+    <meta property="og:site_name" content="Cascade" />
+    <meta property="og:title" content="{profile.name || 'Trader'} on Cascade" />
+    <meta property="og:description" content="{profile.about?.slice(0, 155) || profile.name + ' is trading predictions on Cascade.'}" />
+    {#if profile.picture}
+      <meta property="og:image" content={profile.picture} />
+    {:else}
+      <meta property="og:image" content="https://cascade.markets/og/profile.png" />
+    {/if}
+    <meta property="og:url" content="https://cascade.markets/profile/{$page.params.pubkey}" />
+    
+    <!-- Twitter/X -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@cascademarkets" />
+    <meta name="twitter:title" content="{profile.name || 'Trader'} on Cascade" />
+    <meta name="twitter:description" content="{profile.about?.slice(0, 155) || 'Trading predictions on Cascade.'}" />
+    {#if profile.picture}
+      <meta name="twitter:image" content={profile.picture} />
+    {:else}
+      <meta name="twitter:image" content="https://cascade.markets/og/profile.png" />
+    {/if}
+  {:else}
+    <title>Profile | Cascade</title>
+    <meta name="twitter:card" content="summary" />
+  {/if}
+</svelte:head>
+
 <div class="max-w-4xl mx-auto">
   <!-- Banner & Avatar -->
   <div class="relative h-32 bg-neutral-900">

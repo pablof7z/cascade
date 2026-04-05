@@ -133,7 +133,37 @@
 </script>
 
 <svelte:head>
-  <title>{market?.title || 'Market'} | Cascade</title>
+  {#if market}
+    {@const pct = Math.round(probability * 100)}
+    {@const marketUrl = `https://cascade.markets/market/${market.slug}`}
+    <title>{market.title} — {pct}% YES | Cascade</title>
+    <meta name="description" content="{market.description.slice(0, 140)}. Currently {pct}% probability on Cascade." />
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Cascade" />
+    <meta property="og:title" content="{market.title} — {pct}% YES" />
+    <meta property="og:description" content="{market.description.slice(0, 155)}" />
+    <meta property="og:image" content="https://cascade.markets/og/market.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content={marketUrl} />
+    
+    <!-- Twitter/X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@cascademarkets" />
+    <meta name="twitter:title" content="{market.title}" />
+    <meta name="twitter:description" content="{pct}% YES · {market.status === 'active' ? 'Market open' : 'Resolved'}" />
+    <meta name="twitter:image" content="https://cascade.markets/og/market.png" />
+    <meta name="twitter:label1" content="Probability" />
+    <meta name="twitter:data1" content="{pct}% YES" />
+    <meta name="twitter:label2" content="Status" />
+    <meta name="twitter:data2" content="{market.status === 'active' ? 'Open' : 'Closed'}" />
+  {:else}
+    <title>Prediction Market | Cascade</title>
+    <meta property="og:title" content="Prediction Market | Cascade" />
+    <meta name="twitter:card" content="summary_large_image" />
+  {/if}
 </svelte:head>
 
 <div class="min-h-screen bg-neutral-950 text-white">

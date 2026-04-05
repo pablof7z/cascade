@@ -3,7 +3,7 @@
 **Owner**: Cascade Mint Engineer (mint-engineer)
 **Target**: Vercel at `cascade-mint.f7z.io`
 **Date**: 2026-04-05
-**Status**: v2 — Corrected market mechanics
+**Status**: v2.1 — Updated keyset model (1 keyset, 2 units) + creator-funded reserves
 
 ---
 
@@ -12,7 +12,7 @@
 This document outlines the strategy to deploy a specialized Cashu mint on Vercel for Cascade's prediction market platform. The mint implements:
 - LMSR (Logarithmic Market Scoring Rule) for efficient market-making
 - Pure bearer tokens (NIP-60) — no escrow, no accounts
-- 2 keysets per market (YES/NO) — no CANCEL, no general-purpose keyset
+- 1 keyset per market with 2 units (long/short) — no CANCEL, no general-purpose keyset
 - NUT-05 Lightning integration for deposits/withdrawals
 - Continuous trading — markets do NOT resolve
 
@@ -37,13 +37,16 @@ This document outlines the strategy to deploy a specialized Cashu mint on Vercel
 ### 1.2 Keyset Architecture
 
 ```
-Per-market keysets (no mint-primary, no CANCEL):
-├── keyset-{slug}-yes (YES shares)
-└── keyset-{slug}-no (NO shares)
+Per-market keyset with 2 units (no mint-primary, no CANCEL):
+└── keyset-{slug}
+    ├── unit: long
+    └── unit: short
 ```
 
-Each prediction market gets exactly 2 keysets:
-- Users BUY shares → receive tokens from market-specific keyset
+Each prediction market gets exactly 1 keyset with 2 units:
+- `long` unit — equivalent to YES position
+- `short` unit — equivalent to NO position
+- Users BUY shares → receive tokens denominated in the appropriate unit from the market keyset
 - Users SELL shares → return tokens → receive sats via Lightning melt (NUT-05)
 - No `keyset-cancel` — markets do not have cancellation outcomes
 - No `mint-primary` — tokens are market-specific, not general-purpose
@@ -55,7 +58,7 @@ Each prediction market gets exactly 2 keysets:
 ### Phase 1: Foundation (This Week)
 - [ ] Set up Hono.js project with TypeScript
 - [ ] Integrate `@cashu/cashu-ts` for mint operations
-- [ ] Configure per-market 2-keyset architecture (YES/NO only)
+- [ ] Configure per-market 1-keyset / 2-unit architecture (long/short)
 - [ ] Implement basic mint API (mint, melt, check)
 - [ ] Add Nostr event persistence for keyset state
 - [ ] Write unit tests for core mint operations
@@ -128,7 +131,7 @@ Rationale:
 
 - **Nostr**: Source of truth for market events and creator pubkeys
 - **Turso SQLite**: Fast edge storage for mint state (proofs, keysets)
-- **Reserve field**: Tracks LMSR liquidity pool backing, NOT escrow balances
+- **Reserve field**: Tracks LMSR liquidity pool backing (funded by market creator), NOT escrow balances
 
 **Critical correction**: The `reserve` field in market state tracks how many sats back the LMSR liquidity pool. It does NOT represent user funds in escrow.
 
@@ -136,18 +139,20 @@ Rationale:
 
 Each prediction market gets:
 1. Unique `keyset-id` derived from market slug
-2. Two keysets: `keyset-{slug}-yes` and `keyset-{slug}-no`
-3. Shares minted as blinded tokens from respective keysets
+2. One keyset with two units: `long` and `short`
+3. Shares minted as blinded tokens from the keyset, denominated in the appropriate unit
+4. Market creator funds the initial LMSR reserve
 
 ```typescript
 interface MarketKeyset {
   marketSlug: string;
-  yesKeysetId: string;
-  noKeysetId: string;
-  reserve: bigint; // LMSR liquidity pool backing (NOT escrow)
-  totalYesShares: bigint;
-  totalNoShares: bigint;
-  lmsrCoefficient: bigint; // b parameter
+  keysetId: string;          // single keyset per market
+  units: ['long', 'short'];  // two units within the keyset
+  reserve: bigint;           // LMSR liquidity pool backing (NOT escrow), funded by market creator
+  totalLongShares: bigint;
+  totalShortShares: bigint;
+  lmsrCoefficient: bigint;   // b parameter
+  creatorPubkey: string;     // pubkey of market creator who funded the reserve
 }
 ```
 
@@ -160,7 +165,7 @@ interface MarketKeyset {
 ```
 User                    Mint                      Lightning
  │                       │                           │
- │  Want to BUY Y YES    │                           │
+ │  Want to BUY Y long   │                           │
  │  shares               │                           │
  │ ────────────────────► │                           │
  │                       │                           │
@@ -178,8 +183,8 @@ User                    Mint                      Lightning
  │                       │  Payment confirmed        │
  │                       │ ◄──────────────────────── │
  │                       │                           │
- │  Receive Y YES tokens │                           │
- │  from market keyset    │                           │
+ │  Receive Y long tokens│                           │
+ │  from market keyset   │                           │
  │ ◄─────────────────────│                           │
  │                       │                           │
  │  Store in NIP-60      │                           │
@@ -187,12 +192,12 @@ User                    Mint                      Lightning
 ```
 
 **Steps**:
-1. User requests to buy Y shares of YES or NO
+1. User requests to buy Y shares of long or short
 2. Mint calculates LMSR cost: `cost = Y × current_price × 1.01` (1% fee in spread)
 3. Mint creates Lightning invoice for the cost
 4. User pays via Lightning
 5. Mint verifies payment (NUT-04)
-6. Mint issues Y tokens from market-specific keyset
+6. Mint issues Y tokens (denominated in the requested unit) from market keyset
 7. User stores tokens in NIP-60 wallet
 
 ### 4.2 Sell Flow (NUT-05)
@@ -200,8 +205,8 @@ User                    Mint                      Lightning
 ```
 User                    Mint                      Lightning
  │                       │                           │
- │  Present Y YES tokens │                           │
- │  to sell              │                           │
+ │  Present Y long       │                           │
+ │  tokens to sell       │                           │
  │ ────────────────────► │                           │
  │                       │                           │
  │                       │  Verify proofs valid      │
@@ -236,9 +241,9 @@ User                    Mint                      Lightning
 
 **Winning = selling position at higher price than bought**:
 
-1. User buys YES at 0.40 (cost: 40 sats per share)
-2. Market probability shifts → YES now trades at 0.70
-3. User sells YES at 0.70 (receives: 70 sats per share)
+1. User buys long at 0.40 (cost: 40 sats per share)
+2. Market probability shifts → long now trades at 0.70
+3. User sells long at 0.70 (receives: 70 sats per share)
 4. **Profit: 30 sats per share** — no resolution required
 
 Markets trade continuously. Price IS the probability. Users realize P&L by trading in and out.
@@ -273,16 +278,17 @@ GET /keys/{keyset_id}
 
 ```
 POST /market/{slug}/create
-  Body: { slug: string, title: string, b: bigint, mint: string }
-  Response: { yesKeysetId: string, noKeysetId: string }
+  Body: { slug: string, title: string, b: bigint, mint: string, reserveSats: number }
+  Response: { keysetId: string, units: ['long', 'short'] }
+  Note: Creator must fund initial LMSR reserve via Lightning during creation
 
 POST /market/{slug}/buy
-  Body: { side: 'yes' | 'no', amount: number, invoice: string }
+  Body: { unit: 'long' | 'short', amount: number, invoice: string }
   Response: { proofs: Proof[], change?: Proof[] }
   Note: Cost calculated via LMSR, 1% fee included in price
 
 POST /market/{slug}/sell
-  Body: { side: 'yes' | 'no', proofs: Proof[] }
+  Body: { unit: 'long' | 'short', proofs: Proof[] }
   Response: { pr: string, preimage?: string }
   Note: Value calculated via LMSR, 1% fee deducted from price
 ```
@@ -367,7 +373,7 @@ POST /admin/backup
 ### 8.2 Integration Tests
 - Full mint → melt cycle
 - Lightning deposit/withdraw
-- Per-market keyset isolation
+- Per-market keyset isolation (long/short unit separation)
 - Buy/sell P&L calculation
 
 ### 8.3 Load Tests
@@ -430,7 +436,7 @@ POST /admin/backup
 
 | Question | Status |
 |----------|--------|
-| Liquidity funding | Who seeds the initial LMSR reserve? Cascade treasury. |
+| Liquidity funding | ✅ RESOLVED: Market creator funds the initial LMSR reserve via Lightning at market creation time. |
 | Fee structure | 1% per trade, embedded in LMSR spread (product spec). |
 | Keyset migration | If we need to rotate keysets, how to handle existing proofs? |
 | Multi-mint support | Should users be able to use external mints? Phase 1: Cascade-only. |
@@ -444,7 +450,7 @@ POST /admin/backup
 |---|-------------|--------|
 | 1 | NO ESCROW | Removed all 15+ escrow references. Users hold tokens, not balances. |
 | 2 | NO RESOLUTION | Removed resolve endpoint, Phase 3 resolution logic, CANCEL keyset. |
-| 3 | Keyset Architecture | 2 keysets per market only. No mint-primary, no CANCEL. |
+| 3 | Keyset Architecture | 1 keyset per market with 2 units (long/short). No mint-primary, no CANCEL. |
 | 4 | Fee Structure | 1% per trade, applied via LMSR spread. |
 | 5 | WASM Feasibility | Default to `@cashu/cashu-ts` for Phase 1. |
 | 6 | SQLite on Vercel | Replaced with Turso SQLite for edge persistence. |
@@ -452,5 +458,6 @@ POST /admin/backup
 
 ---
 
-*Document Version: 2.0*
-*Last Updated: 2026-04-05*
+*Document Version: 2.1*
+*Last Updated: 2026-04-05 12:40 UTC*
+*Changes: 1 keyset/2 units model (long/short), creator-funded reserves*

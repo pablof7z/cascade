@@ -62,6 +62,14 @@
     {@const pct = Math.round(probability * 100)}
     <title>{market.title} — {pct}% YES | Cascade</title>
     <meta name="description" content="{market.description?.slice(0, 140) || 'Market on Cascade'}. Currently {pct}% probability." />
+    <meta property="og:title" content="{market.title} — {pct}% YES" />
+    <meta property="og:description" content="{market.description?.slice(0, 200) || 'Prediction market on Cascade'}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://cascade.markets/markets/{slugAndPrefix}" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@cascademarkets" />
+    <meta name="twitter:title" content="{market.title} — {pct}% YES" />
+    <meta name="twitter:description" content="{market.description?.slice(0, 200) || 'Prediction market on Cascade'}" />
   {/if}
 </svelte:head>
 

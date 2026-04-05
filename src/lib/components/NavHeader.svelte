@@ -217,6 +217,15 @@
 
           {#if userMenuOpen}
             <div class="absolute right-0 mt-2 w-48 bg-neutral-900 border border-neutral-700 py-1 z-50">
+              {#if pubkey}
+                <a
+                  href="/profile/{pubkey}"
+                  class="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+                  onclick={closeUserMenu}
+                >
+                  View Profile
+                </a>
+              {/if}
               <a
                 href="/bookmarks"
                 class="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"

@@ -444,7 +444,7 @@ No rate limiting for now. KISS. Revisit if Vercel costs become a problem.
 | Multi-mint support | 🔜 DEFERRED: Phase 1 Cascade-only. Future: other mints can run our software with LMSR pricing. |
 | Disaster recovery | ❓ OPEN: What's the RTO/RPO for mint state loss? |
 | LMSR `b` parameter | ❓ OPEN: Who sets it (creator or system)? What value? Needs experimentation. |
-| Creator reserve withdrawal | ❓ OPEN: Can the creator ever pull their reserve back? Under what conditions? |
+| Creator reserve withdrawal | ✅ RESOLVED: Not a separate concept. Creator holds long tokens — bearer tokens are fungible via blind signatures. Creator sells their position like any other trader. There is no "withdrawal", just selling. |
 
 ---
 

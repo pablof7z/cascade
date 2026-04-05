@@ -225,5 +225,26 @@
           </div>
         </div>
       {/if}
+      
+      <!-- Market Stats -->
+      <div class="border-t border-neutral-800 pt-8">
+        <h2 class="text-sm font-medium text-neutral-300 mb-4">Market Stats</h2>
+        <div class="grid grid-cols-3 gap-6">
+          <div>
+            <div class="text-xs text-neutral-500 mb-1">Long Position</div>
+            <div class="font-mono text-lg text-white">{market.qLong.toFixed(4)}</div>
+          </div>
+          <div>
+            <div class="text-xs text-neutral-500 mb-1">Short Position</div>
+            <div class="font-mono text-lg text-white">{market.qShort.toFixed(4)}</div>
+          </div>
+          <div>
+            <div class="text-xs text-neutral-500 mb-1">Reserve</div>
+            <div class="font-mono text-lg text-white">{market.reserve.toFixed(2)} sats</div>
+          </div>
+        </div>
+      </div>
     </div>
+    <Footer />
   </div>
+{/if}

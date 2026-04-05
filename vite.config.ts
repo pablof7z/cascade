@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { sveltekit } from '@sveltejs/kit/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { execSync } from 'child_process'
 import { existsSync, mkdirSync, appendFileSync, readFileSync } from 'fs'
@@ -223,7 +223,7 @@ function analyticsApiPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), agentApiPlugin(), analyticsApiPlugin()],
+  plugins: [sveltekit(), tailwindcss(), agentApiPlugin(), analyticsApiPlugin()],
   define: {
     __COMMIT_HASH__: JSON.stringify(commitHash),
   },

@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { page } from '$app/stores'
-  import { loadPositions, type Position } from '../../../positionStore'
-  import { load as loadMarkets } from '../../../storage'
-  import { priceLong, priceShort } from '../../../market'
-  import { fetchPayoutEvents, getPubkey } from '../../../services/nostrService'
-  import { getRedemptionQuote, redeemPosition, canRedeemPosition, isPositionSettled } from '../../../services/settlementService'
+  import { loadPositions, type Position } from '../../../../positionStore'
+  import { load as loadMarkets } from '../../../../storage'
+  import { priceLong, priceShort } from '../../../../market'
+  import { fetchPayoutEvents, getPubkey } from '../../../../services/nostrService'
+  import { getRedemptionQuote, redeemPosition, canRedeemPosition, isPositionSettled } from '../../../../services/settlementService'
   import type { NDKEvent } from '@nostr-dev-kit/ndk'
-  import type { Market } from '../../../market'
-  import type { MarketEntry } from '../../../storage'
+  import type { Market } from '../../../../market'
+  import type { MarketEntry } from '../../../../storage'
 
   // ─── State ────────────────────────────────────────────────────────────────────
 

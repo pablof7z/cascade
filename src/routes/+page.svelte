@@ -1,62 +1,190 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import NavHeader from '$lib/components/NavHeader.svelte'
+  import { fetchAllMarketsTransport } from '../services/nostrService'
+  import { parseMarketEvent } from '../services/marketService'
+  import { priceLong } from '../market'
+  import type { Market } from '../market'
 
-  // ─── Sample market data ───────────────────────────────────────────────────────
+  // ─── Types ──────────────────────────────────────────────────────────────────
 
-  type MarketSpec = {
+  type DisplayMarket = {
+    slug: string
     title: string
     category: string
+    description: string
     prob: number
     volume: string
     traders: number
+    createdAt: number
+    timeAgo: string
+    spread: number
+    comments: number
+    change: string
+    mcap: string
   }
 
-  const trendingMarkets: MarketSpec[] = [
-    { title: 'AGI achieved by 2030', category: 'AI', prob: 0.35, volume: '$42.5K', traders: 847 },
-    { title: 'First Mars landing by 2035', category: 'Space', prob: 0.52, volume: '$38.2K', traders: 612 },
-    { title: 'Bitcoin surpasses $150K in 2025', category: 'Crypto', prob: 0.28, volume: '$156K', traders: 1203 },
-    { title: 'US recession declared in 2025', category: 'Economics', prob: 0.62, volume: '$89.4K', traders: 943 },
-    { title: 'mRNA flu vaccine approved', category: 'Biotech', prob: 0.44, volume: '$12.8K', traders: 234 },
-    { title: 'Fusion plant online by 2030', category: 'Energy', prob: 0.18, volume: '$8.2K', traders: 156 },
-  ]
+  // ─── State ──────────────────────────────────────────────────────────────────
 
-  const lowVolumeMarkets: (MarketSpec & { change: string; mcap: string })[] = [
-    { title: 'Lab-grown meat 10% market share by 2028', category: 'Food', prob: 0.31, volume: '$2.1K', traders: 45, change: '--', mcap: '$5.2K' },
-    { title: 'US implements UBI pilot by 2030', category: 'Governance', prob: 0.55, volume: '$4.8K', traders: 89, change: '--', mcap: '$12K' },
-    { title: 'Brain-computer interface reaches 1M users', category: 'Biotech', prob: 0.22, volume: '$1.5K', traders: 32, change: '--', mcap: '$3.8K' },
-    { title: 'Nuclear fusion milestone by 2027', category: 'Energy', prob: 0.41, volume: '$3.2K', traders: 67, change: '--', mcap: '$8.1K' },
-    { title: 'AI passes bar exam', category: 'Tech', prob: 0.78, volume: '$6.4K', traders: 124, change: '--', mcap: '$18K' },
-    { title: 'Electric vehicles 50% of sales', category: 'Auto', prob: 0.67, volume: '$9.1K', traders: 178, change: '--', mcap: '$24K' },
-    { title: 'Quantum computing breakthrough', category: 'Tech', prob: 0.33, volume: '$2.8K', traders: 51, change: '--', mcap: '$7.2K' },
-    { title: 'CRISPR approved for genetic disease', category: 'Biotech', prob: 0.58, volume: '$5.6K', traders: 98, change: '--', mcap: '$14K' },
-  ]
-
-  const disputedMarkets: (MarketSpec & { spread: number; comments: number })[] = [
-    { title: 'AI safety regulation by 2026', category: 'AI', prob: 0.48, volume: '$15.2K', traders: 312, spread: 4, comments: 47 },
-    { title: 'Remote work remains dominant', category: 'Work', prob: 0.52, volume: '$22.8K', traders: 456, spread: 4, comments: 89 },
-    { title: 'Space tourism commercial viability', category: 'Space', prob: 0.45, volume: '$8.4K', traders: 178, spread: 10, comments: 34 },
-  ]
-
-  const newThisWeek: (MarketSpec & { description: string; timeAgo: string })[] = [
-    { title: 'Quantum error correction milestone by 2027', category: 'Tech', prob: 0.33, description: 'Will quantum error correction achieve a new milestone that significantly reduces decoherence?', volume: '$3.2K', traders: 45, timeAgo: '2h ago' },
-    { title: 'EU passes comprehensive AI regulation', category: 'Governance', prob: 0.71, description: 'Will the European Union pass comprehensive AI regulation framework?', volume: '$18.5K', traders: 234, timeAgo: '5h ago' },
-    { title: 'Neuralink FDA approval for general use', category: 'Biotech', prob: 0.19, description: 'Will Neuralink receive FDA approval for general medical use?', volume: '$12.1K', traders: 189, timeAgo: '1d ago' },
-    { title: 'Bitcoin ETF surpasses gold ETF AUM', category: 'Crypto', prob: 0.38, description: 'Will Bitcoin ETF total AUM surpass gold ETF AUM?', volume: '$45.2K', traders: 567, timeAgo: '1d ago' },
-    { title: 'Commercial fusion announcement by 2028', category: 'Energy', prob: 0.24, description: 'Will a commercial fusion power announcement occur by 2028?', volume: '$6.8K', traders: 123, timeAgo: '2d ago' },
-    { title: 'Autonomous vehicle Level 5 commercially available', category: 'Tech', prob: 0.16, description: 'Will Level 5 autonomous vehicles be commercially available?', volume: '$28.4K', traders: 345, timeAgo: '3d ago' },
-  ]
-
-  // ─── State ───────────────────────────────────────────────────────────────────
-
+  let markets = $state<Market[]>([])
+  let loading = $state(true)
+  let error = $state<string | null>(null)
   let showCreateModal = $state(false)
   let title = $state('')
   let description = $state('')
   let initialSide = $state<'LONG' | 'SHORT'>('LONG')
   let initialSats = $state('150')
 
-  // Featured market (highest volume)
-  const featuredMarket = trendingMarkets[0]
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  function formatSats(sats: number): string {
+    if (sats >= 1000000) {
+      return `${(sats / 1000000).toFixed(1)}M`
+    }
+    if (sats >= 1000) {
+      return `${(sats / 1000).toFixed(1)}K`
+    }
+    return `${sats}`
+  }
+
+  function formatTimeAgo(timestamp: number): string {
+    const now = Date.now() / 1000
+    const diff = now - timestamp
+    const minute = 60
+    const hour = 60 * minute
+    const day = 24 * hour
+    const week = 7 * day
+
+    if (diff < minute) return 'just now'
+    if (diff < hour) return `${Math.floor(diff / minute)}m ago`
+    if (diff < day) return `${Math.floor(diff / hour)}h ago`
+    if (diff < week) return `${Math.floor(diff / day)}d ago`
+    return `${Math.floor(diff / week)}w ago`
+  }
+
+  function getCategory(market: Market): string {
+    if (market.kind === 'thesis') return 'Thesis'
+    // Try to infer category from title keywords
+    const lower = market.title.toLowerCase()
+    if (lower.includes('ai') || lower.includes('agi') || lower.includes('llm')) return 'AI'
+    if (lower.includes('space') || lower.includes('mars')) return 'Space'
+    if (lower.includes('bitcoin') || lower.includes('crypto')) return 'Crypto'
+    if (lower.includes('bio') || lower.includes('health') || lower.includes('fda')) return 'Biotech'
+    if (lower.includes('energy') || lower.includes('fusion')) return 'Energy'
+    if (lower.includes('governance') || lower.includes('regulation')) return 'Governance'
+    if (lower.includes('economy') || lower.includes('recession')) return 'Economics'
+    return 'General'
+  }
+
+  function calculateSpread(prob: number): number {
+    // Spread as percentage - higher when probability is closer to 50%
+    return Math.round(Math.abs(prob - 0.5) * 20)
+  }
+
+  function toDisplayMarket(market: Market): DisplayMarket {
+    const prob = priceLong(market.qLong, market.qShort, market.b)
+    const traderCount = Object.keys(market.participants).length
+    const volume = market.reserve
+    const mcap = market.qLong + market.qShort
+
+    return {
+      slug: market.slug,
+      title: market.title,
+      category: getCategory(market),
+      description: market.description,
+      prob,
+      volume: formatSats(volume),
+      traders: traderCount,
+      createdAt: market.createdAt,
+      timeAgo: formatTimeAgo(market.createdAt),
+      spread: calculateSpread(prob),
+      comments: 0,
+      change: '--',
+      mcap: formatSats(mcap),
+    }
+  }
+
+  // ─── Derived market lists ───────────────────────────────────────────────────
+
+  let activeMarkets = $derived(
+    markets
+      .filter(m => m.status === 'active')
+      .map(toDisplayMarket)
+  )
+
+  let trendingMarkets = $derived(
+    [...activeMarkets]
+      .sort((a, b) => {
+        // Sort by trader count descending
+        return b.traders - a.traders
+      })
+      .slice(0, 6)
+  )
+
+  let lowVolumeMarkets = $derived(
+    [...activeMarkets]
+      .sort((a, b) => a.traders - b.traders)
+      .slice(0, 8)
+  )
+
+  let disputedMarkets = $derived(
+    [...activeMarkets]
+      .sort((a, b) => {
+        // Sort by spread descending (most disputed = closest to 50%)
+        return b.spread - a.spread
+      })
+      .slice(0, 3)
+  )
+
+  let newThisWeek = $derived(
+    [...activeMarkets]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 6)
+  )
+
+  let featuredMarket = $derived(trendingMarkets[0] ?? null)
+
+  // ─── Data fetching ──────────────────────────────────────────────────────────
+
+  onMount(() => {
+    let cancelled = false
+
+    async function loadMarkets() {
+      try {
+        const events = await fetchAllMarketsTransport(50)
+        if (cancelled) return
+
+        const parsed: Market[] = []
+        for (const event of events) {
+          const result = parseMarketEvent(event)
+          if (result.ok && result.market) {
+            parsed.push(result.market)
+          }
+        }
+
+        if (!cancelled) {
+          markets = parsed
+          if (parsed.length === 0) {
+            error = "No markets found — check your connection"
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          error = err instanceof Error ? err.message : "Couldn't reach relay"
+        }
+      } finally {
+        if (!cancelled) {
+          loading = false
+        }
+      }
+    }
+
+    loadMarkets()
+
+    return () => {
+      cancelled = true
+    }
+  })
 
   // ─── Sparkline component (inline) ──────────────────────────────────────────
 
@@ -79,8 +207,6 @@
 
   function handleCreateMarket(e: Event) {
     e.preventDefault()
-    // For now, just close the modal
-    // In production, this would dispatch to App state
     showCreateModal = false
     title = ''
     description = ''
@@ -103,9 +229,9 @@
 <div class="min-h-screen bg-neutral-950">
   <NavHeader />
 
-  {/* ═══════════════════════════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════════════════════════
       HERO — Provocative statement + Featured Market
-  ═══════════════════════════════════════════════════════════════════════════ */}
+  ═══════════════════════════════════════════════════════════════════════════ -->
   <section class="relative min-h-[80vh] flex flex-col">
     <div class="absolute inset-0 bg-neutral-950" />
 
@@ -135,13 +261,13 @@
             </div>
           </div>
 
-          {/* Right — Featured market */}
+          <!-- Right — Featured market -->
           {#if featuredMarket}
             <div class="space-y-6">
               <span class="text-xs font-medium text-neutral-500 uppercase tracking-[0.2em]">
                 Featured Thesis
               </span>
-              <a href="/thread/{featuredMarket.title.toLowerCase().replace(/\s+/g, '-')}" class="block space-y-4">
+              <a href="/thread/{featuredMarket.slug}" class="block space-y-4">
                 <h2 class="text-3xl md:text-4xl font-bold text-white leading-snug hover:text-emerald-400 transition-colors">
                   {featuredMarket.title}
                 </h2>
@@ -181,9 +307,9 @@
     </div>
   </section>
 
-  {/* ═══════════════════════════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════════════════════════
       LIVE TRADES TICKER
-  ═══════════════════════════════════════════════════════════════════════════ */}
+  ═══════════════════════════════════════════════════════════════════════════ -->
   <div class="border-y border-neutral-800/50 bg-neutral-950">
     <div class="max-w-7xl mx-auto px-6 py-3 flex items-center gap-4">
       <div class="flex items-center gap-2 shrink-0">
@@ -199,9 +325,9 @@
     </div>
   </div>
 
-  {/* ═══════════════════════════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════════════════════════
       SECTION 1: TRENDING MARKETS — Sidebar layout
-  ═══════════════════════════════════════════════════════════════════════════ */}
+  ═══════════════════════════════════════════════════════════════════════════ -->
   <section class="max-w-7xl mx-auto px-6 pt-20 pb-16">
     <div class="flex items-baseline gap-4 mb-10">
       <h2 class="text-3xl font-black text-white tracking-tight">Trending</h2>
@@ -209,11 +335,11 @@
     </div>
 
     <div class="grid lg:grid-cols-12 gap-0">
-      {/* Left — Dominant market */}
+      <!-- Left — Dominant market -->
       <div class="lg:col-span-5 lg:pr-12 lg:border-r border-neutral-800/50 pb-8 lg:pb-0">
         {#if trendingMarkets.length > 0}
           {@const entry = trendingMarkets[0]}
-          <a href="/thread/{entry.title.toLowerCase().replace(/\s+/g, '-')}" class="block cursor-pointer group">
+          <a href="/thread/{entry.slug}" class="block cursor-pointer group">
             <span class="text-xs text-emerald-500 uppercase tracking-[0.15em] font-medium">#1 by volume</span>
             <h3 class="text-2xl md:text-3xl font-bold text-white mt-2 mb-4 group-hover:text-emerald-400 transition-colors leading-snug">
               {entry.title}
@@ -243,12 +369,12 @@
         {/if}
       </div>
 
-      {/* Right — Compact ranked list */}
+      <!-- Right — Compact ranked list -->
       <div class="lg:col-span-7 lg:pl-12">
         <div class="space-y-0">
           {#each trendingMarkets.slice(1) as entry, i}
             <a
-              href="/thread/{entry.title.toLowerCase().replace(/\s+/g, '-')}"
+              href="/thread/{entry.slug}"
               class="flex items-center gap-4 py-3 border-b border-neutral-800/30 last:border-0 cursor-pointer hover:bg-neutral-900/30 -mx-2 px-2 transition-colors"
             >
               <span class="text-2xl font-black text-neutral-700 w-8 tabular-nums">{i + 2}</span>
@@ -279,9 +405,9 @@
     </div>
   </section>
 
-  {/* ═══════════════════════════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════════════════════════
       SECTION 2: LOW VOLUME MARKETS — Bloomberg data-table style
-  ═══════════════════════════════════════════════════════════════════════════ */}
+  ═══════════════════════════════════════════════════════════════════════════ -->
   <section class="bg-neutral-900/40 border-y border-neutral-800/30">
     <div class="max-w-7xl mx-auto px-6 py-16">
       <div class="flex items-baseline justify-between mb-8">
@@ -292,7 +418,7 @@
         <span class="text-xs text-neutral-600 uppercase tracking-wider hidden sm:block">Updated live</span>
       </div>
 
-      {/* Table header */}
+      <!-- Table header -->
       <div class="grid grid-cols-12 gap-2 px-3 pb-2 text-xs text-neutral-600 uppercase tracking-wider font-medium border-b border-neutral-700/50">
         <div class="col-span-5 sm:col-span-4">Market</div>
         <div class="col-span-2 text-right">Price</div>
@@ -301,10 +427,10 @@
         <div class="col-span-3 sm:col-span-2 text-right">Mkt Cap</div>
       </div>
 
-      {/* Table rows */}
+      <!-- Table rows -->
       {#each lowVolumeMarkets as row, i}
         <a
-          href="/thread/{row.title.toLowerCase().replace(/\s+/g, '-')}"
+          href="/thread/{row.slug}"
           class="grid grid-cols-12 gap-2 px-3 py-3 text-sm cursor-pointer transition-colors hover:bg-neutral-800/30 {i % 2 === 0 ? 'bg-neutral-800/10' : ''}"
         >
           <div class="col-span-5 sm:col-span-4 flex items-center gap-2 min-w-0">
@@ -328,9 +454,9 @@
     </div>
   </section>
 
-  {/* ═══════════════════════════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════════════════════════
       SECTION 3: MARKETS IN DISPUTE
-  ═══════════════════════════════════════════════════════════════════════════ */}
+  ═══════════════════════════════════════════════════════════════════════════ -->
   {#if disputedMarkets.length >= 3}
     <section class="max-w-7xl mx-auto px-6 py-20">
       <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-end mb-10 border-b border-neutral-800/40 pb-6">
@@ -341,7 +467,7 @@
       </div>
 
       <div class="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)] lg:gap-12">
-        {/* Market list */}
+        <!-- Market list -->
         <div>
           <div class="grid grid-cols-[minmax(0,1.4fr)_88px_76px_72px_88px] gap-3 pb-3 text-[10px] uppercase tracking-[0.18em] text-neutral-600 border-b border-neutral-800/40">
             <div>Market</div>
@@ -353,7 +479,7 @@
 
           {#each disputedMarkets as entry}
             <a
-              href="/thread/{entry.title.toLowerCase().replace(/\s+/g, '-')}"
+              href="/thread/{entry.slug}"
               class="grid grid-cols-[minmax(0,1.4fr)_88px_76px_72px_88px] gap-3 py-3 border-b border-neutral-800/20 last:border-0 cursor-pointer hover:bg-neutral-900/30 -mx-2 px-2 transition-colors items-center"
             >
               <div class="min-w-0">
@@ -385,14 +511,14 @@
           {/each}
         </div>
 
-        {/* Discussion sidebar */}
+        <!-- Discussion sidebar -->
         <div class="space-y-0">
           <span class="text-[10px] uppercase tracking-[0.18em] text-neutral-600 font-medium block mb-4">
             Top discussions
           </span>
           {#each disputedMarkets.slice(0, 3) as entry}
             <a
-              href="/thread/{entry.title.toLowerCase().replace(/\s+/g, '-')}"
+              href="/thread/{entry.slug}"
               class="block py-4 border-b border-neutral-800/20 last:border-0 cursor-pointer hover:bg-neutral-900/30 -mx-2 px-2 transition-colors"
             >
               <p class="text-sm text-neutral-400 line-clamp-2 leading-relaxed">
@@ -401,7 +527,7 @@
               <div class="flex items-center gap-2 mt-2 text-xs text-neutral-600">
                 <span>{entry.comments} replies</span>
                 <span>·</span>
-                <span>2h ago</span>
+                <span>{entry.timeAgo}</span>
               </div>
             </a>
           {/each}
@@ -410,10 +536,11 @@
     </section>
   {/if}
 
-  {/* ═══════════════════════════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════════════════════════
       SECTION 4: NEW THIS WEEK — Magazine layout
-  ═══════════════════════════════════════════════════════════════════════════ */}
+  ═══════════════════════════════════════════════════════════════════════════ -->
   {#if newThisWeek.length >= 3}
+    {@const featured = newThisWeek[0]}
     <section class="bg-neutral-900/20 border-t border-neutral-800/30">
       <div class="max-w-7xl mx-auto px-6 py-16">
         <div class="flex items-baseline gap-4 mb-10 border-b border-neutral-800/30 pb-6">
@@ -422,9 +549,8 @@
 
         <div class="grid lg:grid-cols-3 gap-12">
           <!-- Column 1: Featured -->
-          {@const featured = newThisWeek[0]}
           <div class="lg:col-span-1">
-            <a href="/thread/{featured.title.toLowerCase().replace(/\s+/g, '-')}" class="block cursor-pointer group">
+            <a href="/thread/{featured.slug}" class="block cursor-pointer group">
               <span class="text-[10px] uppercase tracking-[0.2em] text-emerald-500/70 font-medium">
                 {featured.category} · {featured.timeAgo}
               </span>
@@ -444,7 +570,7 @@
           <div class="space-y-0">
             {#each newThisWeek.slice(1, 4) as item}
               <a
-                href="/thread/{item.title.toLowerCase().replace(/\s+/g, '-')}"
+                href="/thread/{item.slug}"
                 class="block py-5 border-b border-neutral-800/20 last:border-0 cursor-pointer group"
               >
                 <div class="flex items-start justify-between gap-4 mb-1">
@@ -469,7 +595,7 @@
             </span>
             {#each newThisWeek.slice(4) as item, i}
               <a
-                href="/thread/{item.title.toLowerCase().replace(/\s+/g, '-')}"
+                href="/thread/{item.slug}"
                 class="flex items-baseline gap-3 py-2 cursor-pointer group"
               >
                 <span class="text-xs font-mono text-neutral-700 tabular-nums w-4 text-right shrink-0">
@@ -492,9 +618,9 @@
     </section>
   {/if}
 
-  {/* ═══════════════════════════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════════════════════════
       DIFFERENTIATOR — Why Cascade Markets is different
-  ═══════════════════════════════════════════════════════════════════════════ */}
+  ═══════════════════════════════════════════════════════════════════════════ -->
   <section class="max-w-7xl mx-auto px-6 py-20 border-t border-neutral-800/30">
     <div class="grid lg:grid-cols-12 gap-12 items-start">
       <div class="lg:col-span-5">
@@ -527,9 +653,9 @@
     </div>
   </section>
 
-  {/* ═══════════════════════════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════════════════════════
       CTA — Create a market
-  ═══════════════════════════════════════════════════════════════════════════ */}
+  ═══════════════════════════════════════════════════════════════════════════ -->
   <section class="max-w-7xl mx-auto px-6 py-20">
     <div class="text-center max-w-2xl mx-auto">
       <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -555,9 +681,9 @@
     </div>
   </section>
 
-  {/* ═══════════════════════════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════════════════════════
       FOOTER
-  ═══════════════════════════════════════════════════════════════════════════ */}
+  ═══════════════════════════════════════════════════════════════════════════ -->
   <footer class="border-t border-neutral-800/30 py-12">
     <div class="max-w-7xl mx-auto px-6">
       <div class="flex flex-wrap items-center justify-between gap-4">

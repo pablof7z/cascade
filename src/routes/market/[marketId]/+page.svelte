@@ -10,100 +10,11 @@
   type MarketTab = 'overview' | 'charts' | 'discussion' | 'positions';
   type Side = 'LONG' | 'SHORT';
 
-  interface MarketData {
-    slug: string;
-    title: string;
-    description: string;
-    status: 'open' | 'resolved';
-    resolutionOutcome?: 'YES' | 'NO';
-    creatorPubkey: string;
-    createdAt: number;
-    endDate?: number;
-    resolvedAt?: number;
-    mint: string;
-    image?: string;
-    // LMSR state
-    qLong: number;
-    qShort: number;
-    b: number;
-    reserve: number;
-    // History
-    history: Array<{ timestamp: number; price: number }>;
-    // Events
-    events: Array<{ createdAt: number; description: string }>;
-    // Receipts
-    receipts: Array<{
-      id: string;
-      actor: string;
-      kind: 'BUY' | 'REDEEM';
-      side: Side;
-      tokens: number;
-      sats: number;
-      createdAt: number;
-    }>;
-  }
+  // ─── Props ─────────────────────────────────────────────────────────────────────
 
-  // ─── Sample market data ───────────────────────────────────────────────────────
+  let { data } = $props();
 
-  // In production, this would be fetched from the market service
-  const sampleMarkets: Record<string, MarketData> = {
-    'agi-by-2030': {
-      slug: 'agi-by-2030',
-      title: 'AGI achieved by 2030',
-      description: 'Will artificial general intelligence (AGI) be achieved by December 31, 2030?',
-      status: 'open',
-      creatorPubkey: 'npub1example...',
-      createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000,
-      mint: 'https://mint.contrarian.markets',
-      qLong: 150,
-      qShort: 250,
-      b: 1000,
-      reserve: 50000,
-      history: [
-        { timestamp: Date.now() - 7 * 24 * 60 * 60 * 1000, price: 0.32 },
-        { timestamp: Date.now() - 6 * 24 * 60 * 60 * 1000, price: 0.33 },
-        { timestamp: Date.now() - 5 * 24 * 60 * 60 * 1000, price: 0.31 },
-        { timestamp: Date.now() - 4 * 24 * 60 * 60 * 1000, price: 0.34 },
-        { timestamp: Date.now() - 3 * 24 * 60 * 60 * 1000, price: 0.35 },
-        { timestamp: Date.now() - 2 * 24 * 60 * 60 * 1000, price: 0.34 },
-        { timestamp: Date.now() - 1 * 24 * 60 * 60 * 1000, price: 0.35 },
-        { timestamp: Date.now(), price: 0.35 },
-      ],
-      events: [
-        { createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000, description: 'Anthropic announces new safety measures' },
-        { createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000, description: 'OpenAI releases new model benchmark results' },
-      ],
-      receipts: [
-        { id: '1', actor: 'Alice', kind: 'BUY', side: 'LONG', tokens: 10.5, sats: 105, createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000 },
-        { id: '2', actor: 'Bob', kind: 'BUY', side: 'SHORT', tokens: 5.2, sats: 52, createdAt: Date.now() - 1 * 24 * 60 * 60 * 1000 },
-      ],
-    },
-    'mars-landing-2035': {
-      slug: 'mars-landing-2035',
-      title: 'First crewed Mars landing by 2035',
-      description: 'Will humans land on Mars by December 31, 2035?',
-      status: 'open',
-      creatorPubkey: 'npub1example...',
-      createdAt: Date.now() - 60 * 24 * 60 * 60 * 1000,
-      endDate: Date.now() + 3000 * 24 * 60 * 60 * 1000,
-      mint: 'https://mint.contrarian.markets',
-      qLong: 200,
-      qShort: 180,
-      b: 1500,
-      reserve: 75000,
-      history: [
-        { timestamp: Date.now() - 14 * 24 * 60 * 60 * 1000, price: 0.48 },
-        { timestamp: Date.now() - 7 * 24 * 60 * 60 * 1000, price: 0.50 },
-        { timestamp: Date.now(), price: 0.52 },
-      ],
-      events: [
-        { createdAt: Date.now() - 7 * 24 * 60 * 60 * 1000, description: 'SpaceX Starship completes successful orbital test' },
-      ],
-      receipts: [],
-    },
-  };
-
-  // ─── Route params ────────────────────────────────────────────────────────────
+  // ─── Route params (kept for navigation) ─────────────────────────────────────
 
   let marketId = $derived($page.params.marketId);
 
@@ -119,7 +30,7 @@
 
   // ─── Derived data ─────────────────────────────────────────────────────────────
 
-  let market = $derived(sampleMarkets[marketId] || null);
+  let market = $derived(data.market);
 
   // Price calculations (simplified LMSR)
   let yesPrice = $derived(market ? market.qLong / (market.qLong + market.qShort + market.b) : 0);

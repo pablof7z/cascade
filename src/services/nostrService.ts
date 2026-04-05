@@ -456,6 +456,20 @@ export async function fetchMarketByEventId(eventId: string): Promise<NDKEvent | 
 }
 
 /**
+ * Fetch a single Cascade market by its slug (d-tag).
+ * Returns null if no matching market is found.
+ */
+export async function fetchMarketBySlug(slug: string): Promise<NDKEvent | null> {
+  const filter: NDKFilter = {
+    kinds: [982 as NDKKind],
+    '#d': [slug],
+  }
+  const events = await fetchEvents(filter)
+  if (events.size === 0) return null
+  return Array.from(events)[0]
+}
+
+/**
  * Subscribe to real-time updates for a single Cascade market (by event ID).
  * Returns the NDKSubscription so the caller can stop() it on cleanup.
  */

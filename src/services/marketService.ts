@@ -17,6 +17,7 @@ import {
   subscribeToMarketTransport,
   subscribeToAllCascadeMarkets,
   publishEvent,
+  fetchMarketBySlug,
 } from './nostrService'
 
 // ---------------------------------------------------------------------------
@@ -94,6 +95,23 @@ export async function fetchAllMarkets(limit = 50): Promise<Market[]> {
   }
 
   return markets
+}
+
+/**
+ * Fetch a single Cascade market by its slug (d-tag).
+ * Returns null if no matching market is found.
+ */
+export async function getMarket(slug: string): Promise<Market | null> {
+  const event = await fetchMarketBySlug(slug)
+  if (!event) return null
+
+  const parseResult = parseMarketEvent(event)
+  if (!parseResult.ok) {
+    console.warn('Failed to parse market event:', parseResult.reason, event.id)
+    return null
+  }
+
+  return parseResult.market
 }
 
 // ---------------------------------------------------------------------------

@@ -523,27 +523,6 @@
           {/each}
         </div>
 
-        <!-- Discussion sidebar -->
-        <div class="space-y-0">
-          <span class="text-[10px] uppercase tracking-[0.18em] text-neutral-600 font-medium block mb-4">
-            Top discussions
-          </span>
-          {#each disputedMarkets.slice(0, 3) as entry}
-            <a
-              href="/thread/{entry.slug}"
-              class="block py-4 border-b border-neutral-800/20 last:border-0 cursor-pointer hover:bg-neutral-900/30 -mx-2 px-2 transition-colors"
-            >
-              <p class="text-sm text-neutral-400 line-clamp-2 leading-relaxed">
-                Discussion about {entry.title}
-              </p>
-              <div class="flex items-center gap-2 mt-2 text-xs text-neutral-600">
-                <span>{entry.comments} replies</span>
-                <span>·</span>
-                <span>{entry.timeAgo}</span>
-              </div>
-            </a>
-          {/each}
-        </div>
       </div>
     </section>
   {/if}

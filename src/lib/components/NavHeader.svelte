@@ -58,7 +58,7 @@
     { href: '/activity', label: 'Activity' },
   ];
 
-  let primaryAction = { to: '#', label: 'Build Thesis' };
+  let primaryAction = { to: '/thesis/new', label: 'Build Thesis' };
 
   let searchPlaceholder = 'Search markets...';
 

@@ -5,7 +5,7 @@
 The Market Detail page (`src/routes/market/[marketId]/+page.svelte`) contains a "Discussion" tab (line 359-375) that currently shows a placeholder message: "No discussions yet — Be the first to start a discussion about this market."
 
 **Existing Backend Infrastructure (Already Implemented):**
-- `publishMarketPost(title, content, stance, type, marketEventId, marketCreatorPubkey)` — line 185-203 in `nostrService.ts`
+- `publishMarketPost(title, content, stance, type, marketEventId, marketCreatorPubkey)` — line 185-203 in `src/services/nostrService.ts`
 - `publishMarketReply(content, parentEventId, rootEventId, parentAuthorPubkey)` — line 209-222
 - `fetchMarketPosts(marketEventId, limit=100)` — line 227-235 (returns NDKEvent[])
 - `subscribeToMarketPosts(marketEventId, callback)` — line 241-250 (real-time updates)
@@ -15,7 +15,7 @@ The Market Detail page (`src/routes/market/[marketId]/+page.svelte`) contains a 
 - `resolveAuthorName(pubkey)` — line 372-387 (converts pubkey to npub + display name)
 
 **Event Schema (Kind 1111 NIP-22):**
-- Root posts: `[["e", marketEventId, "", "root"], ["k", "982"], ["p", marketCreatorPubkey], ["stance", "bull|bear|neutral"], ["type", "argument|evidence|rebuttal|analysis"], ["subject", title]]`
+- Root posts: `[["e", marketEventId, "", "root"], ["k", "1111"], ["p", marketCreatorPubkey], ["stance", "bull|bear|neutral"], ["type", "argument|evidence|rebuttal|analysis"], ["subject", title]]` ✓ **CORRECTED: k-tag now correctly uses 1111 (discussion posts), not 982 (market creation events)**
 - Replies: `[["e", rootEventId, "", "root"], ["e", parentEventId, "", "reply"], ["k", "1111"], ["p", parentAuthorPubkey]]`
 
 **Auth & Store Pattern:**
@@ -25,23 +25,24 @@ The Market Detail page (`src/routes/market/[marketId]/+page.svelte`) contains a 
 
 **Existing Component Patterns:**
 - `ReplyThread.svelte` (src/lib/components/): Threaded reply component with collapsing, reply form, vote buttons — can be adapted or referenced for threading
-- `NavHeader.svelte` (line 67-71): Author display as `pubkey.slice(0, 4).toUpperCase()` or display name fallback
+- NavHeader.svelte (line 67-71): Author display as `pubkey.slice(0, 4).toUpperCase()` or display name fallback
 - Tab management: `activeTab = $state<MarketTab>()` with conditional rendering (lines 23, 79, 243-415)
 - Design: borderless, dark neutral-950/800 bg, no cards, Tailwind only, emerald/rose accents, font-mono for numbers
+- Badge pattern (verified from DashboardOverview.svelte): border + background + text color, no rounded pills. Examples: `text-emerald-400 bg-emerald-950 border border-emerald-800` or `text-rose-400 bg-rose-950 border-rose-800`
 
 ## Approach
 
 Build a flat-list discussion UI for the Discussion tab with these MVP features:
 
-1. **Post List Component** (`MarketDiscussionList.svelte`) — Fetches kind:1111 events on mount, displays sorted by newest first, shows author, timestamp, stance, type, content, upvote/downvote counts. Supports loading, error, and empty states. Does NOT fetch on-scroll pagination — use limit=100 for MVP.
+1. **Post List Component** (`MarketDiscussionList.svelte`) — Fetches kind:1111 events on mount, displays sorted by newest first (client-side sort), shows author, timestamp, stance, type, content, upvote/downvote counts. Supports loading, error, and empty states. Does NOT fetch on-scroll pagination — use limit=100 for MVP.
 
 2. **New Post Form** (`MarketDiscussionForm.svelte`) — Shows only when logged in. Text input for content (no title field for MVP; posts are titled implicitly by market context), dropdown selectors for stance (bull/bear/neutral) and type (argument/evidence/rebuttal/analysis). Publish button disabled when submitting or content empty. Shows error/success feedback.
 
 3. **Post Item Display** (`MarketDiscussionPost.svelte`) — Compact inline layout: author (npub or name), timestamp, stance/type badges, content, upvote/downvote buttons. No nested replies in MVP; focus on clean, scannable post list.
 
-4. **Real-Time Updates** — Use `subscribeToMarketPosts()` on component mount to listen for new posts in real-time; append to visible list. Clean up subscription on unmount.
+4. **Real-Time Updates** — Use `subscribeToMarketPosts()` on component mount to listen for new posts in real-time; append to visible list. Implement duplicate detection with `Map<eventId, NDKEvent>` for O(1) lookup to prevent duplicate renders when subscription overlaps with initial fetch. Clean up subscription on unmount with explicit `.abort()` pattern.
 
-5. **Reactions (Upvotes/Downvotes)** — Fetch initial reaction counts for all posts using `fetchReactions()`. Subscribe to new reactions using `subscribeToReactions()` for live count updates. Single click toggles user's reaction (requires tracking published reactions locally to avoid duplicate publishes).
+5. **Reactions (Upvotes/Downvotes)** — Fetch initial reaction counts for all posts using `fetchReactions()`. Subscribe to new reactions using `subscribeToReactions()` for live count updates. Single click toggles user's reaction using a local `Set<eventId>` to track published reactions and prevent duplicate publishes within the same session (not persisted to localStorage; acknowledge limitation in comments).
 
 6. **Auth Gating** — Show post form only when `$derived(pubkey !== null)`. Replace empty state with CTA "Sign in to start a discussion" in read-only mode.
 
@@ -51,24 +52,26 @@ Build a flat-list discussion UI for the Discussion tab with these MVP features:
 - **Real-time** — Subscribe-based architecture matches existing Nostr patterns in the codebase and provides live feedback to users. Non-realtime version would feel stale.
 - **No pagination (MVP)** — Kind 1111 discussion posts are expected to be low-volume per market. Limit=100 is reasonable; if pagination needed, add lazy-load-on-scroll in Phase 2.
 - **Reaction counts** — NIP-25 reactions (kind 7) already exist in the service. Including counts provides quick sentiment feedback without threading complexity.
+- **Duplicate detection** — Map-based dedup ensures real-time subscriptions don't create duplicate renders even if relay sync overlaps with initial fetch.
+- **Subscription cleanup** — Explicit `.abort()` ensures no dangling event listeners. Component lifecycle: mount (subscribe) → unmount (abort).
 - **No deletion UI (MVP)** — Kind 5 delete events exist in the service but are complex (hide own posts, manage visibility). Add in Phase 2 if user feedback demands it.
 
 ## File Changes
 
 ### `src/lib/components/MarketDiscussionList.svelte`
 - **Action**: create
-- **What**: Main container component that fetches and displays discussion posts. Imports MarketDiscussionForm, MarketDiscussionPost. Manages posts state, loading/error states, subscriptions to real-time post and reaction updates. Implements cleanup on unmount.
-- **Why**: Central orchestrator for discussion feature; separates data loading/management from display logic.
+- **What**: Main container component that fetches and displays discussion posts. Imports MarketDiscussionForm, MarketDiscussionPost, MarketDiscussionEmpty. Manages posts state (Map for dedup + sorted array), loading/error states, subscriptions to real-time post and reaction updates. Implements cleanup with explicit `.abort()` on unmount. Sorts posts by timestamp descending (newest first) at render time.
+- **Why**: Central orchestrator for discussion feature; separates data loading/management from display logic. Map-based dedup prevents duplicate renders from subscription overlap.
 
 ### `src/lib/components/MarketDiscussionForm.svelte`
 - **Action**: create
-- **What**: Form for publishing new market discussion posts. Text input for content, dropdowns for stance (bull/bear/neutral) and type (argument/evidence/rebuttal/analysis). Calls `publishMarketPost()` with required market/creator data. Shows loading state during publish, error messages, resets form on success. Visible only when logged in (`pubkey !== null`).
+- **What**: Form for publishing new market discussion posts. Text input for content, dropdowns for stance (bull/bear/neutral) and type (argument|evidence|rebuttal|analysis). Calls `publishMarketPost()` with required market/creator data. Shows loading state during publish, error messages, resets form on success. Visible only when logged in (`pubkey !== null`).
 - **Why**: Encapsulates post creation UI and user interaction; reusable if discussion feature extends to other pages.
 
 ### `src/lib/components/MarketDiscussionPost.svelte`
 - **Action**: create
-- **What**: Displays a single discussion post. Renders author (npub or display name via `resolveAuthorName()`), timestamp (formatted as time-ago), stance/type badges (small pills: emerald for bull, rose for bear, neutral-500 for neutral), content preview, upvote/downvote button counts and interactions. Does NOT show nested replies in MVP.
-- **Why**: Reusable post item component; clean separation of post display from list logic. Can extend for replies in Phase 2.
+- **What**: Displays a single discussion post. Renders author (npub or display name via `resolveAuthorName()`), timestamp (formatted as time-ago), stance/type badges using border+background pattern (e.g., `text-emerald-400 bg-emerald-950 border border-emerald-800` for bull stance, `text-rose-400 bg-rose-950 border border-rose-800` for bear, `text-neutral-400 bg-neutral-800 border border-neutral-700` for neutral), content preview, upvote/downvote button counts and interactions. Does NOT show nested replies in MVP.
+- **Why**: Reusable post item component; clean separation of post display from list logic. Border+background badge design complies with Style Guide (no rounded pills). Can extend for replies in Phase 2.
 
 ### `src/lib/components/MarketDiscussionEmpty.svelte`
 - **Action**: create
@@ -82,13 +85,19 @@ Build a flat-list discussion UI for the Discussion tab with these MVP features:
 
 ## Execution Order
 
-1. **Create MarketDiscussionPost.svelte** — Start with the simplest component: post display logic (author name resolution, time-ago formatting, stance/type badge styling). Does not manage state or interact with Nostr.
+1. **Create MarketDiscussionPost.svelte** — Start with the simplest component: post display logic (author name resolution, time-ago formatting, stance/type badge styling with border+background, no rounded corners). Does not manage state or interact with Nostr.
 
 2. **Create MarketDiscussionEmpty.svelte** — Empty state display; depends on auth state (login check via props).
 
 3. **Create MarketDiscussionForm.svelte** — Form component for new posts. Integrate `publishMarketPost()`, handle loading/error states, validate inputs. Does not fetch or subscribe yet.
 
-4. **Create MarketDiscussionList.svelte** — Main orchestrator. Implement post fetching on mount (`fetchMarketPosts()`), real-time subscription (`subscribeToMarketPosts()`), reaction fetching (`fetchReactions()`), reaction subscription (`subscribeToReactions()`). Assemble post list from NDKEvent[]. Pass market context (eventId, creator pubkey) down to child components. Manage cleanup on unmount.
+4. **Create MarketDiscussionList.svelte** — Main orchestrator. Implement:
+   - Post fetching on mount (`fetchMarketPosts()`), stored in `Map<eventId, NDKEvent>` for dedup + derive sorted array for display
+   - Real-time subscription (`subscribeToMarketPosts()`), checking Map before adding (prevents duplicate renders)
+   - Reaction fetching (`fetchReactions()`), and reaction subscription (`subscribeToReactions()`)
+   - Track published reactions in `Set<eventId>` (session-only, acknowledge localStorage limitation as future work)
+   - Explicit `.abort()` on unmount for all subscriptions
+   - Pass market context (eventId, creator pubkey) down to child components
 
 5. **Integrate into +page.svelte** — Replace placeholder with `<MarketDiscussionList market={market} />`. Verify tab switching and component lifecycle.
 
@@ -107,18 +116,21 @@ npm run build
 2. Verify discussion tab shows either:
    - Empty state if no posts exist
    - List of posts sorted by newest first if posts exist
-3. Verify post items show: author (npub or display name), timestamp, stance/type badges, content, upvote/downvote counts.
+3. Verify post items show: author (npub or display name), timestamp, stance/type badges (border+background style), content, upvote/downvote counts.
 
 ### Auth Gating
 1. **Logged out**: Verify post form is hidden; empty state shows "Sign in to join the conversation."
 2. **Logged in**: Verify post form is visible below post list; can type content, select stance/type, click publish.
 
-### Real-Time
+### Real-Time & Duplicate Detection
 1. Open same market in two browser windows.
 2. Publish a new post in window 1.
 3. Verify post appears in window 2 within seconds (no refresh needed).
-4. Publish an upvote on the new post in window 2.
-5. Verify upvote count increments in window 1 in real-time.
+4. Verify post does NOT appear twice even if subscriptions overlap with initial fetch (Map dedup check working).
+5. Publish an upvote on the new post in window 2.
+6. Verify upvote count increments in window 1 in real-time.
+7. Click upvote button multiple times rapidly in window 2.
+8. Verify only one reaction publish occurs (Set-based duplicate publish prevention).
 
 ### Edge Cases
 - Empty post list: Verify empty state displays correctly.
@@ -126,4 +138,5 @@ npm run build
 - Long content: Verify content text wraps correctly (no overflow).
 - Rapid publishes: Verify multiple posts published in succession all appear (no lost events).
 - Network slow: Verify loading spinner shows while fetching initial posts.
-- Subscription cleanup: Verify browser dev tools show no active subscriptions after navigating away from discussion tab.
+- Subscription cleanup: Navigate away from discussion tab (e.g., click another market tab). Verify in browser dev tools that active subscriptions are cleaned up (no lingering event listeners).
+- Tab hide behavior: Reaction state (Set) clears when component unmounts; acknowledged as MVP limitation. Future enhancement: persist reaction state to localStorage if user stays on page longer.

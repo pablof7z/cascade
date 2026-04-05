@@ -4,6 +4,7 @@
   import NavHeader from '$lib/components/NavHeader.svelte';
   import BookmarkButton from '$lib/components/BookmarkButton.svelte';
   import Footer from '$lib/components/Footer.svelte';
+  import MarketDiscussionList from '$lib/components/discussion/MarketDiscussionList.svelte';
 
   // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -361,17 +362,8 @@
             <section>
               <div class="flex items-center justify-between mb-6">
                 <h3 class="text-lg font-semibold text-white">Discussion</h3>
-                <button
-                  onclick={navigateToDiscussion}
-                  class="text-sm text-emerald-500 hover:text-emerald-400"
-                >
-                  View all →
-                </button>
               </div>
-              <div class="bg-neutral-900/50 border border-neutral-800 rounded-none p-8 text-center">
-                <div class="text-neutral-500">No discussions yet</div>
-                <p class="mt-2 text-sm text-neutral-600">Be the first to start a discussion about this market.</p>
-              </div>
+              <MarketDiscussionList market={market} />
             </section>
           {:else if activeTab === 'positions'}
             <!-- Positions Tab -->

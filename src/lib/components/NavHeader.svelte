@@ -6,6 +6,8 @@
 
   const isDashboardRoute = pageState.url.pathname.startsWith('/dashboard');
   import { nostrStore, reconnect, disconnect } from '$lib/stores/nostr';
+  import { initWalletStore, destroyWalletStore } from '$lib/walletStore';
+  import WalletWidget from './WalletWidget.svelte';
 
   // Reactive state
   let searchQuery = $state('');
@@ -34,6 +36,15 @@
       isReady = state.isReady;
     });
     return unsubscribe;
+  });
+
+  // Initialize wallet store when pubkey is available, cleanup when null
+  $effect(() => {
+    if (pubkey !== null) {
+      initWalletStore();
+    } else {
+      destroyWalletStore();
+    }
   });
 
   // Close user menu when clicking outside
@@ -190,6 +201,13 @@
         {primaryAction.label}
       </a>
 
+      <!-- Wallet Widget (desktop) -->
+      {#if isLoggedIn}
+        <div class="hidden sm:block">
+          <WalletWidget />
+        </div>
+      {/if}
+
       <!-- User Menu or Connect Button -->
       {#if !isReady}
         <div class="w-7 h-7 rounded-sm bg-neutral-800 animate-pulse" />
@@ -270,6 +288,13 @@
             {item.label}
           </a>
         {/each}
+
+        <!-- Wallet balance in mobile menu -->
+        {#if isLoggedIn}
+          <div class="px-6 py-3 border-t border-neutral-800 mt-2">
+            <WalletWidget />
+          </div>
+        {/if}
       </nav>
     </div>
   {/if}

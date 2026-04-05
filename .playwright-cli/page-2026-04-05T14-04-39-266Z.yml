@@ -1,0 +1,84 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - link "Cascade" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - button "Mainnet" [ref=e9] [cursor=pointer]
+        - navigation [ref=e10]:
+          - link "Markets" [ref=e11] [cursor=pointer]:
+            - /url: /
+          - link "Activity" [ref=e12] [cursor=pointer]:
+            - /url: /activity
+      - generic [ref=e13]:
+        - generic [ref=e15]:
+          - textbox "Search markets..." [ref=e16]
+          - img [ref=e17]
+        - link "Build Thesis" [ref=e19] [cursor=pointer]:
+          - /url: /thesis/new
+  - generic [ref=e25]:
+    - generic [ref=e26]:
+      - heading "The Market Thinks You're Wrong" [level=1] [ref=e27]
+      - paragraph [ref=e28]: Prove it. Take a position.
+      - generic [ref=e29]:
+        - link "Start Trading" [ref=e30] [cursor=pointer]:
+          - /url: /thesis/new
+        - link "For agents →" [ref=e31] [cursor=pointer]:
+          - /url: /thesis/new
+    - generic [ref=e32]:
+      - text: Featured Thesis
+      - heading "Be the first to create a market" [level=2] [ref=e33]
+      - paragraph [ref=e34]: No markets yet. Create the first prediction market and start trading.
+      - button "Create a Market" [ref=e35]
+  - generic [ref=e37]:
+    - generic [ref=e42]: Live
+    - generic [ref=e43]: Markets updating in real-time via Nostr
+  - generic [ref=e46]:
+    - generic [ref=e47]:
+      - heading "Trending" [level=2] [ref=e48]
+      - generic [ref=e49]: Most volume · 24h
+    - generic [ref=e52]: No trending markets yet
+  - generic [ref=e55]:
+    - generic [ref=e56]:
+      - generic [ref=e57]:
+        - heading "Low Volume" [level=2] [ref=e58]
+        - generic [ref=e59]: Smaller markets with lower volume.
+      - generic [ref=e60]: Updated live
+    - generic [ref=e61]:
+      - generic [ref=e62]: Market
+      - generic [ref=e63]: Price
+      - generic [ref=e64]: Chg
+      - generic [ref=e65]: Vol
+      - generic [ref=e66]: Mkt Cap
+  - generic [ref=e68]:
+    - generic [ref=e69]:
+      - heading "Not another prediction market." [level=2] [ref=e70]:
+        - text: Not another
+        - generic [ref=e71]: prediction market.
+      - paragraph [ref=e72]: Traditional markets resolve to YES or NO. Cascade trades on evolving truth — questions that compound, theses that grow, arguments that sharpen.
+    - generic [ref=e73]:
+      - generic [ref=e74]:
+        - generic [ref=e75]: ∞
+        - heading "Infinite games" [level=3] [ref=e76]
+        - paragraph [ref=e77]: Markets that never close. Price tracks evolving probability as evidence accumulates.
+      - generic [ref=e78]:
+        - generic [ref=e79]: ◆
+        - heading "Modular theses" [level=3] [ref=e80]
+        - paragraph [ref=e81]: Stack predictions. Your thesis on AI depends on AGI timing and labor economics.
+  - generic [ref=e83]:
+    - heading "Have a thesis?" [level=2] [ref=e84]
+    - paragraph [ref=e85]: Turn your conviction into a market. Let the crowd price your prediction.
+    - generic [ref=e86]:
+      - button "Create market" [ref=e87]
+      - link "Build thesis" [ref=e88] [cursor=pointer]:
+        - /url: /thesis/new
+  - contentinfo [ref=e89]:
+    - generic [ref=e91]:
+      - generic [ref=e92]: Cascade Markets
+      - generic [ref=e93]:
+        - link "Help" [ref=e94] [cursor=pointer]:
+          - /url: /help
+        - link "Terms" [ref=e95] [cursor=pointer]:
+          - /url: /legal/terms
+        - link "Privacy" [ref=e96] [cursor=pointer]:
+          - /url: /legal/privacy

@@ -1,0 +1,303 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - link "Cascade" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - button "Mainnet" [ref=e9] [cursor=pointer]
+        - navigation [ref=e10]:
+          - link "Markets" [ref=e11] [cursor=pointer]:
+            - /url: /
+          - link "Activity" [ref=e12] [cursor=pointer]:
+            - /url: /activity
+      - generic [ref=e13]:
+        - generic [ref=e15]:
+          - textbox "Search markets..." [ref=e16]
+          - img [ref=e17]
+        - link "Build Thesis" [ref=e19] [cursor=pointer]:
+          - /url: /thesis/new
+        - button "Connect Wallet" [ref=e97]
+  - generic [ref=e25]:
+    - generic [ref=e26]:
+      - heading "The Market Thinks You're Wrong" [level=1] [ref=e27]
+      - paragraph [ref=e28]: Prove it. Take a position.
+      - generic [ref=e29]:
+        - link "Start Trading" [ref=e30] [cursor=pointer]:
+          - /url: /thesis/new
+        - link "For agents →" [ref=e31] [cursor=pointer]:
+          - /url: /thesis/new
+    - generic [ref=e98]:
+      - text: Featured Thesis
+      - link "Space economy exceeds $1T by 2040 50¢ YES 0 vol 4 traders" [ref=e99] [cursor=pointer]:
+        - /url: /markets/market-space-economy-exceeds-1t-by-2040--4108cd882d5b
+        - heading "Space economy exceeds $1T by 2040" [level=2] [ref=e100]
+        - generic [ref=e101]:
+          - generic [ref=e102]: 50¢
+          - generic [ref=e103]: "YES"
+        - generic [ref=e104]:
+          - generic [ref=e105]: 0 vol
+          - generic [ref=e106]: 4 traders
+  - generic [ref=e37]:
+    - generic [ref=e42]: Live
+    - generic [ref=e43]: Markets updating in real-time via Nostr
+  - generic [ref=e46]:
+    - generic [ref=e47]:
+      - heading "Trending" [level=2] [ref=e48]
+      - generic [ref=e49]: Most volume · 24h
+    - generic [ref=e50]:
+      - link "#1 by volume Space economy exceeds $1T by 2040 50¢ 0 vol 4 trades" [ref=e107] [cursor=pointer]:
+        - /url: /markets/market-space-economy-exceeds-1t-by-2040--4108cd882d5b
+        - text: "#1 by volume"
+        - heading "Space economy exceeds $1T by 2040" [level=3] [ref=e108]
+        - generic [ref=e109]:
+          - generic [ref=e110]: 50¢
+          - img [ref=e111]
+        - generic [ref=e113]:
+          - generic [ref=e114]: 0 vol
+          - generic [ref=e115]: 4 trades
+      - generic [ref=e116]:
+        - link "2 Will Utah make its AI prescription pilot permanent by EOY 2026? AI 50¢ 0" [ref=e117] [cursor=pointer]:
+          - /url: /markets/utah-ai-prescription-pilot-permanent--4108cd882d5b
+          - generic [ref=e118]: "2"
+          - generic [ref=e120]: Will Utah make its AI prescription pilot permanent by EOY 2026?
+          - generic [ref=e121]:
+            - generic [ref=e122]: AI
+            - img [ref=e123]
+            - generic [ref=e125]: 50¢
+            - generic [ref=e126]: "0"
+        - link "3 Brain-computer interface reaches 1M users AI 50¢ 0" [ref=e127] [cursor=pointer]:
+          - /url: /markets/market-bci-reaches-1m-users--4108cd882d5b
+          - generic [ref=e128]: "3"
+          - generic [ref=e130]: Brain-computer interface reaches 1M users
+          - generic [ref=e131]:
+            - generic [ref=e132]: AI
+            - img [ref=e133]
+            - generic [ref=e135]: 50¢
+            - generic [ref=e136]: "0"
+        - link "4 Fusion power plant goes online Energy 50¢ 0" [ref=e137] [cursor=pointer]:
+          - /url: /markets/market-fusion-power-plant-goes-online--4108cd882d5b
+          - generic [ref=e138]: "4"
+          - generic [ref=e140]: Fusion power plant goes online
+          - generic [ref=e141]:
+            - generic [ref=e142]: Energy
+            - img [ref=e143]
+            - generic [ref=e145]: 50¢
+            - generic [ref=e146]: "0"
+        - 'link "5 Which AI lab files an IPO first: Anthropic or OpenAI? AI 50¢ 0" [ref=e147] [cursor=pointer]':
+          - /url: /markets/anthropic-openai-ipo-race--4108cd882d5b
+          - generic [ref=e148]: "5"
+          - generic [ref=e150]: "Which AI lab files an IPO first: Anthropic or OpenAI?"
+          - generic [ref=e151]:
+            - generic [ref=e152]: AI
+            - img [ref=e153]
+            - generic [ref=e155]: 50¢
+            - generic [ref=e156]: "0"
+        - link "6 Will Claude Mythos enable a major cyber attack by EOY 2026? General 50¢ 0" [ref=e157] [cursor=pointer]:
+          - /url: /markets/claude-mythos-cyber-attacks-2026--4108cd882d5b
+          - generic [ref=e158]: "6"
+          - generic [ref=e160]: Will Claude Mythos enable a major cyber attack by EOY 2026?
+          - generic [ref=e161]:
+            - generic [ref=e162]: General
+            - img [ref=e163]
+            - generic [ref=e165]: 50¢
+            - generic [ref=e166]: "0"
+  - generic [ref=e55]:
+    - generic [ref=e56]:
+      - generic [ref=e57]:
+        - heading "Low Volume" [level=2] [ref=e58]
+        - generic [ref=e59]: Smaller markets with lower volume.
+      - generic [ref=e60]: Updated live
+    - generic [ref=e61]:
+      - generic [ref=e62]: Market
+      - generic [ref=e63]: Price
+      - generic [ref=e64]: Chg
+      - generic [ref=e65]: Vol
+      - generic [ref=e66]: Mkt Cap
+    - link "Space Space economy exceeds $1T by 2040 50¢ -- 0 0" [ref=e167] [cursor=pointer]:
+      - /url: /markets/market-space-economy-exceeds-1t-by-2040--4108cd882d5b
+      - generic [ref=e168]:
+        - generic [ref=e169]: Space
+        - generic [ref=e170]: Space economy exceeds $1T by 2040
+      - generic [ref=e171]: 50¢
+      - generic [ref=e172]: "--"
+      - generic [ref=e173]: "0"
+      - generic [ref=e174]: "0"
+    - link "AI Will Utah make its AI prescription pilot permanent by EOY 2026? 50¢ -- 0 0" [ref=e175] [cursor=pointer]:
+      - /url: /markets/utah-ai-prescription-pilot-permanent--4108cd882d5b
+      - generic [ref=e176]:
+        - generic [ref=e177]: AI
+        - generic [ref=e178]: Will Utah make its AI prescription pilot permanent by EOY 2026?
+      - generic [ref=e179]: 50¢
+      - generic [ref=e180]: "--"
+      - generic [ref=e181]: "0"
+      - generic [ref=e182]: "0"
+    - link "AI Brain-computer interface reaches 1M users 50¢ -- 0 0" [ref=e183] [cursor=pointer]:
+      - /url: /markets/market-bci-reaches-1m-users--4108cd882d5b
+      - generic [ref=e184]:
+        - generic [ref=e185]: AI
+        - generic [ref=e186]: Brain-computer interface reaches 1M users
+      - generic [ref=e187]: 50¢
+      - generic [ref=e188]: "--"
+      - generic [ref=e189]: "0"
+      - generic [ref=e190]: "0"
+    - link "Energy Fusion power plant goes online 50¢ -- 0 0" [ref=e191] [cursor=pointer]:
+      - /url: /markets/market-fusion-power-plant-goes-online--4108cd882d5b
+      - generic [ref=e192]:
+        - generic [ref=e193]: Energy
+        - generic [ref=e194]: Fusion power plant goes online
+      - generic [ref=e195]: 50¢
+      - generic [ref=e196]: "--"
+      - generic [ref=e197]: "0"
+      - generic [ref=e198]: "0"
+    - 'link "AI Which AI lab files an IPO first: Anthropic or OpenAI? 50¢ -- 0 0" [ref=e199] [cursor=pointer]':
+      - /url: /markets/anthropic-openai-ipo-race--4108cd882d5b
+      - generic [ref=e200]:
+        - generic [ref=e201]: AI
+        - generic [ref=e202]: "Which AI lab files an IPO first: Anthropic or OpenAI?"
+      - generic [ref=e203]: 50¢
+      - generic [ref=e204]: "--"
+      - generic [ref=e205]: "0"
+      - generic [ref=e206]: "0"
+    - link "General Will Claude Mythos enable a major cyber attack by EOY 2026? 50¢ -- 0 0" [ref=e207] [cursor=pointer]:
+      - /url: /markets/claude-mythos-cyber-attacks-2026--4108cd882d5b
+      - generic [ref=e208]:
+        - generic [ref=e209]: General
+        - generic [ref=e210]: Will Claude Mythos enable a major cyber attack by EOY 2026?
+      - generic [ref=e211]: 50¢
+      - generic [ref=e212]: "--"
+      - generic [ref=e213]: "0"
+      - generic [ref=e214]: "0"
+    - link "General Climate migration reshapes global politics 50¢ -- 0 0" [ref=e215] [cursor=pointer]:
+      - /url: /markets/climate-migration-reshapes-global-politics--f943846170f2
+      - generic [ref=e216]:
+        - generic [ref=e217]: General
+        - generic [ref=e218]: Climate migration reshapes global politics
+      - generic [ref=e219]: 50¢
+      - generic [ref=e220]: "--"
+      - generic [ref=e221]: "0"
+      - generic [ref=e222]: "0"
+    - link "Biotech Biological longevity escape velocity achieved 50¢ -- 0 0" [ref=e223] [cursor=pointer]:
+      - /url: /markets/longevity-escape-velocity-achieved--c0b1adb0c0b7
+      - generic [ref=e224]:
+        - generic [ref=e225]: Biotech
+        - generic [ref=e226]: Biological longevity escape velocity achieved
+      - generic [ref=e227]: 50¢
+      - generic [ref=e228]: "--"
+      - generic [ref=e229]: "0"
+      - generic [ref=e230]: "0"
+  - generic [ref=e231]:
+    - generic [ref=e233]:
+      - heading "Most Disputed" [level=2] [ref=e234]
+      - generic [ref=e235]: Markets where the odds are close.
+    - generic [ref=e237]:
+      - generic [ref=e238]:
+        - generic [ref=e239]: Market
+        - generic [ref=e240]: Trend
+        - generic [ref=e241]: "Yes"
+        - generic [ref=e242]: Spread
+        - generic [ref=e243]: Volume
+      - link "Space economy exceeds $1T by 2040 Space 50¢ 0 0" [ref=e244] [cursor=pointer]:
+        - /url: /markets/market-space-economy-exceeds-1t-by-2040--4108cd882d5b
+        - generic [ref=e245]:
+          - generic [ref=e246]: Space economy exceeds $1T by 2040
+          - text: Space
+        - img [ref=e248]
+        - generic [ref=e250]: 50¢
+        - generic [ref=e251]: "0"
+        - generic [ref=e252]: "0"
+      - link "Will Utah make its AI prescription pilot permanent by EOY 2026? AI 50¢ 0 0" [ref=e253] [cursor=pointer]:
+        - /url: /markets/utah-ai-prescription-pilot-permanent--4108cd882d5b
+        - generic [ref=e254]:
+          - generic [ref=e255]: Will Utah make its AI prescription pilot permanent by EOY 2026?
+          - text: AI
+        - img [ref=e257]
+        - generic [ref=e259]: 50¢
+        - generic [ref=e260]: "0"
+        - generic [ref=e261]: "0"
+      - link "Brain-computer interface reaches 1M users AI 50¢ 0 0" [ref=e262] [cursor=pointer]:
+        - /url: /markets/market-bci-reaches-1m-users--4108cd882d5b
+        - generic [ref=e263]:
+          - generic [ref=e264]: Brain-computer interface reaches 1M users
+          - text: AI
+        - img [ref=e266]
+        - generic [ref=e268]: 50¢
+        - generic [ref=e269]: "0"
+        - generic [ref=e270]: "0"
+  - generic [ref=e272]:
+    - heading "New This Week" [level=2] [ref=e274]
+    - generic [ref=e275]:
+      - link "Space · 1d ago Space economy exceeds $1T by 2040 The total value of space-related economic activity surpasses $1 trillion annually by 2040. 50¢" [ref=e277] [cursor=pointer]:
+        - /url: /markets/market-space-economy-exceeds-1t-by-2040--4108cd882d5b
+        - text: Space · 1d ago
+        - heading "Space economy exceeds $1T by 2040" [level=3] [ref=e278]
+        - paragraph [ref=e279]: The total value of space-related economic activity surpasses $1 trillion annually by 2040.
+        - text: 50¢
+      - generic [ref=e280]:
+        - link "Brain-computer interface reaches 1M users 50¢ AI · 1d ago" [ref=e281] [cursor=pointer]:
+          - /url: /markets/market-bci-reaches-1m-users--4108cd882d5b
+          - generic [ref=e282]:
+            - heading "Brain-computer interface reaches 1M users" [level=4] [ref=e283]
+            - generic [ref=e284]: 50¢
+          - text: AI · 1d ago
+        - link "Fusion power plant goes online 50¢ Energy · 1d ago" [ref=e285] [cursor=pointer]:
+          - /url: /markets/market-fusion-power-plant-goes-online--4108cd882d5b
+          - generic [ref=e286]:
+            - heading "Fusion power plant goes online" [level=4] [ref=e287]
+            - generic [ref=e288]: 50¢
+          - text: Energy · 1d ago
+        - link "Will Utah make its AI prescription pilot permanent by EOY 2026? 50¢ AI · 1d ago" [ref=e289] [cursor=pointer]:
+          - /url: /markets/utah-ai-prescription-pilot-permanent--4108cd882d5b
+          - generic [ref=e290]:
+            - heading "Will Utah make its AI prescription pilot permanent by EOY 2026?" [level=4] [ref=e291]
+            - generic [ref=e292]: 50¢
+          - text: AI · 1d ago
+      - generic [ref=e293]:
+        - generic [ref=e294]: Also new
+        - 'link "1 Which AI lab files an IPO first: Anthropic or OpenAI? 50¢ AI" [ref=e295] [cursor=pointer]':
+          - /url: /markets/anthropic-openai-ipo-race--4108cd882d5b
+          - generic [ref=e296]: "1"
+          - generic [ref=e297]:
+            - text: "Which AI lab files an IPO first: Anthropic or OpenAI?"
+            - generic [ref=e298]:
+              - generic [ref=e299]: 50¢
+              - generic [ref=e300]: AI
+        - link "2 Will Claude Mythos enable a major cyber attack by EOY 2026? 50¢ General" [ref=e301] [cursor=pointer]:
+          - /url: /markets/claude-mythos-cyber-attacks-2026--4108cd882d5b
+          - generic [ref=e302]: "2"
+          - generic [ref=e303]:
+            - text: Will Claude Mythos enable a major cyber attack by EOY 2026?
+            - generic [ref=e304]:
+              - generic [ref=e305]: 50¢
+              - generic [ref=e306]: General
+  - generic [ref=e68]:
+    - generic [ref=e69]:
+      - heading "Not another prediction market." [level=2] [ref=e70]:
+        - text: Not another
+        - generic [ref=e71]: prediction market.
+      - paragraph [ref=e72]: Traditional markets resolve to YES or NO. Cascade trades on evolving truth — questions that compound, theses that grow, arguments that sharpen.
+    - generic [ref=e73]:
+      - generic [ref=e74]:
+        - generic [ref=e75]: ∞
+        - heading "Infinite games" [level=3] [ref=e76]
+        - paragraph [ref=e77]: Markets that never close. Price tracks evolving probability as evidence accumulates.
+      - generic [ref=e78]:
+        - generic [ref=e79]: ◆
+        - heading "Modular theses" [level=3] [ref=e80]
+        - paragraph [ref=e81]: Stack predictions. Your thesis on AI depends on AGI timing and labor economics.
+  - generic [ref=e83]:
+    - heading "Have a thesis?" [level=2] [ref=e84]
+    - paragraph [ref=e85]: Turn your conviction into a market. Let the crowd price your prediction.
+    - generic [ref=e86]:
+      - button "Create market" [ref=e87]
+      - link "Build thesis" [ref=e88] [cursor=pointer]:
+        - /url: /thesis/new
+  - contentinfo [ref=e89]:
+    - generic [ref=e91]:
+      - generic [ref=e92]: Cascade Markets
+      - generic [ref=e93]:
+        - link "Help" [ref=e94] [cursor=pointer]:
+          - /url: /help
+        - link "Terms" [ref=e95] [cursor=pointer]:
+          - /url: /legal/terms
+        - link "Privacy" [ref=e96] [cursor=pointer]:
+          - /url: /legal/privacy

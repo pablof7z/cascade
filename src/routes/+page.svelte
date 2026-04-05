@@ -684,7 +684,7 @@
           Create market
         </button>
         <a
-          href="/builder"
+          href="/thesis/new"
           class="px-8 py-4 border border-neutral-700 text-white font-medium hover:border-neutral-500 transition-colors text-lg"
         >
           Build thesis

@@ -2,6 +2,10 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { formatMarketSlug } from '$lib/marketSlug';
+  import { priceLong, priceShort } from '../../../market';
+  import { executeTrade } from '../../../services/tradingService';
+  import BookmarkButton from '$lib/components/BookmarkButton.svelte';
+  import MarketDiscussionList from '$lib/components/discussion/MarketDiscussionList.svelte';
   
   // Reuse types and structure from the main market page
   type MarketTab = 'overview' | 'charts' | 'discussion' | 'positions';
@@ -17,10 +21,14 @@
   let activeTab = $state<MarketTab>('overview');
   let selectedSide = $state<Side>('LONG');
   let amount = $state(100);
+  let tradeLoading = $state(false);
+  let tradeError = $state<string | null>(null);
+  let tradeSuccess = $state(false);
+  let isBookmarked = $state(false);
   
-  // Price calculations (simplified LMSR)
-  let yesPrice = $derived(market ? market.qLong / (market.qLong + market.qShort + market.b) : 0);
-  let noPrice = $derived(market ? market.qShort / (market.qLong + market.qShort + market.b) : 0);
+  // Price calculations (LMSR)
+  let yesPrice = $derived(market ? priceLong(market.qLong, market.qShort, market.b) : 0);
+  let noPrice = $derived(market ? priceShort(market.qLong, market.qShort, market.b) : 0);
   let probability = $derived(yesPrice);
   
   // Format helpers
@@ -51,6 +59,47 @@
   
   function navigateToProfile(pubkey: string) {
     goto(`/profile/${pubkey}/portfolio`);
+  }
+
+  function handleBookmark() {
+    isBookmarked = !isBookmarked;
+  }
+
+  async function handleTrade() {
+    if (!market) return;
+
+    tradeLoading = true;
+    tradeError = null;
+    tradeSuccess = false;
+
+    const result = await executeTrade(market, selectedSide, amount);
+
+    tradeLoading = false;
+
+    if (!result.success) {
+      switch (result.error.kind) {
+        case 'insufficient_balance':
+          tradeError = `Insufficient balance. You have ${result.error.balance} sats, need ${result.error.required} sats.`;
+          break;
+        case 'wallet_unavailable':
+          tradeError = 'Wallet unavailable. Please set up your Cashu wallet to trade.';
+          break;
+        case 'mint_unavailable':
+          tradeError = 'Mint unavailable. Please try again shortly.';
+          break;
+        case 'invalid_amount':
+          tradeError = 'Invalid amount. Enter a positive number.';
+          break;
+        case 'send_failed':
+          tradeError = `Trade failed: ${result.error.reason}`;
+          break;
+        default:
+          tradeError = 'Trade failed. Please try again.';
+      }
+    } else {
+      tradeError = null;
+      tradeSuccess = true;
+    }
   }
   
   // Get slugAndPrefix for nested links
@@ -101,6 +150,13 @@
               {Math.round(probability * 100)}%
             </div>
             <div class="text-xs text-neutral-500">YES probability</div>
+            <div class="mt-2">
+              <BookmarkButton
+                {isBookmarked}
+                onToggle={handleBookmark}
+                size="sm"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -134,7 +190,7 @@
         <!-- Market Info -->
         <div class="space-y-6">
           <!-- Probability Card -->
-          <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+          <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
             <h2 class="text-sm font-medium text-neutral-400 mb-4">Current Probability</h2>
             <div class="flex items-end gap-4">
               <div class="text-4xl font-mono font-bold text-white">
@@ -151,7 +207,7 @@
           </div>
           
           <!-- Trading Section -->
-          <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+          <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
             <h2 class="text-sm font-medium text-neutral-400 mb-4">Trade</h2>
             <div class="flex gap-2 mb-4">
               <button
@@ -194,19 +250,31 @@
               </span>
             </div>
             
+            {#if tradeError}
+              <div class="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-sm text-rose-400">
+                {tradeError}
+              </div>
+            {/if}
+            
             <button
-              class="w-full py-3 text-sm font-medium rounded-sm transition-colors"
-              class:bg-emerald-600={selectedSide === 'LONG'}
-              class:bg-rose-600={selectedSide === 'SHORT'}
-              class:hover:bg-emerald-500={selectedSide === 'LONG'}
-              class:hover:bg-rose-500={selectedSide === 'SHORT'}
+              onclick={handleTrade}
+              disabled={tradeLoading || amount <= 0}
+              class="w-full py-3 text-sm font-medium rounded-sm transition-colors disabled:bg-neutral-800 disabled:text-neutral-500"
+              class:bg-emerald-600={selectedSide === 'LONG' && !tradeLoading}
+              class:bg-rose-600={selectedSide === 'SHORT' && !tradeLoading}
+              class:hover:bg-emerald-500={selectedSide === 'LONG' && !tradeLoading}
+              class:hover:bg-rose-500={selectedSide === 'SHORT' && !tradeLoading}
             >
-              Buy {selectedSide === 'LONG' ? 'YES' : 'NO'} Shares
+              {#if tradeLoading}
+                Processing...
+              {:else}
+                Buy {selectedSide === 'LONG' ? 'YES' : 'NO'} Shares · {amount} sats
+              {/if}
             </button>
           </div>
           
           <!-- Market Details -->
-          <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+          <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
             <h2 class="text-sm font-medium text-neutral-400 mb-4">Description</h2>
             <p class="text-neutral-300 leading-relaxed">
               {market.description || 'No description provided.'}
@@ -214,14 +282,7 @@
           </div>
         </div>
       {:else if activeTab === 'discussion'}
-        <div class="space-y-4">
-          <button
-            onclick={navigateToDiscussion}
-            class="w-full py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-sm font-medium rounded-sm transition-colors"
-          >
-            View Discussion Thread
-          </button>
-        </div>
+        <MarketDiscussionList market={market} />
       {:else if activeTab === 'positions'}
         <div class="text-center py-12">
           <p class="text-neutral-500 text-sm">No positions yet</p>

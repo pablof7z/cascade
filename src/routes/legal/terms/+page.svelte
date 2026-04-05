@@ -12,7 +12,7 @@
         </p>
       </div>
       <p class="text-neutral-400">
-        By using Contrarian Markets, you agree to participate in our prediction markets platform responsibly. 
+        By using Cascade, you agree to participate in our prediction markets platform responsibly. 
         Full terms and conditions will be published here shortly.
       </p>
       <p class="text-neutral-500 text-sm mt-6">

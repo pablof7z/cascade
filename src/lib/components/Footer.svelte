@@ -28,7 +28,7 @@
       <!-- Brand Column -->
       <div class="md:col-span-1">
         <Link to="/" class="inline-block">
-          <span class="text-xl font-bold text-white">Contrarian Markets</span>
+          <span class="text-xl font-bold text-white">Cascade</span>
         </Link>
         <p class="mt-3 text-sm text-neutral-500 leading-relaxed">
           Trade on ideas that don't expire. Prediction markets for evolving truth.
@@ -96,7 +96,7 @@
     <!-- Bottom Bar -->
     <div class="mt-12 pt-6 border-t border-neutral-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
       <p class="text-sm text-neutral-500">
-        © {currentYear} Contrarian Markets. All rights reserved.
+        © {currentYear} Cascade. All rights reserved.
       </p>
       <span class="text-xs text-neutral-600 font-mono">
         Build: dev

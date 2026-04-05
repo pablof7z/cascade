@@ -109,7 +109,7 @@
   <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
     <div class="flex items-center gap-6">
       <a href="/" class="text-xl font-bold text-white tracking-tight">
-        Contrarian Markets
+        Cascade
       </a>
       
       {#if testnetValue}

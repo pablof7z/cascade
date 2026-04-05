@@ -12,7 +12,7 @@
         </p>
       </div>
       <p class="text-neutral-400">
-        Contrarian Markets is built on Nostr, a decentralized protocol. We minimize data collection 
+        Cascade is built on Nostr, a decentralized protocol. We minimize data collection 
         and respect your privacy. Full privacy policy details will be published here shortly.
       </p>
       <p class="text-neutral-500 text-sm mt-6">

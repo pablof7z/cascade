@@ -5,7 +5,6 @@
   import { isReady, fetchMarketPosts, publishMarketReply, fetchReactions, subscribeToReactions } from '../../../services/nostrService';
   import { buildThreadHierarchy } from '../../../lib/threadBuilder';
   import { trackDiscussionInteraction } from '../../../analytics';
-  import { formatMarketSlug } from '$lib/marketSlug';
   import { priceLong } from '../../../market';
   import OriginalPost from '../../../lib/components/OriginalPost.svelte';
   import ReplyThread from '../../../lib/components/ReplyThread.svelte';
@@ -196,9 +195,10 @@
     return () => clearInterval(checkReady);
   });
 
-  // Get probability and thread
+  // Get probability, thread, and market URL
   let probability = $derived(market ? priceLong(market.qLong, market.qShort, market.b) : 0);
   let thread = $derived(threads.find((t) => t.id === threadId));
+  let marketSlug = $derived(market ? `${market.slug}--${market.creatorPubkey.slice(0, 12)}` : marketId);
 </script>
 
 {#if !market}
@@ -212,7 +212,7 @@
 {:else if !thread}
   <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
     <span class="text-neutral-500 text-sm">Thread not found...</span>
-    <button onclick={() => goto(market ? `/markets/${formatMarketSlug(market)}/discussion` : `/markets/${marketId}`)} class="ml-4 text-neutral-400 hover:text-white">
+    <button onclick={() => goto(market ? `/markets/${marketSlug}/discussion` : `/markets/${marketId}`)} class="ml-4 text-neutral-400 hover:text-white">
       Back to discussion
     </button>
   </div>
@@ -222,11 +222,11 @@
       <!-- Breadcrumb -->
       <div class="py-4 border-b border-neutral-800">
         <div class="flex items-center gap-2 text-sm text-neutral-500">
-          <a href={`/markets/${formatMarketSlug(market)}`} class="hover:text-neutral-300">
+          <a href={`/markets/${marketSlug}`} class="hover:text-neutral-300">
             {market?.title?.slice(0, 40) || 'Market'}{market?.title && market.title.length > 40 ? '...' : ''}
           </a>
           <span>›</span>
-          <a href={`/markets/${formatMarketSlug(market)}/discussion`} class="hover:text-neutral-300">
+          <a href={`/markets/${marketSlug}/discussion`} class="hover:text-neutral-300">
             Discussion
           </a>
           <span>›</span>

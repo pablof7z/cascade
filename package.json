@@ -24,13 +24,11 @@
     "@tiptap/core": "^3.22.2",
     "@tiptap/extension-placeholder": "^3.21.0",
     "@tiptap/pm": "^3.21.0",
-    "@tiptap/react": "^3.21.0",
     "@tiptap/starter-kit": "^3.21.0",
     "lightweight-charts": "^5.1.0",
     "markdown-it": "^14.1.1",
     "nostr-tools": "^2.23.3",
-    "posthog-js": "^1.364.7",
-    "qrcode.react": "^4.2.0"
+    "posthog-js": "^1.364.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

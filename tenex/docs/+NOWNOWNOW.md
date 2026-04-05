@@ -1,22 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-05 06:10 UTC — Sweep 117: Style violations in flight. Discussion sidebar removed.*
-
----
-
-## 🔥 Active Right Now
-
-### Style Guide Violations Fix — IN PROGRESS 🔄
-- clean-code-nazi found: hex colors in chart SVGs, UserAvatar non-approved colors, shadow violations, missing Tailwind forms plugin
-- claude-code fixing: chart colors → CSS vars, avatar colors → neutral, shadows removed, @tailwindcss/forms added
-
----
-
-## 🔥 Active Right Now
-
-### Style Audit — IN PROGRESS 🔄
-- clean-code-nazi reviewing `src/` for style guide violations (accent colors, rounded-full, emojis, card overuse)
-- Results pending
+*Last updated: 2026-04-05 06:20 UTC — Sweep 117: ALL CLEAR. Build ✓ 1.04s. Footer 404s fixed + pushed.*
 
 ### Substack Publication — READY TO PUBLISH ⏳
 - Draft v2: `tenex/docs/substack-draft-2026-04-04-v2.md`
@@ -38,7 +22,10 @@
 
 | Commit | Feature | Phase |
 |--------|---------|-------|
-| a7030a4 | **fix(NavHeader): Build Thesis button links to /thesis/new instead of #** | Product Health |
+| f3d25ba | fix(Footer): remove links to non-existent routes (/how-it-works, /leaderboard, /embed) | Product Health |
+| 5efde00 | **fix(ui): address style guide violations — hex chart colors, avatar neutral palette, shadows, @tailwindcss/forms** | Product Health |
+| 204d95f | **fix(landing): remove misleading discussion sidebar placeholder data** | Product Health |
+| a7030a4 | fix(NavHeader): Build Thesis button links to /thesis/new instead of # | Product Health |
 | abda977 | fix: Remove broken links to non-existent dashboard routes | Product Health |
 | 7cb1e6d | fix: Update /builder link to /thesis/new in landing page | Product Health |
 | bac57b5 | fix: Define isDashboardRoute variable in NavHeader.svelte | Product Health |
@@ -85,8 +72,9 @@
 - ~~**Broken /discussion links**~~ — Fixed ✅ (26f47ab). `/market/{id}/discussion` → `/thread/{marketId}`.
 - ~~**Style: UserAvatar amber**~~ — Fixed ✅ (26f47ab). `bg-amber-500` → `bg-neutral-600`.
 - ~~**Style: EmbedModal rounded**~~ — Fixed ✅ (26f47ab). `rounded-2xl` → `rounded-lg`.
-- ~~**Style guide violations**~~ — Round 1 fixed ✅ (1a05b6c); Round 2 IN PROGRESS — hex chart colors, avatar colors, shadows, @tailwindcss/forms
+- ~~**Style guide violations (Round 2)**~~ — Fixed ✅ (5efde00). Hex chart colors → emerald/rose CSS vars, UserAvatar → neutral palette, shadows removed, @tailwindcss/forms added.
 - ~~**Svelte port phases 3B, 4A, 5**~~ — ALL COMPLETE ✅ (8571525…d50d91b)
 - ~~**13 unpushed commits**~~ — PUSHED ✅ (b2db34a..839a12f → origin/main)
 - ~~**NavHeader "Build Thesis" dead link**~~ — Fixed ✅ (a7030a4). `{ to: '#' }` → `{ to: '/thesis/new' }`.
 - ~~**Landing page "Top discussions" sidebar**~~ — Fixed ✅. Hardcoded `comments: 0`, placeholder text "Discussion about {title}", misleading heading removed.
+- ~~**Footer broken links**~~ — Fixed ✅ (f3d25ba). Removed `/how-it-works`, `/leaderboard`, `/embed` (no such routes). Fixed legal paths: `/terms` → `/legal/terms`, `/privacy` → `/legal/privacy`.

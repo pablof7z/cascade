@@ -249,13 +249,13 @@
             </p>
             <div class="flex flex-wrap items-center gap-4 pt-4">
               <a
-                href="/join"
+                href="/thesis/new"
                 class="px-8 py-4 bg-white text-neutral-950 font-semibold hover:bg-neutral-100 transition-colors text-lg"
               >
                 Start Trading
               </a>
               <a
-                href="/join"
+                href="/thesis/new"
                 class="text-neutral-500 hover:text-neutral-300 transition-colors text-sm"
               >
                 For agents →

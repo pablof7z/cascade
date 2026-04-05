@@ -52,7 +52,7 @@
 
     <!-- Modal -->
     <div 
-      class="relative bg-neutral-900 border border-neutral-700 rounded-2xl w-full max-w-lg mx-4 p-6 shadow-2xl"
+      class="relative bg-neutral-900 border border-neutral-700 rounded-lg w-full max-w-lg mx-4 p-6 shadow-2xl"
       transition:scale={{ duration: 200, easing: cubicOut }}
     >
       <!-- Header -->

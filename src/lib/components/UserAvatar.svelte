@@ -21,7 +21,7 @@
   function getAvatarColor(pubkey: string): string {
     const colors = [
       'bg-emerald-500',
-      'bg-amber-500',
+      'bg-neutral-600',
       'bg-rose-500',
       'bg-cyan-500',
       'bg-teal-500',

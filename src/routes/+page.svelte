@@ -235,7 +235,7 @@
       HERO — Provocative statement + Featured Market
   ═══════════════════════════════════════════════════════════════════════════ -->
   <section class="relative min-h-[80vh] flex flex-col">
-    <div class="absolute inset-0 bg-neutral-950" />
+    <div class="absolute inset-0 bg-neutral-950"></div>
 
     <div class="relative z-10 flex-1 flex items-center">
       <div class="max-w-7xl mx-auto w-full px-6 py-16">

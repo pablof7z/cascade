@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { goto } from '$app/navigation'
-
   const navigationLinks = [
     { label: 'Home', to: '/' },
     { label: 'Markets', to: '/' },
@@ -27,9 +25,9 @@
     <div class="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12">
       <!-- Brand Column -->
       <div class="md:col-span-1">
-        <Link to="/" class="inline-block">
+        <a href="/" class="inline-block">
           <span class="text-xl font-bold text-white">Cascade</span>
-        </Link>
+        </a>
         <p class="mt-3 text-sm text-neutral-500 leading-relaxed">
           Trade on ideas that don't expire. Prediction markets for evolving truth.
         </p>
@@ -41,12 +39,12 @@
         <ul class="space-y-2">
           {#each navigationLinks as link}
             <li key={link.to + link.label}>
-              <Link 
-                to={link.to}
+              <a 
+                href={link.to}
                 class="text-sm text-neutral-400 hover:text-white transition-colors"
               >
                 {link.label}
-              </Link>
+              </a>
             </li>
           {/each}
         </ul>

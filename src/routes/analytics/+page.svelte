@@ -1,61 +1,24 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { trackEvent, initAnalytics, destroyAnalytics } from '../../analytics';
-  import type { AnalyticsSummary } from '../../analyticsTypes';
 
-  function formatDuration(ms: number): string {
-    const seconds = Math.floor(ms / 1000);
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    const remaining = seconds % 60;
-    return `${minutes}m ${remaining}s`;
-  }
-
-  function FunnelBar({ label, value, max }: { label: string; value: number; max: number }) {
-    const pct = max > 0 ? Math.round((value / max) * 100) : 0;
-    return { label, pct };
-  }
-
-  // Mock summary for demo - in production this would come from analytics service
-  let summary = $state<AnalyticsSummary | null>(null);
   let loading = $state(true);
-  let loadStart = $state(0);
 
   onMount(() => {
-    loadStart = Date.now();
+    // Initialize client-side analytics tracking
     initAnalytics();
 
     // Track page view
     trackEvent('page_view', { path: '/analytics' });
 
-    // Simulate loading analytics data
+    // Simulate brief loading state
     setTimeout(() => {
-      summary = {
-        dailyActiveSessions: 42,
-        weeklyActiveSessions: 156,
-        funnel: {
-          landingViews: 1000,
-          homepageEngaged: 680,
-          marketViews: 420,
-          discussionOpens: 180,
-          tradesPlaced: 45,
-          windowDays: 7,
-        },
-        topMarkets: [
-          { marketId: 'bitcoin-price-2024', views: 234 },
-          { marketId: 'ai-consciousness', views: 189 },
-          { marketId: 'election-2024', views: 156 },
-        ],
-        homepageSources: [
-          { source: 'direct', destination: '/', sessions: 89, events: 234 },
-          { source: 'twitter', destination: '/', sessions: 67, events: 178 },
-          { source: 'nostr', destination: '/', sessions: 34, events: 89 },
-        ],
-        averageSessionDuration: 180000, // 3 minutes
-        generatedAt: Date.now(),
-      };
       loading = false;
-    }, 500);
+    }, 300);
+
+    return () => {
+      destroyAnalytics();
+    };
   });
 
   function handleReset() {
@@ -66,21 +29,6 @@
       window.location.reload();
     }
   }
-
-  // Derived values
-  let loadDuration = $derived(
-    loading ? null : (Date.now() - loadStart)
-  );
-
-  let funnelBars = $derived(
-    summary ? [
-      FunnelBar({ label: 'Landing', value: summary.funnel.landingViews, max: summary.funnel.landingViews }),
-      FunnelBar({ label: 'Engaged', value: summary.funnel.homepageEngaged, max: summary.funnel.landingViews }),
-      FunnelBar({ label: 'Market Views', value: summary.funnel.marketViews, max: summary.funnel.landingViews }),
-      FunnelBar({ label: 'Discussions', value: summary.funnel.discussionOpens, max: summary.funnel.landingViews }),
-      FunnelBar({ label: 'Trades', value: summary.funnel.tradesPlaced, max: summary.funnel.landingViews }),
-    ] : []
-  );
 </script>
 
 <div class="max-w-4xl mx-auto px-4 py-8">
@@ -98,101 +46,25 @@
   {#if loading}
     <div class="flex flex-col items-center justify-center py-16 gap-4">
       <div class="w-8 h-8 border-2 border-neutral-700 border-t-white rounded-full animate-spin"></div>
-      <p class="text-neutral-500 text-sm">Loading analytics...</p>
-    </div>
-  {:else if summary}
-    <div class="space-y-8">
-      <!-- Sessions Overview -->
-      <section>
-        <h2 class="text-lg font-sans text-white mb-4">Sessions</h2>
-        <div class="grid grid-cols-2 gap-4">
-          <div class="bg-neutral-900 border border-neutral-800 p-4">
-            <p class="text-xs text-neutral-500 uppercase tracking-wide mb-1">Today</p>
-            <p class="text-3xl font-mono text-white">{summary.dailyActiveSessions}</p>
-          </div>
-          <div class="bg-neutral-900 border border-neutral-800 p-4">
-            <p class="text-xs text-neutral-500 uppercase tracking-wide mb-1">This Week</p>
-            <p class="text-3xl font-mono text-white">{summary.weeklyActiveSessions}</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Funnel -->
-      <section>
-        <h2 class="text-lg font-sans text-white mb-4">Funnel ({summary.funnel.windowDays}d)</h2>
-        <div class="space-y-3">
-          {#each funnelBars as bar}
-            <div class="flex items-center gap-4">
-              <span class="text-sm text-neutral-400 w-24 text-right">{bar.label}</span>
-              <div class="flex-1 h-6 bg-neutral-900">
-                <div
-                  class="h-full bg-white transition-all"
-                  style="width: {bar.pct}%"
-                ></div>
-              </div>
-              <span class="text-sm font-mono text-neutral-300 w-16">{bar.pct}%</span>
-            </div>
-          {/each}
-        </div>
-      </section>
-
-      <!-- Top Markets -->
-      {#if summary.topMarkets.length > 0}
-        <section>
-          <h2 class="text-lg font-sans text-white mb-4">Top Markets</h2>
-          <div class="bg-neutral-900 border border-neutral-800">
-            <div class="divide-y divide-neutral-800">
-              {#each summary.topMarkets as market}
-                <div class="flex items-center justify-between px-4 py-3">
-                  <span class="text-sm text-neutral-300 truncate">{market.marketId}</span>
-                  <span class="text-sm font-mono text-neutral-400">{market.views}</span>
-                </div>
-              {/each}
-            </div>
-          </div>
-        </section>
-      {/if}
-
-      <!-- Homepage Sources -->
-      {#if summary.homepageSources.length > 0}
-        <section>
-          <h2 class="text-lg font-sans text-white mb-4">Homepage Sources</h2>
-          <div class="bg-neutral-900 border border-neutral-800">
-            <div class="divide-y divide-neutral-800">
-              {#each summary.homepageSources as source}
-                <div class="flex items-center justify-between px-4 py-3">
-                  <div>
-                    <span class="text-sm text-neutral-300">{source.source}</span>
-                    <span class="text-xs text-neutral-600 ml-2">→ {source.destination}</span>
-                  </div>
-                  <div class="flex items-center gap-6">
-                    <span class="text-xs text-neutral-500">{source.sessions} sessions</span>
-                    <span class="text-sm font-mono text-neutral-400">{source.events} events</span>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          </div>
-        </section>
-      {/if}
-
-      <!-- Session Duration -->
-      <section>
-        <h2 class="text-lg font-sans text-white mb-4">Avg Session Duration</h2>
-        <div class="bg-neutral-900 border border-neutral-800 p-4">
-          <p class="text-2xl font-mono text-white">{formatDuration(summary.averageSessionDuration)}</p>
-        </div>
-      </section>
-
-      <!-- Meta -->
-      <div class="text-xs text-neutral-600">
-        Generated {new Date(summary.generatedAt).toLocaleString()}
-        {#if loadDuration !== null}
-          · Loaded in {formatDuration(loadDuration)}
-        {/if}
-      </div>
+      <p class="text-neutral-500 text-sm">Loading...</p>
     </div>
   {:else}
-    <p class="text-neutral-500 text-center py-8">No analytics data available yet.</p>
+    <div class="flex flex-col items-center justify-center py-24 gap-6">
+      <div class="w-12 h-12 flex items-center justify-center">
+        <svg class="w-10 h-10 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+        </svg>
+      </div>
+      <div class="text-center">
+        <h2 class="text-xl font-sans text-white mb-2">Analytics Dashboard</h2>
+        <p class="text-neutral-400 text-sm max-w-md">
+          Usage analytics and market insights are being compiled.
+          The dashboard will display aggregated data once sufficient activity is recorded.
+        </p>
+      </div>
+      <p class="text-xs text-neutral-600 mt-4">
+        Your session is being tracked anonymously.
+      </p>
+    </div>
   {/if}
 </div>

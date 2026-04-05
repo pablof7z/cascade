@@ -2,7 +2,9 @@
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { nostrStore } from '$lib/stores/nostr';
-  import { getNDK } from '../../services/nostrService';
+  import { getNDK, fetchMarketByEventId } from '../../services/nostrService';
+  import { parseMarketEvent } from '../../services/marketService';
+  import { formatMarketSlug } from '$lib/marketSlug';
   import {
     getBookmarks,
     isBookmarked,
@@ -15,11 +17,24 @@
 
   let bookmarkedIds = $state<string[]>([]);
   let pubkey = $state<string | null>(null);
+  let marketSlugs = $state<Map<string, string>>(new Map());
   let unsubscribeNostr: (() => void) | null = null;
   let unsubscribeBookmarks: (() => void) | null = null;
 
   function updateBookmarks() {
     bookmarkedIds = getBookmarks();
+    // Fetch slugs for all bookmarked IDs
+    for (const id of bookmarkedIds) {
+      if (!marketSlugs.has(id)) {
+        fetchMarketSlug(id).then((slug) => {
+          marketSlugs.set(id, slug);
+        });
+      }
+    }
+  }
+
+  function getMarketSlug(marketId: string): string {
+    return marketSlugs.get(marketId) || marketId;
   }
 
   function toggle(marketId: string) {
@@ -27,6 +42,25 @@
       removeBookmark(marketId, pubkey, getNDK());
     } else {
       addBookmark(marketId, pubkey, getNDK());
+    }
+  }
+
+  async function fetchMarketSlug(eventId: string): Promise<string> {
+    if (marketSlugs.has(eventId)) {
+      return marketSlugs.get(eventId)!;
+    }
+    try {
+      const ndk = getNDK();
+      if (!ndk) return eventId;
+      const event = await fetchMarketByEventId(eventId);
+      if (!event) return eventId;
+      const parsed = parseMarketEvent(event);
+      if (!parsed.ok) return eventId;
+      const slug = formatMarketSlug(event);
+      marketSlugs.set(eventId, slug);
+      return slug;
+    } catch {
+      return eventId;
     }
   }
 
@@ -98,7 +132,7 @@
         {#each bookmarkedIds as marketId (marketId)}
           <div class="flex items-center justify-between py-3 px-1 border-b border-neutral-800/40 hover:bg-neutral-900/30 transition-colors">
             <a
-              href="/markets/{marketId}"
+              href="/markets/{getMarketSlug(marketId)}"
               class="flex-1 min-w-0 text-white font-medium hover:text-neutral-300 transition-colors truncate"
             >
               {marketId}

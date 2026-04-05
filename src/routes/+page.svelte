@@ -6,10 +6,7 @@
   import { fetchAllMarketsTransport } from '../services/nostrService'
   import { parseMarketEvent } from '../services/marketService'
   import { priceLong } from '../market'
-  import { formatMarketSlug } from '../lib/marketSlug'
   import type { Market } from '../market'
-
-  // ─── Types ──────────────────────────────────────────────────────────────────
 
   type DisplayMarket = {
     slug: string
@@ -295,7 +292,7 @@
               <span class="text-xs font-medium text-neutral-500 uppercase tracking-[0.2em]">
                 Featured Thesis
               </span>
-              <a href="/markets/{formatMarketSlug(featuredMarket as any)}" class="block space-y-4">
+              <a href="/markets/{featuredMarket.slug}--{featuredMarket.pubkeyPrefix}" class="block space-y-4">
                 <h2 class="text-3xl md:text-4xl font-bold text-white leading-snug hover:text-emerald-400 transition-colors">
                   {featuredMarket.title}
                 </h2>
@@ -377,7 +374,7 @@
       <div class="lg:col-span-5 lg:pr-12 lg:border-r border-neutral-800/50 pb-8 lg:pb-0">
         {#if trendingMarkets.length > 0}
           {@const entry = trendingMarkets[0]}
-          <a href="/markets/{formatMarketSlug(entry as any)}" class="block cursor-pointer group">
+          <a href="/markets/{entry.slug}--{entry.pubkeyPrefix}" class="block cursor-pointer group">
             <span class="text-xs text-emerald-500 uppercase tracking-[0.15em] font-medium">#1 by volume</span>
             <h3 class="text-2xl md:text-3xl font-bold text-white mt-2 mb-4 group-hover:text-emerald-400 transition-colors leading-snug">
               {entry.title}
@@ -412,7 +409,7 @@
         <div class="space-y-0">
           {#each trendingMarkets.slice(1) as entry, i}
             <a
-              href="/markets/{formatMarketSlug(entry as any)}"
+              href="/markets/{entry.slug}--{entry.pubkeyPrefix}"
               class="flex items-center gap-4 py-3 border-b border-neutral-800/30 last:border-0 cursor-pointer hover:bg-neutral-900/30 -mx-2 px-2 transition-colors"
             >
               <span class="text-2xl font-black text-neutral-700 w-8 tabular-nums">{i + 2}</span>
@@ -468,7 +465,7 @@
       <!-- Table rows -->
       {#each lowVolumeMarkets as row, i}
         <a
-          href="/markets/{formatMarketSlug(row as any)}"
+          href="/markets/{row.slug}--{row.pubkeyPrefix}"
           class="grid grid-cols-12 gap-2 px-3 py-3 text-sm cursor-pointer transition-colors hover:bg-neutral-800/30 {i % 2 === 0 ? 'bg-neutral-800/10' : ''}"
         >
           <div class="col-span-5 sm:col-span-4 flex items-center gap-2 min-w-0">
@@ -517,7 +514,7 @@
 
           {#each disputedMarkets as entry}
             <a
-              href="/markets/{formatMarketSlug(entry as any)}"
+              href="/markets/{entry.slug}--{entry.pubkeyPrefix}"
               class="grid grid-cols-[minmax(0,1.4fr)_88px_76px_72px_88px] gap-3 py-3 border-b border-neutral-800/20 last:border-0 cursor-pointer hover:bg-neutral-900/30 -mx-2 px-2 transition-colors items-center"
             >
               <div class="min-w-0">
@@ -567,7 +564,7 @@
         <div class="grid lg:grid-cols-3 gap-12">
           <!-- Column 1: Featured -->
           <div class="lg:col-span-1">
-            <a href="/markets/{formatMarketSlug(featured as any)}" class="block cursor-pointer group">
+            <a href="/markets/{featured.slug}--{featured.pubkeyPrefix}" class="block cursor-pointer group">
               <span class="text-[10px] uppercase tracking-[0.2em] text-emerald-500/70 font-medium">
                 {featured.category} · {featured.timeAgo}
               </span>
@@ -587,7 +584,7 @@
           <div class="space-y-0">
             {#each newThisWeek.slice(1, 4) as item}
               <a
-                href="/markets/{formatMarketSlug(item as any)}"
+                href="/markets/{item.slug}--{item.pubkeyPrefix}"
                 class="block py-5 border-b border-neutral-800/20 last:border-0 cursor-pointer group"
               >
                 <div class="flex items-start justify-between gap-4 mb-1">
@@ -612,7 +609,7 @@
             </span>
             {#each newThisWeek.slice(4) as item, i}
               <a
-                href="/markets/{formatMarketSlug(item as any)}"
+                href="/markets/{item.slug}--{item.pubkeyPrefix}"
                 class="flex items-baseline gap-3 py-2 cursor-pointer group"
               >
                 <span class="text-xs font-mono text-neutral-700 tabular-nums w-4 text-right shrink-0">

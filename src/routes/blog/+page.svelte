@@ -12,7 +12,7 @@
     {
       id: '1',
       title: 'Why Prediction Markets Need Infinite Games',
-      excerpt: 'Traditional prediction markets close when an event happens. But the most important questions — AGI timelines, climate trajectories, geopolitical shifts — never truly resolve. They evolve. Contrarian Markets is built for these infinite games.',
+      excerpt: 'Traditional prediction markets close when an event happens. But the most important questions — AGI timelines, climate trajectories, geopolitical shifts — never truly resolve. They evolve. Cascade is built for these infinite games.',
       date: 'Mar 2026',
       readTime: '8 min read',
       substackUrl: 'https://pablof7z.substack.com',
@@ -20,7 +20,7 @@
     {
       id: '2',
       title: 'Modular Theses: Stacking Predictions',
-      excerpt: 'Your thesis on AI displacing knowledge work depends on AGI timing, regulatory capture, and labor market dynamics. Why trade them separately? Contrarian lets you compose predictions into coherent worldviews.',
+      excerpt: 'Your thesis on AI displacing knowledge work depends on AGI timing, regulatory capture, and labor market dynamics. Why trade them separately? Cascade lets you compose predictions into coherent worldviews.',
       date: 'Mar 2026',
       readTime: '6 min read',
       substackUrl: 'https://pablof7z.substack.com',
@@ -28,7 +28,7 @@
     {
       id: '3',
       title: 'Building on Nostr: Censorship-Resistant Markets',
-      excerpt: 'Prediction markets are speech. They aggregate beliefs into prices. That makes them targets. By building on Nostr, Contrarian ensures no single entity can shut down the conversation.',
+      excerpt: 'Prediction markets are speech. They aggregate beliefs into prices. That makes them targets. By building on Nostr, Cascade ensures no single entity can shut down the conversation.',
       date: 'Feb 2026',
       readTime: '5 min read',
       substackUrl: 'https://pablof7z.substack.com',

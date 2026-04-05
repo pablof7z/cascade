@@ -148,7 +148,7 @@
         slug,
         title: thesisTitle,
         description: thesisDescription,
-        mint: 'https://mint.testnet.cashu.tv', // Default mint
+        mint: 'https://mint.contrarian.markets', // Default mint
         b: 1000,
         qLong: 0.5,
         qShort: 0.5,

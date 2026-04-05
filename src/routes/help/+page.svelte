@@ -1,8 +1,8 @@
 <script lang="ts">
   const faqs = [
     {
-      question: "What is Contrarian Markets?",
-      answer: "Contrarian Markets is a decentralized prediction market platform built on Nostr. It allows anyone to create markets on future events and trade shares based on their predictions."
+      question: "What is Cascade?",
+      answer: "Cascade is a decentralized prediction market platform built on Nostr. It allows anyone to create markets on future events and trade shares based on their predictions."
     },
     {
       question: "How do prediction markets work?",
@@ -10,7 +10,7 @@
     },
     {
       question: "How do I get started?",
-      answer: "To use Contrarian Markets, you need a Nostr-compatible wallet extension. Once connected, you can browse markets, place trades, and create your own prediction markets on any topic."
+      answer: "To use Cascade, you need a Nostr-compatible wallet extension. Once connected, you can browse markets, place trades, and create your own prediction markets on any topic."
     },
     {
       question: "What is the trading mechanism?",
@@ -22,7 +22,7 @@
     },
     {
       question: "What is Nostr?",
-      answer: "Nostr is a decentralized protocol for censorship-resistant social networking. Contrarian Markets uses Nostr for identity and data persistence, ensuring your data belongs to you."
+      answer: "Nostr is a decentralized protocol for censorship-resistant social networking. Cascade uses Nostr for identity and data persistence, ensuring your data belongs to you."
     },
     {
       question: "Is my data private?",
@@ -44,7 +44,7 @@
   <div class="max-w-3xl mx-auto px-6">
     <h1 class="text-4xl font-bold text-white mb-4">Help Center</h1>
     <p class="text-neutral-400 mb-12">
-      Everything you need to know about Contrarian Markets prediction markets.
+      Everything you need to know about Cascade prediction markets.
     </p>
 
     <div class="space-y-6">

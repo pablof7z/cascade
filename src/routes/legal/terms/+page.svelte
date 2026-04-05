@@ -5,8 +5,8 @@
   <div class="max-w-3xl mx-auto px-6">
     <h1 class="text-4xl font-bold text-white mb-8">Terms of Service</h1>
     <div class="prose prose-invert prose-neutral max-w-none">
-      <div class="bg-amber-500/10 border border-amber-500/30 rounded-md p-6 mb-8">
-        <p class="text-amber-400 font-medium mb-2">Coming Soon</p>
+      <div class="bg-neutral-800/50 border border-neutral-700 p-6 mb-8">
+        <p class="text-neutral-400 font-medium mb-2">Coming Soon</p>
         <p class="text-neutral-400 text-sm">
           Our Terms of Service are being finalized. Please check back soon for the complete document.
         </p>

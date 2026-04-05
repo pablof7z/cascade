@@ -112,7 +112,7 @@
       {#if testnetValue}
         <button
           onclick={toggle}
-          class="px-2 py-0.5 text-xs font-bold border border-amber-500 text-amber-400 uppercase tracking-wide hover:border-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+          class="px-2 py-0.5 text-xs font-bold border border-neutral-600 text-neutral-400 uppercase tracking-wide hover:border-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
           title="Click to switch to mainnet"
         >
           {TESTNET_LABELS.label}

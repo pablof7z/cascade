@@ -82,7 +82,7 @@
           rel="noopener noreferrer"
           class="block group"
         >
-          <article class="bg-neutral-900 border border-neutral-800 rounded-md p-6 hover:border-neutral-700 hover:bg-neutral-900/80 transition-all">
+          <article class="bg-neutral-900 border border-neutral-800 p-6 hover:border-neutral-700 hover:bg-neutral-900/80 transition-all">
             <div class="flex items-center gap-3 text-xs text-neutral-500 mb-3">
               <span>{post.date}</span>
               <span>-</span>
@@ -119,7 +119,7 @@
         href="https://pablof7z.substack.com"
         target="_blank"
         rel="noopener noreferrer"
-        class="inline-flex items-center gap-2 px-6 py-3 border border-neutral-700 text-white rounded-md hover:border-neutral-500 hover:bg-neutral-900 transition-colors"
+        class="inline-flex items-center gap-2 px-6 py-3 border border-neutral-700 text-white hover:border-neutral-500 hover:bg-neutral-900 transition-colors"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
           <path d="M22.539 8.242H1.46V5.406h21.08v2.836zM1.46 10.812V24L12 18.11 22.54 24V10.812H1.46zM22.54 0H1.46v2.836h21.08V0z" />

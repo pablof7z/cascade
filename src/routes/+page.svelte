@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import NavHeader from '$lib/components/NavHeader.svelte'
+  import Skeleton from '$lib/components/ui/Skeleton.svelte'
+  import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte'
   import { fetchAllMarketsTransport } from '../services/nostrService'
   import { parseMarketEvent } from '../services/marketService'
   import { priceLong } from '../market'
@@ -324,6 +326,16 @@
       </div>
     </div>
   </div>
+
+  {#if error}
+    <div class="max-w-7xl mx-auto px-6 pt-12">
+      <ErrorMessage {error} />
+    </div>
+  {:else if loading}
+    <div class="max-w-7xl mx-auto px-6 pt-12">
+      <Skeleton />
+    </div>
+  {/if}
 
   <!-- ═══════════════════════════════════════════════════════════════════════════
       SECTION 1: TRENDING MARKETS — Sidebar layout

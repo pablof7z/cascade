@@ -208,7 +208,7 @@
             <!-- Overview Tab -->
             <section class="space-y-8">
               <!-- Consensus -->
-              <div class="bg-neutral-900/50 border border-neutral-800 rounded-lg p-6">
+              <div class="bg-neutral-900/50 border border-neutral-800 rounded-none p-6">
                 <h2 class={`text-2xl font-semibold ${tiltLabel().accent}`}>
                   {tiltLabel().label}
                 </h2>
@@ -246,7 +246,7 @@
               <!-- Price History -->
               <div>
                 <h3 class="text-lg font-semibold text-white">Price history</h3>
-                <div class="mt-4 h-48 bg-neutral-900/50 border border-neutral-800 rounded-lg p-4 flex items-center justify-center">
+                <div class="mt-4 h-48 bg-neutral-900/50 border border-neutral-800 rounded-none p-4 flex items-center justify-center">
                   <div class="text-center">
                     {@html Sparkline({
                       data: market.history.map(h => h.price),
@@ -267,7 +267,7 @@
                       <span class="text-neutral-400">Implied probability</span>
                       <span class="text-white">{formatPercent(yesPrice)} YES</span>
                     </div>
-                    <div class="h-2 bg-neutral-900 rounded overflow-hidden">
+                    <div class="h-2 bg-neutral-900 rounded-none overflow-hidden">
                       <div class="h-full bg-emerald-500" style="width: {yesPrice * 100}%"></div>
                     </div>
                   </div>
@@ -276,7 +276,7 @@
                       <span class="text-neutral-400">Committed capital</span>
                       <span class="text-white">{formatPercent(yesPrice)} YES</span>
                     </div>
-                    <div class="h-2 bg-neutral-900 rounded overflow-hidden">
+                    <div class="h-2 bg-neutral-900 rounded-none overflow-hidden">
                       <div class="h-full bg-emerald-500" style="width: {yesPrice * 100}%"></div>
                     </div>
                   </div>
@@ -296,7 +296,7 @@
             <section class="space-y-6">
               <div>
                 <h3 class="text-lg font-semibold text-white">Price chart</h3>
-                <div class="mt-4 h-80 bg-neutral-900/50 border border-neutral-800 rounded-lg p-4 flex items-center justify-center">
+                <div class="mt-4 h-80 bg-neutral-900/50 border border-neutral-800 rounded-none p-4 flex items-center justify-center">
                   <div class="text-center text-neutral-500">
                     Price chart visualization
                   </div>
@@ -332,7 +332,7 @@
                   View all →
                 </button>
               </div>
-              <div class="bg-neutral-900/50 border border-neutral-800 rounded-lg p-8 text-center">
+              <div class="bg-neutral-900/50 border border-neutral-800 rounded-none p-8 text-center">
                 <div class="text-neutral-500">No discussions yet</div>
                 <p class="mt-2 text-sm text-neutral-600">Be the first to start a discussion about this market.</p>
               </div>
@@ -342,7 +342,7 @@
             <section class="space-y-6">
               <div>
                 <h3 class="text-lg font-semibold text-white">Your positions</h3>
-                <div class="mt-4 bg-neutral-900/50 border border-neutral-800 rounded-lg p-8 text-center">
+                <div class="mt-4 bg-neutral-900/50 border border-neutral-800 rounded-none p-8 text-center">
                   <div class="text-neutral-500">No positions yet</div>
                   <p class="mt-2 text-sm text-neutral-600">Trade on this market to see your positions here.</p>
                 </div>
@@ -416,7 +416,7 @@
               </div>
 
               <!-- Side selector -->
-              <div class="mt-5 grid grid-cols-2 gap-px overflow-hidden border border-neutral-800 bg-neutral-800 rounded-lg">
+              <div class="mt-5 grid grid-cols-2 gap-px overflow-hidden border border-neutral-800 bg-neutral-800 rounded-none">
                 <button
                   onclick={() => setSide('LONG')}
                   class="px-4 py-4 text-left transition-colors {
@@ -454,25 +454,25 @@
                 <div class="flex gap-2">
                   <button
                     onclick={() => setAmount(50)}
-                    class="px-3 py-1.5 text-xs text-neutral-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 rounded transition-colors"
+                    class="px-3 py-1.5 text-xs text-neutral-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 rounded-none transition-colors"
                   >
                     50
                   </button>
                   <button
                     onclick={() => setAmount(100)}
-                    class="px-3 py-1.5 text-xs text-neutral-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 rounded transition-colors {amount === 100 ? 'ring-1 ring-emerald-500' : ''}"
+                    class="px-3 py-1.5 text-xs text-neutral-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 rounded-none transition-colors {amount === 100 ? 'ring-1 ring-emerald-500' : ''}"
                   >
                     100
                   </button>
                   <button
                     onclick={() => setAmount(500)}
-                    class="px-3 py-1.5 text-xs text-neutral-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 rounded transition-colors"
+                    class="px-3 py-1.5 text-xs text-neutral-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 rounded-none transition-colors"
                   >
                     500
                   </button>
                   <button
                     onclick={() => setAmount(1000)}
-                    class="px-3 py-1.5 text-xs text-neutral-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 rounded transition-colors"
+                    class="px-3 py-1.5 text-xs text-neutral-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 rounded-none transition-colors"
                   >
                     1K
                   </button>
@@ -482,7 +482,7 @@
                   type="number"
                   bind:value={amount}
                   min="1"
-                  class="mt-3 w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  class="mt-3 w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-none text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   placeholder="Enter amount in sats"
                 />
               </div>
@@ -508,7 +508,7 @@
 
               <!-- Error message -->
               {#if tradeError}
-                <div class="mt-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded text-sm text-rose-400">
+                <div class="mt-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-none text-sm text-rose-400">
                   {tradeError}
                 </div>
               {/if}
@@ -517,7 +517,7 @@
               <button
                 onclick={handleTrade}
                 disabled={tradeLoading || amount <= 0}
-                class="mt-5 w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-800 disabled:text-neutral-500 rounded font-medium text-white transition-colors"
+                class="mt-5 w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-800 disabled:text-neutral-500 rounded-none font-medium text-white transition-colors"
               >
                 {#if tradeLoading}
                   Processing...

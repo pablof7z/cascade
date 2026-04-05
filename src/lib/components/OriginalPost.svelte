@@ -127,7 +127,7 @@
       {#if thread.evidence && thread.evidence.length > 0}
         <div class="flex flex-wrap gap-2 mb-4">
           {#each thread.evidence as e, i}
-            <span class="text-xs text-blue-400 bg-blue-950/30 px-2 py-1">
+            <span class="text-xs text-neutral-400 bg-neutral-800/50 px-2 py-1">
               {e}
             </span>
           {/each}

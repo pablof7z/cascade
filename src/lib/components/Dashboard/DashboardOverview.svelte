@@ -6,8 +6,8 @@
 
   const attentionBadge: Record<FieldAttention, string> = {
     steady: 'text-emerald-400 bg-emerald-950 border border-emerald-800',
-    review: 'text-amber-400 bg-amber-950 border border-amber-800',
-    'needs-input': 'text-sky-400 bg-sky-950 border border-sky-800',
+    review: 'text-neutral-400 bg-neutral-800 border border-neutral-700',
+    'needs-input': 'text-neutral-400 bg-neutral-800 border border-neutral-700',
   }
   const attentionLabel: Record<FieldAttention, string> = {
     steady: 'Steady',
@@ -21,8 +21,8 @@
 
   const actionTypeStyle: Record<ActionType, string> = {
     'counter-evidence': 'bg-rose-950 border-rose-800 text-rose-400',
-    'proposal': 'bg-sky-950 border-sky-800 text-sky-400',
-    'question': 'bg-amber-950 border-amber-800 text-amber-400',
+    'proposal': 'bg-neutral-800 border-neutral-700 text-neutral-400',
+    'question': 'bg-neutral-800 border-neutral-700 text-neutral-400',
   }
 
   const actionTypeLabel: Record<ActionType, string> = {

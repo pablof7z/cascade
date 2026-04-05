@@ -3,9 +3,9 @@
   import NavHeader from '$lib/components/NavHeader.svelte'
   import Skeleton from '$lib/components/ui/Skeleton.svelte'
   import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte'
-  import { fetchAllMarketsTransport } from '../services/nostrService'
+  import { fetchAllMarketsTransport, publishMarket, getPubkey } from '../services/nostrService'
   import { parseMarketEvent } from '../services/marketService'
-  import { priceLong } from '../market'
+  import { priceLong, createEmptyMarket } from '../market'
   import type { Market } from '../market'
 
   type DisplayMarket = {
@@ -35,8 +35,15 @@
   let description = $state('')
   let initialSide = $state<'LONG' | 'SHORT'>('LONG')
   let initialSats = $state('150')
+  let createLoading = $state(false)
+  let createError = $state<string | null>(null)
+  let createSuccess = $state(false)
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  function slugify(text: string): string {
+    return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80)
+  }
 
   function formatSats(sats: number): string {
     if (sats >= 1000000) {
@@ -208,13 +215,65 @@
 
   // ─── Form handlers ──────────────────────────────────────────────────────────
 
-  function handleCreateMarket(e: Event) {
+  async function handleCreateMarket(e: Event) {
     e.preventDefault()
-    showCreateModal = false
-    title = ''
-    description = ''
-    initialSats = '150'
-    initialSide = 'LONG'
+    createLoading = true
+    createError = null
+    createSuccess = false
+
+    try {
+      const pubkey = getPubkey()
+      if (!pubkey) {
+        createError = 'Please connect a Nostr extension (NIP-07) to create markets.'
+        createLoading = false
+        return
+      }
+
+      const slug = slugify(title)
+      if (!slug) {
+        createError = 'Please enter a valid market title.'
+        createLoading = false
+        return
+      }
+
+      const market = createEmptyMarket({
+        slug,
+        title: title.trim(),
+        description: description.trim(),
+        creatorPubkey: pubkey,
+      })
+
+      // Markdown content for the event body
+      const markdown = `# ${title.trim()}\n\n${description.trim()}`
+
+      await publishMarket(market, markdown)
+
+      // Success — close modal and reset
+      createSuccess = true
+      showCreateModal = false
+      title = ''
+      description = ''
+      initialSats = '150'
+      initialSide = 'LONG'
+
+      // Refresh markets list after short delay
+      setTimeout(async () => {
+        try {
+          const events = await fetchAllMarketsTransport()
+          const parsed: Market[] = []
+          for (const event of events) {
+            const result = parseMarketEvent(event)
+            if (result.ok) parsed.push(result.market)
+          }
+          markets = parsed
+        } catch { /* silent refresh failure */ }
+        createSuccess = false
+      }, 2000)
+    } catch (err) {
+      createError = err instanceof Error ? err.message : 'Failed to create market. Please try again.'
+    } finally {
+      createLoading = false
+    }
   }
 
   function loadRandomMarket() {
@@ -776,12 +835,18 @@
             />
           </label>
         </div>
+        {#if createError}
+          <div class="p-3 bg-rose-500/10 border border-rose-500/30 text-sm text-rose-400">
+            {createError}
+          </div>
+        {/if}
         <div class="flex gap-3 pt-2">
           <button
-            class="flex-1 px-4 py-3 bg-white text-neutral-950 font-medium hover:bg-neutral-100 transition-colors"
+            class="flex-1 px-4 py-3 bg-white text-neutral-950 font-medium hover:bg-neutral-100 transition-colors disabled:bg-neutral-700 disabled:text-neutral-400"
             type="submit"
+            disabled={createLoading || !title.trim()}
           >
-            Create market
+            {createLoading ? 'Publishing...' : 'Create market'}
           </button>
           <button
             class="px-4 py-3 border border-neutral-700 text-neutral-300 hover:border-neutral-600 hover:text-white transition-colors"
@@ -793,5 +858,11 @@
         </div>
       </form>
     </div>
+  </div>
+{/if}
+
+{#if createSuccess}
+  <div class="fixed bottom-6 right-6 z-50 px-4 py-3 bg-emerald-600 text-white text-sm font-medium shadow-lg">
+    ✓ Market published to Nostr
   </div>
 {/if}

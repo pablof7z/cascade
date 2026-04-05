@@ -1,7 +1,10 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { page as pageState } from '$app/state';
   import { isTestnet, toggle, TESTNET_LABELS } from '$lib/stores/testnet';
+
+  const isDashboardRoute = pageState.url.pathname.startsWith('/dashboard');
   import { nostrStore, reconnect, disconnect } from '$lib/stores/nostr';
 
   // Reactive state

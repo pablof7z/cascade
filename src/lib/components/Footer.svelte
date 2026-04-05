@@ -4,10 +4,7 @@
   const navigationLinks = [
     { label: 'Home', to: '/' },
     { label: 'Markets', to: '/' },
-    { label: 'How It Works', to: '/how-it-works' },
-    { label: 'Leaderboard', to: '/leaderboard' },
     { label: 'Blog', to: '/blog' },
-    { label: 'Embed Widgets', to: '/embed' },
     { label: 'Analytics', to: '/analytics' },
   ];
 
@@ -18,8 +15,8 @@
   ];
 
   const legalLinks = [
-    { label: 'Terms of Service', to: '/terms' },
-    { label: 'Privacy Policy', to: '/privacy' },
+    { label: 'Terms of Service', to: '/legal/terms' },
+    { label: 'Privacy Policy', to: '/legal/privacy' },
   ];
 
   const currentYear = new Date().getFullYear();

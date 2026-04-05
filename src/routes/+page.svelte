@@ -190,7 +190,7 @@
 
   // ─── Sparkline component (inline) ──────────────────────────────────────────
 
-  function Sparkline({ data, positive, size = 'small' }: { data: number[]; positive: boolean; size?: 'small' | 'large' }) {
+  function Sparkline({ data, size = 'small' }: { data: number[]; size?: 'small' | 'large' }) {
     const w = size === 'large' ? 80 : 48
     const h = size === 'large' ? 24 : 14
     const min = Math.min(...data)
@@ -202,7 +202,7 @@
       return `${x},${y}`
     }).join(' ')
 
-    return `<svg width="${w}" height="${h}" class="inline-block"><polyline fill="none" stroke="${positive ? '#22c55e' : '#ef4444'}" stroke-width="${size === 'large' ? 2 : 1.5}" stroke-linecap="round" stroke-linejoin="round" points="${points}"/></svg>`
+    return `<svg width="${w}" height="${h}" class="inline-block"><polyline fill="none" stroke="currentColor" stroke-width="${size === 'large' ? 2 : 1.5}" stroke-linecap="round" stroke-linejoin="round" points="${points}"/></svg>`
   }
 
   // ─── Form handlers ──────────────────────────────────────────────────────────
@@ -360,10 +360,10 @@
               <span class="text-5xl font-black text-emerald-500 tabular-nums">
                 {Math.round(entry.prob * 100)}¢
               </span>
-              <svg width="80" height="24" class="inline-block">
+              <svg width="80" height="24" class="inline-block {entry.prob > 0.4 ? 'text-emerald-500' : 'text-rose-500'}">
                 <polyline
                   fill="none"
-                  stroke={entry.prob > 0.4 ? '#22c55e' : '#ef4444'}
+                  stroke="currentColor"
                   stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -395,10 +395,10 @@
               </div>
               <div class="flex items-center gap-4 shrink-0">
                 <span class="text-xs text-neutral-600">{entry.category}</span>
-                <svg width="48" height="14" class="inline-block">
+                <svg width="48" height="14" class="inline-block {entry.prob > 0.5 ? 'text-emerald-500' : 'text-rose-500'}">
                   <polyline
                     fill="none"
-                    stroke={entry.prob > 0.5 ? '#22c55e' : '#ef4444'}
+                    stroke="currentColor"
                     stroke-width="1.5"
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -499,10 +499,10 @@
                 <span class="text-[10px] text-neutral-600 uppercase tracking-wider">{entry.category}</span>
               </div>
               <div class="text-right">
-                <svg width="40" height="12" class="inline-block">
+                <svg width="40" height="12" class="inline-block {entry.prob > 0.5 ? 'text-emerald-500' : 'text-rose-500'}">
                   <polyline
                     fill="none"
-                    stroke={entry.prob > 0.5 ? '#22c55e' : '#ef4444'}
+                    stroke="currentColor"
                     stroke-width="1.5"
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -700,7 +700,7 @@
     aria-modal="true"
   >
     <div
-      class="w-full max-w-lg p-6 bg-neutral-900 border border-neutral-800 shadow-2xl"
+      class="w-full max-w-lg p-6 bg-neutral-900 border border-neutral-800"
       onclick={(e) => e.stopPropagation()}
     >
       <div class="flex justify-between items-center mb-6">

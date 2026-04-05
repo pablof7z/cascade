@@ -23,9 +23,9 @@
       'bg-emerald-500',
       'bg-neutral-600',
       'bg-rose-500',
-      'bg-cyan-500',
-      'bg-teal-500',
-      'bg-orange-500',
+      'bg-neutral-700',
+      'bg-neutral-800',
+      'bg-neutral-900',
     ];
     let hash = 0;
     for (let i = 0; i < pubkey.length; i++) {

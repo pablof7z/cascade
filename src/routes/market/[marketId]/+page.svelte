@@ -128,7 +128,7 @@
       return `${x},${y}`;
     }).join(' ');
 
-    return `<svg width="${width}" height="${height}" class="inline-block"><polyline fill="none" stroke="${positive ? '#22c55e' : '#ef4444'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${points}"/></svg>`;
+    return `<svg width="${width}" height="${height}" class="inline-block"><polyline fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${points}"/></svg>`;
   }
 </script>
 

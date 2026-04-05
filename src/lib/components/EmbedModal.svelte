@@ -17,7 +17,7 @@
 
   let baseUrl = $derived(browser ? window.location.origin : 'https://cascade.bet');
   let embedUrl = $derived(`${baseUrl}/embed/market/${marketId}${theme === 'light' ? '?theme=light' : ''}`);
-  let iframeCode = $derived(`<iframe src="${embedUrl}" width="380" height="200" frameborder="0" style="border-radius: 12px; max-width: 100%;"></iframe>`);
+  let iframeCode = $derived(`<iframe src="${embedUrl}" width="380" height="200" frameborder="0" style="border-radius: 8px; max-width: 100%;"></iframe>`);
 
   async function handleCopy() {
     try {
@@ -52,7 +52,7 @@
 
     <!-- Modal -->
     <div 
-      class="relative bg-neutral-900 border border-neutral-700 rounded-lg w-full max-w-lg mx-4 p-6 shadow-2xl"
+      class="relative bg-neutral-900 border border-neutral-700 rounded-lg w-full max-w-lg mx-4 p-6"
       transition:scale={{ duration: 200, easing: cubicOut }}
     >
       <!-- Header -->
@@ -110,7 +110,7 @@
             width="100%"
             height="180"
             frameBorder="0"
-            style="border-radius: 12px;"
+            style="border-radius: 8px;"
             title="Embed preview"
           />
         </div>
@@ -135,7 +135,7 @@
             : 'bg-emerald-600 hover:bg-emerald-500 text-white'
         }"
       >
-        {copied ? '✓ Copied!' : 'Copy Embed Code'}
+        {copied ? 'Copied!' : 'Copy Embed Code'}
       </button>
     </div>
   </div>

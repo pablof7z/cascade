@@ -216,7 +216,7 @@
           </button>
 
           {#if userMenuOpen}
-            <div class="absolute right-0 mt-2 w-48 bg-neutral-900 border border-neutral-700 shadow-xl py-1 z-50">
+            <div class="absolute right-0 mt-2 w-48 bg-neutral-900 border border-neutral-700 py-1 z-50">
               <a
                 href="/bookmarks"
                 class="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"

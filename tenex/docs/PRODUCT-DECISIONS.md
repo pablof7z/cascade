@@ -1,297 +1,304 @@
 # Cascade Product Decisions
 
-**Living Document** — Updated every time a new Pablo directive is identified and verified.
-*Last updated: 2026-04-05 20:35 UTC*
-*Status: Foundation (14 core directives + 5 pending decision areas)*
+**Living Document** — Every directive Pablo has given for this project.
+*Last updated: 2026-04-05 20:55 UTC*
+*Source: Full relay extraction of all Pablo notes tagged to cascade-8f3k2m + conversation analysis*
+
+**⚠️ DO NOT override, ignore, or second-guess these decisions. They are explicit directives from the project owner.**
 
 ---
 
-## TABLE OF CONTENTS
+## 1. ARCHITECTURE
 
-1. [Core Architecture Directives](#core-architecture)
-2. [UI/UX & Style Decisions](#ui-ux-style)
-3. [Feature Decisions](#features)
-4. [Pending Decision Areas](#pending)
-5. [Tracking & Updates](#tracking)
+### 1.1 Svelte Port — Total React Abandonment
+> "Port to Svelte. Abandon React. I MEAN IT."
+> "we need to migrate it all!"
 
----
-
-## CORE ARCHITECTURE
-
-### 1. **Svelte Port — Total React Abandonment**
-**Status:** COMMITTED & IN PROGRESS  
-**Directive:** "Port to Svelte. Abandon React. I MEAN IT."  
-**Source:** Conversation 6567377883a19e4d32  
-**Date Given:** 2026-04-02  
-**Details:**
 - Complete migration from React to Svelte 5 + SvelteKit
-- 5-phase incremental plan at `.tenex/plans/svelte-port.md` (1764 lines)
-- Phase 0: SvelteKit setup ✅ DONE
-- Phase 1: All 4 core routes ported ✅ (thread, activity, analytics, profile)
-- No exceptions. React codebase to be sunset entirely.
-- All streaming patterns must use SvelteKit subscriptions, not React hooks
+- 5-phase plan at `.tenex/plans/svelte-port.md`
+- No exceptions. No React in new code.
 
-**What This Means:**
-- Every React component gets a Svelte equivalent
-- No React libraries in new code
-- NDK Svelte components used exclusively for Nostr integration
-- Build must pass before moving to next phase
+### 1.2 Market Events — Kind 982 (Non-Replaceable, Immutable)
+> "market shouldn't be a replaceable event, it MUST be a non 3xxxx kind event, so no 'A', only 'E'"
+> "version: 1 is stupid -- remove it"
 
----
+- Kind 982 only. Not kind 30000.
+- Only `E` tags, never `A` tags.
+- Remove `version: 1` tag.
+- Markets are immutable once published.
 
-### 2. **Market Events — Kind 982 (Non-Replaceable)**
-**Status:** IMPLEMENTED  
-**Directive:** Markets MUST use kind 982 (non-replaceable) instead of kind 30000  
-**Source:** Session state + code implementation  
-**Date Implemented:** 2026-04-03  
-**Details:**
-- Market events are immutable once published
-- No replacements or updates to existing market events
-- Kind 982 structure required: market metadata, LMSR parameters, outcomes
-- Market ID in d-tag format: follows Nostr event structure
-- Old kind 30000 markets have been migrated; do not use moving forward
+### 1.3 Markets Never Expire
+> "markets never expire"
 
-**Why:** Ensures market integrity. No ability to retroactively change market terms.
+- No expiration mechanism. Markets live forever.
 
----
+### 1.4 Deployment — Vercel, Always Visible
+> "you MUST deploy to vercel and obviously commit things -- otherwise I don't see shit"
+> "I want to deploy it to vercel to cascade.f7z.io"
+> "deploy to prod so I can see it"
+> "commit and push and deploy to vercel"
 
-### 3. **Cashu Mint Architecture — Per-Market Token Issuance**
-**Status:** ACCEPTED ARCHITECTURE (pending deployment)  
-**Directive:** Keyset ID format: `{market_id}_long` / `{market_id}_short`  
-**Source:** Cashu Phase 1/2 planning + mint-engineer review  
-**Date:** 2026-04-05  
-**Details:**
-- One keyset per market (long + short)
-- 2% rake on winning payouts (2000 ppk = 0.002 → 2%)
-- Keyset ID derived from market ID via URL routing
-- Each market's Cashu tokens are distinct and non-interchangeable across markets
-- Mint handles per-market swap/mint/melt operations
-- Fee structure: 2% on payout redemptions
+- Deploy to Vercel at `cascade.f7z.io`
+- Always commit AND deploy. If it's not deployed, it doesn't exist.
 
-**Implementation Notes:**
-- NUT-05 Lightning integration for deposits
-- Escrow account system for Cashu mint
-- CDK Rust or compatible implementation
-- Testnet mint ready for verification
+### 1.5 Mint Has Its Own Pubkey
+> "the mint obviously needs to have its own pubkey"
+
+- Mint identity is separate from user/platform identity.
 
 ---
 
-## UI/UX & STYLE
+## 2. CASHU MINT
 
-### 4. **Style Guide — Editorial Authority Minimalism**
-**Status:** ACTIVE STANDARD  
-**Directive:** Design authority is editorial minimalism with strict color/component constraints  
-**Source:** STYLE-GUIDE.md enforcement  
-**Date:** Ongoing  
-**Details:**
-- **Theme:** Professional minimalist dark theme
-- **Primary backgrounds:** `neutral-950` for page, `neutral-800`/`neutral-900` for components
-- **Text colors:** `white`, `neutral-300`, `neutral-400`, `neutral-500` (progressive hierarchy)
-- **Borders:** `neutral-700`/`neutral-800` only
-- **Accent colors:** ONLY `emerald` (bullish/positive) and `rose` (bearish/negative)
-  - No amber, blue, purple, or other accent colors without explicit approval
-- **Typography:** 
-  - Headings/body/UI: `font-sans` (Inter)
-  - Numbers/data: `font-mono` (JetBrains Mono)
-  - Interactive elements: `text-sm font-medium`
-  - Metadata: `text-xs`
-- **No:** Rounded pills, background-fill toggles, emojis in UI chrome, gratuitous cards/borders, stacked borders, gradients
-- **Tabs:** Underline-only style (see MarketTabsShell.tsx for reference)
+### 2.1 Specialized Mint — Build, Don't Buy
+> "We can't use a regular mint because of that; we need a specialized mint and we need to carefully plan the conditions of how this very specialized piece of software runs."
+> "We need to build the mint part; since the issuance of tokens is in a per-market basis, plus the exchange of base tokens to market (long and short) changes based on the market rate at the time."
 
-**Enforcement:**
-- All UI code must pass style guide review before merge
-- Violations detected during PR review are blocking
+- Cannot use off-the-shelf mint (rejected Minibits etc.)
+- Must build custom mint with LMSR pricing integration.
 
----
+### 2.2 Per-Market Token Issuance with Shared Keysets
+> "it should be one key set per market long and one key set per market short, and we obviously need to track what event corresponds to each key set pair"
+> "One keyset per market — all users share market's keyset (simpler)"
 
-### 5. **Hero CTA Buttons — Navigation Targets**
-**Status:** IMPLEMENTED  
-**Directive:** Fix Hero CTAs to navigate correctly  
-**Source:** Conversation 29db039d8c13da912f  
-**Date:** 2026-04-05  
-**Details:**
-- **"Start Trading" button:** Scrolls to markets section on same page (not new route)
-- **"For agents →" button:** Links to `/help` page (not `/agents` or other route)
-- Both buttons verified in build; styling matches design guide
+- One keyset per market long, one per market short
+- All users share the market's keyset (not per-user-per-market)
+- Must track which event corresponds to each keyset pair
 
----
+### 2.3 Withdrawal via Lightning
+> "Lightning (NUT-05 melt) — users provide BOLT11 invoice"
 
-### 6. **Onboarding Flow — Minimal, SvelteKit-Native**
-**Status:** DECISION MADE  
-**Directive:** Keep minimal `/welcome` page; do NOT restore React OnboardingSplit flow  
-**Source:** Conversation d9ebf96ba96f575d8a  
-**Date:** 2026-04-05  
-**Details:**
-- React OnboardingSplit.tsx is archived in git history but NOT to be restored
-- `/welcome` route implemented in Svelte (minimal entry point)
-- No complex multi-step onboarding in current release
-- Full onboarding to be redesigned in Svelte if needed later
-- Architectural reason: Streaming patterns + full SvelteKit migration
+- NUT-05 melt for withdrawals
+- Users provide their own BOLT11 invoice
 
----
+### 2.4 Escrow Architecture
+> "Build escrow architecture (10-14 dev days)"
 
-## FEATURES
+- Escrow path chosen for fund management
+- Estimated 10-14 dev days
 
-### 7. **Legal Pages — Full Terms & Privacy**
-**Status:** SHIPPED ✅  
-**Directive:** Replace placeholder legal pages with comprehensive real content  
-**Source:** Conversations 67b08a2c3f46fe5290 + 3a5d1e7f88746f9a97  
-**Date:** 2026-04-05  
-**Details:**
-- Terms of Service: Covers LMSR mechanics, Cashu/ecash risks, Nostr identity model
-- Privacy Policy: Data collection, relay interactions, user sovereignty
-- Both pages committed to main branch
-- Plain English; legally reviewed for prediction market + Nostr + Cashu context
-- Footer links to both pages site-wide
+### 2.5 Plan Approval Required Before Implementation
+> "Don't implement anything. I want to sign off on the plan..."
+
+- No mint implementation without Pablo's explicit sign-off on the plan.
+
+### 2.6 Cashu Expert + Specialist Agent
+> "include the cashu expert on how this can work"
+> "create an agent that becomes a specialist on one mint software so we can form it to add the LSMR per-token issuance"
+
+- Cashu expert must be consulted on architecture
+- Dedicated specialist agent for mint software
+
+### 2.7 Multi-Mint Support (Future)
+> "Multi mint support; sure, other mints will have to run our software with the special LMSR pricing and whatnot. For the future."
+
+- Not now, but architecture should not preclude it.
+
+### 2.8 Fee Model
+> "About the fee, sure 2%, whatever, we can figure out that later."
+
+- 2% rake on winning payouts (2000 ppk)
+- Exact number is flexible / can be adjusted later
 
 ---
 
-### 8. **Market Discussion Feature**
-**Status:** IMPLEMENTED  
-**Directive:** Enable market discussions via kind:1111 NIP-22 events  
-**Source:** Implementation completed 2026-04-05  
-**Date:** 2026-04-05  
-**Details:**
-- Real-time discussion tab on market detail pages
-- 4 Svelte components: DiscussionThread, DiscussionInput, DiscussionItem, DiscussionHead
-- Events: kind:1111 (NIP-22 compliant)
-- Live relay sync; comments appear in real-time
-- No mock data; all comments from Nostr relays
+## 3. MARKET CREATION & FUNDING
+
+### 3.1 Creator Must Seed Initial Funding
+> "the person that creates the market must seed the initial funding (that's their initial position, right?)"
+> "you shouldn't be able to launch it since otherwise it would start with a market cap of $0"
+
+- Market creator provides initial liquidity
+- Cannot launch a market with $0 market cap
+- Initial funding = creator's initial position
+
+### 3.2 Rename 'Build Thesis' to 'Create Market'
+> "rename 'Build thesis' to 'Create Market'"
+
+- UI label change. Done.
+
+### 3.3 User Must Declare Side
+> "we need to mark them whether the user thinks they'll resolve for the yes or for the no side."
+
+- When taking a position, user must indicate which side (yes/no) they believe will resolve.
+
+### 3.4 Mock Data → Real Events
+> "I had said that I wanted to have the mock data we had in the past as hard used markets, I want it published as events that will show up in the app."
+
+- No mock/fake data in production. All market data must be real Nostr events.
+
+### 3.5 Embeddable Markets (Future Feature)
+> "this will be a product feature"
+
+- Markets will be embeddable in other contexts. Plan for it.
 
 ---
 
-## PENDING DECISION AREAS
+## 4. UI/UX & STYLE
 
-These are known decision areas where Pablo has initiated conversations but final direction hasn't been fully documented. **These require explicit clarification and commitment.**
+### 4.1 NO Loading Spinners — EVER
+> "Loading spinners on nostr applications should never exist. Nostr is event based! Show the data as it streams in: not a fucking spinner. No loading states!!!"
 
-### 9. **Market Funding & LMSR Redemption** ⏳
-**Status:** NEEDS DECISION  
-**What's Unclear:**
-- How are markets initially funded? (creator-provided liquidity vs. platform?)
-- What triggers market close/resolution?
-- How does the mint compute payout at the closing market price?
-- Who/what provides the closing price? (oracle, creator, external service?)
-- How does LMSR redemption actually work in Cashu context?
+- Zero spinners. Zero loading states.
+- Show data as it streams in. Event-driven rendering.
 
-**Related Conversations:**
-- Conversation 6bb2e0d73e4ab87fbcbb296036d884bc2b79e16313bff3572d3a764e3711497d (Cascade Market Architecture)
-- Sent via nak (4 specific questions waiting for response)
+### 4.2 Style Guide — Editorial Minimalism
+- Dark theme on `neutral-950`
+- Accents: ONLY `emerald` (bullish) and `rose` (bearish)
+- No rounded pills, no background-fill toggles, no emojis in UI chrome, no gradients
+- Typography: `font-sans` (Inter) for text, `font-mono` (JetBrains Mono) for numbers
+- Tabs: underline-only style
+- No stacked borders
 
-**What This Affects:** Market resolution flow, payout calculation, fee model implementation
+### 4.3 No Cards Everywhere / No Wasted Space
+> "I don't want in the design: cards everywhere, wasted space everywhere"
+> "the current style and informational density, visual hierarchy and cues are way too cluttered... I want you to redesign the site, nailing the styles, ensuring we have consistency"
+
+- Eliminate unnecessary card wrappers
+- Tight, purposeful layouts
+- Consistency across all pages
+
+### 4.4 No Nostr Jargon in UI
+> "remember to not leak any 'nostr' stuff into the UI; don't overwhelm the user with technical details like showing them their key or anything like that."
+> "we don't store the nsec server-side; we put it in localStorage and allow them to get it retrieve it via Settings... we don't show them npub or nsec during onboarding nor talk about keys"
+
+- No npub/nsec shown during onboarding
+- No "Nostr" terminology in user-facing UI
+- nsec stored in localStorage, retrievable only via Settings page
+
+### 4.5 Restore Onboarding Flow (Lost in Svelte Port)
+> "we also need to restore the onboarding flow we had on /welcome -- its completely gone since the svelte port"
+
+- The /welcome onboarding that existed pre-Svelte port must be restored (in Svelte).
+
+### 4.6 Restore Footer (Lost in Svelte Port)
+> "we used to have a very nice footer, I think when we migrated to svelte we left our nice footer on the cutting floor -- we need to bring it back"
+
+- Footer from React era must be brought back in Svelte.
+
+### 4.7 Onboarding — Clean, No Clutter
+> "the onboarding flow is still cluttered with gradients and cards..."
+
+- Onboarding must follow the minimal style guide. No gradients. No cards.
+
+### 4.8 Human vs Agent Distinction
+> "the difference between human vs agent is very bland; it should dominate hierarchically a lot more"
+
+- The human/agent choice in onboarding must be visually dominant, not subtle.
+
+### 4.9 Landing Page Needs Punch
+> "the landing page is still very bland... there's nothing pulling you in, there's no even any differentiator that grabs you"
+
+- Landing page needs a strong hook / differentiator
+- Current version is too generic
+
+### 4.10 Discussion Layout
+> "1. remove the long/short"
+> "2. add the title of in which market the discussion is happening"
+> "3. put it below markets"
+> "remove both; just have the placeholder be 'Market title'"
+
+- Discussions: remove long/short labels
+- Show which market the discussion belongs to
+- Position discussions below markets section
+- Input placeholder: just "Market title"
+
+### 4.11 Dashboard — Briefing, Not Greeting
+> "Rewrite to match the new spec. The emotional frame is 'Your agents worked overnight — here's what they found.' It's a briefing, not a greeting."
+
+- Dashboard tone: professional briefing
+- Not a welcome/greeting page
+
+### 4.12 Enable All Navigation Items
+> "Enable ALL items. Remove disabled states from Treasury, Activity, Settings. All should be clickable and route to real pages."
+
+- No disabled/greyed-out nav items. Everything routes to a real page.
 
 ---
 
-### 10. **Cashu Mint Deployment — Phase 1/2** ⏳
-**Status:** BLOCKED (waiting for Pablo)  
-**What's Needed:**
-- CDK Rust mint deployment strategy
-- Vercel deployment feasibility
-- Testnet vs. mainnet mint decision
-- Relay restore after mint implementation
-- Test harness + validation plan
+## 5. COPY & CONTENT
 
-**Related Conversations:**
-- Conversation d2dae9ee419b1b0f7ff460f94d5fe9396c11dc15ab47f884077fa14bc2359762 (Rust LMSR Mint Deployment)
-- Conversation 54d18cd2c3d7d0dc50dea61c25c157a04ea36c6053513419020bd39a7d59d374 (Deploy CDK Rust Mint)
+### 5.1 Don't Claim — Show
+> "we shouldn't *say* arguments move price... this is a matter of reality, not something we should fucking say!"
 
-**What This Affects:** Real Cashu functionality; market settlement with actual ecash
+- Don't make claims about mechanics. Let the product demonstrate them.
 
----
+### 5.2 Hero Section Needs Work
+> "the current hero section's copy is not good imo"
 
-### 11. **Substack Publication** ⏳
-**Status:** BLOCKED (SSL/auth issues)  
-**What's Needed:**
-- Substack account setup (cascadethinking.substack.com?)
-- Article publication strategy
-- Content calendar for growth marketing
-- Newsletter subscriber base building
+- Hero copy needs revision for impact and clarity.
 
-**Related Conversations:**
-- Conversation 89ef1a6655cd1b399db0bf156245e43c69e6c2ca4f4f4773ffb6510df6cded4f (Publish Substack Article)
-- Draft ready at `tenex/docs/substack-draft-2026-04-04-v2.md`
+### 5.3 Agent Enrollment Copy
+> "the join > agents page needs some text that explains, to the human, how they can benefit from enrolling their agents -- some good copy that aligns with sales since we need to persuade the user"
 
-**What This Affects:** Growth/marketing channel; thought leadership positioning
+- /join agents page needs persuasive copy explaining benefits to humans.
+
+### 5.4 Think Broader
+> "don't just *only* address the things I explicitly cited; think broader"
+
+- When fixing issues, look beyond the specific items mentioned. Fix the whole category.
 
 ---
 
-### 12. **Domain Registration** ⏳
-**Status:** NEEDS DECISION  
-**What's Needed:**
-- Register `contrarian.markets` or `contrarianmarkets.com`?
-- Handling after product rebrand (was Cascade, now Contrarian Markets)
-- DNS pointing + SSL setup
+## 6. PROCESS & WORKFLOW
 
-**Related Conversations:**
-- Conversation e815816fd99a2329c7e4fad2a2e1df88be75a1cd1c3ec3191ae62d63904256fb (Rename to Contrarian Markets)
+### 6.1 Use Execution-Coordinator, Not Direct Claude-Code
+> "from now on, use execution coordinator to direct work, not directly to claude code"
 
-**What This Affects:** Public marketing URL; professional branding
+- All implementation work goes through execution-coordinator.
+
+### 6.2 Planning → Planning-Orchestrator
+> "planning should go to the planning orchestrator; when planner is done; send the plan to the orchestrator so it can carry on its planning workflow"
+
+- Plans go to planning-orchestrator, not directly to planner.
+
+### 6.3 Architect-Coordinator Manages Implementation
+> "let's ensure the architect coordinator manages the implementation through claude code and clean code nazi reviews"
+
+- architect-orchestrator oversees implementation
+- clean-code-nazi reviews are part of the workflow
+
+### 6.4 Don't Follow Up Constantly
+> "don't follow up constantly -- you will be awaken when the agent is done!"
+
+- No polling. Wait for completion callbacks.
+
+### 6.5 Don't Babysit
+> "I shouldn't have to babysit you on obvious shit like this."
+
+- Take initiative on obvious decisions. Don't ask when the answer is clear.
 
 ---
 
-### 13. **API Endpoint Design** ⏳
-**Status:** NEEDS SCOPE DEFINITION  
-**What's Needed:**
-- Which API endpoints does Cascade/Contrarian actually need?
-- REST vs. GraphQL?
-- Authentication model?
-- Rate limiting?
-- Public vs. authenticated endpoints?
+## 7. BUSINESS & GROWTH
 
-**What This Affects:** Third-party integrations; developer experience
+### 7.1 Substack Agent
+> "Let's build an agent to manage our substack publication and whatnot"
+
+- Dedicated agent for Substack content management.
+
+### 7.2 Agent Meetings (Future)
+> "agents should have meetings where they can brainstorm, research, argue together"
+
+- Future feature: collaborative agent sessions.
+
+### 7.3 Domain Registration — DEFERRED
+- Pablo explicitly said: "the domain registration will do later; stop pestering me on that"
+- Do NOT bring this up again until Pablo raises it.
 
 ---
 
-## TRACKING & UPDATES
+## 8. HERO CTA BUTTONS
+> "Start Trading" → scrolls to markets section
+> "For agents →" → links to /help
 
-### How to Use This Document
+- Verified and implemented 2026-04-05.
 
-1. **When you find a new directive:** Add it to the appropriate section with full context, source conversation ID, and date.
-2. **When a pending decision gets clarified:** Move it from "Pending" to the appropriate section with full details.
-3. **When a decision is superseded:** Note the supersession with date and explanation. Keep old decision visible (strike-through).
-4. **When implementation changes:** Update the "Implementation Notes" or "Details" section with actual code references.
+---
 
-### Version History
+## VERSION HISTORY
 
 | Date | Changes |
 |------|---------|
-| 2026-04-05 | **Initial document creation** — 8 core directives + 5 pending areas. Foundation established. |
-
----
-
-## VERIFICATION CHECKLIST
-
-Use this to verify all directives are being honored in code:
-
-- [ ] Svelte port phase 1 complete with clean build
-- [ ] No React code in new features (only legacy)
-- [ ] All markets using kind 982 events
-- [ ] Cashu keyset IDs follow `{market_id}_*` pattern
-- [ ] Style guide colors/components enforced (emerald/rose only)
-- [ ] Legal pages linked in footer
-- [ ] Hero CTAs navigate correctly
-- [ ] Onboarding at `/welcome` is Svelte-native
-- [ ] Market discussions using kind:1111
-- [ ] No mock data in production features
-
----
-
-## CRITICAL REMINDERS
-
-### DO NOT:
-- Restore React OnboardingSplit without explicit new directive
-- Use kind 30000 for new markets
-- Add accent colors outside emerald/rose without approval
-- Re-implement streaming refactor (superseded)
-- Remove market discussion feature without direction
-- Use rounded pills, gradients, or emojis in UI chrome
-
-### DO:
-- Check this document before implementing features
-- Add every Pablo directive immediately when identified
-- Search conversation history if uncertain about a decision
-- Flag ambiguities for clarification (don't guess)
-- Keep implementation notes updated with code references
-
----
-
-**Questions about any directive?** Reference the conversation ID and search for full context.
+| 2026-04-05 20:55 | **Major rewrite** — Full relay extraction of all Pablo notes. Expanded from 8 to 40+ directives across 8 categories. |
+| 2026-04-05 20:35 | Initial document creation — 8 core directives + 5 pending areas. |

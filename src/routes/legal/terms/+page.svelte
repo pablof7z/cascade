@@ -1,0 +1,40 @@
+<script lang="ts">
+</script>
+
+<div class="min-h-screen bg-neutral-950 py-20">
+  <div class="max-w-3xl mx-auto px-6">
+    <h1 class="text-4xl font-bold text-white mb-8">Terms of Service</h1>
+    <div class="prose prose-invert prose-neutral max-w-none">
+      <div class="bg-amber-500/10 border border-amber-500/30 rounded-md p-6 mb-8">
+        <p class="text-amber-400 font-medium mb-2">Coming Soon</p>
+        <p class="text-neutral-400 text-sm">
+          Our Terms of Service are being finalized. Please check back soon for the complete document.
+        </p>
+      </div>
+      <p class="text-neutral-400">
+        By using Contrarian Markets, you agree to participate in our prediction markets platform responsibly. 
+        Full terms and conditions will be published here shortly.
+      </p>
+      <p class="text-neutral-500 text-sm mt-6">
+        Questions? Contact us on{' '}
+        <a 
+          href="https://x.com/ArekBulski" 
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-emerald-500 hover:text-emerald-400"
+        >
+          X/Twitter
+        </a>
+        .
+      </p>
+    </div>
+    <div class="mt-12 pt-8 border-t border-neutral-800">
+      <a 
+        href="/" 
+        class="text-neutral-400 hover:text-white transition-colors"
+      >
+        ← Back to Home
+      </a>
+    </div>
+  </div>
+</div>

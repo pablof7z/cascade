@@ -81,8 +81,7 @@
       </h2>
       <div class="border border-neutral-800 bg-neutral-900 divide-y divide-neutral-800">
         {#each actionItems as item (item.id)}
-          <a
-            href={`/dashboard/field/${item.fieldId}`}
+          <div
             class="flex items-start gap-3 px-4 py-3.5 hover:bg-neutral-800/50 transition-colors"
           >
             <div class={`mt-0.5 shrink-0 text-xs px-2 py-0.5 border rounded-sm ${actionTypeStyle[item.type]}`}>
@@ -96,7 +95,7 @@
               <p class="text-xs text-neutral-500">{item.agent}</p>
               <p class="text-xs text-neutral-600 mt-0.5">{item.at}</p>
             </div>
-          </a>
+          </div>
         {/each}
       </div>
     </section>
@@ -116,13 +115,13 @@
           {hasFields ? 'Your fields' : 'Fields'}
         </h2>
         {#if hasFields}
-          <a href="/dashboard/fields" class="text-xs text-neutral-500 hover:text-neutral-300 transition-colors">
+          <span class="text-xs text-neutral-500">
             View all →
-          </a>
+          </span>
         {:else}
-          <a href="/dashboard/fields" class="text-xs font-medium text-white border border-neutral-700 px-3 py-1 hover:border-neutral-500 transition-colors">
+          <span class="text-xs font-medium text-white border border-neutral-700 px-3 py-1">
             + New field
-          </a>
+          </span>
         {/if}
       </div>
 
@@ -132,8 +131,7 @@
             {@const hostedCount = field.council.filter(a => a.provisioning === 'hosted').length}
             {@const statusLine = field.meeting.summary || 'Agents are monitoring.'}
             {@const statusTone = field.attention === 'needs-input' ? 'counter' : field.attention === 'review' ? 'counter' : 'neutral'}
-            <a
-              href={`/dashboard/field/${field.id}`}
+            <div
               class="block border border-neutral-800 bg-neutral-900 p-5 hover:border-neutral-600 hover:bg-neutral-800/60 transition-colors"
             >
               <div class="flex items-start justify-between gap-3">
@@ -154,7 +152,7 @@
                 <span>{fmt.format(field.capital.deployedUsd)} deployed</span>
                 <span class="ml-auto">{field.meeting.updatedAt}</span>
               </div>
-            </a>
+            </div>
           {/each}
         </div>
       {:else}
@@ -163,12 +161,11 @@
           <p class="text-xs text-neutral-500 max-w-xs mx-auto leading-relaxed">
             Fields are research and trading workspaces where your agents deliberate, gather evidence, and propose positions.
           </p>
-          <a
-            href="/dashboard/fields"
-            class="inline-block mt-5 text-xs font-medium text-white border border-neutral-700 px-4 py-2 hover:border-neutral-500 transition-colors"
+          <span
+            class="inline-block mt-5 text-xs font-medium text-white border border-neutral-700 px-4 py-2"
           >
             Create your first field →
-          </a>
+          </span>
         </div>
       {/if}
     </div>

@@ -41,6 +41,7 @@
   let loadingMarkets = $state(true);
   let loadingPositions = $state(true);
   let loadingProfile = $state(true);
+  let activeTab = $state<'markets' | 'positions'>('markets');
 
   // Normalize pubkey: accept both npub and hex
   $effect(() => {
@@ -285,23 +286,25 @@
   </div>
 
   <!-- Tabs -->
-  <div class="border-b border-neutral-800 px-6">
-    <div class="flex gap-1">
-      <button
-        type="button"
-        onclick={() => {}}
-        class="py-4 px-1 text-sm font-medium text-white border-b-2 border-white -mb-px"
-      >
-        Markets
-      </button>
-      <button
-        type="button"
-        onclick={() => {}}
-        class="py-4 px-1 text-sm font-medium text-neutral-500 hover:text-neutral-300"
-      >
-        Positions
-      </button>
-    </div>
+  <div class="flex gap-1 border-b border-neutral-800">
+    <button
+      type="button"
+      onclick={() => activeTab = 'markets'}
+      class="py-4 px-1 text-sm font-medium {activeTab === 'markets'
+        ? '-mb-px border-b-2 border-white text-white'
+        : 'text-neutral-500 hover:text-neutral-300'}"
+    >
+      Markets
+    </button>
+    <button
+      type="button"
+      onclick={() => activeTab = 'positions'}
+      class="py-4 px-1 text-sm font-medium {activeTab === 'positions'
+        ? '-mb-px border-b-2 border-white text-white'
+        : 'text-neutral-500 hover:text-neutral-300'}"
+    >
+      Positions
+    </button>
   </div>
 
   <!-- Tab Content -->

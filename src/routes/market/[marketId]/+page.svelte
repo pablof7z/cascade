@@ -97,13 +97,38 @@
 
     tradeLoading = true;
     tradeError = null;
+    tradeSuccess = false;
 
-    // Simulate trade execution
-    // In production, this would call the trading service
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const result = await executeTrade(market, selectedSide, amount);
 
     tradeLoading = false;
-    // Trade would be executed here
+
+    if (!result.success) {
+      // Map typed errors to user-friendly messages
+      switch (result.error.kind) {
+        case 'insufficient_balance':
+          tradeError = `Insufficient balance. You have ${result.error.balance} sats, need ${result.error.required} sats.`;
+          break;
+        case 'wallet_unavailable':
+          tradeError = 'Wallet unavailable. Please set up your Cashu wallet to trade.';
+          break;
+        case 'mint_unavailable':
+          tradeError = 'Mint unavailable. Please try again shortly.';
+          break;
+        case 'invalid_amount':
+          tradeError = 'Invalid amount. Enter a positive number.';
+          break;
+        case 'trade_failed':
+          tradeError = `Trade failed: ${result.error.reason}`;
+          break;
+        default:
+          tradeError = 'Trade failed. Please try again.';
+      }
+    } else {
+      // Success — clear error, show success indicator
+      tradeError = null;
+      tradeSuccess = true;
+    }
   }
 
   function navigateToThread(threadId: string) {

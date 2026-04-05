@@ -679,7 +679,7 @@
     <div class="max-w-7xl mx-auto px-6">
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="text-sm text-neutral-500">
-          Cascade Markets — Powered by Nostr & Cashu
+          Cascade Markets
         </div>
         <div class="flex gap-6 text-sm text-neutral-600">
           <a href="/help" class="hover:text-neutral-400 transition-colors">Help</a>

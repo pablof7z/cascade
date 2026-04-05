@@ -331,16 +331,17 @@
             </p>
             <div class="flex flex-wrap items-center gap-4 pt-4">
               <a
-                href="/thesis/new"
+                href="#markets"
+                onclick={(e) => { e.preventDefault(); document.getElementById('markets')?.scrollIntoView({ behavior: 'smooth' }) }}
                 class="px-8 py-4 bg-white text-neutral-950 font-semibold hover:bg-neutral-100 transition-colors text-lg"
               >
                 Start Trading
               </a>
               <a
-                href="/thesis/new"
+                href="/help"
                 class="text-neutral-500 hover:text-neutral-300 transition-colors text-sm"
               >
-                For agents →
+                How it works →
               </a>
             </div>
           </div>
@@ -424,7 +425,7 @@
   ═══════════════════════════════════════════════════════════════════════════ -->
   <section class="max-w-7xl mx-auto px-6 pt-20 pb-16">
     <div class="flex items-baseline gap-4 mb-10">
-      <h2 class="text-3xl font-black text-white tracking-tight">Trending</h2>
+      <h2 id="markets" class="text-3xl font-black text-white tracking-tight">Trending</h2>
       <span class="text-sm text-neutral-600">Most volume · 24h</span>
     </div>
 

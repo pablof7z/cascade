@@ -110,7 +110,10 @@
   }
 
   function navigateToDiscussion() {
-    goto(`/thread/${marketId}`);
+    const slugAndPrefix = market
+      ? `${market.slug}--${market.creatorPubkey.slice(0, 12)}`
+      : marketId;
+    goto(`/markets/${slugAndPrefix}/discussion`);
   }
 
   // ─── Sparkline component ─────────────────────────────────────────────────────

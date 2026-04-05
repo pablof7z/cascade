@@ -9,6 +9,7 @@
   import type { NDKEvent } from '@nostr-dev-kit/ndk'
   import type { Market } from '../../../../market'
   import type { MarketEntry } from '../../../../storage'
+  import { parseMarketSlug } from '$lib/marketSlug'
 
   // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -222,9 +223,17 @@
               {#each unsettledPositions as pos (pos.id)}
                 <tr class="text-sm">
                   <td class="px-4 py-3">
-                    <a href="/thread/{pos.marketId}" class="text-white hover:text-neutral-300">
-                      {pos.marketName}
-                    </a>
+                    {#if markets.get(pos.marketId)?.market.creatorPubkey}
+                      {@const entry = markets.get(pos.marketId)}
+                      {@const slugAndPrefix = `${entry!.market.slug}--${entry!.market.creatorPubkey.slice(0, 12)}`}
+                      <a href="/markets/{slugAndPrefix}" class="text-white hover:text-neutral-300">
+                        {pos.marketName}
+                      </a>
+                    {:else}
+                      <a href="/thread/{pos.marketId}" class="text-white hover:text-neutral-300">
+                        {pos.marketName}
+                      </a>
+                    {/if}
                   </td>
                   <td class="text-right px-4 py-3">
                     <span class="font-mono {pos.direction === 'yes' ? 'text-emerald-400' : 'text-rose-400'}">

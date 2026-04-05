@@ -456,17 +456,36 @@ export async function fetchMarketByEventId(eventId: string): Promise<NDKEvent | 
 }
 
 /**
- * Fetch a single Cascade market by its slug (d-tag).
- * Returns null if no matching market is found.
+ * Fetch all Cascade markets by slug (d-tag).
+ * Returns empty array if no matching markets are found.
  */
-export async function fetchMarketBySlug(slug: string): Promise<NDKEvent | null> {
+export async function fetchMarketBySlug(slug: string): Promise<NDKEvent[]> {
   const filter: NDKFilter = {
     kinds: [982 as NDKKind],
     '#d': [slug],
   }
   const events = await fetchEvents(filter)
-  if (events.size === 0) return null
-  return Array.from(events)[0]
+  return Array.from(events)
+}
+
+/**
+ * Fetch a single Cascade market by slug and optional pubkey prefix.
+ * When pubkeyPrefix is provided, returns the market whose creatorPubkey starts with it.
+ * When pubkeyPrefix is not provided, returns the first matching market (backwards compatible).
+ * Returns null if no matching market is found.
+ */
+export async function fetchMarketBySlugAndPubkey(
+  slug: string,
+  pubkeyPrefix?: string,
+): Promise<NDKEvent | null> {
+  const markets = await fetchMarketBySlug(slug)
+
+  if (!pubkeyPrefix) {
+    return markets[0] || null
+  }
+
+  const match = markets.find((m) => m.pubkey.startsWith(pubkeyPrefix))
+  return match || null
 }
 
 /**

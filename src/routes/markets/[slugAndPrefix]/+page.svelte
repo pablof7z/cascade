@@ -46,7 +46,7 @@
   
   function navigateToDiscussion() {
     if (!market) return;
-    goto(`/markets/${formatMarketSlug(market)}/discussion`);
+    goto(`/thread/${market.slug}`);
   }
   
   function navigateToProfile(pubkey: string) {
@@ -148,103 +148,81 @@
             <div class="flex gap-2 mb-4">
               <button
                 onclick={() => selectedSide = 'LONG'}
-                class="flex-1 py-2 text-sm font-medium rounded transition-colors"
+                class="flex-1 px-4 py-2 text-sm font-medium rounded-sm transition-colors"
                 class:bg-emerald-600={selectedSide === 'LONG'}
-                class:text-white={selectedSide === 'LONG'}
                 class:bg-neutral-800={selectedSide !== 'LONG'}
+                class:text-white={selectedSide === 'LONG'}
                 class:text-neutral-400={selectedSide !== 'LONG'}
               >
-                YES ({formatPercent(yesPrice)})
+                YES
               </button>
               <button
                 onclick={() => selectedSide = 'SHORT'}
-                class="flex-1 py-2 text-sm font-medium rounded transition-colors"
+                class="flex-1 px-4 py-2 text-sm font-medium rounded-sm transition-colors"
                 class:bg-rose-600={selectedSide === 'SHORT'}
-                class:text-white={selectedSide === 'SHORT'}
                 class:bg-neutral-800={selectedSide !== 'SHORT'}
+                class:text-white={selectedSide === 'SHORT'}
                 class:text-neutral-400={selectedSide !== 'SHORT'}
               >
-                NO ({formatPercent(noPrice)})
+                NO
               </button>
             </div>
-            <div class="flex items-center gap-2">
+            
+            <div class="mb-4">
+              <label class="block text-xs text-neutral-500 mb-2">Amount (sats)</label>
               <input
                 type="number"
                 bind:value={amount}
-                class="flex-1 bg-neutral-800 border border-neutral-700 text-white text-sm px-3 py-2 rounded"
-                placeholder="Amount in sats"
+                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-sm text-white text-sm focus:outline-none focus:border-neutral-600"
+                min="10"
+                step="10"
               />
-              <button class="px-4 py-2 bg-white text-neutral-950 text-sm font-medium rounded hover:bg-neutral-200 transition-colors">
-                Buy {selectedSide}
-              </button>
             </div>
+            
+            <div class="flex items-center justify-between text-sm mb-4">
+              <span class="text-neutral-500">Price per share</span>
+              <span class="font-mono text-white">
+                {formatCurrency(selectedSide === 'LONG' ? yesPrice : noPrice)}
+              </span>
+            </div>
+            
+            <button
+              class="w-full py-3 text-sm font-medium rounded-sm transition-colors"
+              class:bg-emerald-600={selectedSide === 'LONG'}
+              class:bg-rose-600={selectedSide === 'SHORT'}
+              class:hover:bg-emerald-500={selectedSide === 'LONG'}
+              class:hover:bg-rose-500={selectedSide === 'SHORT'}
+            >
+              Buy {selectedSide === 'LONG' ? 'YES' : 'NO'} Shares
+            </button>
           </div>
           
-          <!-- Description -->
-          {#if market.description}
-            <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-              <h2 class="text-sm font-medium text-neutral-400 mb-3">Description</h2>
-              <p class="text-neutral-300 text-sm leading-relaxed whitespace-pre-wrap">
-                {market.description}
-              </p>
-            </div>
-          {/if}
-        </div>
-      {:else if activeTab === 'charts'}
-        <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-          <h2 class="text-sm font-medium text-neutral-400 mb-4">Price Chart</h2>
-          <div class="h-64 flex items-center justify-center text-neutral-500 text-sm">
-            Charts coming soon
+          <!-- Market Details -->
+          <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+            <h2 class="text-sm font-medium text-neutral-400 mb-4">Description</h2>
+            <p class="text-neutral-300 leading-relaxed">
+              {market.description || 'No description provided.'}
+            </p>
           </div>
         </div>
       {:else if activeTab === 'discussion'}
-        <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-sm font-medium text-neutral-400">Discussion</h2>
-            <button 
-              onclick={navigateToDiscussion}
-              class="text-sm text-white hover:text-neutral-300"
-            >
-              View all →
-            </button>
-          </div>
-          <div class="text-neutral-500 text-sm">
-            <button 
-              onclick={navigateToDiscussion}
-              class="w-full py-8 text-center hover:bg-neutral-800 rounded transition-colors"
-            >
-              Join the discussion →
-            </button>
-          </div>
+        <div class="space-y-4">
+          <button
+            onclick={navigateToDiscussion}
+            class="w-full py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-sm font-medium rounded-sm transition-colors"
+          >
+            View Discussion Thread
+          </button>
         </div>
       {:else if activeTab === 'positions'}
-        <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
-          <h2 class="text-sm font-medium text-neutral-400 mb-4">Your Positions</h2>
-          <div class="text-center py-8 text-neutral-500 text-sm">
-            No positions yet
-          </div>
+        <div class="text-center py-12">
+          <p class="text-neutral-500 text-sm">No positions yet</p>
+        </div>
+      {:else if activeTab === 'charts'}
+        <div class="text-center py-12">
+          <p class="text-neutral-500 text-sm">Charts coming soon</p>
         </div>
       {/if}
-      
-      <!-- Market Stats -->
-      <div class="border-t border-neutral-800 pt-8">
-        <h2 class="text-sm font-medium text-neutral-300 mb-4">Market Stats</h2>
-        <div class="grid grid-cols-3 gap-6">
-          <div>
-            <div class="text-xs text-neutral-500 mb-1">Long Position</div>
-            <div class="font-mono text-lg text-white">{market.qLong.toFixed(4)}</div>
-          </div>
-          <div>
-            <div class="text-xs text-neutral-500 mb-1">Short Position</div>
-            <div class="font-mono text-lg text-white">{market.qShort.toFixed(4)}</div>
-          </div>
-          <div>
-            <div class="text-xs text-neutral-500 mb-1">Reserve</div>
-            <div class="font-mono text-lg text-white">{market.reserve.toFixed(2)} sats</div>
-          </div>
-        </div>
-      </div>
     </div>
-    <Footer />
   </div>
 {/if}

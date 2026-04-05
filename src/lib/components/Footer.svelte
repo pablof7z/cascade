@@ -9,8 +9,8 @@
   ];
 
   const socialLinks = [
-    { label: 'X / Twitter', href: 'https://x.com/ArekBulski' },
-    { label: 'Nostr', href: 'https://njump.me/npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft' },
+    { label: 'X / Twitter', href: 'https://x.com/paborlmcik' },
+    { label: 'Nostr', href: 'https://njump.me/npub1p8fyn5dphu9xpqkhfxs6l0ey8z5jj2tq94mgwhkef2ry6qf4kxqz4yqhe' },
     { label: 'GitHub', href: 'https://github.com/pablof7z' },
   ];
 

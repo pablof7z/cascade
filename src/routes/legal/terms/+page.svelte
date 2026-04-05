@@ -18,7 +18,7 @@
       <p class="text-neutral-500 text-sm mt-6">
         Questions? Contact us on{' '}
         <a 
-          href="https://x.com/ArekBulski" 
+          href="https://x.com/paborlmcik" 
           target="_blank"
           rel="noopener noreferrer"
           class="text-emerald-500 hover:text-emerald-400"

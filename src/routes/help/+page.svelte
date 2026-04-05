@@ -9,6 +9,14 @@
       answer: "Prediction markets allow you to buy shares in the outcome of future events. If your prediction is correct, your shares become more valuable. Prices reflect the collective belief about the likelihood of each outcome."
     },
     {
+      question: "What are Modules and Theses?",
+      answer: "A module is an atomic prediction — a single yes/no question with a market price. A thesis is a network of modules connected by your beliefs about cause and effect. For example: 'If BTC breaks $100k, then ETH will outperform BTC, and Coinbase will be the primary beneficiary.' Each conditional leg is its own tradeable module. Your thesis as a whole has a payout derived from its components."
+    },
+    {
+      question: "How is Cascade different from Polymarket?",
+      answer: "Polymarket forces everything into single yes/no questions. Cascade lets you express conditional conviction — chains of reasoning where each link is independently tradeable. You get partial credit when you're right about some legs but not others. Sharper thinking, more nuanced positions."
+    },
+    {
       question: "How do I get started?",
       answer: "To use Cascade, you need a Nostr-compatible wallet extension. Once connected, you can browse markets, place trades, and create your own prediction markets on any topic."
     },
@@ -35,8 +43,8 @@
   ];
 
   const contactLinks = [
-    { name: "X/Twitter", href: "https://x.com/ArekBulski" },
-    { name: "Nostr", href: "https://njump.me/npub1j90x4fsxwj0na4ua9jp6lsc68nc0n5gf98k6y0r3ycgx66czl84scj42ss" }
+    { name: "X/Twitter", href: "https://x.com/paborlmcik" },
+    { name: "Nostr", href: "https://njump.me/npub1p8fyn5dphu9xpqkhfxs6l0ey8z5jj2tq94mgwhkef2ry6qf4kxqz4yqhe" }
   ];
 </script>
 

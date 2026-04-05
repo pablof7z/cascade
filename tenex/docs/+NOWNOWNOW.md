@@ -4,13 +4,12 @@
 
 ---
 
-## 🔄 In Flight
+## ⏳ Next Up
 
-### Cashu Mint Phase 1 — EXECUTING
-- execution-coordinator on branch `cashu-mint-phase1`
-- Hono.js + TypeScript mint targeting `cascade-mint.f7z.io`
-- Keyset ID: hash-based (`market_id:{marketId}:{hash7}`), Fee: 1% configurable
-- No Lightning yet — foundation only
+### Cashu Mint — Deploy to Vercel
+- Code committed as `e6cf915`, needs `vercel deploy` at `cascade-mint.f7z.io`
+- Turso DB needs provisioning, env vars need setting
+- Pablo action needed: Vercel project setup + secrets
 
 ---
 
@@ -18,7 +17,8 @@
 
 | Commit | Feature |
 |--------|---------|
-| **Plan finalized** | **Cashu Mint plan** — 12 issues resolved, 2 decisions made, ready for execution |
+| **e6cf915** | **Cashu Mint Phase 1** — 14 TypeScript files, NUT-00/02/03, BIP-32 keysets, Turso, Vercel-ready |
+| **Plan finalized** | **Cashu Mint plan** — 12 issues resolved, 2 decisions made |
 | **kind-983-trade-event.md** | **Kind 983 spec** — NIP-style spec for anonymous trade events, Pablo-approved |
 | **e6d9343** | **OG/Twitter meta tags** — primary market route now has full OpenGraph + Twitter Card tags |
 | **032e04a** | **Contact info fix** — correct Nostr/email links in footer/help/legal + 2 new FAQ items |

@@ -50,38 +50,14 @@
   // Derived values
   let path = $derived($page.url.pathname);
   
-  let isDashboardRoute = $derived(
-    path.startsWith('/dashboard') || path === '/hire-agents'
-  );
+  const navItems = [
+    { href: '/', label: 'Markets' },
+    { href: '/activity', label: 'Activity' },
+  ];
 
-  let navItems = $derived(
-    isDashboardRoute
-      ? [
-          { href: '/dashboard/fields', label: 'Workspace' },
-          { href: '/hire-agents', label: 'Hire Agents' },
-          { href: '/', label: 'Markets' },
-          { href: '/activity', label: 'Activity' },
-        ]
-      : [
-          { href: '/', label: 'Markets' },
-          { href: '/leaderboard', label: 'Leaderboard' },
-          { href: '/activity', label: 'Activity' },
-        ]
-  );
+  let primaryAction = { to: '#', label: 'Build Thesis' };
 
-  let primaryAction = $derived(
-    isDashboardRoute
-      ? path === '/hire-agents'
-        ? { to: '/dashboard/fields', label: 'View Fields' }
-        : { to: '/hire-agents', label: 'Hire Agents' }
-      : { to: '/builder', label: 'Build Thesis' }
-  );
-
-  let searchPlaceholder = $derived(
-    isDashboardRoute
-      ? 'Search fields, agents, or meetings...'
-      : 'Search markets...'
-  );
+  let searchPlaceholder = 'Search markets...';
 
   let isLoggedIn = $derived(pubkey !== null);
 
@@ -97,12 +73,6 @@
   }
 
   function isActive(href: string): boolean {
-    if (href === '/dashboard/fields') {
-      return path.startsWith('/dashboard');
-    }
-    if (href === '/hire-agents') {
-      return path === '/hire-agents';
-    }
     if (href === '/') {
       return path === '/';
     }
@@ -245,46 +215,11 @@
           {#if userMenuOpen}
             <div class="absolute right-0 mt-2 w-48 bg-neutral-900 border border-neutral-700 shadow-xl py-1 z-50">
               <a
-                href="/dashboard/fields"
-                class="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
-                onclick={closeUserMenu}
-              >
-                Dashboard
-              </a>
-              <a
-                href="/portfolio"
-                class="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
-                onclick={closeUserMenu}
-              >
-                Portfolio
-              </a>
-              <a
-                href="/profile"
-                class="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
-                onclick={closeUserMenu}
-              >
-                Profile
-              </a>
-              <a
                 href="/bookmarks"
                 class="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
                 onclick={closeUserMenu}
               >
                 Bookmarks
-              </a>
-              <a
-                href="/wallet"
-                class="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
-                onclick={closeUserMenu}
-              >
-                Wallet
-              </a>
-              <a
-                href="/dashboard/settings"
-                class="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
-                onclick={closeUserMenu}
-              >
-                Settings
               </a>
               <div class="border-t border-neutral-700 my-1"></div>
               <button
@@ -323,21 +258,6 @@
             {item.label}
           </a>
         {/each}
-        <div class="border-t border-neutral-800 my-2"></div>
-        <a
-          href="/wallet"
-          class="px-6 py-3 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-colors"
-          onclick={() => mobileMenuOpen = false}
-        >
-          Wallet
-        </a>
-        <a
-          href="/dashboard/settings"
-          class="px-6 py-3 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-colors"
-          onclick={() => mobileMenuOpen = false}
-        >
-          Settings
-        </a>
       </nav>
     </div>
   {/if}

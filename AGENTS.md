@@ -1,3 +1,11 @@
+# Product Decisions — MANDATORY
+
+See `tenex/docs/PRODUCT-DECISIONS.md` for **all explicit product decisions** from the project owner.
+
+**⚠️ Every agent MUST consult this document before making product, architecture, or design decisions. These are direct directives — not suggestions. Do not override, revert, or second-guess them.**
+
+---
+
 # Styling Guidelines
 
 See `tenex/docs/STYLE-GUIDE.md` for the full brand style guide.

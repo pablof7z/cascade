@@ -6,7 +6,6 @@
   import { buildThreadHierarchy } from '../../../lib/threadBuilder';
   import { trackDiscussionInteraction } from '../../../analytics';
   import { priceLong } from '../../../market';
-  import type { MarketEntry } from '../../../storage';
   import OriginalPost from '../../../lib/components/OriginalPost.svelte';
   import ReplyThread from '../../../lib/components/ReplyThread.svelte';
   
@@ -39,9 +38,9 @@
     replies: Reply[]
   }
 
-  // Props - markets would be passed from layout or fetched
-  // For now, we'll try to get it from a store or pass via URL
-  let { markets = {} as Record<string, MarketEntry> } = $props();
+  // Props from loader
+  let { data } = $props();
+  let market = $derived(data.market);
 
   // Route params
   let marketId = $derived($page.params.marketId);
@@ -51,12 +50,6 @@
   let threads = $state<DiscussionThread[]>([]);
   let loading = $state(true);
   let nostrReady = $state(false);
-  let marketsData = $state<Record<string, MarketEntry>>({});
-  
-  // Sync markets prop to local state
-  $effect(() => {
-    marketsData = markets;
-  });
 
   // Recursively collect all event IDs
   function collectEventIds(thread: DiscussionThread): string[] {
@@ -109,10 +102,9 @@
   $effect(() => {
     if (!nostrReady || !marketId) return;
     
-    const entry = marketsData[marketId];
-    if (!entry) return;
+    if (!market) return;
     
-    const marketEventId = entry.market?.eventId;
+    const marketEventId = market.eventId;
     if (!marketEventId) return;
     
     let cancelled = false;
@@ -203,14 +195,12 @@
     return () => clearInterval(checkReady);
   });
 
-  // Get current entry and market
-  let entry = $derived(marketId ? marketsData[marketId] : undefined);
-  let market = $derived(entry?.market);
+  // Get probability and thread
   let probability = $derived(market ? priceLong(market.qLong, market.qShort, market.b) : 0);
   let thread = $derived(threads.find((t) => t.id === threadId));
 </script>
 
-{#if !entry}
+{#if !market}
   <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
     <span class="text-neutral-500 text-sm">Market not found...</span>
   </div>

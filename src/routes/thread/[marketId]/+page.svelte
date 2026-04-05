@@ -212,7 +212,7 @@
 {:else if !thread}
   <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
     <span class="text-neutral-500 text-sm">Thread not found...</span>
-    <button onclick={() => goto(market ? `/markets/${market.slug}--${market.creatorPubkey.slice(0, 12)}/discussion` : `/thread/${marketId}`)} class="ml-4 text-neutral-400 hover:text-white">
+    <button onclick={() => goto(market ? `/markets/${formatMarketSlug(market)}/discussion` : `/markets/${marketId}`)} class="ml-4 text-neutral-400 hover:text-white">
       Back to discussion
     </button>
   </div>

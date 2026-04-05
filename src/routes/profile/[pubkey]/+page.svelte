@@ -178,7 +178,7 @@
   }
 
   function navigateToMarket(slug: string) {
-    goto(`/market/${slug}`);
+    goto(`/markets/${slug}`);
   }
 
   function formatDate(timestamp: number): string {

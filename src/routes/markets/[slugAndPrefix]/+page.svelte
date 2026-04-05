@@ -46,7 +46,7 @@
   
   function navigateToDiscussion() {
     if (!market) return;
-    goto(`/thread/${market.slug}`);
+    goto(`/markets/${formatMarketSlug(market)}/discussion`);
   }
   
   function navigateToProfile(pubkey: string) {

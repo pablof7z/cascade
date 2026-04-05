@@ -106,7 +106,10 @@
   }
 
   function navigateToThread(threadId: string) {
-    goto(`/market/${marketId}/thread/${threadId}`);
+    const slugAndPrefix = market
+      ? `${market.slug}--${market.creatorPubkey.slice(0, 12)}`
+      : marketId;
+    goto(`/markets/${slugAndPrefix}/thread/${threadId}`);
   }
 
   function navigateToDiscussion() {

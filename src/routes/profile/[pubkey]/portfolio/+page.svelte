@@ -231,7 +231,7 @@
                         {pos.marketName}
                       </a>
                     {:else}
-                      <a href="/thread/{pos.marketId}" class="text-white hover:text-neutral-300">
+                      <a href="/markets/{pos.marketId}" class="text-white hover:text-neutral-300">
                         {pos.marketName}
                       </a>
                     {/if}

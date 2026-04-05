@@ -21,6 +21,19 @@ const MAINNET_RELAYS = ['wss://nostr.wine', 'wss://nos.lol', 'wss://relay.primal
 let pubkeyValue: string | null = null;
 let readyValue = false;
 
+// Subscriber management
+type Subscriber = (value: { pubkey: string | null; isReady: boolean }) => void;
+const subscribers = new Set<Subscriber>();
+
+function getState() {
+  return { pubkey: pubkeyValue, isReady: readyValue };
+}
+
+function notifySubscribers() {
+  const state = getState();
+  subscribers.forEach(cb => cb(state));
+}
+
 // Initialize the Nostr service
 async function initService(testnet: boolean): Promise<void> {
   readyValue = false;
@@ -28,6 +41,7 @@ async function initService(testnet: boolean): Promise<void> {
   await initNostrService(relayUrls);
   pubkeyValue = getPubkey();
   readyValue = serviceIsReady();
+  notifySubscribers();
 }
 
 /**
@@ -41,11 +55,14 @@ export async function initNostrStore(): Promise<void> {
 
 // Store with subscribe pattern (compatible with Svelte $effect)
 export const nostrStore = {
-  subscribe: (callback: (value: { pubkey: string | null; isReady: boolean }) => void) => {
-    callback({ pubkey: pubkeyValue, isReady: readyValue });
-    return () => {}; // No cleanup needed for module-level state
+  subscribe: (callback: Subscriber) => {
+    subscribers.add(callback);
+    callback(getState()); // Call immediately with current state
+    return () => {
+      subscribers.delete(callback);
+    };
   },
-  get: () => ({ pubkey: pubkeyValue, isReady: readyValue }),
+  get: () => getState(),
 };
 
 /**
@@ -69,6 +86,7 @@ export function disconnect(): void {
   // Reset state
   pubkeyValue = null;
   readyValue = false;
+  notifySubscribers();
 }
 
 /**

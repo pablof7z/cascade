@@ -79,7 +79,7 @@ Each prediction market gets exactly 1 keyset with 2 units:
 ### Phase 4: Production Hardening (Week 4)
 - [ ] Set up monitoring and alerting
 - [ ] Configure Vercel environment variables
-- [ ] Add rate limiting and DDoS protection
+- [ ] ~~Rate limiting~~ — KISS, skipping for now
 - [ ] Implement backup/restore for Turso SQLite
 - [ ] Security audit and penetration testing
 
@@ -141,7 +141,8 @@ Each prediction market gets:
 1. Unique `keyset-id` derived from market slug
 2. One keyset with two units: `long` and `short`
 3. Shares minted as blinded tokens from the keyset, denominated in the appropriate unit
-4. Market creator funds the initial LMSR reserve
+4. Market creator funds the initial LMSR reserve (~$100 minimum via Lightning)
+5. Creator receives equivalent value in long tokens — they have skin in the game
 
 ```typescript
 interface MarketKeyset {
@@ -151,7 +152,7 @@ interface MarketKeyset {
   reserve: bigint;           // LMSR liquidity pool backing (NOT escrow), funded by market creator
   totalLongShares: bigint;
   totalShortShares: bigint;
-  lmsrCoefficient: bigint;   // b parameter
+  lmsrCoefficient: bigint;   // b parameter — TBD, needs experimentation
   creatorPubkey: string;     // pubkey of market creator who funded the reserve
 }
 ```
@@ -279,8 +280,9 @@ GET /keys/{keyset_id}
 ```
 POST /market/{slug}/create
   Body: { slug: string, title: string, b: bigint, mint: string, reserveSats: number }
-  Response: { keysetId: string, units: ['long', 'short'] }
-  Note: Creator must fund initial LMSR reserve via Lightning during creation
+  Response: { keysetId: string, units: ['long', 'short'], creatorProofs: Proof[] }
+  Note: Creator funds initial LMSR reserve via Lightning (~$100 min).
+        Creator receives equivalent value in long tokens (skin in the game).
 
 POST /market/{slug}/buy
   Body: { unit: 'long' | 'short', amount: number, invoice: string }
@@ -328,9 +330,7 @@ POST /admin/backup
 - DLEQ proofs verified on mint
 
 ### 6.3 Rate Limiting
-- Mint: 100 requests/minute per IP
-- Melt: 50 requests/minute per IP
-- Market operations: 20 requests/minute per pubkey
+No rate limiting for now. KISS. Revisit if Vercel costs become a problem.
 
 ### 6.4 Lightning Security
 - Invoice expiry: 15 minutes max
@@ -432,15 +432,19 @@ POST /admin/backup
 
 ---
 
-## 12. Open Questions (v2 Status)
+## 12. Open Questions (v2.1 Status)
 
 | Question | Status |
 |----------|--------|
-| Liquidity funding | ✅ RESOLVED: Market creator funds the initial LMSR reserve via Lightning at market creation time. |
-| Fee structure | 1% per trade, embedded in LMSR spread (product spec). |
-| Keyset migration | If we need to rotate keysets, how to handle existing proofs? |
-| Multi-mint support | Should users be able to use external mints? Phase 1: Cascade-only. |
-| Disaster recovery | What's the RTO/RPO for mint state loss? |
+| Liquidity funding | ✅ RESOLVED: Market creator funds the initial LMSR reserve via Lightning (~$100 minimum). Creator receives equivalent value in long tokens — skin in the game. |
+| Fee structure | ✅ RESOLVED: 1% per trade, embedded in LMSR spread (product spec). |
+| Token expiry | ✅ RESOLVED: Markets never expire. Tokens live forever. Accepted tradeoff: proof registry grows unbounded. |
+| Rate limiting | ✅ RESOLVED: No rate limiting. KISS. Revisit if Vercel costs become a problem. |
+| Keyset migration | 🔜 DEFERRED: Not worrying about it now. |
+| Multi-mint support | 🔜 DEFERRED: Phase 1 Cascade-only. Future: other mints can run our software with LMSR pricing. |
+| Disaster recovery | ❓ OPEN: What's the RTO/RPO for mint state loss? |
+| LMSR `b` parameter | ❓ OPEN: Who sets it (creator or system)? What value? Needs experimentation. |
+| Creator reserve withdrawal | ❓ OPEN: Can the creator ever pull their reserve back? Under what conditions? |
 
 ---
 
@@ -459,5 +463,5 @@ POST /admin/backup
 ---
 
 *Document Version: 2.1*
-*Last Updated: 2026-04-05 12:40 UTC*
-*Changes: 1 keyset/2 units model (long/short), creator-funded reserves*
+*Last Updated: 2026-04-05 13:55 UTC*
+*v2.1 changes: 1 keyset/2 units (long/short), creator-funded reserves (~$100 min → long tokens), no token expiry, no rate limiting, b param TBD*

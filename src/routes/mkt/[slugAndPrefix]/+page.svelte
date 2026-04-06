@@ -114,7 +114,7 @@
     <meta property="og:title" content="{market.title} — {pct}% YES" />
     <meta property="og:description" content="{market.description?.slice(0, 200) || 'Prediction market on Cascade'}" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://cascade.markets/markets/{slugAndPrefix}" />
+    <meta property="og:url" content="https://cascade.markets/mkt/{slugAndPrefix}" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:site" content="@cascademarkets" />
     <meta name="twitter:title" content="{market.title} — {pct}% YES" />

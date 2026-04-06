@@ -132,7 +132,7 @@
         {#each bookmarkedIds as marketId (marketId)}
           <div class="flex items-center justify-between py-3 px-1 border-b border-neutral-800/40 hover:bg-neutral-900/30 transition-colors">
             <a
-              href="/markets/{getMarketSlug(marketId)}"
+              href="/mkt/{getMarketSlug(marketId)}"
               class="flex-1 min-w-0 text-white font-medium hover:text-neutral-300 transition-colors truncate"
             >
               {marketId}

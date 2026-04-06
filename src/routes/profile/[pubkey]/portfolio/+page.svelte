@@ -227,11 +227,11 @@
                     {#if markets.get(pos.marketId)?.market.creatorPubkey}
                       {@const entry = markets.get(pos.marketId)}
                       {@const slugAndPrefix = `${entry!.market.slug}--${entry!.market.creatorPubkey.slice(0, 12)}`}
-                      <a href="/markets/{slugAndPrefix}" class="text-white hover:text-neutral-300">
+                      <a href="/mkt/{slugAndPrefix}" class="text-white hover:text-neutral-300">
                         {pos.marketName}
                       </a>
                     {:else}
-                      <a href="/markets/{pos.marketId}" class="text-white hover:text-neutral-300">
+                      <a href="/mkt/{pos.marketId}" class="text-white hover:text-neutral-300">
                         {pos.marketName}
                       </a>
                     {/if}

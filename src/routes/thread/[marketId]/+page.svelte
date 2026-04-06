@@ -212,7 +212,7 @@
 {:else if !thread}
   <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
     <span class="text-neutral-500 text-sm">Thread not found...</span>
-    <button onclick={() => goto(market ? `/markets/${marketSlug}/discussion` : `/markets/${marketId}`)} class="ml-4 text-neutral-400 hover:text-white">
+    <button onclick={() => goto(market ? `/mkt/${marketSlug}/discussion` : `/mkt/${marketId}`)} class="ml-4 text-neutral-400 hover:text-white">
       Back to discussion
     </button>
   </div>
@@ -222,11 +222,11 @@
       <!-- Breadcrumb -->
       <div class="py-4 border-b border-neutral-800">
         <div class="flex items-center gap-2 text-sm text-neutral-500">
-          <a href={`/markets/${marketSlug}`} class="hover:text-neutral-300">
+          <a href={`/mkt/${marketSlug}`} class="hover:text-neutral-300">
             {market?.title?.slice(0, 40) || 'Market'}{market?.title && market.title.length > 40 ? '...' : ''}
           </a>
           <span>›</span>
-          <a href={`/markets/${marketSlug}/discussion`} class="hover:text-neutral-300">
+          <a href={`/mkt/${marketSlug}/discussion`} class="hover:text-neutral-300">
             Discussion
           </a>
           <span>›</span>
@@ -286,13 +286,13 @@
         </div>
         <div class="flex gap-2">
           <a
-            href={`/markets/${formatMarketSlug(market)}`}
+            href={`/mkt/${formatMarketSlug(market)}`}
             class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium"
           >
             Buy YES
           </a>
           <a
-            href={`/markets/${formatMarketSlug(market)}`}
+            href={`/mkt/${formatMarketSlug(market)}`}
             class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium"
           >
             Buy NO

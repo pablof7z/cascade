@@ -221,7 +221,7 @@
               {#each unsettledPositions as pos (pos.id)}
                 <tr class="text-sm">
                   <td class="px-4 py-3">
-                    <a href="/markets/{pos.marketId}" class="text-white hover:text-neutral-300">
+                    <a href="/mkt/{pos.marketId}" class="text-white hover:text-neutral-300">
                       {pos.marketName}
                     </a>
                   </td>

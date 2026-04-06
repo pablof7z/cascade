@@ -260,7 +260,7 @@
   }
 
   function navigateToMarket(marketId: string) {
-    goto(`/markets/${marketId}`);
+    goto(`/mkt/${marketId}`);
   }
 </script>
 

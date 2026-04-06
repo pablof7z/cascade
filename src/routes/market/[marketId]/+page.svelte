@@ -135,14 +135,14 @@
     const slugAndPrefix = market
       ? `${market.slug}--${market.creatorPubkey.slice(0, 12)}`
       : marketId;
-    goto(`/markets/${slugAndPrefix}/thread/${threadId}`);
+    goto(`/mkt/${slugAndPrefix}/thread/${threadId}`);
   }
 
   function navigateToDiscussion() {
     const slugAndPrefix = market
       ? `${market.slug}--${market.creatorPubkey.slice(0, 12)}`
       : marketId;
-    goto(`/markets/${slugAndPrefix}/discussion`);
+    goto(`/mkt/${slugAndPrefix}/discussion`);
   }
 
   // ─── Sparkline component ─────────────────────────────────────────────────────

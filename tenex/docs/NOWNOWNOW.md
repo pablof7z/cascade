@@ -1,54 +1,10 @@
 # NowNowNow
 
-*Last updated: 2026-04-05 20:30 UTC — Sweep 145: 5 more commits. Cashu Mint architecture being fixed. Build green.*
+*Last updated: 2026-04-05 22:00 UTC — Sweep 148: Full React→Svelte Phase complete. 8 major features shipped. Build green.*
 
 ---
 
-## ✅ Shipped This Session (5 new commits)
+## ✅ Shipped This Session (8 major features — React→Svelte Migration COMPLETE)
 
 | Commit | Feature |
-|--------|---------|
-| **a3cc188** | **Fix Hero CTAs** — 'Start Trading' scrolls to markets, 'For agents →' links to /help |
-| **6c491bf** | **Fix Market Detail Page** — correct LMSR pricing, wire trade button, fix styles |
-| **22537ad** | **Wire Create Market Modal** — `handleCreateMarket()` publishes kind 982 events via `publishMarket()` |
-| **c5ae80f** | **Real Legal Pages** — Terms of Service + Privacy Policy, plain English |
-| **c3badcd** | **Footer on All Pages** — Footer restored to root layout |
-
----
-
-## ✅ Previously Shipped (Earlier This Session)
-
-| Commit | Feature |
-|--------|---------|
-| **a9ec131** | **Wire Trade Button** — `handleTrade()` calls real `executeTrade()` from tradingService |
-| **e6cf915** | **Cashu Mint Phase 1** — Hono.js + TypeScript mint foundation (`cascade-mint/`) — ⚠️ ARCHITECTURE BEING REVISED |
-| **e6d9343** | **OG/Twitter meta tags** |
-| **032e04a** | **Contact info fix** — correct Nostr/email links + 2 new FAQ items |
-| **b1b4a09** | **Profile link in nav dropdown** |
-| **df16b6a** | **Market Discussion Feature** — 4 Svelte components, kind:1111 NIP-22, real-time |
-| **9ae9f0c** | **Blog page cleanup** |
-| **245bf0b** | **Analytics cleanup** |
-| **6ffe4ed** | **Profile tab fix** |
-| **8c37ab3** | **Favicon fix** |
-
----
-
-## ⚠️ Cashu Mint Architecture Fix — IN PROGRESS
-
-The previously committed mint (`e6cf915`) had a critical architectural error: it fetched kind:30000 market events from Nostr relays at runtime. The correct architecture:
-- **Pure Cashu NUT API** — no Nostr relay code in mint
-- **URL-segmented routing**: `/{marketId}/v1/mint`, `/{marketId}/v1/keys`, etc.
-- Market context comes from URL params, not Nostr
-- planning-orchestrator rewrote the plan; mint-engineer reviewing now
-
-**Status:** Plan being reviewed by mint-engineer. Once approved, execution-coordinator will rewrite `cascade-mint/` on a branch.
-
----
-
-## ⏳ Pending Pablo Decisions
-
-1. **Substack account** — Create `cascadethinking.substack.com` + provide credentials
-   - Draft v2 ready: `tenex/docs/substack-draft-2026-04-04-v2.md`
-2. **Cashu mint Phase 1 GO** — Architecture being fixed. Once plan approved, needs re-implementation.
-3. **Domain registration** — needs update post-rebrand to Cascade
-4. **Cashu Phase 2** — Lightning, NIP-46 signing, hardening (after Phase 1 deployed)
+|--------|---------|\n| **7113162** | **Discuss Page** — markets + posts (kind:1111), sort/filter/search, live updates |\n| **385313e** | **MarketCard Component** — reusable Svelte card component |\n| **2811d41** | **Portfolio Page** — positions, PnL calculation, redemption |\n| **7026fb4** | **Settings Page** — profile form, relay config |\n| **d0655ce** | **Wallet Page** — deposit, send, receive, history |\n| **0fe441f** | **404 Error Page** — SvelteKit error handling |\n| **fbd189b** | **PRODUCT-DECISIONS.md** — 60+ directives documenting all Pablo decisions |\n| **9ce31e2** | **Full Onboarding Flow** — OAuth (Twitter/Telegram) + profile setup + SKILLS.md |\n\n---\n\n## ✅ Previously Shipped (Earlier Sessions)\n\n| Commit | Feature |\n|--------|---------|\n| **a3cc188** | **Fix Hero CTAs** — 'Start Trading' scrolls to markets, 'For agents →' links to /help |\n| **6c491bf** | **Fix Market Detail Page** — correct LMSR pricing, wire trade button, fix styles |\n| **22537ad** | **Wire Create Market Modal** — `handleCreateMarket()` publishes kind 982 events via `publishMarket()` |\n| **c5ae80f** | **Real Legal Pages** — Terms of Service + Privacy Policy, plain English |\n| **c3badcd** | **Footer on All Pages** — Footer restored to root layout |\n| **a9ec131** | **Wire Trade Button** — `handleTrade()` calls real `executeTrade()` from tradingService |\n| **e6cf915** | **Cashu Mint Phase 1** — Hono.js + TypeScript mint foundation (`cascade-mint/`) — ⚠️ ARCHITECTURE BEING REVISED |\n| **e6d9343** | **OG/Twitter meta tags** |\n| **032e04a** | **Contact info fix** — correct Nostr/email links + 2 new FAQ items |\n| **b1b4a09** | **Profile link in nav dropdown** |\n| **df16b6a** | **Market Discussion Feature** — 4 Svelte components, kind:1111 NIP-22, real-time |\n| **9ae9f0c** | **Blog page cleanup** |\n| **245bf0b** | **Analytics cleanup** |\n| **6ffe4ed** | **Profile tab fix** |\n| **8c37ab3** | **Favicon fix** |\n\n---\n\n## ⚠️ Cashu Mint Architecture Fix — IN PROGRESS\n\nThe previously committed mint (`e6cf915`) had a critical architectural error: it fetched kind:30000 market events from Nostr relays at runtime. The correct architecture:\n- **Pure Cashu NUT API** — no Nostr relay code in mint\n- **URL-segmented routing**: `/{marketId}/v1/mint`, `/{marketId}/v1/keys`, etc.\n- Market context comes from URL params, not Nostr\n- planning-orchestrator rewrote the plan; mint-engineer reviewing now\n\n**Status:** Plan being reviewed by mint-engineer. Once approved, execution-coordinator will rewrite `cascade-mint/` on a branch.\n\n---\n\n## ⏳ Pending Pablo Decisions\n\n1. **Substack account** — Create `cascadethinking.substack.com` + provide credentials\n   - Draft v2 ready: `tenex/docs/substack-draft-2026-04-04-v2.md`\n2. **Cashu mint Phase 1 GO** — Architecture being fixed. Once plan approved, needs re-implementation.\n3. **Domain registration** — needs update post-rebrand to Cascade\n4. **Cashu Phase 2** — Lightning, NIP-46 signing, hardening (after Phase 1 deployed)\n5. **Phase 4B: Full ThesisBuilder** — /thesis/new route implementation awaiting direction\n

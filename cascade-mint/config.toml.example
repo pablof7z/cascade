@@ -1,0 +1,28 @@
+# Cascade Mint Configuration
+
+[mint]
+url = "https://mint.f7z.io"
+name = "Cascade Markets Mint"
+description = "Cashu mint for Cascade prediction markets"
+
+[database]
+path = "./data/cascade_mint.db"
+
+[seed]
+path = "./data/mint_seed.key"
+
+[lnd]
+host = "127.0.0.1"
+port = 10009
+cert_path = "/path/to/tls.cert"
+macaroon_path = "/path/to/admin.macaroon"
+
+[network]
+network_type = "testnet"
+
+[server]
+host = "127.0.0.1"
+port = 3338
+
+[fees]
+trade_fee_percent = 1

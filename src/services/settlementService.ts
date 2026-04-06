@@ -6,7 +6,7 @@
 import type { Position } from '../positionStore'
 import type { Market } from '../market'
 import type NDK from '@nostr-dev-kit/ndk'
-import { redeemPosition as doRedemption, hasBeenRedeemed } from './redemptionService'
+import { redeemPosition as doRedemption, hasBeenRedeemed, type RedemptionError } from './redemptionService'
 
 // Backend mint URL - should come from environment/config
 const MINT_URL = import.meta.env.VITE_CASCADE_MINT_URL || 'https://mint.cascade.market'
@@ -146,7 +146,7 @@ export async function claimPositionPayout(
   } else {
     return {
       success: false,
-      message: result.error.message,
+      message: (result as { success: false; error: RedemptionError }).error.message,
     }
   }
 }

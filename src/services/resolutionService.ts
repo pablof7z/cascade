@@ -132,7 +132,7 @@ export function initResolutionService(): void {
   setResolutionRunner(async (job: ResolutionJob) => {
     const result = await _executeResolution(job)
     if (!result.success) {
-      console.error('[resolutionService] Resolution failed for market:', job.market.slug, result.error)
+      console.error('[resolutionService] Resolution failed for market:', job.market.slug, (result as { success: false; error: ResolutionError }).error)
     }
   })
 }

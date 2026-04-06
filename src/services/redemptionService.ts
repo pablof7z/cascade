@@ -10,6 +10,8 @@
 
 import type NDK from '@nostr-dev-kit/ndk'
 import type { NDKEvent } from '@nostr-dev-kit/ndk'
+import type { Market } from '../market'
+import type { Position } from '../positionStore'
 import { priceLong, priceShort, computeOutcomePrice } from '../market'
 import { publishPayoutEvent, fetchPayoutEvent, PAYOUT_EVENT_KIND } from './nostrService'
 import { sendPayoutTokens } from '../vaultStore'
@@ -240,7 +242,7 @@ export async function redeemPosition(
 
     // ---- STEP 4: SEND TOKENS ----
     // CRITICAL: recipientPubkey is the position owner's pubkey
-    const recipientPubkey = position.pubkey
+    const recipientPubkey = position.ownerPubkey
     const token = await sendPayoutTokens(payout.netSats, recipientPubkey)
     if (!token) {
       return {
@@ -256,7 +258,7 @@ export async function redeemPosition(
     const payoutEventParams = {
       marketSlug: market.slug,
       marketTitle: market.title,
-      redeemerId: position.pubkey,
+      redeemerId: position.ownerPubkey,
       positionId: position.id,
       direction: position.direction.toLowerCase() as 'yes' | 'no',
       quantity: position.quantity,

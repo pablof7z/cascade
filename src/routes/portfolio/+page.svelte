@@ -3,8 +3,9 @@
   import { loadPositions, type Position } from '../../positionStore'
   import { load as loadMarkets } from '../../storage'
   import { priceLong, priceShort } from '../../market'
-  import { fetchPayoutEvents, getPubkey } from '../../services/nostrService'
-  import { getRedemptionQuote, redeemPosition, canRedeemPosition, isPositionSettled } from '../../services/settlementService'
+  import { fetchPayoutEvents, getPubkey, getNDK } from '../../services/nostrService'
+  import { getRedemptionQuote, isPositionSettled } from '../../services/settlementService'
+  import { redeemPosition as doRedemption, type RedemptionResult } from '../../services/redemptionService'
   import type { NDKEvent } from '@nostr-dev-kit/ndk'
   import type { Market } from '../../market'
   import type { MarketEntry } from '../../storage'
@@ -117,21 +118,33 @@
 
   async function confirmRedeem() {
     if (!redeemingPosition) return
+    
+    // Look up the market for this position
+    const market = markets.get(redeemingPosition.marketId)
+    if (!market) {
+      redemptionMessage = 'Market not found for this position'
+      redemptionLoading = false
+      return
+    }
+    
     redemptionLoading = true
     redemptionMessage = null
     try {
-      const result = await redeemPosition(redeemingPosition)
+      const ndk = getNDK()
+      const result = await doRedemption(market.market, redeemingPosition, ndk)
+      
       if (result.success) {
-        redemptionMessage = `Redeemed! Received ${redemptionAmount} sats.`
+        redemptionMessage = `Redeemed! Received ${result.payout.netSats} sats.`
         // Refresh positions
         positions = loadPositions()
         setTimeout(() => {
           redeemModalOpen = false
           redeemingPosition = null
           redemptionAmount = null
+          redemptionQuote = null
         }, 2000)
       } else {
-        redemptionMessage = result.message
+        redemptionMessage = result.error.message
       }
     } catch (e) {
       redemptionMessage = 'Redemption failed'

@@ -233,8 +233,9 @@
             </div>
             
             <div class="mb-4">
-              <label class="block text-xs text-neutral-500 mb-2">Amount (sats)</label>
+              <label for="amount" class="block text-xs text-neutral-500 mb-2">Amount (sats)</label>
               <input
+                id="amount"
                 type="number"
                 bind:value={amount}
                 class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-sm text-white text-sm focus:outline-none focus:border-neutral-600"

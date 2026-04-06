@@ -238,10 +238,10 @@ Ready to start? Your identity will be secured with your chosen authentication me
         connected = true;
         currentStep = 'profile';
       } else {
-        throw new Error('No extension found');
+        throw new Error('No secure login detected');
       }
     } catch (err) {
-      errorMessage = 'No wallet detected. Please install Alby or similar.';
+      errorMessage = 'No secure login detected. Please install a browser extension like Alby or get an Alby account.';
     } finally {
       isLoading = false;
     }

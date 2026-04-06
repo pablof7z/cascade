@@ -163,7 +163,7 @@
         if (!cancelled) {
           items = activityItems;
           if (activityItems.length === 0) {
-            setMarketsError("Couldn't reach relay — check your connection");
+            setMarketsError("Couldn't connect to server — check your connection");
           }
         }
       } catch (err) {

@@ -124,7 +124,7 @@
 
   async function handlePublish() {
     if (!isReady || !pubkey) {
-      error = 'Nostr not connected. Please connect with a NIP-07 signer.';
+      error = 'Please connect using a secure login method to publish.';
       return;
     }
 

@@ -2,7 +2,7 @@
   const faqs = [
     {
       question: "What is Cascade?",
-      answer: "Cascade is a decentralized prediction market platform built on Nostr. It allows anyone to create markets on future events and trade shares based on their predictions."
+      answer: "Cascade is a decentralized prediction market platform. It allows anyone to create markets on future events and trade shares based on their predictions."
     },
     {
       question: "How do prediction markets work?",
@@ -18,7 +18,7 @@
     },
     {
       question: "How do I get started?",
-      answer: "To use Cascade, you need a Nostr-compatible wallet extension. Once connected, you can browse markets, place trades, and create your own prediction markets on any topic."
+      answer: "To use Cascade, you need a secure login. Once connected, you can browse markets, place trades, and create your own prediction markets on any topic."
     },
     {
       question: "What is the trading mechanism?",
@@ -29,22 +29,22 @@
       answer: "Market creators can resolve their markets once the outcome is known. The resolution determines the payouts for winning shares. All trades before resolution are honored."
     },
     {
-      question: "What is Nostr?",
-      answer: "Nostr is a decentralized protocol for censorship-resistant social networking. Cascade uses Nostr for identity and data persistence, ensuring your data belongs to you."
+      question: "How does Cascade store data?",
+      answer: "Cascade uses a decentralized protocol for identity and data persistence, ensuring your data belongs to you."
     },
     {
       question: "Is my data private?",
-      answer: "Yes. Your trades and data are stored on Nostr relays, and only your public key is visible. We don't collect personal information. See our Privacy Policy for more details."
+      answer: "Yes. Your trades and data are stored securely, and only your public key is visible. We don't collect personal information. See our Privacy Policy for more details."
     },
     {
       question: "How do I create a market?",
-      answer: "Connect your wallet and click 'New Market' in the navigation. Describe your question, set outcomes, and provide initial liquidity. Your market will be published to Nostr relays."
+      answer: "Connect your wallet and click 'New Market' in the navigation. Describe your question, set outcomes, and provide initial liquidity. Your market will be published publicly."
     }
   ];
 
   const contactLinks = [
     { name: "X/Twitter", href: "https://x.com/paborlmcik" },
-    { name: "Nostr", href: "https://njump.me/npub1p8fyn5dphu9xpqkhfxs6l0ey8z5jj2tq94mgwhkef2ry6qf4kxqz4yqhe" }
+    { name: "X", href: "https://njump.me/npub1p8fyn5dphu9xpqkhfxs6l0ey8z5jj2tq94mgwhkef2ry6qf4kxqz4yqhe" }
   ];
 </script>
 
@@ -73,7 +73,7 @@
         Still have questions?
       </h2>
       <p class="text-neutral-400 mb-4">
-        Reach out to us on social media or Nostr:
+        Reach out to us on social media or X:
       </p>
       <div class="flex gap-4">
         {#each contactLinks as link}

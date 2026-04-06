@@ -199,7 +199,7 @@
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-2xl font-semibold text-white mb-2">Wallet</h1>
-      <p class="text-neutral-400">Manage your sats and Cashu tokens</p>
+      <p class="text-neutral-400">Manage your sats and tokens</p>
     </div>
 
     <!-- Balance Card -->
@@ -351,7 +351,7 @@
       <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
         <h2 class="text-lg font-medium text-white mb-4">Send tokens</h2>
         <p class="text-neutral-400 text-sm mb-4">
-          Send Cashu tokens to another wallet.
+          Send tokens to another wallet.
         </p>
 
         <div class="space-y-4">
@@ -408,7 +408,7 @@
       <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
         <h2 class="text-lg font-medium text-white mb-4">Receive tokens</h2>
         <p class="text-neutral-400 text-sm mb-4">
-          Paste a Cashu token to add it to your wallet.
+          Paste a token to add it to your wallet.
         </p>
 
         <div class="space-y-4">
@@ -419,7 +419,7 @@
             <textarea
               id="receive-token"
               bind:value={receiveTokenInput}
-              placeholder="Paste your Cashu token here"
+              placeholder="Paste your token here"
               rows="4"
               class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 resize-none font-mono text-xs"
             ></textarea>

@@ -82,7 +82,7 @@
           tradeError = `Insufficient balance. You have ${result.error.balance} sats, need ${result.error.required} sats.`;
           break;
         case 'wallet_unavailable':
-          tradeError = 'Wallet unavailable. Please set up your Cashu wallet to trade.';
+          tradeError = 'Wallet unavailable. Please set up your wallet to trade.';
           break;
         case 'mint_unavailable':
           tradeError = 'Mint unavailable. Please try again shortly.';

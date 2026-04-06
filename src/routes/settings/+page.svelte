@@ -276,18 +276,18 @@
       </div>
     </section>
 
-    <!-- Relay Configuration Section -->
+    <!-- Server Configuration Section -->
     <section class="space-y-6">
-      <h2 class="text-lg font-medium border-b border-neutral-800 pb-3">Relay Configuration</h2>
+      <h2 class="text-lg font-medium border-b border-neutral-800 pb-3">Server Configuration</h2>
 
       <p class="text-sm text-neutral-400">
-        Configure the Nostr relays you want to connect to. Leave empty to use defaults.
+        Configure the servers you want to connect to. Leave empty to use defaults.
       </p>
 
-      <!-- Current Relays -->
+      <!-- Current Servers -->
       {#if relayUrls.length > 0}
         <div class="space-y-2">
-          <h3 class="text-sm font-medium text-neutral-300">Active Relays</h3>
+          <h3 class="text-sm font-medium text-neutral-300">Active Servers</h3>
           <ul class="space-y-1">
             {#each relayUrls as relay}
               <li class="flex items-center justify-between px-3 py-2 bg-neutral-900 border border-neutral-800 rounded">
@@ -308,7 +308,7 @@
       <!-- Add New Relay -->
       <div>
         <label for="newRelay" class="block text-sm font-medium text-neutral-300 mb-1.5">
-          Add Relay
+          Add Server
         </label>
         <div class="flex gap-2">
           <input
@@ -330,12 +330,12 @@
       </div>
     </section>
 
-    <!-- Public Key Display -->
+    <!-- Account Display -->
     {#if pubkey}
       <section class="mt-12 pt-8 border-t border-neutral-800">
-        <h2 class="text-lg font-medium mb-4">Your Public Key</h2>
+        <h2 class="text-lg font-medium mb-4">Your Account</h2>
         <div class="px-3 py-2 bg-neutral-900 border border-neutral-700 rounded">
-          <code class="text-sm font-mono text-emerald-400 break-all">{pubkey}</code>
+          <code class="text-sm font-mono text-emerald-400">{pubkey.slice(0, 8)}...{pubkey.slice(-4)}</code>
         </div>
       </section>
     {/if}

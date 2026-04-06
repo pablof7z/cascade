@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-06 01:00 UTC — 15 commits on main. Build passing (1.55s). Vercel deploy live. Zero blockers.*
+*Last updated: 2026-04-06 02:10 UTC — 17 commits on main. Build passing (1.57s). Vercel deploy live. A11y fixes shipped. Zero blockers. Market resolution planning in progress.*
 
 ---
 
@@ -34,10 +34,13 @@
 
 ---
 
-## ✅ Features Shipped (15 commits this session)
+## ✅ Features Shipped & Fixed (17 commits this session, latest: Sweep 156)
 
 | Commit | Feature |
 |--------|---------|
+| **e0e598f** | **A11y fixes #2** — Resolve remaining accessibility warnings (label associations, HTML structure) |
+| **f5c1288** | **A11y fixes #1** — Modal dialog accessibility (role, tabindex, Escape key), form label association |
+| **b987612** | **Sweep 155** — Configuration & lint cleanup |
 | **9735191** | **SvelteKit + Vercel Configuration** — Updated adapter, nodejs22.x runtime, cleaned vercel.json rewrite rules |
 | **bc082e8** | **ESLint cleanup** — Fixed 40 lint errors, removed unused variables/imports |
 | **4bfd1fd** | **NOWNOWNOW update** — Svelte migration complete |
@@ -81,6 +84,23 @@
    - Awaits: Account creation + credentials OR alternative approach
 
 3. **Domain registration** — Post-rebrand (Cascade vs Contrarian)
+
+---
+
+## ✅ In Progress This Session
+
+### Market Resolution Planning — ACTIVE (Sweep 157)
+- **Planning:** tenex-planner authored comprehensive plan (6 sections: INDEX, nostr-event-design, payout-logic, service-layer, testing, ui-flow)
+- **Architectural Review:** architect-orchestrator completed detailed review identifying **4 Blocking Issues** + 5 Important + 3 Minor
+- **Key Findings:**
+  - ✅ Bridge pattern sound (wire kind:984 → resolutionService)
+  - ✅ Idempotency via TX log is correct
+  - ⚠️ BLOCKING: Vault atomicity gaps (race conditions in multi-payout loops)
+  - ⚠️ BLOCKING: Queue idempotency needs transaction-level dedup
+  - ⚠️ BLOCKING: Cashu failure handling (network failures during payout loop)
+  - ⚠️ BLOCKING: `outcomePrice` validation missing (could cause payout miscalculations)
+- **Status:** Awaiting decision on proceeding with modifications to address blocking issues
+- **Commit:** `86cf7a8` (architectural review doc)
 
 ---
 

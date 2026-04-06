@@ -82,18 +82,25 @@
 
 ## 🔴 AWAITING PABLO DECISIONS (BLOCKING)
 
-### 1. Market Resolution Architecture — CRITICAL
-**Status:** Comprehensive plan complete + architectural review done. **3 blocking issues** must be resolved before implementation.
-- **Blocking Issue #1: Vault Race Condition** (TOCTOU gap in multi-payout loop)
-  - A: Per-market reserve tracking (most robust)
-  - B: Atomic send-with-verification (balanced)
-  - C: Live vault balance checks in loop (simplest)
-- **Blocking Issue #2: Queue Deduplication** — no per-market dedup, double-click queues same market twice
-- **Blocking Issue #3: Partial Payout State** — undefined behavior when some payouts fail
-- **Secondary Decision:** YES/NO/VOID or just YES/NO outcomes?
-- **Plan location:** `.tenex/plans/market-resolution/`
-- **Review doc:** `tenex/docs/architectural-review-market-resolution.md`
-- **Status:** Questions posed to Pablo at 06:05 UTC. Ready to implement upon decision.
+### 1. Market Resolution Architecture — CLARIFIED ✅
+**Status:** Pablo clarified the payout model. No vault race condition — payouts are LMSR-priced and atomic.
+
+**Key Clarification (06:15 UTC):**
+- Payouts are NOT vault-balance-limited. They're LMSR-priced.
+- User requests redemption of N tokens → we compute payout using LMSR price → send at that price or fail with "insufficient depth"
+- Payouts are atomic: either they happen or they don't
+- No "winners" nomenclature — just "redeemers" who get paid based on LMSR price
+- The market outcome (YES/NO) determines which tokens can be redeemed, not the payout amount
+
+**Previous architectural review's 3 blocking issues are now moot** — they were based on false vault-depletion premise.
+
+**Planning-Orchestrator** is now authoring corrected plan that focuses on:
+- kind:984 event creation (resolution event)
+- LMSR payout computation at redemption time
+- Atomic redemption/payout execution
+- No retry logic needed (atomic means succeed or fail)
+
+**Outstanding Decision:** YES/NO/VOID or just YES/NO outcomes?
 
 ### 2. Substack Newsletter Launch
 **Status:** Article draft complete and polished. Ready to publish immediately.

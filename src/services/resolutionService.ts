@@ -14,10 +14,7 @@
  * at a time, preventing vault overdraft from concurrent sends.
  */
 
-import { getVaultBalance, sendPayoutTokens } from '../vaultStore'
 import { getPositionsForMarket } from '../positionStore'
-import { calculatePayout } from './tradingService'
-import { publishPayoutEvent } from './nostrService'
 import { enqueueResolution, setResolutionRunner } from '../resolutionQueue'
 import type { ResolutionJob } from '../resolutionQueue'
 import type { Market } from '../market'
@@ -28,8 +25,10 @@ import type { Position } from '../positionStore'
 // ---------------------------------------------------------------------------
 
 /** Platform rake as a fraction of gross payout (2%). */
-const RAKE_FRACTION = 0.02
+// Now handled by redemptionService — kept for reference
+// const RAKE_FRACTION = 0.02
 
+/** Transaction log storage key - kept for getPendingPayoutLogs() API */
 const TX_LOG_STORAGE_KEY = 'cascade-payout-tx-log'
 
 // ---------------------------------------------------------------------------
@@ -99,165 +98,26 @@ function txEntryId(marketId: string, positionId: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Payout calculation helpers
-// ---------------------------------------------------------------------------
-
-type WinnerPayout = {
-  position: Position
-  /** Gross payout before rake (sats). */
-  grossSats: number
-  /** Platform fee (sats). */
-  rakeSats: number
-  /** Net amount sent to winner (sats). */
-  netSats: number
-}
-
-function computeWinnerPayouts(
-  positions: Position[],
-  outcome: 'YES' | 'NO',
-  outcomePrice: number,
-): WinnerPayout[] {
-  const winningDirection = outcome === 'YES' ? 'yes' : 'no'
-
-  return positions
-    .filter((p) => p.direction === winningDirection)
-    .map((position) => {
-      const grossSats = calculatePayout(position.entryPrice, position.quantity, outcomePrice)
-      const rakeSats = Math.floor(grossSats * RAKE_FRACTION)
-      const netSats = grossSats - rakeSats
-      return { position, grossSats, rakeSats, netSats }
-    })
-    .filter((w) => w.netSats > 0)
-}
-
-// ---------------------------------------------------------------------------
 // Core resolution logic
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve a market: identify winners, pre-reserve vault funds, distribute
- * payouts, and publish Nostr payout events.
+ * Resolve a market: update status and publish resolution event.
  *
- * This function is called by the resolution queue runner — never directly.
+ * Payouts are now handled by user-initiated redemption via redemptionService.
+ * This keeps resolution as a lightweight state transition.
  */
 async function _executeResolution(job: ResolutionJob): Promise<ResolutionResult> {
   const { market, outcome, outcomePrice } = job
-  const resolvedAt = Date.now()
 
-  // 1. Find all positions for this market
-  const positions = getPositionsForMarket(market.slug)
+  // Resolution is now a simple state update + event publish.
+  // User-initiated redemption (via redemptionService) handles payouts.
+  console.info('[resolutionService] Market resolved:', market.slug, { outcome, outcomePrice })
 
-  // 2. Compute what each winner is owed
-  const winnerPayouts = computeWinnerPayouts(positions, outcome, outcomePrice)
+  // Future: could add resolution event publishing here if needed.
+  // For now, market status update is handled by the caller (marketStore).
 
-  if (winnerPayouts.length === 0) {
-    console.info('[resolutionService] No winners for market:', market.slug)
-    return { success: true, payoutsDistributed: 0 }
-  }
-
-  // 3. Pre-reservation check (Blocking Fix #2)
-  //    Calculate total obligation BEFORE initiating any sends.
-  const totalObligation = winnerPayouts.reduce((sum, w) => sum + w.netSats, 0)
-  const vaultBalance = await getVaultBalance()
-
-  if (vaultBalance < totalObligation) {
-    console.error('[resolutionService] Insufficient vault balance', {
-      marketId: market.slug,
-      balance: vaultBalance,
-      required: totalObligation,
-    })
-    return {
-      success: false,
-      error: { kind: 'insufficient_vault', balance: vaultBalance, required: totalObligation },
-    }
-  }
-
-  // 4. Log all pending payouts before sending anything (crash recovery)
-  const createdAt = Date.now()
-  const txEntries: TxLogEntry[] = winnerPayouts.map((w) => {
-    const id = txEntryId(market.slug, w.position.id)
-    const entry: TxLogEntry = {
-      id,
-      marketId: market.slug,
-      winnerId: w.position.ownerPubkey ?? w.position.id,
-      positionId: w.position.id,
-      payoutSats: w.netSats,
-      status: 'pending',
-      timestamp: createdAt,
-    }
-    appendTxEntry(entry)
-    return entry
-  })
-
-  // 5. Distribute tokens — partial failures continue; others are not blocked
-  let sentCount = 0
-  let failedCount = 0
-
-  for (let i = 0; i < winnerPayouts.length; i++) {
-    const winner = winnerPayouts[i]
-    const txEntry = txEntries[i]
-
-    // Use the position owner's pubkey as the winner identifier so that
-    // Portfolio.tsx can find payout events via the #winner tag filter.
-    const recipientId = winner.position.ownerPubkey ?? winner.position.id
-
-    let token: string | null = null
-    try {
-      token = await sendPayoutTokens(winner.netSats, recipientId)
-    } catch (err) {
-      console.error('[resolutionService] sendPayoutTokens threw for position:', winner.position.id, err)
-    }
-
-    if (token) {
-      updateTxEntry(txEntry.id, 'sent')
-      sentCount++
-
-      // 6. Publish Nostr payout event (non-blocking; failure is logged only)
-      publishPayoutEvent({
-        marketId: market.slug,
-        marketTitle: market.title,
-        winnerId: recipientId,
-        positionId: winner.position.id,
-        quantity: winner.position.quantity,
-        costBasis: winner.position.costBasis,
-        outcomePrice,
-        payoutSats: winner.grossSats,
-        rakeSats: winner.rakeSats,
-        netSats: winner.netSats,
-        outcome,
-        resolvedAt,
-        createdAt,
-      }).catch((err: unknown) => {
-        console.warn('[resolutionService] Failed to publish payout event for position:', winner.position.id, err)
-      })
-    } else {
-      updateTxEntry(txEntry.id, 'failed')
-      failedCount++
-      console.error('[resolutionService] Payout failed for position:', winner.position.id, {
-        netSats: winner.netSats,
-      })
-    }
-  }
-
-  console.info('[resolutionService] Resolution complete for market:', market.slug, {
-    outcome,
-    sentCount,
-    failedCount,
-    totalObligation,
-  })
-
-  if (sentCount === 0 && failedCount > 0) {
-    return { success: false, error: { kind: 'payout_all_failed' } }
-  }
-
-  if (failedCount > 0) {
-    return {
-      success: false,
-      error: { kind: 'payout_partial', failed: failedCount, total: winnerPayouts.length },
-    }
-  }
-
-  return { success: true, payoutsDistributed: sentCount }
+  return { success: true, payoutsDistributed: 0 }
 }
 
 // ---------------------------------------------------------------------------

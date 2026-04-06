@@ -349,3 +349,25 @@ export function removePosition(positionId: string): void {
 
   saveToLocalStorage(updatedPositions)
 }
+
+/** Mark a position as settled (payout completed) */
+export function markPositionSettled(positionId: string): void {
+  const position = _positionsCache.find((p) => p.id === positionId)
+  if (!position) {
+    console.warn('[positionStore] markPositionSettled: position not found', positionId)
+    return
+  }
+  position.settled = true
+  notifyCacheListeners()
+  saveToLocalStorage(_positionsCache)
+}
+
+/** Get positions for a market that can be redeemed (matching outcome and not settled) */
+export function getRedeemablePositions(marketSlug: string, outcome: 'YES' | 'NO'): Position[] {
+  return _positionsCache.filter((p) => {
+    const directionMatches = p.direction.toUpperCase() === outcome
+    const notSettled = p.settled !== true
+    const marketMatches = p.marketId === marketSlug
+    return directionMatches && notSettled && marketMatches
+  })
+}

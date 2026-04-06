@@ -4,6 +4,9 @@
  */
 
 import type { Position } from '../positionStore'
+import type { Market } from '../market'
+import type NDK from '@nostr-dev-kit/ndk'
+import { redeemPosition as doRedemption, hasBeenRedeemed } from './redemptionService'
 
 // Backend mint URL - should come from environment/config
 const MINT_URL = import.meta.env.VITE_CASCADE_MINT_URL || 'https://mint.cascade.market'
@@ -123,74 +126,27 @@ export async function redeemPosition(
 }
 
 /**
- * Claim payout after market resolution
- * Different from redemption - this is for resolved markets
+ * Claim payout after market resolution.
+ * Delegates to redemptionService.redeemPosition() for atomic flow.
  */
 export async function claimPositionPayout(
+  market: Market,
   position: Position,
-  resolutionOutcome: number, // 0-1 (0 = NO, 1 = YES)
-  mintUrl: string = MINT_URL
+  ndk: NDK
 ): Promise<SettlementResult> {
-  if (position.settled) {
-    return {
-      success: false,
-      message: 'Position has already been settled',
-    }
-  }
+  // Delegate to the atomic redemption service
+  const result = await doRedemption(market, position, ndk)
 
-  // Calculate payout based on outcome
-  // If YES and direction is LONG, or NO and direction is SHORT: win
-  // Winner receives 1.0 * quantity in sats
-  // Loser receives 0
-  const isWinner =
-    (resolutionOutcome === 1 && position.direction === 'yes') ||
-    (resolutionOutcome === 0 && position.direction === 'no')
-
-  if (!isWinner) {
-    return {
-      success: false,
-      message: 'Position did not win. No payout available.',
-    }
-  }
-
-  if (!position.positionProof) {
-    return {
-      success: false,
-      message: 'No proof token found for this position',
-    }
-  }
-
-  try {
-    // Claim the payout from the resolved market
-    const claimResponse = await fetch(`${mintUrl}/v1/cascade/settle`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        proof: position.positionProof,
-        marketId: position.marketId,
-        outcome: resolutionOutcome,
-      }),
-    })
-
-    if (!claimResponse.ok) {
-      return {
-        success: false,
-        message: `Failed to claim payout: ${claimResponse.statusText}`,
-      }
-    }
-
-    const claimResult = await claimResponse.json()
-
+  if (result.success) {
     return {
       success: true,
-      token: claimResult.token,
-      settlementProof: claimResult.proof,
-      message: `Claimed ${claimResult.amount} sats payout!`,
+      token: result.token,
+      message: `Redeemed ${result.payout.netSats} sats! (${result.payout.grossSats} gross, ${result.payout.rakeSats} rake)`,
     }
-  } catch (error) {
+  } else {
     return {
       success: false,
-      message: `Claim failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: result.error.message,
     }
   }
 }

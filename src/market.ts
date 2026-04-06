@@ -287,6 +287,21 @@ export function costFunction(qLong: number, qShort: number, b: number) {
   return logSumExp(b * qLong, b * qShort) / b
 }
 
+export function computeOutcomePrice(market: Market): number {
+  if (market.resolutionOutcome === 'YES') {
+    return priceLong(market.qLong, market.qShort, market.b)
+  } else {
+    return priceShort(market.qLong, market.qShort, market.b)
+  }
+}
+
+export function deductFromReserve(market: Market, amount: number): Market {
+  return {
+    ...market,
+    reserve: Math.max(0, market.reserve - amount)
+  }
+}
+
 export function deriveMarketMetrics(market: Market) {
   const longOdds = priceLong(market.qLong, market.qShort, market.b)
   const shortOdds = 1 - longOdds

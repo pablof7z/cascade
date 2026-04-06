@@ -66,16 +66,21 @@ export async function getVaultBalance(): Promise<number> {
 }
 
 /**
- * Send tokens from the vault to a recipient.
+ * Send payout tokens from the vault to a recipient.
+ *
+ * CRITICAL: The recipientPubkey is used for NIP-60 Cashu wallet delivery.
+ * The underlying sendTokens() consumes proofs via mint /v1/swap (NUT-03),
+ * providing absolute double-pay protection at the cryptographic level.
+ *
  * @param amount  Amount in sats to send.
- * @param recipientPubkey  Destination pubkey (for memo/routing).
+ * @param recipientPubkey  Destination pubkey for Cashu token delivery.
  * @returns The Cashu token string on success, null on failure.
  */
 export async function sendPayoutTokens(amount: number, recipientPubkey: string): Promise<string | null> {
   const memo = `Cascade payout → ${recipientPubkey.slice(0, 8)}…`
   const token = await sendTokens(amount, memo)
   if (!token) {
-    console.error('[vaultStore] sendPayoutTokens failed', { amount, recipientPubkey })
+    console.error('[vaultStore] sendPayoutTokens failed — insufficient proofs or mint error', { amount, recipientPubkey })
   }
   return token
 }

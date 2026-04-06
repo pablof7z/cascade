@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-06 05:30 UTC — 18 commits on main. Build passing (1.53s). Vercel deploy live. Market route shortening (/markets → /mkt) deployed. AWAITING PABLO DECISIONS on 4 items. Zero technical blockers.*
+*Last updated: 2026-04-06 06:05 UTC — 18 commits on main. Build passing (1.56s). Vercel deploy live. Three blocking decisions asked to Pablo. Zero technical blockers.*
 
 ---
 
@@ -83,29 +83,30 @@
 ## 🔴 AWAITING PABLO DECISIONS (BLOCKING)
 
 ### 1. Market Resolution Architecture — CRITICAL
-**Status:** Comprehensive plan complete + architectural review done. 4 blocking issues identified.
-- **Issue:** Vault race condition (TOCTOU gap in multi-payout loop)
-- **Question:** Which approach?
-  - A: Per-market reserve tracking (robust)
-  - B: Atomic send-with-verification (simpler)
-  - C: Live vault balance checks (easiest)
-- **Secondary:** YES/NO/VOID or just YES/NO outcomes?
+**Status:** Comprehensive plan complete + architectural review done. **3 blocking issues** must be resolved before implementation.
+- **Blocking Issue #1: Vault Race Condition** (TOCTOU gap in multi-payout loop)
+  - A: Per-market reserve tracking (most robust)
+  - B: Atomic send-with-verification (balanced)
+  - C: Live vault balance checks in loop (simplest)
+- **Blocking Issue #2: Queue Deduplication** — no per-market dedup, double-click queues same market twice
+- **Blocking Issue #3: Partial Payout State** — undefined behavior when some payouts fail
+- **Secondary Decision:** YES/NO/VOID or just YES/NO outcomes?
 - **Plan location:** `.tenex/plans/market-resolution/`
 - **Review doc:** `tenex/docs/architectural-review-market-resolution.md`
+- **Status:** Questions posed to Pablo at 06:05 UTC. Ready to implement upon decision.
 
 ### 2. Substack Newsletter Launch
-**Status:** Article draft complete and polished.
-- **Article:** `tenex/docs/substack-draft-2026-04-04-v2.md` (6.2KB, ready to publish)
+**Status:** Article draft complete and polished. Ready to publish immediately.
+- **Article:** `tenex/docs/substack-draft-2026-04-04-v2.md` (6.2KB)
 - **Headline:** "You Were Right About the Trade. Wrong About Why. You Lost."
-- **Question:** Create account at `cascadethinking.substack.com` or alternative?
-- **Blocker:** Need account creation + credentials to publish
+- **Question:** I create account at `cascadethinking.substack.com` + publish, or you handle it?
+- **Status:** Awaiting Pablo's preference (06:05 UTC)
 
 ### 3. Cashu Mint Production Deployment
-**Status:** Code ready at `cascade-mint/`, Phase 1 foundation complete.
+**Status:** Code ready at `cascade-mint/`, Phase 1 foundation complete. Ready for production.
+- **What's ready:** Hono.js + TypeScript foundation, per-market keysets, swap/mint routes, Turso DB schema
 - **Question:** GO for production deployment?
-- **Dependencies:** CDK Rust deployment, Turso DB env, relay config
-- **Blocking:** Real trading until mint is live
-- **Test plan:** Ready in `.tenex/plans/cashu-mint-test-harness.md`
+- **Status:** Awaiting Pablo's GO (06:05 UTC)
 
 ## ⏳ Other Pending Items
 

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 // Market endpoints
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CreateMarketRequest {
     pub title: String,
     pub description: String,
@@ -124,7 +124,7 @@ pub struct ErrorResponse {
 
 // Lightning trade endpoints
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct LightningTradeRequest {
     pub market_id: String, // event_id of the market
     pub side: String,      // "LONG" or "SHORT"

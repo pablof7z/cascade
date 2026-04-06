@@ -35,15 +35,15 @@ impl AppState {
 pub fn build_cascade_routes(state: AppState) -> Router {
     Router::new()
         // Price feeds
-        .route("/api/price/:currency", get(price::get_prices))
+        .route("/api/price/{currency}", get(price::get_prices))
         // Lightning trade settlement
         .route("/api/lightning/create-order", post(handlers::trade::create_lightning_trade))
         .route("/api/lightning/check-order", post(handlers::trade::get_invoice_status))
-        .route("/api/lightning/settle/:order_id", post(handlers::trade::settle_lightning_trade))
+        .route("/api/lightning/settle/{order_id}", post(handlers::trade::settle_lightning_trade))
         // Market management
         .route("/api/market/create", post(market::create_market))
-        .route("/api/market/:id", get(market::get_market))
-        .route("/api/market/:id/resolve", post(resolve::resolve_market))
+        .route("/api/market/{id}", get(market::get_market))
+        .route("/api/market/{id}/resolve", post(resolve::resolve_market))
         // Trade execution
         .route("/api/trade/bid", post(trade::buy))
         .route("/api/trade/ask", post(trade::sell))

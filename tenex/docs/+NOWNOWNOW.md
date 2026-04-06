@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-05 22:05 UTC — 14 commits on main. Build passing. Vercel deploy in progress.*
+*Last updated: 2026-04-06 01:00 UTC — 15 commits on main. Build passing (1.55s). Vercel deploy live. Zero blockers.*
 
 ---
 
@@ -34,10 +34,12 @@
 
 ---
 
-## ✅ Features Shipped (13 commits this session)
+## ✅ Features Shipped (15 commits this session)
 
 | Commit | Feature |
 |--------|---------|
+| **9735191** | **SvelteKit + Vercel Configuration** — Updated adapter, nodejs22.x runtime, cleaned vercel.json rewrite rules |
+| **bc082e8** | **ESLint cleanup** — Fixed 40 lint errors, removed unused variables/imports |
 | **4bfd1fd** | **NOWNOWNOW update** — Svelte migration complete |
 | **7113162** | **Discuss page** — kind:1111, real-time posts, filtering/sorting |
 | **385313e** | **MarketCard.svelte** — reusable market component |

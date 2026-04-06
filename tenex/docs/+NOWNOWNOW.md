@@ -1,29 +1,28 @@
 # NowNowNow
 
-*Last updated: 2026-04-06 10:20 UTC — Market resolution v2 implemented. UX polish in progress. Growth assessment complete. 3 decisions pending Pablo.*
+*Last updated: 2026-04-06 11:30 UTC — All UX features shipped. CDK Rust mint plan in creation. Architectural decisions answered.*
 
 ---
 
 ## ✅ Shipped This Session
 
-| Item | Feature | Status |
-|------|---------|--------|
-| **Market Resolution v2** | Atomic redemption payouts — LMSR pricing, P2PK delivery, 3-layer double-pay prevention, kind:30079 idempotency | ✅ Implemented, committing now |
-| **UX Jargon Audit** | Removing NIP-07, Nostr, Cashu, npub from all user-facing strings | 🔄 In progress |
+| Item | Commit | Status |
+|------|--------|--------|
+| **Market Resolution v2** | d7f19b6 | ✅ Live on main |
+| **YES/NO Outcomes** | 8a49b02 | ✅ Live on main |
+| **Jargon Audit** | 7c4ef41 | ✅ Live on main |
+| **Homepage Rebuild** | abcdaac | ✅ Live on main |
 
 ---
 
 ## 🔄 In Progress
 
-### UX Phase 1 — Critical Fixes Before Acquisition
-1. **Jargon audit** — Removing crypto/Nostr language from UI (claude-code, in progress)
-2. **Homepage rebuild** — Real homepage with hero, examples, CTA (queued)
-3. **Resolution creator UI** — "Resolve Market" button for creators (queued)
-
-### Market Resolution v2 — Committing
-- All 8 phases delivered by execution-coordinator
-- Build passes (1.21s, zero errors)
-- git-agent committing and pushing to main
+### Cashu Mint — CDK Rust (CRITICAL BLOCKER)
+- **Status:** tenex-planner actively creating implementation plan
+- **Architectural decisions:** ✅ All 6 answered (local binary, SQLite, LND, file-based keys, subdomain, testnet)
+- **Timeline:** Plan today → execution-coordinator builds → local Rust binary ready
+- **Deployment:** mint.f7z.io via reverse proxy
+- **Blocks:** All growth, market seeding, user acquisition until complete
 
 ---
 
@@ -39,24 +38,19 @@ Growth agent completed readiness assessment:
 
 ---
 
-## ⏳ Pending Pablo Decisions (3 asked at 10:00 UTC)
+## ⏳ Pending Pablo Decisions
 
-1. **Market outcomes:** YES/NO only, or YES/NO/VOID?
-2. **Substack account:** Create cascadethinking.substack.com or let me handle it?
-3. **Cashu Mint Phase 1:** GO for production deployment?
+1. **Substack account:** Create cascadethinking.substack.com (article draft ready at tenex/docs/substack-draft-2026-04-04-v2.md)
 
 ---
 
-## 🎯 UX Gaps Identified (Pragmatic Reviewer Audit)
+## ✅ RESOLVED: UX Phase 1 Complete
 
-| # | Gap | Severity | Status |
-|---|-----|----------|--------|
-| 1 | Zero onboarding / no real homepage | CRITICAL | Queued for Phase 1 |
-| 2 | Jargon leakage (NIP-07, Nostr, Cashu) | CRITICAL | 🔄 In progress |
-| 3 | No market resolution creator UI | CRITICAL | Queued for Phase 1 |
-| 4 | Missing skeleton screens | MAJOR | Phase 2 |
-| 5 | Discussion routes fragmented | MAJOR | Phase 2 |
-| 6 | Portfolio lacks filtering/sorting | MAJOR | Phase 2 |
+All critical UX gaps from Pragmatic Reviewer audit have been addressed:
+- ✅ Jargon removed (NIP-07, Nostr, Cashu, npub)
+- ✅ Homepage rebuilt with hero, examples, differentiator
+- ✅ Market outcomes enforced as YES/NO only (VOID removed)
+- ⏳ Market resolution creator UI (next phase after mint)
 
 ---
 
@@ -67,7 +61,7 @@ Growth agent completed readiness assessment:
 - **Discussions:** kind 1111 NIP-22 (per-market, real-time) ✅
 - **Bookmarks:** NIP-51 kind 10003 ✅
 - **Redemption:** Atomic, LMSR-priced, P2PK delivery, 3-layer idempotency ✅ NEW
-- **Cashu Mint:** Per-market keysets, 2% rake ✅ (code ready, deploy pending Pablo GO)
+- **Cashu Mint:** Per-market keysets, 2% rake ✅ (CDK Rust plan in creation, deploy following approval)
 - **React:** Abandoned 🗑️ All Svelte 5 now.
 
 ---
@@ -83,4 +77,10 @@ Ready to create immediately once Cashu mint gets GO.
 
 ---
 
-*Next: Complete jargon audit → homepage rebuild → resolution creator UI → seed markets*
+**Next steps:**
+1. ⏳ Mint plan completion (tenex-planner active)
+2. 🚀 Build mint (execution-coordinator + claude-code)
+3. 🔐 Deploy locally and test
+4. 📊 Seed 10 markets (highest leverage per growth assessment)
+5. 📱 Direct outreach to 20 specific humans
+6. 📰 Substack article (pending Pablo account creation)

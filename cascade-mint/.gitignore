@@ -1,0 +1,33 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Build artifacts
+*.pdb
+
+# Data files
+/data/
+*.db
+*.db-shm
+*.db-wal
+
+# Keys and secrets
+*.key
+*.pem
+*.crt
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

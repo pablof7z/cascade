@@ -1,0 +1,24 @@
+# Core library crate
+
+[package]
+name = "cascade-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cdk.workspace = true
+cdk-common.workspace = true
+cdk-sqlite.workspace = true
+cdk-signatory.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+nostr-sdk.workspace = true

@@ -180,7 +180,7 @@
         }
       } catch (err) {
         if (!cancelled) {
-          error = err instanceof Error ? err.message : "Couldn't reach relay"
+          error = err instanceof Error ? err.message : "Couldn't connect to server — check your connection"
         }
       } finally {
         if (!cancelled) {
@@ -972,6 +972,6 @@
 
 {#if createSuccess}
   <div class="fixed bottom-6 right-6 z-50 px-4 py-3 bg-emerald-600 text-white text-sm font-medium shadow-lg">
-    ✓ Market published to Nostr
+    ✓ Market published
   </div>
 {/if}

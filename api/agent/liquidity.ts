@@ -1,5 +1,5 @@
-import { getLiquidityReport } from '../../src/agentDirectory'
-import { readString, sendJson, type ApiRequest, type ApiResponse } from './_helpers'
+import { getLiquidityReport } from '../../src/agentDirectory.js'
+import { readString, sendJson, type ApiRequest, type ApiResponse } from './_helpers.js'
 
 export default function handler(req: ApiRequest, res: ApiResponse) {
   const marketId = readString(req.query.marketId)

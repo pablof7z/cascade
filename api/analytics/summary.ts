@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs'
 import type {
   HomepageEngagementDestination,
   HomepageEngagementSource,
-} from '../../src/analyticsTypes'
+} from '../../src/analyticsTypes.js'
 
 interface StoredEvent {
   type: string

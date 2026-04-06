@@ -1,5 +1,5 @@
-import { searchAgentMarkets, type AgentMarketKind, type LiquidityState } from '../../src/agentDirectory'
-import { readNumber, readString, sendJson, type ApiRequest, type ApiResponse } from './_helpers'
+import { searchAgentMarkets, type AgentMarketKind, type LiquidityState } from '../../src/agentDirectory.js'
+import { readNumber, readString, sendJson, type ApiRequest, type ApiResponse } from './_helpers.js'
 
 export default function handler(req: ApiRequest, res: ApiResponse) {
   const q = readString(req.query.q) ?? ''

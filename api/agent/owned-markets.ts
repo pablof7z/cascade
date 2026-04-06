@@ -1,5 +1,5 @@
-import { listOwnedMarkets } from '../../src/agentDirectory'
-import { readString, sendJson, type ApiRequest, type ApiResponse } from './_helpers'
+import { listOwnedMarkets } from '../../src/agentDirectory.js'
+import { readString, sendJson, type ApiRequest, type ApiResponse } from './_helpers.js'
 
 export default function handler(req: ApiRequest, res: ApiResponse) {
   const ownerId = readString(req.query.ownerId) ?? 'human-primary'

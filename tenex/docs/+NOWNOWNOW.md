@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-06 02:10 UTC — 17 commits on main. Build passing (1.57s). Vercel deploy live. A11y fixes shipped. Zero blockers. Market resolution planning in progress.*
+*Last updated: 2026-04-06 04:00 UTC — 17 commits on main. Build passing (1.57s). Vercel deploy live. AWAITING PABLO DECISIONS on 3 items. Zero technical blockers.*
 
 ---
 
@@ -72,18 +72,38 @@
 
 ---
 
-## ⏳ Pending Pablo Decisions
+## 🔴 AWAITING PABLO DECISIONS (BLOCKING)
 
-1. **Cashu mint deployment** — Code lives at `cascade-mint/`. Needs:
-   - CDK Rust mint deployment to production
-   - Turso DB env config
-   - Relay URLs configuration
-   - Test harness ready in `.tenex/plans/cashu-mint-test-harness.md`
+### 1. Market Resolution Architecture — CRITICAL
+**Status:** Comprehensive plan complete + architectural review done. 4 blocking issues identified.
+- **Issue:** Vault race condition (TOCTOU gap in multi-payout loop)
+- **Question:** Which approach?
+  - A: Per-market reserve tracking (robust)
+  - B: Atomic send-with-verification (simpler)
+  - C: Live vault balance checks (easiest)
+- **Secondary:** YES/NO/VOID or just YES/NO outcomes?
+- **Plan location:** `.tenex/plans/market-resolution/`
+- **Review doc:** `tenex/docs/architectural-review-market-resolution.md`
 
-2. **Substack account** — Draft v2 ready at `tenex/docs/substack-draft-2026-04-04-v2.md`
-   - Awaits: Account creation + credentials OR alternative approach
+### 2. Substack Newsletter Launch
+**Status:** Article draft complete and polished.
+- **Article:** `tenex/docs/substack-draft-2026-04-04-v2.md` (6.2KB, ready to publish)
+- **Headline:** "You Were Right About the Trade. Wrong About Why. You Lost."
+- **Question:** Create account at `cascadethinking.substack.com` or alternative?
+- **Blocker:** Need account creation + credentials to publish
 
-3. **Domain registration** — Post-rebrand (Cascade vs Contrarian)
+### 3. Cashu Mint Production Deployment
+**Status:** Code ready at `cascade-mint/`, Phase 1 foundation complete.
+- **Question:** GO for production deployment?
+- **Dependencies:** CDK Rust deployment, Turso DB env, relay config
+- **Blocking:** Real trading until mint is live
+- **Test plan:** Ready in `.tenex/plans/cashu-mint-test-harness.md`
+
+## ⏳ Other Pending Items
+
+- **Domain registration** — Post-rebrand (Cascade vs Contrarian)
+- **Hero copy revision** — Landing page hero section needs punch
+- **Full ThesisBuilder** — Current version is functional, can be enhanced
 
 ---
 

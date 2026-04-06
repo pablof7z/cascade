@@ -1,6 +1,14 @@
 # NowNowNow
 
-*Last updated: 2026-04-06 04:00 UTC — 17 commits on main. Build passing (1.57s). Vercel deploy live. AWAITING PABLO DECISIONS on 3 items. Zero technical blockers.*
+*Last updated: 2026-04-06 05:30 UTC — 18 commits on main. Build passing (1.53s). Vercel deploy live. Market route shortening (/markets → /mkt) deployed. AWAITING PABLO DECISIONS on 4 items. Zero technical blockers.*
+
+---
+
+## ✅ Shipped This Session (Sweep 163)
+
+| Item | Feature | Commit |
+|------|---------|--------|
+| **URL Shortening** | Market routes `/markets/{slug}` → `/mkt/{slug}` | `dc68d6c` |
 
 ---
 

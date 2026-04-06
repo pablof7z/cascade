@@ -22,3 +22,4 @@ anyhow.workspace = true
 uuid.workspace = true
 chrono.workspace = true
 nostr-sdk.workspace = true
+sha2.workspace = true

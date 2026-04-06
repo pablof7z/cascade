@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-06 14:20 UTC — Mint Phase 1 COMPLETE ✅, Phase 2 approved, 10 seed markets PUBLISHED to Nostr, growth campaign ready to launch.*
+*Last updated: 2026-04-06 22:10 UTC — Mint Phase 4 COMPLETE ✅ (LMSR + HTTP API + Nostr integration). All 28 tests passing. Phase 5 approval pending. 10 seed markets live on Nostr. Growth campaign ready to launch.*
 
 ---
 
@@ -18,15 +18,19 @@
 
 ## 🔄 IN PROGRESS
 
-### CDK Rust Mint — Phase 2 Implementation (Core Logic)
-- **Phase 1**: ✅ COMPLETE — 27 files, 3 crates, clean build
-- **Phase 2**: 🔄 IN PROGRESS — execution-coordinator delegated to claude-code for core logic (error.rs, market.rs, db.rs)
-- **Branch**: `feat/cashu-mint-cdk-rust`
-- **Approach**: Phased delegation — Phase 1 ✅ | Phase 2 🔄 | Phase 3 (HTTP API) | Phase 4 (Lightning/testing)
+### CDK Rust Mint — Phase 5 Ready for Approval
+- **Phase 1**: ✅ COMPLETE (27 files, 3 crates, clean build)
+- **Phase 2**: ✅ COMPLETE (Core logic: error.rs, market.rs, db.rs)
+- **Phase 3**: ✅ COMPLETE (LMSR math engine, market manager, 26→28 tests passing)
+- **Phase 4**: ✅ COMPLETE (Nostr publisher integration, HTTP API handlers, all 28 tests passing)
+- **Phase 5**: ⏳ PENDING APPROVAL (Lightning integration, final testing, Clippy cleanup)
+- **Branch**: Working on main with all phases integrated
+- **Build status**: ✅ Passes cleanly (`cargo build`)
+- **Test status**: ✅ 28/28 tests passing (`cargo test`)
 - **Architecture**: SQLite + LND + standalone binary at mint.f7z.io
-- **Est. Phase 2 completion**: 8-12 hours for core logic (error handling, market struct, SQLite schema)
+- **Est. Phase 5 completion**: 16-20 hours for Lightning integration and production polish
 
-**Current action**: execution-coordinator managing Phase 2. Growth campaign proceeding in parallel.
+**Current action**: All Phase 4 changes committed, awaiting Phase 5 delegation to execution-coordinator.
 
 ### Growth Markets Seeding — LAUNCHED ✅
 - **Status**: ✅ COMPLETE — All 10 markets published to Nostr mainnet

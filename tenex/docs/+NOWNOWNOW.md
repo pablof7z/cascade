@@ -1,169 +1,86 @@
 # NowNowNow
 
-*Last updated: 2026-04-06 06:05 UTC — 18 commits on main. Build passing (1.56s). Vercel deploy live. Three blocking decisions asked to Pablo. Zero technical blockers.*
+*Last updated: 2026-04-06 10:20 UTC — Market resolution v2 implemented. UX polish in progress. Growth assessment complete. 3 decisions pending Pablo.*
 
 ---
 
-## ✅ Shipped This Session (Sweep 163)
+## ✅ Shipped This Session
 
-| Item | Feature | Commit |
+| Item | Feature | Status |
 |------|---------|--------|
-| **URL Shortening** | Market routes `/markets/{slug}` → `/mkt/{slug}` | `dc68d6c` |
+| **Market Resolution v2** | Atomic redemption payouts — LMSR pricing, P2PK delivery, 3-layer double-pay prevention, kind:30079 idempotency | ✅ Implemented, committing now |
+| **UX Jargon Audit** | Removing NIP-07, Nostr, Cashu, npub from all user-facing strings | 🔄 In progress |
 
 ---
 
-## ✅ Complete Svelte Migration — ALL ROUTES SHIPPED
+## 🔄 In Progress
 
-**Every React route has been ported to Svelte 5 + SvelteKit.** Pablo's directive complete: "Port to Svelte. Abandon React. I MEAN IT."
+### UX Phase 1 — Critical Fixes Before Acquisition
+1. **Jargon audit** — Removing crypto/Nostr language from UI (claude-code, in progress)
+2. **Homepage rebuild** — Real homepage with hero, examples, CTA (queued)
+3. **Resolution creator UI** — "Resolve Market" button for creators (queued)
 
-| Route | Status | Commit |
-|-------|--------|--------|
-| / (Landing) | ✅ | 7113162 |
-| /discuss | ✅ | 7113162 |
-| /activity | ✅ | in migration |
-| /analytics | ✅ | in migration |
-| /profile/[pubkey] | ✅ | in migration |
-| /thread/[marketId] | ✅ | in migration |
-| /market/[marketId] | ✅ | 2811d41 |
-| /markets/[slugAndPrefix] | ✅ | 2811d41 |
-| /portfolio | ✅ | 2811d41 |
-| /wallet | ✅ | 0fe441f |
-| /settings | ✅ | d0655ce |
-| /welcome (onboarding) | ✅ | 6d922146 (architect-orchestrator) |
-| /thesis/new | ✅ | in migration |
-| /join | ✅ | 385313e |
-| /blog | ✅ | 385313e |
-| /bookmarks | ✅ | 385313e |
-| /legal/terms | ✅ | c5ae80f |
-| /legal/privacy | ✅ | c5ae80f |
-| /help | ✅ | 032e04a |
-
-**21 unique routes + 2 nested portfolio/profile routes. Zero React. Zero mock data.**
+### Market Resolution v2 — Committing
+- All 8 phases delivered by execution-coordinator
+- Build passes (1.21s, zero errors)
+- git-agent committing and pushing to main
 
 ---
 
-## ✅ Features Shipped & Fixed (17 commits this session, latest: Sweep 156)
+## 📊 Growth Assessment Results (2026-04-06)
 
-| Commit | Feature |
-|--------|---------|
-| **e0e598f** | **A11y fixes #2** — Resolve remaining accessibility warnings (label associations, HTML structure) |
-| **f5c1288** | **A11y fixes #1** — Modal dialog accessibility (role, tabindex, Escape key), form label association |
-| **b987612** | **Sweep 155** — Configuration & lint cleanup |
-| **9735191** | **SvelteKit + Vercel Configuration** — Updated adapter, nodejs22.x runtime, cleaned vercel.json rewrite rules |
-| **bc082e8** | **ESLint cleanup** — Fixed 40 lint errors, removed unused variables/imports |
-| **4bfd1fd** | **NOWNOWNOW update** — Svelte migration complete |
-| **7113162** | **Discuss page** — kind:1111, real-time posts, filtering/sorting |
-| **385313e** | **MarketCard.svelte** — reusable market component |
-| **2811d41** | **Portfolio page** — positions, PnL, real positions from Nostr |
-| **22537ad** | **Create market modal** — kind 982 event publishing |
-| **c5ae80f** | **Legal pages** — Terms + Privacy, real content |
-| **c3badcd** | **Footer** — Site-wide, consistent branding |
-| **a9ec131** | **Trade button** — Real `executeTrade()` integration |
-| **e6cf915** | **Cashu Mint Phase 1** — Hono.js + TypeScript foundation |
-| **e6d9343** | **OG/Twitter tags** — SEO meta, market sharing |
-| **032e04a** | **Contact info** — Real Nostr/email links |
-| **b1b4a09** | **Profile nav** — "View Profile" in user menu |
-| **df16b6a** | **Market Discussion** — 4 components, kind:1111 NIP-22 |
-| **9ae9f0c** | **Blog cleanup** — Removed placeholders |
-| **245bf0b** | **Analytics cleanup** — Removed mock data |
-| **6ffe4ed** | **Profile tabs** — Markets/Positions switching |
-| **8c37ab3** | **Favicon** — SVG, no 404s |
+Growth agent completed readiness assessment:
+- **Don't push broad acquisition yet** — fix UX first
+- **Seed 10 markets NOW** — highest-leverage immediate action
+- **Direct outreach to 20 specific humans** — not "post and hope"
+- **GTM message:** "You have opinions. Now trade on them."
+- **Need analytics** before broad push (no tracking exists)
+- **Substack deprioritized** for first 100 users (long-term asset, not acquisition lever)
 
 ---
 
-## 🚀 Deployment Status
+## ⏳ Pending Pablo Decisions (3 asked at 10:00 UTC)
 
-- **Build:** ✅ Passes cleanly (1.5s, Vite)
-- **Committed:** ✅ 4bfd1fd pushed to `pablof7z/cascade` main
-- **Vercel Deploy:** 🔄 Auto-deploy triggered (cascade.f7z.io in progress)
-- **Public:** ✅ No auth required
-
----
-
-## 🔴 AWAITING PABLO DECISIONS (BLOCKING)
-
-### 1. Market Resolution Architecture — CLARIFIED ✅
-**Status:** Pablo clarified the payout model. No vault race condition — payouts are LMSR-priced and atomic.
-
-**Key Clarification (06:15 UTC):**
-- Payouts are NOT vault-balance-limited. They're LMSR-priced.
-- User requests redemption of N tokens → we compute payout using LMSR price → send at that price or fail with "insufficient depth"
-- Payouts are atomic: either they happen or they don't
-- No "winners" nomenclature — just "redeemers" who get paid based on LMSR price
-- The market outcome (YES/NO) determines which tokens can be redeemed, not the payout amount
-
-**Previous architectural review's 3 blocking issues are now moot** — they were based on false vault-depletion premise.
-
-**Planning-Orchestrator** is now authoring corrected plan that focuses on:
-- kind:984 event creation (resolution event)
-- LMSR payout computation at redemption time
-- Atomic redemption/payout execution
-- No retry logic needed (atomic means succeed or fail)
-
-**Outstanding Decision:** YES/NO/VOID or just YES/NO outcomes?
-
-### 2. Substack Newsletter Launch
-**Status:** Article draft complete and polished. Ready to publish immediately.
-- **Article:** `tenex/docs/substack-draft-2026-04-04-v2.md` (6.2KB)
-- **Headline:** "You Were Right About the Trade. Wrong About Why. You Lost."
-- **Question:** I create account at `cascadethinking.substack.com` + publish, or you handle it?
-- **Status:** Awaiting Pablo's preference (06:05 UTC)
-
-### 3. Cashu Mint Production Deployment
-**Status:** Code ready at `cascade-mint/`, Phase 1 foundation complete. Ready for production.
-- **What's ready:** Hono.js + TypeScript foundation, per-market keysets, swap/mint routes, Turso DB schema
-- **Question:** GO for production deployment?
-- **Status:** Awaiting Pablo's GO (06:05 UTC)
-
-## ⏳ Other Pending Items
-
-- **Domain registration** — Post-rebrand (Cascade vs Contrarian)
-- **Hero copy revision** — Landing page hero section needs punch
-- **Full ThesisBuilder** — Current version is functional, can be enhanced
+1. **Market outcomes:** YES/NO only, or YES/NO/VOID?
+2. **Substack account:** Create cascadethinking.substack.com or let me handle it?
+3. **Cashu Mint Phase 1:** GO for production deployment?
 
 ---
 
-## ✅ In Progress This Session
+## 🎯 UX Gaps Identified (Pragmatic Reviewer Audit)
 
-### Market Resolution Planning — ACTIVE (Sweep 157)
-- **Planning:** tenex-planner authored comprehensive plan (6 sections: INDEX, nostr-event-design, payout-logic, service-layer, testing, ui-flow)
-- **Architectural Review:** architect-orchestrator completed detailed review identifying **4 Blocking Issues** + 5 Important + 3 Minor
-- **Key Findings:**
-  - ✅ Bridge pattern sound (wire kind:984 → resolutionService)
-  - ✅ Idempotency via TX log is correct
-  - ⚠️ BLOCKING: Vault atomicity gaps (race conditions in multi-payout loops)
-  - ⚠️ BLOCKING: Queue idempotency needs transaction-level dedup
-  - ⚠️ BLOCKING: Cashu failure handling (network failures during payout loop)
-  - ⚠️ BLOCKING: `outcomePrice` validation missing (could cause payout miscalculations)
-- **Status:** Awaiting decision on proceeding with modifications to address blocking issues
-- **Commit:** `86cf7a8` (architectural review doc)
+| # | Gap | Severity | Status |
+|---|-----|----------|--------|
+| 1 | Zero onboarding / no real homepage | CRITICAL | Queued for Phase 1 |
+| 2 | Jargon leakage (NIP-07, Nostr, Cashu) | CRITICAL | 🔄 In progress |
+| 3 | No market resolution creator UI | CRITICAL | Queued for Phase 1 |
+| 4 | Missing skeleton screens | MAJOR | Phase 2 |
+| 5 | Discussion routes fragmented | MAJOR | Phase 2 |
+| 6 | Portfolio lacks filtering/sorting | MAJOR | Phase 2 |
 
 ---
 
-## 🏗️ Next High-Impact Work
-
-1. **Deploy mint + enable real trading** — Create market + trade buttons wired. Mint code ready. Just need deployment.
-2. **Market resolution flow** — No resolution mechanism yet. Needed for market lifecycle.
-3. **Growth / Substack** — Newsletter draft waiting for account.
-4. **Full ThesisBuilder** — `/thesis/new` is skeletal.
-
----
-
-## Architecture State
+## 🏗️ Architecture State
 
 - **Markets:** kind 982 (immutable, non-replaceable) ✅
 - **Positions:** kind 30078 NIP-78 (user-signed, replaceable) ✅
 - **Discussions:** kind 1111 NIP-22 (per-market, real-time) ✅
 - **Bookmarks:** NIP-51 kind 10003 ✅
-- **Cashu Mint:** Per-market keysets (long/short), 2% rake ✅ (code ready, deploy pending)
-- **React:** Abandoned 🗑️ All Svelte now.
+- **Redemption:** Atomic, LMSR-priced, P2PK delivery, 3-layer idempotency ✅ NEW
+- **Cashu Mint:** Per-market keysets, 2% rake ✅ (code ready, deploy pending Pablo GO)
+- **React:** Abandoned 🗑️ All Svelte 5 now.
 
 ---
 
-## Open Questions for Pablo
+## 📈 Market Opportunities Ready to Seed
 
-1. **LMSR pricing at market close** — How does closing price feed into mint redemption?
-2. **Market resolution authority** — Who/what provides the closing price?
-3. **Funding mechanics** — How does initial market seeding interact with LMSR?
+3 thesis chains ready for creation (from market scan 2026-04-06):
+1. **SpaceX IPO Catalyst Chain** — IPO filing → valuation → Starship milestones
+2. **DeepSeek Independence** — Independence → sanctions → US AI training costs
+3. **Microsoft Japan Arbitrage** — Japan hub → tech firm follow → APAC market share
 
-*Last action: Pushed 4bfd1fd, Vercel deploy auto-triggered. Build green. All routes in Svelte.*
+Ready to create immediately once Cashu mint gets GO.
+
+---
+
+*Next: Complete jargon audit → homepage rebuild → resolution creator UI → seed markets*

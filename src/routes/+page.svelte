@@ -224,7 +224,7 @@
     try {
       const pubkey = getPubkey()
       if (!pubkey) {
-        createError = 'Please connect a Nostr extension (NIP-07) to create markets.'
+        createError = 'Please sign in to create markets.'
         createLoading = false
         return
       }
@@ -327,7 +327,7 @@
               The Market Thinks You're Wrong
             </h1>
             <p class="text-xl md:text-2xl text-neutral-400 max-w-lg leading-relaxed">
-              Prove it. Take a position.
+              Not just "will it happen?" — but "if it does, then what?" Build a thesis, trade on your conviction.
             </p>
             <div class="flex flex-wrap items-center gap-4 pt-4">
               <a
@@ -338,7 +338,7 @@
                 Start Trading
               </a>
               <a
-                href="/help"
+                href="#how-it-works"
                 class="text-neutral-500 hover:text-neutral-300 transition-colors text-sm"
               >
                 How it works →
@@ -371,13 +371,51 @@
           {:else}
             <div class="space-y-6">
               <span class="text-xs font-medium text-neutral-500 uppercase tracking-[0.2em]">
-                Featured Thesis
+                Example theses — this is how Cascade works
               </span>
-              <h2 class="text-3xl md:text-4xl font-bold text-white leading-snug">
-                Be the first to create a market
-              </h2>
-              <p class="text-neutral-400">
-                No markets yet. Create the first prediction market and start trading.
+              <div class="space-y-4">
+                <!-- Example 1: AI thesis -->
+                <div class="border-b border-neutral-800/30 pb-4">
+                  <div class="flex items-baseline gap-3 mb-2">
+                    <span class="text-4xl font-black text-emerald-500 tabular-nums">67¢</span>
+                    <span class="text-sm text-emerald-500/70">YES</span>
+                  </div>
+                  <p class="text-neutral-300 text-sm leading-snug mb-1">
+                    AGI before 2030?
+                  </p>
+                  <p class="text-xs text-neutral-600 font-mono">
+                    Then: AI workforce adoption → Labor market disruption → UBI thesis strengthens
+                  </p>
+                </div>
+                <!-- Example 2: Crypto thesis -->
+                <div class="border-b border-neutral-800/30 pb-4">
+                  <div class="flex items-baseline gap-3 mb-2">
+                    <span class="text-4xl font-black text-emerald-500 tabular-nums">43¢</span>
+                    <span class="text-sm text-emerald-500/70">YES</span>
+                  </div>
+                  <p class="text-neutral-300 text-sm leading-snug mb-1">
+                    BTC breaks $100k in 2025?
+                  </p>
+                  <p class="text-xs text-neutral-600 font-mono">
+                    Then: ETH outperforms → Layer-2 TVL surges → Coinbase revenue up
+                  </p>
+                </div>
+                <!-- Example 3: Geopolitics thesis -->
+                <div class="pb-4">
+                  <div class="flex items-baseline gap-3 mb-2">
+                    <span class="text-4xl font-black text-rose-500 tabular-nums">28¢</span>
+                    <span class="text-sm text-rose-500/70">YES</span>
+                  </div>
+                  <p class="text-neutral-300 text-sm leading-snug mb-1">
+                    Taiwan conflict by 2030?
+                  </p>
+                  <p class="text-xs text-neutral-600 font-mono">
+                    Then: TSMC offline → Chip shortage → Defense spending surges
+                  </p>
+                </div>
+              </div>
+              <p class="text-xs text-neutral-600 pt-2">
+                Build your own thesis — connect predictions into chains, trade on conviction.
               </p>
               <button
                 onclick={() => showCreateModal = true}
@@ -405,10 +443,69 @@
         <span class="text-xs text-neutral-500 uppercase tracking-wider font-medium">Live</span>
       </div>
       <div class="overflow-hidden text-sm text-neutral-400">
-        Markets updating in real-time via Nostr
+        Markets updating in real-time
       </div>
     </div>
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════════
+      HOW IT WORKS — 3-step explanation
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <section id="how-it-works" class="max-w-7xl mx-auto px-6 py-20 border-t border-neutral-800/30">
+    <div class="mb-12">
+      <h2 class="text-3xl md:text-4xl font-bold text-white tracking-tight mb-3">
+        You have opinions. Now trade on them.
+      </h2>
+      <p class="text-neutral-500 text-sm">Cascade trades on theses, not just bets.</p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-12">
+      <!-- Step 1 -->
+      <div class="space-y-4">
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-mono text-neutral-600 uppercase tracking-wider">Step 1</span>
+          <div class="h-px flex-1 bg-neutral-800"></div>
+        </div>
+        <h3 class="text-lg font-semibold text-white">Find or create a prediction</h3>
+        <p class="text-sm text-neutral-500 leading-relaxed">
+          Browse existing markets or create your own. Each market is a simple question: will this outcome happen?
+        </p>
+        <p class="text-xs text-neutral-600 font-mono">
+          e.g. "Will BTC break $100k by end of 2025?"
+        </p>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="space-y-4">
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-mono text-neutral-600 uppercase tracking-wider">Step 2</span>
+          <div class="h-px flex-1 bg-neutral-800"></div>
+        </div>
+        <h3 class="text-lg font-semibold text-white">Connect predictions into a thesis</h3>
+        <p class="text-sm text-neutral-500 leading-relaxed">
+          Link predictions together. If one outcome happens, what follows? Build conditional chains.
+        </p>
+        <p class="text-xs text-neutral-600 font-mono">
+          e.g. "If BTC breaks $100k → ETH outperforms → Coinbase benefits"
+        </p>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="space-y-4">
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-mono text-neutral-600 uppercase tracking-wider">Step 3</span>
+          <div class="h-px flex-1 bg-neutral-800"></div>
+        </div>
+        <h3 class="text-lg font-semibold text-white">Trade on your conviction</h3>
+        <p class="text-sm text-neutral-500 leading-relaxed">
+          Buy YES or NO shares. The market prices your thesis in real-time as new information arrives.
+        </p>
+        <p class="text-xs text-neutral-600 font-mono">
+          e.g. 73¢ YES — market thinks you're wrong, prove it.
+        </p>
+      </div>
+    </div>
+  </section>
 
   {#if error}
     <div class="max-w-7xl mx-auto px-6 pt-12">
@@ -710,17 +807,23 @@
 
       <div class="lg:col-span-7 grid sm:grid-cols-2 gap-8">
         <div class="space-y-3">
-          <div class="text-4xl font-bold text-emerald-500">∞</div>
-          <h3 class="text-lg font-semibold text-white">Infinite games</h3>
-          <p class="text-sm text-neutral-500 leading-relaxed">
-            Markets that never close. Price tracks evolving probability as evidence accumulates.
+          <div class="text-xs font-mono text-neutral-600 uppercase tracking-wider mb-1">Binary markets</div>
+          <h3 class="text-lg font-semibold text-neutral-400">"Will X happen?"</h3>
+          <p class="text-sm text-neutral-600 leading-relaxed">
+            YES or NO. One question, one answer. Resolves when the question is settled.
+          </p>
+          <p class="text-xs text-neutral-700 font-mono mt-2">
+            e.g. "Will Fed cut rates in 2025?"
           </p>
         </div>
         <div class="space-y-3">
-          <div class="text-4xl font-bold text-neutral-400">◆</div>
-          <h3 class="text-lg font-semibold text-white">Modular theses</h3>
+          <div class="text-xs font-mono text-emerald-500 uppercase tracking-wider mb-1">Conditional markets</div>
+          <h3 class="text-lg font-semibold text-white">"If X, then what?"</h3>
           <p class="text-sm text-neutral-500 leading-relaxed">
-            Stack predictions. Your thesis on AI depends on AGI timing and labor economics.
+            Build a thesis. Connect predictions into chains. The market prices your entire argument.
+          </p>
+          <p class="text-xs text-neutral-600 font-mono mt-2">
+            e.g. "If Fed cuts → BTC rallies → ETH outperforms → Coinbase benefits"
           </p>
         </div>
       </div>

@@ -52,7 +52,7 @@
         pnlPercent,
         isSettled: isPositionSettled(pos),
         canRedeem: canRedeemPosition(pos),
-        isWon: market?.status === 'resolved' && (market.resolvedOutcome === 'yes' ? pos.direction === 'yes' : pos.direction === 'no'),
+        isWon: market?.status === 'resolved' && (market.resolutionOutcome === 'YES' ? pos.direction === 'yes' : pos.direction === 'no'),
       }
     })
   )

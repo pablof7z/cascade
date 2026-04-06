@@ -8,7 +8,7 @@ import { secp256k1 } from '@noble/curves/secp256k1';
 import { bytesToHex, hexToBytes } from '@noble/curves/abstract/utils';
 import { MASTER_SEED } from '../config.js';
 import type { Keyset, KeysetDerivation } from '../types/index.js';
-import { getDatabase, prepareFirst, prepareRun } from '../database/index.js';
+import { prepareFirst, prepareRun } from '../database/index.js';
 
 /**
  * Derive a market-specific keyset using BIP-32 path scheme:
@@ -81,7 +81,6 @@ export class KeysetService {
    * Derive deterministic keyset for a market
    */
   deriveKeyset(marketId: string): KeysetDerivation {
-    const marketHash = this.deriveMarketHash(marketId);
     const hashPrefix = sha256(new TextEncoder().encode(marketId));
     const pathIndex = this.hashToUint32(hashPrefix);
 
@@ -106,8 +105,6 @@ export class KeysetService {
    * Get keyset from database or derive new one
    */
   async getOrCreateKeyset(marketId: string): Promise<Keyset> {
-    const db = getDatabase();
-
     // Try to get existing keyset
     const existing = await prepareFirst<Keyset>(
       'SELECT * FROM keysets WHERE market_id = ?',

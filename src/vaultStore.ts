@@ -48,7 +48,7 @@ export async function loadOrCreateVault(): Promise<boolean> {
           // quota exceeded — non-fatal
         }
       }
-    } catch (err) {
+    } catch {
       // Pubkey derivation failed — vault will use unknown pubkey
     }
   }

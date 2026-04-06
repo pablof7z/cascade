@@ -4,9 +4,9 @@
  */
 
 import { randomBytes } from '@noble/hashes/utils';
-import { bytesToHex, hexToBytes } from '@noble/curves/abstract/utils';
+import { bytesToHex } from '@noble/curves/abstract/utils';
 import { CASHU_FEE_RATE, MINT_CONFIG } from '../config.js';
-import { getDatabase, prepareFirst, prepareRun, prepare } from '../database/index.js';
+import { prepareFirst, prepareRun, prepare } from '../database/index.js';
 import { getKeysetService } from './KeysetService.js';
 import { getProofService } from './ProofService.js';
 import type { MintQuote, Proof, Keyset } from '../types/index.js';
@@ -40,7 +40,6 @@ export class MintService {
       throw new Error(`Unsupported unit: ${unit}`);
     }
 
-    const db = getDatabase();
     const quoteId = generateQuoteId();
     const now = Date.now();
     const expiresAt = now + (MINT_CONFIG.quoteExpirySeconds * 1000);

@@ -8,7 +8,6 @@ import { bytesToHex } from '@noble/curves/abstract/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { randomBytes } from '@noble/hashes/utils';
 import { CASHU_FEE_RATE } from '../config.js';
-import { getDatabase, prepareFirst, prepareRun } from '../database/index.js';
 import { getKeysetService } from './KeysetService.js';
 import { getProofService } from './ProofService.js';
 import type { Proof, SwapResult, SwapRequest, Keyset } from '../types/index.js';
@@ -30,11 +29,13 @@ export class SwapService {
    */
   async swap(
     request: SwapRequest,
-    inputUnit: 'long' | 'short',
-    outputUnit: 'long' | 'short'
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _inputUnit: 'long' | 'short',
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _outputUnit: 'long' | 'short'
   ): Promise<SwapResult> {
     // Validate inputs
-    const validation = await this.validateSwapRequest(request, inputUnit, outputUnit);
+    const validation = await this.validateSwapRequest(request);
     if (!validation.valid) {
       throw new Error(validation.error);
     }
@@ -125,9 +126,7 @@ export class SwapService {
    * Validate swap request
    */
   async validateSwapRequest(
-    request: SwapRequest,
-    inputUnit: string,
-    outputUnit: string
+    request: SwapRequest
   ): Promise<{ valid: boolean; error?: string }> {
     // Check inputs exist
     if (!request.inputs || request.inputs.length === 0) {

@@ -8,10 +8,9 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import type { Context, Next } from 'hono';
 
 // Database
-import { initDatabase, exec } from './database/index.js';
+import { initDatabase } from './database/index.js';
 import { runMigrations } from './database/migrator.js';
 
 // Routes
@@ -36,34 +35,6 @@ interface Env {
   CASHU_FEE_RATE?: string;
   NOSTR_RELAYS?: string;
   NOSTR_PUBKEY?: string;
-}
-
-/**
- * Error handling middleware
- */
-async function errorHandler(c: Context, next: Next) {
-  try {
-    await next();
-  } catch (error) {
-    console.error('Unhandled error:', error);
-    const err: ApiError = {
-      detail: error instanceof Error ? error.message : 'Internal server error',
-      code: 'internal_error',
-      type: 'https://github.com/cashubtc/nuts/blob/main/NUT-00.md',
-    };
-    c.status(500);
-    return c.json(err);
-  }
-}
-
-/**
- * Request logging middleware
- */
-async function requestLogger(c: Context, next: Next) {
-  const start = Date.now();
-  await next();
-  const duration = Date.now() - start;
-  console.log(`${c.req.method} ${c.req.path} - ${c.res.status} (${duration}ms)`);
 }
 
 /**

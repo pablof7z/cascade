@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import type { NDKEvent } from '@nostr-dev-kit/ndk'
 import {
   serializeBookmarksToEvent,
   parseBookmarkEvent,
@@ -65,7 +66,7 @@ describe('bookmarkService', () => {
             : [],
       }
 
-      const result = parseBookmarkEvent(event as any)
+      const result = parseBookmarkEvent(event as unknown as NDKEvent)
       expect(result.ok).toBe(true)
       if (result.ok) {
         expect(result.list.entries).toEqual([
@@ -87,7 +88,7 @@ describe('bookmarkService', () => {
         getMatchingTags: () => [],
       }
 
-      const result = parseBookmarkEvent(event as any)
+      const result = parseBookmarkEvent(event as unknown as NDKEvent)
       expect(result.ok).toBe(false)
       if (!result.ok) {
         expect(result.reason).toBe('invalid_kind')
@@ -104,7 +105,7 @@ describe('bookmarkService', () => {
         getMatchingTags: () => [],
       }
 
-      const result = parseBookmarkEvent(event as any)
+      const result = parseBookmarkEvent(event as unknown as NDKEvent)
       expect(result.ok).toBe(false)
       if (!result.ok) {
         expect(result.reason).toBe('missing_pubkey')
@@ -127,7 +128,7 @@ describe('bookmarkService', () => {
             : [],
       }
 
-      const result = parseBookmarkEvent(event as any)
+      const result = parseBookmarkEvent(event as unknown as NDKEvent)
       expect(result.ok).toBe(true)
       if (result.ok) {
         expect(result.list.entries).toHaveLength(2)
@@ -152,7 +153,7 @@ describe('bookmarkService', () => {
               : [],
       }
 
-      const result = parseBookmarkEvent(event as any)
+      const result = parseBookmarkEvent(event as unknown as NDKEvent)
       expect(result.ok).toBe(true)
       if (result.ok) {
         expect(result.list.entries).toEqual([{ marketEventId: 'market1' }])
@@ -168,7 +169,7 @@ describe('bookmarkService', () => {
         getMatchingTags: () => [],
       }
 
-      const result = parseBookmarkEvent(event as any)
+      const result = parseBookmarkEvent(event as unknown as NDKEvent)
       expect(result.ok).toBe(true)
       if (result.ok) {
         expect(result.list.entries).toEqual([])
@@ -185,7 +186,7 @@ describe('bookmarkService', () => {
           tag === 'e' ? [['e', 'market1']] : [],
       }
 
-      const result = parseBookmarkEvent(event as any)
+      const result = parseBookmarkEvent(event as unknown as NDKEvent)
       expect(result.ok).toBe(true)
       if (result.ok) {
         expect(result.list.createdAt).toBeGreaterThan(0)

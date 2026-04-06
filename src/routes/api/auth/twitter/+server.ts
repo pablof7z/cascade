@@ -16,7 +16,7 @@ const TWITTER_REDIRECT_URI = import.meta.env.VITE_TWITTER_REDIRECT_URI ||
  * GET /api/auth/twitter
  * Initiates the Twitter OAuth flow by redirecting to Twitter's authorization page.
  */
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async () => {
   if (!TWITTER_CLIENT_ID) {
     return new Response(JSON.stringify({ error: 'Twitter OAuth not configured' }), {
       status: 503,

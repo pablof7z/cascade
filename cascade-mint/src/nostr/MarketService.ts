@@ -54,7 +54,7 @@ async function fetchMarketsFromRelay(relayUrl: string): Promise<MarketEvent[]> {
     }, 5000);
 
     const markets: MarketEvent[] = [];
-    let unsubscribe = () => {
+    const unsubscribe = () => {
       ws.send(JSON.stringify(['CLOSE', subscriptionId]));
     };
 

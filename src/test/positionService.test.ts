@@ -211,7 +211,9 @@ describe('parsePositionEvent', () => {
 
   it('returns ok:false with invalid_position when id is missing', () => {
     const pos = makePosition()
-    const { id: _, ...posWithoutId } = pos
+    const posWithoutId = Object.fromEntries(
+      Object.entries(pos).filter(([key]) => key !== 'id')
+    ) as typeof pos
     const event = makePositionEvent(pos, {
       content: JSON.stringify(posWithoutId),
     })
@@ -222,7 +224,9 @@ describe('parsePositionEvent', () => {
 
   it('returns ok:false when marketId is missing', () => {
     const pos = makePosition()
-    const { marketId: _, ...rest } = pos
+    const rest = Object.fromEntries(
+      Object.entries(pos).filter(([key]) => key !== 'marketId')
+    ) as typeof pos
     const event = makePositionEvent(pos, { content: JSON.stringify(rest) })
     const result = parsePositionEvent(event)
     expect(result.ok).toBe(false)
@@ -240,7 +244,9 @@ describe('parsePositionEvent', () => {
 
   it('returns ok:false when quantity is missing', () => {
     const pos = makePosition()
-    const { quantity: _, ...rest } = pos
+    const rest = Object.fromEntries(
+      Object.entries(pos).filter(([key]) => key !== 'quantity')
+    ) as typeof pos
     const event = makePositionEvent(pos, { content: JSON.stringify(rest) })
     const result = parsePositionEvent(event)
     expect(result.ok).toBe(false)
@@ -248,7 +254,9 @@ describe('parsePositionEvent', () => {
 
   it('returns ok:false when entryPrice is missing', () => {
     const pos = makePosition()
-    const { entryPrice: _, ...rest } = pos
+    const rest = Object.fromEntries(
+      Object.entries(pos).filter(([key]) => key !== 'entryPrice')
+    ) as typeof pos
     const event = makePositionEvent(pos, { content: JSON.stringify(rest) })
     const result = parsePositionEvent(event)
     expect(result.ok).toBe(false)
@@ -256,7 +264,9 @@ describe('parsePositionEvent', () => {
 
   it('returns ok:false when costBasis is missing', () => {
     const pos = makePosition()
-    const { costBasis: _, ...rest } = pos
+    const rest = Object.fromEntries(
+      Object.entries(pos).filter(([key]) => key !== 'costBasis')
+    ) as typeof pos
     const event = makePositionEvent(pos, { content: JSON.stringify(rest) })
     const result = parsePositionEvent(event)
     expect(result.ok).toBe(false)
@@ -264,7 +274,9 @@ describe('parsePositionEvent', () => {
 
   it('returns ok:false when timestamp is missing', () => {
     const pos = makePosition()
-    const { timestamp: _, ...rest } = pos
+    const rest = Object.fromEntries(
+      Object.entries(pos).filter(([key]) => key !== 'timestamp')
+    ) as typeof pos
     const event = makePositionEvent(pos, { content: JSON.stringify(rest) })
     const result = parsePositionEvent(event)
     expect(result.ok).toBe(false)

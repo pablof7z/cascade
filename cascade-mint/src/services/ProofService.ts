@@ -4,10 +4,10 @@
  */
 
 import { sha256 } from '@noble/hashes/sha256';
-import { bytesToHex, hexToBytes } from '@noble/curves/abstract/utils';
+import { hexToBytes } from '@noble/curves/abstract/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
-import type { Proof, SpentProof, ProofState } from '../types/index.js';
-import { getDatabase, prepareFirst, prepareRun, prepare } from '../database/index.js';
+import type { Proof, SpentProof } from '../types/index.js';
+import { prepareFirst, prepareRun, prepare } from '../database/index.js';
 
 export class ProofService {
   /**
@@ -133,8 +133,6 @@ export class ProofService {
    */
   async reserveProofs(proofIds: string[]): Promise<{ success: boolean; error?: string }> {
     try {
-      const now = Date.now();
-
       for (const proofId of proofIds) {
         const result = await prepareRun(
           `UPDATE proofs 

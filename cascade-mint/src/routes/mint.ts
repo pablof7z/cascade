@@ -6,7 +6,6 @@
 import { Hono } from 'hono';
 import type { StatusCode } from 'hono/utils/http-status';
 import { getMintService } from '../services/MintService.js';
-import { getKeysetService } from '../services/KeysetService.js';
 import type { MintQuoteResponse, MintBoltRequest, MintBoltResponse, ApiError } from '../types/index.js';
 
 const mint = new Hono();

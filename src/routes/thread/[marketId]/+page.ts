@@ -1,6 +1,5 @@
 import { fetchMarketBySlug } from '../../../services/nostrService'
 import { parseMarketEvent } from '../../../services/marketService'
-import type { Market } from '../../../market'
 import type { PageLoad } from './$types'
 
 export const load: PageLoad = async ({ params }) => {

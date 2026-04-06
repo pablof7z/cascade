@@ -18,17 +18,6 @@ interface MigrationFile {
 }
 
 /**
- * Read and parse a SQL migration file
- */
-async function readMigrationFile(content: string): Promise<{ upSql: string; downSql: string }> {
-  const parts = content.split('-- DOWN:');
-  return {
-    upSql: parts[0].trim(),
-    downSql: parts[1]?.trim() || '',
-  };
-}
-
-/**
  * Run all pending migrations
  */
 export async function runMigrations(migrationFiles: MigrationFile[]): Promise<void> {

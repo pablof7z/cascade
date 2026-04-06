@@ -6,7 +6,6 @@
 import { Hono } from 'hono';
 import type { StatusCode } from 'hono/utils/http-status';
 import { getSwapService } from '../services/SwapService.js';
-import { getProofService } from '../services/ProofService.js';
 import type { SwapRequest, SwapResponse, ApiError } from '../types/index.js';
 
 const swap = new Hono();
@@ -18,8 +17,7 @@ const swap = new Hono();
 swap.post('/', async (c) => {
   try {
     const swapService = getSwapService();
-    const proofService = getProofService();
-    
+
     // Parse request
     const body = await c.req.json<SwapRequest>();
     const { inputs, outputs } = body;

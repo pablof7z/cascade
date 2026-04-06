@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import type NDK from '@nostr-dev-kit/ndk'
 import {
   initializeBookmarks,
   addBookmark,
@@ -55,7 +56,7 @@ describe('bookmarkStore', () => {
       )
 
       const mockNdk = { fetchEvents: vi.fn().mockResolvedValue(new Set()) }
-      await initializeBookmarks(null, mockNdk as any)
+      await initializeBookmarks(null, mockNdk as unknown as NDK)
 
       expect(getBookmarks()).toEqual(['event1', 'event2'])
     })
@@ -71,7 +72,7 @@ describe('bookmarkStore', () => {
       )
 
       const mockNdk = { fetchEvents: vi.fn().mockResolvedValue(new Set()) }
-      await initializeBookmarks('pubkey123', mockNdk as any)
+      await initializeBookmarks('pubkey123', mockNdk as unknown as NDK)
 
       expect(getBookmarks()).toEqual(['legacy-event1'])
     })
@@ -167,7 +168,7 @@ describe('bookmarkStore', () => {
       localStorage.setItem('cascade-bookmarks-legacy-anon', 'invalid json')
 
       const mockNdk = { fetchEvents: vi.fn().mockResolvedValue(new Set()) }
-      await initializeBookmarks(null, mockNdk as any)
+      await initializeBookmarks(null, mockNdk as unknown as NDK)
 
       // Should not throw and should fall back to empty
       expect(getBookmarks()).toEqual([])
@@ -188,7 +189,7 @@ describe('bookmarkStore', () => {
 
       // Should not throw; falls back to legacy
       await expect(
-        initializeBookmarks(null, mockNdk as any),
+        initializeBookmarks(null, mockNdk as unknown as NDK),
       ).resolves.not.toThrow()
       expect(getBookmarks()).toEqual(['legacy1'])
     })

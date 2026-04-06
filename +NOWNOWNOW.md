@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-06 14:05 UTC — Mint Phase 1 implementation in progress (23 fixable compile errors), growth markets seeding prepared.*
+*Last updated: 2026-04-06 14:20 UTC — Mint Phase 1 COMPLETE ✅, Phase 2 approved, 10 seed markets PUBLISHED to Nostr, growth campaign ready to launch.*
 
 ---
 
@@ -18,23 +18,21 @@
 
 ## 🔄 IN PROGRESS
 
-### CDK Rust Mint — Phase 1 Implementation (Section 1)
-- **Status**: claude-code implementing workspace setup + core types
+### CDK Rust Mint — Phase 2 Implementation (Core Logic)
+- **Phase 1**: ✅ COMPLETE — 27 files, 3 crates, clean build
+- **Phase 2**: 🔄 IN PROGRESS — execution-coordinator delegated to claude-code for core logic (error.rs, market.rs, db.rs)
 - **Branch**: `feat/cashu-mint-cdk-rust`
-- **Errors**: 23 compile errors identified, all fixable
-- **Errors**: All pattern-based (missing migrations file, enum variants, struct fields, method stubs)
-- **Approach**: Phased delegation — Phase 1 (setup) → Phase 2 (core logic) → Phase 3 (HTTP API) → Phase 4 (Lightning/testing)
+- **Approach**: Phased delegation — Phase 1 ✅ | Phase 2 🔄 | Phase 3 (HTTP API) | Phase 4 (Lightning/testing)
 - **Architecture**: SQLite + LND + standalone binary at mint.f7z.io
-- **Est. Phase 1 completion**: 2-4 hours once errors fixed
+- **Est. Phase 2 completion**: 8-12 hours for core logic (error handling, market struct, SQLite schema)
 
-**Current action**: execution-coordinator managing Phase 1 fixes. Do NOT block on mint for growth work.
+**Current action**: execution-coordinator managing Phase 2. Growth campaign proceeding in parallel.
 
-### Growth Markets Seeding — Preparation Phase
-- **Status**: @growth agent defining 10 seed markets
-- **Highest leverage**: Seed 10 markets (per growth assessment)
-- **Markets**: 3 thesis chains (SpaceX IPO, DeepSeek, Microsoft Japan) + 7 high-news-value markets
-- **Blockers**: None. Markets can be seeded without mint deployed.
-- **Next**: Market specs ready → human-replica publishes to Nostr
+### Growth Markets Seeding — LAUNCHED ✅
+- **Status**: ✅ COMPLETE — All 10 markets published to Nostr mainnet
+- **Markets**: SpaceX IPO (3 markets) + DeepSeek (3 markets) + Work trends (2 markets) + AI/Geopolitics singles (2 markets)
+- **Publishing method**: `nak` CLI with kind 982 events to mainnet relays
+- **Next**: Screenshot populated homepage → Twitter/X posts → Direct outreach to 20 humans
 
 ---
 
@@ -50,10 +48,10 @@ Growth agent analysis complete:
 
 ## 🎯 WHAT'S BLOCKING
 
-### Blocker 1: Mint Deployment
-- **Impact**: Can't collect real fees, can't launch growth campaign, blocks monetization
-- **Status**: Plan complete, ready to build
-- **Action needed**: Execute planning-orchestrator's plan with execution-coordinator
+### Blocker 1: Mint Deployment (IN PROGRESS)
+- **Impact**: Can't collect real fees yet, but growth campaign can start NOW without mint
+- **Status**: Phase 1 complete ✅, Phase 2 delegated 🔄
+- **Action**: execution-coordinator → claude-code for Phase 2-4 implementation
 - **Est. time to completion**: 2-3 weeks (92h ÷ 40h/week)
 
 ### Blocker 2: Substack Account
@@ -66,24 +64,28 @@ Growth agent analysis complete:
 
 ## 🚀 NEXT ACTIONS (Priority Order)
 
-1. **Execute CDK Rust mint build** (planning-orchestrator → execution-coordinator → claude-code)
-   - Plan is ready, 0 blockers, approved for implementation
-   - Kick off immediately after Pablo confirms go-ahead
+1. ✅ **Execute CDK Rust mint build Phase 1** — COMPLETE
+   - Phase 1 delivered by execution-coordinator
+   - Phase 2 approved and in progress
 
-2. **Seed 10 markets with initial data** (once mint is operational)
-   - 3 thesis chains ready to publish (growth agent identified)
-   - Direct outreach to 20 specific humans (not broadcast)
+2. ✅ **Seed 10 markets with initial data** — COMPLETE
+   - All 10 markets live on Nostr mainnet
+   - Ready for growth campaign (not waiting for mint)
 
-3. **Create Substack account** (manual)
+3. 🔄 **Continue CDK Rust mint Phases 2-4** (execution-coordinator)
+   - Phase 2: Core logic (error handling, market struct, SQLite) — IN PROGRESS
+   - Phase 3: HTTP API routes
+   - Phase 4: Lightning integration, testing, deployment
+
+4. ⏳ **Create Substack account** (pending Pablo decision)
    - cascadethinking.substack.com for founder updates
+   - 10-minute manual setup
 
-4. **Deploy working mint** (after build complete)
-   - Test against real Lightning testnet
-   - Verify fee collection works
-
-5. **Launch growth campaign** (after mint is live)
-   - Direct outreach phase 1
-   - Seed market seeding phase 2
+5. 🚀 **Launch growth campaign** (can start NOW with populated markets)
+   - Screenshot cascade.f7z.io with 10 active markets
+   - Write 10 X posts (one per market)
+   - Direct outreach to 20 humans (per growth assessment)
+   - Mint deployment NOT required for this phase
 
 ---
 

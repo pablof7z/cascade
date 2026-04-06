@@ -17,6 +17,8 @@ thiserror.workspace = true
 anyhow.workspace = true
 uuid.workspace = true
 chrono.workspace = true
+hex.workspace = true
+sha2.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

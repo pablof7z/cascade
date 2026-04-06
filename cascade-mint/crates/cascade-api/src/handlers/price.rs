@@ -4,18 +4,18 @@ use axum::{
     extract::{Path, State, Json},
     http::StatusCode,
 };
-use std::sync::Arc;
-use cascade_core::{MarketManager, market::Side};
+use cascade_core::market::Side;
 use crate::types::{PriceResponse, QuoteRequest, QuoteResponse};
+use crate::routes::AppState;
 
 /// Get current prices for a market
 pub async fn get_prices(
-    State(market_manager): State<Arc<MarketManager>>,
+    State(state): State<AppState>,
     Path(market_id): Path<String>,
 ) -> (StatusCode, Json<PriceResponse>) {
-    match market_manager.get_market(&market_id).await {
+    match state.market_manager.get_market(&market_id).await {
         Ok(market) => {
-            let lmsr = market_manager.lmsr();
+            let lmsr = state.market_manager.lmsr();
             match lmsr.get_prices(market.q_long, market.q_short) {
                 Ok((price_long, price_short)) => (
                     StatusCode::OK,
@@ -54,7 +54,7 @@ pub async fn get_prices(
 
 /// Get a price quote for a hypothetical trade
 pub async fn quote(
-    State(market_manager): State<Arc<MarketManager>>,
+    State(state): State<AppState>,
     Json(req): Json<QuoteRequest>,
 ) -> (StatusCode, Json<QuoteResponse>) {
     // Parse side
@@ -75,9 +75,9 @@ pub async fn quote(
         }
     };
 
-    match market_manager.get_market(&req.market_id).await {
+    match state.market_manager.get_market(&req.market_id).await {
         Ok(market) => {
-            let lmsr = market_manager.lmsr();
+            let lmsr = state.market_manager.lmsr();
             
             // Get quantities for the specified side
             let (q_main, q_other) = match side {

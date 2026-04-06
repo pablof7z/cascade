@@ -7,7 +7,7 @@ use std::path::Path;
 /// Mint command line arguments
 #[derive(Debug, Parser)]
 #[command(name = "cascade-mint")]
-struct Args {
+pub struct Args {
     /// Path to configuration file
     #[arg(long, default_value = "config.toml")]
     config: String,

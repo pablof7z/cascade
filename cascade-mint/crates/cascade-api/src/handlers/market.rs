@@ -4,15 +4,14 @@ use axum::{
     extract::{Path, State, Json},
     http::StatusCode,
 };
-use std::sync::Arc;
-use cascade_core::MarketManager;
 use crate::types::{CreateMarketRequest, MarketResponse, MarketsListResponse};
+use crate::routes::AppState;
 
 /// List all markets
 pub async fn list_markets(
-    State(market_manager): State<Arc<MarketManager>>,
+    State(state): State<AppState>,
 ) -> (StatusCode, Json<MarketsListResponse>) {
-    match market_manager.list_markets().await {
+    match state.market_manager.list_markets().await {
         Ok(markets) => {
             let market_responses = markets
                 .into_iter()
@@ -44,12 +43,12 @@ pub async fn list_markets(
 
 /// Create a new market
 pub async fn create_market(
-    State(market_manager): State<Arc<MarketManager>>,
+    State(state): State<AppState>,
     Json(req): Json<CreateMarketRequest>,
 ) -> (StatusCode, Json<MarketResponse>) {
     let event_id = uuid::Uuid::new_v4().to_string();
     
-    match market_manager
+    match state.market_manager
         .create_market(
             event_id.clone(),
             req.slug,
@@ -57,6 +56,8 @@ pub async fn create_market(
             req.description,
             req.b,
             "creator".to_string(), // TODO: Get from auth
+            uuid::Uuid::new_v4().to_string(), // long_keyset_id placeholder
+            uuid::Uuid::new_v4().to_string(), // short_keyset_id placeholder
         )
         .await
     {
@@ -91,10 +92,10 @@ pub async fn create_market(
 
 /// Get a specific market
 pub async fn get_market(
-    State(market_manager): State<Arc<MarketManager>>,
+    State(state): State<AppState>,
     Path(market_id): Path<String>,
 ) -> (StatusCode, Json<MarketResponse>) {
-    match market_manager.get_market(&market_id).await {
+    match state.market_manager.get_market(&market_id).await {
         Ok(market) => (
             StatusCode::OK,
             Json(MarketResponse {

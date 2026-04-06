@@ -26,6 +26,7 @@ impl MarketManager {
     }
 
     /// Create a new market
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_market(
         &self,
         event_id: String,
@@ -34,8 +35,10 @@ impl MarketManager {
         description: String,
         b: f64,
         creator_pubkey: String,
+        long_keyset_id: String,
+        short_keyset_id: String,
     ) -> Result<Market> {
-        let market = Market::new(event_id.clone(), slug, title, description, b, creator_pubkey);
+        let market = Market::new(event_id.clone(), slug, title, description, b, creator_pubkey, long_keyset_id, short_keyset_id);
 
         let mut markets = self.markets.write().await;
         if markets.contains_key(&event_id) {
@@ -54,9 +57,7 @@ impl MarketManager {
         markets
             .get(event_id)
             .cloned()
-            .ok_or_else(|| crate::error::CascadeError::MarketNotFound {
-                market_id: event_id.to_string(),
-            })
+            .ok_or_else(|| crate::error::CascadeError::MarketNotFound(event_id.to_string()))
     }
 
     /// List all markets
@@ -86,9 +87,7 @@ impl MarketManager {
         let mut markets = self.markets.write().await;
         let market = markets
             .get_mut(event_id)
-            .ok_or_else(|| crate::error::CascadeError::MarketNotFound {
-                market_id: event_id.to_string(),
-            })?;
+            .ok_or_else(|| crate::error::CascadeError::MarketNotFound(event_id.to_string()))?;
 
         market.q_long += delta_long;
         market.q_short += delta_short;
@@ -109,14 +108,10 @@ impl MarketManager {
         let mut markets = self.markets.write().await;
         let market = markets
             .get_mut(event_id)
-            .ok_or_else(|| crate::error::CascadeError::MarketNotFound {
-                market_id: event_id.to_string(),
-            })?;
+            .ok_or_else(|| crate::error::CascadeError::MarketNotFound(event_id.to_string()))?;
 
         if !market.is_active() {
-            return Err(crate::error::CascadeError::MarketNotActive {
-                market_id: event_id.to_string(),
-            });
+            return Err(crate::error::CascadeError::MarketNotActive(event_id.to_string()));
         }
 
         market.resolve(outcome);
@@ -128,9 +123,7 @@ impl MarketManager {
         let mut markets = self.markets.write().await;
         let market = markets
             .get_mut(event_id)
-            .ok_or_else(|| crate::error::CascadeError::MarketNotFound {
-                market_id: event_id.to_string(),
-            })?;
+            .ok_or_else(|| crate::error::CascadeError::MarketNotFound(event_id.to_string()))?;
 
         market.status = MarketStatus::Archived;
         Ok(())
@@ -159,6 +152,8 @@ mod tests {
                 "A market about Bitcoin".to_string(),
                 10.0,
                 "creator".to_string(),
+                "keyset_long".to_string(),
+                "keyset_short".to_string(),
             )
             .await
             .unwrap();
@@ -182,6 +177,8 @@ mod tests {
                 "".to_string(),
                 10.0,
                 "creator".to_string(),
+                "keyset_long".to_string(),
+                "keyset_short".to_string(),
             )
             .await
             .unwrap();
@@ -194,6 +191,8 @@ mod tests {
                 "".to_string(),
                 10.0,
                 "creator".to_string(),
+                "keyset_long".to_string(),
+                "keyset_short".to_string(),
             )
             .await
             .unwrap();
@@ -215,6 +214,8 @@ mod tests {
                 "".to_string(),
                 10.0,
                 "creator".to_string(),
+                "keyset_long".to_string(),
+                "keyset_short".to_string(),
             )
             .await
             .unwrap();
@@ -242,6 +243,8 @@ mod tests {
                 "".to_string(),
                 10.0,
                 "creator".to_string(),
+                "keyset_long".to_string(),
+                "keyset_short".to_string(),
             )
             .await
             .unwrap();

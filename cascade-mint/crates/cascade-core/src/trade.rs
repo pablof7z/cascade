@@ -30,6 +30,9 @@ pub struct Trade {
     /// Fee paid to mint (included in cost_sats)
     pub fee_sats: u64,
 
+    /// Total sats (cost + fee)
+    pub total_sats: u64,
+
     /// Timestamp of trade
     pub created_at: DateTime<Utc>,
 }
@@ -76,6 +79,17 @@ impl TradeExecutor {
         ((amount_sats as f64) * (self.fee_bps as f64 / 10000.0)).ceil() as u64
     }
 
+    /// Get current prices (long, short) for market state
+    pub fn get_prices(&self, q_long: f64, q_short: f64) -> crate::error::Result<(f64, f64)> {
+        self.lmsr.get_prices(q_long, q_short)
+    }
+
+    /// Calculate total cost including fee
+    pub fn calculate_total_cost(&self, q_long: f64, q_short: f64, amount: f64) -> crate::error::Result<u64> {
+        let cost = self.lmsr.calculate_buy_cost(q_long, q_short, amount)?;
+        Ok(cost + self.calculate_fee(cost))
+    }
+
     /// Execute a buy order
     pub fn execute_buy(
         &self,
@@ -103,6 +117,7 @@ impl TradeExecutor {
             quantity,
             cost_sats: total_cost,
             fee_sats: fee,
+            total_sats: total_cost + fee,
             created_at: Utc::now(),
         };
 
@@ -136,6 +151,7 @@ impl TradeExecutor {
             quantity: -quantity, // Negative quantity indicates sell
             cost_sats: net_refund,
             fee_sats: fee,
+            total_sats: refund_before_fee,
             created_at: Utc::now(),
         };
 

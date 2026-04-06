@@ -1,10 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/cascade-mint",
     "crates/cascade-core",
     "crates/cascade-api",
+    "crates/cascade-mint",
 ]
+# cascade-mint binary added in Section 4 (04-http-api.md)
 
 [workspace.package]
 version = "0.1.0"
@@ -29,7 +30,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # HTTP extras
-axum = { version = "0.8", features = ["json"] }
+axum = { version = "0.8", features = ["json", "macros"] }
 tower-http = { version = "0.6", features = ["cors", "trace"] }
 
 # Database
@@ -56,6 +57,7 @@ thiserror = "2"
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 hex = "0.4"
+sha2 = "0.10"
 
 [profile.release]
 opt-level = 3

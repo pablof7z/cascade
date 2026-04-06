@@ -1,7 +1,6 @@
 //! Request and response types for Cascade API
 
 use serde::{Deserialize, Serialize};
-use cascade_core::market::Side;
 
 // Market endpoints
 
@@ -121,4 +120,74 @@ pub struct PayoutResponse {
 pub struct ErrorResponse {
     pub error: String,
     pub details: Option<String>,
+}
+
+// Lightning trade endpoints
+
+#[derive(Debug, Deserialize)]
+pub struct LightningTradeRequest {
+    pub market_id: String, // event_id of the market
+    pub side: String,      // "LONG" or "SHORT"
+    pub amount_sats: u64,
+    pub buyer_pubkey: String,
+    pub expiry_seconds: Option<u64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LightningTradeResponse {
+    pub order_id: String,
+    pub market_id: String,
+    pub side: String,
+    pub amount_sats: u64,
+    pub fee_sats: u64,
+    pub total_sats: u64,
+    pub invoice: String,
+    pub payment_hash: String,
+    pub expires_at: i64,
+}
+
+/// Lightning sell request
+#[derive(Debug, Deserialize)]
+pub struct LightningSellRequest {
+    pub market_id: String, // event_id of the market
+    pub side: String,      // "LONG" or "SHORT"
+    pub amount_sats: u64,
+    pub seller_pubkey: String,
+    pub expiry_seconds: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct InvoiceStatusRequest {
+    pub payment_hash: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct InvoiceStatusResponse {
+    pub payment_hash: String,
+    pub state: String, // "open", "settled", "expired", "cancelled"
+    pub amount_sats: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SettleRequest {
+    pub order_id: String,
+    pub preimage: String, // hex-encoded 32-byte preimage
+}
+
+#[derive(Debug, Serialize)]
+pub struct SettleResponse {
+    pub order_id: String,
+    pub state: String,
+    pub fulfilled: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EscrowStatsResponse {
+    pub pending_count: u64,
+    pub pending_sats: u64,
+    pub settled_count: u64,
+    pub settled_sats: u64,
+    pub refunded_count: u64,
+    pub refunded_sats: u64,
+    pub failed_count: u64,
 }

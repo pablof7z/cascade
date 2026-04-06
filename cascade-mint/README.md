@@ -76,6 +76,110 @@ Configuration is loaded from `config.toml` with environment variable overrides.
 | `POST` | `/v1/cascade/price/:slug/quote` | Get a trade quote |
 | `POST` | `/v1/cascade/resolve/:slug` | Resolve a market |
 
+## Deployment
+
+### Docker
+
+The easiest way to deploy is using Docker Compose:
+
+```bash
+# Copy and configure environment
+cp .env.example .env
+# Edit .env with your MINT_PRIVATE_KEY and LND settings
+
+# Start the mint with LND
+docker-compose up -d
+
+# View logs
+docker-compose logs -f mint
+```
+
+### Local Testnet Setup
+
+For development/testing on Bitcoin Signet:
+
+1. Start LND in signet mode:
+```bash
+docker run -d --name lnd \
+  -e RPCEXTERNALIP=your-public-ip \
+  -p 10009:10009 \
+  lightninglab/lnd:v0.17.4-beta \
+  --bitcoin.active \
+  --bitcoin.signet \
+  --bitcoin.node=neutrino \
+  --neutrino.connect=btcd.signet:18333
+```
+
+2. Wait for LND to sync, then create the mint admin macaroon:
+```bash
+docker exec lnd lncli --network=signet create
+```
+
+3. Configure your `.env` with the LND settings
+
+4. Build and run the mint:
+```bash
+cargo build --release
+./target/release/cascade-mint
+```
+
+### Production Deployment
+
+#### 1. Build the binary
+```bash
+cargo build --release
+# Binary: target/release/cascade-mint
+```
+
+#### 2. Create a deploy user
+```bash
+sudo useradd -r -s /usr/bin/nologin cascade
+sudo mkdir -p /opt/cascade-mint
+sudo cp target/release/cascade-mint /opt/cascade-mint/
+sudo chown -R cascade:cascade /opt/cascade-mint
+```
+
+#### 3. Install systemd service
+```bash
+sudo cp deploy/systemd/cascade-mint.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable cascade-mint
+sudo systemctl start cascade-mint
+```
+
+#### 4. Configure nginx reverse proxy
+```bash
+sudo cp deploy/nginx/mint.f7z.io /etc/nginx/sites-available/
+sudo ln -s /etc/nginx/sites-available/mint.f7z.io /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+#### 5. Health check
+```bash
+curl https://mint.f7z.io/health
+```
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `MINT_PRIVATE_KEY` | Master seed (32-byte hex) | Yes |
+| `DATABASE_URL` | SQLite database path | Yes |
+| `LND_GRPC_URL` | LND gRPC endpoint | Yes |
+| `LND_CERT_PATH` | TLS certificate path | Yes |
+| `LND_MACAROON_PATH` | Admin macaroon path | Yes |
+| `RUST_LOG` | Log level | No (default: info) |
+
+See `.env.example` for the full configuration.
+
+### Monitoring
+
+- Health endpoint: `GET /health`
+- Logs: `journalctl -u cascade-mint -f`
+- Binary size: ~10-15 MB
+- Startup time: <2 seconds
+
 ## Development
 
 ```bash

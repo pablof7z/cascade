@@ -1,36 +1,58 @@
-//! HTTP route definitions
+//! Cascade API routes
 
 use axum::{
+    http::StatusCode,
+    response::IntoResponse,
     routing::{get, post},
     Router,
 };
 use std::sync::Arc;
-use cascade_core::MarketManager;
+use tokio::sync::Mutex;
 
-use crate::handlers;
+use cascade_core::{MarketManager, invoice::InvoiceService};
+use crate::handlers::{self, price, resolve, trade, market};
 
-/// Build Cascade custom routes under /v1/cascade/
-pub fn build_cascade_routes(market_manager: Arc<MarketManager>) -> Router {
+/// Application state shared across route handlers
+#[derive(Clone)]
+pub struct AppState {
+    pub market_manager: Arc<MarketManager>,
+    pub invoice_service: Arc<Mutex<InvoiceService>>,
+}
+
+impl AppState {
+    pub fn new(
+        market_manager: Arc<MarketManager>,
+        invoice_service: Arc<Mutex<InvoiceService>>,
+    ) -> Self {
+        Self {
+            market_manager,
+            invoice_service,
+        }
+    }
+}
+
+/// Build the cascade-specific HTTP routes
+pub fn build_cascade_routes(state: AppState) -> Router {
     Router::new()
-        // Market endpoints
-        .route("/v1/cascade/markets", get(handlers::market::list_markets))
-        .route("/v1/cascade/markets", post(handlers::market::create_market))
-        .route("/v1/cascade/markets/:market_id", get(handlers::market::get_market))
-        
-        // Trade endpoints
-        .route("/v1/cascade/trades/buy", post(handlers::trade::buy))
-        .route("/v1/cascade/trades/sell", post(handlers::trade::sell))
-        
-        // Price endpoints
-        .route("/v1/cascade/prices/:market_id", get(handlers::price::get_prices))
-        .route("/v1/cascade/quote", post(handlers::price::quote))
-        
-        // Resolution endpoints
-        .route("/v1/cascade/resolve", post(handlers::resolve::resolve_market))
-        .route("/v1/cascade/payout", post(handlers::resolve::execute_payout))
-        
+        // Price feeds
+        .route("/api/price/:currency", get(price::get_prices))
+        // Lightning trade settlement
+        .route("/api/lightning/create-order", post(handlers::trade::create_lightning_trade))
+        .route("/api/lightning/check-order", post(handlers::trade::get_invoice_status))
+        .route("/api/lightning/settle/:order_id", post(handlers::trade::settle_lightning_trade))
+        // Market management
+        .route("/api/market/create", post(market::create_market))
+        .route("/api/market/:id", get(market::get_market))
+        .route("/api/market/:id/resolve", post(resolve::resolve_market))
+        // Trade execution
+        .route("/api/trade/bid", post(trade::buy))
+        .route("/api/trade/ask", post(trade::sell))
         // Health check
-        .route("/v1/cascade/health", get(handlers::health))
-        
-        .with_state(market_manager)
+        .route("/health", get(health_check))
+        .with_state(state)
+}
+
+/// Simple health check endpoint
+async fn health_check() -> impl IntoResponse {
+    (StatusCode::OK, "OK")
 }

@@ -50,6 +50,9 @@ pub enum CascadeError {
 
     #[error("Internal error: {0}")]
     InternalError(String),
+
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
 }
 
 // Convenience methods for construction
@@ -62,6 +65,14 @@ impl CascadeError {
         CascadeError::InvalidTrade {
             reason: msg.into(),
         }
+    }
+
+    pub fn database(msg: impl Into<String>) -> Self {
+        CascadeError::DatabaseError(msg.into())
+    }
+
+    pub fn invalid_input(msg: impl Into<String>) -> Self {
+        CascadeError::InvalidInput(msg.into())
     }
 }
 

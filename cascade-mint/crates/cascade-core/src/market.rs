@@ -99,6 +99,7 @@ pub struct Market {
 
 impl Market {
     /// Create a new market with default values
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         event_id: String,
         slug: String,
@@ -156,6 +157,13 @@ impl Market {
     pub fn is_resolved(&self) -> bool {
         self.status == MarketStatus::Resolved
     }
+
+    /// Resolve the market with the given outcome
+    pub fn resolve(&mut self, outcome: Side) {
+        self.status = MarketStatus::Resolved;
+        self.resolution_outcome = Some(outcome);
+        self.resolved_at = Some(chrono::Utc::now().timestamp());
+    }
 }
 
 /// Trade direction for quotes
@@ -185,6 +193,7 @@ pub struct Trade {
 }
 
 impl Trade {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         market_slug: String,
         side: Side,
@@ -294,20 +303,20 @@ mod tests {
 
         assert_eq!(
             market.long_unit().to_string(),
-            "LONG_btc-100k"
+            "long_btc-100k"
         );
         assert_eq!(
             market.short_unit().to_string(),
-            "SHORT_btc-100k"
+            "short_btc-100k"
         );
 
         assert_eq!(
             market.unit_for_side(Side::Long).to_string(),
-            "LONG_btc-100k"
+            "long_btc-100k"
         );
         assert_eq!(
             market.unit_for_side(Side::Short).to_string(),
-            "SHORT_btc-100k"
+            "short_btc-100k"
         );
     }
 

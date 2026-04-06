@@ -4,13 +4,13 @@ use axum::{
     extract::{State, Json},
     http::StatusCode,
 };
-use std::sync::Arc;
-use cascade_core::{MarketManager, market::Side, trade::TradeExecutor};
+use cascade_core::{market::Side, trade::TradeExecutor};
 use crate::types::{ResolveRequest, ResolveResponse, PayoutRequest, PayoutResponse};
+use crate::routes::AppState;
 
 /// Resolve a market with an outcome
 pub async fn resolve_market(
-    State(market_manager): State<Arc<MarketManager>>,
+    State(state): State<AppState>,
     Json(req): Json<ResolveRequest>,
 ) -> (StatusCode, Json<ResolveResponse>) {
     // Parse outcome
@@ -28,7 +28,7 @@ pub async fn resolve_market(
         }
     };
 
-    match market_manager.resolve_market(&req.market_id, outcome).await {
+    match state.market_manager.resolve_market(&req.market_id, outcome).await {
         Ok(_) => (
             StatusCode::OK,
             Json(ResolveResponse {
@@ -48,11 +48,11 @@ pub async fn resolve_market(
 
 /// Execute a payout for a resolved market
 pub async fn execute_payout(
-    State(market_manager): State<Arc<MarketManager>>,
+    State(state): State<AppState>,
     Json(req): Json<PayoutRequest>,
 ) -> (StatusCode, Json<PayoutResponse>) {
     // Get market
-    let market = match market_manager.get_market(&req.market_id).await {
+    let market = match state.market_manager.get_market(&req.market_id).await {
         Ok(m) => m,
         Err(_) => {
             return (
@@ -67,7 +67,7 @@ pub async fn execute_payout(
     };
 
     // Create trade executor and execute payout
-    let executor = TradeExecutor::new(market_manager.lmsr().clone(), 100);
+    let executor = TradeExecutor::new(state.market_manager.lmsr().clone(), 100);
     
     match executor.execute_resolution_payout(&market, req.recipient_pubkey, req.winning_tokens) {
         Ok(payout) => (

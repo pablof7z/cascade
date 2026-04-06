@@ -779,15 +779,20 @@
   <div
     class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80"
     onclick={() => showCreateModal = false}
-    role="dialog"
-    aria-modal="true"
+    onkeydown={(e) => e.key === 'Escape' && (showCreateModal = false)}
+    role="presentation"
   >
     <div
       class="w-full max-w-lg p-6 bg-neutral-900 border border-neutral-800"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-market-title"
+      tabindex="-1"
       onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
     >
       <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-semibold text-white">New market</h2>
+        <h2 id="create-market-title" class="text-xl font-semibold text-white">New market</h2>
         <button
           type="button"
           class="text-sm text-neutral-500 hover:text-white"

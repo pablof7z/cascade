@@ -635,10 +635,10 @@ Ready to start? Your identity will be secured with your chosen authentication me
 
           <!-- Interests -->
           <div class="space-y-1.5">
-            <label class="text-sm text-neutral-400">
+            <p id="interests-label" class="text-sm text-neutral-400">
               Interests <span class="text-neutral-600">(optional, select up to 5)</span>
-            </label>
-            <div class="flex flex-wrap gap-2">
+            </p>
+            <div class="flex flex-wrap gap-2" role="group" aria-labelledby="interests-label">
               {#each AVAILABLE_INTERESTS as interest}
                 <button
                   onclick={() => handleInterestToggle(interest)}

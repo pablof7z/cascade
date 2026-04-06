@@ -6,17 +6,15 @@ use cascade_core::{
     db::CascadeDatabase,
     market_manager::MarketManager,
     trade::TradeExecutor,
-    CascadeError, LmsrEngine,
+    LmsrEngine, LndConfig,
 };
-use cdk::cdk::{mint::Mint, signatory::Signatory};
-use cdk_common::amount::Amount;
+use cdk::mint::{MintBuilder, UnitConfig};
+use cdk_common::nuts::CurrencyUnit;
 use cdk_sqlite::MintSqliteDatabase;
-use cdk_signatory::DbSignatory;
 use clap::Parser;
 use config::MintConfig;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tower_http::cors::CorsLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// Load seed from file or generate a new one.
@@ -30,7 +28,6 @@ fn load_or_generate_seed(path: &str) -> Result<[u8; 32]> {
 
         // Try BIP-39 mnemonic first
         if trimmed.contains(' ') {
-            // BIP-39 mnemonic
             let mnemonic = bip39::Mnemonic::parse(trimmed)
                 .context("Failed to parse BIP-39 mnemonic from seed file")?;
             let seed = mnemonic.to_seed("");
@@ -75,33 +72,14 @@ fn load_or_generate_seed(path: &str) -> Result<[u8; 32]> {
     }
 
     tracing::warn!(
-        "⚠️  Generated new mint seed at {}. BACK THIS UP SECURELY! ⚠️",
+        "Generated new mint seed at {}. BACK THIS UP SECURELY!",
         path.display()
     );
-    tracing::warn!("Seed phrase: {}", mnemonic.to_string());
 
     let seed = mnemonic.to_seed("");
     let mut result = [0u8; 32];
     result.copy_from_slice(&seed[..32]);
     Ok(result)
-}
-
-/// Verify LND connection and check network compatibility
-async fn verify_lnd_connection(
-    lnd: &cdk_lnd::LndMintPayment,
-    expected_network: &str,
-) -> Result<()> {
-    tracing::info!("Verifying LND connection...");
-
-    // The LndMintPayment will fail on first use if connection is bad
-    // We just log success here - actual verification happens on first invoice
-    tracing::info!(
-        "LND connection configured for network: {} (expected: {})",
-        expected_network,
-        expected_network
-    );
-
-    Ok(())
 }
 
 #[tokio::main]
@@ -133,101 +111,98 @@ async fn main() -> Result<()> {
     let seed = load_or_generate_seed(&config.seed.path)?;
     tracing::info!("Seed loaded successfully");
 
-    // 5. Initialize SQLite database (CDK tables)
-    let cdk_db = MintSqliteDatabase::new(&config.database.path).await
+    // 5. Initialize CDK SQLite database
+    let cdk_db = MintSqliteDatabase::new(config.database.path.as_str()).await
         .context("Failed to initialize CDK SQLite database")?;
+    let cdk_db = Arc::new(cdk_db);
     tracing::info!("CDK database initialized");
 
     // 6. Initialize Cascade-specific tables
-    let cascade_db = CascadeDatabase::new(&config.database.path).await
+    let cascade_db = CascadeDatabase::connect(&config.database.path).await
         .context("Failed to initialize Cascade database")?;
     cascade_db.run_migrations().await
         .context("Failed to run Cascade migrations")?;
     tracing::info!("Cascade database initialized");
 
-    // 7. Initialize LND payment backend
-    let lnd = cdk_lnd::LndMintPayment::new(
-        format!("{}:{}", config.lnd.host, config.lnd.port),
-        config.lnd.cert_path.clone(),
-        config.lnd.macaroon_path.clone(),
-    ).await
-        .context("Failed to initialize LND connection")?;
-
-    // Verify LND connection
-    verify_lnd_connection(&lnd, &config.network.network_type).await?;
-
-    // 8. Load existing markets to determine supported units
-    let existing_markets = cascade_db.list_markets(None).await
+    // 7. Load existing markets to determine supported units
+    let existing_markets = cascade_db.list_markets().await
         .context("Failed to load existing markets")?;
 
-    let mut supported_units: Vec<cdk_common::nuts::CurrencyUnit> = Vec::new();
+    let mut market_units: Vec<CurrencyUnit> = Vec::new();
     for market in &existing_markets {
-        supported_units.push(cdk_common::nuts::CurrencyUnit::Custom(format!(
-            "LONG_{}",
-            market.slug
-        )));
-        supported_units.push(cdk_common::nuts::CurrencyUnit::Custom(format!(
-            "SHORT_{}",
-            market.slug
-        )));
+        market_units.push(CurrencyUnit::Custom(format!("LONG_{}", market.slug)));
+        market_units.push(CurrencyUnit::Custom(format!("SHORT_{}", market.slug)));
     }
     tracing::info!(
         "Loaded {} existing markets with {} supported units",
         existing_markets.len(),
-        supported_units.len()
+        market_units.len()
     );
 
-    // 9. Create DbSignatory with custom units
-    let signatory = DbSignatory::new(
-        Arc::new(cdk_db.clone()),
-        &seed,
-        supported_units.clone(),
-        std::collections::HashMap::new(),
-    );
-    tracing::info!("Signatory initialized");
+    // 8. Build CDK Mint using MintBuilder
+    //    MintBuilder::new takes DynMintDatabase = Arc<dyn Database<Error> + Send + Sync>
+    //    Arc<MintSqliteDatabase> implements this via MintDatabase<Error>
+    let mut builder = MintBuilder::new(cdk_db.clone());
 
-    // 10. Build CDK Mint using MintBuilder
-    let sat_unit = cdk_common::nuts::CurrencyUnit::Sat;
-    let sat_denoms = vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+    // Configure SAT unit with standard denominations
+    let sat_amounts: Vec<u64> = (0..20).map(|i| 2_u64.pow(i)).collect();
+    builder.configure_unit(
+        CurrencyUnit::Sat,
+        UnitConfig {
+            amounts: sat_amounts,
+            input_fee_ppk: 0,
+        },
+    )?;
 
-    // Build the mint using CDK's MintBuilder pattern
-    // Note: CDK v0.7 API may differ slightly - we'll adapt during build
-    let mint = build_mint(
-        cdk_db.clone(),
-        signatory,
-        sat_unit.clone(),
-        sat_denoms,
-        supported_units,
-    ).await
-        .context("Failed to build mint")?;
+    // Configure custom market units (LONG_*, SHORT_*)
+    for unit in &market_units {
+        builder.configure_unit(
+            unit.clone(),
+            UnitConfig {
+                amounts: vec![1],
+                input_fee_ppk: 0,
+            },
+        )?;
+    }
 
+    // Build with seed — this creates the signatory internally via DbSignatory
+    // keystore = Arc<dyn MintKeysDatabase> — MintSqliteDatabase implements this
+    let mint = builder.build_with_seed(cdk_db.clone(), &seed).await
+        .context("Failed to build CDK mint")?;
+
+    let _mint = Arc::new(mint);
     tracing::info!("CDK Mint initialized");
 
-    // 11. Create LMSR engine
-    let lmsr_engine = Arc::new(LmsrEngine::new());
+    // 9. Create LMSR engine (b=10.0 liquidity parameter)
+    let lmsr_engine = LmsrEngine::new(10.0)
+        .context("Failed to create LMSR engine")?;
 
-    // 12. Create MarketManager
-    let market_manager = Arc::new(MarketManager::new(
-        lmsr_engine.clone(),
-        Arc::new(cascade_db),
-        config.fees.trade_fee_percent,
-    ));
+    // 10. Create MarketManager
+    let market_manager = Arc::new(MarketManager::new(lmsr_engine.clone()));
     tracing::info!("Market manager initialized");
 
-    // 13. Create TradeExecutor
-    let trade_executor = Arc::new(TradeExecutor::new(
-        mint.clone(),
-        market_manager.clone(),
-        config.fees.trade_fee_percent,
+    // 11. Create TradeExecutor
+    let fee_bps: u16 = (config.fees.trade_fee_percent as u16) * 100;
+    let _trade_executor = Arc::new(TradeExecutor::new(
+        lmsr_engine,
+        fee_bps,
     ));
     tracing::info!("Trade executor initialized");
 
-    // 14. Build HTTP server (CDK standard + Cascade custom routes)
-    let app = build_server(mint.clone(), market_manager.clone(), trade_executor.clone(), &config)
-        .await
-        .context("Failed to build HTTP server")?;
+    // 12. Create LndConfig for cascade-api
+    let lnd_config = LndConfig {
+        host: format!("{}:{}", config.lnd.host, config.lnd.port),
+        cert_path: Some(config.lnd.cert_path.clone()),
+        macaroon_path: Some(config.lnd.macaroon_path.clone()),
+        tls_domain: None,
+    };
 
-    // 15. Start listening
+    // 13. Build HTTP server (CDK standard + Cascade custom routes)
+    let app = build_server(market_manager.clone(), lnd_config, _mint.clone())
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to build HTTP server: {}", e))?;
+
+    // 14. Start listening
     let addr = format!("{}:{}", config.server.host, config.server.port);
     let listener = TcpListener::bind(&addr).await
         .context(format!("Failed to bind to {}", addr))?;
@@ -240,49 +215,4 @@ async fn main() -> Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
-}
-
-/// Build the CDK mint with all configured units
-async fn build_mint(
-    db: Arc<MintSqliteDatabase>,
-    signatory: DbSignatory,
-    sat_unit: cdk_common::nuts::CurrencyUnit,
-    sat_denoms: Vec<u64>,
-    custom_units: Vec<cdk_common::nuts::CurrencyUnit>,
-) -> Result<Arc<Mint>> {
-    use cdk::cdk::mint::MintBuilder;
-    use cdk::cdk::mint::config::{UnitConfig, MintMeltLimits};
-    use cdk::cdk::payment::method::bolt11::PaymentMethod;
-
-    let mut builder = MintBuilder::new(Arc::new(db))
-        .with_name("Cascade Markets Mint")
-        .with_description("Cashu mint for Cascade prediction markets");
-
-    // Configure sat unit for Lightning deposits/withdrawals
-    let sat_config = UnitConfig {
-        amounts: sat_denoms.clone(),
-        input_fee_ppk: 0,
-    };
-    builder = builder.configure_unit(sat_unit.clone(), sat_config);
-
-    // Add payment processor for sat unit (Lightning)
-    let melt_limits = MintMeltLimits { min: 1, max: 1_000_000 };
-    // Note: Add payment processor API may vary in CDK v0.7
-
-    // Configure each market's LONG/SHORT units
-    let custom_config = UnitConfig {
-        amounts: sat_denoms,
-        input_fee_ppk: 0, // No per-input fee; LMSR spread handles fees
-    };
-    for unit in &custom_units {
-        builder = builder.configure_unit(unit.clone(), custom_config.clone());
-    }
-
-    // Build with signatory
-    let mint = builder
-        .build_with_signatory(Arc::new(signatory))
-        .await
-        .context("Failed to build mint with signatory")?;
-
-    Ok(Arc::new(mint))
 }

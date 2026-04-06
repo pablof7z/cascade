@@ -7,11 +7,13 @@ publish = false
 [dependencies]
 cascade-core = { path = "../cascade-core" }
 
+# CDK for Mint types
+cdk.workspace = true
+
 # Web framework
-axum = "0.7"
-tokio = { version = "1", features = ["full"] }
-tower = "0.4"
-tower-http = { version = "0.5", features = ["trace", "cors"] }
+axum.workspace = true
+tokio.workspace = true
+tower-http.workspace = true
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
@@ -21,9 +23,8 @@ serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# CDK integration (mock for now, real version in cdk-axum)
-# These are placeholders
-axum-macros = "0.4"
+# CDK integration
+cdk-axum.workspace = true
 
 # Utilities
 uuid = { version = "1", features = ["v4", "serde"] }
@@ -33,3 +34,4 @@ thiserror = "1"
 
 [dev-dependencies]
 tokio-test = "0.4"
+reqwest = { version = "0.12", features = ["json"] }

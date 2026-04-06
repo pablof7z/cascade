@@ -1,5 +1,6 @@
 import NDK, { NDKPrivateKeySigner, NDKKind } from '@nostr-dev-kit/ndk'
 import { NDKCashuWallet, NDKCashuDeposit } from '@nostr-dev-kit/wallet'
+import { getEncodedToken } from '@cashu/cashu-ts'
 import { loadStoredKeys } from './nostrKeys'
 
 // Re-export NDKCashuDeposit for use by other services
@@ -114,6 +115,63 @@ export async function sendTokens(amount: number, memo?: string): Promise<string 
     return token
   } catch (e) {
     console.error('Send error:', e)
+    return null
+  }
+}
+
+/**
+ * Send tokens locked to a specific pubkey using NUT-11 P2PK.
+ * Only the recipient can unblind and spend these tokens.
+ *
+ * @param amount  Amount in sats to send.
+ * @param recipientPubkey  Hex pubkey that can only unblind/spend the resulting tokens.
+ * @param memo    Optional memo to include in the token.
+ * @returns Encoded Cashu token string on success, null on failure.
+ */
+export async function sendP2PKTokens(amount: number, recipientPubkey: string, memo?: string): Promise<string | null> {
+  const wallet = await loadOrCreateWallet()
+  if (!wallet) return null
+
+  try {
+    // Get the underlying CashuWallet for the current mint
+    const cashuWallet = await wallet.getCashuWallet(currentMintUrl)
+    
+    // Get proofs we have from the NDK wallet's state
+    const proofsWeHave = await wallet.state.getProofs({ mint: currentMintUrl })
+    
+    if (!proofsWeHave || proofsWeHave.length === 0) {
+      console.error('[sendP2PKTokens] No proofs available for mint:', currentMintUrl)
+      return null
+    }
+
+    // Send with NUT-11 P2PK lock — only recipientPubkey can unblind
+    const result = await cashuWallet.send(amount, proofsWeHave, {
+      pubkey: recipientPubkey,
+      proofsWeHave,
+    })
+
+    if (!result || result.send.length === 0) {
+      console.error('[sendP2PKTokens] Token creation returned no proofs')
+      return null
+    }
+
+    // Update wallet state with the change proofs (what we keep)
+    await wallet.state.update({
+      store: result.keep ?? [],
+      destroy: result.send,
+      mint: currentMintUrl,
+    })
+
+    // Encode the P2PK-locked token
+    const token = getEncodedToken({
+      mint: currentMintUrl,
+      proofs: result.send,
+      memo,
+    })
+
+    return token
+  } catch (e) {
+    console.error('Send P2PK error:', e)
     return null
   }
 }

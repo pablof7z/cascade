@@ -9,7 +9,7 @@
  * localStorage so it survives page refreshes without a Nostr round-trip.
  */
 
-import { loadOrCreateWallet, getWalletBalance, sendTokens, getNDK } from './walletStore'
+import { loadOrCreateWallet, getWalletBalance, sendP2PKTokens, getNDK } from './walletStore'
 
 const VAULT_PUBKEY_STORAGE_KEY = 'cascade-vault-pubkey'
 
@@ -68,17 +68,19 @@ export async function getVaultBalance(): Promise<number> {
 /**
  * Send payout tokens from the vault to a recipient.
  *
- * CRITICAL: The recipientPubkey is used for NIP-60 Cashu wallet delivery.
- * The underlying sendTokens() consumes proofs via mint /v1/swap (NUT-03),
+ * CRITICAL: Tokens are locked to recipientPubkey via NUT-11 P2PK.
+ * Only the recipient can unblind and spend these tokens.
+ * The underlying sendP2PKTokens() consumes proofs via mint /v1/swap (NUT-03),
  * providing absolute double-pay protection at the cryptographic level.
  *
  * @param amount  Amount in sats to send.
- * @param recipientPubkey  Destination pubkey for Cashu token delivery.
+ * @param recipientPubkey  Destination pubkey for Cashu P2PK token delivery.
  * @returns The Cashu token string on success, null on failure.
  */
 export async function sendPayoutTokens(amount: number, recipientPubkey: string): Promise<string | null> {
   const memo = `Cascade payout → ${recipientPubkey.slice(0, 8)}…`
-  const token = await sendTokens(amount, memo)
+  // Use sendP2PKTokens to lock tokens to recipient's pubkey (NUT-11)
+  const token = await sendP2PKTokens(amount, recipientPubkey, memo)
   if (!token) {
     console.error('[vaultStore] sendPayoutTokens failed — insufficient proofs or mint error', { amount, recipientPubkey })
   }

@@ -57,7 +57,7 @@
     <!-- Balance -->
     <div class="hidden sm:flex items-center gap-2">
       {#if state.isRefreshing}
-        <div class="w-4 h-4 border border-neutral-600 border-t-neutral-300 rounded-full animate-spin"></div>
+        <span class="text-xs text-neutral-500">Syncing...</span>
       {:else}
         <span class="font-mono text-xs {state.error ? 'text-neutral-500' : 'text-white'}">
           {formatSats(state.balance)}

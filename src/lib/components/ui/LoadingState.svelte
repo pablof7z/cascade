@@ -17,8 +17,8 @@
 </script>
 
 <div class="flex flex-col items-center justify-center gap-3 {className}">
-  <div class="{sizeClasses[size]} border-neutral-700 border-t-emerald-500 rounded-full animate-spin"></div>
+  <div class="h-6 w-32 bg-neutral-800 animate-pulse rounded-none"></div>
   {#if message}
-    <p class="text-sm text-neutral-500">{message}</p>
+n    <p class="text-sm text-neutral-500">{message}</p>
   {/if}
 </div>

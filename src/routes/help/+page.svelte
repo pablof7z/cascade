@@ -43,8 +43,7 @@
   ];
 
   const contactLinks = [
-    { name: "X/Twitter", href: "https://x.com/paborlmcik" },
-    { name: "X", href: "https://njump.me/npub1p8fyn5dphu9xpqkhfxs6l0ey8z5jj2tq94mgwhkef2ry6qf4kxqz4yqhe" }
+    { name: "X/Twitter", href: "https://x.com/paborlmcik" }
   ];
 </script>
 

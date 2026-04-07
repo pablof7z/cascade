@@ -27,7 +27,7 @@
     </div>
   </div>
 {:else if variant === 'avatar'}
-  <div class="{baseClasses} rounded-full {className}" style="width: 40px; height: 40px;"></div>
+  <div class="{baseClasses} rounded-none {className}" style="width: 40px; height: 40px;"></div>
 {:else if variant === 'button'}
   <div class="{baseClasses} h-9 px-4 {className}" style="width: 100px;"></div>
 {:else if variant === 'chart'}

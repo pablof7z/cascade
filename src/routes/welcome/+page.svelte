@@ -21,7 +21,7 @@
   // Redirect if already authenticated
   $effect(() => {
     if (pubkey !== null && isReady) {
-      goto('/markets');
+      goto('/discuss');
     }
   });
 
@@ -54,11 +54,11 @@
         disabled={connecting}
         class="w-full px-4 py-2.5 text-sm font-medium text-neutral-950 bg-white hover:bg-neutral-200 disabled:bg-neutral-400 disabled:cursor-not-allowed transition-colors"
       >
-        {connecting ? 'Connecting...' : 'Connect Nostr key'}
+        {connecting ? 'Connecting...' : 'Connect Wallet'}
       </button>
 
       <a
-        href="/markets"
+        href="/discuss"
         class="block w-full px-4 py-2.5 text-sm font-medium text-neutral-300 border border-neutral-700 hover:border-neutral-500 hover:text-white transition-colors text-center"
       >
         Browse without connecting

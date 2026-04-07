@@ -259,7 +259,7 @@
           </button>
 
           {#if !pubkey}
-            <span class="text-xs text-neutral-500">Connect Nostr to publish</span>
+            <span class="text-xs text-neutral-500">Sign in to publish</span>
           {/if}
         </div>
 
@@ -273,60 +273,6 @@
             {saveMessage.text}
           </p>
         {/if}
-      </div>
-    </section>
-
-    <!-- Server Configuration Section -->
-    <section class="space-y-6">
-      <h2 class="text-lg font-medium border-b border-neutral-800 pb-3">Server Configuration</h2>
-
-      <p class="text-sm text-neutral-400">
-        Configure the servers you want to connect to. Leave empty to use defaults.
-      </p>
-
-      <!-- Current Servers -->
-      {#if relayUrls.length > 0}
-        <div class="space-y-2">
-          <h3 class="text-sm font-medium text-neutral-300">Active Servers</h3>
-          <ul class="space-y-1">
-            {#each relayUrls as relay}
-              <li class="flex items-center justify-between px-3 py-2 bg-neutral-900 border border-neutral-800 rounded">
-                <span class="text-sm font-mono text-neutral-300">{relay}</span>
-                <button
-                  type="button"
-                  onclick={() => handleRemoveRelay(relay)}
-                  class="text-xs text-neutral-500 hover:text-rose-400 transition-colors"
-                >
-                  Remove
-                </button>
-              </li>
-            {/each}
-          </ul>
-        </div>
-      {/if}
-
-      <!-- Add New Relay -->
-      <div>
-        <label for="newRelay" class="block text-sm font-medium text-neutral-300 mb-1.5">
-          Add Server
-        </label>
-        <div class="flex gap-2">
-          <input
-            id="newRelay"
-            type="url"
-            bind:value={newRelayUrl}
-            placeholder="wss://relay.example.com"
-            onkeydown={handleRelayKeydown}
-            class="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-700 rounded text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
-          />
-          <button
-            type="button"
-            onclick={handleAddRelay}
-            class="px-4 py-2 text-sm font-medium text-neutral-300 border border-neutral-700 hover:border-neutral-500 hover:text-white transition-colors"
-          >
-            Add
-          </button>
-        </div>
       </div>
     </section>
 

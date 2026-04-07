@@ -1,56 +1,54 @@
 # NowNowNow
 
-*Last updated: 2026-04-06 11:30 UTC — All UX features shipped. CDK Rust mint plan in creation. Architectural decisions answered.*
+*Last updated: 2026-04-07 15:35 UTC — CDK Rust Mint Phases 1-7 MERGED TO MAIN (112 tests). Svelte audit 22 issues pending triage. Main pushed to origin.*
 
 ---
 
-## ✅ Shipped This Session
+## ✅ Shipped (2026-04-07)
 
 | Item | Commit | Status |
 |------|--------|--------|
-| **Market Resolution v2** | d7f19b6 | ✅ Live on main |
-| **YES/NO Outcomes** | 8a49b02 | ✅ Live on main |
-| **Jargon Audit** | 7c4ef41 | ✅ Live on main |
-| **Homepage Rebuild** | abcdaac | ✅ Live on main |
+| **CDK Rust Mint Phases 1-7** | bd19d6e | ✅ MERGED TO MAIN |
+| **Phase 7 Settlement & Redeem** | 5f909ca, b82e05c | ✅ CDK proof verify, reserve decrement, LMSR math fixed |
+| **Phase 6 API Tests + Dockerfile** | fc1a5bb9, b9d818ff | ✅ clean-code-nazi PASS |
+| **settlement.rs build fix** | 942b69fb | ✅ 3 compile errors fixed |
+| **AppState::new() merge fix** | e502e90 | ✅ Resolved merge conflict |
+| **Svelte Migration** | 4bfd1fd | ✅ 21 routes, build clean |
+| **Main branch pushed to origin** | f87f560 | ✅ Live |
 
 ---
 
 ## 🔄 In Progress
 
-### Cashu Mint — CDK Rust (CRITICAL BLOCKER)
-- **Status:** tenex-planner actively creating implementation plan
-- **Architectural decisions:** ✅ All 6 answered (local binary, SQLite, LND, file-based keys, subdomain, testnet)
-- **Timeline:** Plan today → execution-coordinator builds → local Rust binary ready
-- **Deployment:** mint.f7z.io via reverse proxy
-- **Blocks:** All growth, market seeding, user acquisition until complete
+### Svelte 5 Frontend Audit — 22 Issues
+- **Status**: 🟡 Triage in progress (explore-agent + web-tester)
+- **Issues**: 5 critical (broken routes, style violations), 17 medium/low
+- **Report**: `/Users/customer/.tenex/home/a6405ff4/cascade-frontend-audit-report.md`
+
+### Growth Campaign — Manual DM Send
+- **Status**: 🔴 BLOCKED on Pablo
+- **Deliverable**: 10 personalized DMs + interview guide
+- **Location**: `$AGENT_HOME/research/dm-campaign-10-users.md`
+- **Action**: Pablo manually sends 10 DMs from his X account (~20 min)
 
 ---
 
-## 📊 Growth Assessment Results (2026-04-06)
+## 🚫 CURRENT BLOCKERS
 
-Growth agent completed readiness assessment:
-- **Don't push broad acquisition yet** — fix UX first
-- **Seed 10 markets NOW** — highest-leverage immediate action
-- **Direct outreach to 20 specific humans** — not "post and hope"
-- **GTM message:** "You have opinions. Now trade on them."
-- **Need analytics** before broad push (no tracking exists)
-- **Substack deprioritized** for first 100 users (long-term asset, not acquisition lever)
+1. **Svelte audit fixes** — 5 critical issues need delegation to claude-code
+2. **Pablo DMs** — Growth outreach blocked on manual send
 
 ---
 
-## ⏳ Pending Pablo Decisions
+## 📊 Phase 7 Review History (RESOLVED)
 
-1. **Substack account:** Create cascadethinking.substack.com (article draft ready at tenex/docs/substack-draft-2026-04-04-v2.md)
-
----
-
-## ✅ RESOLVED: UX Phase 1 Complete
-
-All critical UX gaps from Pragmatic Reviewer audit have been addressed:
-- ✅ Jargon removed (NIP-07, Nostr, Cashu, npub)
-- ✅ Homepage rebuilt with hero, examples, differentiator
-- ✅ Market outcomes enforced as YES/NO only (VOID removed)
-- ⏳ Market resolution creator UI (next phase after mint)
+| Round | Verdict | Key Issues |
+|-------|---------|------------|
+| Round 1 | FAIL | Missing ProofInput, wrong C validation, no double-spend, no LMSR refund |
+| Round 2 | FAIL | keyset_id not id, no keyset binding, LMSR math wrong |
+| Round 3 | FAIL | String-only keyset binding, reserve not decremented |
+| Round 4 | ✅ PASS | CDK verify_proofs, reserve decrement, exact fee assertion |
+| Final | ✅ MERGED | bd19d6e on main |
 
 ---
 
@@ -60,27 +58,25 @@ All critical UX gaps from Pragmatic Reviewer audit have been addressed:
 - **Positions:** kind 30078 NIP-78 (user-signed, replaceable) ✅
 - **Discussions:** kind 1111 NIP-22 (per-market, real-time) ✅
 - **Bookmarks:** NIP-51 kind 10003 ✅
-- **Redemption:** Atomic, LMSR-priced, P2PK delivery, 3-layer idempotency ✅ NEW
-- **Cashu Mint:** Per-market keysets, 2% rake ✅ (CDK Rust plan in creation, deploy following approval)
+- **Redemption:** Atomic, LMSR-priced, P2PK delivery, 3-layer idempotency ✅
+- **Cashu Mint:** Per-market keysets, 2% rake, CDK Rust ✅ ALL 7 PHASES DONE
 - **React:** Abandoned 🗑️ All Svelte 5 now.
 
 ---
 
-## 📈 Market Opportunities Ready to Seed
+## 📈 What's Next
 
-3 thesis chains ready for creation (from market scan 2026-04-06):
-1. **SpaceX IPO Catalyst Chain** — IPO filing → valuation → Starship milestones
-2. **DeepSeek Independence** — Independence → sanctions → US AI training costs
-3. **Microsoft Japan Arbitrage** — Japan hub → tech firm follow → APAC market share
-
-Ready to create immediately once Cashu mint gets GO.
+1. Fix Svelte audit criticals → deploy
+2. Pablo sends 10 DMs → user research
+3. Seed 3 thesis chains from market scan
+4. Analytics dashboard (no tracking yet — growth says prioritize this)
 
 ---
 
-**Next steps:**
-1. ⏳ Mint plan completion (tenex-planner active)
-2. 🚀 Build mint (execution-coordinator + claude-code)
-3. 🔐 Deploy locally and test
-4. 📊 Seed 10 markets (highest leverage per growth assessment)
-5. 📱 Direct outreach to 20 specific humans
-6. 📰 Substack article (pending Pablo account creation)
+## ✅ Archive (Completed >7 days)
+
+- UX Phase 1 (market resolution, homepage, jargon removal)
+- Kind 982 migration
+- Position Nostr persistence
+- Growth readiness assessment
+- Cashu Mint CDK Rust plan

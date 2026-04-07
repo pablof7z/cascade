@@ -8,7 +8,7 @@
 
   const socialLinks = [
     { label: 'X / Twitter', href: 'https://x.com/paborlmcik' },
-    { label: 'Nostr', href: 'https://njump.me/npub1p8fyn5dphu9xpqkhfxs6l0ey8z5jj2tq94mgwhkef2ry6qf4kxqz4yqhe' },
+    { label: 'Protocol', href: 'https://njump.me/npub1p8fyn5dphu9xpqkhfxs6l0ey8z5jj2tq94mgwhkef2ry6qf4kxqz4yqhe' },
     { label: 'GitHub', href: 'https://github.com/pablof7z' },
   ];
 

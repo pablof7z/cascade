@@ -255,7 +255,7 @@
             disabled={isPublishing || !pubkey}
             class="px-4 py-2 text-sm font-medium text-white border border-neutral-600 hover:border-neutral-400 disabled:border-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed transition-colors"
           >
-            {isPublishing ? 'Publishing...' : 'Publish to Nostr'}
+            {isPublishing ? 'Publishing...' : 'Update Profile'}
           </button>
 
           {#if !pubkey}

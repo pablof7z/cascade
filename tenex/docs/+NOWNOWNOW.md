@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-07 15:35 UTC — CDK Rust Mint Phases 1-7 MERGED TO MAIN (112 tests). Svelte audit 22 issues pending triage. Main pushed to origin.*
+*Last updated: 2026-04-07 15:50 UTC — Phase 7 COMPLETE & MERGED. Svelte 5 audit done (22 issues, 5 critical fixed & pushed). Growth campaign READY (blocked on Pablo DM send). TENEX: Teams Phases 4-5 in progress.*
 
 ---
 
@@ -21,9 +21,9 @@
 ## 🔄 In Progress
 
 ### Svelte 5 Frontend Audit — 22 Issues
-- **Status**: 🟡 Triage in progress (explore-agent + web-tester)
-- **Issues**: 5 critical (broken routes, style violations), 17 medium/low
-- **Report**: `/Users/customer/.tenex/home/a6405ff4/cascade-frontend-audit-report.md`
+- **Status**: ✅ 5 criticals FIXED & SHIPPED (3c4d028). 17 medium/low remaining (not blocking).
+- **Fixed**: Loading spinners, rounded-full, broken /markets links, Nostr jargon, mockPnLData.ts deleted
+- **Remaining**: 11 medium, 6 low — recommend next UX sprint
 
 ### Growth Campaign — Manual DM Send
 - **Status**: 🔴 BLOCKED on Pablo
@@ -35,8 +35,7 @@
 
 ## 🚫 CURRENT BLOCKERS
 
-1. **Svelte audit fixes** — 5 critical issues need delegation to claude-code
-2. **Pablo DMs** — Growth outreach blocked on manual send
+1. **Pablo DMs** — Growth outreach blocked on manual send (~20 min)
 
 ---
 

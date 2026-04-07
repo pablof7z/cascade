@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import NavHeader from '$lib/components/NavHeader.svelte'
-  import Skeleton from '$lib/components/ui/Skeleton.svelte'
   import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte'
   import { fetchAllMarketsTransport, publishMarket, getPubkey } from '../services/nostrService'
   import { parseMarketEvent } from '../services/marketService'
@@ -28,7 +27,6 @@
   // ─── State ──────────────────────────────────────────────────────────────────
 
   let markets = $state<Market[]>([])
-  let loading = $state(true)
   let error = $state<string | null>(null)
   let showCreateModal = $state(false)
   let title = $state('')
@@ -181,10 +179,6 @@
       } catch (err) {
         if (!cancelled) {
           error = err instanceof Error ? err.message : "Couldn't connect to server — check your connection"
-        }
-      } finally {
-        if (!cancelled) {
-          loading = false
         }
       }
     }
@@ -510,10 +504,6 @@
   {#if error}
     <div class="max-w-7xl mx-auto px-6 pt-12">
       <ErrorMessage {error} />
-    </div>
-  {:else if loading}
-    <div class="max-w-7xl mx-auto px-6 pt-12">
-      <Skeleton />
     </div>
   {/if}
 

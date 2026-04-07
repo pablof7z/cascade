@@ -51,20 +51,20 @@ fn validate_proof(proof: &ProofInput) -> Result<(), String> {
     }
 
     // Validate keyset_id is not empty
-    if proof.keyset_id.is_empty() {
-        return Err("Proof keyset_id cannot be empty".to_string());
+    if proof.id.is_empty() {
+        return Err("Proof keyset id cannot be empty".to_string());
     }
 
     // Validate DLEQ proof if present
-    if let Some(dleq) = &proof.dleq_proof {
-        if dleq.e.is_empty() || dleq.s.is_empty() {
-            return Err("DLEQ proof must have non-empty e and s values".to_string());
+    if let Some(dleq) = &proof.dleq {
+        if dleq.e.is_empty() || dleq.s.is_empty() || dleq.r.is_empty() {
+            return Err("DLEQ proof must have non-empty e, s, and r values".to_string());
         }
-        if dleq.e.len() != 64 || dleq.s.len() != 64 {
-            return Err("DLEQ proof e and s must be 64 hex characters each".to_string());
+        if dleq.e.len() != 64 || dleq.s.len() != 64 || dleq.r.len() != 64 {
+            return Err("DLEQ proof e, s, and r must be 64 hex characters each".to_string());
         }
-        if !dleq.e.chars().all(|c| c.is_ascii_hexdigit()) || !dleq.s.chars().all(|c| c.is_ascii_hexdigit()) {
-            return Err("DLEQ proof e and s must be valid hex".to_string());
+        if !dleq.e.chars().all(|c| c.is_ascii_hexdigit()) || !dleq.s.chars().all(|c| c.is_ascii_hexdigit()) || !dleq.r.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err("DLEQ proof e, s, and r must be valid hex".to_string());
         }
     }
 
@@ -145,6 +145,26 @@ pub async fn redeem(
             Json(Err(ErrorResponse {
                 error: "Market not active".to_string(),
                 details: Some("Cannot redeem from a resolved or archived market".to_string()),
+            })),
+        );
+    }
+
+    // Validate keyset binding: proof.id must match the appropriate market keyset
+    let expected_keyset = match side {
+        Side::Long => &market.long_keyset_id,
+        Side::Short => &market.short_keyset_id,
+    };
+    if &req.proof.id != expected_keyset {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(Err(ErrorResponse {
+                error: "Keyset mismatch".to_string(),
+                details: Some(format!(
+                    "Proof keyset '{}' does not match the {} keyset '{}'",
+                    req.proof.id,
+                    match side { Side::Long => "long", Side::Short => "short" },
+                    expected_keyset
+                )),
             })),
         );
     }
@@ -274,6 +294,26 @@ pub async fn settle(
         );
     }
 
+    // Validate keyset binding: proof.id must match the appropriate market keyset
+    let expected_keyset = match side {
+        Side::Long => &market.long_keyset_id,
+        Side::Short => &market.short_keyset_id,
+    };
+    if &req.proof.id != expected_keyset {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(Err(ErrorResponse {
+                error: "Keyset mismatch".to_string(),
+                details: Some(format!(
+                    "Proof keyset '{}' does not match the {} keyset '{}'",
+                    req.proof.id,
+                    match side { Side::Long => "long", Side::Short => "short" },
+                    expected_keyset
+                )),
+            })),
+        );
+    }
+
     // Atomic check-and-set: acquire write lock FIRST, then check if spent
     {
         let mut spent = state.spent_proofs.write().await;
@@ -342,9 +382,9 @@ mod tests {
             secret: "test_secret_123".to_string(),
             amount: 100,
             C: "a".repeat(66), // Valid 66 char hex for compressed pubkey
-            keyset_id: "keyset123".to_string(),
+            id: "keyset123".to_string(),
             witness: None,
-            dleq_proof: None,
+            dleq: None,
         }
     }
 
@@ -395,18 +435,19 @@ mod tests {
     #[test]
     fn test_validate_proof_empty_keyset_id() {
         let mut proof = make_valid_proof();
-        proof.keyset_id = "".to_string();
+        proof.id = "".to_string();
         let result = validate_proof(&proof);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("keyset_id"));
+        assert!(result.unwrap_err().contains("empty"));
     }
 
     #[test]
     fn test_validate_proof_invalid_dleq() {
         let mut proof = make_valid_proof();
-        proof.dleq_proof = Some(DleqProof {
+        proof.dleq = Some(DleqProof {
             e: "abc".to_string(),
             s: "def".to_string(),
+            r: "ghi".to_string(),
         });
         let result = validate_proof(&proof);
         assert!(result.is_err());
@@ -423,9 +464,10 @@ mod tests {
     #[test]
     fn test_validate_proof_valid_with_dleq() {
         let mut proof = make_valid_proof();
-        proof.dleq_proof = Some(DleqProof {
+        proof.dleq = Some(DleqProof {
             e: "a".repeat(64),
             s: "b".repeat(64),
+            r: "c".repeat(64),
         });
         let result = validate_proof(&proof);
         assert!(result.is_ok());

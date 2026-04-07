@@ -1,10 +1,10 @@
 //! LMSR (Logarithmic Market Scoring Rule) pricing engine
 //!
-//! Implements the LMSR market maker formula:
-//! cost(q_long, q_short) = (b / ln(2)) * ln(2^(q_long/b) + 2^(q_short/b))
+//! Implements the standard LMSR market maker formula:
+//! cost(q_long, q_short) = b * ln(exp(q_long/b) + exp(q_short/b))
 //!
-//! Price for long: P(L) = 1 / (1 + 2^(b*(q_short - q_long)))
-//! Price for short: P(S) = 1 / (1 + 2^(b*(q_long - q_short)))
+//! Price for long: P(L) = exp(q_long/b) / (exp(q_long/b) + exp(q_short/b))
+//! Price for short: P(S) = exp(q_short/b) / (exp(q_long/b) + exp(q_short/b))
 
 use crate::error::{CascadeError, Result};
 
@@ -30,12 +30,13 @@ impl LmsrEngine {
         self.b
     }
 
-    /// Cost function: C(q_long, q_short) = (b / ln(2)) * ln(2^(q_long/b) + 2^(q_short/b))
+    /// Cost function: C(q_long, q_short) = b * ln(exp(q_long/b) + exp(q_short/b))
     /// This is the cumulative cost paid by all traders.
     fn cost_function(&self, q_long: f64, q_short: f64) -> Result<f64> {
         // log_sum_exp avoids overflow: ln(e^a + e^b) = max(a,b) + ln(e^(a-max) + e^(b-max))
-        let a = q_long * self.b.ln();
-        let b = q_short * self.b.ln();
+        // Here a = q_long/b, b = q_short/b
+        let a = q_long / self.b;
+        let b = q_short / self.b;
         let max = a.max(b);
 
         if !max.is_finite() {
@@ -45,7 +46,7 @@ impl LmsrEngine {
         }
 
         let log_sum = max + ((a - max).exp() + (b - max).exp()).ln();
-        let cost = (self.b / 2.0_f64.ln()) * log_sum;
+        let cost = self.b * log_sum;
 
         if !cost.is_finite() {
             return Err(CascadeError::CostCalculationFailed(
@@ -56,20 +57,23 @@ impl LmsrEngine {
         Ok(cost)
     }
 
-    /// Price of long at given quantities: P(L) = 1 / (1 + 2^(b*(q_short - q_long)))
+    /// Price of long at given quantities: P(L) = exp(q_long/b) / (exp(q_long/b) + exp(q_short/b))
     pub fn price_long(&self, q_long: f64, q_short: f64) -> Result<f64> {
-        let exponent = self.b * (q_short - q_long);
-        
-        // Avoid overflow in 2^x
-        if exponent > 50.0 {
-            return Ok(0.0); // Price approaches 0
-        }
-        if exponent < -50.0 {
-            return Ok(1.0); // Price approaches 1
+        // Use log-sum-exp trick to avoid overflow: p = exp(a) / (exp(a) + exp(b))
+        // = exp(a - max(a,b)) / (exp(a-max) + exp(b-max))
+        let a = q_long / self.b;
+        let b = q_short / self.b;
+        let max = a.max(b);
+        let denom = (a - max).exp() + (b - max).exp();
+
+        if !denom.is_finite() {
+            return Err(CascadeError::CostCalculationFailed(
+                "Long price calculation failed".to_string(),
+            ));
         }
 
-        let denominator = 1.0 + 2.0_f64.powf(exponent);
-        let price = 1.0 / denominator;
+        // numerator = exp(a - max(a,b))
+        let price = (a - max).exp() / denom;
 
         if !price.is_finite() {
             return Err(CascadeError::CostCalculationFailed(
@@ -80,19 +84,23 @@ impl LmsrEngine {
         Ok(price)
     }
 
-    /// Price of short at given quantities: P(S) = 1 / (1 + 2^(b*(q_long - q_short)))
+    /// Price of short at given quantities: P(S) = exp(q_short/b) / (exp(q_long/b) + exp(q_short/b))
     pub fn price_short(&self, q_long: f64, q_short: f64) -> Result<f64> {
-        let exponent = self.b * (q_long - q_short);
-        
-        if exponent > 50.0 {
-            return Ok(0.0);
-        }
-        if exponent < -50.0 {
-            return Ok(1.0);
+        // Use log-sum-exp trick to avoid overflow: p = exp(b) / (exp(a) + exp(b))
+        // = exp(b - max(a,b)) / (exp(a-max) + exp(b-max))
+        let a = q_long / self.b;
+        let b = q_short / self.b;
+        let max = a.max(b);
+        let denom = (a - max).exp() + (b - max).exp();
+
+        if !denom.is_finite() {
+            return Err(CascadeError::CostCalculationFailed(
+                "Short price calculation failed".to_string(),
+            ));
         }
 
-        let denominator = 1.0 + 2.0_f64.powf(exponent);
-        let price = 1.0 / denominator;
+        // numerator = exp(b - max(a,b))
+        let price = (b - max).exp() / denom;
 
         if !price.is_finite() {
             return Err(CascadeError::CostCalculationFailed(

@@ -192,8 +192,8 @@ async fn test_trade_fees() {
 
     // Verify fee is calculated correctly
     // Fee should be approximately 1% of cost (100 basis points = 1%)
-    // Note: fee is calculated on base amount (cost - fee), so fee <= cost/100
-    let max_fee = trade.cost_sats / 100;
+    // Use max(1, cost/100) to handle small costs where integer division floors to 0
+    let max_fee = std::cmp::max(1, trade.cost_sats / 100);
     assert!(
         trade.fee_sats <= max_fee,
         "Fee {} should be at most 1% of cost {}",

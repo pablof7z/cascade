@@ -22,6 +22,9 @@ pub struct MarketResponse {
     pub q_long: f64,
     pub q_short: f64,
     pub status: String,
+    pub long_keyset_id: String,
+    pub short_keyset_id: String,
+    pub reserve: u64,
 }
 
 #[derive(Debug, Serialize)]
@@ -205,20 +208,23 @@ pub struct ProofInput {
     pub amount: u64,
     /// Compressed public key commitment (66 hex chars for secp256k1)
     pub C: String,
-    /// Keyset ID this proof belongs to
-    pub keyset_id: String,
+    /// Keyset ID this proof belongs to (matches Cashu NUT-00 id field)
+    #[serde(rename = "id")]
+    pub id: String,
     /// Optional witness data for HTLC proofs
     pub witness: Option<String>,
-    /// Optional DLEQ proof (v, s) for amount splitting
-    #[serde(default)]
-    pub dleq_proof: Option<DleqProof>,
+    /// Optional DLEQ proof (e, s, r) for zero-knowledge amount proof (NUT-12)
+    #[serde(rename = "dleq", default)]
+    pub dleq: Option<DleqProof>,
 }
 
-/// DLEQ proof for zero-knowledge amount proof
+/// DLEQ proof for zero-knowledge amount proof (NUT-12)
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DleqProof {
     pub e: String,
     pub s: String,
+    /// Random nonce r (64 hex chars)
+    pub r: String,
 }
 
 /// Mid-market redemption request

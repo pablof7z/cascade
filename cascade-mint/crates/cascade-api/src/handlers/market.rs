@@ -24,6 +24,9 @@ pub async fn list_markets(
                     q_long: m.q_long,
                     q_short: m.q_short,
                     status: format!("{:?}", m.status),
+                    long_keyset_id: m.long_keyset_id,
+                    short_keyset_id: m.short_keyset_id,
+                    reserve: m.reserve_sats,
                 })
                 .collect();
 
@@ -72,6 +75,9 @@ pub async fn create_market(
                 q_long: market.q_long,
                 q_short: market.q_short,
                 status: format!("{:?}", market.status),
+                long_keyset_id: market.long_keyset_id,
+                short_keyset_id: market.short_keyset_id,
+                reserve: market.reserve_sats,
             }),
         ),
         Err(_) => (
@@ -85,6 +91,9 @@ pub async fn create_market(
                 q_long: 0.0,
                 q_short: 0.0,
                 status: "error".to_string(),
+                long_keyset_id: String::new(),
+                short_keyset_id: String::new(),
+                reserve: 0,
             }),
         ),
     }
@@ -107,6 +116,9 @@ pub async fn get_market(
                 q_long: market.q_long,
                 q_short: market.q_short,
                 status: format!("{:?}", market.status),
+                long_keyset_id: market.long_keyset_id,
+                short_keyset_id: market.short_keyset_id,
+                reserve: market.reserve_sats,
             }),
         ),
         Err(_) => (
@@ -120,6 +132,9 @@ pub async fn get_market(
                 q_long: 0.0,
                 q_short: 0.0,
                 status: "not_found".to_string(),
+                long_keyset_id: String::new(),
+                short_keyset_id: String::new(),
+                reserve: 0,
             }),
         ),
     }

@@ -346,7 +346,7 @@ async fn test_redeem_invalid_proof_wrong_c_length() {
             "secret": "secret123",
             "amount": 100,
             "C": "a".repeat(64), // Wrong length - should be 66
-            "keyset_id": "keyset123"
+            "id": "keyset123"
         }
     });
 
@@ -379,7 +379,7 @@ async fn test_redeem_nonexistent_market() {
             "secret": "secret123",
             "amount": 100,
             "C": "a".repeat(66),
-            "keyset_id": "keyset123"
+            "id": "keyset123"
         }
     });
 
@@ -436,7 +436,7 @@ async fn test_settle_unresolved_market() {
             "secret": "secret456",
             "amount": 100,
             "C": "a".repeat(66),
-            "keyset_id": "keyset123"
+            "id": "keyset123"
         }
     });
 
@@ -485,6 +485,26 @@ async fn test_settle_resolved_market_winner() {
 
     let market_id = created.get("event_id").and_then(|v| v.as_str()).expect("Missing event_id");
 
+    // Fetch market to get real keysets
+    let market_fetch = client
+        .get(&format!("{}/api/market/{}", url, market_id))
+        .send()
+        .await
+        .expect("Failed to fetch market");
+    assert_eq!(market_fetch.status(), 200);
+    let market_state: serde_json::Value = market_fetch
+        .json()
+        .await
+        .expect("Failed to parse market state");
+    let long_keyset = market_state
+        .get("long_keyset_id")
+        .and_then(|v| v.as_str())
+        .expect("Missing long_keyset_id");
+    let initial_reserve = market_state
+        .get("reserve")
+        .and_then(|v| v.as_u64())
+        .expect("Missing reserve");
+
     // Step 1: Buy 10 shares on the "long" (yes) side first
     let buy_request = serde_json::json!({
         "market_id": market_id,
@@ -517,7 +537,7 @@ async fn test_settle_resolved_market_winner() {
 
     assert_eq!(resolve_response.status(), 200);
 
-    // Settle on the winning side (yes/long)
+    // Settle on the winning side (yes/long) using real keyset
     let settle_request = serde_json::json!({
         "market_id": market_id,
         "side": "yes",
@@ -525,7 +545,7 @@ async fn test_settle_resolved_market_winner() {
             "secret": "winner_secret_789",
             "amount": 1000,
             "C": "a".repeat(66),
-            "keyset_id": "keyset123"
+            "id": long_keyset
         }
     });
 
@@ -568,6 +588,25 @@ async fn test_settle_resolved_market_winner() {
         "Winner payout should be ~1000 (minus fee), got: {}",
         payout
     );
+
+    // Verify state changed: reserve should have changed after settle
+    let market_fetch_after: serde_json::Value = client
+        .get(&format!("{}/api/market/{}", url, market_id))
+        .send()
+        .await
+        .expect("Failed to fetch market after settle")
+        .json()
+        .await
+        .expect("Failed to parse market state after settle");
+    let reserve_after = market_fetch_after
+        .get("reserve")
+        .and_then(|v| v.as_u64())
+        .expect("Missing reserve after settle");
+    assert_ne!(
+        reserve_after, initial_reserve,
+        "Reserve should change after settle: was {}, now {}",
+        initial_reserve, reserve_after
+    );
 }
 
 /// Test that settle endpoint returns 0 payout for loser on resolved market
@@ -600,6 +639,26 @@ async fn test_settle_resolved_market_loser() {
 
     let market_id = created.get("event_id").and_then(|v| v.as_str()).expect("Missing event_id");
 
+    // Fetch market to get real keysets
+    let market_fetch = client
+        .get(&format!("{}/api/market/{}", url, market_id))
+        .send()
+        .await
+        .expect("Failed to fetch market");
+    assert_eq!(market_fetch.status(), 200);
+    let market_state: serde_json::Value = market_fetch
+        .json()
+        .await
+        .expect("Failed to parse market state");
+    let short_keyset = market_state
+        .get("short_keyset_id")
+        .and_then(|v| v.as_str())
+        .expect("Missing short_keyset_id");
+    let initial_reserve = market_state
+        .get("reserve")
+        .and_then(|v| v.as_u64())
+        .expect("Missing reserve");
+
     // Resolve the market to "long" (winner side)
     let resolve_request = serde_json::json!({
         "market_id": market_id,
@@ -613,7 +672,7 @@ async fn test_settle_resolved_market_loser() {
         .await
         .expect("Failed to resolve market");
 
-    // Settle on the losing side (no/short)
+    // Settle on the losing side (no/short) using real keyset
     let settle_request = serde_json::json!({
         "market_id": market_id,
         "side": "no",
@@ -621,7 +680,7 @@ async fn test_settle_resolved_market_loser() {
             "secret": "loser_secret_101",
             "amount": 1000,
             "C": "a".repeat(66),
-            "keyset_id": "keyset123"
+            "id": short_keyset
         }
     });
 
@@ -662,6 +721,37 @@ async fn test_settle_resolved_market_loser() {
         Some(0),
         "Loser payout should be 0"
     );
+
+    // Verify state post-settle: market remains Resolved (proof was consumed, state is consistent)
+    // For a loser with 0 reserve, the reserve stays 0 — no payout means no reserve change.
+    // What matters is the market is still in Resolved state after the settle call.
+    let market_fetch_after: serde_json::Value = client
+        .get(&format!("{}/api/market/{}", url, market_id))
+        .send()
+        .await
+        .expect("Failed to fetch market after settle")
+        .json()
+        .await
+        .expect("Failed to parse market state after settle");
+    let status_after = market_fetch_after
+        .get("status")
+        .and_then(|v| v.as_str())
+        .expect("Missing status after settle");
+    assert!(
+        status_after.contains("Resolved"),
+        "Market should remain Resolved after loser settle, got: {}",
+        status_after
+    );
+    // Reserve is unchanged for a loser (no payout = no reserve movement)
+    let reserve_after = market_fetch_after
+        .get("reserve")
+        .and_then(|v| v.as_u64())
+        .expect("Missing reserve after settle");
+    assert_eq!(
+        reserve_after, initial_reserve,
+        "Reserve should be unchanged for loser settle: was {}, now {}",
+        initial_reserve, reserve_after
+    );
 }
 
 /// Test that double redemption attempt returns 409 Conflict
@@ -694,6 +784,22 @@ async fn test_double_redemption_rejected() {
 
     let market_id = created.get("event_id").and_then(|v| v.as_str()).expect("Missing event_id");
 
+    // Fetch market to get real keysets
+    let market_fetch = client
+        .get(&format!("{}/api/market/{}", url, market_id))
+        .send()
+        .await
+        .expect("Failed to fetch market");
+    assert_eq!(market_fetch.status(), 200);
+    let market_state: serde_json::Value = market_fetch
+        .json()
+        .await
+        .expect("Failed to parse market state");
+    let long_keyset = market_state
+        .get("long_keyset_id")
+        .and_then(|v| v.as_str())
+        .expect("Missing long_keyset_id");
+
     // Step 1: Buy 10 shares on the "long" side first
     let buy_request = serde_json::json!({
         "market_id": market_id,
@@ -721,7 +827,7 @@ async fn test_double_redemption_rejected() {
             "secret": proof_secret,
             "amount": 100,
             "C": "a".repeat(66),
-            "keyset_id": "keyset123"
+            "id": long_keyset
         }
     });
 
@@ -786,6 +892,26 @@ async fn test_redeem_mid_market_valid() {
 
     let market_id = created.get("event_id").and_then(|v| v.as_str()).expect("Missing event_id");
 
+    // Fetch market to get real keysets and initial state
+    let market_fetch = client
+        .get(&format!("{}/api/market/{}", url, market_id))
+        .send()
+        .await
+        .expect("Failed to fetch market");
+    assert_eq!(market_fetch.status(), 200);
+    let market_state: serde_json::Value = market_fetch
+        .json()
+        .await
+        .expect("Failed to parse market state");
+    let initial_q_long = market_state
+        .get("q_long")
+        .and_then(|v| v.as_f64())
+        .expect("Missing q_long");
+    let long_keyset = market_state
+        .get("long_keyset_id")
+        .and_then(|v| v.as_str())
+        .expect("Missing long_keyset_id");
+
     // Step 1: Buy 10 shares on the "long" (yes) side first
     let buy_request = serde_json::json!({
         "market_id": market_id,
@@ -803,7 +929,25 @@ async fn test_redeem_mid_market_valid() {
 
     assert_eq!(buy_response.status(), 201, "Buy should succeed");
 
-    // Step 2: Redeem the 10 shares we just bought
+    // Fetch market again to get state after buying
+    let market_fetch_after_buy: serde_json::Value = client
+        .get(&format!("{}/api/market/{}", url, market_id))
+        .send()
+        .await
+        .expect("Failed to fetch market after buy")
+        .json()
+        .await
+        .expect("Failed to parse market state after buy");
+    let q_long_after_buy = market_fetch_after_buy
+        .get("q_long")
+        .and_then(|v| v.as_f64())
+        .expect("Missing q_long after buy");
+    assert!(
+        q_long_after_buy > initial_q_long,
+        "q_long should increase after buying long shares"
+    );
+
+    // Step 2: Redeem the 10 shares we just bought (use real keyset ID)
     let redeem_request = serde_json::json!({
         "market_id": market_id,
         "side": "yes",
@@ -812,7 +956,7 @@ async fn test_redeem_mid_market_valid() {
             "secret": "mid_market_secret_555",
             "amount": 100,
             "C": "a".repeat(66),
-            "keyset_id": "keyset123"
+            "id": long_keyset
         }
     });
 
@@ -867,5 +1011,25 @@ async fn test_redeem_mid_market_valid() {
         net,
         payout - fee,
         "Net payout should be payout - fee"
+    );
+
+    // Verify state changed: q_long should have decreased after redeem
+    let market_fetch_after_redeem: serde_json::Value = client
+        .get(&format!("{}/api/market/{}", url, market_id))
+        .send()
+        .await
+        .expect("Failed to fetch market after redeem")
+        .json()
+        .await
+        .expect("Failed to parse market state after redeem");
+    let q_long_after_redeem = market_fetch_after_redeem
+        .get("q_long")
+        .and_then(|v| v.as_f64())
+        .expect("Missing q_long after redeem");
+    assert!(
+        q_long_after_redeem < q_long_after_buy,
+        "q_long should decrease after redeem: was {} after buy, now {}",
+        q_long_after_buy,
+        q_long_after_redeem
     );
 }

@@ -207,7 +207,7 @@
   </div>
 {:else if loading}
   <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
-    <span class="text-neutral-500 text-sm">Loading thread…</span>
+    <div class="w-6 h-6 border-2 border-neutral-600 border-t-neutral-400 rounded-full animate-spin"></div>
   </div>
 {:else if !thread}
   <div class="min-h-screen bg-neutral-950 flex items-center justify-center">

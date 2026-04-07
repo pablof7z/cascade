@@ -40,7 +40,7 @@
   let probability = $derived(yesPrice);
 
   // Consensus analysis
-  let tiltLabel = $derived(() => {
+  let tiltLabel = $derived.by(() => {
     if (probability >= 0.65) return { label: 'Strong YES consensus', detail: 'Most capital is positioned long. Price moves require new information or a catalyst for reversal.', accent: 'text-emerald-400' };
     if (probability <= 0.35) return { label: 'Strong NO consensus', detail: 'Most capital is positioned short. A reversal requires new evidence, not sentiment.', accent: 'text-rose-400' };
     return { label: 'No clear consensus', detail: 'Neither side dominates. The next material update is likely to move the price.', accent: 'text-neutral-400' };
@@ -272,10 +272,10 @@
             <section class="space-y-8">
               <!-- Consensus -->
               <div class="bg-neutral-900/50 border border-neutral-800 rounded-none p-6">
-                <h2 class={`text-2xl font-semibold ${tiltLabel().accent}`}>
-                  {tiltLabel().label}
+                <h2 class={`text-2xl font-semibold ${tiltLabel.accent}`}>
+                  {tiltLabel.label}
                 </h2>
-                <p class="mt-2 text-neutral-300">{tiltLabel().detail}</p>
+                <p class="mt-2 text-neutral-300">{tiltLabel.detail}</p>
 
                 <!-- Quick stats -->
                 <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">

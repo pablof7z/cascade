@@ -19,6 +19,6 @@
 <div class="flex flex-col items-center justify-center gap-3 {className}">
   <div class="h-6 w-32 bg-neutral-800 animate-pulse rounded-none"></div>
   {#if message}
-n    <p class="text-sm text-neutral-500">{message}</p>
+    <p class="text-sm text-neutral-500">{message}</p>
   {/if}
 </div>

@@ -135,7 +135,7 @@
               href="/mkt/{getMarketSlug(marketId)}"
               class="flex-1 min-w-0 text-white font-medium hover:text-neutral-300 transition-colors truncate"
             >
-              {marketId}
+              {getMarketSlug(marketId)}
             </a>
             <div class="flex items-center gap-3 ml-4">
               <BookmarkButton

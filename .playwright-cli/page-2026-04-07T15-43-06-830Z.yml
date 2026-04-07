@@ -1,0 +1,177 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - banner [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - link "Cascade" [ref=e9] [cursor=pointer]:
+            - /url: /
+          - button "Mainnet" [ref=e10] [cursor=pointer]
+          - navigation [ref=e11]:
+            - link "Markets" [ref=e12] [cursor=pointer]:
+              - /url: /
+            - link "Activity" [ref=e13] [cursor=pointer]:
+              - /url: /activity
+        - generic [ref=e14]:
+          - generic [ref=e16]:
+            - textbox "Search markets..." [ref=e17]
+            - img [ref=e18]
+          - link "Build Thesis" [ref=e20] [cursor=pointer]:
+            - /url: /thesis/new
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - heading "The Market Thinks You're Wrong" [level=1] [ref=e28]
+        - paragraph [ref=e29]: Not just "will it happen?" — but "if it does, then what?" Build a thesis, trade on your conviction.
+        - generic [ref=e30]:
+          - link "Start Trading" [ref=e31] [cursor=pointer]:
+            - /url: "#markets"
+          - link "How it works →" [ref=e32] [cursor=pointer]:
+            - /url: "#how-it-works"
+      - generic [ref=e33]:
+        - text: Example theses — this is how Cascade works
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - generic [ref=e36]:
+              - generic [ref=e37]: 67¢
+              - generic [ref=e38]: "YES"
+            - paragraph [ref=e39]: AGI before 2030?
+            - paragraph [ref=e40]: "Then: AI workforce adoption → Labor market disruption → UBI thesis strengthens"
+          - generic [ref=e41]:
+            - generic [ref=e42]:
+              - generic [ref=e43]: 43¢
+              - generic [ref=e44]: "YES"
+            - paragraph [ref=e45]: BTC breaks $100k in 2025?
+            - paragraph [ref=e46]: "Then: ETH outperforms → Layer-2 TVL surges → Coinbase revenue up"
+          - generic [ref=e47]:
+            - generic [ref=e48]:
+              - generic [ref=e49]: 28¢
+              - generic [ref=e50]: "YES"
+            - paragraph [ref=e51]: Taiwan conflict by 2030?
+            - paragraph [ref=e52]: "Then: TSMC offline → Chip shortage → Defense spending surges"
+        - paragraph [ref=e53]: Build your own thesis — connect predictions into chains, trade on conviction.
+        - button "Create a Market" [ref=e54]
+    - generic [ref=e56]:
+      - generic [ref=e61]: Live
+      - generic [ref=e62]: Markets updating in real-time
+    - generic [ref=e63]:
+      - generic [ref=e64]:
+        - heading "You have opinions. Now trade on them." [level=2] [ref=e65]
+        - paragraph [ref=e66]: Cascade trades on theses, not just bets.
+      - generic [ref=e67]:
+        - generic [ref=e68]:
+          - generic [ref=e70]: Step 1
+          - heading "Find or create a prediction" [level=3] [ref=e72]
+          - paragraph [ref=e73]: "Browse existing markets or create your own. Each market is a simple question: will this outcome happen?"
+          - paragraph [ref=e74]: e.g. "Will BTC break $100k by end of 2025?"
+        - generic [ref=e75]:
+          - generic [ref=e77]: Step 2
+          - heading "Connect predictions into a thesis" [level=3] [ref=e79]
+          - paragraph [ref=e80]: Link predictions together. If one outcome happens, what follows? Build conditional chains.
+          - paragraph [ref=e81]: e.g. "If BTC breaks $100k → ETH outperforms → Coinbase benefits"
+        - generic [ref=e82]:
+          - generic [ref=e84]: Step 3
+          - heading "Trade on your conviction" [level=3] [ref=e86]
+          - paragraph [ref=e87]: Buy YES or NO shares. The market prices your thesis in real-time as new information arrives.
+          - paragraph [ref=e88]: e.g. 73¢ YES — market thinks you're wrong, prove it.
+    - generic [ref=e89]:
+      - generic [ref=e90]:
+        - heading "Trending" [level=2] [ref=e91]
+        - generic [ref=e92]: Most volume · 24h
+      - generic [ref=e95]: No trending markets yet
+    - generic [ref=e98]:
+      - generic [ref=e99]:
+        - generic [ref=e100]:
+          - heading "Low Volume" [level=2] [ref=e101]
+          - generic [ref=e102]: Smaller markets with lower volume.
+        - generic [ref=e103]: Updated live
+      - generic [ref=e104]:
+        - generic [ref=e105]: Market
+        - generic [ref=e106]: Price
+        - generic [ref=e107]: Chg
+        - generic [ref=e108]: Vol
+        - generic [ref=e109]: Mkt Cap
+    - generic [ref=e111]:
+      - generic [ref=e112]:
+        - heading "Not another prediction market." [level=2] [ref=e113]:
+          - text: Not another
+          - generic [ref=e114]: prediction market.
+        - paragraph [ref=e115]: Traditional markets resolve to YES or NO. Cascade trades on evolving truth — questions that compound, theses that grow, arguments that sharpen.
+      - generic [ref=e116]:
+        - generic [ref=e117]:
+          - generic [ref=e118]: Binary markets
+          - heading "\"Will X happen?\"" [level=3] [ref=e119]
+          - paragraph [ref=e120]: YES or NO. One question, one answer. Resolves when the question is settled.
+          - paragraph [ref=e121]: e.g. "Will Fed cut rates in 2025?"
+        - generic [ref=e122]:
+          - generic [ref=e123]: Conditional markets
+          - heading "\"If X, then what?\"" [level=3] [ref=e124]
+          - paragraph [ref=e125]: Build a thesis. Connect predictions into chains. The market prices your entire argument.
+          - paragraph [ref=e126]: e.g. "If Fed cuts → BTC rallies → ETH outperforms → Coinbase benefits"
+    - generic [ref=e128]:
+      - heading "Have a thesis?" [level=2] [ref=e129]
+      - paragraph [ref=e130]: Turn your conviction into a market. Let the crowd price your prediction.
+      - generic [ref=e131]:
+        - button "Create market" [ref=e132]
+        - link "Build thesis" [ref=e133] [cursor=pointer]:
+          - /url: /thesis/new
+    - contentinfo [ref=e134]:
+      - generic [ref=e136]:
+        - generic [ref=e137]: Cascade Markets
+        - generic [ref=e138]:
+          - link "Help" [ref=e139] [cursor=pointer]:
+            - /url: /help
+          - link "Terms" [ref=e140] [cursor=pointer]:
+            - /url: /legal/terms
+          - link "Privacy" [ref=e141] [cursor=pointer]:
+            - /url: /legal/privacy
+  - contentinfo [ref=e142]:
+    - generic [ref=e143]:
+      - generic [ref=e144]:
+        - generic [ref=e145]:
+          - link "Cascade" [ref=e146] [cursor=pointer]:
+            - /url: /
+          - paragraph [ref=e147]: Trade on ideas that don't expire. Prediction markets for evolving truth.
+        - generic [ref=e148]:
+          - heading "Navigate" [level=4] [ref=e149]
+          - list [ref=e150]:
+            - listitem [ref=e151]:
+              - link "Home" [ref=e152] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e153]:
+              - link "Markets" [ref=e154] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e155]:
+              - link "Blog" [ref=e156] [cursor=pointer]:
+                - /url: /blog
+            - listitem [ref=e157]:
+              - link "Analytics" [ref=e158] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=e159]:
+          - heading "Connect" [level=4] [ref=e160]
+          - list [ref=e161]:
+            - listitem [ref=e162]:
+              - link "X / Twitter" [ref=e163] [cursor=pointer]:
+                - /url: https://x.com/paborlmcik
+                - img [ref=e164]
+                - generic [ref=e166]: X / Twitter
+            - listitem [ref=e167]:
+              - link "Nostr" [ref=e168] [cursor=pointer]:
+                - /url: https://njump.me/npub1p8fyn5dphu9xpqkhfxs6l0ey8z5jj2tq94mgwhkef2ry6qf4kxqz4yqhe
+                - img [ref=e169]
+                - generic [ref=e171]: Nostr
+            - listitem [ref=e172]:
+              - link "GitHub" [ref=e173] [cursor=pointer]:
+                - /url: https://github.com/pablof7z
+                - img [ref=e174]
+                - generic [ref=e176]: GitHub
+        - generic [ref=e177]:
+          - heading "Legal" [level=4] [ref=e178]
+          - list [ref=e179]:
+            - listitem [ref=e180]:
+              - link "Terms of Service" [ref=e181] [cursor=pointer]:
+                - /url: /legal/terms
+            - listitem [ref=e182]:
+              - link "Privacy Policy" [ref=e183] [cursor=pointer]:
+                - /url: /legal/privacy
+      - generic [ref=e184]:
+        - paragraph [ref=e185]: © 2026 Cascade. All rights reserved.
+        - generic [ref=e186]: "Build: dev"

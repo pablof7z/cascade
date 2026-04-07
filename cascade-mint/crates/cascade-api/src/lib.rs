@@ -28,7 +28,10 @@ pub async fn build_server(
     let state = routes::AppState::new(
         market_manager,
         invoice_service,
+<<<<<<< HEAD
         mint.clone(),
+=======
+>>>>>>> 459988a (feat(mint): Add CDK mint routes to HTTP server and create API integration tests)
     );
     
     // Build cascade-specific routes

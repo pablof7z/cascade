@@ -35,6 +35,3 @@ thiserror = "1"
 [dev-dependencies]
 tokio-test = "0.4"
 reqwest = { version = "0.12", features = ["json"] }
-rand = "0.8"
-cdk-sqlite = { workspace = true }
-cdk-common = { workspace = true }

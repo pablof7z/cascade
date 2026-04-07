@@ -4,7 +4,7 @@
 //! These tests use the real build_cascade_routes with proper AppState.
 
 use cascade_api::routes::{build_cascade_routes, AppState};
-use cascade_api::types::{CreateMarketRequest, LightningTradeRequest};
+use cascade_api::types::{CreateMarketRequest, LightningTradeRequest, MarketRedeemRequest, MarketSettleRequest, ProofInput};
 use cascade_core::{invoice::InvoiceService, lightning::lnd_client::LndClient, LmsrEngine, MarketManager};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -300,5 +300,572 @@ async fn test_basic_api_routes_registered() {
         response.status(),
         404,
         "Health GET route should be registered"
+    );
+}
+
+// =============================================================================
+// Settlement & Redemption Integration Tests (Phase 7)
+// =============================================================================
+
+/// Test that redeem endpoint returns 400 for invalid proof (wrong C length)
+#[tokio::test]
+async fn test_redeem_invalid_proof_wrong_c_length() {
+    let (url, _invoice_service) = create_test_server().await;
+    let client = reqwest::Client::new();
+
+    // Create a market first
+    let market_request = CreateMarketRequest {
+        title: "Test Market".to_string(),
+        description: "A test market".to_string(),
+        slug: "redeem-invalid-proof".to_string(),
+        b: 10.0,
+    };
+
+    let create_response = client
+        .post(&format!("{}/api/market/create", url))
+        .json(&market_request)
+        .send()
+        .await
+        .expect("Failed to create market");
+
+    assert_eq!(create_response.status(), 201);
+
+    let created: serde_json::Value = create_response
+        .json()
+        .await
+        .expect("Failed to parse response");
+
+    let market_id = created.get("event_id").and_then(|v| v.as_str()).expect("Missing event_id");
+
+    // Try to redeem with invalid proof (C should be 66 chars for compressed pubkey)
+    let redeem_request = serde_json::json!({
+        "market_id": market_id,
+        "side": "yes",
+        "shares": 5.0,
+        "proof": {
+            "secret": "secret123",
+            "amount": 100,
+            "C": "a".repeat(64), // Wrong length - should be 66
+            "keyset_id": "keyset123"
+        }
+    });
+
+    let response = client
+        .post(&format!("{}/v1/cascade/redeem", url))
+        .json(&redeem_request)
+        .send()
+        .await
+        .expect("Failed to make request");
+
+    assert_eq!(
+        response.status(),
+        400,
+        "Invalid proof C length should return 400, got: {}",
+        response.status()
+    );
+}
+
+/// Test that redeem endpoint returns 404 for non-existent market
+#[tokio::test]
+async fn test_redeem_nonexistent_market() {
+    let (url, _invoice_service) = create_test_server().await;
+    let client = reqwest::Client::new();
+
+    let redeem_request = serde_json::json!({
+        "market_id": "nonexistent-market-id",
+        "side": "yes",
+        "shares": 5.0,
+        "proof": {
+            "secret": "secret123",
+            "amount": 100,
+            "C": "a".repeat(66),
+            "keyset_id": "keyset123"
+        }
+    });
+
+    let response = client
+        .post(&format!("{}/v1/cascade/redeem", url))
+        .json(&redeem_request)
+        .send()
+        .await
+        .expect("Failed to make request");
+
+    assert_eq!(
+        response.status(),
+        404,
+        "Nonexistent market should return 404, got: {}",
+        response.status()
+    );
+}
+
+/// Test that settle endpoint returns 400 for unresolved market
+#[tokio::test]
+async fn test_settle_unresolved_market() {
+    let (url, _invoice_service) = create_test_server().await;
+    let client = reqwest::Client::new();
+
+    // Create a market
+    let market_request = CreateMarketRequest {
+        title: "Test Market".to_string(),
+        description: "A test market".to_string(),
+        slug: "settle-unresolved".to_string(),
+        b: 10.0,
+    };
+
+    let create_response = client
+        .post(&format!("{}/api/market/create", url))
+        .json(&market_request)
+        .send()
+        .await
+        .expect("Failed to create market");
+
+    assert_eq!(create_response.status(), 201);
+
+    let created: serde_json::Value = create_response
+        .json()
+        .await
+        .expect("Failed to parse response");
+
+    let market_id = created.get("event_id").and_then(|v| v.as_str()).expect("Missing event_id");
+
+    // Try to settle on unresolved market
+    let settle_request = serde_json::json!({
+        "market_id": market_id,
+        "side": "yes",
+        "proof": {
+            "secret": "secret456",
+            "amount": 100,
+            "C": "a".repeat(66),
+            "keyset_id": "keyset123"
+        }
+    });
+
+    let response = client
+        .post(&format!("{}/v1/cascade/settle", url))
+        .json(&settle_request)
+        .send()
+        .await
+        .expect("Failed to make request");
+
+    assert_eq!(
+        response.status(),
+        400,
+        "Unresolved market should return 400, got: {}",
+        response.status()
+    );
+}
+
+/// Test that settle endpoint returns payout for winner on resolved market
+#[tokio::test]
+async fn test_settle_resolved_market_winner() {
+    let (url, _invoice_service) = create_test_server().await;
+    let client = reqwest::Client::new();
+
+    // Create and resolve a market
+    let market_request = CreateMarketRequest {
+        title: "Test Market".to_string(),
+        description: "A test market".to_string(),
+        slug: "settle-winner".to_string(),
+        b: 10.0,
+    };
+
+    let create_response = client
+        .post(&format!("{}/api/market/create", url))
+        .json(&market_request)
+        .send()
+        .await
+        .expect("Failed to create market");
+
+    assert_eq!(create_response.status(), 201);
+
+    let created: serde_json::Value = create_response
+        .json()
+        .await
+        .expect("Failed to parse response");
+
+    let market_id = created.get("event_id").and_then(|v| v.as_str()).expect("Missing event_id");
+
+    // Step 1: Buy 10 shares on the "long" (yes) side first
+    let buy_request = serde_json::json!({
+        "market_id": market_id,
+        "side": "long",
+        "quantity": 10.0,
+        "buyer_pubkey": "test_buyer_pubkey_winner"
+    });
+
+    let buy_response = client
+        .post(&format!("{}/api/trade/bid", url))
+        .json(&buy_request)
+        .send()
+        .await
+        .expect("Failed to buy shares");
+
+    assert_eq!(buy_response.status(), 201, "Buy should succeed");
+
+    // Step 2: Resolve the market to "long" (winner side)
+    let resolve_request = serde_json::json!({
+        "market_id": market_id,
+        "outcome": "long"
+    });
+
+    let resolve_response = client
+        .post(&format!("{}/api/market/{}/resolve", url, market_id))
+        .json(&resolve_request)
+        .send()
+        .await
+        .expect("Failed to resolve market");
+
+    assert_eq!(resolve_response.status(), 200);
+
+    // Settle on the winning side (yes/long)
+    let settle_request = serde_json::json!({
+        "market_id": market_id,
+        "side": "yes",
+        "proof": {
+            "secret": "winner_secret_789",
+            "amount": 1000,
+            "C": "a".repeat(66),
+            "keyset_id": "keyset123"
+        }
+    });
+
+    let response = client
+        .post(&format!("{}/v1/cascade/settle", url))
+        .json(&settle_request)
+        .send()
+        .await
+        .expect("Failed to make request");
+
+    assert_eq!(
+        response.status(),
+        200,
+        "Winner settlement should return 200, got: {}",
+        response.status()
+    );
+
+    let settle_result: serde_json::Value = response
+        .json()
+        .await
+        .expect("Failed to parse settle response");
+
+    // The response is {"Ok": {...}} so we need to access fields through "Ok"
+    let settle_data = settle_result.get("Ok").expect("Expected Ok wrapper in response");
+
+    assert_eq!(
+        settle_data.get("success").and_then(|v| v.as_bool()),
+        Some(true),
+        "Settlement should be successful"
+    );
+    assert_eq!(
+        settle_data.get("won").and_then(|v| v.as_bool()),
+        Some(true),
+        "Winner should have won=true"
+    );
+    // Payout should be near 1000 (minus ~1% fee = ~990)
+    let payout = settle_data.get("payout").and_then(|v| v.as_u64()).unwrap_or(0);
+    assert!(
+        payout >= 990 && payout <= 1000,
+        "Winner payout should be ~1000 (minus fee), got: {}",
+        payout
+    );
+}
+
+/// Test that settle endpoint returns 0 payout for loser on resolved market
+#[tokio::test]
+async fn test_settle_resolved_market_loser() {
+    let (url, _invoice_service) = create_test_server().await;
+    let client = reqwest::Client::new();
+
+    // Create and resolve a market
+    let market_request = CreateMarketRequest {
+        title: "Test Market".to_string(),
+        description: "A test market".to_string(),
+        slug: "settle-loser".to_string(),
+        b: 10.0,
+    };
+
+    let create_response = client
+        .post(&format!("{}/api/market/create", url))
+        .json(&market_request)
+        .send()
+        .await
+        .expect("Failed to create market");
+
+    assert_eq!(create_response.status(), 201);
+
+    let created: serde_json::Value = create_response
+        .json()
+        .await
+        .expect("Failed to parse response");
+
+    let market_id = created.get("event_id").and_then(|v| v.as_str()).expect("Missing event_id");
+
+    // Resolve the market to "long" (winner side)
+    let resolve_request = serde_json::json!({
+        "market_id": market_id,
+        "outcome": "long"
+    });
+
+    let _resolve_response = client
+        .post(&format!("{}/api/market/{}/resolve", url, market_id))
+        .json(&resolve_request)
+        .send()
+        .await
+        .expect("Failed to resolve market");
+
+    // Settle on the losing side (no/short)
+    let settle_request = serde_json::json!({
+        "market_id": market_id,
+        "side": "no",
+        "proof": {
+            "secret": "loser_secret_101",
+            "amount": 1000,
+            "C": "a".repeat(66),
+            "keyset_id": "keyset123"
+        }
+    });
+
+    let response = client
+        .post(&format!("{}/v1/cascade/settle", url))
+        .json(&settle_request)
+        .send()
+        .await
+        .expect("Failed to make request");
+
+    assert_eq!(
+        response.status(),
+        200,
+        "Loser settlement should return 200, got: {}",
+        response.status()
+    );
+
+    let settle_result: serde_json::Value = response
+        .json()
+        .await
+        .expect("Failed to parse settle response");
+
+    // The response is {"Ok": {...}} so we need to access fields through "Ok"
+    let settle_data = settle_result.get("Ok").expect("Expected Ok wrapper in response");
+
+    assert_eq!(
+        settle_data.get("success").and_then(|v| v.as_bool()),
+        Some(true),
+        "Settlement should be successful"
+    );
+    assert_eq!(
+        settle_data.get("won").and_then(|v| v.as_bool()),
+        Some(false),
+        "Loser should have won=false"
+    );
+    assert_eq!(
+        settle_data.get("payout").and_then(|v| v.as_u64()),
+        Some(0),
+        "Loser payout should be 0"
+    );
+}
+
+/// Test that double redemption attempt returns 409 Conflict
+#[tokio::test]
+async fn test_double_redemption_rejected() {
+    let (url, _invoice_service) = create_test_server().await;
+    let client = reqwest::Client::new();
+
+    // Create a market
+    let market_request = CreateMarketRequest {
+        title: "Test Market".to_string(),
+        description: "A test market".to_string(),
+        slug: "double-redeem".to_string(),
+        b: 10.0,
+    };
+
+    let create_response = client
+        .post(&format!("{}/api/market/create", url))
+        .json(&market_request)
+        .send()
+        .await
+        .expect("Failed to create market");
+
+    assert_eq!(create_response.status(), 201);
+
+    let created: serde_json::Value = create_response
+        .json()
+        .await
+        .expect("Failed to parse response");
+
+    let market_id = created.get("event_id").and_then(|v| v.as_str()).expect("Missing event_id");
+
+    // Step 1: Buy 10 shares on the "long" side first
+    let buy_request = serde_json::json!({
+        "market_id": market_id,
+        "side": "long",
+        "quantity": 10.0,
+        "buyer_pubkey": "test_buyer_pubkey_456"
+    });
+
+    let buy_response = client
+        .post(&format!("{}/api/trade/bid", url))
+        .json(&buy_request)
+        .send()
+        .await
+        .expect("Failed to buy shares");
+
+    assert_eq!(buy_response.status(), 201, "Buy should succeed");
+
+    // Same proof secret for both requests
+    let proof_secret = "double_spend_secret_999";
+    let redeem_request = serde_json::json!({
+        "market_id": market_id,
+        "side": "yes",
+        "shares": 5.0,
+        "proof": {
+            "secret": proof_secret,
+            "amount": 100,
+            "C": "a".repeat(66),
+            "keyset_id": "keyset123"
+        }
+    });
+
+    // First redemption should succeed
+    let first_response = client
+        .post(&format!("{}/v1/cascade/redeem", url))
+        .json(&redeem_request)
+        .send()
+        .await
+        .expect("Failed to make first request");
+
+    assert_eq!(
+        first_response.status(),
+        200,
+        "First redemption should succeed, got: {}",
+        first_response.status()
+    );
+
+    // Second redemption with same proof should fail with 409
+    let second_response = client
+        .post(&format!("{}/v1/cascade/redeem", url))
+        .json(&redeem_request)
+        .send()
+        .await
+        .expect("Failed to make second request");
+
+    assert_eq!(
+        second_response.status(),
+        409,
+        "Double spend should return 409 Conflict, got: {}",
+        second_response.status()
+    );
+}
+
+/// Test mid-market redeem with valid shares returns payout with fee
+#[tokio::test]
+async fn test_redeem_mid_market_valid() {
+    let (url, _invoice_service) = create_test_server().await;
+    let client = reqwest::Client::new();
+
+    // Create a market
+    let market_request = CreateMarketRequest {
+        title: "BTC Price Market".to_string(),
+        description: "Will BTC be above $100k?".to_string(),
+        slug: "redeem-mid-market".to_string(),
+        b: 10.0,
+    };
+
+    let create_response = client
+        .post(&format!("{}/api/market/create", url))
+        .json(&market_request)
+        .send()
+        .await
+        .expect("Failed to create market");
+
+    assert_eq!(create_response.status(), 201);
+
+    let created: serde_json::Value = create_response
+        .json()
+        .await
+        .expect("Failed to parse response");
+
+    let market_id = created.get("event_id").and_then(|v| v.as_str()).expect("Missing event_id");
+
+    // Step 1: Buy 10 shares on the "long" (yes) side first
+    let buy_request = serde_json::json!({
+        "market_id": market_id,
+        "side": "long",
+        "quantity": 10.0,
+        "buyer_pubkey": "test_buyer_pubkey_123"
+    });
+
+    let buy_response = client
+        .post(&format!("{}/api/trade/bid", url))
+        .json(&buy_request)
+        .send()
+        .await
+        .expect("Failed to buy shares");
+
+    assert_eq!(buy_response.status(), 201, "Buy should succeed");
+
+    // Step 2: Redeem the 10 shares we just bought
+    let redeem_request = serde_json::json!({
+        "market_id": market_id,
+        "side": "yes",
+        "shares": 10.0,
+        "proof": {
+            "secret": "mid_market_secret_555",
+            "amount": 100,
+            "C": "a".repeat(66),
+            "keyset_id": "keyset123"
+        }
+    });
+
+    let response = client
+        .post(&format!("{}/v1/cascade/redeem", url))
+        .json(&redeem_request)
+        .send()
+        .await
+        .expect("Failed to make request");
+
+    // Debug: print response body if not 200, then fail
+    let status = response.status();
+    if status != 200 {
+        let body = response.text().await.unwrap_or_else(|_| "Failed to read body".to_string());
+        eprintln!("DEBUG: Response body: {}", body);
+        panic!("Expected 200, got: {}", status);
+    }
+
+    let redeem_result: serde_json::Value = response
+        .json()
+        .await
+        .expect("Failed to parse redeem response");
+
+    // The response is {"Ok": {...}} so we need to access fields through "Ok"
+    let redeem_data = redeem_result.get("Ok").expect("Expected Ok wrapper in response");
+
+    assert_eq!(
+        redeem_data.get("success").and_then(|v| v.as_bool()),
+        Some(true),
+        "Redemption should be successful"
+    );
+
+    // Verify fee was calculated (1% = 10 sats on 1000 sats payout)
+    let payout = redeem_data.get("payout").and_then(|v| v.as_u64()).unwrap_or(0);
+    let fee = redeem_data.get("fee").and_then(|v| v.as_u64()).unwrap_or(0);
+    let net = redeem_data.get("net_payout").and_then(|v| v.as_u64()).unwrap_or(0);
+
+    // Gross payout should be > 0 (LMSR refund for 10 shares)
+    assert!(payout > 0, "Payout should be > 0");
+
+    // Fee should be approximately 1% of payout
+    let expected_fee = payout / 100;
+    assert!(
+        fee >= expected_fee && fee <= expected_fee + 1,
+        "Fee should be ~1% of payout, expected ~{}, got: {}",
+        expected_fee,
+        fee
+    );
+
+    // Net payout = payout - fee
+    assert_eq!(
+        net,
+        payout - fee,
+        "Net payout should be payout - fee"
     );
 }

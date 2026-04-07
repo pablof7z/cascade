@@ -7,7 +7,8 @@ use axum::{
     Router,
 };
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
+use std::collections::HashSet;
 
 use cascade_core::{MarketManager, invoice::InvoiceService};
 use crate::handlers::{self, price, resolve, trade, market};
@@ -17,6 +18,9 @@ use crate::handlers::{self, price, resolve, trade, market};
 pub struct AppState {
     pub market_manager: Arc<MarketManager>,
     pub invoice_service: Arc<Mutex<InvoiceService>>,
+    /// Set of spent proof secrets (to prevent double-redemption)
+    /// In production, this would be persisted to a database
+    pub spent_proofs: Arc<RwLock<HashSet<String>>>,
 }
 
 impl AppState {
@@ -27,6 +31,7 @@ impl AppState {
         Self {
             market_manager,
             invoice_service,
+            spent_proofs: Arc::new(RwLock::new(HashSet::new())),
         }
     }
 }
@@ -47,6 +52,9 @@ pub fn build_cascade_routes(state: AppState) -> Router {
         // Trade execution
         .route("/api/trade/bid", post(trade::buy))
         .route("/api/trade/ask", post(trade::sell))
+        // Phase 7: Settlement & Redemption
+        .route("/v1/cascade/redeem", post(handlers::settlement::redeem))
+        .route("/v1/cascade/settle", post(handlers::settlement::settle))
         // Health check
         .route("/health", get(health_check))
         .with_state(state)

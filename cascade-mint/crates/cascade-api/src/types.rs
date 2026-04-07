@@ -191,3 +191,79 @@ pub struct EscrowStatsResponse {
     pub refunded_sats: u64,
     pub failed_count: u64,
 }
+
+// =============================================================================
+// Settlement & Redemption Endpoints (Phase 7)
+// =============================================================================
+
+/// Cashu proof for redemption - matches NUT-01 Proof structure
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ProofInput {
+    /// Unique secret identifying this proof
+    pub secret: String,
+    /// Number of satoshis this proof is worth
+    pub amount: u64,
+    /// Compressed public key commitment (66 hex chars for secp256k1)
+    pub C: String,
+    /// Keyset ID this proof belongs to
+    pub keyset_id: String,
+    /// Optional witness data for HTLC proofs
+    pub witness: Option<String>,
+    /// Optional DLEQ proof (v, s) for amount splitting
+    #[serde(default)]
+    pub dleq_proof: Option<DleqProof>,
+}
+
+/// DLEQ proof for zero-knowledge amount proof
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct DleqProof {
+    pub e: String,
+    pub s: String,
+}
+
+/// Mid-market redemption request
+#[derive(Debug, Deserialize)]
+pub struct MarketRedeemRequest {
+    pub market_id: String,
+    pub side: String, // "yes" or "no"
+    pub shares: f64,
+    pub proof: ProofInput,
+}
+
+/// Mid-market redemption response
+#[derive(Debug, Serialize)]
+pub struct MarketRedeemResponse {
+    pub success: bool,
+    pub payout: u64,
+    pub fee: u64,
+    pub net_payout: u64,
+    pub tokens: Vec<TokenOutput>,
+}
+
+/// Post-resolution settlement request
+#[derive(Debug, Deserialize)]
+pub struct MarketSettleRequest {
+    pub market_id: String,
+    pub side: String, // "yes" or "no"
+    pub proof: ProofInput,
+}
+
+/// Post-resolution settlement response
+#[derive(Debug, Serialize)]
+pub struct MarketSettleResponse {
+    pub success: bool,
+    pub won: bool,
+    pub payout: u64,
+    pub fee: u64,
+    pub net_payout: u64,
+    pub tokens: Vec<TokenOutput>,
+}
+
+/// Token output from minting
+#[derive(Debug, Serialize)]
+pub struct TokenOutput {
+    pub amount: u64,
+    pub id: String,
+    pub blind_nonces: Vec<String>,
+    pub B: String,
+}

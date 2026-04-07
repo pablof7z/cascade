@@ -13,10 +13,10 @@ pub async fn resolve_market(
     State(state): State<AppState>,
     Json(req): Json<ResolveRequest>,
 ) -> (StatusCode, Json<ResolveResponse>) {
-    // Parse outcome
+    // Parse outcome - accept both "yes"/"no" and "long"/"short"
     let outcome = match req.outcome.to_lowercase().as_str() {
-        "long" => Side::Long,
-        "short" => Side::Short,
+        "long" | "yes" => Side::Long,
+        "short" | "no" => Side::Short,
         _ => {
             return (
                 StatusCode::BAD_REQUEST,

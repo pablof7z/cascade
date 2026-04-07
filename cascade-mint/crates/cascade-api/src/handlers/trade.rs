@@ -58,17 +58,31 @@ pub async fn buy(
     let executor = TradeExecutor::new(state.market_manager.lmsr().clone(), 100); // 1% fee
     
     match executor.execute_buy(&market, side, req.quantity, req.buyer_pubkey) {
-        Ok(trade) => (
-            StatusCode::CREATED,
-            Json(TradeResponse {
-                trade_id: trade.id,
-                market_id: trade.market_id,
-                side: format!("{:?}", trade.side),
-                quantity: trade.quantity,
-                cost_sats: trade.cost_sats,
-                fee_sats: trade.fee_sats,
-            }),
-        ),
+        Ok(trade) => {
+            // Update market LMSR state after successful buy
+            let (delta_long, delta_short) = match side {
+                Side::Long => (req.quantity, 0.0),
+                Side::Short => (0.0, req.quantity),
+            };
+            let _ = state.market_manager.update_lmsr_state(
+                &req.market_id,
+                delta_long,
+                delta_short,
+                trade.cost_sats as i64,
+            ).await;
+
+            (
+                StatusCode::CREATED,
+                Json(TradeResponse {
+                    trade_id: trade.id,
+                    market_id: trade.market_id,
+                    side: format!("{:?}", trade.side),
+                    quantity: trade.quantity,
+                    cost_sats: trade.cost_sats,
+                    fee_sats: trade.fee_sats,
+                }),
+            )
+        }
         Err(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(TradeResponse {
@@ -129,17 +143,31 @@ pub async fn sell(
     let executor = TradeExecutor::new(state.market_manager.lmsr().clone(), 100); // 1% fee
 
     match executor.execute_sell(&market, side, req.quantity, req.seller_pubkey) {
-        Ok(trade) => (
-            StatusCode::CREATED,
-            Json(TradeResponse {
-                trade_id: trade.id,
-                market_id: trade.market_id,
-                side: format!("{:?}", trade.side),
-                quantity: trade.quantity.abs(),
-                cost_sats: trade.cost_sats,
-                fee_sats: trade.fee_sats,
-            }),
-        ),
+        Ok(trade) => {
+            // Update market LMSR state after successful sell
+            let (delta_long, delta_short) = match side {
+                Side::Long => (-req.quantity, 0.0),
+                Side::Short => (0.0, -req.quantity),
+            };
+            let _ = state.market_manager.update_lmsr_state(
+                &req.market_id,
+                delta_long,
+                delta_short,
+                -(trade.cost_sats as i64), // Negative because we're refunding sats from reserve
+            ).await;
+
+            (
+                StatusCode::CREATED,
+                Json(TradeResponse {
+                    trade_id: trade.id,
+                    market_id: trade.market_id,
+                    side: format!("{:?}", trade.side),
+                    quantity: trade.quantity.abs(),
+                    cost_sats: trade.cost_sats,
+                    fee_sats: trade.fee_sats,
+                }),
+            )
+        }
         Err(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(TradeResponse {

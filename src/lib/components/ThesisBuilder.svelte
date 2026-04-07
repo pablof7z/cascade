@@ -383,7 +383,7 @@
     <!-- Publishing Phase -->
     <div class="flex flex-col items-center justify-center min-h-[40vh]">
       <div class="text-center">
-        <div class="text-lg text-white mb-2">Publishing to Nostr...</div>
+        <div class="text-lg text-white mb-2">Sharing thesis...</div>
         <div class="text-sm text-neutral-500">Please wait</div>
       </div>
     </div>

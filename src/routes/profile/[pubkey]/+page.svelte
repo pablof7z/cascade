@@ -310,7 +310,7 @@
   <!-- Tab Content -->
   <div class="px-6 py-8">
     {#if loadingMarkets}
-      <p class="text-center py-12"><span class="w-5 h-5 mx-auto border-2 border-neutral-600 border-t-neutral-400 rounded-full animate-spin inline-block"></span></p>
+
     {:else if markets.length === 0}
       <p class="text-center text-neutral-400 py-12">No markets created yet</p>
     {:else}
@@ -356,7 +356,7 @@
 
   <div class="px-6 py-8">
     {#if loadingPositions}
-      <p class="text-center py-12"><span class="w-5 h-5 mx-auto border-2 border-neutral-600 border-t-neutral-400 rounded-full animate-spin inline-block"></span></p>
+
     {:else if positions.length === 0}
       <p class="text-center text-neutral-400 py-12">No positions held yet</p>
     {:else}

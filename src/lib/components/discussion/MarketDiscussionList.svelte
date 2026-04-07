@@ -176,7 +176,7 @@
   <!-- Loading state -->
   {#if loading}
     <div class="py-12 text-center">
-      <div class="w-5 h-5 mx-auto border-2 border-neutral-600 border-t-neutral-400 rounded-full animate-spin"></div>
+
     </div>
   <!-- Error state -->
   {:else if error}

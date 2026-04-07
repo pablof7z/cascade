@@ -206,9 +206,7 @@
     <span class="text-neutral-500 text-sm">Market not found...</span>
   </div>
 {:else if loading}
-  <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
-    <div class="w-6 h-6 border-2 border-neutral-600 border-t-neutral-400 rounded-full animate-spin"></div>
-  </div>
+
 {:else if !thread}
   <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
     <span class="text-neutral-500 text-sm">Thread not found...</span>

@@ -290,9 +290,7 @@
   <!-- Content -->
   <div class="max-w-5xl mx-auto px-4 py-6">
     {#if loading}
-      <div class="flex items-center justify-center py-20">
-        <div class="w-6 h-6 border-2 border-neutral-600 border-t-neutral-400 rounded-full animate-spin"></div>
-      </div>
+
     {:else if filteredDiscussions.length === 0}
       <div class="flex flex-col items-center justify-center py-20">
         <span class="text-neutral-500 text-sm mb-4">No discussions found</span>

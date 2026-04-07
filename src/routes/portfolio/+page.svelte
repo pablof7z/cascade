@@ -180,7 +180,7 @@
 
   {#if loading}
     <div class="flex items-center justify-center py-12">
-      <div class="text-sm text-neutral-500">Loading positions...</div>
+
     </div>
   {:else if positions.length === 0}
     <div class="text-center py-12 border border-neutral-800">

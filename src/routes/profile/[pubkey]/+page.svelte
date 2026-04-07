@@ -310,7 +310,7 @@
   <!-- Tab Content -->
   <div class="px-6 py-8">
     {#if loadingMarkets}
-      <p class="text-center text-neutral-500 py-12">Loading markets...</p>
+
     {:else if markets.length === 0}
       <p class="text-center text-neutral-400 py-12">No markets created yet</p>
     {:else}
@@ -356,7 +356,7 @@
 
   <div class="px-6 py-8">
     {#if loadingPositions}
-      <p class="text-center text-neutral-500 py-12">Loading positions...</p>
+
     {:else if positions.length === 0}
       <p class="text-center text-neutral-400 py-12">No positions held yet</p>
     {:else}

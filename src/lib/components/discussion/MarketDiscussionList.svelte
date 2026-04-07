@@ -176,7 +176,7 @@
   <!-- Loading state -->
   {#if loading}
     <div class="py-12 text-center">
-      <div class="text-neutral-500">Loading discussions...</div>
+
     </div>
   <!-- Error state -->
   {:else if error}

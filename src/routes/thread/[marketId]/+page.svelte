@@ -1,7 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { onMount } from 'svelte';
   import { isReady, fetchMarketPosts, publishMarketReply, fetchReactions, subscribeToReactions } from '../../../services/nostrService';
   import { buildThreadHierarchy } from '../../../lib/threadBuilder';
   import { trackDiscussionInteraction } from '../../../analytics';
@@ -184,15 +183,11 @@
     };
   });
 
-  // Check Nostr ready state
-  onMount(() => {
-    // Poll for nostr ready or use a simpler check
-    const checkReady = setInterval(() => {
-      nostrReady = isReady();
-      if (nostrReady) clearInterval(checkReady);
-    }, 100);
-    
-    return () => clearInterval(checkReady);
+  // Wait for Nostr to be ready
+  $effect(() => {
+    if (isReady()) {
+      nostrReady = true;
+    }
   });
 
   // Get probability, thread, and market URL

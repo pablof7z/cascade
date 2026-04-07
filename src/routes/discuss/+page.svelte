@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { isReady, fetchMarketPosts, subscribeToMarketPosts } from '../../services/nostrService'
   import { fetchAllMarkets } from '../../services/marketService'
   import { buildThreadHierarchy, convertSingleEventToThread } from '../../lib/threadBuilder'
@@ -200,23 +199,20 @@
     }
   }
 
-  // Check Nostr ready state
-  onMount(() => {
-    const checkReady = setInterval(() => {
-      nostrReady = isReady()
-      if (nostrReady) {
-        clearInterval(checkReady)
-        fetchAllDiscussions()
-      }
-    }, 100)
-
-    return () => clearInterval(checkReady)
-  })
-
-  // Re-fetch when nostr becomes ready
+  // Wait for Nostr to be ready, then fetch and subscribe for updates
   $effect(() => {
-    if (nostrReady) {
-      fetchAllDiscussions()
+    if (!isReady()) return
+
+    nostrReady = true
+
+    // Initial fetch
+    fetchAllDiscussions()
+
+    // Subscribe to all markets for real-time updates
+    subscribeToMarketDiscussions()
+
+    return () => {
+      // Cleanup handled by unsubscribe functions in subscribeToMarketDiscussions
     }
   })
 </script>

@@ -26,6 +26,7 @@
   let amount = $state(100);
   let tradeLoading = $state(false);
   let tradeError = $state<string | null>(null);
+  let tradeSuccess = $state(false);
   let isBookmarked = $state(false);
   let mintName = $state('Cascade Mint');
 

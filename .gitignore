@@ -32,6 +32,9 @@ dist-ssr
 test-results
 .vercel
 
+# Rust build artifacts (cascade-mint)
+cascade-mint/target/
+
 # Git worktrees
 .worktrees/
 data/

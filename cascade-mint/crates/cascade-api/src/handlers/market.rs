@@ -51,6 +51,20 @@ pub async fn create_market(
 ) -> (StatusCode, Json<MarketResponse>) {
     let event_id = uuid::Uuid::new_v4().to_string();
     
+    // Get real keyset IDs from the CDK mint (not UUID placeholders)
+    let keysets = &state.mint.pubkeys().keysets;
+    
+    let (long_keyset_id, short_keyset_id): (String, String) = if keysets.len() >= 2 {
+        // Use first two keysets for long and short
+        (keysets[0].id.to_string(), keysets[1].id.to_string())
+    } else if let Some(keyset) = keysets.first() {
+        // Only one keyset - use it for both (better than UUID placeholder)
+        (keyset.id.to_string(), keyset.id.to_string())
+    } else {
+        // No keysets available - fall back to UUIDs
+        (uuid::Uuid::new_v4().to_string(), uuid::Uuid::new_v4().to_string())
+    };
+    
     match state.market_manager
         .create_market(
             event_id.clone(),
@@ -59,8 +73,8 @@ pub async fn create_market(
             req.description,
             req.b,
             "creator".to_string(), // TODO: Get from auth
-            uuid::Uuid::new_v4().to_string(), // long_keyset_id placeholder
-            uuid::Uuid::new_v4().to_string(), // short_keyset_id placeholder
+            long_keyset_id,
+            short_keyset_id,
         )
         .await
     {

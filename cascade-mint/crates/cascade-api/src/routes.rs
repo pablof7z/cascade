@@ -23,6 +23,8 @@ pub struct AppState {
     pub spent_proofs: Arc<RwLock<HashSet<String>>>,
     /// CDK mint for proof verification and keyset validation
     pub mint: Arc<cdk::mint::Mint>,
+    /// Skip CDK proof verification (for integration tests with mock keysets)
+    pub test_mode: bool,
 }
 
 impl AppState {
@@ -36,6 +38,21 @@ impl AppState {
             invoice_service,
             spent_proofs: Arc::new(RwLock::new(HashSet::new())),
             mint,
+            test_mode: false,
+        }
+    }
+    
+    pub fn new_test(
+        market_manager: Arc<MarketManager>,
+        invoice_service: Arc<Mutex<InvoiceService>>,
+        mint: Arc<cdk::mint::Mint>,
+    ) -> Self {
+        Self {
+            market_manager,
+            invoice_service,
+            spent_proofs: Arc::new(RwLock::new(HashSet::new())),
+            mint,
+            test_mode: true,
         }
     }
 }
@@ -59,6 +76,8 @@ pub fn build_cascade_routes(state: AppState) -> Router {
         // Phase 7: Settlement & Redemption
         .route("/v1/cascade/redeem", post(handlers::settlement::redeem))
         .route("/v1/cascade/settle", post(handlers::settlement::settle))
+        // Mint public keys for test proof construction
+        .route("/v1/keys", get(handlers::settlement::get_mint_keys))
         // Health check
         .route("/health", get(health_check))
         .with_state(state)

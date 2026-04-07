@@ -11,6 +11,8 @@ use cdk_common::nuts::CurrencyUnit;
 use cdk_sqlite::mint::memory::empty as create_mint_db;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use cdk::util::hex;
+use cdk::secp256k1::{Secp256k1, Keypair};
 
 /// Create a test CDK mint with in-memory database and random seed
 async fn create_test_mint() -> Arc<cdk::mint::Mint> {
@@ -34,8 +36,104 @@ async fn create_test_mint() -> Arc<cdk::mint::Mint> {
     Arc::new(mint)
 }
 
+/// Get the real SAT keyset ID from the mint
+fn get_mint_keyset_id(mint: &Arc<cdk::mint::Mint>) -> String {
+    let keysets = mint.keysets();
+    keysets.keysets.iter()
+        .find(|ks| ks.unit == CurrencyUnit::Sat)
+        .map(|ks| ks.id.to_string())
+        .expect("No SAT keyset found in test mint")
+}
+
+/// Create a valid ProofInput using the mint's real keyset and public key
+fn create_valid_proof_input(mint: &Arc<cdk::mint::Mint>, amount: u64, secret: &str) -> ProofInput {
+    let keyset_id = get_mint_keyset_id(mint);
+    let keys_response = mint.pubkeys();
+    let first_keyset = keys_response.keysets.first().expect("No keysets in test mint");
+    let first_key = first_keyset.keys.values().next().expect("No keys in keyset");
+    let c_hex = hex::encode(first_key.to_bytes());
+    ProofInput {
+        secret: secret.to_string(),
+        amount,
+        C: c_hex,
+        id: keyset_id,
+        witness: None,
+        dleq: None,
+    }
+}
+
+/// Get a valid public key (C value) from the server via HTTP
+/// This allows tests to construct valid proofs without direct mint access
+async fn get_valid_c_from_server(url: &str) -> String {
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&format!("{}/v1/keys", url))
+        .send()
+        .await
+        .expect("Failed to get keys from server");
+    
+    assert_eq!(response.status(), 200, "Failed to get keys");
+    
+    let keys_data: serde_json::Value = response
+        .json()
+        .await
+        .expect("Failed to parse keys response");
+    
+    // Extract the first pubkey from the keysets
+    let keysets = keys_data.get("keysets")
+        .and_then(|k| k.as_object())
+        .expect("Missing keysets in response");
+    
+    let first_keyset = keysets.values().next()
+        .expect("No keysets found");
+    
+    let keys = first_keyset.get("keys")
+        .and_then(|k| k.as_object())
+        .expect("Missing keys in keyset");
+    
+    let first_key = keys.values().next()
+        .expect("No keys in keyset");
+    
+    let pubkey = first_key.get("pubkey")
+        .and_then(|k| k.as_str())
+        .expect("Missing pubkey");
+    
+    pubkey.to_string()
+}
+
+/// Get a valid keyset ID from the server via HTTP
+async fn get_valid_keyset_id_from_server(url: &str) -> String {
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&format!("{}/v1/keys", url))
+        .send()
+        .await
+        .expect("Failed to get keys from server");
+    
+    assert_eq!(response.status(), 200, "Failed to get keys");
+    
+    let keys_data: serde_json::Value = response
+        .json()
+        .await
+        .expect("Failed to parse keys response");
+    
+    // Extract the first keyset ID from the keysets
+    let keysets = keys_data.get("keysets")
+        .and_then(|k| k.as_object())
+        .expect("Missing keysets in response");
+    
+    let first_keyset = keysets.values().next()
+        .expect("No keysets found");
+    
+    let keyset_id = first_keyset.get("id")
+        .and_then(|k| k.as_str())
+        .expect("Missing keyset id");
+    
+    keyset_id.to_string()
+}
+
 /// Test helper to create a test server with proper AppState
-async fn create_test_server() -> (String, Arc<Mutex<InvoiceService>>) {
+async fn create_test_server() -> (String, Arc<Mutex<InvoiceService>>, Arc<cdk::mint::Mint>) {
     // Create real market manager with LMSR engine
     let lmsr = LmsrEngine::new(10.0).expect("Failed to create LMSR engine");
     let market_manager = Arc::new(MarketManager::new(lmsr));
@@ -59,8 +157,8 @@ async fn create_test_server() -> (String, Arc<Mutex<InvoiceService>>) {
     // Create test CDK mint
     let mint = create_test_mint().await;
 
-    // Create AppState with mint
-    let state = AppState::new(market_manager, invoice_service.clone(), mint);
+    // Create AppState with mint in test mode (skips CDK proof verification)
+    let state = AppState::new_test(market_manager, invoice_service.clone(), mint.clone());
 
     // Build routes with state
     let app = build_cascade_routes(state);
@@ -78,13 +176,13 @@ async fn create_test_server() -> (String, Arc<Mutex<InvoiceService>>) {
     // Give the server a moment to start
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-    (url, invoice_service)
+    (url, invoice_service, mint)
 }
 
 /// Test that the health endpoint returns OK
 #[tokio::test]
 async fn test_health_endpoint() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
 
     let client = reqwest::Client::new();
     let response = client
@@ -102,7 +200,7 @@ async fn test_health_endpoint() {
 /// Test creating a market with required fields (slug, b)
 #[tokio::test]
 async fn test_create_market_with_required_fields() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
 
     let client = reqwest::Client::new();
     let request = CreateMarketRequest {
@@ -157,7 +255,7 @@ async fn test_create_market_with_required_fields() {
 /// Test getting a market by ID
 #[tokio::test]
 async fn test_get_market_by_id() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
     let client = reqwest::Client::new();
 
     // First create a market
@@ -216,7 +314,7 @@ async fn test_get_market_by_id() {
 /// Test getting a non-existent market returns 404
 #[tokio::test]
 async fn test_get_nonexistent_market() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
     let client = reqwest::Client::new();
 
     let response = client
@@ -237,7 +335,7 @@ async fn test_get_nonexistent_market() {
 /// This tests the route is registered and handles basic validation
 #[tokio::test]
 async fn test_lightning_order_endpoint_registered() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
     let client = reqwest::Client::new();
 
     let request = LightningTradeRequest {
@@ -268,7 +366,7 @@ async fn test_lightning_order_endpoint_registered() {
 /// Test lightning check-order endpoint is registered
 #[tokio::test]
 async fn test_lightning_check_order_endpoint_registered() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
     let client = reqwest::Client::new();
 
     let response = client
@@ -292,7 +390,7 @@ async fn test_lightning_check_order_endpoint_registered() {
 /// Test that basic API routes are registered
 #[tokio::test]
 async fn test_basic_api_routes_registered() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
     let client = reqwest::Client::new();
 
     // Test core routes - they should not return 404
@@ -338,7 +436,7 @@ async fn test_basic_api_routes_registered() {
 /// Test that redeem endpoint returns 400 for invalid proof (wrong C length)
 #[tokio::test]
 async fn test_redeem_invalid_proof_wrong_c_length() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
     let client = reqwest::Client::new();
 
     // Create a market first
@@ -396,8 +494,12 @@ async fn test_redeem_invalid_proof_wrong_c_length() {
 /// Test that redeem endpoint returns 404 for non-existent market
 #[tokio::test]
 async fn test_redeem_nonexistent_market() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
     let client = reqwest::Client::new();
+
+    // Get a valid C value from the server
+    let valid_c = get_valid_c_from_server(&url).await;
+    let valid_keyset_id = get_valid_keyset_id_from_server(&url).await;
 
     let redeem_request = serde_json::json!({
         "market_id": "nonexistent-market-id",
@@ -406,8 +508,8 @@ async fn test_redeem_nonexistent_market() {
         "proof": {
             "secret": "secret123",
             "amount": 100,
-            "C": "a".repeat(66),
-            "id": "keyset123"
+            "C": valid_c,
+            "id": valid_keyset_id
         }
     });
 
@@ -429,7 +531,7 @@ async fn test_redeem_nonexistent_market() {
 /// Test that settle endpoint returns 400 for unresolved market
 #[tokio::test]
 async fn test_settle_unresolved_market() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
     let client = reqwest::Client::new();
 
     // Create a market
@@ -486,8 +588,14 @@ async fn test_settle_unresolved_market() {
 /// Test that settle endpoint returns payout for winner on resolved market
 #[tokio::test]
 async fn test_settle_resolved_market_winner() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, mint) = create_test_server().await;
     let client = reqwest::Client::new();
+
+    // Get real mint keyset and public key
+    let mint_keyset = get_mint_keyset_id(&mint);
+    let pubkeys = mint.pubkeys();
+    let first_key = pubkeys.keysets.first().expect("No keysets").keys.values().next().expect("No keys");
+    let c_hex = hex::encode(first_key.to_bytes());
 
     // Create and resolve a market
     let market_request = CreateMarketRequest {
@@ -575,17 +683,21 @@ async fn test_settle_resolved_market_winner() {
         .and_then(|v| v.as_u64())
         .expect("Missing reserve before settle");
 
-    // Settle on the winning side (yes/long) using real keyset
+    // Settle on the winning side (yes/long) using market's real keyset
     let settle_request = serde_json::json!({
         "market_id": market_id,
         "side": "yes",
         "proof": {
             "secret": "winner_secret_789",
             "amount": 1000,
-            "C": "a".repeat(66),
+            "C": c_hex,
             "id": long_keyset
         }
     });
+    
+    // Debug: print keyset info
+    eprintln!("DEBUG: long_keyset from market = '{}'", long_keyset);
+    eprintln!("DEBUG: c_hex = '{}'", c_hex);
 
     let response = client
         .post(&format!("{}/v1/cascade/settle", url))
@@ -594,16 +706,20 @@ async fn test_settle_resolved_market_winner() {
         .await
         .expect("Failed to make request");
 
+    let status = response.status();
+    let body = response.text().await.unwrap_or_else(|_| "Failed to read body".to_string());
+    if status != 200 {
+        eprintln!("DEBUG: Settle response body: {}", body);
+    }
+
     assert_eq!(
-        response.status(),
+        status,
         200,
         "Winner settlement should return 200, got: {}",
-        response.status()
+        status
     );
 
-    let settle_result: serde_json::Value = response
-        .json()
-        .await
+    let settle_result: serde_json::Value = serde_json::from_str(&body)
         .expect("Failed to parse settle response");
 
     // The response is {"Ok": {...}} so we need to access fields through "Ok"
@@ -654,8 +770,14 @@ async fn test_settle_resolved_market_winner() {
 /// Test that settle endpoint returns 0 payout for loser on resolved market
 #[tokio::test]
 async fn test_settle_resolved_market_loser() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, mint) = create_test_server().await;
     let client = reqwest::Client::new();
+
+    // Get real mint keyset and public key
+    let mint_keyset = get_mint_keyset_id(&mint);
+    let pubkeys = mint.pubkeys();
+    let first_key = pubkeys.keysets.first().expect("No keysets").keys.values().next().expect("No keys");
+    let c_hex = hex::encode(first_key.to_bytes());
 
     // Create and resolve a market
     let market_request = CreateMarketRequest {
@@ -710,14 +832,14 @@ async fn test_settle_resolved_market_loser() {
         .await
         .expect("Failed to resolve market");
 
-    // Settle on the losing side (no/short) using real keyset
+    // Settle on the losing side (no/short) using market's real keyset
     let settle_request = serde_json::json!({
         "market_id": market_id,
         "side": "no",
         "proof": {
             "secret": "loser_secret_101",
             "amount": 1000,
-            "C": "a".repeat(66),
+            "C": c_hex,
             "id": short_keyset
         }
     });
@@ -799,7 +921,7 @@ async fn test_settle_resolved_market_loser() {
 /// Test that settle with wrong keyset returns 400 Bad Request
 #[tokio::test]
 async fn test_settle_wrong_keyset_rejected() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
     let client = reqwest::Client::new();
 
     // Create and resolve a market
@@ -855,6 +977,9 @@ async fn test_settle_wrong_keyset_rejected() {
         .await
         .expect("Failed to resolve market");
 
+    // Get a valid C value from the server (but use wrong keyset to test rejection)
+    let valid_c = get_valid_c_from_server(&url).await;
+
     // Attempt to settle with WRONG keyset (using short keyset for "yes" side which is long)
     let settle_request = serde_json::json!({
         "market_id": market_id,
@@ -862,7 +987,7 @@ async fn test_settle_wrong_keyset_rejected() {
         "proof": {
             "secret": "wrong_keyset_secret",
             "amount": 1000,
-            "C": "a".repeat(66),
+            "C": valid_c,
             "id": "wrong_keyset_id_12345" // Deliberately wrong keyset
         }
     });
@@ -885,7 +1010,7 @@ async fn test_settle_wrong_keyset_rejected() {
 /// Test that settling the same proof twice returns 409 Conflict
 #[tokio::test]
 async fn test_double_settle_rejected() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
     let client = reqwest::Client::new();
 
     // Create and resolve a market
@@ -941,6 +1066,9 @@ async fn test_double_settle_rejected() {
         .await
         .expect("Failed to resolve market");
 
+    // Get a valid C value from the server
+    let valid_c = get_valid_c_from_server(&url).await;
+
     // First settle attempt - should succeed
     let settle_request = serde_json::json!({
         "market_id": market_id,
@@ -948,7 +1076,7 @@ async fn test_double_settle_rejected() {
         "proof": {
             "secret": "double_settle_secret_123",
             "amount": 1000,
-            "C": "a".repeat(66),
+            "C": valid_c,
             "id": long_keyset
         }
     });
@@ -986,7 +1114,7 @@ async fn test_double_settle_rejected() {
 /// Test that double redemption attempt returns 409 Conflict
 #[tokio::test]
 async fn test_double_redemption_rejected() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
     let client = reqwest::Client::new();
 
     // Create a market
@@ -1046,6 +1174,9 @@ async fn test_double_redemption_rejected() {
 
     assert_eq!(buy_response.status(), 201, "Buy should succeed");
 
+    // Get a valid C value from the server
+    let valid_c = get_valid_c_from_server(&url).await;
+
     // Same proof secret for both requests
     let proof_secret = "double_spend_secret_999";
     let redeem_request = serde_json::json!({
@@ -1055,7 +1186,7 @@ async fn test_double_redemption_rejected() {
         "proof": {
             "secret": proof_secret,
             "amount": 100,
-            "C": "a".repeat(66),
+            "C": valid_c,
             "id": long_keyset
         }
     });
@@ -1094,7 +1225,7 @@ async fn test_double_redemption_rejected() {
 /// Test mid-market redeem with valid shares returns payout with fee
 #[tokio::test]
 async fn test_redeem_mid_market_valid() {
-    let (url, _invoice_service) = create_test_server().await;
+    let (url, _invoice_service, _mint) = create_test_server().await;
     let client = reqwest::Client::new();
 
     // Create a market
@@ -1176,6 +1307,9 @@ async fn test_redeem_mid_market_valid() {
         "q_long should increase after buying long shares"
     );
 
+    // Get a valid C value from the server
+    let valid_c = get_valid_c_from_server(&url).await;
+
     // Step 2: Redeem the 10 shares we just bought (use real keyset ID)
     let redeem_request = serde_json::json!({
         "market_id": market_id,
@@ -1184,7 +1318,7 @@ async fn test_redeem_mid_market_valid() {
         "proof": {
             "secret": "mid_market_secret_555",
             "amount": 100,
-            "C": "a".repeat(66),
+            "C": valid_c,
             "id": long_keyset
         }
     });

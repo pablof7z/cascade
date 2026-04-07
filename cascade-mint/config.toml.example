@@ -1,63 +1,28 @@
 # Cascade Mint Configuration
 
 [mint]
-# Mint URL for Cashu API
-url = "http://localhost:8080"
-
-# Network (bitcoin, signet, regtest)
-network = "bitcoin"
-
-# Liquidity parameter for LMSR market maker
-liquidity = 1000.0
-
-# Default market expiry (in days)
-default_expiry_days = 90
-
-[mint.keysets]
-# Default keyset for the mint
-default = "default"
-
-[server]
-# Listen address and port
-host = "0.0.0.0"
-port = 8080
-
-# Timeout settings
-request_timeout_secs = 30
+url = "https://mint.f7z.io"
+name = "Cascade Markets Mint"
+description = "Cashu mint for Cascade prediction markets"
 
 [database]
-# SQLite database path
-path = "./data/mint.db"
+path = "./data/cascade_mint.db"
 
-# Enable migrations
-auto_migrate = true
+[seed]
+path = "./data/mint_seed.key"
 
 [lnd]
-# Enable Lightning via LND
-enabled = false
+host = "127.0.0.1"
+port = 10009
+cert_path = "/path/to/tls.cert"
+macaroon_path = "/path/to/admin.macaroon"
 
-# LND gRPC host
-host = "localhost:10009"
+[network]
+network_type = "testnet"
 
-# TLS certificate path
-tls_cert_path = ""
+[server]
+host = "127.0.0.1"
+port = 3338
 
-# Admin macaroon path
-macaroon_path = ""
-
-[nostr]
-# Enable Nostr integration
-enabled = true
-
-# Relay URLs for market event publishing
-relay_urls = ["wss://relay.damus.io", "wss://relay.nostr.bg"]
-
-# Private key for signing (hex encoded)
-private_key = ""
-
-[logging]
-# Log level (trace, debug, info, warn, error)
-level = "info"
-
-# Log format (json, pretty)
-format = "json"
+[fees]
+trade_fee_percent = 1

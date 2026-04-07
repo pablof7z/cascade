@@ -1,43 +1,89 @@
-//! API routes for Cascade mint.
-//!
-//! Defines all custom Cascade endpoints under /v1/cascade/.
+//! Cascade API routes
 
 use axum::{
+    http::StatusCode,
+    response::IntoResponse,
     routing::{get, post},
     Router,
 };
-use cascade_core::{MarketManager, NostrPublisher};
+use std::sync::Arc;
+use tokio::sync::{Mutex, RwLock};
+use std::collections::HashSet;
 
-use crate::handlers::{market, price, resolve, trade};
+use cascade_core::{MarketManager, invoice::InvoiceService};
+use crate::handlers::{self, price, resolve, trade, market};
 
-/// Application state shared across all handlers.
+/// Application state shared across route handlers
 #[derive(Clone)]
 pub struct AppState {
-    /// Market manager for market operations
-    pub market_manager: MarketManager,
-    /// Nostr publisher for market and trade events
-    pub nostr_publisher: NostrPublisher,
+    pub market_manager: Arc<MarketManager>,
+    pub invoice_service: Arc<Mutex<InvoiceService>>,
+    /// Set of spent proof secrets (to prevent double-redemption)
+    /// In production, this would be persisted to a database
+    pub spent_proofs: Arc<RwLock<HashSet<String>>>,
+    /// CDK mint for proof verification and keyset validation
+    pub mint: Arc<cdk::mint::Mint>,
+    /// Skip CDK proof verification (for integration tests with mock keysets)
+    pub test_mode: bool,
 }
 
-/// Create the Cascade custom routes.
-///
-/// These routes are nested under /v1/cascade/ and provide market management,
-/// trading, pricing, and resolution endpoints.
-pub fn cascade_routes(market_manager: MarketManager, nostr_publisher: NostrPublisher) -> Router {
+impl AppState {
+    pub fn new(
+        market_manager: Arc<MarketManager>,
+        invoice_service: Arc<Mutex<InvoiceService>>,
+        mint: Arc<cdk::mint::Mint>,
+    ) -> Self {
+        Self {
+            market_manager,
+            invoice_service,
+            spent_proofs: Arc::new(RwLock::new(HashSet::new())),
+            mint,
+            test_mode: false,
+        }
+    }
+    
+    pub fn new_test(
+        market_manager: Arc<MarketManager>,
+        invoice_service: Arc<Mutex<InvoiceService>>,
+        mint: Arc<cdk::mint::Mint>,
+    ) -> Self {
+        Self {
+            market_manager,
+            invoice_service,
+            spent_proofs: Arc::new(RwLock::new(HashSet::new())),
+            mint,
+            test_mode: true,
+        }
+    }
+}
+
+/// Build the cascade-specific HTTP routes
+pub fn build_cascade_routes(state: AppState) -> Router {
     Router::new()
+        // Price feeds
+        .route("/api/price/{currency}", get(price::get_prices))
+        // Lightning trade settlement
+        .route("/api/lightning/create-order", post(handlers::trade::create_lightning_trade))
+        .route("/api/lightning/check-order", post(handlers::trade::get_invoice_status))
+        .route("/api/lightning/settle/{order_id}", post(handlers::trade::settle_lightning_trade))
         // Market management
-        .route("/markets", get(market::list_markets))
-        .route("/markets", post(market::create_market))
-        .route("/markets/:slug", get(market::get_market))
-        // Trading
-        .route("/trade/buy", post(trade::buy))
-        .route("/trade/sell", post(trade::sell))
-        .route("/trade/payout", post(trade::payout))
-        // Pricing
-        .route("/price/:slug", get(price::get_prices))
-        .route("/price/:slug/quote", post(price::get_quote))
-        // Resolution
-        .route("/resolve/:slug", post(resolve::resolve_market))
-        // Shared state
-        .with_state(AppState { market_manager, nostr_publisher })
+        .route("/api/market/create", post(market::create_market))
+        .route("/api/market/{id}", get(market::get_market))
+        .route("/api/market/{id}/resolve", post(resolve::resolve_market))
+        // Trade execution
+        .route("/api/trade/bid", post(trade::buy))
+        .route("/api/trade/ask", post(trade::sell))
+        // Phase 7: Settlement & Redemption
+        .route("/v1/cascade/redeem", post(handlers::settlement::redeem))
+        .route("/v1/cascade/settle", post(handlers::settlement::settle))
+        // Mint public keys for test proof construction
+        .route("/v1/keys", get(handlers::settlement::get_mint_keys))
+        // Health check
+        .route("/health", get(health_check))
+        .with_state(state)
+}
+
+/// Simple health check endpoint
+async fn health_check() -> impl IntoResponse {
+    (StatusCode::OK, "OK")
 }

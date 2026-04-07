@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  mint:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - MINT_PRIVATE_KEY=${MINT_PRIVATE_KEY:?Missing MINT_PRIVATE_KEY}
+      - DATABASE_URL=sqlite:///data/mint.db
+      - LND_GRPC_URL=https://lnd:10009
+      - LND_CERT_PATH=/certs/tls.cert
+      - LND_MACAROON_PATH=/macaroons/admin.macaroon
+      - RUST_LOG=info
+      - RUST_BACKTRACE=1
+    volumes:
+      - mint_data:/data
+      - ./certs:/certs:ro
+      - ./macaroons:/macaroons:ro
+    depends_on:
+      lnd:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - cascade
+
+  lnd:
+    image: lightninglab/lnd:v0.17.4-beta
+    container_name: cascade-lnd
+    environment:
+      - RPCEXTERNALIP=${RPC_EXTERNAL_IP:-localhost}
+      - EXTERNALIP=${EXTERNAL_IP:-localhost}
+      - LND_CHANNEL_BACKOFF_BASE=0
+      - LND_CHANNEL_BACKOFF_MULT=1
+    command: |
+      --bitcoin.active
+      --bitcoin.signet
+      --bitcoin.node=neutrino
+      --neutrino.connect=btcd.signet:18333
+      --tls.autorefresh
+      --noseedbackup
+      --db.bolt.db-freelist-type=map
+      --db.bolt.no-wirekeeping
+    volumes:
+      - lnd_data:/root/.lnd
+      - lnd_certs:/certs
+      - lnd_macaroons:/macaroons
+    healthcheck:
+      test: ["CMD", "lncli", "--network=signet", "getinfo"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - cascade
+    ports:
+      - "10009:10009"
+
+  # Optional: Local Nostr relay for development
+  nostr-relay:
+    image: scsibug/nostr-rs-relay:latest
+    ports:
+      - "7000:7000"
+    environment:
+      - RUST_LOG=info
+    volumes:
+      - nostr_data:/usr/local/rust-nostr-relay/db
+    networks:
+      - cascade
+
+volumes:
+  mint_data:
+  lnd_data:
+  lnd_certs:
+  lnd_macaroons:
+  nostr_data:
+
+networks:
+  cascade:
+    driver: bridge

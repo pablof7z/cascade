@@ -1,20 +1,27 @@
-//! Cascade Core - Core library for Cascade prediction markets.
+//! Cascade Core — LMSR prediction market engine for Cashu ecash mint
 //!
-//! This crate provides the core functionality for running prediction markets
-//! using the LMSR (Logarithmic Market Scoring Rule) market maker algorithm.
+//! This library provides the market logic, LMSR pricing engine, trade execution,
+//! database persistence, and Lightning integration for the Cascade Cashu mint.
 
+pub mod db;
 pub mod error;
+pub mod escrow;
+pub mod invoice;
+pub mod lightning;
+pub mod lmsr;
 pub mod market;
 pub mod market_manager;
-pub mod lmsr;
 pub mod trade;
-pub mod db;
-pub mod nostr_publisher;
 
 // Re-export commonly used types
-pub use error::{CascadeError, MarketStatus};
-pub use lmsr::{Outcome, LmsrCalculator, DEFAULT_SENSITIVITY};
-pub use market::{Market, Trade, BuyCost, SellRefund, calculate_trade_fee};
+pub use error::{CascadeError, Result};
+pub use escrow::{EscrowAccount, EscrowManager, EscrowState, EscrowStats};
+pub use invoice::{InvoiceService, LightningOrder, OrderState};
+pub use lightning::{HtlcHandler, InvoiceState, LightningInvoice, LndClient, LndConfig, PaymentHash, PaymentStatus, Preimage};
+pub use market::{Market, MarketStatus, Side};
 pub use market_manager::MarketManager;
-pub use db::Database;
-pub use nostr_publisher::{NostrPublisher, PublisherConfig};
+pub use lmsr::LmsrEngine;
+pub use trade::TradeExecutor;
+
+/// Library version
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -1,11 +1,7 @@
-# Core library crate
-
 [package]
 name = "cascade-core"
 version.workspace = true
 edition.workspace = true
-rust-version.workspace = true
-license.workspace = true
 
 [dependencies]
 cdk.workspace = true
@@ -21,5 +17,8 @@ thiserror.workspace = true
 anyhow.workspace = true
 uuid.workspace = true
 chrono.workspace = true
-nostr-sdk.workspace = true
+hex.workspace = true
 sha2.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

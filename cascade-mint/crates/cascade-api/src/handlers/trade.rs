@@ -1,250 +1,513 @@
-//! Trade API handlers.
-//!
-//! Buy, sell, and payout operations.
+//! Trade execution handlers
 
 use axum::{
-    extract::State,
+    extract::{Path, State, Json},
     http::StatusCode,
-    Json,
 };
-use cascade_core::{lmsr::Outcome, CascadeError, Trade};
-
-use crate::routes::AppState;
+use serde_json::Value;
+use cascade_core::{market::Side, trade::TradeExecutor, Preimage};
 use crate::types::{
-    error_codes, BuyRequest, BuyResponse, ErrorResponse, MarketPrices, PayoutRequest,
-    PayoutResponse, SellRequest, SellResponse, Side,
+    BuyRequest, SellRequest, TradeResponse, LightningTradeRequest,
+    InvoiceStatusRequest, SettleRequest, EscrowStatsResponse, LightningSellRequest,
 };
+use crate::routes::AppState;
 
-/// POST /v1/cascade/trade/buy — Buy position tokens.
+/// Execute a buy order
 pub async fn buy(
     State(state): State<AppState>,
-    Json(request): Json<BuyRequest>,
-) -> Result<Json<BuyResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // Validate request
-    if request.amount <= 0.0 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "Amount must be positive",
-                error_codes::INVALID_REQUEST,
-            )),
-        ));
-    }
-
-    let outcome = match request.side {
-        Side::Long => Outcome::Long,
-        Side::Short => Outcome::Short,
-    };
-
-    // Execute the buy trade
-    let result = state
-        .market_manager
-        .execute_buy(&request.market_slug, outcome, request.amount, "anonymous".to_string())
-        .await
-        .map_err(|e| map_error(e, &request.market_slug))?;
-
-    // Create a Trade object for Nostr publishing
-    let price = match outcome {
-        Outcome::Long => result.new_prices.long_price,
-        Outcome::Short => result.new_prices.short_price,
-    };
-    let trade = Trade::new(
-        request.market_slug.clone(),
-        outcome,
-        result.amount,
-        price,
-        result.cost_sats,
-        result.fee_sats,
-        "anonymous".to_string(),
-    );
-
-    // Publish trade event to Nostr (fire and forget, don't fail the trade if this fails)
-    if let Err(e) = state.nostr_publisher.publish_trade_event(&trade, &request.market_slug).await {
-        tracing::warn!("Failed to publish trade event to Nostr: {}", e);
-    }
-
-    Ok(Json(BuyResponse {
-        market_slug: request.market_slug,
-        side: request.side,
-        amount: result.amount,
-        cost_sats: result.cost_sats,
-        fee_sats: result.fee_sats,
-        new_prices: MarketPrices {
-            long_price: result.new_prices.long_price,
-            short_price: result.new_prices.short_price,
-            q_long: result.new_prices.q_long,
-            q_short: result.new_prices.q_short,
-            b: result.new_prices.b,
-        },
-        trade_id: result.trade_id,
-    }))
-}
-
-/// POST /v1/cascade/trade/sell — Sell position tokens.
-pub async fn sell(
-    State(state): State<AppState>,
-    Json(request): Json<SellRequest>,
-) -> Result<Json<SellResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // Validate request
-    if request.amount <= 0.0 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "Amount must be positive",
-                error_codes::INVALID_REQUEST,
-            )),
-        ));
-    }
-
-    let outcome = match request.side {
-        Side::Long => Outcome::Long,
-        Side::Short => Outcome::Short,
-    };
-
-    // Execute the sell trade
-    let result = state
-        .market_manager
-        .execute_sell(&request.market_slug, outcome, request.amount, "anonymous".to_string())
-        .await
-        .map_err(|e| map_error(e, &request.market_slug))?;
-
-    // Get new prices after the trade
-    let prices = state
-        .market_manager
-        .get_prices(&request.market_slug)
-        .await
-        .map_err(|e| map_error(e, &request.market_slug))?;
-
-    // Create a Trade object for Nostr publishing
-    let price = match outcome {
-        Outcome::Long => prices.long_price,
-        Outcome::Short => prices.short_price,
-    };
-    let trade = Trade::new(
-        request.market_slug.clone(),
-        outcome,
-        result.amount,
-        price,
-        result.refund_sats,
-        result.fee_sats,
-        "anonymous".to_string(),
-    );
-
-    // Publish trade event to Nostr (fire and forget, don't fail the trade if this fails)
-    if let Err(e) = state.nostr_publisher.publish_trade_event(&trade, &request.market_slug).await {
-        tracing::warn!("Failed to publish trade event to Nostr: {}", e);
-    }
-
-    Ok(Json(SellResponse {
-        market_slug: request.market_slug,
-        side: request.side,
-        amount: result.amount,
-        refund_sats: result.refund_sats,
-        fee_sats: result.fee_sats,
-        new_prices: MarketPrices {
-            long_price: prices.long_price,
-            short_price: prices.short_price,
-            q_long: prices.q_long,
-            q_short: prices.q_short,
-            b: prices.b,
-        },
-        trade_id: result.trade_id,
-    }))
-}
-
-/// POST /v1/cascade/trade/payout — Redeem winning tokens after resolution.
-pub async fn payout(
-    State(state): State<AppState>,
-    Json(request): Json<PayoutRequest>,
-) -> Result<Json<PayoutResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // Validate request
-    if request.amount <= 0.0 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "Amount must be positive",
-                error_codes::INVALID_REQUEST,
-            )),
-        ));
-    }
-
-    // Get the market to verify it's resolved
-    let market = state
-        .market_manager
-        .get_market(&request.market_slug)
-        .await
-        .map_err(|e| map_error(e, &request.market_slug))?;
-
-    let market = match market {
-        Some(m) => m,
-        None => {
-            return Err((
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new(
-                    format!("Market not found: {}", request.market_slug),
-                    error_codes::MARKET_NOT_FOUND,
-                )),
-            ));
+    Json(req): Json<BuyRequest>,
+) -> (StatusCode, Json<TradeResponse>) {
+    // Parse side
+    let side = match req.side.to_lowercase().as_str() {
+        "long" => Side::Long,
+        "short" => Side::Short,
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(TradeResponse {
+                    trade_id: String::new(),
+                    market_id: req.market_id,
+                    side: req.side,
+                    quantity: 0.0,
+                    cost_sats: 0,
+                    fee_sats: 0,
+                }),
+            )
         }
     };
 
-    // Verify market is resolved
-    if !market.is_resolved() {
-        return Err((
-            StatusCode::CONFLICT,
-            Json(ErrorResponse::new(
-                "Market is not resolved yet",
-                error_codes::MARKET_NOT_ACTIVE,
-            )),
-        ));
+    // Get market
+    let market = match state.market_manager.get_market(&req.market_id).await {
+        Ok(m) => m,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(TradeResponse {
+                    trade_id: String::new(),
+                    market_id: req.market_id,
+                    side: req.side,
+                    quantity: 0.0,
+                    cost_sats: 0,
+                    fee_sats: 0,
+                }),
+            )
+        }
+    };
+
+    // Create trade executor and execute buy
+    let executor = TradeExecutor::new(state.market_manager.lmsr().clone(), 100); // 1% fee
+    
+    match executor.execute_buy(&market, side, req.quantity, req.buyer_pubkey) {
+        Ok(trade) => {
+            // Update market LMSR state after successful buy
+            let (delta_long, delta_short) = match side {
+                Side::Long => (req.quantity, 0.0),
+                Side::Short => (0.0, req.quantity),
+            };
+            let _ = state.market_manager.update_lmsr_state(
+                &req.market_id,
+                delta_long,
+                delta_short,
+                trade.cost_sats as i64,
+            ).await;
+
+            (
+                StatusCode::CREATED,
+                Json(TradeResponse {
+                    trade_id: trade.id,
+                    market_id: trade.market_id,
+                    side: format!("{:?}", trade.side),
+                    quantity: trade.quantity,
+                    cost_sats: trade.cost_sats,
+                    fee_sats: trade.fee_sats,
+                }),
+            )
+        }
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(TradeResponse {
+                trade_id: String::new(),
+                market_id: req.market_id,
+                side: req.side,
+                quantity: 0.0,
+                cost_sats: 0,
+                fee_sats: 0,
+            }),
+        ),
     }
-
-    // Calculate payout at 1:1 ratio for winning side
-    let payout_sats = request.amount as u64;
-
-    Ok(Json(PayoutResponse {
-        market_slug: request.market_slug,
-        payout_sats,
-    }))
 }
 
-/// Map CascadeError to HTTP status code and ErrorResponse.
-fn map_error(e: CascadeError, slug: &str) -> (StatusCode, Json<ErrorResponse>) {
-    match e {
-        CascadeError::MarketNotFound { .. } => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new(
-                format!("Market not found: {}", slug),
-                error_codes::MARKET_NOT_FOUND,
+/// Execute a sell order
+pub async fn sell(
+    State(state): State<AppState>,
+    Json(req): Json<SellRequest>,
+) -> (StatusCode, Json<TradeResponse>) {
+    // Parse side
+    let side = match req.side.to_lowercase().as_str() {
+        "long" => Side::Long,
+        "short" => Side::Short,
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(TradeResponse {
+                    trade_id: String::new(),
+                    market_id: req.market_id,
+                    side: req.side,
+                    quantity: 0.0,
+                    cost_sats: 0,
+                    fee_sats: 0,
+                }),
             )
-            .with_detail("The market slug does not exist")),
-        ),
-        CascadeError::MarketNotActive { status, .. } => (
-            StatusCode::CONFLICT,
-            Json(ErrorResponse::new(
-                format!("Market is not active: {:?}", status),
-                error_codes::MARKET_NOT_ACTIVE,
+        }
+    };
+
+    // Get market
+    let market = match state.market_manager.get_market(&req.market_id).await {
+        Ok(m) => m,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(TradeResponse {
+                    trade_id: String::new(),
+                    market_id: req.market_id,
+                    side: req.side,
+                    quantity: 0.0,
+                    cost_sats: 0,
+                    fee_sats: 0,
+                }),
             )
-            .with_detail("Trading is only allowed on open markets")),
-        ),
-        CascadeError::InvalidTrade { reason } => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("Invalid trade", error_codes::INVALID_REQUEST).with_detail(reason)),
-        ),
-        CascadeError::InvalidInput { reason } => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("Invalid input", error_codes::INVALID_REQUEST).with_detail(reason)),
-        ),
-        CascadeError::InsufficientFunds { reason } => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("Insufficient funds", error_codes::INSUFFICIENT_FUNDS).with_detail(reason)),
-        ),
-        _ => (
+        }
+    };
+
+    // Create trade executor and execute sell
+    let executor = TradeExecutor::new(state.market_manager.lmsr().clone(), 100); // 1% fee
+
+    match executor.execute_sell(&market, side, req.quantity, req.seller_pubkey) {
+        Ok(trade) => {
+            // Update market LMSR state after successful sell
+            let (delta_long, delta_short) = match side {
+                Side::Long => (-req.quantity, 0.0),
+                Side::Short => (0.0, -req.quantity),
+            };
+            let _ = state.market_manager.update_lmsr_state(
+                &req.market_id,
+                delta_long,
+                delta_short,
+                -(trade.cost_sats as i64), // Negative because we're refunding sats from reserve
+            ).await;
+
+            (
+                StatusCode::CREATED,
+                Json(TradeResponse {
+                    trade_id: trade.id,
+                    market_id: trade.market_id,
+                    side: format!("{:?}", trade.side),
+                    quantity: trade.quantity.abs(),
+                    cost_sats: trade.cost_sats,
+                    fee_sats: trade.fee_sats,
+                }),
+            )
+        }
+        Err(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new(
-                "Internal server error",
-                error_codes::INTERNAL_ERROR,
-            )),
+            Json(TradeResponse {
+                trade_id: String::new(),
+                market_id: req.market_id,
+                side: req.side,
+                quantity: 0.0,
+                cost_sats: 0,
+                fee_sats: 0,
+            }),
         ),
     }
+}
+
+// ============================================================================
+// Lightning Trade Endpoints
+// ============================================================================
+
+/// Create a Lightning invoice for buying tokens
+///
+/// This endpoint creates a new Lightning invoice for purchasing prediction market tokens.
+/// The invoice is held in escrow until payment is received and verified.
+pub async fn create_lightning_trade(
+    State(state): State<AppState>,
+    Json(req): Json<LightningTradeRequest>,
+) -> (StatusCode, Json<Value>) {
+    // Parse side
+    let side = match req.side.to_uppercase().as_str() {
+        "LONG" => Side::Long,
+        "SHORT" => Side::Short,
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Invalid side",
+                    "details": "Side must be 'LONG' or 'SHORT'"
+                })),
+            )
+        }
+    };
+
+    // Get market by event_id (market_id)
+    let market = match state.market_manager.get_market(&req.market_id).await {
+        Ok(m) => m,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Market not found",
+                    "details": req.market_id
+                })),
+            )
+        }
+    };
+
+    // Check market is active
+    if !market.is_active() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Market not active",
+                "details": format!("Market {} is not accepting trades", req.market_id)
+            })),
+        );
+    }
+
+    // Create trade executor and calculate cost
+    let executor = TradeExecutor::new(state.market_manager.lmsr().clone(), 100); // 1% fee
+    
+    // Calculate cost for the requested quantity
+    let trade = match executor.execute_buy(&market, side, req.amount_sats as f64, req.buyer_pubkey.clone()) {
+        Ok(t) => t,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Trade calculation failed",
+                    "details": e.to_string()
+                })),
+            )
+        }
+    };
+
+    // Generate Lightning invoice via InvoiceService
+    let expires_at = chrono::Utc::now().timestamp() + (req.expiry_seconds.unwrap_or(3600) as i64);
+    
+    // Lock the invoice service
+    let mut invoice_service = state.invoice_service.lock().await;
+    
+    // Create Lightning order with InvoiceService
+    let lightning_order = match invoice_service.create_lightning_order(
+        &req.market_id,
+        &market.event_id,
+        &req.side,
+        trade.cost_sats,
+        trade.fee_sats,
+        &trade.id,
+        req.buyer_pubkey.clone(),
+        expires_at,
+    ).await {
+        Ok(order) => order,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Failed to create Lightning invoice",
+                    "details": e.to_string()
+                })),
+            )
+        }
+    };
+
+    (
+        StatusCode::CREATED,
+        Json(serde_json::json!({
+            "order_id": lightning_order.id,
+            "market_id": req.market_id,
+            "side": req.side,
+            "amount_sats": trade.cost_sats.saturating_sub(trade.fee_sats),
+            "fee_sats": trade.fee_sats,
+            "total_sats": trade.cost_sats,
+            "invoice": lightning_order.invoice,
+            "payment_hash": lightning_order.payment_hash,
+            "expires_at": expires_at
+        })),
+    )
+}
+
+/// Create a Lightning invoice for selling tokens
+pub async fn sell_lightning_trade(
+    State(state): State<AppState>,
+    Json(req): Json<LightningSellRequest>,
+) -> (StatusCode, Json<Value>) {
+    // Parse side
+    let side = match req.side.to_uppercase().as_str() {
+        "LONG" => Side::Long,
+        "SHORT" => Side::Short,
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Invalid side",
+                    "details": "Side must be 'LONG' or 'SHORT'"
+                })),
+            )
+        }
+    };
+
+    // Get market by event_id (market_id)
+    let market = match state.market_manager.get_market(&req.market_id).await {
+        Ok(m) => m,
+        Err(_) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Market not found",
+                    "details": req.market_id
+                })),
+            )
+        }
+    };
+
+    // Check market is active
+    if !market.is_active() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Market not active",
+                "details": format!("Market {} is not accepting trades", req.market_id)
+            })),
+        );
+    }
+
+    // Create trade executor and calculate proceeds
+    let executor = TradeExecutor::new(state.market_manager.lmsr().clone(), 100); // 1% fee
+    
+    // Calculate proceeds for selling tokens
+    let trade = match executor.execute_sell(&market, side, req.amount_sats as f64, req.seller_pubkey.clone()) {
+        Ok(t) => t,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Trade calculation failed",
+                    "details": e.to_string()
+                })),
+            )
+        }
+    };
+
+    // Generate Lightning invoice via InvoiceService
+    let expires_at = chrono::Utc::now().timestamp() + (req.expiry_seconds.unwrap_or(3600) as i64);
+    
+    // Lock the invoice service
+    let mut invoice_service = state.invoice_service.lock().await;
+    
+    // Create Lightning order with InvoiceService
+    let lightning_order = match invoice_service.create_lightning_order(
+        &req.market_id,
+        &market.event_id,
+        &req.side,
+        trade.cost_sats,
+        trade.fee_sats,
+        &trade.id,
+        req.seller_pubkey.clone(),
+        expires_at,
+    ).await {
+        Ok(order) => order,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Failed to create Lightning invoice",
+                    "details": e.to_string()
+                })),
+            )
+        }
+    };
+
+    (
+        StatusCode::CREATED,
+        Json(serde_json::json!({
+            "order_id": lightning_order.id,
+            "market_id": req.market_id,
+            "side": req.side,
+            "amount_sats": trade.cost_sats.saturating_sub(trade.fee_sats),
+            "fee_sats": trade.fee_sats,
+            "total_sats": trade.cost_sats,
+            "invoice": lightning_order.invoice,
+            "payment_hash": lightning_order.payment_hash,
+            "expires_at": expires_at
+        })),
+    )
+}
+
+/// Check Lightning invoice status
+pub async fn get_invoice_status(
+    State(state): State<AppState>,
+    Json(req): Json<InvoiceStatusRequest>,
+) -> (StatusCode, Json<Value>) {
+    // Lock the invoice service
+    let invoice_service = state.invoice_service.lock().await;
+    
+    // Check invoice status via InvoiceService
+    match invoice_service.get_invoice_status(&req.payment_hash).await {
+        Ok(status) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "payment_hash": req.payment_hash,
+                "state": status,
+                "amount_sats": 0  // TODO: Get from order
+            })),
+        ),
+        Err(e) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Invoice not found",
+                "details": e.to_string()
+            })),
+        ),
+    }
+}
+
+/// Settle a Lightning trade with preimage
+///
+/// This endpoint verifies the payment preimage and settles the trade,
+/// releasing the escrowed funds and minting tokens to the buyer.
+pub async fn settle_lightning_trade(
+    State(state): State<AppState>,
+    Path(order_id): Path<String>,
+    Json(req): Json<SettleRequest>,
+) -> (StatusCode, Json<Value>) {
+    // Validate preimage format (32 bytes hex = 64 characters)
+    if req.preimage.len() != 64 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Invalid preimage",
+                "details": "Preimage must be 64 hex characters (32 bytes)"
+            })),
+        );
+    }
+
+    // Parse preimage
+    let preimage = match Preimage::from_hex(&req.preimage) {
+        Ok(p) => p,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Invalid preimage",
+                    "details": e.to_string()
+                })),
+            )
+        }
+    };
+
+    // Lock the invoice service
+    let mut invoice_service = state.invoice_service.lock().await;
+    
+    // Settle via InvoiceService
+    match invoice_service.settle_by_order_id(&order_id, &preimage).await {
+        Ok(_) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "order_id": order_id,
+                "state": "fulfilled",
+                "fulfilled": true
+            })),
+        ),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Settlement failed",
+                "details": e.to_string()
+            })),
+        ),
+    }
+}
+
+/// Get escrow statistics
+pub async fn get_escrow_stats(
+    State(state): State<AppState>,
+) -> (StatusCode, Json<EscrowStatsResponse>) {
+    // Lock the invoice service
+    let invoice_service = state.invoice_service.lock().await;
+    
+    // Get actual stats from EscrowManager via InvoiceService
+    let stats = invoice_service.escrow_manager().get_stats();
+    
+    (
+        StatusCode::OK,
+        Json(EscrowStatsResponse {
+            pending_count: stats.pending_count,
+            pending_sats: stats.pending_sats,
+            settled_count: stats.settled_count,
+            settled_sats: stats.settled_sats,
+            refunded_count: stats.refunded_count,
+            refunded_sats: stats.refunded_sats,
+            failed_count: stats.failed_count,
+        }),
+    )
 }

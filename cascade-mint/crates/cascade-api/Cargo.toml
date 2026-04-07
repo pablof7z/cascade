@@ -1,24 +1,40 @@
-# HTTP API crate
-
 [package]
 name = "cascade-api"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-license.workspace = true
+version = "0.1.0"
+edition = "2021"
+publish = false
 
 [dependencies]
-cascade-core.path = "../cascade-core"
+cascade-core = { path = "../cascade-core" }
+
+# CDK for Mint types
 cdk.workspace = true
-cdk-common.workspace = true
-cdk-axum.workspace = true
+
+# Web framework
 axum.workspace = true
-tower-http.workspace = true
-serde.workspace = true
-serde_json.workspace = true
 tokio.workspace = true
-tracing.workspace = true
-thiserror.workspace = true
-anyhow.workspace = true
-chrono.workspace = true
-uuid.workspace = true
+tower-http.workspace = true
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CDK integration
+cdk-axum.workspace = true
+
+# Utilities
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1"
+thiserror = "1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+reqwest = { version = "0.12", features = ["json"] }
+rand = "0.8"
+cdk-sqlite = { workspace = true }
+cdk-common = { workspace = true }

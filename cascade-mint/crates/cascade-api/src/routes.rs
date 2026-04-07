@@ -21,17 +21,21 @@ pub struct AppState {
     /// Set of spent proof secrets (to prevent double-redemption)
     /// In production, this would be persisted to a database
     pub spent_proofs: Arc<RwLock<HashSet<String>>>,
+    /// CDK mint for proof verification and keyset validation
+    pub mint: Arc<cdk::mint::Mint>,
 }
 
 impl AppState {
     pub fn new(
         market_manager: Arc<MarketManager>,
         invoice_service: Arc<Mutex<InvoiceService>>,
+        mint: Arc<cdk::mint::Mint>,
     ) -> Self {
         Self {
             market_manager,
             invoice_service,
             spent_proofs: Arc::new(RwLock::new(HashSet::new())),
+            mint,
         }
     }
 }

@@ -4,10 +4,35 @@
 //! These tests use the real build_cascade_routes with proper AppState.
 
 use cascade_api::routes::{build_cascade_routes, AppState};
-use cascade_api::types::{CreateMarketRequest, LightningTradeRequest, MarketRedeemRequest, MarketSettleRequest, ProofInput};
+use cascade_api::types::{CreateMarketRequest, LightningTradeRequest, ProofInput};
 use cascade_core::{invoice::InvoiceService, lightning::lnd_client::LndClient, LmsrEngine, MarketManager};
+use cdk::mint::{MintBuilder, UnitConfig};
+use cdk_common::nuts::CurrencyUnit;
+use cdk_sqlite::mint::memory::empty as create_mint_db;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+/// Create a test CDK mint with in-memory database and random seed
+async fn create_test_mint() -> Arc<cdk::mint::Mint> {
+    let db = create_mint_db().await.expect("Failed to create test mint DB");
+    let db = Arc::new(db);
+
+    // Generate random 32-byte seed for test mint
+    let mut seed = [0u8; 32];
+    use rand::RngCore;
+    rand::thread_rng().fill_bytes(&mut seed);
+
+    let mut builder = MintBuilder::new(db.clone());
+    builder.configure_unit(
+        CurrencyUnit::Sat,
+        UnitConfig {
+            amounts: vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288],
+            input_fee_ppk: 0,
+        },
+    ).expect("Failed to configure SAT unit");
+    let mint = builder.build_with_seed(db.clone(), &seed).await.expect("Failed to build test mint");
+    Arc::new(mint)
+}
 
 /// Test helper to create a test server with proper AppState
 async fn create_test_server() -> (String, Arc<Mutex<InvoiceService>>) {
@@ -31,8 +56,11 @@ async fn create_test_server() -> (String, Arc<Mutex<InvoiceService>>) {
         40,   // CLTV delta
     )));
 
-    // Create AppState
-    let state = AppState::new(market_manager, invoice_service.clone());
+    // Create test CDK mint
+    let mint = create_test_mint().await;
+
+    // Create AppState with mint
+    let state = AppState::new(market_manager, invoice_service.clone(), mint);
 
     // Build routes with state
     let app = build_cascade_routes(state);
@@ -500,10 +528,6 @@ async fn test_settle_resolved_market_winner() {
         .get("long_keyset_id")
         .and_then(|v| v.as_str())
         .expect("Missing long_keyset_id");
-    let initial_reserve = market_state
-        .get("reserve")
-        .and_then(|v| v.as_u64())
-        .expect("Missing reserve");
 
     // Step 1: Buy 10 shares on the "long" (yes) side first
     let buy_request = serde_json::json!({
@@ -536,6 +560,20 @@ async fn test_settle_resolved_market_winner() {
         .expect("Failed to resolve market");
 
     assert_eq!(resolve_response.status(), 200);
+
+    // Snapshot reserve IMMEDIATELY BEFORE settle (not before buy, which would include buy cost)
+    let market_before_settle: serde_json::Value = client
+        .get(&format!("{}/api/market/{}", url, market_id))
+        .send()
+        .await
+        .expect("Failed to fetch market before settle")
+        .json()
+        .await
+        .expect("Failed to parse market state before settle");
+    let reserve_before_settle = market_before_settle
+        .get("reserve")
+        .and_then(|v| v.as_u64())
+        .expect("Missing reserve before settle");
 
     // Settle on the winning side (yes/long) using real keyset
     let settle_request = serde_json::json!({
@@ -589,7 +627,7 @@ async fn test_settle_resolved_market_winner() {
         payout
     );
 
-    // Verify state changed: reserve should have changed after settle
+    // Verify reserve decreased by exactly the payout amount
     let market_fetch_after: serde_json::Value = client
         .get(&format!("{}/api/market/{}", url, market_id))
         .send()
@@ -602,10 +640,14 @@ async fn test_settle_resolved_market_winner() {
         .get("reserve")
         .and_then(|v| v.as_u64())
         .expect("Missing reserve after settle");
-    assert_ne!(
-        reserve_after, initial_reserve,
-        "Reserve should change after settle: was {}, now {}",
-        initial_reserve, reserve_after
+    // Winner payout reduces the market's reserve
+    assert_eq!(
+        reserve_after,
+        reserve_before_settle.saturating_sub(payout),
+        "Reserve should decrease by payout {} (from {} to {})",
+        payout,
+        reserve_before_settle,
+        reserve_after
     );
 }
 
@@ -654,10 +696,6 @@ async fn test_settle_resolved_market_loser() {
         .get("short_keyset_id")
         .and_then(|v| v.as_str())
         .expect("Missing short_keyset_id");
-    let initial_reserve = market_state
-        .get("reserve")
-        .and_then(|v| v.as_u64())
-        .expect("Missing reserve");
 
     // Resolve the market to "long" (winner side)
     let resolve_request = serde_json::json!({
@@ -747,10 +785,201 @@ async fn test_settle_resolved_market_loser() {
         .get("reserve")
         .and_then(|v| v.as_u64())
         .expect("Missing reserve after settle");
+    let initial_reserve = market_state
+        .get("reserve")
+        .and_then(|v| v.as_u64())
+        .expect("Missing reserve");
     assert_eq!(
         reserve_after, initial_reserve,
         "Reserve should be unchanged for loser settle: was {}, now {}",
         initial_reserve, reserve_after
+    );
+}
+
+/// Test that settle with wrong keyset returns 400 Bad Request
+#[tokio::test]
+async fn test_settle_wrong_keyset_rejected() {
+    let (url, _invoice_service) = create_test_server().await;
+    let client = reqwest::Client::new();
+
+    // Create and resolve a market
+    let market_request = CreateMarketRequest {
+        title: "Test Market".to_string(),
+        description: "A test market".to_string(),
+        slug: "wrong-keyset".to_string(),
+        b: 10.0,
+    };
+
+    let create_response = client
+        .post(&format!("{}/api/market/create", url))
+        .json(&market_request)
+        .send()
+        .await
+        .expect("Failed to create market");
+
+    assert_eq!(create_response.status(), 201);
+
+    let created: serde_json::Value = create_response
+        .json()
+        .await
+        .expect("Failed to parse response");
+
+    let market_id = created.get("event_id").and_then(|v| v.as_str()).expect("Missing event_id");
+
+    // Fetch market to get real keysets
+    let market_fetch = client
+        .get(&format!("{}/api/market/{}", url, market_id))
+        .send()
+        .await
+        .expect("Failed to fetch market");
+    assert_eq!(market_fetch.status(), 200);
+    let market_state: serde_json::Value = market_fetch
+        .json()
+        .await
+        .expect("Failed to parse market state");
+    let long_keyset = market_state
+        .get("long_keyset_id")
+        .and_then(|v| v.as_str())
+        .expect("Missing long_keyset_id");
+
+    // Resolve the market to "long" (winner side)
+    let resolve_request = serde_json::json!({
+        "market_id": market_id,
+        "outcome": "long"
+    });
+
+    let _resolve_response = client
+        .post(&format!("{}/api/market/{}/resolve", url, market_id))
+        .json(&resolve_request)
+        .send()
+        .await
+        .expect("Failed to resolve market");
+
+    // Attempt to settle with WRONG keyset (using short keyset for "yes" side which is long)
+    let settle_request = serde_json::json!({
+        "market_id": market_id,
+        "side": "yes",
+        "proof": {
+            "secret": "wrong_keyset_secret",
+            "amount": 1000,
+            "C": "a".repeat(66),
+            "id": "wrong_keyset_id_12345" // Deliberately wrong keyset
+        }
+    });
+
+    let response = client
+        .post(&format!("{}/v1/cascade/settle", url))
+        .json(&settle_request)
+        .send()
+        .await
+        .expect("Failed to make request");
+
+    assert_eq!(
+        response.status(),
+        400,
+        "Settlement with wrong keyset should return 400, got: {}",
+        response.status()
+    );
+}
+
+/// Test that settling the same proof twice returns 409 Conflict
+#[tokio::test]
+async fn test_double_settle_rejected() {
+    let (url, _invoice_service) = create_test_server().await;
+    let client = reqwest::Client::new();
+
+    // Create and resolve a market
+    let market_request = CreateMarketRequest {
+        title: "Test Market".to_string(),
+        description: "A test market".to_string(),
+        slug: "double-settle".to_string(),
+        b: 10.0,
+    };
+
+    let create_response = client
+        .post(&format!("{}/api/market/create", url))
+        .json(&market_request)
+        .send()
+        .await
+        .expect("Failed to create market");
+
+    assert_eq!(create_response.status(), 201);
+
+    let created: serde_json::Value = create_response
+        .json()
+        .await
+        .expect("Failed to parse response");
+
+    let market_id = created.get("event_id").and_then(|v| v.as_str()).expect("Missing event_id");
+
+    // Fetch market to get real keysets
+    let market_fetch = client
+        .get(&format!("{}/api/market/{}", url, market_id))
+        .send()
+        .await
+        .expect("Failed to fetch market");
+    assert_eq!(market_fetch.status(), 200);
+    let market_state: serde_json::Value = market_fetch
+        .json()
+        .await
+        .expect("Failed to parse market state");
+    let long_keyset = market_state
+        .get("long_keyset_id")
+        .and_then(|v| v.as_str())
+        .expect("Missing long_keyset_id");
+
+    // Resolve the market to "long" (winner side)
+    let resolve_request = serde_json::json!({
+        "market_id": market_id,
+        "outcome": "long"
+    });
+
+    let _resolve_response = client
+        .post(&format!("{}/api/market/{}/resolve", url, market_id))
+        .json(&resolve_request)
+        .send()
+        .await
+        .expect("Failed to resolve market");
+
+    // First settle attempt - should succeed
+    let settle_request = serde_json::json!({
+        "market_id": market_id,
+        "side": "yes",
+        "proof": {
+            "secret": "double_settle_secret_123",
+            "amount": 1000,
+            "C": "a".repeat(66),
+            "id": long_keyset
+        }
+    });
+
+    let first_response = client
+        .post(&format!("{}/v1/cascade/settle", url))
+        .json(&settle_request)
+        .send()
+        .await
+        .expect("Failed to make first request");
+
+    assert_eq!(
+        first_response.status(),
+        200,
+        "First settlement should succeed, got: {}",
+        first_response.status()
+    );
+
+    // Second settle attempt with SAME proof - should be rejected with 409
+    let second_response = client
+        .post(&format!("{}/v1/cascade/settle", url))
+        .json(&settle_request)
+        .send()
+        .await
+        .expect("Failed to make second request");
+
+    assert_eq!(
+        second_response.status(),
+        409,
+        "Double settle should return 409 Conflict, got: {}",
+        second_response.status()
     );
 }
 

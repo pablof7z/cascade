@@ -28,6 +28,7 @@ pub async fn build_server(
     let state = routes::AppState::new(
         market_manager,
         invoice_service,
+        mint.clone(),
     );
     
     // Build cascade-specific routes

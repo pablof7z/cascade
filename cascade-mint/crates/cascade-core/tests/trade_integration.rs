@@ -163,7 +163,7 @@ async fn test_trade_sides() {
 #[tokio::test]
 async fn test_trade_fees() {
     let lmsr = LmsrEngine::new(100.0).expect("Failed to create LMSR engine");
-    let market_manager = Arc::new(MarketManager::new(lmsr));
+    let market_manager = Arc::new(MarketManager::new(lmsr.clone()));
     let executor = TradeExecutor::new(LmsrEngine::new(100.0).unwrap(), 100); // 1% fee
 
     // Create market
@@ -184,21 +184,25 @@ async fn test_trade_fees() {
 
     let market = market_manager.get_market(&event_id).await.unwrap();
 
+    // Calculate expected fee from the pre-fee LMSR base cost
+    // This is what calculate_fee does: ceil(cost_before_fee * fee_bps/10000)
+    // For fee_bps=100: ceil(cost_before_fee * 0.01)
+    let cost_before_fee = lmsr
+        .calculate_buy_cost(market.q_long, market.q_short, 100.0)
+        .expect("Failed to calculate buy cost");
+    let expected_fee = ((cost_before_fee as f64) * 0.01).ceil() as u64;
+
     // Execute trade
     let result = executor.execute_buy(&market, Side::Long, 100.0, "trader".to_string());
     assert!(result.is_ok(), "Trade should succeed: {:?}", result.err());
 
     let trade = result.unwrap();
 
-    // Verify fee is calculated correctly
-    // Fee should be approximately 1% of cost (100 basis points = 1%)
-    // Use max(1, cost/100) to handle small costs where integer division floors to 0
-    let max_fee = std::cmp::max(1, trade.cost_sats / 100);
-    assert!(
-        trade.fee_sats <= max_fee,
-        "Fee {} should be at most 1% of cost {}",
-        trade.fee_sats,
-        trade.cost_sats
+    // Verify fee matches the exact ceil(cost_before_fee * 0.01)
+    assert_eq!(
+        trade.fee_sats, expected_fee,
+        "Fee {} should equal ceil(cost_before_fee {} * 0.01) = {}",
+        trade.fee_sats, cost_before_fee, expected_fee
     );
 }
 

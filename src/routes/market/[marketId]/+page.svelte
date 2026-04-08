@@ -360,6 +360,10 @@
                 <div class="mt-4 bg-neutral-900/50 border border-neutral-800 rounded-none p-8 text-center">
                   <div class="text-neutral-500">No positions yet</div>
                   <p class="mt-2 text-sm text-neutral-600">Trade on this market to see your positions here.</p>
+                  <button onclick={() => document.querySelector('[data-trade-form]')?.scrollIntoView({behavior: 'smooth'})}
+                    class="mt-3 text-sm text-neutral-400 hover:text-white underline underline-offset-2">
+                    Go to trade form →
+                  </button>
                 </div>
               </div>
 
@@ -396,7 +400,7 @@
 
         <!-- Sidebar: Trade Form -->
         <aside class="lg:col-span-1">
-          <div class="sticky top-24 border-l border-neutral-800 pl-6">
+          <div class="sticky top-24 border-l border-neutral-800 pl-6" data-trade-form>
             {#if market.status === 'resolved'}
               <div>
                 <span class={`text-xs font-medium px-2 py-0.5 ${

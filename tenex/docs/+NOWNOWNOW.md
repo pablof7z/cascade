@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-08 12:15 UTC — threadBuilder jargon + discuss loading fixed. UX audit in progress.*
+*Last updated: 2026-04-08 12:30 UTC — UX audit complete. 2 delegations active: auth gate fix + 4x small UX fixes.*
 
 ---
 

@@ -4,7 +4,7 @@
   let testnetValue = $state(false);
 
   $effect(() => {
-    testnetValue = isTestnet.get();
+    testnetValue = isTestnet();
   });
 </script>
 

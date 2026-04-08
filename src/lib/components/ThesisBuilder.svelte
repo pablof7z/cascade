@@ -31,8 +31,8 @@
 
   // ─── Computed ─────────────────────────────────────────────────────────
 
-  const isReady = $derived($nostrStore.isReady);
-  const pubkey = $derived($nostrStore.pubkey);
+  const isReady = $derived(nostrStore.get().isReady);
+  const pubkey = $derived(nostrStore.get().pubkey);
 
   const isValid = $derived(
     thesisTitle.trim().length > 0 &&

@@ -20,7 +20,7 @@
 
   // Sync with stores using $effect
   $effect(() => {
-    testnetValue = isTestnet.get();
+    testnetValue = isTestnet();
   });
 
   $effect(() => {

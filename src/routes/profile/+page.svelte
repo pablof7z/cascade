@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { nostrStore } from '$lib/stores/nostr';
 
-  let pubkey = $derived($nostrStore.pubkey);
+  let pubkey = $derived(nostrStore.get().pubkey);
 
   $effect(() => {
     if (pubkey) {

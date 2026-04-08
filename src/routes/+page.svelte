@@ -31,8 +31,6 @@
   let showCreateModal = $state(false)
   let title = $state('')
   let description = $state('')
-  let initialSide = $state<'LONG' | 'SHORT'>('LONG')
-  let initialSats = $state('150')
   let createLoading = $state(false)
   let createError = $state<string | null>(null)
   let createSuccess = $state(false)
@@ -247,8 +245,6 @@
       showCreateModal = false
       title = ''
       description = ''
-      initialSats = '150'
-      initialSide = 'LONG'
 
       // Refresh markets list after short delay
       setTimeout(async () => {
@@ -913,27 +909,6 @@
             class="mt-1 w-full px-4 py-3 bg-neutral-950 border-b border-neutral-700 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-600 transition-all resize-y min-h-[88px]"
           ></textarea>
         </label>
-        <div class="grid grid-cols-2 gap-4">
-          <label class="block">
-            <span class="text-sm text-neutral-400">Side</span>
-            <select
-              bind:value={initialSide}
-              class="mt-1 w-full px-4 py-3 bg-neutral-950 border-b border-neutral-700 text-white focus:outline-none focus:border-emerald-600 transition-all"
-            >
-              <option value="LONG">LONG</option>
-              <option value="SHORT">SHORT</option>
-            </select>
-          </label>
-          <label class="block">
-            <span class="text-sm text-neutral-400">Sats</span>
-            <input
-              bind:value={initialSats}
-              type="text"
-              inputmode="decimal"
-              class="mt-1 w-full px-4 py-3 bg-neutral-950 border-b border-neutral-700 text-white focus:outline-none focus:border-emerald-600 transition-all"
-            />
-          </label>
-        </div>
         {#if createError}
           <div class="p-3 bg-rose-500/10 border border-rose-500/30 text-sm text-rose-400">
             {createError}

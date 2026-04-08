@@ -204,7 +204,7 @@
     </div>
 
     <!-- Balance Card -->
-    <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6 mb-8">
+    <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6 mb-8">
       <div class="flex items-baseline justify-between">
         <div>
           <p class="text-neutral-400 text-sm mb-1">Balance</p>
@@ -259,7 +259,7 @@
       <div class="space-y-6">
         {#if !currentDeposit}
           <!-- Deposit Form -->
-          <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+          <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
             <h2 class="text-lg font-medium text-white mb-4">Deposit sats</h2>
             <p class="text-neutral-400 text-sm mb-4">
               Create a Lightning invoice to deposit sats into your wallet.
@@ -276,7 +276,7 @@
                   min="1"
                   bind:value={depositAmount}
                   placeholder="Enter amount"
-                  class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
+                  class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
                 />
               </div>
 
@@ -295,7 +295,7 @@
           </div>
         {:else}
           <!-- Invoice Display -->
-          <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+          <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-lg font-medium text-white">Lightning Invoice</h2>
               <span class="text-sm px-2 py-1 rounded {currentDeposit.status === 'completed' ? 'bg-emerald-900 text-emerald-400' : currentDeposit.status === 'failed' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
@@ -312,7 +312,7 @@
                 <img
                   src={qrCodeUrl}
                   alt="Lightning Invoice QR Code"
-                  class="w-48 h-48 rounded-lg"
+                  class="w-48 h-48 rounded-sm"
                 />
               </div>
             {/if}
@@ -349,7 +349,7 @@
 
     <!-- Withdraw Tab -->
     {#if activeTab === 'withdraw'}
-      <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+      <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
         <h2 class="text-lg font-medium text-white mb-4">Send tokens</h2>
         <p class="text-neutral-400 text-sm mb-4">
           Send tokens to another wallet.
@@ -367,7 +367,7 @@
               max={balance}
               bind:value={withdrawAmount}
               placeholder="Enter amount"
-              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
+              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
             />
             <p class="text-xs text-neutral-500 mt-1">Available: {formatSats(balance)} sats</p>
           </div>
@@ -381,7 +381,7 @@
               type="text"
               bind:value={withdrawMemo}
               placeholder="Add a note"
-              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
+              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
             />
           </div>
 
@@ -406,7 +406,7 @@
 
     <!-- Receive Tab -->
     {#if activeTab === 'receive'}
-      <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-6">
+      <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
         <h2 class="text-lg font-medium text-white mb-4">Receive tokens</h2>
         <p class="text-neutral-400 text-sm mb-4">
           Paste a token to add it to your wallet.
@@ -422,7 +422,7 @@
               bind:value={receiveTokenInput}
               placeholder="Paste your token here"
               rows="4"
-              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 resize-none font-mono text-xs"
+              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 resize-none font-mono text-xs"
             ></textarea>
           </div>
 
@@ -447,7 +447,7 @@
 
     <!-- History Tab -->
     {#if activeTab === 'history'}
-      <div class="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">
+      <div class="bg-neutral-900 border border-neutral-800 rounded-sm overflow-hidden">
         <div class="p-4 border-b border-neutral-800">
           <h2 class="text-lg font-medium text-white">Transaction History</h2>
         </div>

@@ -352,7 +352,7 @@
               <!-- Badges -->
               <div class="flex flex-col items-end gap-2">
                 <!-- Stance badge -->
-                <span class="px-2 py-0.5 text-xs font-medium rounded {getStanceClass(thread.stance)}">
+                <span class="px-2 py-0.5 text-xs font-medium {getStanceClass(thread.stance)}">
                   {thread.stance === 'bull' ? 'bull' : thread.stance === 'bear' ? 'bear' : thread.stance}
                 </span>
 

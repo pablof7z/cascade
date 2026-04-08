@@ -1,10 +1,74 @@
 # NowNowNow
 
-*Last updated: 2026-04-05 22:00 UTC — Sweep 148: Full React→Svelte Phase complete. 8 major features shipped. Build green.*
+*Last updated: 2026-04-08 09:40 UTC — All style/audit work shipped. Build green. Phase 8 ready to start. Growth blocked on Pablo.*
 
 ---
 
-## ✅ Shipped This Session (8 major features — React→Svelte Migration COMPLETE)
+## 📌 Pending Follow-Ups
 
-| Commit | Feature |
-|--------|---------|\n| **7113162** | **Discuss Page** — markets + posts (kind:1111), sort/filter/search, live updates |\n| **385313e** | **MarketCard Component** — reusable Svelte card component |\n| **2811d41** | **Portfolio Page** — positions, PnL calculation, redemption |\n| **7026fb4** | **Settings Page** — profile form, relay config |\n| **d0655ce** | **Wallet Page** — deposit, send, receive, history |\n| **0fe441f** | **404 Error Page** — SvelteKit error handling |\n| **fbd189b** | **PRODUCT-DECISIONS.md** — 60+ directives documenting all Pablo decisions |\n| **9ce31e2** | **Full Onboarding Flow** — OAuth (Twitter/Telegram) + profile setup + SKILLS.md |\n\n---\n\n## ✅ Previously Shipped (Earlier Sessions)\n\n| Commit | Feature |\n|--------|---------|\n| **a3cc188** | **Fix Hero CTAs** — 'Start Trading' scrolls to markets, 'For agents →' links to /help |\n| **6c491bf** | **Fix Market Detail Page** — correct LMSR pricing, wire trade button, fix styles |\n| **22537ad** | **Wire Create Market Modal** — `handleCreateMarket()` publishes kind 982 events via `publishMarket()` |\n| **c5ae80f** | **Real Legal Pages** — Terms of Service + Privacy Policy, plain English |\n| **c3badcd** | **Footer on All Pages** — Footer restored to root layout |\n| **a9ec131** | **Wire Trade Button** — `handleTrade()` calls real `executeTrade()` from tradingService |\n| **e6cf915** | **Cashu Mint Phase 1** — Hono.js + TypeScript mint foundation (`cascade-mint/`) — ⚠️ ARCHITECTURE BEING REVISED |\n| **e6d9343** | **OG/Twitter meta tags** |\n| **032e04a** | **Contact info fix** — correct Nostr/email links + 2 new FAQ items |\n| **b1b4a09** | **Profile link in nav dropdown** |\n| **df16b6a** | **Market Discussion Feature** — 4 Svelte components, kind:1111 NIP-22, real-time |\n| **9ae9f0c** | **Blog page cleanup** |\n| **245bf0b** | **Analytics cleanup** |\n| **6ffe4ed** | **Profile tab fix** |\n| **8c37ab3** | **Favicon fix** |\n\n---\n\n## ⚠️ Cashu Mint Architecture Fix — IN PROGRESS\n\nThe previously committed mint (`e6cf915`) had a critical architectural error: it fetched kind:30000 market events from Nostr relays at runtime. The correct architecture:\n- **Pure Cashu NUT API** — no Nostr relay code in mint\n- **URL-segmented routing**: `/{marketId}/v1/mint`, `/{marketId}/v1/keys`, etc.\n- Market context comes from URL params, not Nostr\n- planning-orchestrator rewrote the plan; mint-engineer reviewing now\n\n**Status:** Plan being reviewed by mint-engineer. Once approved, execution-coordinator will rewrite `cascade-mint/` on a branch.\n\n---\n\n## ⏳ Pending Pablo Decisions\n\n1. **Substack account** — Create `cascadethinking.substack.com` + provide credentials\n   - Draft v2 ready: `tenex/docs/substack-draft-2026-04-04-v2.md`\n2. **Cashu mint Phase 1 GO** — Architecture being fixed. Once plan approved, needs re-implementation.\n3. **Domain registration** — needs update post-rebrand to Cascade\n4. **Cashu Phase 2** — Lightning, NIP-46 signing, hardening (after Phase 1 deployed)\n5. **Phase 4B: Full ThesisBuilder** — /thesis/new route implementation awaiting direction\n
+| When | What | Details |
+|------|------|---------|
+| When Pablo initiates | Start Phase 8 Phase 1 (testnet mint) | Plan: `.tenex/plans/phase-8-real-money-integration-revised.md` |
+| When Pablo wakes | Send 10 DMs from X account for growth campaign | DM file: `$AGENT_HOME/research/dm-campaign-10-users.md` |
+| When Pablo approves | Publish Substack article | Article ready, published to Nostr |
+
+---
+
+## ✅ Shipped (2026-04-08)
+
+| Item | Commit | Status |
+|------|--------|--------|
+| **Wallet Refactor Step 1: Mint URL consolidation** | `0e9779f` | ✅ Committed + pushed |
+| **Wallet Refactor Step 2: Svelte 5 $state migration** | `e358fd6` | ✅ Committed + pushed |
+| **Wallet Refactor Step 3: Unify wallet access** | `da7fbca` | ✅ Committed + pushed |
+| **500 Error Hotfix (/market/[marketId])** | `1546887` | ✅ Committed + pushed |
+| **Wallet Runtime Bug Fix (missing declarations)** | `06e601a` | ✅ Committed + pushed |
+| **Memory leak fix (discuss page subscriptions)** | `57eb103` | ✅ Committed + pushed |
+| **NDK subscription migration (discuss page)** | `0b11156` | ✅ Committed + pushed |
+| **Phase 8 Planning Artifacts** | `711bbc4` | ✅ 25 plan files committed |
+| **Phase 8 Plan APPROVED** | — | ✅ Self-hosted mint, LND, no KYC |
+| **UI Audit Fixes (12 page titles, jargon removal, style fixes)** | `6d88edd` | ✅ Committed + pushed |
+| **Svelte 5 Store backward compat fixes** | `799912a` | ✅ Committed + pushed |
+| **getMintUrl() runtime override fix** | `ab04ad2` | ✅ Committed + pushed |
+| **tradeSuccess $state rune bug fix** | `d2e1981` | ✅ Committed + pushed |
+| **Svelte 5 Medium Audit Fixes (3)** | `8fd4728` | ✅ Committed + pushed |
+| **Per-Agent Skill Blocking (TENEX)** | `a4b332b3` | ✅ Merged |
+| **Agent Auto-Categorization (TENEX)** | `23a06d76`+`fed87b79` | ✅ Merged |
+| **Short pubkey + sub-agent routing fix (TENEX)** | `2b5fa019` | ✅ Merged |
+| **Style fixes: rounded pills + wallet rounding** | `8a1540a` | ✅ Committed + pushed |
+| **Style fix: EmbedModal rounding** | `8ef275b` | ✅ Committed + pushed |
+| **Footer icon conditional fix** | `c8630b6` | ✅ Committed + pushed |
+| **Stale branch cleanup (7 branches pruned)** | — | ✅ Done |
+
+## ✅ Shipped (2026-04-07)
+
+| Item | Commit | Status |
+|------|--------|--------|
+| **Svelte 5 Migration (21 routes)** | `4bfd1fd` | ✅ All ported |
+| **Svelte 5 Audit — Critical Fixes (5)** | `8fd4728`, `d2e1981` | ✅ All fixed |
+| **Svelte 5 Audit — Medium Fixes** | `e16ec74` | ✅ Polling→NDK subs |
+| **Product Quality Fixes (5 items)** | `6b9732d` | ✅ Footer, settings, jargon |
+| **Fix /profile 404** | `61b34d0` | ✅ Auth redirect |
+| **Phase 7: Settlement & Withdrawal (CDK Rust)** | — | ✅ 112 tests passing |
+
+---
+
+## 🚫 CURRENT BLOCKERS
+
+### 1. Growth Campaign — Blocked on Pablo ⚠️
+- 10 personalized DMs ready — all content prepped
+- **REQUIRES Pablo to manually send from his X account** (~20 min)
+- Growth agent cannot send X DMs — no API access
+
+### 2. Substack Article — Blocked on Pablo
+- Article published to Nostr ✅
+- Substack publishing needs Pablo's login/approval
+
+---
+
+## 🎯 What's Next (Priority Order)
+
+1. **Pablo: Send 10 DMs from X account** → drive first user interviews
+2. **Review and publish Substack article** — strong piece, ready to go
+3. **Phase 8: Real Money** → persistent storage + Lightning + wallet UI (major effort)
+4. **Domain registration** → contrarian.markets / contrarianmarkets.com

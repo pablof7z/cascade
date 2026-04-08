@@ -35,7 +35,8 @@
   }
 
   function navigateToMarket() {
-    window.location.href = `/market/${market.slug}`;
+    const pubkeyPrefix = market.creatorPubkey.slice(0, 12);
+    window.location.href = `/mkt/${market.slug}--${pubkeyPrefix}`;
   }
 </script>
 

@@ -42,26 +42,29 @@
 
 <main class="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-6">
   <div class="max-w-md w-full text-center space-y-8">
-    <!-- Tagline -->
-    <p class="text-neutral-400 text-lg">
-      Conditional prediction markets. If X, then what?
-    </p>
+    <div class="space-y-2">
+      <h1 class="text-2xl font-semibold text-white">Welcome back</h1>
+      <p class="text-neutral-400 text-sm">Connect your Nostr identity to start trading.</p>
+    </div>
 
-    <!-- Actions -->
     <div class="space-y-3">
       <button
         onclick={handleConnect}
         disabled={connecting}
         class="w-full px-4 py-2.5 text-sm font-medium text-neutral-950 bg-white hover:bg-neutral-200 disabled:bg-neutral-400 disabled:cursor-not-allowed transition-colors"
       >
-        {connecting ? 'Connecting...' : 'Connect Wallet'}
+        {connecting ? 'Connecting...' : 'Connect'}
       </button>
+
+      <div class="text-neutral-500 text-xs">
+        New here? <a href="/join" class="text-neutral-300 hover:text-white transition-colors">Create an account</a>
+      </div>
 
       <a
         href="/discuss"
-        class="block w-full px-4 py-2.5 text-sm font-medium text-neutral-300 border border-neutral-700 hover:border-neutral-500 hover:text-white transition-colors text-center"
+        class="block w-full px-4 py-2.5 text-sm font-medium text-neutral-400 hover:text-white transition-colors text-center"
       >
-        Browse without connecting
+        Browse without signing in
       </a>
     </div>
   </div>

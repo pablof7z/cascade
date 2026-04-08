@@ -5,7 +5,7 @@
   import { isTestnet, toggle, TESTNET_LABELS } from '$lib/stores/testnet';
 
   const isDashboardRoute = pageState.url.pathname.startsWith('/dashboard');
-  import { nostrStore, reconnect, disconnect } from '$lib/stores/nostr';
+  import { nostrStore, disconnect } from '$lib/stores/nostr';
   import { initWalletStore, destroyWalletStore } from '$lib/walletStore';
   import { getDisplayName } from '../../services/nostrService';
   import WalletWidget from './WalletWidget.svelte';
@@ -94,10 +94,6 @@
   let abbreviatedPubkey = $derived(displayName || 'Anonymous');
 
   // Functions
-  async function handleConnect() {
-    await reconnect();
-  }
-
   function isActive(href: string): boolean {
     if (href === '/') {
       return path === '/';
@@ -277,12 +273,12 @@
           {/if}
         </div>
       {:else}
-        <button
-          onclick={handleConnect}
+        <a
+          href="/join"
           class="text-xs font-medium text-white border border-neutral-700 px-3 py-1.5 hover:border-neutral-500 transition-colors"
         >
-          Connect Wallet
-        </button>
+          Sign in
+        </a>
       {/if}
     </div>
   </div>

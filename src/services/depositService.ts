@@ -15,6 +15,7 @@ import type { Market } from '../market'
 import { createDeposit, type NDKCashuDeposit } from '../walletStore'
 import { getMintUrl } from '../lib/config/mint'
 import { getBolt11ExpiresAt } from '@nostr-dev-kit/wallet'
+import { classifyError, type WalletErrorCode } from '../lib/walletErrors'
 
 // ---------------------------------------------------------------------------
 // Typed errors
@@ -70,7 +71,7 @@ export type Deposit = {
   expiry: number | null   // Unix timestamp when invoice expires
   createdAt: number       // Unix timestamp
   error: string | null    // Error message if failed
-  errorKind: 'MintError' | 'ExpiredInvoiceError' | 'NetworkError' | null
+  errorKind: WalletErrorCode | null
 }
 
 export type DepositCallbacks = {
@@ -78,7 +79,7 @@ export type DepositCallbacks = {
   onInvoiceCreated?: (deposit: Deposit) => void
   onPaymentReceived?: (deposit: Deposit) => void
   onTokensReceived?: (deposit: Deposit, tokens: string) => void
-  onError?: (deposit: Deposit, error: string, errorKind: DepositError['kind'] | null) => void
+  onError?: (deposit: Deposit, error: string, errorKind: WalletErrorCode | null) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -174,15 +175,14 @@ export async function createMarketDeposit(
     ndkDeposit.on('error', (error) => {
       const d = activeDeposits.get(depositId)
       if (d) {
-        const message = typeof error === 'string' ? error : 'Unknown error'
-        const typedError = classifyError(message)
-        d.status = typedError instanceof ExpiredInvoiceError ? 'expired' : 'failed'
-        d.error = typedError.message
-        d.errorKind = typedError.kind
+        const walletError = classifyError(error)
+        d.status = walletError.code === 'INVOICE_EXPIRED' ? 'expired' : 'failed'
+        d.error = walletError.userMessage
+        d.errorKind = walletError.code
         notifyStatusChange(d, callbacks)
         
         if (callbacks.onError) {
-          callbacks.onError(d, d.error, typedError.kind)
+          callbacks.onError(d, d.error, walletError.code)
         }
       }
     })
@@ -192,15 +192,13 @@ export async function createMarketDeposit(
 
     return deposit
   } catch (error) {
-    const typedError = error instanceof MintError || error instanceof ExpiredInvoiceError || error instanceof NetworkError
-      ? error
-      : classifyError(error instanceof Error ? error.message : 'Unknown error')
-    deposit.status = typedError instanceof ExpiredInvoiceError ? 'expired' : 'failed'
-    deposit.error = typedError.message
-    deposit.errorKind = typedError.kind
+    const walletError = classifyError(error)
+    deposit.status = walletError.code === 'INVOICE_EXPIRED' ? 'expired' : 'failed'
+    deposit.error = walletError.userMessage
+    deposit.errorKind = walletError.code
     notifyStatusChange(deposit, callbacks)
     if (callbacks.onError) {
-      callbacks.onError(deposit, deposit.error, typedError.kind)
+      callbacks.onError(deposit, deposit.error, walletError.code)
     }
     return deposit
   }
@@ -303,12 +301,19 @@ export function formatDepositStatus(deposit: Deposit): string {
  */
 export function getDepositErrorMessage(deposit: Deposit): string {
   switch (deposit.errorKind) {
-    case 'MintError':
-      return 'Mint service error. Please try again.'
-    case 'ExpiredInvoiceError':
+    case 'INVOICE_EXPIRED':
       return 'Invoice expired. Please create a new deposit.'
-    case 'NetworkError':
+    case 'MINT_UNREACHABLE':
+    case 'MINT_ERROR':
+      return 'Mint service error. Please try again.'
+    case 'MINT_TOKENS_FAILED':
+      return 'Failed to mint tokens. Please try again.'
+    case 'NETWORK_ERROR':
       return 'Network error. Please check your connection.'
+    case 'INSUFFICIENT_BALANCE':
+      return 'Insufficient balance.'
+    case 'TOKEN_ALREADY_SPENT':
+      return 'Token already spent.'
     default:
       return deposit.error || 'An unknown error occurred.'
   }
@@ -317,20 +322,6 @@ export function getDepositErrorMessage(deposit: Deposit): string {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Classify an error string into a typed DepositError.
- */
-function classifyError(message: string): DepositError {
-  const lower = message.toLowerCase()
-  if (lower.includes('expire') || lower.includes('expired')) {
-    return new ExpiredInvoiceError()
-  }
-  if (lower.includes('network') || lower.includes('fetch') || lower.includes('connect') || lower.includes('timeout')) {
-    return new NetworkError(message)
-  }
-  return new MintError(message)
-}
 
 /**
  * Get the default mint URL from environment or wallet store.

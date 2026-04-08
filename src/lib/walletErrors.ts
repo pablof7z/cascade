@@ -34,11 +34,15 @@ export function classifyError(err: unknown): WalletError {
 		err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unknown error';
 	const lower = message.toLowerCase();
 
-	if (lower.includes('fetch failed') || lower.includes('network') || lower.includes('econnrefused')) {
-		return new WalletError('MINT_UNREACHABLE', 'Mint is unreachable', true, err);
+	// Most specific checks first
+	if (lower.includes('lightning address') || lower.includes('domain unreachable') || lower.includes('address not found') || lower.includes('lnurlp')) {
+		return new WalletError('LIGHTNING_ADDRESS_UNREACHABLE', 'Lightning address unreachable', true, err);
 	}
 	if (lower.includes('already spent')) {
 		return new WalletError('TOKEN_ALREADY_SPENT', 'Token already spent', false, err);
+	}
+	if (lower.includes('mint tokens') || lower.includes('minting')) {
+		return new WalletError('MINT_TOKENS_FAILED', 'Failed to mint tokens', true, err);
 	}
 	if (lower.includes('insufficient') || lower.includes('balance')) {
 		return new WalletError('INSUFFICIENT_BALANCE', 'Insufficient balance', false, err);
@@ -51,6 +55,12 @@ export function classifyError(err: unknown): WalletError {
 	}
 	if (lower.includes('melt')) {
 		return new WalletError('MELT_FAILED', 'Payment failed', true, err);
+	}
+	if (lower.includes('fetch failed') || lower.includes('econnrefused') || lower.includes('connection refused')) {
+		return new WalletError('MINT_UNREACHABLE', 'Mint is unreachable', true, err);
+	}
+	if (lower.includes('network') || lower.includes('timeout') || lower.includes('timed out') || lower.includes('offline')) {
+		return new WalletError('NETWORK_ERROR', 'Network error', true, err);
 	}
 	if (lower.includes('mint')) {
 		return new WalletError('MINT_ERROR', 'Mint error', true, err);

@@ -11,6 +11,7 @@
 import { getMintUrl } from '../lib/config/mint'
 import { withdrawToLightning } from './settlementService'
 import { getWalletBalance } from '../walletStore'
+import { classifyError, type WalletErrorCode } from '../lib/walletErrors'
 
 // ---------------------------------------------------------------------------
 // Structured error types
@@ -302,14 +303,12 @@ export async function meltTokens(
   try {
     result = await withdrawToLightning(amountSats, invoice, mintUrl)
   } catch (error) {
+    const walletError = classifyError(error)
     return {
       success: false,
       error: {
-        code: 'NETWORK_ERROR',
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Network error during withdrawal',
+        code: walletCodeToMeltCode(walletError.code),
+        message: walletError.userMessage,
       },
     }
   }
@@ -321,37 +320,38 @@ export async function meltTokens(
     }
   }
 
-  // Categorize the error from the message
+  // Categorize the failure message via the central classifier
+  const walletError = classifyError(new Error(result.message || 'Withdrawal failed'))
+
+  // FEE_EXCEEDED is a melt-specific code not in WalletErrorCode — detect it separately
   const msg = (result.message || '').toLowerCase()
-
-  let code: MeltErrorCode
-
-  if (msg.includes('expired')) {
-    code = 'INVOICE_EXPIRED'
-  } else if (msg.includes('fee') && (msg.includes('exceeded') || msg.includes('too high'))) {
-    code = 'FEE_EXCEEDED'
-  } else if (
-    msg.includes('invalid') ||
-    msg.includes('bad request') ||
-    msg.includes('malformed')
-  ) {
-    code = 'INVALID_INPUT'
-  } else if (
-    msg.includes('network') ||
-    msg.includes('connection') ||
-    msg.includes('timeout') ||
-    msg.includes('fetch')
-  ) {
-    code = 'NETWORK_ERROR'
-  } else {
-    code = 'MINT_ERROR'
+  if (msg.includes('fee') && (msg.includes('exceeded') || msg.includes('too high'))) {
+    return {
+      success: false,
+      error: { code: 'FEE_EXCEEDED', message: result.message || 'Fee exceeded' },
+    }
   }
 
   return {
     success: false,
     error: {
-      code,
-      message: result.message || 'Withdrawal failed',
+      code: walletCodeToMeltCode(walletError.code),
+      message: walletError.userMessage,
     },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+function walletCodeToMeltCode(code: WalletErrorCode): MeltErrorCode {
+  switch (code) {
+    case 'INSUFFICIENT_BALANCE': return 'INSUFFICIENT_BALANCE'
+    case 'INVOICE_EXPIRED': return 'INVOICE_EXPIRED'
+    case 'INVOICE_INVALID': return 'INVALID_INPUT'
+    case 'NETWORK_ERROR':
+    case 'MINT_UNREACHABLE': return 'NETWORK_ERROR'
+    default: return 'MINT_ERROR'
   }
 }

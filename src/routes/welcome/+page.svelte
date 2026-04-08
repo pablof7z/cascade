@@ -44,7 +44,7 @@
   <div class="max-w-md w-full text-center space-y-8">
     <div class="space-y-2">
       <h1 class="text-2xl font-semibold text-white">Welcome back</h1>
-      <p class="text-neutral-400 text-sm">Connect your Nostr identity to start trading.</p>
+      <p class="text-neutral-400 text-sm">Sign in to start trading.</p>
     </div>
 
     <div class="space-y-3">

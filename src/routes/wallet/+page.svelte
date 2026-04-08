@@ -238,13 +238,9 @@
       <div class="flex items-baseline justify-between">
         <div>
           <p class="text-neutral-400 text-sm mb-1">Balance</p>
-          {#if isLoadingBalance}
-            <div class="h-8 w-32 bg-neutral-800 animate-pulse rounded"></div>
-          {:else}
-            <p class="text-3xl font-mono font-medium text-white">
-              {formatSats(balance)} <span class="text-lg text-neutral-400">sats</span>
-            </p>
-          {/if}
+          <p class="text-3xl font-mono font-medium text-white">
+            {balance > 0 ? `${formatSats(balance)}` : '—'} <span class="text-lg text-neutral-400">sats</span>
+          </p>
         </div>
         <button
           onclick={loadBalance}

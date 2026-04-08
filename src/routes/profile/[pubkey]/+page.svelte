@@ -229,7 +229,7 @@
     <div class="flex justify-between items-start">
       <div>
         <h1 class="text-xl font-sans text-white">
-          {loadingProfile ? 'Loading...' : profile?.name ?? 'Unknown'}
+          {profile?.name ?? 'Unknown'}
         </h1>
         {#if profile?.about}
           <p class="text-neutral-400 mt-2">{profile.about}</p>

@@ -218,7 +218,7 @@
 
       <!-- User Menu or Connect Button -->
       {#if !isReady}
-        <div class="w-7 h-7 rounded-sm bg-neutral-800 animate-pulse"></div>
+        <div class="w-7 h-7 rounded-sm bg-neutral-800"></div>
       {:else if isLoggedIn}
         <div class="relative" bind:this={userMenuRef}>
           <button

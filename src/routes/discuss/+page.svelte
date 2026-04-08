@@ -352,7 +352,7 @@
                 </span>
 
                 <!-- Type badge -->
-                <span class="px-2 py-0.5 text-xs bg-neutral-800 text-neutral-400 rounded">
+                <span class="px-2 py-0.5 text-xs bg-neutral-800 text-neutral-400 rounded-sm">
                   {getTypeLabel(thread.type)}
                 </span>
 

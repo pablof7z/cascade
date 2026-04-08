@@ -1,13 +1,15 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { forceRefreshBalance, initWalletStore } from '$lib/stores/wallet.svelte';
+  import { forceRefreshBalance, initWalletStore, getBalance, getError, isRefreshing as storeIsRefreshing } from '$lib/stores/wallet.svelte';
 
   // Local state
   let isOpen = $state(false);
   let dropdownRef = $state<HTMLDivElement | null>(null);
-  let balance = $state(0);
-  let error = $state<string | null>(null);
-  let isRefreshing = $state(false);
+
+  // Reactive state from store
+  let balance = $derived(getBalance());
+  let error = $derived(getError());
+  let isRefreshing = $derived(storeIsRefreshing());
 
   // Initialize wallet store on mount
   $effect(() => {

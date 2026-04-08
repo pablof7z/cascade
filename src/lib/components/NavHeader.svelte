@@ -6,7 +6,7 @@
 
   const isDashboardRoute = pageState.url.pathname.startsWith('/dashboard');
   import { nostrStore, reconnect, disconnect } from '$lib/stores/nostr';
-  import { initWalletStore, destroyWalletStore } from '$lib/walletStore';
+  import { initWalletStore, destroyWalletStore } from '$lib/stores/wallet.svelte';
   import WalletWidget from './WalletWidget.svelte';
 
   // Reactive state

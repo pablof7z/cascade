@@ -139,6 +139,27 @@ export function getCachedMintUrls(): string[] {
   return Array.from(mintInfoCache.keys())
 }
 
+/**
+ * Verify that a mint is reachable and responding to requests.
+ * Returns true if the mint responds with a valid info response, false otherwise.
+ *
+ * @param mintUrl The mint URL to verify
+ * @returns true if the mint is healthy
+ */
+export async function verifyMintHealth(mintUrl: string): Promise<boolean> {
+  const normalizedUrl = normalizeMintUrl(mintUrl)
+  try {
+    const response = await fetch(`${normalizedUrl}/v1/info`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------

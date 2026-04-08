@@ -5,16 +5,17 @@
  * No subscriber pattern - consumers use $state directly.
  *
  * Usage in Svelte 5 components:
- *   import { balance, isRefreshing, refreshBalance } from '$lib/stores/wallet.svelte'
+ *   import { getBalance, isRefreshing, refreshBalance } from '$lib/stores/wallet.svelte'
  *   $effect(() => { refreshBalance() })
  */
 
-import { loadOrCreateWallet, getWalletBalance } from '../../walletStore'
+import { loadOrCreateWallet, getWalletBalance, isWalletReady } from '../../walletStore'
 
 // Module-level reactive state (Svelte 5)
 let balanceValue = $state(0)
 let errorValue = $state<string | null>(null)
 let isRefreshingValue = $state(false)
+let walletReadyValue = $state(false)
 
 // -----------------------------------------------------------------------------
 // Exported reactive getters
@@ -24,12 +25,20 @@ export function getBalance(): number {
   return balanceValue
 }
 
+export function getError(): string | null {
+  return errorValue
+}
+
 export function hasError(): boolean {
   return errorValue !== null
 }
 
 export function isRefreshing(): boolean {
   return isRefreshingValue
+}
+
+export function walletReady(): boolean {
+  return walletReadyValue
 }
 
 // -----------------------------------------------------------------------------
@@ -49,6 +58,7 @@ export async function refreshBalance(): Promise<void> {
     const wallet = await loadOrCreateWallet()
     if (wallet) {
       balanceValue = await getWalletBalance()
+      walletReadyValue = isWalletReady()
       errorValue = null
     }
   } catch (err) {

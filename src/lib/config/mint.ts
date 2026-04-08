@@ -5,7 +5,7 @@
  * All mint-related configuration should be imported from this file.
  */
 
-import { isTestnet } from '../stores/testnet';
+import { isTestnet } from '../stores/testnet.svelte'
 
 // Environment variable for custom mint URL
 const ENV_MINT_URL = import.meta.env.VITE_CASCADE_MINT_URL
@@ -40,7 +40,7 @@ export function getMintUrl(): string {
  * Check if running in testnet mode.
  */
 export function isTestnetMode(): boolean {
-  return isTestnet.get()
+  return isTestnet()
 }
 
 // -----------------------------------------------------------------------------

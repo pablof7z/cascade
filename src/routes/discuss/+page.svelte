@@ -22,7 +22,6 @@
   // State
   let discussions = $state<MarketDiscussion[]>([])
   let markets = $state<Map<string, Market>>(new Map())
-  let loading = $state(true)
   let nostrReady = $state(false)
 
   // Filters and sorting
@@ -140,7 +139,6 @@
   async function fetchAllDiscussions(): Promise<(() => void)[]> {
     if (!nostrReady) return []
 
-    loading = true
     const unsubscribes: (() => void)[] = []
     try {
       // First fetch all markets
@@ -178,7 +176,6 @@
       console.error('[Discuss] Error fetching discussions:', err)
       return unsubscribes
     } finally {
-      loading = false
     }
   }
 
@@ -301,9 +298,7 @@
 
   <!-- Content -->
   <div class="max-w-5xl mx-auto px-4 py-6">
-    {#if loading}
-
-    {:else if filteredDiscussions.length === 0}
+    {#if filteredDiscussions.length === 0}
       <div class="flex flex-col items-center justify-center py-20">
         <span class="text-neutral-500 text-sm mb-4">No discussions found</span>
         {#if searchQuery || stanceFilter !== 'all' || typeFilter !== 'all'}

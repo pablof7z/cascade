@@ -27,7 +27,7 @@ function buildReplies(
     if (tags.replyTo === parentEventId || tags.rootId === parentEventId) {
       replies.push({
         id: eventId,
-        author: event.pubkey.slice(0, 16),
+        author: 'Anonymous',
         pubkey: event.pubkey,
         isAgent: false,
         content: event.content,
@@ -55,7 +55,7 @@ export async function convertEventToThread(
 
   return {
     id,
-    author: author.name ?? author.npub.slice(0, 16),
+    author: author.name ?? 'Anonymous',
     pubkey: event.pubkey,
     isAgent: false,
     type: (tags.type ?? 'argument') as DiscussionThread['type'],

@@ -31,6 +31,9 @@
   let typeFilter = $state<TypeFilter>('all')
   let searchQuery = $state('')
 
+  // Track unsubscribe functions for memory leak fix
+  let unsubscribes = $state<(() => void)[]>([])
+
   // Derived filtered and sorted discussions
   let filteredDiscussions = $derived.by(() => {
     let result = discussions.filter(d => {
@@ -134,10 +137,11 @@
   }
 
   // Fetch discussions from all markets
-  async function fetchAllDiscussions(): Promise<void> {
-    if (!nostrReady) return
+  async function fetchAllDiscussions(): Promise<(() => void)[]> {
+    if (!nostrReady) return []
 
     loading = true
+    const unsubscribes: (() => void)[] = []
     try {
       // First fetch all markets
       const allMarkets = await fetchAllMarkets(50)
@@ -160,7 +164,8 @@
             }
 
             // Subscribe to live updates for this market
-            subscribeToMarket(market.eventId, market)
+            const unsub = subscribeToMarket(market.eventId, market)
+            unsubscribes.push(unsub)
           } catch (err) {
             console.error(`[Discuss] Error fetching posts for market ${market.slug}:`, err)
           }
@@ -168,8 +173,10 @@
       )
 
       discussions = allThreads
+      return unsubscribes
     } catch (err) {
       console.error('[Discuss] Error fetching discussions:', err)
+      return unsubscribes
     } finally {
       loading = false
     }
@@ -205,14 +212,17 @@
 
     nostrReady = true
 
-    // Initial fetch
-    fetchAllDiscussions()
+    // Track current run's unsubscribes for cleanup
+    const currentUnsubscribes: (() => void)[] = []
 
-    // Subscribe to all markets for real-time updates
-    subscribeToMarketDiscussions()
+    // Initial fetch and subscribe to live updates
+    fetchAllDiscussions().then((newUnsubscribes) => {
+      currentUnsubscribes.push(...newUnsubscribes)
+    })
 
     return () => {
-      // Cleanup handled by unsubscribe functions in subscribeToMarketDiscussions
+      // Cleanup: unsubscribe from all market subscriptions
+      currentUnsubscribes.forEach((unsub) => unsub())
     }
   })
 </script>

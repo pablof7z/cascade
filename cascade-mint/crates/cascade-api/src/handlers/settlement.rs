@@ -10,14 +10,14 @@ use axum::{
     Json,
 };
 use cascade_core::{market::Side, lmsr::LmsrEngine};
-use cdk::nuts::{Proof, Proofs, Id, PublicKey};
+use cdk::nuts::{Proof, Proofs, Id, PublicKey, BlindedMessage};
 use cdk::secret::Secret;
 use cdk::Amount;
 use cdk::util::hex;
 use std::str::FromStr;
 use crate::types::{
     MarketRedeemRequest, MarketRedeemResponse, MarketSettleRequest, MarketSettleResponse,
-    TokenOutput, ProofInput, ErrorResponse,
+    TokenOutput, ProofInput, BlindedMessageInput, ErrorResponse,
 };
 use crate::routes::AppState;
 
@@ -50,6 +50,18 @@ fn proof_input_to_cdk_proof(proof: &ProofInput) -> Result<Proof, String> {
         dleq: None,
         p2pk_e: None,
     })
+}
+
+/// Convert a BlindedMessageInput (from request) to a CDK BlindedMessage for blind signing
+fn blinded_msg_input_to_cdk(b: &BlindedMessageInput) -> Result<BlindedMessage, String> {
+    let amount = Amount::from(b.amount);
+    let keyset_id = Id::from_str(&b.id)
+        .map_err(|e| format!("Invalid keyset ID '{}': {}", b.id, e))?;
+    let blinded_secret_bytes = hex::decode(&b.b_)
+        .map_err(|e| format!("Invalid B_ hex: {}", e))?;
+    let blinded_secret = PublicKey::from_slice(&blinded_secret_bytes)
+        .map_err(|e| format!("Invalid B_ public key: {}", e))?;
+    Ok(BlindedMessage::new(amount, keyset_id, blinded_secret))
 }
 
 /// Validate a Cashu proof input using CDK verification
@@ -350,14 +362,46 @@ pub async fn redeem(
         };
         let _ = state.market_manager.update_lmsr_state(&req.market_id, delta_long, delta_short, -(gross_payout as i64)).await;
 
-        // Generate mock token output (in production, this would mint actual Cashu tokens)
-        let tokens = if net_payout > 0 {
-            vec![TokenOutput {
-                amount: net_payout,
-                id: format!("token_{}", uuid::Uuid::new_v4()),
-                blind_nonces: vec!["blind_nonce_1".to_string()],
-                B: "public_key_placeholder".to_string(),
-            }]
+        // Convert client-provided blinded messages to CDK format for signing
+        let blinded_messages: Vec<BlindedMessage> = if net_payout > 0 {
+            match req.outputs.iter().map(blinded_msg_input_to_cdk).collect::<Result<Vec<_>, _>>() {
+                Ok(msgs) => msgs,
+                Err(e) => {
+                    // Rollback: un-spend the proof so client can retry with valid outputs
+                    spent.remove(&req.proof.secret);
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        Json(Err(ErrorResponse {
+                            error: "Invalid output".to_string(),
+                            details: Some(e),
+                        })),
+                    );
+                }
+            }
+        } else {
+            vec![]
+        };
+
+        // CDK blind signing: issue real SAT Cashu tokens for the net payout
+        let tokens: Vec<TokenOutput> = if !blinded_messages.is_empty() {
+            match state.mint.blind_sign(blinded_messages).await {
+                Ok(signatures) => signatures.into_iter().map(|sig| TokenOutput {
+                    amount: sig.amount.to_u64(),
+                    id: sig.keyset_id.to_string(),
+                    c_: sig.c.to_hex(),
+                }).collect(),
+                Err(e) => {
+                    // Rollback: un-spend the proof so client can retry
+                    spent.remove(&req.proof.secret);
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(Err(ErrorResponse {
+                            error: "Blind signing failed".to_string(),
+                            details: Some(e.to_string()),
+                        })),
+                    );
+                }
+            }
         } else {
             vec![]
         };
@@ -504,14 +548,53 @@ pub async fn settle(
             ).await;
         }
 
-        // Generate mock token output for winners only
-        let tokens = if won && net_payout > 0 {
-            vec![TokenOutput {
-                amount: net_payout,
-                id: format!("settle_token_{}", uuid::Uuid::new_v4()),
-                blind_nonces: vec!["blind_nonce_1".to_string()],
-                B: "public_key_placeholder".to_string(),
-            }]
+        // CDK blind signing for winners: convert client-provided blinded messages
+        let tokens: Vec<TokenOutput> = if won && net_payout > 0 {
+            let blinded_messages: Vec<BlindedMessage> = match req.outputs.iter()
+                .map(blinded_msg_input_to_cdk)
+                .collect::<Result<Vec<_>, _>>()
+            {
+                Ok(msgs) => msgs,
+                Err(e) => {
+                    spent.remove(&req.proof.secret);
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        Json(Err(ErrorResponse {
+                            error: "Invalid output".to_string(),
+                            details: Some(e),
+                        })),
+                    );
+                }
+            };
+
+            if blinded_messages.is_empty() {
+                spent.remove(&req.proof.secret);
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(Err(ErrorResponse {
+                        error: "No outputs provided".to_string(),
+                        details: Some("Winners must provide blinded messages for SAT payout".to_string()),
+                    })),
+                );
+            }
+
+            match state.mint.blind_sign(blinded_messages).await {
+                Ok(signatures) => signatures.into_iter().map(|sig| TokenOutput {
+                    amount: sig.amount.to_u64(),
+                    id: sig.keyset_id.to_string(),
+                    c_: sig.c.to_hex(),
+                }).collect(),
+                Err(e) => {
+                    spent.remove(&req.proof.secret);
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(Err(ErrorResponse {
+                            error: "Blind signing failed".to_string(),
+                            details: Some(e.to_string()),
+                        })),
+                    );
+                }
+            }
         } else {
             vec![]
         };

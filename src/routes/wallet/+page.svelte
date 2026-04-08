@@ -214,6 +214,8 @@
     } else if (inputType === 'lightning_address') {
       withdrawAmount = null
       estimatedFee = null
+    } else if (inputType === 'lnurl' && value.trim()) {
+      withdrawError = 'LNURL addresses are not supported — please use a bolt11 invoice or Lightning address'
     } else if (inputType === 'invalid' && value.trim()) {
       withdrawError = 'Invalid Lightning address or invoice'
     }
@@ -240,8 +242,10 @@
       withdrawError = 'Please enter a valid amount'
       return false
     }
-    if (inputType === 'invalid') {
-      withdrawError = 'Invalid Lightning address or invoice'
+    if (inputType === 'invalid' || inputType === 'lnurl') {
+      withdrawError = inputType === 'lnurl'
+        ? 'LNURL addresses are not supported — please use a bolt11 invoice or Lightning address'
+        : 'Invalid Lightning address or invoice'
       return false
     }
     if (withdrawAmount + (estimatedFee ?? 0) > balance) {
@@ -301,10 +305,12 @@
         withdrawStatus = 'failed'
         withdrawError = result.error?.message ?? 'Withdrawal failed'
         updateWithdrawRecord(record.id, { status: 'failed' })
+        loadWithdrawHistory()
       }
     } catch (e) {
       withdrawStatus = 'failed'
       withdrawError = e instanceof Error ? e.message : 'Withdrawal failed'
+      loadWithdrawHistory()
     }
   }
 
@@ -648,8 +654,8 @@
                 class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 resize-none font-mono text-xs"
               ></textarea>
               {#if withdrawInput.trim()}
-                <span class="absolute top-2 right-2 text-xs px-2 py-0.5 {inputType === 'bolt11' ? 'bg-blue-900 text-blue-300' : inputType === 'lightning_address' ? 'bg-purple-900 text-purple-300' : 'bg-rose-900 text-rose-300'}">
-                  {inputType === 'bolt11' ? 'Invoice' : inputType === 'lightning_address' ? 'Address' : 'Invalid'}
+                <span class="absolute top-2 right-2 text-xs px-2 py-0.5 {inputType === 'bolt11' ? 'bg-neutral-800 text-neutral-300' : inputType === 'lightning_address' ? 'bg-neutral-800 text-neutral-200' : inputType === 'lnurl' ? 'bg-neutral-800 text-neutral-300' : 'bg-rose-900 text-rose-300'}">
+                  {inputType === 'bolt11' ? 'Invoice' : inputType === 'lightning_address' ? 'Address' : inputType === 'lnurl' ? 'LNURL' : 'Invalid'}
                 </span>
               {/if}
             </div>
@@ -688,7 +694,7 @@
 
           <button
             onclick={handleShowWithdrawConfirmation}
-            disabled={withdrawAmount === null || withdrawAmount <= 0 || inputType === 'invalid' || isResolvingLnAddress || (withdrawAmount + (estimatedFee ?? 0) > balance)}
+            disabled={withdrawAmount === null || withdrawAmount <= 0 || inputType === 'invalid' || inputType === 'lnurl' || isResolvingLnAddress || (withdrawAmount + (estimatedFee ?? 0) > balance)}
             class="w-full px-4 py-2.5 text-sm font-medium text-neutral-950 bg-white hover:bg-neutral-200 disabled:bg-neutral-600 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors"
           >
             {isResolvingLnAddress ? 'Resolving Lightning address...' : 'Continue'}

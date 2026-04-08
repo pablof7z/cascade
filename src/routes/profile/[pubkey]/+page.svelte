@@ -38,8 +38,6 @@
   let profile = $state<ProfileData | null>(null);
   let markets = $state<Market[]>([]);
   let positions = $state<Position[]>([]);
-  let loadingMarkets = $state(true);
-  let loadingPositions = $state(true);
   let loadingProfile = $state(true);
   let activeTab = $state<'markets' | 'positions'>('markets');
 
@@ -110,7 +108,6 @@
     const ndk = getNDK();
     if (!ndk) return;
 
-    setLoadingMarkets(true);
     ndk
       .fetchEvents({
         kinds: [982 as NDKKind],
@@ -132,12 +129,10 @@
             };
           });
         markets = marketList.sort((a, b) => b.createdAt - a.createdAt);
-        setLoadingMarkets(false);
       })
       .catch((error) => {
         console.error('Error fetching markets:', error);
         markets = [];
-        setLoadingMarkets(false);
       });
   });
 
@@ -147,7 +142,6 @@
     const ndk = getNDK();
     if (!ndk) return;
 
-    setLoadingPositions(true);
     fetchPositions(ndk, normalizedPubkey)
       .then((fetchedPositions) => {
         const positionList = fetchedPositions.map((pos) => ({
@@ -159,23 +153,15 @@
           resolved: false,
         }));
         positions = positionList;
-        setLoadingPositions(false);
       })
       .catch((error) => {
         console.error('Error fetching positions:', error);
         positions = [];
-        setLoadingPositions(false);
       });
   });
 
   function setLoadingProfile(val: boolean) {
     loadingProfile = val;
-  }
-  function setLoadingMarkets(val: boolean) {
-    loadingMarkets = val;
-  }
-  function setLoadingPositions(val: boolean) {
-    loadingPositions = val;
   }
 
   function navigateToMarket(slug: string) {
@@ -305,9 +291,7 @@
 
   <!-- Tab Content -->
   <div class="px-6 py-8">
-    {#if loadingMarkets}
-
-    {:else if markets.length === 0}
+    {#if markets.length === 0}
       <p class="text-center text-neutral-400 py-12">No markets created yet</p>
     {:else}
       <div class="space-y-4">
@@ -351,9 +335,7 @@
   </div>
 
   <div class="px-6 py-8">
-    {#if loadingPositions}
-
-    {:else if positions.length === 0}
+    {#if positions.length === 0}
       <p class="text-center text-neutral-400 py-12">No positions held yet</p>
     {:else}
       <div class="space-y-4">

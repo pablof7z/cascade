@@ -47,7 +47,6 @@
 
   // State
   let threads = $state<DiscussionThread[]>([]);
-  let loading = $state(true);
   let nostrReady = $state(false);
 
   // Recursively collect all event IDs
@@ -108,14 +107,11 @@
     
     let cancelled = false;
 
-    loading = true;
-    
     fetchMarketPosts(marketEventId)
       .then((events) => buildThreadHierarchy(events, marketEventId))
       .then(async (built) => {
         if (cancelled) return;
         threads = built;
-        loading = false;
         
         const allIds = built.flatMap(collectEventIds);
         if (allIds.length === 0) return;
@@ -129,9 +125,7 @@
           console.error('[ThreadPage] fetchReactions error:', err);
         }
       })
-      .catch(() => {
-        if (!cancelled) loading = false;
-      });
+      .catch(() => {});
 
     return () => {
       cancelled = true;
@@ -204,8 +198,6 @@
   <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
     <span class="text-neutral-500 text-sm">Market not found...</span>
   </div>
-{:else if loading}
-
 {:else if !thread}
   <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
     <span class="text-neutral-500 text-sm">Thread not found...</span>

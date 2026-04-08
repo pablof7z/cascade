@@ -1,8 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import qrcode from 'qrcode';
   import { initNostrStore, getCurrentPubkey } from '$lib/stores/nostr.svelte';
-  import { receiveToken, addWithdrawRecord, getWithdrawHistory, updateWithdrawRecord, type WithdrawRecord } from '../../walletStore';
+  import { receiveToken } from '../../walletStore';
   import { initWalletStore, refreshBalance, getBalance, isRefreshing } from '$lib/stores/wallet.svelte';
   import {
     createMarketDeposit,
@@ -17,6 +16,11 @@
   import { detectInputType, extractAmountFromBolt11, estimateMeltFee, meltTokens, resolveLightningAddress, type MeltResult } from '../../services/withdrawService';
   import WithdrawConfirmation from '$lib/components/WithdrawConfirmation.svelte';
   import WithdrawStatus from '$lib/components/WithdrawStatus.svelte';
+  import QRCode from '$lib/components/QRCode.svelte';
+  import CopyButton from '$lib/components/CopyButton.svelte';
+  import InvoiceExpiry from '$lib/components/InvoiceExpiry.svelte';
+  import MintHealthIndicator from '$lib/components/MintHealthIndicator.svelte';
+  import { addTransaction, updateTransaction, getTransactions, type WalletTransaction } from '$lib/walletHistory';
 
   // Reactive state — derived from shared wallet store (single source of truth)
   let balance = $derived(getBalance());
@@ -33,9 +37,10 @@
   // Deposit flow state
   let showConfirmation = $state(false);
   let confirmedAmount = $state(0);
-  let qrCodeDataUrl = $state<string | null>(null);
-  let invoiceCopied = $state(false);
-  let timeRemaining = $state<number | null>(null);
+
+  // Mint health and operation guard
+  let mintHealthy = $state(true);
+  let isOperationInFlight = $state(false);
 
   // Withdraw tab state
   let withdrawInput = $state('')
@@ -50,8 +55,14 @@
   let withdrawError = $state<string | null>(null)
   let withdrawPreimage = $state<string | null>(null)
 
-  // Withdraw history
-  let withdrawHistory = $state<WithdrawRecord[]>([])
+  // Unified history
+  let unifiedHistory = $state<WalletTransaction[]>([])
+  let historyFilter = $state<'all' | 'deposits' | 'withdrawals'>('all')
+  let filteredHistory = $derived(
+    historyFilter === 'all' ? unifiedHistory :
+    historyFilter === 'deposits' ? unifiedHistory.filter(t => t.type === 'deposit') :
+    unifiedHistory.filter(t => t.type === 'withdrawal')
+  )
 
   // Receive/token state
   let receiveTokenInput = $state('');
@@ -62,35 +73,6 @@
   // Transaction history
   let deposits = $state<Deposit[]>([]);
   let activeTab = $state<'deposit' | 'withdraw' | 'history' | 'receive'>('deposit');
-
-  // Generate QR code locally when invoice changes
-  $effect(() => {
-    const invoice = currentDeposit?.invoice;
-    if (invoice) {
-      qrcode.toDataURL(invoice, { width: 200, margin: 1, color: { dark: '#000000', light: '#ffffff' } })
-        .then(url => { qrCodeDataUrl = url; })
-        .catch(() => { qrCodeDataUrl = null; });
-    } else {
-      qrCodeDataUrl = null;
-    }
-  });
-
-  // Countdown timer for invoice expiry
-  $effect(() => {
-    const expiry = currentDeposit?.expiry;
-    const status = currentDeposit?.status;
-    if (expiry && (status === 'waiting' || status === 'creating')) {
-      const update = () => {
-        const remaining = expiry - Math.floor(Date.now() / 1000);
-        timeRemaining = remaining > 0 ? remaining : 0;
-      };
-      update();
-      const interval = setInterval(update, 1000);
-      return () => clearInterval(interval);
-    } else {
-      timeRemaining = null;
-    }
-  });
 
   onMount(async () => {
     // Initialize Nostr and wallet stores
@@ -103,7 +85,7 @@
     // Load initial balance and deposits
     refreshBalance();
     loadDeposits();
-    loadWithdrawHistory();
+    loadUnifiedHistory();
   });
 
   function loadDeposits() {
@@ -136,6 +118,7 @@
   async function handleConfirmDeposit() {
     showConfirmation = false;
     isCreatingDeposit = true;
+    isOperationInFlight = true;
     depositError = null;
     currentDeposit = null;
 
@@ -157,6 +140,12 @@
           onTokensReceived: () => {
             refreshBalance();
             loadDeposits();
+            addTransaction({
+              type: 'deposit',
+              amount: confirmedAmount,
+              status: 'complete'
+            });
+            loadUnifiedHistory();
           },
           onError: (d, error) => {
             depositError = getDepositErrorMessage(d);
@@ -173,23 +162,12 @@
       depositError = err instanceof Error ? err.message : 'Failed to create deposit';
     } finally {
       isCreatingDeposit = false;
+      isOperationInFlight = false;
     }
   }
 
   function handleCancelConfirmation() {
     showConfirmation = false;
-  }
-
-  async function handleCopyInvoice() {
-    const invoice = currentDeposit?.invoice;
-    if (!invoice) return;
-    try {
-      await navigator.clipboard.writeText(invoice);
-      invoiceCopied = true;
-      setTimeout(() => { invoiceCopied = false; }, 1500);
-    } catch {
-      // clipboard API not available — silently ignore
-    }
   }
 
   function setPresetAmount(sats: number) {
@@ -268,6 +246,15 @@
     withdrawStatus = 'pending'
     withdrawError = null
     withdrawPreimage = null
+    isOperationInFlight = true
+
+    const tx = addTransaction({
+      type: 'withdrawal',
+      amount: withdrawAmount,
+      fee: estimatedFee ?? 0,
+      destination: inputType === 'bolt11' ? withdrawInput.slice(0, 40) + '...' : withdrawInput,
+      status: 'pending'
+    })
 
     try {
       let invoice = withdrawInput
@@ -282,35 +269,27 @@
 
       withdrawStatus = 'processing'
 
-      const record = addWithdrawRecord({
-        amount: withdrawAmount,
-        fee: estimatedFee ?? 0,
-        destination: inputType === 'bolt11' ? withdrawInput.slice(0, 40) + '...' : withdrawInput,
-        status: 'pending'
-      })
-
       const result: MeltResult = await meltTokens(withdrawAmount, invoice)
 
       if (result.success) {
         withdrawStatus = 'complete'
         withdrawPreimage = result.preimage ?? null
-        updateWithdrawRecord(record.id, {
-          status: 'complete',
-          fee: result.feePaid ?? estimatedFee ?? 0,
-          preimage: result.preimage
-        })
+        updateTransaction(tx.id, { status: 'complete', fee: result.feePaid ?? estimatedFee ?? 0 })
         refreshBalance()
-        loadWithdrawHistory()
+        loadUnifiedHistory()
       } else {
         withdrawStatus = 'failed'
         withdrawError = result.error?.message ?? 'Withdrawal failed'
-        updateWithdrawRecord(record.id, { status: 'failed' })
-        loadWithdrawHistory()
+        updateTransaction(tx.id, { status: 'failed' })
+        loadUnifiedHistory()
       }
     } catch (e) {
       withdrawStatus = 'failed'
       withdrawError = e instanceof Error ? e.message : 'Withdrawal failed'
-      loadWithdrawHistory()
+      updateTransaction(tx.id, { status: 'failed' })
+      loadUnifiedHistory()
+    } finally {
+      isOperationInFlight = false
     }
   }
 
@@ -334,8 +313,8 @@
     showWithdrawConfirmation = false
   }
 
-  function loadWithdrawHistory() {
-    withdrawHistory = getWithdrawHistory()
+  function loadUnifiedHistory() {
+    unifiedHistory = getTransactions()
   }
 
   async function handleReceiveToken() {
@@ -373,7 +352,6 @@
       }
       clearInactiveDeposits();
       currentDeposit = null;
-      qrCodeDataUrl = null;
     }
   }
 
@@ -390,11 +368,7 @@
     });
   }
 
-  function formatCountdown(seconds: number): string {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  }
+
 </script>
 
 <svelte:head>
@@ -429,6 +403,9 @@
         >
           Refresh
         </button>
+      </div>
+      <div class="flex items-center justify-between mt-3">
+        <MintHealthIndicator mintUrl={getMintUrl()} bind:mintHealthy />
       </div>
     </div>
 
@@ -519,7 +496,7 @@
 
               <button
                 onclick={handleCreateDeposit}
-                disabled={isCreatingDeposit || !depositAmount}
+                disabled={isCreatingDeposit || !depositAmount || isOperationInFlight || !mintHealthy}
                 class="w-full px-4 py-2.5 text-sm font-medium text-neutral-950 bg-white hover:bg-neutral-200 disabled:bg-neutral-600 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors"
               >
                 {isCreatingDeposit ? 'Creating invoice...' : 'Create invoice'}
@@ -542,23 +519,19 @@
             </p>
 
             <!-- Expiry countdown -->
-            {#if timeRemaining !== null && currentDeposit.status === 'waiting'}
-              <div class="mb-4 flex items-center gap-2">
-                <span class="text-xs text-neutral-500">Expires in</span>
-                <span class="text-sm font-mono {timeRemaining < 60 ? 'text-rose-400' : 'text-neutral-300'}">
-                  {timeRemaining === 0 ? 'Expired' : formatCountdown(timeRemaining)}
-                </span>
+            {#if currentDeposit.expiry && currentDeposit.status === 'waiting'}
+              <div class="mb-4">
+                <InvoiceExpiry
+                  expiresAt={currentDeposit.expiry}
+                  onExpired={() => { clearCurrentDeposit() }}
+                />
               </div>
             {/if}
 
-            <!-- QR code (locally generated) -->
-            {#if qrCodeDataUrl && currentDeposit.status === 'waiting'}
-              <div class="flex justify-center mb-4">
-                <img
-                  src={qrCodeDataUrl}
-                  alt="Lightning Invoice QR Code"
-                  class="w-48 h-48 rounded-sm"
-                />
+            <!-- QR code -->
+            {#if currentDeposit.invoice && currentDeposit.status === 'waiting'}
+              <div class="flex justify-center mb-4 bg-white p-3 w-fit mx-auto">
+                <QRCode value={currentDeposit.invoice} size={192} />
               </div>
             {/if}
 
@@ -567,12 +540,7 @@
               <div class="mb-4">
                 <div class="flex items-center justify-between mb-1">
                   <p class="text-xs text-neutral-500">Invoice</p>
-                  <button
-                    onclick={handleCopyInvoice}
-                    class="text-xs text-neutral-400 hover:text-white transition-colors"
-                  >
-                    {invoiceCopied ? 'Copied!' : 'Copy invoice'}
-                  </button>
+                  <CopyButton text={currentDeposit.invoice} label="Copy invoice" />
                 </div>
                 <p class="text-xs font-mono text-neutral-300 break-all bg-neutral-800 p-2 rounded">
                   {currentDeposit.invoice}
@@ -694,7 +662,7 @@
 
           <button
             onclick={handleShowWithdrawConfirmation}
-            disabled={withdrawAmount === null || withdrawAmount <= 0 || inputType === 'invalid' || inputType === 'lnurl' || isResolvingLnAddress || (withdrawAmount + (estimatedFee ?? 0) > balance)}
+            disabled={withdrawAmount === null || withdrawAmount <= 0 || inputType === 'invalid' || inputType === 'lnurl' || isResolvingLnAddress || (withdrawAmount + (estimatedFee ?? 0) > balance) || isOperationInFlight || !mintHealthy}
             class="w-full px-4 py-2.5 text-sm font-medium text-neutral-950 bg-white hover:bg-neutral-200 disabled:bg-neutral-600 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors"
           >
             {isResolvingLnAddress ? 'Resolving Lightning address...' : 'Continue'}
@@ -702,26 +670,6 @@
         </div>
       {/if}
 
-      {#if withdrawHistory.length > 0}
-        <div class="mt-6 bg-neutral-900 border border-neutral-800 rounded-sm overflow-hidden">
-          <div class="p-4 border-b border-neutral-800">
-            <h3 class="text-sm font-medium text-neutral-300">Recent withdrawals</h3>
-          </div>
-          <div class="divide-y divide-neutral-800">
-            {#each withdrawHistory.slice(0, 10) as record}
-              <div class="p-4 flex items-center justify-between">
-                <div>
-                  <span class="font-mono text-sm text-rose-300">-{record.amount.toLocaleString()}</span>
-                  <span class="ml-2 text-xs px-1.5 py-0.5 {record.status === 'complete' ? 'bg-emerald-900 text-emerald-400' : record.status === 'failed' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
-                    {record.status}
-                  </span>
-                </div>
-                <span class="text-xs text-neutral-500">{formatDate(record.timestamp)}</span>
-              </div>
-            {/each}
-          </div>
-        </div>
-      {/if}
     {/if}
 
     <!-- Receive Tab -->
@@ -767,31 +715,42 @@
 
     <!-- History Tab -->
     {#if activeTab === 'history'}
-      <div class="bg-neutral-900 border border-neutral-800 rounded-sm overflow-hidden">
-        <div class="p-4 border-b border-neutral-800">
-          <h2 class="text-lg font-medium text-white">Transaction History</h2>
+      <div>
+        <!-- Filter tabs -->
+        <div class="flex gap-1 border-b border-neutral-800 mb-4">
+          {#each [['all', 'All'], ['deposits', 'Deposits'], ['withdrawals', 'Withdrawals']] as [value, label]}
+            <button
+              onclick={() => historyFilter = value as typeof historyFilter}
+              class="px-3 py-2 text-sm font-medium transition-colors -mb-px {historyFilter === value ? 'border-b-2 border-white text-white' : 'text-neutral-500 hover:text-neutral-300'}"
+            >
+              {label}
+            </button>
+          {/each}
         </div>
 
-        {#if deposits.length === 0}
+        {#if filteredHistory.length === 0}
           <div class="p-8 text-center">
             <p class="text-neutral-500">No transactions yet</p>
           </div>
         {:else}
           <div class="divide-y divide-neutral-800">
-            {#each deposits as deposit}
-              <div class="p-4 flex items-center justify-between">
+            {#each filteredHistory as tx}
+              <div class="py-3 flex items-center justify-between">
                 <div>
                   <div class="flex items-center gap-2">
-                    <span class="text-emerald-400 font-mono text-sm">+{formatSats(deposit.amount)}</span>
-                    <span class="text-xs px-1.5 py-0.5 {deposit.status === 'completed' ? 'bg-emerald-900 text-emerald-400' : deposit.status === 'failed' || deposit.status === 'expired' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
-                      {deposit.status}
+                    <span class="font-mono text-sm {tx.type === 'deposit' || tx.type === 'receive' ? 'text-emerald-400' : 'text-rose-300'}">
+                      {tx.type === 'deposit' || tx.type === 'receive' ? '+' : '-'}{tx.amount.toLocaleString()}
                     </span>
+                    <span class="text-xs px-1.5 py-0.5 {tx.status === 'complete' ? 'bg-emerald-900 text-emerald-400' : tx.status === 'failed' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
+                      {tx.status}
+                    </span>
+                    <span class="text-xs text-neutral-600">{tx.type}</span>
                   </div>
-                  <p class="text-xs text-neutral-500 mt-1">{formatDate(deposit.createdAt)}</p>
+                  {#if tx.destination}
+                    <p class="text-xs text-neutral-500 mt-0.5">{tx.destination}</p>
+                  {/if}
                 </div>
-                <div class="text-right">
-                  <p class="text-xs text-neutral-500">Deposit</p>
-                </div>
+                <span class="text-xs text-neutral-500">{formatDate(tx.timestamp)}</span>
               </div>
             {/each}
           </div>

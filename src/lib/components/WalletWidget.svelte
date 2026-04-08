@@ -1,10 +1,19 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { forceRefreshBalance, initWalletStore, getBalance, getError, isRefreshing as storeIsRefreshing } from '$lib/stores/wallet.svelte';
+  import { getMintUrl } from '$lib/config/mint';
 
   // Local state
   let isOpen = $state(false);
   let dropdownRef = $state<HTMLDivElement | null>(null);
+  let mintOnline = $state(true);
+
+  // One-time mint health check
+  $effect(() => {
+    fetch(`${getMintUrl()}/v1/info`, { signal: AbortSignal.timeout(5000) })
+      .then(r => { mintOnline = r.ok })
+      .catch(() => { mintOnline = false })
+  });
 
   // Reactive state from store
   let balance = $derived(getBalance());
@@ -61,6 +70,9 @@
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
     </svg>
+
+    <!-- Mint health dot -->
+    <span class="w-1.5 h-1.5 rounded-full {mintOnline ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
 
     <!-- Balance -->
     <div class="hidden sm:flex items-center gap-2">

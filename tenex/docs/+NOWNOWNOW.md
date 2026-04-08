@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-08 11:05 UTC — SEO shipped (SeoHead + dynamic OG + cache headers). CDK blind signing in progress on phase-8-testnet-mint branch.*
+*Last updated: 2026-04-08 11:30 UTC — CDK blind signing shipped to phase-8-testnet-mint (`f364a9c`). SEO live on main. Simulator working + committed. All pushed.*
 
 ---
 
@@ -8,7 +8,7 @@
 
 | When | What | Details |
 |------|------|---------|
-| **ACTIVE NOW** | CDK Blind Signing — claude-code | Conv: a5167f7875. Branch: phase-8-testnet-mint. Build ✅, replacing mock tokens with real blind signatures |
+| When Pablo decides | Merge phase-8-testnet-mint → main | CDK blind signing committed (`f364a9c`). Ready to merge when mint deployment ready. |
 | When Pablo sends | 10 DMs from X account for growth campaign | DM file at `$AGENT_HOME/research/dm-campaign-10-users.md` |
 | When Pablo publishes | Substack article | Article ready + published to Nostr; needs Substack distribution |
 
@@ -18,6 +18,8 @@
 
 | Item | Commit | Status |
 |------|--------|--------|
+| **CDK Blind Signing — real tokens on phase-8-testnet-mint** | `f364a9c` | ✅ types.rs + settlement.rs + market.rs — `blind_sign` replaces all mock token outputs, `rotate_keyset` per market |
+| **Activity Simulator** | `95c8dd4` | ✅ `scripts/simulate.ts` — 200 keypairs, Ollama content, kind 982/1111/7/30078, relay publishing working |
 | **SEO: SeoHead component + dynamic OG tags + cache headers** | `fde14de` | ✅ Market pages now have real social cards when shared |
 | **Fix raw pubkey jargon** | `95c8dd4` | ✅ 9 files — display names instead of hex pubkeys |
 | **Fix testnet mint URL + legal jargon** | `5de2494` | ✅ Issues 1, 3, 4 fixed |

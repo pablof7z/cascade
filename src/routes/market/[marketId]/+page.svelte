@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
+  import SeoHead from '$lib/components/SeoHead.svelte';
   import NavHeader from '$lib/components/NavHeader.svelte';
   import BookmarkButton from '$lib/components/BookmarkButton.svelte';
   import Footer from '$lib/components/Footer.svelte';
@@ -165,39 +166,17 @@
   }
 </script>
 
-<svelte:head>
-  {#if market}
-    {@const pct = Math.round(probability * 100)}
-    {@const marketUrl = `https://cascade.markets/market/${market.slug}`}
-    <title>{market.title} — {pct}% YES | Cascade</title>
-    <meta name="description" content="{market.description.slice(0, 140)}. Currently {pct}% probability on Cascade." />
-    
-    <!-- Open Graph -->
-    <meta property="og:type" content="article" />
-    <meta property="og:site_name" content="Cascade" />
-    <meta property="og:title" content="{market.title} — {pct}% YES" />
-    <meta property="og:description" content="{market.description.slice(0, 155)}" />
-    <meta property="og:image" content="https://cascade.markets/og/market.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:url" content={marketUrl} />
-    
-    <!-- Twitter/X -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@cascademarkets" />
-    <meta name="twitter:title" content="{market.title}" />
-    <meta name="twitter:description" content="{pct}% YES · {market.status === 'active' ? 'Market open' : 'Resolved'}" />
-    <meta name="twitter:image" content="https://cascade.markets/og/market.png" />
-    <meta name="twitter:label1" content="Probability" />
-    <meta name="twitter:data1" content="{pct}% YES" />
-    <meta name="twitter:label2" content="Status" />
-    <meta name="twitter:data2" content="{market.status === 'active' ? 'Open' : 'Closed'}" />
-  {:else}
-    <title>Prediction Market | Cascade</title>
-    <meta property="og:title" content="Prediction Market | Cascade" />
-    <meta name="twitter:card" content="summary_large_image" />
-  {/if}
-</svelte:head>
+{#if data.seo}
+  <SeoHead
+    title={data.seo.title}
+    description={data.seo.description ?? undefined}
+    image={data.seo.image ?? 'https://cascade.markets/og/market.png'}
+    url={`https://cascade.markets/market/${data.market?.slug}`}
+    type="article"
+  />
+{:else}
+  <SeoHead title="Prediction Market" />
+{/if}
 
 <div class="min-h-screen bg-neutral-950 text-white">
   <NavHeader />

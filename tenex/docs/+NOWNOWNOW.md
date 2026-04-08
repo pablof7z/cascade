@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-08 06:45 UTC — CCN compat + getMintUrl fixes shipped. UI audit fixes in progress.*
+*Last updated: 2026-04-08 06:55 UTC — UI audit fixes shipped. Ready for Phase 8.*
 
 ---
 
@@ -8,7 +8,7 @@
 
 | When | What | Details |
 |------|------|---------|
-| After UI audit fixes land | Verify build, commit, push. Then delegate Phase 8 Phase 1 (testnet mint) | Plan: `.tenex/plans/phase-8-real-money-integration-revised.md` |
+| Next session | Delegate Phase 8 Phase 1 (testnet mint) to execution-coordinator | Plan: `.tenex/plans/phase-8-real-money-integration-revised.md` |
 | When Pablo wakes | Growth DM campaign + Substack article decision | Twitter/X API or manual sends needed |
 
 ---
@@ -24,6 +24,7 @@
 | **Fix walletStore.ts runtime regression** | `06e601a` | ✅ Missing `let` declarations for walletInstance/ndkInstance, pushed to main |
 | **Svelte 5 store backward compat fixes** | `799912a` | ✅ isTestnet.get()→isTestnet(), $nostrStore→nostrStore.get(), .env.example |
 | **Fix getMintUrl() runtime override** | `ab04ad2` | ✅ Now respects currentMintUrl set via setMintUrl() |
+| **UI Audit Fixes** | `6d88edd` | ✅ 12 page titles, Nostr jargon removal, rounded-full→rounded-sm, bg-fill toggle fix |
 | **Memory leak fix (discuss page subscriptions)** | `57eb103` | ✅ Committed + pushed to main |
 | **NDK subscription migration (discuss page)** | `0b11156` | ✅ Committed + pushed to main |
 | **Phase 8 Planning Artifacts** | `711bbc4` | ✅ 25 plan files committed + pushed to main |
@@ -45,9 +46,7 @@
 
 ## 🔄 In Progress
 
-| Item | Status | Details |
-|------|--------|---------|
-| **UI Audit Fixes** | 🔄 Delegated to claude-code (308c4c2868) | Page titles, Nostr jargon, raw pubkeys, rounded-full progress bars, background-fill toggles |
+No active work in progress.
 
 ---
 

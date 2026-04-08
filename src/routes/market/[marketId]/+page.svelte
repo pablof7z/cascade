@@ -432,7 +432,7 @@
                 >
                   Set Up Wallet
                 </a>
-                <p class="text-sm text-neutral-500">Add funds to start trading.</p>
+                <p class="text-sm text-neutral-500">Set up your wallet to start trading.</p>
               </div>
             {:else}
               <!-- Trade Header -->

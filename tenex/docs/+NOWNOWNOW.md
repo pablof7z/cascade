@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-08 12:30 UTC — UX audit complete. 2 delegations active: auth gate fix + 4x small UX fixes.*
+*Last updated: 2026-04-08 14:10 UTC — Nav "Sign in" routes to /join. Welcome page has new-user path. Auth gate + scroll CTA already live.*
 
 ---
 
@@ -18,6 +18,7 @@
 
 | Item | Commit | Status |
 |------|--------|--------|
+| **Nav "Sign in" → /join, welcome page new-user path** | `485c0e4` | ✅ Nav no longer dead-ends new users; welcome page links to /join |
 | **Fix threadBuilder author jargon + discuss loading blank** | `5611012` | ✅ Reply authors show 'Anonymous' not hex; discuss no blank state on load |
 | **Wallet UX: Lightning withdraw + local QR + auto-polling** | `d95723f` | ✅ Lightning withdrawal flow, local QR (no external service), 5s balance auto-polling |
 | **Remove dead Side/Sats fields from market creation modal** | `35e0d47` | ✅ Jargon gone, form cleaner — fields never did anything, now deleted |

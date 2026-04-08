@@ -1,9 +1,10 @@
 //! Database persistence layer using SQLite
 
 use crate::error::Result;
-use crate::market::{Market, MarketStatus};
+use crate::market::{Market, MarketStatus, Side};
 use crate::trade::{Trade, Payout};
 use sqlx::sqlite::{SqlitePool, SqliteConnectOptions};
+use chrono::DateTime;
 use std::str::FromStr;
 
 /// Database connection pool
@@ -83,7 +84,7 @@ impl CascadeDatabase {
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
-        Ok(row.map(|(event_id, slug, title, description, b, q_long, q_short, reserve_sats, _status, resolution_outcome, creator_pubkey, created_at, resolved_at, long_keyset_id, short_keyset_id)| {
+        Ok(row.map(|(event_id, slug, title, description, b, q_long, q_short, reserve_sats, status, resolution_outcome, creator_pubkey, created_at, resolved_at, long_keyset_id, short_keyset_id)| {
             Market {
                 event_id,
                 slug,
@@ -93,7 +94,7 @@ impl CascadeDatabase {
                 q_long,
                 q_short,
                 reserve_sats: reserve_sats as u64,
-                status: MarketStatus::Active, // TODO: parse from string
+                status: status.parse().unwrap_or(MarketStatus::Active),
                 resolution_outcome: resolution_outcome.and_then(|s| s.parse().ok()),
                 creator_pubkey,
                 created_at,
@@ -113,7 +114,7 @@ impl CascadeDatabase {
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
-        Ok(rows.into_iter().map(|(event_id, slug, title, description, b, q_long, q_short, reserve_sats, _status, resolution_outcome, creator_pubkey, created_at, resolved_at, long_keyset_id, short_keyset_id)| {
+        Ok(rows.into_iter().map(|(event_id, slug, title, description, b, q_long, q_short, reserve_sats, status, resolution_outcome, creator_pubkey, created_at, resolved_at, long_keyset_id, short_keyset_id)| {
             Market {
                 event_id,
                 slug,
@@ -123,7 +124,7 @@ impl CascadeDatabase {
                 q_long,
                 q_short,
                 reserve_sats: reserve_sats as u64,
-                status: MarketStatus::Active, // TODO: parse from string
+                status: status.parse().unwrap_or(MarketStatus::Active),
                 resolution_outcome: resolution_outcome.and_then(|s| s.parse().ok()),
                 creator_pubkey,
                 created_at,
@@ -172,16 +173,29 @@ impl CascadeDatabase {
 
     /// Get trades for a market
     pub async fn get_trades(&self, market_id: &str) -> Result<Vec<Trade>> {
-        // This is a stub — full implementation would reconstruct Trade structs from rows
-        let _rows = sqlx::query(
-            "SELECT id, market_id, buyer_pubkey, side, quantity, cost_sats, fee_sats, created_at FROM trades WHERE market_id = ? ORDER BY created_at DESC"
+        let rows = sqlx::query_as::<_, (String, String, String, String, f64, i64, i64, i64)>(
+            "SELECT id, market_slug, buyer_pubkey, side, quantity, cost_sats, fee_sats, created_at FROM trades WHERE market_slug = ? ORDER BY created_at DESC"
         )
         .bind(market_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
-        Ok(Vec::new()) // TODO: Reconstruct Trade structs
+        Ok(rows.into_iter().map(|(id, market_slug, buyer_pubkey, side_str, quantity, cost_sats, fee_sats, created_at_ts)| {
+            let side = side_str.parse().unwrap_or(Side::Long);
+            let created_at = DateTime::from_timestamp(created_at_ts, 0).unwrap_or_default();
+            Trade {
+                id,
+                market_id: market_slug,
+                buyer_pubkey,
+                side,
+                quantity,
+                cost_sats: cost_sats as u64,
+                fee_sats: fee_sats as u64,
+                total_sats: (cost_sats + fee_sats) as u64,
+                created_at,
+            }
+        }).collect())
     }
 
     /// Insert LMSR price snapshot

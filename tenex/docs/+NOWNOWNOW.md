@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-08 06:55 UTC — UI audit fixes shipped. Ready for Phase 8.*
+*Last updated: 2026-04-08 09:00 UTC — Footer icon fix + style fixes shipped. All style guide violations resolved.*
 
 ---
 
@@ -29,6 +29,10 @@
 | **NDK subscription migration (discuss page)** | `0b11156` | ✅ Committed + pushed to main |
 | **Phase 8 Planning Artifacts** | `711bbc4` | ✅ 25 plan files committed + pushed to main |
 | **Phase 8 Plan APPROVED** | — | ✅ Self-hosted mint, LND, no KYC for MVP |
+| **Style fixes: rounded pills + wallet rounding** | `8a1540a` | ✅ Removed `rounded` from badges, 11x `rounded-lg`→`rounded-sm` in wallet |
+| **Style fix: EmbedModal rounding** | `8ef275b` | ✅ `rounded-lg`→`rounded-sm` per style guide |
+| **Footer icon conditional fix** | `c8630b6` | ✅ `link.label === 'Nostr'`→`'Cascade'` — icon now renders correctly |
+| **Stale branch cleanup** | — | ✅ 7 local branches pruned |
 | **Stale worktree cleanup** | — | ✅ Removed refactor/wallet-consolidation + refactor/wallet-svelte5 |
 
 ## ✅ Shipped (2026-04-07)

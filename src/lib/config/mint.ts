@@ -30,6 +30,10 @@ export const MINT_RELAYS = [
  * Returns the configured URL or falls back to the default.
  */
 export function getMintUrl(): string {
+  // Respect runtime override set via setMintUrl()
+  if (currentMintUrl && currentMintUrl !== (ENV_MINT_URL || DEFAULT_MAINNET_MINT)) {
+    return currentMintUrl
+  }
   if (ENV_MINT_URL) {
     return ENV_MINT_URL
   }

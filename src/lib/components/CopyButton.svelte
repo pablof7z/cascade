@@ -2,12 +2,14 @@
   let { text, label = 'Copy' }: { text: string; label?: string } = $props();
 
   let copied = $state(false);
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(text);
+      if (timeoutId) clearTimeout(timeoutId);
       copied = true;
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         copied = false;
       }, 2000);
     } catch {

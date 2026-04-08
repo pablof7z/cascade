@@ -12,15 +12,15 @@
 
   let { event, upvotes, downvotes, marketId, onReact }: Props = $props();
 
-  // Parse stance and type from event tags
-  const tags = parseEventTags(event);
-  const stance = tags.stance ?? 'neutral';
-  const type = tags.type ?? 'analysis';
+  // Parse stance and type from event tags (reactive)
+  const tags = $derived(parseEventTags(event));
+  const stance = $derived(tags.stance ?? 'neutral');
+  const type = $derived(tags.type ?? 'analysis');
 
   // Local state for voting
   let voted = $state<'up' | 'down' | null>(null);
-  let localUpvotes = $state(upvotes);
-  let localDownvotes = $state(downvotes);
+  let localUpvotes = $state<number>(0);
+  let localDownvotes = $state<number>(0);
   let authorName = $state<string | null>(null);
   let authorNpub = $state<string>('');
 

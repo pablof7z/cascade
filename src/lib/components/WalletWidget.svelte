@@ -1,19 +1,25 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { walletStore, forceRefreshBalance } from '$lib/walletStore';
+  import { forceRefreshBalance, initWalletStore } from '$lib/stores/wallet.svelte';
 
   // Local state
   let isOpen = $state(false);
   let dropdownRef = $state<HTMLDivElement | null>(null);
+  let balance = $state(0);
+  let error = $state<string | null>(null);
+  let isRefreshing = $state(false);
 
-  // Subscribe to wallet store
-  let state = $state({ balance: 0, error: null as string | null, isRefreshing: false });
-
+  // Initialize wallet store on mount
   $effect(() => {
-    const unsubscribe = walletStore.subscribe((newState) => {
-      state = newState;
-    });
-    return unsubscribe;
+    initWalletStore();
+  });
+
+  // Periodic refresh (replaces 30-second polling with controlled refresh)
+  $effect(() => {
+    const interval = setInterval(() => {
+      forceRefreshBalance();
+    }, 30000);
+    return () => clearInterval(interval);
   });
 
   // Close dropdown when clicking outside
@@ -56,11 +62,11 @@
 
     <!-- Balance -->
     <div class="hidden sm:flex items-center gap-2">
-      {#if state.isRefreshing}
+      {#if isRefreshing}
         <span class="text-xs text-neutral-500">Syncing...</span>
       {:else}
-        <span class="font-mono text-xs {state.error ? 'text-neutral-500' : 'text-white'}">
-          {formatSats(state.balance)}
+        <span class="font-mono text-xs {error ? 'text-neutral-500' : 'text-white'}">
+          {formatSats(balance)}
         </span>
         <span class="text-xs text-neutral-500">sats</span>
       {/if}
@@ -86,20 +92,20 @@
           <span class="text-xs text-neutral-500">Balance</span>
           <button
             onclick={handleRefresh}
-            disabled={state.isRefreshing}
+            disabled={isRefreshing}
             class="text-xs text-neutral-500 hover:text-neutral-300 disabled:opacity-50"
           >
-            {state.isRefreshing ? 'Refreshing...' : 'Refresh'}
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
-        {#if state.error}
-          <p class="text-xs text-neutral-500 mt-1">{state.error}</p>
+        {#if error}
+          <p class="text-xs text-neutral-500 mt-1">{error}</p>
           <p class="font-mono text-lg text-neutral-500 mt-1">
-            {formatSats(state.balance)} sats
+            {formatSats(balance)} sats
           </p>
         {:else}
           <p class="font-mono text-xl text-white">
-            {formatSats(state.balance)} <span class="text-sm text-neutral-400">sats</span>
+            {formatSats(balance)} <span class="text-sm text-neutral-400">sats</span>
           </p>
         {/if}
       </div>

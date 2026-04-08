@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { nostrStore } from '$lib/stores/nostr';
+  import { initNostrStore, getCurrentPubkey } from '$lib/stores/nostr.svelte';
   import { getWalletBalance, createDeposit, sendTokens, receiveToken } from '../../walletStore';
+  import { initWalletStore, refreshBalance } from '$lib/stores/wallet.svelte';
   import { createMarketDeposit, getAllDeposits, clearInactiveDeposits, type Deposit } from '../../services/depositService';
 
   // Reactive state
@@ -38,17 +39,17 @@
     : null
   );
 
-  onMount(() => {
-    // Subscribe to nostr store
-    const unsubscribe = nostrStore.subscribe((state) => {
-      pubkey = state.pubkey;
-    });
-
+  onMount(async () => {
+    // Initialize Nostr and wallet stores
+    await initNostrStore();
+    await initWalletStore();
+    
+    // Get initial pubkey
+    pubkey = getCurrentPubkey();
+    
     // Load initial balance and deposits
     loadBalance();
     loadDeposits();
-
-    return unsubscribe;
   });
 
   async function loadBalance() {

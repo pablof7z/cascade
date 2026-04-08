@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-08 11:30 UTC — CDK blind signing shipped to phase-8-testnet-mint (`f364a9c`). SEO live on main. Simulator working + committed. All pushed.*
+*Last updated: 2026-04-08 12:10 UTC — Wallet UX shipped. Market creation dead fields removed. Simulator startup fixed. All on main.*
 
 ---
 
@@ -18,6 +18,12 @@
 
 | Item | Commit | Status |
 |------|--------|--------|
+| **Wallet UX: Lightning withdraw + local QR + auto-polling** | `d95723f` | ✅ Lightning withdrawal flow, local QR (no external service), 5s balance auto-polling |
+| **Remove dead Side/Sats fields from market creation modal** | `35e0d47` | ✅ Jargon gone, form cleaner — fields never did anything, now deleted |
+| **Activity Simulator: skip profile re-publish on restart** | uncommitted | ✅ `profilesPublished` flag in state — restarts skip 200s blocking publish loop |
+| **Fix relay jargon on activity page error** | `5293183` | ✅ Removed relay URL from user-facing error message |
+| **Fix hardcoded $12.5K volume** | `4361d13` | ✅ Real volume computed from receipts |
+| **Fix missing executeTrade import on market page** | `19aaaa7` | ✅ Runtime ReferenceError fixed |
 | **CDK Blind Signing — real tokens on phase-8-testnet-mint** | `f364a9c` | ✅ types.rs + settlement.rs + market.rs — `blind_sign` replaces all mock token outputs, `rotate_keyset` per market |
 | **Activity Simulator** | `95c8dd4` | ✅ `scripts/simulate.ts` — 200 keypairs, Ollama content, kind 982/1111/7/30078, relay publishing working |
 | **SEO: SeoHead component + dynamic OG tags + cache headers** | `fde14de` | ✅ Market pages now have real social cards when shared |

@@ -23,7 +23,7 @@
       } catch {
         status = 'disconnected';
       }
-      mintHealthy = status === 'connected' || status === 'degraded';
+      mintHealthy = status === 'connected';
     }
 
     checkHealth();
@@ -39,7 +39,7 @@
     status === 'connected'
       ? 'bg-emerald-500'
       : status === 'degraded'
-        ? 'bg-amber-500'
+        ? 'bg-rose-500'
         : status === 'disconnected'
           ? 'bg-rose-500'
           : 'bg-neutral-500 animate-pulse'

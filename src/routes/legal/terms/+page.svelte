@@ -1,6 +1,10 @@
 <script lang="ts">
 </script>
 
+<svelte:head>
+  <title>Terms of Service | Cascade</title>
+</svelte:head>
+
 <div class="min-h-screen bg-neutral-950 py-20">
   <div class="max-w-3xl mx-auto px-6">
     <h1 class="text-4xl font-bold text-white mb-4">Terms of Service</h1>

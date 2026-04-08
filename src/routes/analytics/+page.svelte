@@ -21,6 +21,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Analytics | Cascade</title>
+</svelte:head>
+
 <div class="max-w-4xl mx-auto px-4 py-8">
   <div class="flex items-center justify-between mb-8">
     <h1 class="text-2xl font-sans text-white">Analytics</h1>

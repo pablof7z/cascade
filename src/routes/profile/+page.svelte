@@ -11,13 +11,17 @@
   });
 </script>
 
+<svelte:head>
+  <title>Profile | Cascade</title>
+</svelte:head>
+
 <div class="flex flex-col items-center justify-center min-h-[60vh] px-4">
   <div class="text-center max-w-md">
     <h1 class="text-2xl font-medium text-white mb-4">
       Sign in to view your profile
     </h1>
     <p class="text-neutral-400 mb-8">
-      Connect with your Nostr identity to access your profile and trading history.
+      Connect with your identity to access your profile and trading history.
     </p>
     <a
       href="/join"

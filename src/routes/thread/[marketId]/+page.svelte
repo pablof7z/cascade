@@ -196,6 +196,10 @@
   let marketSlug = $derived(market ? `${market.slug}--${market.creatorPubkey.slice(0, 12)}` : marketId);
 </script>
 
+<svelte:head>
+  <title>Discussion | Cascade</title>
+</svelte:head>
+
 {#if !market}
   <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
     <span class="text-neutral-500 text-sm">Market not found...</span>

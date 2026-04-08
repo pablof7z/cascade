@@ -643,10 +643,10 @@ Ready to start? Your identity will be secured with your chosen authentication me
                 <button
                   onclick={() => handleInterestToggle(interest)}
                   disabled={selectedInterests.length >= 5 && !selectedInterests.includes(interest)}
-                  class="px-3 py-1.5 text-xs font-medium transition-colors border rounded-full
+                  class="px-3 py-1.5 text-xs font-medium transition-colors border rounded-sm
                     {selectedInterests.includes(interest)
-                      ? 'bg-white text-neutral-950 border-white'
-                      : 'bg-neutral-900 text-neutral-300 border-neutral-700 hover:border-neutral-500 disabled:opacity-30 disabled:cursor-not-allowed'}"
+                      ? 'text-white border-white'
+                      : 'text-neutral-300 border-neutral-700 hover:border-neutral-500 disabled:opacity-30 disabled:cursor-not-allowed'}"
                 >
                   {getInterestLabel(interest)}
                 </button>

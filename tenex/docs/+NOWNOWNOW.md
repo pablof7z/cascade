@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-08 00:20 UTC — Frontend refactor in progress. Phase 8 plan approved & committed. Memory leak fix shipped.*
+*Last updated: 2026-04-08 06:45 UTC — CCN compat + getMintUrl fixes shipped. UI audit fixes in progress.*
 
 ---
 
@@ -8,9 +8,8 @@
 
 | When | What | Details |
 |------|------|---------|
-| After frontend refactor ships | Delegate Phase 8 Phase 1 (testnet mint) to execution-coordinator | Plan: `.tenex/plans/phase-8-real-money-integration-revised.md` |
-| After web-tester reports | Fix any CRITICAL/HIGH visual issues found | Audit of cascade.f7z.io running (conv: 8c407441ab) |
-| After agent categorization ships | Reduce context for orchestrator/router agents | `projects/TENEX-ff3ssq/docs/follow-ups.md` |
+| After UI audit fixes land | Verify build, commit, push. Then delegate Phase 8 Phase 1 (testnet mint) | Plan: `.tenex/plans/phase-8-real-money-integration-revised.md` |
+| When Pablo wakes | Growth DM campaign + Substack article decision | Twitter/X API or manual sends needed |
 
 ---
 
@@ -18,12 +17,18 @@
 
 | Item | Commit | Status |
 |------|--------|--------|
+| **Wallet Refactor Step 1: Mint URL Consolidation** | `0e9779f` | ✅ Committed + pushed to main |
+| **Wallet Refactor Step 2: Svelte 5 $state Migration** | `e358fd6` | ✅ Committed + pushed to main |
+| **Wallet Refactor Step 3: Unify Wallet Access Paths** | `da7fbca` | ✅ Committed + pushed to main |
+| **Fix 500 Error on /market/[marketId]** | `1546887` | ✅ Client-side load + MarketCard link fix, pushed to main |
+| **Fix walletStore.ts runtime regression** | `06e601a` | ✅ Missing `let` declarations for walletInstance/ndkInstance, pushed to main |
+| **Svelte 5 store backward compat fixes** | `799912a` | ✅ isTestnet.get()→isTestnet(), $nostrStore→nostrStore.get(), .env.example |
+| **Fix getMintUrl() runtime override** | `ab04ad2` | ✅ Now respects currentMintUrl set via setMintUrl() |
 | **Memory leak fix (discuss page subscriptions)** | `57eb103` | ✅ Committed + pushed to main |
 | **NDK subscription migration (discuss page)** | `0b11156` | ✅ Committed + pushed to main |
 | **Phase 8 Planning Artifacts** | `711bbc4` | ✅ 25 plan files committed + pushed to main |
 | **Phase 8 Plan APPROVED** | — | ✅ Self-hosted mint, LND, no KYC for MVP |
-| **Frontend refactor scoping** | — | ✅ 4 priorities identified |
-| **Stale worktree cleanup** | — | ✅ `audit-visual-functional` removed |
+| **Stale worktree cleanup** | — | ✅ Removed refactor/wallet-consolidation + refactor/wallet-svelte5 |
 
 ## ✅ Shipped (2026-04-07)
 
@@ -40,14 +45,9 @@
 
 ## 🔄 In Progress
 
-### Frontend Wallet Refactor (Phase 8 Prerequisite)
-- **Delegated**: execution-coordinator → claude-code (conv: 8ea3c8f8d5)
-- **Branch**: `refactor/wallet-svelte5`
-- **4 Priorities**: P1 unify wallet store, P2 component extraction, P3 wire missing flows, P4 reactivity fixes
-
-### Visual/Functional Audit of cascade.f7z.io
-- **Delegated**: web-tester → explore-agent (conv: 8c407441ab)
-- **Status**: Awaiting results
+| Item | Status | Details |
+|------|--------|---------|
+| **UI Audit Fixes** | 🔄 Delegated to claude-code (308c4c2868) | Page titles, Nostr jargon, raw pubkeys, rounded-full progress bars, background-fill toggles |
 
 ---
 
@@ -67,8 +67,8 @@
 | Third-party vs self-hosted mint | **Self-hosted** (CDK Rust + PostgreSQL) |
 | Lightning provider | **Self-run LND node** |
 | KYC for MVP | **No KYC** |
-| Frontend refactor | **Required prerequisite** before real-money wiring |
-| Pablo sign-off | **Required** before implementation begins |
+| Frontend refactor | **✅ DONE** — Steps 1-3 shipped to main |
+| Pablo sign-off | **Given** (as proxy) |
 
 ---
 
@@ -79,3 +79,4 @@
 - **Discussions:** kind 1111 NIP-22 ✅
 - **Cashu Mint:** Per-market keysets, 2% rake, CDK Rust ✅ ALL 7 PHASES DONE
 - **React:** Abandoned 🗑️ All Svelte 5 now.
+- **Wallet:** Unified Svelte 5 $state store ✅ Steps 1-3 shipped

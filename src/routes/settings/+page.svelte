@@ -112,7 +112,7 @@
       saveHumanProfile(profile);
       // Then publish to Nostr
       await publishHumanProfile(profile);
-      saveMessage = { type: 'success', text: 'Profile published to Nostr' };
+      saveMessage = { type: 'success', text: 'Profile published' };
 
       setTimeout(() => {
         saveMessage = null;

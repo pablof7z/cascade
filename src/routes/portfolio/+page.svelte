@@ -170,6 +170,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Portfolio | Cascade</title>
+</svelte:head>
+
 <div class="p-6 max-w-6xl mx-auto">
 
   <!-- Page header -->

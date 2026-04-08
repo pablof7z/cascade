@@ -198,7 +198,7 @@
               </div>
               <div class="text-sm text-neutral-500 mb-1">YES</div>
             </div>
-            <div class="mt-4 h-2 bg-neutral-800 rounded-full overflow-hidden">
+            <div class="mt-4 h-2 bg-neutral-800 rounded-sm overflow-hidden">
               <div 
                 class="h-full bg-emerald-500 transition-all"
                 style="width: {probability * 100}%"

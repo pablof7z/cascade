@@ -89,6 +89,10 @@
   });
 </script>
 
+<svelte:head>
+  <title>Bookmarks | Cascade</title>
+</svelte:head>
+
 <div class="min-h-screen bg-neutral-950">
   <div class="max-w-4xl mx-auto px-4 py-6">
     <!-- Header -->

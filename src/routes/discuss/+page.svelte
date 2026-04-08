@@ -229,6 +229,10 @@
   })
 </script>
 
+<svelte:head>
+  <title>Discussion | Cascade</title>
+</svelte:head>
+
 <div class="min-h-screen bg-neutral-950">
   <!-- Header -->
   <div class="border-b border-neutral-800">

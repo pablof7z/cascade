@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import qrcode from 'qrcode';
   import { initNostrStore, getCurrentPubkey } from '$lib/stores/nostr.svelte';
-  import { sendTokens, receiveToken } from '../../walletStore';
+  import { receiveToken, addWithdrawRecord, getWithdrawHistory, updateWithdrawRecord, type WithdrawRecord } from '../../walletStore';
   import { initWalletStore, refreshBalance, getBalance, isRefreshing } from '$lib/stores/wallet.svelte';
   import {
     createMarketDeposit,
@@ -14,6 +14,9 @@
   } from '../../services/depositService';
   import { getMintUrl } from '$lib/config/mint';
   import DepositConfirmation from '$lib/components/DepositConfirmation.svelte';
+  import { detectInputType, extractAmountFromBolt11, estimateMeltFee, meltTokens, resolveLightningAddress, type MeltResult } from '../../services/withdrawService';
+  import WithdrawConfirmation from '$lib/components/WithdrawConfirmation.svelte';
+  import WithdrawStatus from '$lib/components/WithdrawStatus.svelte';
 
   // Reactive state — derived from shared wallet store (single source of truth)
   let balance = $derived(getBalance());
@@ -34,12 +37,21 @@
   let invoiceCopied = $state(false);
   let timeRemaining = $state<number | null>(null);
 
-  // Withdraw state
-  let withdrawAmount = $state('');
-  let withdrawMemo = $state('');
-  let isSending = $state(false);
-  let sendError = $state<string | null>(null);
-  let sendSuccess = $state<string | null>(null);
+  // Withdraw tab state
+  let withdrawInput = $state('')
+  let withdrawAmount = $state<number | null>(null)
+  let inputType = $state<'bolt11' | 'lightning_address' | 'lnurl' | 'invalid'>('invalid')
+  let estimatedFee = $state<number | null>(null)
+  let isResolvingLnAddress = $state(false)
+
+  // Withdraw confirmation/status
+  let showWithdrawConfirmation = $state(false)
+  let withdrawStatus = $state<'pending' | 'processing' | 'complete' | 'failed'>('pending')
+  let withdrawError = $state<string | null>(null)
+  let withdrawPreimage = $state<string | null>(null)
+
+  // Withdraw history
+  let withdrawHistory = $state<WithdrawRecord[]>([])
 
   // Receive/token state
   let receiveTokenInput = $state('');
@@ -91,6 +103,7 @@
     // Load initial balance and deposits
     refreshBalance();
     loadDeposits();
+    loadWithdrawHistory();
   });
 
   function loadDeposits() {
@@ -184,37 +197,139 @@
     depositAmountError = null;
   }
 
-  async function handleSendTokens() {
-    const amount = parseInt(withdrawAmount, 10);
-    if (isNaN(amount) || amount <= 0) {
-      sendError = 'Please enter a valid amount';
-      return;
-    }
+  function handleWithdrawInputChange(value: string) {
+    withdrawInput = value
+    withdrawError = null
+    inputType = detectInputType(value)
 
-    if (amount > balance) {
-      sendError = 'Insufficient balance';
-      return;
+    if (inputType === 'bolt11') {
+      const amount = extractAmountFromBolt11(value)
+      if (amount !== null) {
+        withdrawAmount = amount
+        fetchFeeEstimate(amount)
+      } else {
+        withdrawAmount = null
+        estimatedFee = null
+      }
+    } else if (inputType === 'lightning_address') {
+      withdrawAmount = null
+      estimatedFee = null
+    } else if (inputType === 'invalid' && value.trim()) {
+      withdrawError = 'Invalid Lightning address or invoice'
     }
+  }
 
-    isSending = true;
-    sendError = null;
-    sendSuccess = null;
+  function handleAmountChange(amount: number) {
+    withdrawAmount = amount
+    if (amount > 0) {
+      fetchFeeEstimate(amount)
+    }
+  }
+
+  async function fetchFeeEstimate(amount: number) {
+    try {
+      const result = await estimateMeltFee(amount)
+      estimatedFee = result.fee
+    } catch {
+      estimatedFee = Math.max(1, Math.floor(amount * 0.005))
+    }
+  }
+
+  function validateWithdrawInput(): boolean {
+    if (withdrawAmount === null || withdrawAmount <= 0) {
+      withdrawError = 'Please enter a valid amount'
+      return false
+    }
+    if (inputType === 'invalid') {
+      withdrawError = 'Invalid Lightning address or invoice'
+      return false
+    }
+    if (withdrawAmount + (estimatedFee ?? 0) > balance) {
+      withdrawError = `Insufficient balance. Total needed: ${(withdrawAmount + (estimatedFee ?? 0)).toLocaleString()} sats`
+      return false
+    }
+    return true
+  }
+
+  function handleShowWithdrawConfirmation() {
+    withdrawError = null
+    if (!validateWithdrawInput()) return
+    showWithdrawConfirmation = true
+  }
+
+  async function handleConfirmWithdraw() {
+    if (!withdrawAmount) return
+
+    showWithdrawConfirmation = false
+    withdrawStatus = 'pending'
+    withdrawError = null
+    withdrawPreimage = null
 
     try {
-      const token = await sendTokens(amount, withdrawMemo || undefined);
-      if (token) {
-        sendSuccess = 'Tokens sent successfully';
-        withdrawAmount = '';
-        withdrawMemo = '';
-        refreshBalance();
-      } else {
-        sendError = 'Failed to send tokens';
+      let invoice = withdrawInput
+      if (inputType === 'lightning_address') {
+        isResolvingLnAddress = true
+        try {
+          invoice = await resolveLightningAddress(withdrawInput, withdrawAmount * 1000)
+        } finally {
+          isResolvingLnAddress = false
+        }
       }
-    } catch (err) {
-      sendError = err instanceof Error ? err.message : 'Failed to send tokens';
-    } finally {
-      isSending = false;
+
+      withdrawStatus = 'processing'
+
+      const record = addWithdrawRecord({
+        amount: withdrawAmount,
+        fee: estimatedFee ?? 0,
+        destination: inputType === 'bolt11' ? withdrawInput.slice(0, 40) + '...' : withdrawInput,
+        status: 'pending'
+      })
+
+      const result: MeltResult = await meltTokens(withdrawAmount, invoice)
+
+      if (result.success) {
+        withdrawStatus = 'complete'
+        withdrawPreimage = result.preimage ?? null
+        updateWithdrawRecord(record.id, {
+          status: 'complete',
+          fee: result.feePaid ?? estimatedFee ?? 0,
+          preimage: result.preimage
+        })
+        refreshBalance()
+        loadWithdrawHistory()
+      } else {
+        withdrawStatus = 'failed'
+        withdrawError = result.error?.message ?? 'Withdrawal failed'
+        updateWithdrawRecord(record.id, { status: 'failed' })
+      }
+    } catch (e) {
+      withdrawStatus = 'failed'
+      withdrawError = e instanceof Error ? e.message : 'Withdrawal failed'
     }
+  }
+
+  function handleCancelWithdrawConfirmation() {
+    showWithdrawConfirmation = false
+  }
+
+  function handleRetry() {
+    withdrawStatus = 'pending'
+    withdrawError = null
+  }
+
+  function handleReset() {
+    withdrawInput = ''
+    withdrawAmount = null
+    inputType = 'invalid'
+    estimatedFee = null
+    withdrawStatus = 'pending'
+    withdrawError = null
+    withdrawPreimage = null
+    showWithdrawConfirmation = false
+  }
+
+  function loadWithdrawHistory() {
+    withdrawHistory = getWithdrawHistory()
   }
 
   async function handleReceiveToken() {
@@ -488,59 +603,119 @@
 
     <!-- Withdraw Tab -->
     {#if activeTab === 'withdraw'}
-      <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
-        <h2 class="text-lg font-medium text-white mb-4">Send tokens</h2>
-        <p class="text-neutral-400 text-sm mb-4">
-          Send tokens to another wallet.
-        </p>
+      {#if showWithdrawConfirmation && withdrawAmount !== null && estimatedFee !== null}
+        <WithdrawConfirmation
+          amount={withdrawAmount}
+          fee={estimatedFee}
+          destination={withdrawInput}
+          destinationType={inputType === 'lightning_address' ? 'lightning_address' : 'bolt11'}
+          onConfirm={handleConfirmWithdraw}
+          onCancel={handleCancelWithdrawConfirmation}
+        />
+      {:else if withdrawStatus !== 'pending' || (withdrawError !== null && withdrawStatus !== 'pending')}
+        <WithdrawStatus
+          status={withdrawStatus}
+          amount={withdrawAmount ?? 0}
+          fee={estimatedFee}
+          error={withdrawError}
+          preimage={withdrawPreimage ?? undefined}
+          onretry={withdrawStatus === 'failed' ? handleRetry : undefined}
+        />
 
-        <div class="space-y-4">
-          <div>
+        {#if withdrawStatus === 'complete'}
+          <button
+            onclick={handleReset}
+            class="mt-4 w-full px-4 py-2.5 text-sm font-medium text-neutral-300 border border-neutral-700 hover:border-neutral-500 transition-colors"
+          >
+            New withdrawal
+          </button>
+        {/if}
+      {:else}
+        <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
+          <h2 class="text-lg font-medium text-white mb-4">Withdraw via Lightning</h2>
+
+          <div class="mb-4">
+            <label for="withdraw-input" class="block text-sm font-medium text-neutral-300 mb-2">
+              Lightning Address or Invoice
+            </label>
+            <div class="relative">
+              <textarea
+                id="withdraw-input"
+                value={withdrawInput}
+                oninput={(e) => handleWithdrawInputChange((e.target as HTMLTextAreaElement).value)}
+                placeholder="lntb... or user@domain.com"
+                rows="3"
+                class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 resize-none font-mono text-xs"
+              ></textarea>
+              {#if withdrawInput.trim()}
+                <span class="absolute top-2 right-2 text-xs px-2 py-0.5 {inputType === 'bolt11' ? 'bg-blue-900 text-blue-300' : inputType === 'lightning_address' ? 'bg-purple-900 text-purple-300' : 'bg-rose-900 text-rose-300'}">
+                  {inputType === 'bolt11' ? 'Invoice' : inputType === 'lightning_address' ? 'Address' : 'Invalid'}
+                </span>
+              {/if}
+            </div>
+          </div>
+
+          <div class="mb-4">
             <label for="withdraw-amount" class="block text-sm font-medium text-neutral-300 mb-2">
               Amount (sats)
             </label>
             <input
               id="withdraw-amount"
               type="number"
-              min="1"
-              max={balance}
-              bind:value={withdrawAmount}
+              value={withdrawAmount ?? ''}
+              oninput={(e) => handleAmountChange(parseInt((e.target as HTMLInputElement).value) || 0)}
+              disabled={inputType === 'bolt11'}
               placeholder="Enter amount"
-              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
+              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 {inputType === 'bolt11' ? 'opacity-50' : ''}"
             />
             <p class="text-xs text-neutral-500 mt-1">Available: {formatSats(balance)} sats</p>
           </div>
 
-          <div>
-            <label for="withdraw-memo" class="block text-sm font-medium text-neutral-300 mb-2">
-              Memo (optional)
-            </label>
-            <input
-              id="withdraw-memo"
-              type="text"
-              bind:value={withdrawMemo}
-              placeholder="Add a note"
-              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
-            />
-          </div>
-
-          {#if sendError}
-            <p class="text-rose-400 text-sm">{sendError}</p>
+          {#if estimatedFee !== null && withdrawAmount !== null}
+            <div class="mb-4 text-xs text-neutral-500 space-y-1">
+              <p>Network fee: ~{estimatedFee.toLocaleString()} sats</p>
+              <p>Total: {withdrawAmount.toLocaleString()} + {estimatedFee.toLocaleString()} = {(withdrawAmount + estimatedFee).toLocaleString()} sats</p>
+            </div>
           {/if}
 
-          {#if sendSuccess}
-            <p class="text-emerald-400 text-sm">{sendSuccess}</p>
+          {#if withdrawError}
+            <p class="text-rose-400 text-sm mb-4">{withdrawError}</p>
+          {/if}
+
+          {#if withdrawAmount !== null && estimatedFee !== null && withdrawAmount + estimatedFee > balance}
+            <p class="text-rose-400 text-sm mb-4">Insufficient balance. Total needed: {(withdrawAmount + estimatedFee).toLocaleString()} sats</p>
           {/if}
 
           <button
-            onclick={handleSendTokens}
-            disabled={isSending || !withdrawAmount || balance === 0}
+            onclick={handleShowWithdrawConfirmation}
+            disabled={withdrawAmount === null || withdrawAmount <= 0 || inputType === 'invalid' || isResolvingLnAddress || (withdrawAmount + (estimatedFee ?? 0) > balance)}
             class="w-full px-4 py-2.5 text-sm font-medium text-neutral-950 bg-white hover:bg-neutral-200 disabled:bg-neutral-600 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors"
           >
-            {isSending ? 'Sending...' : 'Send tokens'}
+            {isResolvingLnAddress ? 'Resolving Lightning address...' : 'Continue'}
           </button>
         </div>
-      </div>
+      {/if}
+
+      {#if withdrawHistory.length > 0}
+        <div class="mt-6 bg-neutral-900 border border-neutral-800 rounded-sm overflow-hidden">
+          <div class="p-4 border-b border-neutral-800">
+            <h3 class="text-sm font-medium text-neutral-300">Recent withdrawals</h3>
+          </div>
+          <div class="divide-y divide-neutral-800">
+            {#each withdrawHistory.slice(0, 10) as record}
+              <div class="p-4 flex items-center justify-between">
+                <div>
+                  <span class="font-mono text-sm text-rose-300">-{record.amount.toLocaleString()}</span>
+                  <span class="ml-2 text-xs px-1.5 py-0.5 {record.status === 'complete' ? 'bg-emerald-900 text-emerald-400' : record.status === 'failed' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
+                    {record.status}
+                  </span>
+                </div>
+                <span class="text-xs text-neutral-500">{formatDate(record.timestamp)}</span>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
     {/if}
 
     <!-- Receive Tab -->

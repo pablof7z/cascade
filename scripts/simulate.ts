@@ -51,6 +51,7 @@ interface SimState {
   markets: PublishedMarket[];
   posts: PublishedPost[];
   lastProfileRefresh: number;
+  profilesPublished: boolean;
 }
 
 // ============================================================================
@@ -122,6 +123,7 @@ let state: SimState = {
   markets: [],
   posts: [],
   lastProfileRefresh: Date.now(),
+  profilesPublished: false,
 };
 
 function getPersistPath(): string {
@@ -148,6 +150,7 @@ async function loadState(): Promise<boolean> {
         markets: loaded.markets || [],
         posts: loaded.posts || [],
         lastProfileRefresh: loaded.lastProfileRefresh || Date.now(),
+        profilesPublished: loaded.profilesPublished ?? false,
       };
       console.log(`${timestamp()} 📦 Loaded state: ${state.users.length} users, ${state.markets.length} markets, ${state.posts.length} posts`);
       return true;
@@ -879,21 +882,44 @@ async function initializeUsers(): Promise<void> {
     }
     
     console.log(`${timestamp()} ✅ Generated ${state.users.length} users`);
+  } else {
+    // Adjust user count to match SIM_USER_COUNT
+    if (state.users.length > CONFIG.userCount) {
+      console.log(`${timestamp()} ✂️  Trimming users from ${state.users.length} to ${CONFIG.userCount}`);
+      state.users = state.users.slice(0, CONFIG.userCount);
+    } else if (state.users.length < CONFIG.userCount) {
+      const needed = CONFIG.userCount - state.users.length;
+      console.log(`${timestamp()} ➕ Generating ${needed} additional users...`);
+      const newUsers = await generateUsers(needed);
+      const usernames = await generateUsernames(needed);
+      const bios = await generateBios(needed);
+      newUsers.forEach((user, idx) => {
+        user.name = usernames[idx] || `user${state.users.length + idx}`;
+        user.about = bios[idx] || '';
+      });
+      state.users = [...state.users, ...newUsers];
+    }
   }
   
-  // Publish profiles (rate limited)
-  console.log(`${timestamp()} 📤 Publishing profiles...`);
-  for (let i = 0; i < state.users.length; i++) {
-    await publishProfile(state.users[i]);
-    
-    if ((i + 1) % 50 === 0) {
-      console.log(`${timestamp()} 📤 Published ${i + 1}/${state.users.length} profiles`);
+  // Publish profiles (rate limited) — skip if already done
+  if (state.profilesPublished) {
+    console.log(`${timestamp()} ⏭️  Skipping profile publishing (already done)`);
+  } else {
+    console.log(`${timestamp()} 📤 Publishing profiles...`);
+    for (let i = 0; i < state.users.length; i++) {
+      await publishProfile(state.users[i]);
+      
+      if ((i + 1) % 50 === 0) {
+        console.log(`${timestamp()} 📤 Published ${i + 1}/${state.users.length} profiles`);
+      }
+      
+      // Rate limit: 1 per second
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    
-    // Rate limit: 1 per second
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log(`${timestamp()} ✅ All profiles published`);
+    state.profilesPublished = true;
+    await saveState();
   }
-  console.log(`${timestamp()} ✅ All profiles published`);
 }
 
 async function seedInitialMarkets(): Promise<void> {

@@ -1,20 +1,38 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import qrcode from 'qrcode';
   import { initNostrStore, getCurrentPubkey } from '$lib/stores/nostr.svelte';
-  import { getWalletBalance, createDeposit, sendTokens, receiveToken } from '../../walletStore';
-  import { initWalletStore, refreshBalance } from '$lib/stores/wallet.svelte';
-  import { createMarketDeposit, getAllDeposits, clearInactiveDeposits, type Deposit } from '../../services/depositService';
+  import { sendTokens, receiveToken } from '../../walletStore';
+  import { initWalletStore, refreshBalance, getBalance, isRefreshing } from '$lib/stores/wallet.svelte';
+  import {
+    createMarketDeposit,
+    cancelDeposit,
+    getAllDeposits,
+    clearInactiveDeposits,
+    getDepositErrorMessage,
+    type Deposit
+  } from '../../services/depositService';
+  import { getMintUrl } from '$lib/config/mint';
+  import DepositConfirmation from '$lib/components/DepositConfirmation.svelte';
 
-  // Reactive state
-  let balance = $state(0);
-  let isLoadingBalance = $state(true);
+  // Reactive state — derived from shared wallet store (single source of truth)
+  let balance = $derived(getBalance());
+  let isLoadingBalance = $derived(isRefreshing());
   let pubkey = $state<string | null>(null);
 
-  // Deposit state
+  // Deposit form state
   let depositAmount = $state('');
+  let depositAmountError = $state<string | null>(null);
   let isCreatingDeposit = $state(false);
   let currentDeposit = $state<Deposit | null>(null);
   let depositError = $state<string | null>(null);
+
+  // Deposit flow state
+  let showConfirmation = $state(false);
+  let confirmedAmount = $state(0);
+  let qrCodeDataUrl = $state<string | null>(null);
+  let invoiceCopied = $state(false);
+  let timeRemaining = $state<number | null>(null);
 
   // Withdraw state
   let withdrawAmount = $state('');
@@ -33,11 +51,34 @@
   let deposits = $state<Deposit[]>([]);
   let activeTab = $state<'deposit' | 'withdraw' | 'history' | 'receive'>('deposit');
 
-  // QR code URL for Lightning invoice
-  let qrCodeUrl = $derived(currentDeposit?.quoteId 
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentDeposit.quoteId)}`
-    : null
-  );
+  // Generate QR code locally when invoice changes
+  $effect(() => {
+    const invoice = currentDeposit?.invoice;
+    if (invoice) {
+      qrcode.toDataURL(invoice, { width: 200, margin: 1, color: { dark: '#000000', light: '#ffffff' } })
+        .then(url => { qrCodeDataUrl = url; })
+        .catch(() => { qrCodeDataUrl = null; });
+    } else {
+      qrCodeDataUrl = null;
+    }
+  });
+
+  // Countdown timer for invoice expiry
+  $effect(() => {
+    const expiry = currentDeposit?.expiry;
+    const status = currentDeposit?.status;
+    if (expiry && (status === 'waiting' || status === 'creating')) {
+      const update = () => {
+        const remaining = expiry - Math.floor(Date.now() / 1000);
+        timeRemaining = remaining > 0 ? remaining : 0;
+      };
+      update();
+      const interval = setInterval(update, 1000);
+      return () => clearInterval(interval);
+    } else {
+      timeRemaining = null;
+    }
+  });
 
   onMount(async () => {
     // Initialize Nostr and wallet stores
@@ -48,59 +89,71 @@
     pubkey = getCurrentPubkey();
     
     // Load initial balance and deposits
-    loadBalance();
+    refreshBalance();
     loadDeposits();
   });
 
-  async function loadBalance() {
-    isLoadingBalance = true;
-    try {
-      balance = await getWalletBalance();
-    } catch (err) {
-      console.error('Failed to load balance:', err);
-    } finally {
-      isLoadingBalance = false;
-    }
-  }
-
-  async function loadDeposits() {
+  function loadDeposits() {
     deposits = getAllDeposits();
   }
 
-  async function handleCreateDeposit() {
+  // Validate amount and show confirmation step
+  function handleCreateDeposit() {
     const amount = parseInt(depositAmount, 10);
+    depositAmountError = null;
+
     if (isNaN(amount) || amount <= 0) {
-      depositError = 'Please enter a valid amount';
+      depositAmountError = 'Please enter a valid amount';
+      return;
+    }
+    if (amount < 1000) {
+      depositAmountError = 'Minimum deposit is 1,000 sats';
+      return;
+    }
+    if (amount > 1_000_000) {
+      depositAmountError = 'Maximum deposit is 1,000,000 sats';
       return;
     }
 
+    confirmedAmount = amount;
+    showConfirmation = true;
+  }
+
+  // Actually create the deposit after confirmation
+  async function handleConfirmDeposit() {
+    showConfirmation = false;
     isCreatingDeposit = true;
     depositError = null;
     currentDeposit = null;
 
     try {
-      const deposit = await createMarketDeposit(null, amount, {
+      const deposit = await createMarketDeposit(null, confirmedAmount, {
         callbacks: {
           onStatusChange: (d) => {
-            currentDeposit = d;
+            currentDeposit = { ...d };
+            // Auto-refresh balance when completed
+            if (d.status === 'completed') {
+              refreshBalance();
+              loadDeposits();
+            }
           },
           onInvoiceCreated: (d) => {
-            currentDeposit = d;
-            loadBalance();
+            currentDeposit = { ...d };
             loadDeposits();
           },
           onTokensReceived: () => {
-            loadBalance();
+            refreshBalance();
             loadDeposits();
           },
           onError: (d, error) => {
-            depositError = error;
+            depositError = getDepositErrorMessage(d);
+            currentDeposit = { ...d };
           }
         }
       });
 
       if (deposit) {
-        currentDeposit = deposit;
+        currentDeposit = { ...deposit };
         depositAmount = '';
       }
     } catch (err) {
@@ -108,6 +161,27 @@
     } finally {
       isCreatingDeposit = false;
     }
+  }
+
+  function handleCancelConfirmation() {
+    showConfirmation = false;
+  }
+
+  async function handleCopyInvoice() {
+    const invoice = currentDeposit?.invoice;
+    if (!invoice) return;
+    try {
+      await navigator.clipboard.writeText(invoice);
+      invoiceCopied = true;
+      setTimeout(() => { invoiceCopied = false; }, 1500);
+    } catch {
+      // clipboard API not available — silently ignore
+    }
+  }
+
+  function setPresetAmount(sats: number) {
+    depositAmount = String(sats);
+    depositAmountError = null;
   }
 
   async function handleSendTokens() {
@@ -132,7 +206,7 @@
         sendSuccess = 'Tokens sent successfully';
         withdrawAmount = '';
         withdrawMemo = '';
-        loadBalance();
+        refreshBalance();
       } else {
         sendError = 'Failed to send tokens';
       }
@@ -158,7 +232,7 @@
       if (success) {
         receiveSuccess = true;
         receiveTokenInput = '';
-        loadBalance();
+        refreshBalance();
         loadDeposits();
       } else {
         receiveError = 'Failed to receive token';
@@ -172,8 +246,13 @@
 
   function clearCurrentDeposit() {
     if (currentDeposit) {
+      // For non-terminal deposits, cancel to stop polling and clean up tracking
+      if (currentDeposit.status !== 'completed' && currentDeposit.status !== 'failed' && currentDeposit.status !== 'expired') {
+        cancelDeposit(currentDeposit.id);
+      }
       clearInactiveDeposits();
       currentDeposit = null;
+      qrCodeDataUrl = null;
     }
   }
 
@@ -188,6 +267,12 @@
       hour: '2-digit',
       minute: '2-digit'
     });
+  }
+
+  function formatCountdown(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   }
 </script>
 
@@ -217,7 +302,7 @@
           {/if}
         </div>
         <button
-          onclick={loadBalance}
+          onclick={refreshBalance}
           disabled={isLoadingBalance}
           class="text-sm text-neutral-500 hover:text-neutral-300 disabled:opacity-50"
         >
@@ -257,7 +342,16 @@
     <!-- Deposit Tab -->
     {#if activeTab === 'deposit'}
       <div class="space-y-6">
-        {#if !currentDeposit}
+        {#if showConfirmation}
+          <!-- Confirmation Step -->
+          <DepositConfirmation
+            amount={confirmedAmount}
+            mintUrl={getMintUrl()}
+            onConfirm={handleConfirmDeposit}
+            onCancel={handleCancelConfirmation}
+          />
+
+        {:else if !currentDeposit || currentDeposit.status === 'creating'}
           <!-- Deposit Form -->
           <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
             <h2 class="text-lg font-medium text-white mb-4">Deposit sats</h2>
@@ -273,11 +367,29 @@
                 <input
                   id="deposit-amount"
                   type="number"
-                  min="1"
+                  min="1000"
+                  max="1000000"
                   bind:value={depositAmount}
                   placeholder="Enter amount"
-                  class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
+                  class="w-full px-4 py-2.5 bg-neutral-800 border {depositAmountError ? 'border-rose-500' : 'border-neutral-700'} rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
                 />
+                {#if depositAmountError}
+                  <p class="text-rose-400 text-xs mt-1">{depositAmountError}</p>
+                {:else}
+                  <p class="text-xs text-neutral-500 mt-1">Min 1,000 · Max 1,000,000 sats</p>
+                {/if}
+              </div>
+
+              <!-- Preset amount buttons -->
+              <div class="flex gap-2 flex-wrap">
+                {#each [1000, 5000, 10000, 50000, 100000] as preset}
+                  <button
+                    onclick={() => setPresetAmount(preset)}
+                    class="px-3 py-1.5 text-xs font-medium text-neutral-400 border border-neutral-700 hover:border-neutral-500 hover:text-neutral-200 transition-colors"
+                  >
+                    {preset >= 1000 ? `${preset / 1000}k` : preset}
+                  </button>
+                {/each}
               </div>
 
               {#if depositError}
@@ -293,12 +405,13 @@
               </button>
             </div>
           </div>
+
         {:else}
           <!-- Invoice Display -->
           <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-lg font-medium text-white">Lightning Invoice</h2>
-              <span class="text-sm px-2 py-1 rounded {currentDeposit.status === 'completed' ? 'bg-emerald-900 text-emerald-400' : currentDeposit.status === 'failed' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
+              <span class="text-sm px-2 py-1 {currentDeposit.status === 'completed' ? 'bg-emerald-900 text-emerald-400' : currentDeposit.status === 'failed' || currentDeposit.status === 'expired' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
                 {currentDeposit.status}
               </span>
             </div>
@@ -307,39 +420,65 @@
               {formatSats(currentDeposit.amount)} sats
             </p>
 
-            {#if qrCodeUrl}
+            <!-- Expiry countdown -->
+            {#if timeRemaining !== null && currentDeposit.status === 'waiting'}
+              <div class="mb-4 flex items-center gap-2">
+                <span class="text-xs text-neutral-500">Expires in</span>
+                <span class="text-sm font-mono {timeRemaining < 60 ? 'text-rose-400' : 'text-neutral-300'}">
+                  {timeRemaining === 0 ? 'Expired' : formatCountdown(timeRemaining)}
+                </span>
+              </div>
+            {/if}
+
+            <!-- QR code (locally generated) -->
+            {#if qrCodeDataUrl && currentDeposit.status === 'waiting'}
               <div class="flex justify-center mb-4">
                 <img
-                  src={qrCodeUrl}
+                  src={qrCodeDataUrl}
                   alt="Lightning Invoice QR Code"
                   class="w-48 h-48 rounded-sm"
                 />
               </div>
             {/if}
 
-            {#if currentDeposit.quoteId}
+            <!-- Invoice string + copy button -->
+            {#if currentDeposit.invoice && currentDeposit.status === 'waiting'}
               <div class="mb-4">
-                <p class="text-xs text-neutral-500 mb-1">Invoice</p>
+                <div class="flex items-center justify-between mb-1">
+                  <p class="text-xs text-neutral-500">Invoice</p>
+                  <button
+                    onclick={handleCopyInvoice}
+                    class="text-xs text-neutral-400 hover:text-white transition-colors"
+                  >
+                    {invoiceCopied ? 'Copied!' : 'Copy invoice'}
+                  </button>
+                </div>
                 <p class="text-xs font-mono text-neutral-300 break-all bg-neutral-800 p-2 rounded">
-                  {currentDeposit.quoteId}
+                  {currentDeposit.invoice}
                 </p>
               </div>
             {/if}
 
+            <!-- Error display -->
+            {#if (currentDeposit.status === 'failed' || currentDeposit.status === 'expired') && currentDeposit.error}
+              <p class="text-rose-400 text-sm mb-4">
+                {getDepositErrorMessage(currentDeposit)}
+              </p>
+            {/if}
+
+            <!-- Completed confirmation -->
+            {#if currentDeposit.status === 'completed'}
+              <p class="text-emerald-400 text-sm mb-4">
+                Payment received — {formatSats(currentDeposit.amount)} sats added to your wallet.
+              </p>
+            {/if}
+
             <div class="flex gap-3">
-              {#if currentDeposit.status !== 'completed'}
-                <button
-                  onclick={loadBalance}
-                  class="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 border border-neutral-700 hover:border-neutral-500 transition-colors"
-                >
-                  Refresh status
-                </button>
-              {/if}
               <button
                 onclick={clearCurrentDeposit}
                 class="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 border border-neutral-700 hover:border-neutral-500 transition-colors"
               >
-                Done
+                {currentDeposit.status === 'completed' ? 'Done' : 'Cancel'}
               </button>
             </div>
           </div>
@@ -463,7 +602,7 @@
                 <div>
                   <div class="flex items-center gap-2">
                     <span class="text-emerald-400 font-mono text-sm">+{formatSats(deposit.amount)}</span>
-                    <span class="text-xs px-1.5 py-0.5 rounded {deposit.status === 'completed' ? 'bg-emerald-900 text-emerald-400' : deposit.status === 'failed' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
+                    <span class="text-xs px-1.5 py-0.5 {deposit.status === 'completed' ? 'bg-emerald-900 text-emerald-400' : deposit.status === 'failed' || deposit.status === 'expired' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
                       {deposit.status}
                     </span>
                   </div>

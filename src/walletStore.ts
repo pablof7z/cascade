@@ -99,7 +99,6 @@ export async function createDeposit(amount: number, mintUrl?: string): Promise<N
 
   try {
     const deposit = wallet.deposit(amount, targetMint)
-    await deposit.start()
     return deposit
   } catch (e) {
     console.error('Deposit error:', e)
@@ -192,4 +191,11 @@ export async function receiveToken(tokenString: string): Promise<boolean> {
 
 export function getWallet(): NDKCashuWallet | null {
   return walletInstance
+}
+
+/**
+ * Check if the wallet has been loaded and is ready for use.
+ */
+export function isWalletReady(): boolean {
+  return walletInstance !== null
 }

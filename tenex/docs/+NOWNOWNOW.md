@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-08 14:10 UTC — Nav "Sign in" routes to /join. Welcome page has new-user path. Auth gate + scroll CTA already live.*
+*Last updated: 2026-04-08 14:30 UTC — 3 onboarding conversion blockers fixed: post-join 404 killed, nav→/join, wallet CTA copy corrected.*
 
 ---
 
@@ -18,6 +18,10 @@
 
 | Item | Commit | Status |
 |------|--------|--------|
+| **Onboarding: post-join redirect → / (was /markets 404)** | `dc08d97` | ✅ New users complete signup and land on home, not 404 |
+| **Onboarding: wallet CTA copy fix** | `13e023a` | ✅ "Set up your wallet" not "Add funds" for uninitialised wallet state |
+| **Svelte 5 state_referenced_locally warnings** | `07d2a6a` | ✅ MarketDiscussionPost.svelte — clean build, no warnings |
+| **Positions empty state: scroll-to-trade CTA** | `1b2e04d` | ✅ "Go to trade form" smooth scroll from empty positions |
 | **Nav "Sign in" → /join, welcome page new-user path** | `485c0e4` | ✅ Nav no longer dead-ends new users; welcome page links to /join |
 | **Fix threadBuilder author jargon + discuss loading blank** | `5611012` | ✅ Reply authors show 'Anonymous' not hex; discuss no blank state on load |
 | **Wallet UX: Lightning withdraw + local QR + auto-polling** | `d95723f` | ✅ Lightning withdrawal flow, local QR (no external service), 5s balance auto-polling |

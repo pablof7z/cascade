@@ -203,11 +203,11 @@ impl CascadeDatabase {
     }
 
     /// Insert LMSR price snapshot
-    pub async fn insert_lmsr_snapshot(&self, market_id: &str, q_long: f64, q_short: f64, price_long: f64, price_short: f64) -> Result<()> {
+    pub async fn insert_lmsr_snapshot(&self, market_slug: &str, q_long: f64, q_short: f64, price_long: f64, price_short: f64) -> Result<()> {
         sqlx::query(
             "INSERT INTO lmsr_snapshots (market_slug, q_long, q_short, price_long, price_short, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))"
         )
-        .bind(market_id)
+        .bind(market_slug)
         .bind(q_long)
         .bind(q_short)
         .bind(price_long)
@@ -220,11 +220,11 @@ impl CascadeDatabase {
     }
 
     /// Get price history for a market
-    pub async fn get_price_history(&self, market_id: &str, limit: i64) -> Result<Vec<(f64, f64, String)>> {
+    pub async fn get_price_history(&self, market_slug: &str, limit: i64) -> Result<Vec<(f64, f64, String)>> {
         let rows = sqlx::query_as::<_, (f64, f64, String)>(
-            "SELECT price_long, price_short, created_at FROM lmsr_snapshots WHERE market_id = ? ORDER BY created_at DESC LIMIT ?"
+            "SELECT price_long, price_short, created_at FROM lmsr_snapshots WHERE market_slug = ? ORDER BY created_at DESC LIMIT ?"
         )
-        .bind(market_id)
+        .bind(market_slug)
         .bind(limit)
         .fetch_all(&self.pool)
         .await

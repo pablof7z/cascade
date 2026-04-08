@@ -21,7 +21,7 @@
   // Redirect if already authenticated
   $effect(() => {
     if (pubkey !== null && isReady) {
-      goto('/discuss');
+      goto('/');
     }
   });
 

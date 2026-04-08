@@ -10,7 +10,7 @@
 
   // ─── Types ─────────────────────────────────────────────────────────────────────
 
-  type MarketTab = 'overview' | 'charts' | 'discussion' | 'positions';
+  type MarketTab = 'overview' | 'discussion' | 'positions';
   type Side = 'LONG' | 'SHORT';
 
   // ─── Props ─────────────────────────────────────────────────────────────────────
@@ -72,7 +72,6 @@
 
   const tabs: { key: MarketTab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
-    { key: 'charts', label: 'Charts' },
     { key: 'discussion', label: 'Discussion' },
     { key: 'positions', label: 'Positions' },
   ];
@@ -332,35 +331,6 @@
                 <p class="mt-3 text-neutral-300 leading-relaxed">
                   {market.description}
                 </p>
-              </div>
-            </section>
-          {:else if activeTab === 'charts'}
-            <!-- Charts Tab -->
-            <section class="space-y-6">
-              <div>
-                <h3 class="text-lg font-semibold text-white">Price chart</h3>
-                <div class="mt-4 h-80 bg-neutral-900/50 border border-neutral-800 rounded-none p-4 flex items-center justify-center">
-                  <div class="text-center text-neutral-500">
-                    Price chart visualization
-                  </div>
-                </div>
-              </div>
-
-              <!-- Events timeline -->
-              <div>
-                <h3 class="text-lg font-semibold text-white">Market events</h3>
-                <div class="mt-4 divide-y divide-neutral-800">
-                  {#if market.events.length > 0}
-                    {#each market.events as event}
-                      <div class="py-4">
-                        <div class="text-sm text-neutral-300">{event.description}</div>
-                        <div class="mt-1 text-xs text-neutral-500">{formatTimestamp(event.createdAt)}</div>
-                      </div>
-                    {/each}
-                  {:else}
-                    <div class="py-4 text-sm text-neutral-500">No events yet.</div>
-                  {/if}
-                </div>
               </div>
             </section>
           {:else if activeTab === 'discussion'}

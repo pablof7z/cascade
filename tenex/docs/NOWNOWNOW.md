@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-08 10:35 UTC — Testnet mint bug fixed, pubkey jargon gone, activity simulator shipped. Phase 8 CDK impl in progress. NDK template cloned.*
+*Last updated: 2026-04-08 10:40 UTC — All audit fixes shipped. Phase 8 CDK mint re-kicked. Simulator verified working.*
 
 ---
 

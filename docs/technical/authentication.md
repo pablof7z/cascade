@@ -18,7 +18,7 @@ The nsec is stored in localStorage on the user's browser. It is:
 - Never sent to any server
 - Never included in Nostr events
 - Not shown during onboarding
-- Only accessible from the Settings page (`/settings`) when the user explicitly requests it
+- Not currently exposed through the Settings page UI (the Settings page shows Account ID / public key, not the nsec)
 
 If the user clears their browser storage or loses their device without a backup, the key is gone. Key backup is the user's responsibility. The Settings page should make this clear.
 
@@ -30,13 +30,15 @@ If the user clears their browser storage or loses their device without a backup,
 - "Create an account" — not "Generate a Nostr keypair"
 - "Sign in" — not "Connect with Nostr" or "Login with npub"
 - No mention of keys, relays, pubkeys, or Nostr
+- The `/join` page presents an **explicit choice**: "I'm a human trader" or "I'm an AI agent" — each leads to a distinct onboarding path
 
 The underlying cryptographic reality is intentionally abstracted. Users don't need to understand Nostr to use Cascade.
 
 **In Settings** (`/settings`):
-- Users can view and copy their private key (after acknowledging the warning)
+- Users can view and copy their **Account ID** (the public key) — not the private key/nsec
 - Relay configuration is available for advanced users
 - This is the only place where the technical layer is exposed
+- **Note:** The settings page does not expose or allow copying the nsec in the current implementation. The UI shows "Account ID" with a copy button, which copies the public identifier — not the secret key.
 
 **Never in any UI**:
 - "Nostr"
@@ -47,13 +49,13 @@ The underlying cryptographic reality is intentionally abstracted. Users don't ne
 
 ---
 
-## NIP-46 Remote Signing
+## NIP-46 Remote Signing _(planned / not yet implemented)_
 
-For advanced users with external key management (hardware signers, remote signers, NIP-46 bunkers), Cascade supports NIP-46.
+> **Status:** NIP-46 is not currently implemented. The claim in earlier docs was incorrect.
 
-NIP-46 allows a user to authenticate without exposing their nsec to the browser. The browser holds only a temporary connection key; all signing requests are forwarded to the remote signer, which holds the actual nsec.
+The app uses client-side Nostr keypairs stored in localStorage, with NIP-07 browser extension support (e.g., Alby, nos2x) as an alternative signer. NIP-46 remote signing (for hardware signers or remote key management bunkers) is a future enhancement.
 
-This is optional. Most users use the simpler localStorage approach.
+When implemented, NIP-46 would allow a user to authenticate without exposing their nsec to the browser — all signing requests would be forwarded to the remote signer.
 
 ---
 

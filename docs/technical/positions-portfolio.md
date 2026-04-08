@@ -18,19 +18,22 @@ Positions are stored as NIP-78 application-specific data events (kind 30078). Th
 ```
 kind: 30078
 pubkey: <user's pubkey>
-content: ""
+content: <JSON-stringified position object>
 tags:
   ["d", "cascade:position:<marketId>:<direction>"]
-  ["market", "<marketId>"]
-  ["direction", "YES" | "NO"]
-  ["amount", "<total sats committed>"]
-  ["shares", "<shares currently held>"]
-  ["avg_price", "<average purchase price as decimal, e.g. '0.65'>"]
+  ["c", "cascade"]
+  ["v", "1"]
 ```
 
 **d-tag format**: `cascade:position:<marketId>:<direction>`
 
-Example: `cascade:position:abc123def456:YES`
+Example: `cascade:position:abc123def456:yes`
+
+**Notes on the actual event shape:**
+- `content` is a JSON-stringified position object (not an empty string)
+- `direction` in the d-tag is lowercase: `"yes"` (LONG) or `"no"` (SHORT)
+- Tags use the `d/c/v` pattern: `d` = identity, `c` = app namespace (`"cascade"`), `v` = version (`"1"`)
+- The position fields (shares, amount, avg_price, etc.) are inside the JSON content, not in tags
 
 ### Replaceability
 
@@ -90,6 +93,20 @@ The profile page displays:
 - Active positions with current values
 - A performance summary (win rate, total PnL if visible)
 - Recent market activity
+
+---
+
+## Kind 30079 — Payout Records
+
+After a successful redemption from a resolved market, the app publishes a kind 30079 payout event recording the completed payout. This is a parameterized replaceable event (one per position per market).
+
+See `src/services/resolutionService.ts` and `src/services/nostrService.ts` (`PAYOUT_EVENT_KIND = 30079`) for the implementation.
+
+---
+
+## Local Storage
+
+`src/positionStore.ts` maintains position state with a localStorage fallback. Positions are loaded from Nostr (kind 30078) and merged with any locally-held state. This hybrid approach handles offline scenarios and multi-device edge cases.
 
 ---
 

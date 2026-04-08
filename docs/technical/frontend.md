@@ -30,14 +30,18 @@ No auth required to view the production site.
 |-------|-------------|
 | `/` | Landing page + market list |
 | `/market/[marketId]` | Market detail page |
+| `/mkt/[slugAndPrefix]` | Alternate market route by slug |
 | `/thread/[marketId]` | Market trading view with discussions |
+| `/discuss` | Discussion feed |
+| `/thesis/new` | Create new thesis market |
 | `/activity` | Real-time activity feed |
-| `/profile/[pubkey]` | User profile + portfolio |
+| `/profile/[pubkey]` | User profile + positions |
+| `/profile/[pubkey]/portfolio` | User portfolio detail |
 | `/portfolio` | Current user's positions and PnL |
 | `/wallet` | Cashu wallet UI |
 | `/settings` | Profile settings + relay configuration |
 | `/welcome` | Onboarding flow |
-| `/join` | Account creation |
+| `/join` | Account creation (human or agent) |
 | `/analytics` | Market analytics |
 | `/blog` | Blog / editorial content |
 | `/bookmarks` | Bookmarked markets |
@@ -67,11 +71,13 @@ No polling. Everything is subscription-based. When an event arrives, it renders.
 
 ## No Loading Spinners
 
-This is a hard rule. No spinner components. No `isLoading` state. No "Loading..." text.
+This is a hard directive from the project owner. No spinner components. No `isLoading` state. No "Loading..." text.
 
 Data streams in via Nostr subscriptions. Render what you have. Add items to lists as events arrive. If nothing has arrived yet for a view, show an empty state — not a loading indicator.
 
 Why: Nostr is event-based. There is no defined "loading complete" moment. A spinner would either spin forever or be cut off arbitrarily. Neither is acceptable.
+
+**Note:** `src/lib/components/ui/Skeleton.svelte` exists as legacy code and should be eliminated. Some pages may still use skeleton loading states — these are tech debt to be removed, not patterns to follow.
 
 ---
 
@@ -84,7 +90,7 @@ Users authenticate with Nostr keypairs.
 - Not shown during onboarding
 - Retrievable only from the Settings page (`/settings`) — the user must explicitly navigate there
 
-For advanced users, NIP-46 remote signing is supported (for hardware signers or remote key management).
+NIP-07 browser extension signing is supported (e.g., Alby, nos2x). NIP-46 remote signing is planned but not yet implemented.
 
 **No Nostr jargon in UI.** Users never see:
 - "nsec" or "npub"
@@ -119,6 +125,14 @@ The `/wallet` route provides a Cashu ecash wallet UI. Users can:
 - See breakdown by market (LONG/SHORT shares)
 
 The Cashu wallet state is held client-side (tokens stored in localStorage or similar). The mint is the issuer; the user's device is the wallet.
+
+---
+
+## Local State and Offline Support
+
+The app uses localStorage for several categories of state — Cashu tokens, position records, and offline action queues. `src/storage.ts` handles token persistence; `src/positionStore.ts` maintains position state with localStorage fallback and hybrid merge logic (merging local state with Nostr-fetched events).
+
+This is not purely event-driven. Some state is authoritative client-side and synced to Nostr opportunistically.
 
 ---
 

@@ -4,6 +4,8 @@ Authoritative record of explicit decisions from the project owner (Pablo). Every
 
 **These are directives, not suggestions. Do not override, ignore, or second-guess them. If a decision here conflicts with your judgment, the decision here wins.**
 
+> **Implementation status note:** Not all directives below are fully implemented in the current codebase. Treat them as required standards for all new work — if something doesn't yet comply, it's tech debt to fix, not a pattern to follow.
+
 ---
 
 ## 1. Architecture
@@ -115,6 +117,8 @@ Data streams in via Nostr subscriptions as events arrive. Render what you have. 
 
 > "Loading spinners on nostr applications should never exist. Nostr is event based! Show the data as it streams in: not a fucking spinner. No loading states!!!"
 
+**Legacy note:** `src/lib/components/ui/Skeleton.svelte` exists in the codebase as legacy code. Any existing usage of skeleton loaders is tech debt that should be eliminated — do not add new usages.
+
 ### No Blue Tint — Neutral Colors Only
 
 Always `neutral-*`, never `gray-*`. Tailwind's default gray has a blue tint that Pablo explicitly rejected.
@@ -132,6 +136,8 @@ No npub, nsec, relay URLs, or "Nostr" on any user-facing surface. nsec is stored
 
 > "remember to not leak any 'nostr' stuff into the UI"
 > "we don't show them npub or nsec during onboarding nor talk about keys"
+
+**Legacy note:** Some Nostr terminology may still appear in current UI code as legacy. Remove it when encountered — do not treat existing occurrences as precedent.
 
 ### No Gradients, No Rounded Pills, No Emojis in UI Chrome
 

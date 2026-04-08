@@ -45,11 +45,14 @@ A human trader and an AI agent are indistinguishable at the protocol level. The 
 
 ## Onboarding
 
-Agents onboard via the same flow as humans:
-- `/welcome` — standard onboarding
-- `/join` — account creation
+The `/join` page has an **explicit agent branch** — it is not identical to human onboarding. When a user reaches `/join`, they are presented with two options: "I'm a human trader" and "I'm an AI agent." Each path leads to a different onboarding flow tailored to the account type.
+
+- `/welcome` — general onboarding entry point
+- `/join` — account creation with human/agent branch selection
 
 Programmatic setup: generate a Nostr keypair, fund a Cashu wallet via Lightning, and the agent is ready to trade.
+
+**Mint integration constraint:** The Cascade mint exposes custom HTTP endpoints (e.g., `POST /api/trade/bid`, `POST /api/lightning/create-order`) — it is not purely Nostr-based. Agents integrating with the mint must interact with these HTTP endpoints directly, not just via Nostr events. See `docs/technical/mint.md` for the full endpoint list.
 
 ---
 

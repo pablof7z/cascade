@@ -5,7 +5,7 @@
 | Layer | Technology |
 |-------|-----------|
 | Language | Rust |
-| Database | PostgreSQL |
+| Database | SQLite (active config; PostgreSQL is the production target) |
 | Lightning | LND (Lightning Network Daemon) |
 | Cashu | CDK Rust (Cashu Dev Kit) |
 | Nostr publishing | Custom Nostr client |
@@ -20,9 +20,11 @@ The backend is self-hosted infrastructure — not Vercel. The frontend deploys t
 
 The backend's primary role is operating the Cascade Mint — the custom Cashu mint with LMSR prediction market mechanics.
 
-**The mint is the authoritative source of LMSR state.** Not Nostr. Not the frontend. The PostgreSQL database holds the canonical `qLong`, `qShort`, and reserve values for every market.
+**The mint is the authoritative source of LMSR state.** Not Nostr. Not the frontend. The mint's database holds the canonical `qLong`, `qShort`, and reserve values for every market.
 
 Nostr kind 983 events are the public audit log, published by the mint after each trade. They're derived from the database — if there's ever a discrepancy, the database wins.
+
+**Note:** Currently, market state and spent-proof tracking are partly in-memory (`MarketManager` uses an in-memory `HashMap`). SQLite is used for CDK keyset and proof persistence, but full market state persistence to SQLite is not yet complete. PostgreSQL remains the production target.
 
 ---
 
@@ -37,8 +39,8 @@ HTTP API
    ├── Cashu Mint (CDK)
    │   └── Issues / redeems bearer tokens
    │
-   ├── PostgreSQL
-   │   └── Persists LMSR state, keysets, trade history
+   ├── SQLite
+   │   └── Persists CDK keysets, proofs (LMSR state currently partly in-memory)
    │
    ├── LND
    │   └── Lightning deposits (NUT-04) and withdrawals (NUT-05)
@@ -56,10 +58,20 @@ The backend exposes:
 **Standard Cashu NUT endpoints** (used by the frontend wallet and by any standard Cashu client):
 - Key exchange, keyset discovery, token swap, mint (deposit), melt (withdraw), token check, etc.
 
-**Custom Cascade endpoints**:
-- `POST /v1/cascade/trade` — execute an LMSR-priced trade
+**Custom Cascade endpoints** (see `cascade-mint/crates/cascade-api/src/routes.rs`):
+- `GET /api/price/{currency}` — price feed
+- `POST /api/lightning/create-order` — create a Lightning-funded trade order
+- `POST /api/lightning/check-order` — check Lightning invoice status
+- `POST /api/lightning/settle/{order_id}` — settle a Lightning trade
+- `POST /api/market/create` — create a new market
+- `GET /api/market/{id}` — fetch market state
+- `POST /api/market/{id}/resolve` — resolve a market
+- `POST /api/trade/bid` — buy shares
+- `POST /api/trade/ask` — sell shares
 - `POST /v1/cascade/redeem` — redeem outcome shares for sats
 - `POST /v1/cascade/settle` — settle a resolved market
+- `GET /v1/keys` — mint public keys (for test proof construction)
+- `GET /health` — health check
 
 See [mint.md](mint.md) for detailed endpoint documentation.
 
@@ -82,7 +94,9 @@ The engine ensures the reserve invariant is maintained at all times: `reserve = 
 
 ## Database
 
-PostgreSQL stores:
+**Active storage: SQLite.** PostgreSQL is the production target but is not the current active configuration (see `cascade-mint/crates/cascade-mint/src/config.rs`).
+
+SQLite currently stores CDK keyset and proof data. Market state (`qLong`, `qShort`, reserve) and spent-proof tracking are currently held partly in-memory in `MarketManager`. The intended persistent schema includes:
 
 - **Markets**: market event ID, slug, creator pubkey, status, creation timestamp
 - **LMSR state**: per-market `qLong`, `qShort`, `b`, reserve balance

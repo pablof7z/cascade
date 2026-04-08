@@ -1,5 +1,9 @@
 # Brand Style Guide
 
+> **Implementation status note:** These are directives from the project owner — not all are fully implemented in current code. Treat them as required standards for all new work. Existing deviations are tech debt to fix, not patterns to follow.
+
+---
+
 ## Design Direction
 
 **Aesthetic:** Editorial authority. Professional minimalist dark theme. Think Bloomberg meets The Economist in dark mode.
@@ -146,6 +150,8 @@ If a card is genuinely necessary:
 **There are no loading states.** Data streams in via Nostr subscriptions as events arrive. Render what you have. Add items to the list as they appear. Never show a spinner. Never show a skeleton loader. Never show "Loading...".
 
 If a user has never seen a market before and no events have arrived yet, render an empty state — not a spinner.
+
+**Legacy note:** `src/lib/components/ui/Skeleton.svelte` exists in the codebase. Any existing skeleton loader usage is tech debt — do not add new usages, and remove existing ones when touching that code.
 
 ---
 

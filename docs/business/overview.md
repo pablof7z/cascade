@@ -24,13 +24,17 @@ Cascade enables anyone to create and trade prediction markets for interconnected
 
 ## Revenue Model
 
-**1% rake on all trades.**
+**1% trade fee on all buys and sells + 2% redemption rake on payouts.**
 
-Every buy and every sell incurs a 1% fee. The fee stays in the mint as reserve liquidity and treasury. Cascade extracts its revenue via mint operations (melting).
+Two separate revenue streams:
+- **1% trade fee** — applied on every buy and every sell. Fee stays in the mint as reserve liquidity and treasury.
+- **2% redemption rake** — applied on the gross payout when winning shareholders redeem from a resolved market.
+
+Cascade extracts its revenue via mint operations (melting accumulated ecash via Lightning).
 
 This is a volume-based model: more trading activity = more revenue. Creating good markets and attracting active traders is the growth flywheel.
 
-No subscription fees. No listing fees. No per-market setup costs. The fee is embedded in every transaction automatically.
+No subscription fees. No listing fees. No per-market setup costs. Fees are embedded in transactions automatically.
 
 ---
 

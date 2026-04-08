@@ -69,46 +69,45 @@ After resolution, the winning keyset pays out at 1.0 sat/share (minus fee). The 
 
 ## Custom Endpoints
 
-Beyond the standard Cashu NUTs, the mint exposes prediction-market-specific endpoints:
+Beyond the standard Cashu NUTs, the mint exposes prediction-market-specific endpoints. The following reflects the actual routes in `cascade-mint/crates/cascade-api/src/routes.rs`:
 
-### `POST /v1/cascade/trade`
+### Price & Lightning
 
-Execute a prediction market trade. Input: market ID, direction (YES/NO), sat amount, Cashu proofs for payment. Output: new Cashu tokens representing the purchased shares.
+- `GET /api/price/{currency}` — price feed
+- `POST /api/lightning/create-order` — create a Lightning-funded trade order
+- `POST /api/lightning/check-order` — check Lightning invoice/order status
+- `POST /api/lightning/settle/{order_id}` — settle a completed Lightning trade
 
-The mint:
-1. Validates the Cashu proofs
-2. Computes the LMSR cost for the requested trade
-3. Deducts the payment (burning the input proofs)
-4. Updates `qLong` or `qShort` in the database
-5. Issues new Cashu tokens at the correct denomination
-6. Publishes a kind 983 trade event to Nostr
+### Market Management
 
-### `POST /v1/cascade/redeem`
+- `POST /api/market/create` — register a new market with the mint
+- `GET /api/market/{id}` — fetch current market state
+- `POST /api/market/{id}/resolve` — mark a market as resolved
 
-Redeem outcome shares for sats. Input: Cashu proofs (representing shares), market ID. Output: sats (via Cashu or Lightning).
+### Trade Execution
 
-The mint:
-1. Validates that the proofs are valid LONG or SHORT tokens for the given market
-2. Computes the LMSR redemption value (or uses 1.0 if market is resolved)
-3. Burns the share tokens
-4. Issues standard Cashu ecash tokens for the sat payout
-5. Publishes a kind 983 redeem event to Nostr
+- `POST /api/trade/bid` — buy shares (LMSR-priced)
+- `POST /api/trade/ask` — sell shares (LMSR-priced)
 
-### `POST /v1/cascade/settle`
+### Settlement & Redemption
 
-Settle a resolved market. Triggered after a kind 984 resolution event is confirmed.
+- `POST /v1/cascade/redeem` — redeem outcome shares for sats after resolution
+- `POST /v1/cascade/settle` — settle a resolved market (set winning/losing keysets)
 
-The mint:
-1. Marks the market as resolved (YES or NO)
-2. Sets winning-side shares to redeem at exactly 1.0 sat/share
-3. Marks losing-side shares as worthless
-4. Updates database state
+### Utility
+
+- `GET /v1/keys` — mint public keys (for proof construction)
+- `GET /health` — health check
+
+**Note:** There is no `/v1/cascade/trade` endpoint in the current implementation — trades go through the Lightning order flow (`/api/lightning/create-order` → `/api/lightning/settle/{order_id}`) or direct bid/ask endpoints.
 
 ---
 
 ## LMSR State
 
-The mint is the single source of truth for LMSR state. `qLong`, `qShort`, and the reserve for each market live in the mint's PostgreSQL database.
+The mint is the single source of truth for LMSR state. `qLong`, `qShort`, and the reserve for each market are managed by the mint.
+
+**Note on persistence:** Market state and spent-proof tracking are currently partly in-memory (`MarketManager` uses an in-memory `HashMap` keyed by event ID). SQLite is the active database (not PostgreSQL — see `cascade-mint/README.md`), used for CDK keyset and proof persistence. Full LMSR state persistence to SQLite is the target but not yet complete.
 
 Nostr kind 983 events are the public audit trail derived from that state — not the reverse. If there's ever a discrepancy between on-chain Nostr events and the mint's database, the database wins.
 
@@ -116,11 +115,14 @@ The frontend computes estimated prices using the same LMSR functions, but the ca
 
 ---
 
-## Fee
+## Fees
 
-**1% flat on every trade** (buy and sell). Applied at the mint level.
+Two separate fees apply:
 
-The fee stays in the mint as reserve and treasury. Cascade extracts revenue by melting accumulated ecash via Lightning.
+- **1% trade fee** — applied on every buy and sell. Applied at the mint level (`src/services/tradingService.ts`).
+- **2% redemption rake** — applied on the gross payout when redeeming shares from a resolved market (`src/services/redemptionService.ts`).
+
+Fees stay in the mint as reserve and treasury. Cascade extracts revenue by melting accumulated ecash via Lightning.
 
 ---
 

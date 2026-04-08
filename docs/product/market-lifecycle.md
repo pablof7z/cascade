@@ -9,7 +9,7 @@ Any user — human or AI agent — can create a market. There are no permissions
 ### What Creation Requires
 
 1. **A kind 982 Nostr event** — the market definition, including title, description, markdown content, category, and a unique slug (d-tag).
-2. **Initial liquidity** — the creator must seed the market with sats. You cannot launch a $0 market. The initial funding establishes the LMSR reserve and gives the creator their opening position.
+2. **Initial liquidity** — by design, the creator should seed the market with sats. The intended flow is that you cannot launch a $0 market — initial funding establishes the LMSR reserve and gives the creator their opening position. (Note: this requirement is intended design direction; enforcement in the current codebase is not yet complete.)
 
 The creator is the first buyer. Because LMSR prices shares cheapest when the reserve is smallest, the market creator benefits from the lowest entry price. This creates a natural incentive to create good markets — if you believe your prediction, you're rewarded for being first.
 
@@ -77,7 +77,7 @@ tags:
 
 This event triggers the mint to:
 1. Mark the market as resolved
-2. Enable winning-side shares to redeem at exactly 1.0 sat/share (minus 1% fee)
+2. Enable winning-side shares to redeem at LMSR fill price (minus 2% redemption rake)
 3. Mark losing-side shares as worthless
 
 The kind 984 event is an opt-in convenience for clean settlement — not a gate that blocks the economic process described above. Markets can economically close without a kind 984 event, but formal payout processing requires one.
@@ -86,11 +86,15 @@ The kind 984 event is an opt-in convenience for clean settlement — not a gate 
 
 ## Payouts
 
-**Winning shares**: Redeem at 1.0 sat/share minus the 1% fee → 0.99 sat/share effective payout.
+**Winning shares**: Redeem at the LMSR fill price minus the **2% redemption rake** → `gross_sats * 0.98` effective payout. (See `src/services/redemptionService.ts`.)
 
 **Losing shares**: Worth 0. Cannot be redeemed for sats after resolution.
 
-**Fee**: 1% on every trade (buy and sell). Stays in the mint as liquidity and treasury. The platform extracts its revenue via mint operations.
+**Fee structure (two separate fees):**
+- **1% trade fee** — applied on every buy and sell (`src/services/tradingService.ts`). Stays in the mint as reserve and treasury.
+- **2% redemption rake** — applied on payouts when redeeming shares from resolved markets (`src/services/redemptionService.ts`). Separate from the trade fee.
+
+These are distinct revenue streams. A winning trader pays the 1% trade fee when buying shares, then a 2% rake on the gross payout when redeeming.
 
 ---
 

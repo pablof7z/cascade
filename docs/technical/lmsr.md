@@ -50,7 +50,7 @@ cost = C(qLong + Δq, qShort) - C(qLong, qShort)
 
 The more LONG shares already outstanding (`qLong` is large), the more expensive each additional LONG share becomes. This is the core self-reinforcing property: buying moves the price, making it more expensive to buy in the same direction.
 
-In practice, a user specifies how many sats they want to spend, and the system solves for Δq. This is done via binary search (`solveBuyTokens` in `src/market.ts`) because there's no closed-form inverse.
+In practice, a user specifies how many sats they want to spend, and the system solves for Δq. This is done via binary search (internal helper `solveBuyTokens` in `src/market.ts` — not part of the public API) because there's no closed-form inverse.
 
 ---
 
@@ -63,7 +63,7 @@ payout = C(qLong, qShort) - C(qLong - Δq, qShort)
 
 Selling decreases outstanding shares and reduces the reserve proportionally. The payout is always less than or equal to what was paid to acquire the shares (if the price hasn't moved in your favor).
 
-After resolution, winning shares redeem at exactly 1.0 sat/share (minus 1% fee). Losing shares are worth 0.
+After resolution, winning shares redeem at the LMSR fill price (minus the 2% redemption rake). Losing shares are worth 0.
 
 ---
 
@@ -92,19 +92,33 @@ The current value of `0.0001` is set in the codebase. It may be tuned per-market
 
 ## Implementation
 
-The LMSR functions live in `src/market.ts`:
+There are two independent LMSR implementations that may differ in parameterization.
 
-| Function | Description |
-|----------|-------------|
-| `costFunction(qLong, qShort, b)` | Computes C(qLong, qShort) |
-| `priceLong(qLong, qShort, b)` | Current probability of LONG outcome |
-| `priceShort(qLong, qShort, b)` | Current probability of SHORT outcome |
-| `solveBuyTokens(sats, direction, market)` | Binary search: given N sats, how many shares? |
-| `solveRedeemValue(shares, direction, market)` | Given N shares, how many sats to receive? |
-| `applyBuy(market, shares, direction)` | Returns new market state after a buy |
-| `applyRedeem(market, shares, direction)` | Returns new market state after a redeem |
+### Frontend LMSR (`src/market.ts`)
 
-The mint maintains the authoritative `qLong` and `qShort` values in its database. The frontend computes estimated prices using the same functions for display purposes.
+Uses the form: `C(qLong, qShort) = ln(e^(b·qLong) + e^(b·qShort)) / b`
+
+| Function | Visibility | Description |
+|----------|------------|-------------|
+| `costFunction(qLong, qShort, b)` | public | Computes C(qLong, qShort) |
+| `priceLong(qLong, qShort, b)` | public | Current probability of LONG outcome |
+| `priceShort(qLong, qShort, b)` | public | Current probability of SHORT outcome |
+| `solveBuyTokens(market, side, sats)` | **internal** | Binary search: given N sats, how many shares? Not exported. |
+| `solveRedeemValue(market, side, tokens)` | **internal** | Given N shares, how many sats to receive? Not exported. |
+| `applyBuy(market, shares, direction)` | public | Returns new market state after a buy |
+| `applyRedeem(market, shares, direction)` | public | Returns new market state after a redeem |
+
+The frontend uses these functions for price display and local state estimation only.
+
+### Rust Mint LMSR (`cascade-mint/crates/cascade-core/src/lmsr.rs`)
+
+Uses the standard Hanson form: `C(qLong, qShort) = b · ln(e^(qLong/b) + e^(qShort/b))`
+
+This is mathematically equivalent to the frontend form but the `b` parameter has the inverse interpretation — a larger `b` means a deeper (less price-sensitive) market in the Rust implementation, whereas the frontend's small `b = 0.0001` produces high price sensitivity. The two implementations may use different `b` values.
+
+The mint's `LmsrEngine` exposes `price_long`, `price_short`, and internal `cost_function` methods.
+
+**Note on state persistence:** The current Rust mint market state is held in an in-memory `HashMap` inside `MarketManager` — not yet fully DB-authoritative. Market state does not persist across restarts in the current implementation. Full SQLite persistence is the target.
 
 ---
 

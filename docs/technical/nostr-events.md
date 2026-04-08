@@ -4,14 +4,15 @@ Complete reference for all Nostr event kinds used by Cascade.
 
 ## Summary
 
-| Kind | Description | Replaceable? | Publisher |
-|------|-------------|--------------|-----------|
-| 982 | Market definition | No | User |
-| 983 | Trade record | No | Mint |
-| 984 | Market resolution | No | Creator / Oracle |
-| 1111 | Comments / discussions (NIP-22) | No | User |
-| 10003 | Bookmarks (NIP-51) | Yes | User |
-| 30078 | Positions (NIP-78) | Yes | User |
+| Kind | Description | Replaceable? | Publisher | Status |
+|------|-------------|--------------|-----------|--------|
+| 982 | Market definition | No | User | Implemented |
+| 983 | Trade record | No | Mint | **Planned / in-progress** |
+| 984 | Market resolution | No | Creator / Oracle | **Planned** |
+| 1111 | Comments / discussions (NIP-22) | No | User | Implemented |
+| 10003 | Bookmarks (NIP-51) | Yes | User | Implemented |
+| 30078 | Positions (NIP-78) | Yes | User | Implemented |
+| 30079 | Payout records | Yes | User | Implemented |
 
 ---
 
@@ -49,7 +50,9 @@ Full markdown. This is the market's written argument — the thesis, evidence, s
 
 ---
 
-## Kind 983 — Trade Record
+## Kind 983 — Trade Record _(planned / in-progress)_
+
+> **Status:** Not yet wired end-to-end. The event schema is defined but the mint does not currently publish kind 983 events after each trade. Treat this as the intended design.
 
 Published by the **mint** after every trade. This is the public audit log of all trading activity.
 
@@ -80,7 +83,9 @@ Kind 983 events let anyone reconstruct the trading history of any market. They'r
 
 ---
 
-## Kind 984 — Market Resolution
+## Kind 984 — Market Resolution _(planned)_
+
+> **Status:** Not yet implemented. The schema below is the intended design. Current resolution is handled by application-level state updates without a published kind 984 event.
 
 Published by the market creator (or an oracle service) when the real-world outcome is known.
 
@@ -111,19 +116,35 @@ Markets can economically close without a kind 984 event — if the outcome is ob
 
 ## Kind 1111 — Discussions (NIP-22)
 
-Standard NIP-22 threaded comments. Used for market discussions, creator clarifications, and analysis posts.
+Standard NIP-22 threaded comments with Cascade-specific extensions. Used for market discussions, creator clarifications, and analysis posts.
 
+**Top-level market post:**
 ```
 kind: 1111
 pubkey: <author's pubkey>
 content: "<comment text>"
 tags:
-  ["e", "<kind-982-market-event-id>", "", "root"]
-  ["e", "<parent-comment-event-id>", "", "reply"]  # if replying to a comment
+  ["e", "<kind-982-market-event-id>", "<relay>", "root"]
+  ["k", "982"]                  # kind of the root event (Cascade-specific)
+  ["p", "<market-creator-pubkey>"]
+  ["stance", "<bull|bear|neutral>"]   # author's position stance (Cascade-specific)
+  ["type", "<analysis|question|update>"]  # post type (Cascade-specific)
+  ["subject", "<post title>"]   # Cascade-specific
+```
+
+**Reply to an existing comment:**
+```
+kind: 1111
+pubkey: <author's pubkey>
+content: "<reply text>"
+tags:
+  ["e", "<root-event-id>", "", "root"]
+  ["e", "<parent-event-id>", "", "reply"]
+  ["k", "1111"]                 # kind of the parent event
   ["p", "<parent-author-pubkey>"]
 ```
 
-No Cascade-specific extensions — this is standard NIP-22.
+Cascade adds `k`, `stance`, `type`, and `subject` tags beyond the base NIP-22 spec. See `src/services/nostrService.ts` for the authoritative implementation.
 
 ---
 
@@ -151,22 +172,38 @@ User-side position records. Replaceable per (pubkey, d-tag) pair.
 ```
 kind: 30078
 pubkey: <user's pubkey>
-content: ""
+content: <JSON-stringified position object>
 tags:
   ["d", "cascade:position:<marketId>:<direction>"]
-  ["market", "<marketId>"]
-  ["direction", "YES" | "NO"]
-  ["amount", "<sats-committed>"]
-  ["shares", "<shares-currently-held>"]
-  ["avg_price", "<average-purchase-price-as-decimal>"]
+  ["c", "cascade"]
+  ["v", "1"]
 ```
 
 **Notes:**
+- Content is JSON (not empty string) — the full position object is serialized as the event content
+- Tags use a `d/c/v` pattern: `d` for identity, `c` for application namespace, `v` for version
+- `direction` values in the d-tag: `"yes"` (LONG) or `"no"` (SHORT) — lowercase
 - Replaceable by d-tag: each (user, market, direction) has exactly one position record
 - Last-write-wins — no concurrency issues since each user writes their own positions
-- `direction` values: `"YES"` (LONG) or `"NO"` (SHORT)
-- `avg_price` is a decimal between 0 and 1 (e.g., `"0.65"` for 65%)
 - User-signed: the user's private key signs these events, not the mint
 
 **Future:**
 Positions may eventually be derived from kind 983 trade events rather than stored as kind 30078. The Cashu bearer model means the mint doesn't know who holds what — kind 30078 is a user-side record. If users start trading on multiple devices or via agents, kind 30078 becomes the authoritative position record.
+
+---
+
+## Kind 30079 — Payout Records
+
+Published by the user after a successful redemption from a resolved market. Parameterized replaceable per (pubkey, d-tag) pair.
+
+```
+kind: 30079
+pubkey: <user's pubkey>
+content: <JSON-stringified payout details>
+tags:
+  ["d", "cascade:payout:<marketSlug>:<positionId>"]
+```
+
+**Purpose:** Records completed payouts for portfolio history. One event per (market, position) pair — replaces itself if the user redeems the same position again.
+
+See `src/services/nostrService.ts` (`PAYOUT_EVENT_KIND = 30079`) and `src/services/resolutionService.ts` for the authoritative implementation.

@@ -351,7 +351,10 @@ function walletCodeToMeltCode(code: WalletErrorCode): MeltErrorCode {
     case 'INVOICE_EXPIRED': return 'INVOICE_EXPIRED'
     case 'INVOICE_INVALID': return 'INVALID_INPUT'
     case 'NETWORK_ERROR':
-    case 'MINT_UNREACHABLE': return 'NETWORK_ERROR'
+    case 'MINT_UNREACHABLE':
+    case 'LIGHTNING_ADDRESS_UNREACHABLE': return 'NETWORK_ERROR'
+    case 'MELT_FAILED':
+    case 'UNKNOWN': return 'MINT_ERROR'
     default: return 'MINT_ERROR'
   }
 }

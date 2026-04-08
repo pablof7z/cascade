@@ -1,7 +1,7 @@
 <script lang="ts">
   let {
     mintUrl,
-    mintHealthy = $bindable(true)
+    mintHealthy = $bindable(false)
   }: { mintUrl: string; mintHealthy?: boolean } = $props();
 
   let status = $state<'checking' | 'connected' | 'degraded' | 'disconnected'>('checking');

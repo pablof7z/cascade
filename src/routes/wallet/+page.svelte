@@ -39,7 +39,7 @@
   let confirmedAmount = $state(0);
 
   // Mint health and operation guard
-  let mintHealthy = $state(true);
+  let mintHealthy = $state(false);
   let isOperationInFlight = $state(false);
 
   // Withdraw tab state

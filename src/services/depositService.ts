@@ -314,6 +314,12 @@ export function getDepositErrorMessage(deposit: Deposit): string {
       return 'Insufficient balance.'
     case 'TOKEN_ALREADY_SPENT':
       return 'Token already spent.'
+    case 'LIGHTNING_ADDRESS_UNREACHABLE':
+      return 'The Lightning address could not be reached. Check the address and try again.'
+    case 'MELT_FAILED':
+      return 'Payment failed. Your funds are safe — please try again.'
+    case 'UNKNOWN':
+      return 'An unexpected error occurred. Please try again.'
     default:
       return deposit.error || 'An unknown error occurred.'
   }

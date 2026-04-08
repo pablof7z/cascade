@@ -72,21 +72,22 @@
   }
 
   async function getUserName(pubkey: string): Promise<string> {
+    if (!pubkey) return 'Anonymous';
     if (nameCache.has(pubkey)) {
       return nameCache.get(pubkey)!;
     }
 
     const ndk = getNDK();
-    if (!ndk) return abbreviatePubkey(pubkey);
+    if (!ndk) return 'Anonymous';
 
     try {
       const { fetchKind0Metadata } = await import('../../services/nostrService');
       const metadata = await fetchKind0Metadata(ndk, pubkey);
-      const name = metadata?.name || abbreviatePubkey(pubkey);
+      const name = metadata?.name || 'Anonymous';
       nameCache.set(pubkey, name);
       return name;
     } catch {
-      return abbreviatePubkey(pubkey);
+      return 'Anonymous';
     }
   }
 
@@ -151,7 +152,7 @@
           activityItems.push({
             id: market.slug,
             timestamp: event.created_at ?? market.createdAt ?? 0,
-            actor: abbreviatePubkey(event.pubkey ?? market.creatorPubkey ?? ''),
+            actor: await getUserName(event.pubkey ?? market.creatorPubkey ?? ''),
             action: `created ${market.kind ?? 'market'}`,
             marketId: market.slug,
             marketName: market.title,

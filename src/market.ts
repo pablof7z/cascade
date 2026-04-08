@@ -42,11 +42,8 @@ export function getActorDisplayName(pubkey: string): string {
   if (pubkey === CROWD_PUBKEYS.alice) return 'Alice'
   if (pubkey === CROWD_PUBKEYS.bob) return 'Bob'
   if (pubkey === CROWD_PUBKEYS.carol) return 'Carol'
-  // For real pubkeys, return truncated form
-  if (pubkey.length > 16) {
-    return `${pubkey.slice(0, 8)}...${pubkey.slice(-4)}`
-  }
-  return pubkey
+  // For real pubkeys, async resolution is done in UI — return Anonymous as sync fallback
+  return 'Anonymous'
 }
 
 export type ParticipantAccount = {

@@ -256,11 +256,7 @@
         {#if profile?.nip05}
           <p class="text-neutral-500 text-sm mt-1">{profile.nip05}</p>
         {/if}
-        {#if normalizedPubkey}
-          <p class="text-neutral-500 text-sm mt-3">
-            {normalizedPubkey.slice(0, 4)}…{normalizedPubkey.slice(-4)}
-          </p>
-        {/if}
+
       </div>
     </div>
   </div>

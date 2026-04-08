@@ -106,7 +106,7 @@
       <section>
         <h2 class="text-xl font-semibold text-white mt-10 mb-4">12. Contact</h2>
         <p>
-          For questions about these terms or the platform, reach out via Nostr:
+          For questions about these terms or the platform, contact us at:
         </p>
         <p class="mt-2">
           <a 
@@ -115,7 +115,7 @@
             rel="noopener noreferrer"
             class="text-emerald-500 hover:text-emerald-400"
           >
-            npub1jfmfh0hj0g4qgv3l0aez0w8unsn73c7n6lhrgn3x40x4g0n5mkqsz8x3y5
+            Cascade Support
           </a>
         </p>
       </section>

@@ -7,6 +7,7 @@
   const isDashboardRoute = pageState.url.pathname.startsWith('/dashboard');
   import { nostrStore, reconnect, disconnect } from '$lib/stores/nostr';
   import { initWalletStore, destroyWalletStore } from '$lib/walletStore';
+  import { getDisplayName } from '../../services/nostrService';
   import WalletWidget from './WalletWidget.svelte';
 
   // Reactive state
@@ -17,6 +18,7 @@
   let testnetValue = $state(false);
   let pubkey = $state<string | null>(null);
   let isReady = $state(false);
+  let displayName = $state<string>('');
 
   // Sync with stores using $effect
   $effect(() => {
@@ -36,6 +38,18 @@
       isReady = state.isReady;
     });
     return unsubscribe;
+  });
+
+  // Load display name when pubkey changes
+  $effect(() => {
+    if (!pubkey) {
+      displayName = '';
+      return;
+    }
+    const currentPubkey = pubkey;
+    getDisplayName(currentPubkey).then((name) => {
+      if (pubkey === currentPubkey) displayName = name;
+    });
   });
 
   // Initialize wallet store when pubkey is available, cleanup when null
@@ -75,11 +89,9 @@
 
   let isLoggedIn = $derived(pubkey !== null);
 
-  let avatarInitials = $derived(pubkey ? pubkey.slice(0, 4).toUpperCase() : '');
+  let avatarInitials = $derived(displayName ? displayName.slice(0, 1).toUpperCase() : '?');
 
-  let abbreviatedPubkey = $derived(
-    pubkey ? `${pubkey.slice(0, 8)}...${pubkey.slice(-4)}` : ''
-  );
+  let abbreviatedPubkey = $derived(displayName || 'Anonymous');
 
   // Functions
   async function handleConnect() {

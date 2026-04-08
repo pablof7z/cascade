@@ -38,3 +38,7 @@ cascade-mint/target/
 # Git worktrees
 .worktrees/
 data/
+
+# Activity simulator state
+scripts/.sim-state.json
+scripts/.sim-users.json

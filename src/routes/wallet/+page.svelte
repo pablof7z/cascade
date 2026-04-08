@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import QRCode from 'qrcode';
   import { initNostrStore, getCurrentPubkey } from '$lib/stores/nostr.svelte';
   import { getWalletBalance, createDeposit, sendTokens, receiveToken } from '../../walletStore';
   import { initWalletStore, refreshBalance } from '$lib/stores/wallet.svelte';
   import { createMarketDeposit, getAllDeposits, clearInactiveDeposits, type Deposit } from '../../services/depositService';
+  import { withdrawToLightning } from '../../services/settlementService';
 
   // Reactive state
   let balance = $state(0);
@@ -16,12 +18,26 @@
   let currentDeposit = $state<Deposit | null>(null);
   let depositError = $state<string | null>(null);
 
-  // Withdraw state
-  let withdrawAmount = $state('');
-  let withdrawMemo = $state('');
-  let isSending = $state(false);
-  let sendError = $state<string | null>(null);
-  let sendSuccess = $state<string | null>(null);
+  // Withdraw (Lightning) state
+  let lightningInvoice = $state('');
+  let isWithdrawing = $state(false);
+  let withdrawError = $state<string | null>(null);
+  let withdrawSuccess = $state<string | null>(null);
+
+  // Decode sats amount from a BOLT11 invoice HRP
+  function parseBolt11Amount(invoice: string): number | null {
+    if (!invoice) return null;
+    const lower = invoice.toLowerCase().trim();
+    const match = lower.match(/^ln(?:bc|tb|tbs|bcrt|sb)(\d+)([munp])?1[ac-hj-np-z02-9]/);
+    if (!match || !match[1]) return null;
+    const num = parseInt(match[1], 10);
+    const mult = match[2];
+    const btcMultipliers: Record<string, number> = { m: 0.001, u: 0.000001, n: 0.000000001, p: 0.000000000001 };
+    const btcAmount = mult ? num * (btcMultipliers[mult] ?? 0) : num;
+    return Math.round(btcAmount * 1e8);
+  }
+
+  let decodedAmount = $derived(parseBolt11Amount(lightningInvoice));
 
   // Receive/token state
   let receiveTokenInput = $state('');
@@ -33,11 +49,21 @@
   let deposits = $state<Deposit[]>([]);
   let activeTab = $state<'deposit' | 'withdraw' | 'history' | 'receive'>('deposit');
 
-  // QR code URL for Lightning invoice
-  let qrCodeUrl = $derived(currentDeposit?.quoteId 
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentDeposit.quoteId)}`
-    : null
-  );
+  // QR code — generated locally via qrcode package
+  let qrCodeUrl = $state<string | null>(null);
+
+  $effect(() => {
+    const quoteId = currentDeposit?.quoteId;
+    if (quoteId) {
+      QRCode.toDataURL(quoteId, { width: 200, margin: 1 }).then(url => {
+        qrCodeUrl = url;
+      }).catch(() => {
+        qrCodeUrl = null;
+      });
+    } else {
+      qrCodeUrl = null;
+    }
+  });
 
   onMount(async () => {
     // Initialize Nostr and wallet stores
@@ -110,36 +136,40 @@
     }
   }
 
-  async function handleSendTokens() {
-    const amount = parseInt(withdrawAmount, 10);
-    if (isNaN(amount) || amount <= 0) {
-      sendError = 'Please enter a valid amount';
+  async function handleWithdraw() {
+    if (!lightningInvoice.trim()) {
+      withdrawError = 'Please enter a Lightning invoice';
+      return;
+    }
+
+    const amount = decodedAmount;
+    if (!amount || amount <= 0) {
+      withdrawError = 'Could not decode amount from invoice — check that it is a valid BOLT11 invoice';
       return;
     }
 
     if (amount > balance) {
-      sendError = 'Insufficient balance';
+      withdrawError = 'Insufficient balance';
       return;
     }
 
-    isSending = true;
-    sendError = null;
-    sendSuccess = null;
+    isWithdrawing = true;
+    withdrawError = null;
+    withdrawSuccess = null;
 
     try {
-      const token = await sendTokens(amount, withdrawMemo || undefined);
-      if (token) {
-        sendSuccess = 'Tokens sent successfully';
-        withdrawAmount = '';
-        withdrawMemo = '';
+      const result = await withdrawToLightning(amount, lightningInvoice.trim());
+      if (result.success) {
+        withdrawSuccess = result.message || `Paid ${formatSats(amount)} sats`;
+        lightningInvoice = '';
         loadBalance();
       } else {
-        sendError = 'Failed to send tokens';
+        withdrawError = result.message || 'Withdrawal failed';
       }
     } catch (err) {
-      sendError = err instanceof Error ? err.message : 'Failed to send tokens';
+      withdrawError = err instanceof Error ? err.message : 'Withdrawal failed';
     } finally {
-      isSending = false;
+      isWithdrawing = false;
     }
   }
 
@@ -238,7 +268,7 @@
         onclick={() => activeTab = 'withdraw'}
         class="px-4 py-2 text-sm font-medium transition-colors -mb-px {activeTab === 'withdraw' ? 'border-b-2 border-white text-white' : 'text-neutral-500 hover:text-neutral-300'}"
       >
-        Send
+        Withdraw
       </button>
       <button
         onclick={() => activeTab = 'receive'}
@@ -327,14 +357,6 @@
             {/if}
 
             <div class="flex gap-3">
-              {#if currentDeposit.status !== 'completed'}
-                <button
-                  onclick={loadBalance}
-                  class="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 border border-neutral-700 hover:border-neutral-500 transition-colors"
-                >
-                  Refresh status
-                </button>
-              {/if}
               <button
                 onclick={clearCurrentDeposit}
                 class="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 border border-neutral-700 hover:border-neutral-500 transition-colors"
@@ -350,55 +372,49 @@
     <!-- Withdraw Tab -->
     {#if activeTab === 'withdraw'}
       <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
-        <h2 class="text-lg font-medium text-white mb-4">Send tokens</h2>
+        <h2 class="text-lg font-medium text-white mb-4">Withdraw via Lightning</h2>
         <p class="text-neutral-400 text-sm mb-4">
-          Send tokens to another wallet.
+          Paste a BOLT11 Lightning invoice to pay it from your balance.
         </p>
 
         <div class="space-y-4">
           <div>
-            <label for="withdraw-amount" class="block text-sm font-medium text-neutral-300 mb-2">
-              Amount (sats)
+            <label for="lightning-invoice" class="block text-sm font-medium text-neutral-300 mb-2">
+              Lightning Invoice
             </label>
-            <input
-              id="withdraw-amount"
-              type="number"
-              min="1"
-              max={balance}
-              bind:value={withdrawAmount}
-              placeholder="Enter amount"
-              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
-            />
+            <textarea
+              id="lightning-invoice"
+              bind:value={lightningInvoice}
+              placeholder="lnbc..."
+              rows="4"
+              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 resize-none font-mono text-xs"
+            ></textarea>
             <p class="text-xs text-neutral-500 mt-1">Available: {formatSats(balance)} sats</p>
           </div>
 
-          <div>
-            <label for="withdraw-memo" class="block text-sm font-medium text-neutral-300 mb-2">
-              Memo (optional)
-            </label>
-            <input
-              id="withdraw-memo"
-              type="text"
-              bind:value={withdrawMemo}
-              placeholder="Add a note"
-              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
-            />
-          </div>
-
-          {#if sendError}
-            <p class="text-rose-400 text-sm">{sendError}</p>
+          {#if decodedAmount !== null}
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-neutral-400">Amount</span>
+              <span class="font-mono text-white">{formatSats(decodedAmount)} sats</span>
+            </div>
+          {:else if lightningInvoice.trim()}
+            <p class="text-rose-400 text-sm">Could not decode invoice — check it is a valid BOLT11 string</p>
           {/if}
 
-          {#if sendSuccess}
-            <p class="text-emerald-400 text-sm">{sendSuccess}</p>
+          {#if withdrawError}
+            <p class="text-rose-400 text-sm">{withdrawError}</p>
+          {/if}
+
+          {#if withdrawSuccess}
+            <p class="text-emerald-400 text-sm">{withdrawSuccess}</p>
           {/if}
 
           <button
-            onclick={handleSendTokens}
-            disabled={isSending || !withdrawAmount || balance === 0}
+            onclick={handleWithdraw}
+            disabled={isWithdrawing || !lightningInvoice.trim() || decodedAmount === null || balance === 0}
             class="w-full px-4 py-2.5 text-sm font-medium text-neutral-950 bg-white hover:bg-neutral-200 disabled:bg-neutral-600 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors"
           >
-            {isSending ? 'Sending...' : 'Send tokens'}
+            {isWithdrawing ? 'Paying...' : 'Pay invoice'}
           </button>
         </div>
       </div>

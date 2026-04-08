@@ -169,7 +169,7 @@
         }
       } catch (err) {
         if (!cancelled) {
-          setMarketsError(err instanceof Error ? err.message : "Couldn't reach relay — check your connection");
+          setMarketsError(err instanceof Error ? err.message : "Couldn't load activity — check your connection");
         }
       }
     }

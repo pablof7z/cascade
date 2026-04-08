@@ -7,6 +7,8 @@
   import Footer from '$lib/components/Footer.svelte';
   import MarketDiscussionList from '$lib/components/discussion/MarketDiscussionList.svelte';
   import { executeTrade } from '../../../services/tradingService';
+  import { getCurrentPubkey } from '$lib/stores/nostr.svelte';
+  import { hasError as walletHasError, initWalletStore } from '$lib/stores/wallet.svelte';
 
   // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,6 +33,15 @@
   let tradeSuccess = $state(false);
   let isBookmarked = $state(false);
   let mintName = $state('Cascade Mint');
+
+  // ─── Auth + wallet state ──────────────────────────────────────────────────
+
+  let pubkey = $derived(getCurrentPubkey());
+  let isLoggedIn = $derived(pubkey !== null);
+
+  $effect(() => {
+    if (pubkey) initWalletStore();
+  });
 
   // ─── Derived data ─────────────────────────────────────────────────────────────
 
@@ -398,6 +409,26 @@
                 <p class="mt-4 text-sm text-neutral-500">
                   This market has been resolved. Trading is closed.
                 </p>
+              </div>
+            {:else if !isLoggedIn}
+              <div class="space-y-4">
+                <a
+                  href="/join"
+                  class="block w-full py-3 px-4 text-center text-sm font-medium text-white border border-neutral-600 hover:border-neutral-400 transition-colors"
+                >
+                  Connect to Trade
+                </a>
+                <p class="text-sm text-neutral-500">Sign in to trade on this market.</p>
+              </div>
+            {:else if walletHasError()}
+              <div class="space-y-4">
+                <a
+                  href="/wallet"
+                  class="block w-full py-3 px-4 text-center text-sm font-medium text-white border border-neutral-600 hover:border-neutral-400 transition-colors"
+                >
+                  Set Up Wallet
+                </a>
+                <p class="text-sm text-neutral-500">Add funds to start trading.</p>
               </div>
             {:else}
               <!-- Trade Header -->

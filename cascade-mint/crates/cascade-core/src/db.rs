@@ -205,7 +205,7 @@ impl CascadeDatabase {
     /// Insert LMSR price snapshot
     pub async fn insert_lmsr_snapshot(&self, market_id: &str, q_long: f64, q_short: f64, price_long: f64, price_short: f64) -> Result<()> {
         sqlx::query(
-            "INSERT INTO lmsr_snapshots (market_id, q_long, q_short, price_long, price_short, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))"
+            "INSERT INTO lmsr_snapshots (market_slug, q_long, q_short, price_long, price_short, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))"
         )
         .bind(market_id)
         .bind(q_long)
@@ -236,7 +236,7 @@ impl CascadeDatabase {
     /// Insert a payout record
     pub async fn insert_payout(&self, payout: &Payout) -> Result<()> {
         sqlx::query(
-            "INSERT INTO payouts (id, market_id, recipient_pubkey, winning_side, winning_tokens, payout_sats, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO payouts (id, market_slug, recipient_pubkey, winning_side, winning_tokens, payout_sats, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&payout.id)
         .bind(&payout.market_id)

@@ -174,6 +174,27 @@ pub enum TradeDirection {
     Sell,
 }
 
+impl std::fmt::Display for TradeDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TradeDirection::Buy => write!(f, "buy"),
+            TradeDirection::Sell => write!(f, "sell"),
+        }
+    }
+}
+
+impl std::str::FromStr for TradeDirection {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "buy" => Ok(TradeDirection::Buy),
+            "sell" => Ok(TradeDirection::Sell),
+            _ => Err(format!("Invalid trade direction: {}", s)),
+        }
+    }
+}
+
 /// Trade record for audit trail
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Trade {

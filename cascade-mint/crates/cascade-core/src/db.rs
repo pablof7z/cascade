@@ -1,10 +1,9 @@
 //! Database persistence layer using SQLite
 
 use crate::error::Result;
-use crate::market::{Market, MarketStatus, Side};
-use crate::trade::{Trade, Payout};
+use crate::market::{Market, MarketStatus, Side, Trade, TradeDirection};
+use crate::trade::Payout;
 use sqlx::sqlite::{SqlitePool, SqliteConnectOptions};
-use chrono::DateTime;
 use std::str::FromStr;
 
 /// Database connection pool
@@ -154,15 +153,16 @@ impl CascadeDatabase {
     /// Insert a trade record
     pub async fn insert_trade(&self, trade: &Trade) -> Result<()> {
         sqlx::query(
-            "INSERT INTO trades (id, market_id, buyer_pubkey, side, quantity, cost_sats, fee_sats, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO trades (id, market_slug, side, direction, quantity, cost_sats, fee_sats, buyer_pubkey, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&trade.id)
-        .bind(&trade.market_id)
-        .bind(&trade.buyer_pubkey)
-        .bind(format!("{:?}", trade.side))
-        .bind(trade.quantity)
-        .bind(trade.cost_sats as i64)
-        .bind(trade.fee_sats as i64)
+        .bind(&trade.market_slug)
+        .bind(trade.side.to_string())
+        .bind(trade.direction.to_string())
+        .bind(trade.amount)
+        .bind(trade.cost_sats)
+        .bind(trade.fee_sats)
+        .bind("") // buyer_pubkey placeholder — not tracked in market::Trade
         .bind(trade.created_at)
         .execute(&self.pool)
         .await
@@ -172,27 +172,31 @@ impl CascadeDatabase {
     }
 
     /// Get trades for a market
-    pub async fn get_trades(&self, market_id: &str) -> Result<Vec<Trade>> {
+    pub async fn get_trades(&self, market_slug: &str) -> Result<Vec<Trade>> {
         let rows = sqlx::query_as::<_, (String, String, String, String, f64, i64, i64, i64)>(
-            "SELECT id, market_slug, buyer_pubkey, side, quantity, cost_sats, fee_sats, created_at FROM trades WHERE market_slug = ? ORDER BY created_at DESC"
+            "SELECT id, market_slug, side, direction, quantity, cost_sats, fee_sats, created_at FROM trades WHERE market_slug = ? ORDER BY created_at DESC"
         )
-        .bind(market_id)
+        .bind(market_slug)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
-        Ok(rows.into_iter().map(|(id, market_slug, buyer_pubkey, side_str, quantity, cost_sats, fee_sats, created_at_ts)| {
+        Ok(rows.into_iter().map(|(id, market_slug, side_str, direction_str, amount, cost_sats, fee_sats, created_at)| {
             let side = side_str.parse().unwrap_or(Side::Long);
-            let created_at = DateTime::from_timestamp(created_at_ts, 0).unwrap_or_default();
+            let direction = direction_str.parse().unwrap_or(TradeDirection::Buy);
             Trade {
                 id,
-                market_id: market_slug,
-                buyer_pubkey,
+                market_slug,
                 side,
-                quantity,
-                cost_sats: cost_sats as u64,
-                fee_sats: fee_sats as u64,
-                total_sats: (cost_sats + fee_sats) as u64,
+                direction,
+                amount,
+                cost_sats,
+                fee_sats,
+                total_sats: cost_sats + fee_sats,
+                q_long_before: 0.0,
+                q_short_before: 0.0,
+                q_long_after: 0.0,
+                q_short_after: 0.0,
                 created_at,
             }
         }).collect())

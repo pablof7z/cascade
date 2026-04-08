@@ -6,6 +6,7 @@
   import BookmarkButton from '$lib/components/BookmarkButton.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import MarketDiscussionList from '$lib/components/discussion/MarketDiscussionList.svelte';
+  import { executeTrade } from '../../../services/tradingService';
 
   // ─── Types ─────────────────────────────────────────────────────────────────────
 

@@ -31,8 +31,8 @@
   let typeFilter = $state<TypeFilter>('all')
   let searchQuery = $state('')
 
-  // Track unsubscribe functions for memory leak fix
-  let unsubscribes = $state<(() => void)[]>([])
+  // Track unsubscribe functions for memory leak fix (NOT $state - plain variable)
+  let activeUnsubscribes: (() => void)[] = []
 
   // Derived filtered and sorted discussions
   let filteredDiscussions = $derived.by(() => {
@@ -212,17 +212,19 @@
 
     nostrReady = true
 
-    // Track current run's unsubscribes for cleanup
-    const currentUnsubscribes: (() => void)[] = []
+    // Clean up previous subscriptions before setting up new ones
+    activeUnsubscribes.forEach(unsub => unsub())
+    activeUnsubscribes = []
 
     // Initial fetch and subscribe to live updates
     fetchAllDiscussions().then((newUnsubscribes) => {
-      currentUnsubscribes.push(...newUnsubscribes)
+      activeUnsubscribes = newUnsubscribes
     })
 
     return () => {
       // Cleanup: unsubscribe from all market subscriptions
-      currentUnsubscribes.forEach((unsub) => unsub())
+      activeUnsubscribes.forEach((unsub) => unsub())
+      activeUnsubscribes = []
     }
   })
 </script>

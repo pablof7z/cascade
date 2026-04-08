@@ -50,6 +50,12 @@ export function detectInputType(
   const trimmed = input.trim()
   const lower = trimmed.toLowerCase()
 
+  // Lightning address check must come first — addresses like lntb@domain.com or
+  // lnbc123@example.com would otherwise match the bolt11 prefix checks below.
+  if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed)) {
+    return 'lightning_address'
+  }
+
   // bolt11: starts with lnbc (mainnet) or lntbs/lntb/lnbcrt (testnet)
   if (
     lower.startsWith('lnbc') ||
@@ -63,11 +69,6 @@ export function detectInputType(
   // lnurl: bech32-encoded LNURL, starts with lnurl1
   if (lower.startsWith('lnurl1')) {
     return 'lnurl'
-  }
-
-  // Lightning address: user@domain.tld
-  if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed)) {
-    return 'lightning_address'
   }
 
   return 'invalid'
@@ -91,7 +92,7 @@ export function extractAmountFromBolt11(invoice: string): number | null {
   const match = invoice
     .trim()
     .toLowerCase()
-    .match(/^ln(?:bc|tbs|tb|bcrt|sb)(\d+)([munp])?1[ac-hj-np-z02-9]/)
+    .match(/^ln(?:bc|tbs|tb|bcrt)(\d+)([munp])?1[ac-hj-np-z02-9]/)
 
   if (!match) return null
 
@@ -108,7 +109,13 @@ export function extractAmountFromBolt11(invoice: string): number | null {
   const multiplier = multiplierChar ? multipliers[multiplierChar] : 1
   if (multiplier === undefined) return null
 
-  const sats = Math.round(num * multiplier * 1e8)
+  // pico-BTC (p): 1 sat = 10,000 pico-BTC. If the amount can't represent a whole
+  // number of sats, the invoice is malformed per the BOLT11 spec — return null.
+  if (multiplierChar === 'p' && num % 10000 !== 0) {
+    return null
+  }
+
+  const sats = Math.floor(num * multiplier * 1e8)
   return sats > 0 ? sats : null
 }
 
@@ -139,6 +146,7 @@ export async function resolveLightningAddress(
     callback: string
     minSendable: number
     maxSendable: number
+    status?: string
     tag?: string
     reason?: string
   }
@@ -158,8 +166,19 @@ export async function resolveLightningAddress(
     throw new Error(`Failed to reach ${domain}`)
   }
 
+  // Check for LNURL error response
+  if (lnurlpData.status === 'ERROR') {
+    throw new Error(`LNURL error: ${lnurlpData.reason || 'unknown error'}`)
+  }
+
   if (!lnurlpData.callback) {
     throw new Error('Invalid LNURL response: missing callback URL')
+  }
+
+  if (lnurlpData.tag !== 'payRequest') {
+    throw new Error(
+      `Invalid LNURL response: expected tag "payRequest", got "${lnurlpData.tag}"`
+    )
   }
 
   // Step 2: Validate amount against the sendable range
@@ -199,6 +218,16 @@ export async function resolveLightningAddress(
   if (!invoiceData.pr) {
     const reason = invoiceData.reason || 'no invoice returned'
     throw new Error(`Invalid LNURL response: ${reason}`)
+  }
+
+  // LUD-06 requires verifying the returned invoice encodes the requested amount.
+  // A malicious or buggy endpoint could return an invoice for a different amount.
+  const expectedSats = amountMsats / 1000
+  const invoiceSats = extractAmountFromBolt11(invoiceData.pr)
+  if (invoiceSats === null || invoiceSats !== expectedSats) {
+    throw new Error(
+      `LNURL returned invoice with amount ${invoiceSats ?? 'unknown'} sats, expected ${expectedSats} sats`
+    )
   }
 
   return invoiceData.pr

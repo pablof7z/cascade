@@ -280,7 +280,7 @@
                   <div>
                     <div class="text-xs uppercase tracking-[0.18em] text-neutral-500">Volume</div>
                     <div class="mt-1 text-2xl font-semibold text-white">
-                      {market.receipts.length > 0 ? '$12.5K' : '$0'}
+                      {formatCompactCurrency(market.receipts.reduce((sum, r) => sum + r.sats, 0))}
                     </div>
                   </div>
                 </div>

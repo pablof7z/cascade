@@ -14,7 +14,7 @@
 
   function truncateDestination(dest: string, type: 'bolt11' | 'lightning_address'): string {
     if (type === 'bolt11') {
-      return dest.length > 20 ? dest.slice(0, 20) + '...' : dest
+      return dest.length > 40 ? dest.slice(0, 40) + '...' : dest
     }
     return dest
   }
@@ -45,14 +45,16 @@
 
   <div class="flex gap-3">
     <button
+      type="button"
       onclick={onCancel}
-      class="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 border border-neutral-700 hover:border-neutral-500 transition-colors"
+      class="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 border border-neutral-700 hover:border-neutral-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
     >
       Cancel
     </button>
     <button
+      type="button"
       onclick={onConfirm}
-      class="flex-1 px-4 py-2 text-sm font-medium text-neutral-950 bg-white hover:bg-neutral-200 transition-colors"
+      class="flex-1 px-4 py-2 text-sm font-medium text-neutral-950 bg-white hover:bg-neutral-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
     >
       Confirm withdrawal
     </button>

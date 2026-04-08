@@ -345,7 +345,7 @@ Ready to start? Your identity will be secured with your chosen authentication me
   }
 
   function handleGoToMarkets() {
-    goto('/markets');
+    goto('/');
   }
 
   // ── Key Generation (simplified) ─────────────────────────────────────────────

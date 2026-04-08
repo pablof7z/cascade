@@ -364,10 +364,10 @@ function startStatusPolling(
     if (deposit.expiry && Math.floor(Date.now() / 1000) > deposit.expiry) {
       deposit.status = 'expired'
       deposit.error = 'Invoice expired'
-      deposit.errorKind = 'ExpiredInvoiceError'
+      deposit.errorKind = 'INVOICE_EXPIRED'
       notifyStatusChange(deposit, callbacks)
       if (callbacks.onError) {
-        callbacks.onError(deposit, deposit.error, 'ExpiredInvoiceError')
+        callbacks.onError(deposit, deposit.error, 'INVOICE_EXPIRED')
       }
       clearInterval(pollInterval)
       pollingIntervals.delete(depositId)

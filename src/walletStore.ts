@@ -11,6 +11,8 @@ const WALLET_RELAYS = ['wss://relay.damus.io', 'wss://relay.primal.net', 'wss://
 
 // Current mint URL - initialized from config, can be overridden per-market
 let currentMintUrl: string = MINT_URL
+let walletInstance: NDKCashuWallet | null = null
+let ndkInstance: NDK | null = null
 
 /**
  * Get the current mint URL being used by the wallet.

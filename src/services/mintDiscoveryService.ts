@@ -7,6 +7,7 @@
  */
 
 import type { Market } from '../market'
+import { getMintUrl, MINT_RELAYS } from '../lib/config/mint'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,8 +58,7 @@ export async function discoverMintForMarket(market: Market): Promise<MintInfo | 
   }
 
   // Priority 3: Default cascade mint
-  const defaultMint = 'https://mint.example.com' // TODO: Set actual default
-  return getMintInfo(defaultMint)
+  return getMintInfo(getMintUrl())
 }
 
 /**

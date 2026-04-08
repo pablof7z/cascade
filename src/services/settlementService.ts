@@ -7,9 +7,10 @@ import type { Position } from '../positionStore'
 import type { Market } from '../market'
 import type NDK from '@nostr-dev-kit/ndk'
 import { redeemPosition as doRedemption, hasBeenRedeemed, type RedemptionError } from './redemptionService'
+import { getMintUrl } from '../lib/config/mint'
 
-// Backend mint URL - should come from environment/config
-const MINT_URL = import.meta.env.VITE_CASCADE_MINT_URL || 'https://mint.cascade.market'
+// Backend mint URL - use centralized config
+const MINT_URL = getMintUrl()
 
 export interface RedemptionQuote {
   id: string

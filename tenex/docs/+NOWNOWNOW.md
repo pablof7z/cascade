@@ -1,81 +1,81 @@
 # NowNowNow
 
-*Last updated: 2026-04-07 15:50 UTC — Phase 7 COMPLETE & MERGED. Svelte 5 audit done (22 issues, 5 critical fixed & pushed). Growth campaign READY (blocked on Pablo DM send). TENEX: Teams Phases 4-5 in progress.*
+*Last updated: 2026-04-08 00:20 UTC — Frontend refactor in progress. Phase 8 plan approved & committed. Memory leak fix shipped.*
 
 ---
+
+## 📌 Pending Follow-Ups
+
+| When | What | Details |
+|------|------|---------|
+| After frontend refactor ships | Delegate Phase 8 Phase 1 (testnet mint) to execution-coordinator | Plan: `.tenex/plans/phase-8-real-money-integration-revised.md` |
+| After web-tester reports | Fix any CRITICAL/HIGH visual issues found | Audit of cascade.f7z.io running (conv: 8c407441ab) |
+| After agent categorization ships | Reduce context for orchestrator/router agents | `projects/TENEX-ff3ssq/docs/follow-ups.md` |
+
+---
+
+## ✅ Shipped (2026-04-08)
+
+| Item | Commit | Status |
+|------|--------|--------|
+| **Memory leak fix (discuss page subscriptions)** | `57eb103` | ✅ Committed + pushed to main |
+| **NDK subscription migration (discuss page)** | `0b11156` | ✅ Committed + pushed to main |
+| **Phase 8 Planning Artifacts** | `711bbc4` | ✅ 25 plan files committed + pushed to main |
+| **Phase 8 Plan APPROVED** | — | ✅ Self-hosted mint, LND, no KYC for MVP |
+| **Frontend refactor scoping** | — | ✅ 4 priorities identified |
+| **Stale worktree cleanup** | — | ✅ `audit-visual-functional` removed |
 
 ## ✅ Shipped (2026-04-07)
 
 | Item | Commit | Status |
 |------|--------|--------|
-| **CDK Rust Mint Phases 1-7** | bd19d6e | ✅ MERGED TO MAIN |
-| **Phase 7 Settlement & Redeem** | 5f909ca, b82e05c | ✅ CDK proof verify, reserve decrement, LMSR math fixed |
-| **Phase 6 API Tests + Dockerfile** | fc1a5bb9, b9d818ff | ✅ clean-code-nazi PASS |
-| **settlement.rs build fix** | 942b69fb | ✅ 3 compile errors fixed |
-| **AppState::new() merge fix** | e502e90 | ✅ Resolved merge conflict |
-| **Svelte Migration** | 4bfd1fd | ✅ 21 routes, build clean |
-| **Main branch pushed to origin** | f87f560 | ✅ Live |
+| **Svelte 5 Audit — Medium Fixes (#2, #3)** | `e16ec74` | ✅ Polling→NDK subs, discuss double-fetch |
+| **Fix /profile 404** | `61b34d0` | ✅ Auth redirect + sign-in prompt |
+| **Product Quality Fixes (5 items)** | `6b9732d` | ✅ Footer, settings, jargon, loading, redirect |
+| **Svelte 5 Audit — Critical Fixes (5)** | `8fd4728`, `d2e1981` | ✅ All fixed |
+| **Svelte 5 Migration (21 routes)** | `4bfd1fd` | ✅ All ported |
+| **Phase 7 Settlement & Withdrawal** | — | ✅ 112 tests, committed to main |
 
 ---
 
 ## 🔄 In Progress
 
-### Svelte 5 Frontend Audit — 22 Issues
-- **Status**: ✅ 5 criticals FIXED & SHIPPED (3c4d028). 17 medium/low remaining (not blocking).
-- **Fixed**: Loading spinners, rounded-full, broken /markets links, Nostr jargon, mockPnLData.ts deleted
-- **Remaining**: 11 medium, 6 low — recommend next UX sprint
+### Frontend Wallet Refactor (Phase 8 Prerequisite)
+- **Delegated**: execution-coordinator → claude-code (conv: 8ea3c8f8d5)
+- **Branch**: `refactor/wallet-svelte5`
+- **4 Priorities**: P1 unify wallet store, P2 component extraction, P3 wire missing flows, P4 reactivity fixes
 
-### Growth Campaign — Manual DM Send
-- **Status**: 🔴 BLOCKED on Pablo
-- **Deliverable**: 10 personalized DMs + interview guide
-- **Location**: `$AGENT_HOME/research/dm-campaign-10-users.md`
-- **Action**: Pablo manually sends 10 DMs from his X account (~20 min)
+### Visual/Functional Audit of cascade.f7z.io
+- **Delegated**: web-tester → explore-agent (conv: 8c407441ab)
+- **Status**: Awaiting results
 
 ---
 
-## 🚫 CURRENT BLOCKERS
+## ⏸️ Blocked on Pablo
 
-1. **Pablo DMs** — Growth outreach blocked on manual send (~20 min)
+| Item | Blocker |
+|------|---------|
+| Growth DM Campaign | Pablo needs to send 10 DMs or provide Twitter/X API credentials |
+| Substack Distribution | Article published to Nostr; Substack publishing needs Pablo's approval |
 
 ---
 
-## 📊 Phase 7 Review History (RESOLVED)
+## Phase 8 Plan — Key Decisions
 
-| Round | Verdict | Key Issues |
-|-------|---------|------------|
-| Round 1 | FAIL | Missing ProofInput, wrong C validation, no double-spend, no LMSR refund |
-| Round 2 | FAIL | keyset_id not id, no keyset binding, LMSR math wrong |
-| Round 3 | FAIL | String-only keyset binding, reserve not decremented |
-| Round 4 | ✅ PASS | CDK verify_proofs, reserve decrement, exact fee assertion |
-| Final | ✅ MERGED | bd19d6e on main |
+| Decision | Resolution |
+|----------|-------------|
+| Third-party vs self-hosted mint | **Self-hosted** (CDK Rust + PostgreSQL) |
+| Lightning provider | **Self-run LND node** |
+| KYC for MVP | **No KYC** |
+| Frontend refactor | **Required prerequisite** before real-money wiring |
+| Pablo sign-off | **Required** before implementation begins |
 
 ---
 
 ## 🏗️ Architecture State
 
-- **Markets:** kind 982 (immutable, non-replaceable) ✅
-- **Positions:** kind 30078 NIP-78 (user-signed, replaceable) ✅
-- **Discussions:** kind 1111 NIP-22 (per-market, real-time) ✅
-- **Bookmarks:** NIP-51 kind 10003 ✅
-- **Redemption:** Atomic, LMSR-priced, P2PK delivery, 3-layer idempotency ✅
+- **Markets:** kind 982 (immutable) ✅
+- **Positions:** kind 30078 NIP-78 ✅
+- **Discussions:** kind 1111 NIP-22 ✅
 - **Cashu Mint:** Per-market keysets, 2% rake, CDK Rust ✅ ALL 7 PHASES DONE
 - **React:** Abandoned 🗑️ All Svelte 5 now.
-
----
-
-## 📈 What's Next
-
-1. Fix Svelte audit criticals → deploy
-2. Pablo sends 10 DMs → user research
-3. Seed 3 thesis chains from market scan
-4. Analytics dashboard (no tracking yet — growth says prioritize this)
-
----
-
-## ✅ Archive (Completed >7 days)
-
-- UX Phase 1 (market resolution, homepage, jargon removal)
-- Kind 982 migration
-- Position Nostr persistence
-- Growth readiness assessment
-- Cashu Mint CDK Rust plan

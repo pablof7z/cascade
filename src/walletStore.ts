@@ -2,17 +2,15 @@ import NDK, { NDKPrivateKeySigner, NDKKind } from '@nostr-dev-kit/ndk'
 import { NDKCashuWallet, NDKCashuDeposit } from '@nostr-dev-kit/wallet'
 import { getEncodedToken } from '@cashu/cashu-ts'
 import { loadStoredKeys } from './nostrKeys'
+import { MINT_URL, getMintUrl, setMintUrl as setConfiguredMintUrl } from './lib/config/mint'
 
 // Re-export NDKCashuDeposit for use by other services
 export type { NDKCashuDeposit } from '@nostr-dev-kit/wallet'
 
 const WALLET_RELAYS = ['wss://relay.damus.io', 'wss://relay.primal.net', 'wss://nos.lol']
 
-// Current mint URL - configurable per market
-let currentMintUrl: string = import.meta.env.VITE_CASCADE_MINT_URL || import.meta.env.VITE_CASHU_MINT_URL || 'https://mint.minibits.cash/Bitcoin'
-
-let ndkInstance: NDK | null = null
-let walletInstance: NDKCashuWallet | null = null
+// Current mint URL - initialized from config, can be overridden per-market
+let currentMintUrl: string = MINT_URL
 
 /**
  * Get the current mint URL being used by the wallet.
@@ -29,6 +27,7 @@ export function getCurrentMintUrl(): string {
  */
 export function setMintUrl(url: string): void {
   currentMintUrl = url
+  setConfiguredMintUrl(url)
   // Reinitialize wallet with new mint
   walletInstance = null
   ndkInstance = null

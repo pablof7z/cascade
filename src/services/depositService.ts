@@ -13,6 +13,7 @@
 
 import type { Market } from '../market'
 import { createDeposit, type NDKCashuDeposit } from '../walletStore'
+import { getMintUrl } from '../lib/config/mint'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -244,9 +245,7 @@ export function formatDepositStatus(deposit: Deposit): string {
  * Get the default mint URL from environment or wallet store.
  */
 function getDefaultMintUrl(): string {
-  return import.meta.env.VITE_CASCADE_MINT_URL || 
-         import.meta.env.VITE_CASHU_MINT_URL || 
-         'https://mint.minibits.cash/Bitcoin'
+  return getMintUrl()
 }
 
 /**

@@ -113,7 +113,7 @@
   });
 
   // Get display author
-  let displayAuthor = $derived(authorName ?? (authorNpub ? `${authorNpub.slice(0, 8)}...${authorNpub.slice(-4)}` : event.pubkey.slice(0, 8)));
+  let displayAuthor = $derived(authorName ?? 'Anonymous');
 </script>
 
 <div class="py-4 border-b border-neutral-800 last:border-b-0">

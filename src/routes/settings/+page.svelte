@@ -144,6 +144,15 @@
       handleAddRelay();
     }
   }
+
+  let copiedAccountId = $state(false);
+
+  async function copyAccountId() {
+    if (!pubkey) return;
+    await navigator.clipboard.writeText(pubkey);
+    copiedAccountId = true;
+    setTimeout(() => { copiedAccountId = false; }, 2000);
+  }
 </script>
 
 <svelte:head>
@@ -280,8 +289,14 @@
     {#if pubkey}
       <section class="mt-12 pt-8 border-t border-neutral-800">
         <h2 class="text-lg font-medium mb-4">Your Account</h2>
-        <div class="px-3 py-2 bg-neutral-900 border border-neutral-700 rounded">
-          <code class="text-sm font-mono text-emerald-400">{pubkey.slice(0, 8)}...{pubkey.slice(-4)}</code>
+        <div class="flex items-center justify-between px-3 py-2 bg-neutral-900 border border-neutral-700">
+          <span class="text-sm text-neutral-400">Account ID</span>
+          <button
+            onclick={copyAccountId}
+            class="text-xs text-neutral-400 hover:text-white transition-colors"
+          >
+            {copiedAccountId ? '✓ Copied' : 'Copy'}
+          </button>
         </div>
       </section>
     {/if}

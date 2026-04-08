@@ -4,6 +4,7 @@
   import { formatMarketSlug } from '$lib/marketSlug';
   import { priceLong, priceShort } from '../../../market';
   import { executeTrade } from '../../../services/tradingService';
+  import { getDisplayName } from '../../../services/nostrService';
   import BookmarkButton from '$lib/components/BookmarkButton.svelte';
   import MarketDiscussionList from '$lib/components/discussion/MarketDiscussionList.svelte';
   
@@ -25,6 +26,16 @@
   let tradeError = $state<string | null>(null);
   let tradeSuccess = $state(false);
   let isBookmarked = $state(false);
+  let creatorDisplayName = $state<string>('Anonymous');
+
+  // Resolve creator display name
+  $effect(() => {
+    const pubkey = market?.creatorPubkey;
+    if (!pubkey) return;
+    getDisplayName(pubkey).then((name) => {
+      creatorDisplayName = name;
+    });
+  });
   
   // Price calculations (LMSR)
   let yesPrice = $derived(market ? priceLong(market.qLong, market.qShort, market.b) : 0);
@@ -139,7 +150,7 @@
                 onclick={() => navigateToProfile(market.creatorPubkey)}
                 class="hover:text-neutral-300"
               >
-                by {market.creatorPubkey?.slice(0, 8)}...
+                by {creatorDisplayName}
               </button>
               <span class="mx-2">·</span>
               Created {new Date(market.createdAt * 1000).toLocaleDateString()}

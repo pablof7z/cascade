@@ -31,9 +31,14 @@ export const MINT_RELAYS = [
  */
 export function getMintUrl(): string {
   // Respect runtime override set via setMintUrl()
-  if (currentMintUrl && currentMintUrl !== (ENV_MINT_URL || DEFAULT_MAINNET_MINT)) {
+  if (currentMintUrl !== undefined) {
     return currentMintUrl
   }
+  // Check if running in testnet mode
+  if (isTestnet()) {
+    return DEFAULT_TESTNET_MINT
+  }
+  // Use env override or default mainnet mint
   if (ENV_MINT_URL) {
     return ENV_MINT_URL
   }
@@ -52,7 +57,8 @@ export function isTestnetMode(): boolean {
 // -----------------------------------------------------------------------------
 
 // Module-level state that can be observed
-let currentMintUrl = getMintUrl()
+// Initialized to undefined to avoid circular reference with getMintUrl()
+let currentMintUrl: string | undefined = undefined
 
 export function getCurrentMintUrl(): string {
   return currentMintUrl

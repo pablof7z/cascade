@@ -386,6 +386,15 @@ export async function resolveAuthorName(pubkey: string): Promise<{
   }
 }
 
+/**
+ * Get a display-friendly name for a pubkey.
+ * Returns the profile name if available, otherwise "Anonymous".
+ */
+export async function getDisplayName(pubkey: string): Promise<string> {
+  const result = await resolveAuthorName(pubkey)
+  return result.name ?? 'Anonymous'
+}
+
 // ---------------------------------------------------------------------------
 // Market Transport — kind 982 non-replaceable events
 // Markets are immutable once published — no versioning, no JSON, no app-filter tag.

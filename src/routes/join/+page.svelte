@@ -359,11 +359,6 @@ Ready to start? Your identity will be secured with your chosen authentication me
   }
 
   // ── Display Helpers ─────────────────────────────────────────────────────────
-  function truncatePubkey(pubkey: string | null): string {
-    if (!pubkey) return '';
-    return `${pubkey.slice(0, 8)}...${pubkey.slice(-8)}`;
-  }
-
   function getInterestLabel(interest: string): string {
     const labels: Record<string, string> = {
       'Politics': 'Politics',
@@ -696,7 +691,7 @@ Ready to start? Your identity will be secured with your chosen authentication me
         <!-- Pubkey display -->
         {#if pubkey}
           <div class="bg-neutral-900 border border-neutral-800 p-4 space-y-2">
-            <p class="text-xs text-neutral-500 uppercase tracking-wider">Your public key</p>
+            <p class="text-xs text-neutral-500 uppercase tracking-wider">Account ID</p>
             <code class="text-sm font-mono text-white break-all">{pubkey}</code>
             <button
               onclick={handleCopyKeys}

@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-08 09:00 UTC — Footer icon fix + style fixes shipped. All style guide violations resolved.*
+*Last updated: 2026-04-08 11:05 UTC — SEO shipped (SeoHead + dynamic OG + cache headers). CDK blind signing in progress on phase-8-testnet-mint branch.*
 
 ---
 
@@ -8,8 +8,9 @@
 
 | When | What | Details |
 |------|------|---------|
-| Next session | Delegate Phase 8 Phase 1 (testnet mint) to execution-coordinator | Plan: `.tenex/plans/phase-8-real-money-integration-revised.md` |
-| When Pablo wakes | Growth DM campaign + Substack article decision | Twitter/X API or manual sends needed |
+| **ACTIVE NOW** | CDK Blind Signing — claude-code | Conv: a5167f7875. Branch: phase-8-testnet-mint. Build ✅, replacing mock tokens with real blind signatures |
+| When Pablo sends | 10 DMs from X account for growth campaign | DM file at `$AGENT_HOME/research/dm-campaign-10-users.md` |
+| When Pablo publishes | Substack article | Article ready + published to Nostr; needs Substack distribution |
 
 ---
 
@@ -17,6 +18,9 @@
 
 | Item | Commit | Status |
 |------|--------|--------|
+| **SEO: SeoHead component + dynamic OG tags + cache headers** | `fde14de` | ✅ Market pages now have real social cards when shared |
+| **Fix raw pubkey jargon** | `95c8dd4` | ✅ 9 files — display names instead of hex pubkeys |
+| **Fix testnet mint URL + legal jargon** | `5de2494` | ✅ Issues 1, 3, 4 fixed |
 | **Wallet Refactor Step 1: Mint URL Consolidation** | `0e9779f` | ✅ Committed + pushed to main |
 | **Wallet Refactor Step 2: Svelte 5 $state Migration** | `e358fd6` | ✅ Committed + pushed to main |
 | **Wallet Refactor Step 3: Unify Wallet Access Paths** | `da7fbca` | ✅ Committed + pushed to main |

@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-08 12:10 UTC — Wallet UX shipped. Market creation dead fields removed. Simulator startup fixed. All on main.*
+*Last updated: 2026-04-08 12:15 UTC — threadBuilder jargon + discuss loading fixed. UX audit in progress.*
 
 ---
 
@@ -18,9 +18,10 @@
 
 | Item | Commit | Status |
 |------|--------|--------|
+| **Fix threadBuilder author jargon + discuss loading blank** | `5611012` | ✅ Reply authors show 'Anonymous' not hex; discuss no blank state on load |
 | **Wallet UX: Lightning withdraw + local QR + auto-polling** | `d95723f` | ✅ Lightning withdrawal flow, local QR (no external service), 5s balance auto-polling |
 | **Remove dead Side/Sats fields from market creation modal** | `35e0d47` | ✅ Jargon gone, form cleaner — fields never did anything, now deleted |
-| **Activity Simulator: skip profile re-publish on restart** | uncommitted | ✅ `profilesPublished` flag in state — restarts skip 200s blocking publish loop |
+| **Activity Simulator: skip profile re-publish on restart** | `a836371` | ✅ `profilesPublished` flag in state — restarts skip 200s blocking publish loop |
 | **Fix relay jargon on activity page error** | `5293183` | ✅ Removed relay URL from user-facing error message |
 | **Fix hardcoded $12.5K volume** | `4361d13` | ✅ Real volume computed from receipts |
 | **Fix missing executeTrade import on market page** | `19aaaa7` | ✅ Runtime ReferenceError fixed |

@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
+  import { createChart, LineSeries } from 'lightweight-charts'
+  import type { IChartApi } from 'lightweight-charts'
   import { trackEvent, initAnalytics, destroyAnalytics } from '../../analytics'
   import { isReady, fetchEvents, fetchAllMarketsTransport, getNDK } from '../../services/nostrService'
   import { parseMarketEvent } from '../../services/marketService'
@@ -49,6 +51,13 @@
   // kind:1111 events on public relays may include non-Cascade discussions.
   // Any event that can't be mapped to a known market is counted here separately.
   let unclassifiedDiscussions = $state(0)
+
+  // ─── Chart refs ─────────────────────────────────────────────────────────────
+
+  let marketChartContainer = $state<HTMLDivElement | undefined>(undefined)
+  let discussionChartContainer = $state<HTMLDivElement | undefined>(undefined)
+  let marketChart: IChartApi | null = null
+  let discussionChart: IChartApi | null = null
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -271,6 +280,82 @@
       window.location.reload()
     }
   }
+
+  // ─── Chart helpers ──────────────────────────────────────────────────────────
+
+  function buildDailyCumulative(timestamps: number[]): { time: any; value: number }[] {
+    if (timestamps.length === 0) return []
+    const sorted = [...timestamps].sort((a, b) => a - b)
+    const buckets = new Map<number, number>()
+    for (const ts of sorted) {
+      const day = Math.floor(ts / 86400) * 86400
+      buckets.set(day, (buckets.get(day) ?? 0) + 1)
+    }
+    const days = [...buckets.keys()].sort()
+    let cumulative = 0
+    return days.map((day) => {
+      cumulative += buckets.get(day)!
+      return { time: day as any, value: cumulative }
+    })
+  }
+
+  // ─── Chart rendering ─────────────────────────────────────────────────────────
+
+  $effect(() => {
+    if (!loaded || !marketChartContainer || !discussionChartContainer) return
+
+    const baseOptions = {
+      layout: { background: { color: '#0a0a0a' }, textColor: '#737373' },
+      grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
+      rightPriceScale: { borderColor: '#262626' },
+      timeScale: { borderColor: '#262626', timeVisible: false },
+      height: 160,
+    }
+
+    marketChart = createChart(marketChartContainer, {
+      ...baseOptions,
+      width: marketChartContainer.clientWidth,
+    })
+    const mSeries = marketChart.addSeries(LineSeries, { color: '#10b981', lineWidth: 2 })
+    mSeries.setData(buildDailyCumulative(marketRows.map((r) => r.createdAt)))
+    marketChart.timeScale().fitContent()
+    const mRo = new ResizeObserver(() => {
+      if (marketChart && marketChartContainer) marketChart.resize(marketChartContainer.clientWidth, 160)
+    })
+    mRo.observe(marketChartContainer)
+
+    discussionChart = createChart(discussionChartContainer, {
+      ...baseOptions,
+      width: discussionChartContainer.clientWidth,
+    })
+    const dSeries = discussionChart.addSeries(LineSeries, { color: '#737373', lineWidth: 2 })
+    const postTimestamps = activityFeed
+      .filter((i) => i.kind === 'post' || i.kind === 'reply')
+      .map((i) => i.createdAt)
+    dSeries.setData(buildDailyCumulative(postTimestamps))
+    discussionChart.timeScale().fitContent()
+    const dRo = new ResizeObserver(() => {
+      if (discussionChart && discussionChartContainer)
+        discussionChart.resize(discussionChartContainer.clientWidth, 160)
+    })
+    dRo.observe(discussionChartContainer)
+
+    return () => {
+      mRo.disconnect()
+      dRo.disconnect()
+      marketChart?.remove()
+      marketChart = null
+      discussionChart?.remove()
+      discussionChart = null
+    }
+  })
+
+  onDestroy(() => {
+    marketChart?.remove()
+    marketChart = null
+    discussionChart?.remove()
+    discussionChart = null
+  })
 </script>
 
 <svelte:head>
@@ -320,6 +405,18 @@
     <div class="bg-neutral-950 px-5 py-4">
       <div class="font-mono text-3xl font-medium text-white tabular-nums">{uniqueTraders}</div>
       <div class="text-xs text-neutral-500 mt-1">Unique participants</div>
+    </div>
+  </div>
+
+  <!-- Activity Charts -->
+  <div class="grid md:grid-cols-2 gap-6 mb-10">
+    <div>
+      <p class="text-xs text-neutral-400 mb-2">Market Activity Over Time</p>
+      <div bind:this={marketChartContainer} class="w-full h-[160px]"></div>
+    </div>
+    <div>
+      <p class="text-xs text-neutral-400 mb-2">Discussion Activity Over Time</p>
+      <div bind:this={discussionChartContainer} class="w-full h-[160px]"></div>
     </div>
   </div>
 

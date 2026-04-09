@@ -417,23 +417,27 @@
       </div>
       <div class="overflow-hidden text-sm text-neutral-400 flex-1">
         {#if markets.length > 0}
-          <div class="ticker-track flex whitespace-nowrap animate-ticker">
-            {#each markets as market, i}
-              {@const prob = Math.round(priceLong(market.qLong, market.qShort, market.b) * 100)}
-              <span class="inline-flex items-center gap-2 shrink-0{i < markets.length - 1 ? ' mr-8' : ''}">
-                <span class="text-xs text-neutral-600 font-mono uppercase">{getCategory(market)}</span>
-                <span class="text-neutral-300">{market.title}</span>
-                <span class={prob >= 50 ? 'text-emerald-500 font-mono text-xs' : 'text-rose-500 font-mono text-xs'}>{prob}%</span>
-              </span>
-            {/each}
-            {#each markets as market (market.slug + '-dup')}
-              {@const prob = Math.round(priceLong(market.qLong, market.qShort, market.b) * 100)}
-              <span class="inline-flex items-center gap-2 shrink-0 mr-8" aria-hidden="true">
-                <span class="text-xs text-neutral-600 font-mono uppercase">{getCategory(market)}</span>
-                <span class="text-neutral-300">{market.title}</span>
-                <span class={prob >= 50 ? 'text-emerald-500 font-mono text-xs' : 'text-rose-500 font-mono text-xs'}>{prob}%</span>
-              </span>
-            {/each}
+          <div class="flex">
+            <div class="ticker-track flex gap-8 whitespace-nowrap animate-ticker shrink-0">
+              {#each markets as market}
+                {@const prob = Math.round(priceLong(market.qLong, market.qShort, market.b) * 100)}
+                <span class="inline-flex items-center gap-2 shrink-0">
+                  <span class="text-xs text-neutral-600 font-mono uppercase">{getCategory(market)}</span>
+                  <span class="text-neutral-300 max-w-[200px] truncate">{market.title}</span>
+                  <span class={prob >= 50 ? 'text-emerald-500 font-mono text-xs' : 'text-rose-500 font-mono text-xs'}>{prob}%</span>
+                </span>
+              {/each}
+            </div>
+            <div class="ticker-track flex gap-8 whitespace-nowrap animate-ticker shrink-0" aria-hidden="true">
+              {#each markets as market}
+                {@const prob = Math.round(priceLong(market.qLong, market.qShort, market.b) * 100)}
+                <span class="inline-flex items-center gap-2 shrink-0">
+                  <span class="text-xs text-neutral-600 font-mono uppercase">{getCategory(market)}</span>
+                  <span class="text-neutral-300 max-w-[200px] truncate">{market.title}</span>
+                  <span class={prob >= 50 ? 'text-emerald-500 font-mono text-xs' : 'text-rose-500 font-mono text-xs'}>{prob}%</span>
+                </span>
+              {/each}
+            </div>
           </div>
         {:else}
           <span class="text-neutral-600">Connecting to markets...</span>
@@ -917,7 +921,7 @@
 <style>
 @keyframes ticker {
   0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  100% { transform: translateX(-100%); }
 }
 .animate-ticker {
   animation: ticker 40s linear infinite;

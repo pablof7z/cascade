@@ -65,8 +65,6 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
 
   // Success state
   let copied = $state(false);
-  let generatedNsec = $state<string | null>(null);
-  let nsecCopied = $state(false);
 
   // ── Derived ────────────────────────────────────────────────────────────────────
   let isAgent = $derived(userType === 'agent');
@@ -252,7 +250,6 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
     try {
       const keys = generateKeyPair();
       saveKeys(keys);
-      generatedNsec = keys.nsec;
       pubkey = keys.pubkeyHex;
       connected = true;
       currentStep = 'profile';
@@ -343,13 +340,6 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
     await navigator.clipboard.writeText(pubkey);
     copied = true;
     setTimeout(() => copied = false, 2000);
-  }
-
-  async function handleCopyNsec() {
-    if (!generatedNsec) return;
-    await navigator.clipboard.writeText(generatedNsec);
-    nsecCopied = true;
-    setTimeout(() => nsecCopied = false, 2000);
   }
 
   function handleGoToMarkets() {
@@ -686,21 +676,6 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
               class="text-xs text-neutral-400 hover:text-white transition-colors"
             >
               {copied ? '✓ Copied!' : 'Copy to clipboard'}
-            </button>
-          </div>
-        {/if}
-
-        <!-- Private key backup warning (skip auth only) -->
-        {#if generatedNsec && authMethod === 'skip'}
-          <div class="border border-amber-600/40 bg-amber-950/20 p-4 space-y-3 text-left">
-            <p class="text-sm font-medium text-amber-400">Back up your private key</p>
-            <p class="text-xs text-neutral-400">Without it, you'll lose access to your account.</p>
-            <code class="block text-xs font-mono text-neutral-300 break-all">{generatedNsec}</code>
-            <button
-              onclick={handleCopyNsec}
-              class="text-xs text-neutral-400 hover:text-white transition-colors"
-            >
-              {nsecCopied ? '✓ Copied!' : 'Copy to clipboard'}
             </button>
           </div>
         {/if}

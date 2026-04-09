@@ -1,4 +1,5 @@
 <script lang="ts">
+  import NavHeader from '$lib/components/NavHeader.svelte'
   import { isReady, fetchMarketPosts, subscribeToMarketPosts } from '../../services/nostrService'
   import { fetchAllMarkets } from '../../services/marketService'
   import { buildThreadHierarchy, convertSingleEventToThread } from '../../lib/threadBuilder'
@@ -162,8 +163,7 @@
             }
 
             // Subscribe to live updates for this market
-            const unsub = subscribeToMarket(market.eventId, market)
-            unsubscribes.push(unsub)
+            subscribeToMarket(market.eventId, market)
           } catch (err) {
             console.error(`[Discuss] Error fetching posts for market ${market.slug}:`, err)
           }
@@ -175,7 +175,6 @@
     } catch (err) {
       console.error('[Discuss] Error fetching discussions:', err)
       return unsubscribes
-    } finally {
     }
   }
 
@@ -231,6 +230,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-neutral-950">
+  <NavHeader />
   <!-- Header -->
   <div class="border-b border-neutral-800">
     <div class="max-w-5xl mx-auto px-4 py-6">

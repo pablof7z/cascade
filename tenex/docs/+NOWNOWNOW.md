@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-09 05:00 UTC — Tracking sweep complete. All work from this session committed to main. No active convs.*
+*Last updated: 2026-04-09 07:30 UTC — Onboarding UX gaps fixed. Landing hero + TradeForm fund-wallet CTA shipped.*
 
 ---
 
@@ -8,18 +8,15 @@
 
 | When | What | Details |
 |------|------|---------|
-| **Pablo ASAP** | **LND wallet creation** | Run: `lncli --lnddir=/Users/customer/.lnd --network=signet create` — one-time setup, blocks all Lightning/testnet testing |
-| Pablo decides | Merge phase-8-testnet-mint → main | All wallet work on branch. Pablo decides when mint deployment is ready. |
+| Pablo decides | Merge phase-8-testnet-mint → main | All wallet work on branch. LND fully operational. Pablo decides when mint deployment is ready. |
 | Pablo decides | Growth DM campaign (10 DMs) | DM file: `$AGENT_HOME/research/dm-campaign-10-users.md` |
 | When Pablo publishes | Substack article | Article ready, published to Nostr |
-| Deferred | Market resolution UI | Large feature — market creators can't close markets yet |
-| Deferred | Market search | No search on /discuss or homepage |
 
 ---
 
 ## 🔄 In Flight (main)
 
-*(none — all work complete)*
+*(nothing — all clear)*
 
 ---
 
@@ -27,25 +24,24 @@
 
 | Item | Commit | Status |
 |------|--------|--------|
-| **Real-time reply subscription overhaul** | `851bf0a` | ✅ Correct e-tag filter, reactive readiness, race condition fix |
-| **Nested reply double-attach fix** | `6f2862f` | ✅ replyTo as direct parent, rootId as fallback |
-| **isReady() polling fix (discuss + analytics)** | `86c0d42` | ✅ Reactive setInterval instead of one-shot effect |
-| **Charts tab removed from market page** | `de1ea60` | ✅ No dead-end placeholders |
-| **Raw pubkey removed from join success** | `33a62ec` | ✅ No Nostr jargon for new users |
-| **Profile Followers/Following placeholders** | `31e8176` | ✅ Replaced "Coming soon" with em-dash |
-| **Thread reply subscription (initial)** | `c2169ba` | ✅ Feature foundation |
-| **Discuss CTA, thread URL, sort wired** | `8e4fadf` | ✅ Multiple UX fixes |
-| **Loading gate removed (profile page)** | committed | ✅ No loading spinners on profile |
-| **Key generation + nsec removal** | multiple | ✅ Real key gen, no nsec display |
-| **Analytics dashboard** | multiple | ✅ Full PASS — real Nostr data, Bloomberg aesthetic |
-| **Join page redesign** | multiple | ✅ Human/agent visual dominance + copy rewrite |
-| **Wallet store consolidation** | phase-8 branch | ✅ On branch awaiting Pablo's testnet decision |
+| **resolutionService → withdrawalService rename** | `80ebe6f`, `6a23b40` | ✅ Renamed + docs cleaned + final review PASS |
+| **60 docs in docs/** | `a64c04c`, `f04da2a`, `2639dec`, `9d216bb`, `76efe03` | ✅ Full product/technical/business docs, terminology corrected |
+| **Thread 404 fix** | `304857e` | ✅ Back-button + breadcrumb links fixed to `/mkt/${slug}--${prefix}` |
+| **Auth-gate reply buttons** | `a4a9ed3` | ✅ Logged-out users see "Sign in to reply" instead of blank submit |
+| **TradeForm wallet balance** | `2e42de0` | ✅ Shows balance, disables submit + prompts to fund wallet when 0 |
+| **Hero CTA → /join** | `ddc09d7` | ✅ "Start Trading" now routes logged-out users to /join |
+| **UX audit complete** | — | ✅ explore-agent: 5 conversion killers identified, 3 already fixed |
+| **Landing page hero for logged-out users** | `fd84f3f`, `9feac4f` | ✅ Bloomberg-style minimal hero, hidden when logged in, links to /join |
+| **TradeForm zero-balance CTA** | `8f2028c` | ✅ "You need sats to trade. Fund your wallet →" when balance = 0 |
 
 ---
 
-## ✅ Complete (phase-8-testnet-mint branch — awaiting Pablo's merge decision)
+## ✅ Shipped Earlier This Session
 
-| Item | Commits | Status |
-|------|---------|--------|
-| **Phase 8 production hardening** | `78b074d`–`550629f` | ✅ All done. walletErrors.ts, walletHistory.ts, all components, mintHealthy defaults false, all 11 error codes. |
-| **Wallet store consolidation** | on branch | ✅ Single source of truth, deposit flow, QR local gen |
+| Item | Commit | Status |
+|------|--------|--------|
+| **LND + Bitcoin Core** | — | ✅ Running on signet. Pablo created wallet. launchd-managed. |
+| **Cross-project conversation routing fix** | `1327a124`, `02a0cad6` | ✅ One-off scheduled tasks now fire across projects. |
+| **Onboarding funnel fixes (3 blockers)** | `dc08d97`, `485c0e4`, `13e023a` | ✅ Post-join 404 fixed, nav→/join, wallet CTA copy |
+| **Wallet Refactor Steps 1-3** | `0e9779f`, `e358fd6`, `da7fbca` | ✅ All committed + pushed |
+| **Phase 8 production hardening** | `78b074d`–`550629f` | ✅ All done. On phase-8-testnet-mint branch. |

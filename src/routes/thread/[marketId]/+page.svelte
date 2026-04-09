@@ -337,8 +337,15 @@
 </svelte:head>
 
 {#if !market}
-  <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
-    <span class="text-neutral-500 text-sm">Market not found...</span>
+  <div class="min-h-screen bg-neutral-950">
+    <NavHeader />
+    <div class="flex flex-col items-center justify-center py-32 gap-4">
+      <span class="text-neutral-500 text-sm">Market not found</span>
+      <div class="flex gap-4 text-sm">
+        <button onclick={() => history.back()} class="text-neutral-400 hover:text-white">← Go back</button>
+        <a href="/discuss" class="text-neutral-400 hover:text-white">Browse discussions</a>
+      </div>
+    </div>
   </div>
 {:else if !thread}
   <div class="min-h-screen bg-neutral-950 flex items-center justify-center">

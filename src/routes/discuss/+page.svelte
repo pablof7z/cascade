@@ -32,6 +32,7 @@
   let discussions = $state<MarketDiscussion[]>([])
   let markets = $state<Map<string, Market>>(new Map())
   let nostrReady = $state(false)
+  let isLoading = $state(true)
 
   // Filters and sorting
   let sortBy = $state<SortOption>('newest')
@@ -179,9 +180,11 @@
       )
 
       discussions = allThreads
+      isLoading = false
       return unsubscribes
     } catch (err) {
       console.error('[Discuss] Error fetching discussions:', err)
+      isLoading = false
       return unsubscribes
     }
   }
@@ -239,6 +242,7 @@
     // Initial fetch and subscribe to live updates
     fetchAllDiscussions().then((newUnsubscribes) => {
       activeUnsubscribes = newUnsubscribes
+      isLoading = false
     })
 
     return () => {
@@ -324,7 +328,9 @@
 
   <!-- Content -->
   <div class="max-w-5xl mx-auto px-4 py-6">
-    {#if filteredDiscussions.length === 0}
+    {#if isLoading}
+      <div class="py-20 text-center text-neutral-500 text-sm">Loading markets...</div>
+    {:else if filteredDiscussions.length === 0}
       <div class="flex flex-col items-center justify-center py-20">
         <span class="text-neutral-500 text-sm mb-4">No discussions found</span>
         {#if searchQuery || stanceFilter !== 'all' || typeFilter !== 'all'}

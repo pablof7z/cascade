@@ -428,59 +428,79 @@
             </div>
           {:else}
             <div class="space-y-6">
-              <span class="text-xs font-medium text-neutral-500">
-                Example theses — this is how Cascade works
+              <span class="text-xs font-medium text-neutral-500 uppercase tracking-widest">
+                Example Theses
               </span>
-              <div class="space-y-4">
-                <!-- Example 1: AI thesis -->
-                <div class="border-b border-neutral-800/30 pb-4">
-                  <div class="flex items-baseline gap-3 mb-2">
-                    <span class="text-4xl font-black text-emerald-500 tabular-nums">67¢</span>
-                    <span class="text-sm text-emerald-500/70">YES</span>
+              <div class="grid grid-cols-2 gap-x-8 gap-y-2">
+                <!-- Chain 1: The AI Supercycle -->
+                <div>
+                  <p class="text-xs font-mono text-neutral-600 uppercase mb-3">The AI Supercycle</p>
+                  <!-- IF -->
+                  <div class="flex items-start gap-2 pb-3">
+                    <span class="text-xs font-mono text-neutral-500 w-10 shrink-0 pt-1">IF</span>
+                    <div>
+                      <p class="text-neutral-300 text-sm leading-snug">AGI before 2027</p>
+                      <span class="text-2xl font-black tabular-nums text-emerald-500">73¢</span>
+                    </div>
                   </div>
-                  <p class="text-neutral-300 text-sm leading-snug mb-1">
-                    AGI before 2030?
-                  </p>
-                  <p class="text-xs text-neutral-600 font-mono">
-                    Then: AI workforce adoption → Labor market disruption → UBI thesis strengthens
-                  </p>
+                  <!-- THEN chain -->
+                  <div class="ml-2 border-l border-neutral-700">
+                    <div class="flex items-start gap-2 pl-3 pb-3">
+                      <span class="text-xs font-mono text-neutral-500 w-10 shrink-0 pt-1">THEN</span>
+                      <div>
+                        <p class="text-neutral-300 text-sm leading-snug">AI replaces 20% of jobs</p>
+                        <span class="text-2xl font-black tabular-nums text-emerald-500">61¢</span>
+                      </div>
+                    </div>
+                    <div class="flex items-start gap-2 pl-3">
+                      <span class="text-xs font-mono text-neutral-500 w-10 shrink-0 pt-1">THEN</span>
+                      <div>
+                        <p class="text-neutral-300 text-sm leading-snug">UBI passes in G7</p>
+                        <span class="text-2xl font-black tabular-nums text-rose-500">38¢</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <!-- Example 2: Crypto thesis -->
-                <div class="border-b border-neutral-800/30 pb-4">
-                  <div class="flex items-baseline gap-3 mb-2">
-                    <span class="text-4xl font-black text-emerald-500 tabular-nums">43¢</span>
-                    <span class="text-sm text-emerald-500/70">YES</span>
+                <!-- Chain 2: The BTC Supercycle -->
+                <div>
+                  <p class="text-xs font-mono text-neutral-600 uppercase mb-3">The BTC Supercycle</p>
+                  <!-- IF -->
+                  <div class="flex items-start gap-2 pb-3">
+                    <span class="text-xs font-mono text-neutral-500 w-10 shrink-0 pt-1">IF</span>
+                    <div>
+                      <p class="text-neutral-300 text-sm leading-snug">BTC breaks $200k</p>
+                      <span class="text-2xl font-black tabular-nums text-emerald-500">67¢</span>
+                    </div>
                   </div>
-                  <p class="text-neutral-300 text-sm leading-snug mb-1">
-                    BTC breaks $100k in 2025?
-                  </p>
-                  <p class="text-xs text-neutral-600 font-mono">
-                    Then: ETH outperforms → Layer-2 TVL surges → Coinbase revenue up
-                  </p>
-                </div>
-                <!-- Example 3: Geopolitics thesis -->
-                <div class="pb-4">
-                  <div class="flex items-baseline gap-3 mb-2">
-                    <span class="text-4xl font-black text-rose-500 tabular-nums">28¢</span>
-                    <span class="text-sm text-rose-500/70">YES</span>
+                  <!-- THEN chain -->
+                  <div class="ml-2 border-l border-neutral-700">
+                    <div class="flex items-start gap-2 pl-3 pb-3">
+                      <span class="text-xs font-mono text-neutral-500 w-10 shrink-0 pt-1">THEN</span>
+                      <div>
+                        <p class="text-neutral-300 text-sm leading-snug">ETH outperforms BTC</p>
+                        <span class="text-2xl font-black tabular-nums text-emerald-500">55¢</span>
+                      </div>
+                    </div>
+                    <div class="flex items-start gap-2 pl-3 pb-3">
+                      <span class="text-xs font-mono text-neutral-500 w-10 shrink-0 pt-1">THEN</span>
+                      <div>
+                        <p class="text-neutral-300 text-sm leading-snug">L2 TVL doubles</p>
+                        <span class="text-2xl font-black tabular-nums text-rose-500">48¢</span>
+                      </div>
+                    </div>
+                    <div class="flex items-start gap-2 pl-3">
+                      <span class="text-xs font-mono text-neutral-500 w-10 shrink-0 pt-1">THEN</span>
+                      <div>
+                        <p class="text-neutral-300 text-sm leading-snug">Coinbase stock rallies</p>
+                        <span class="text-2xl font-black tabular-nums text-rose-500">44¢</span>
+                      </div>
+                    </div>
                   </div>
-                  <p class="text-neutral-300 text-sm leading-snug mb-1">
-                    Taiwan conflict by 2030?
-                  </p>
-                  <p class="text-xs text-neutral-600 font-mono">
-                    Then: TSMC offline → Chip shortage → Defense spending surges
-                  </p>
                 </div>
               </div>
-              <p class="text-xs text-neutral-600 pt-2">
-                Build your own thesis — connect predictions into chains, trade on conviction.
-              </p>
-              <button
-                onclick={() => showCreateModal = true}
-                class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors"
-              >
-                Create a Market
-              </button>
+              <a href="/join" class="text-xs text-neutral-500 hover:text-neutral-300 transition-colors block pt-2">
+                Build your own →
+              </a>
             </div>
           {/if}
         </div>

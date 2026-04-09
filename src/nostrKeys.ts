@@ -200,3 +200,22 @@ export function importNsecKey(nsec: string): NostrKeyPair {
     pubkeyHex: bytesToHex(publicKey),
   }
 }
+
+export function importPrivateKey(input: string): NostrKeyPair {
+  const trimmed = input.trim()
+  if (trimmed.startsWith('nsec1')) {
+    return importNsecKey(trimmed)
+  }
+  if (/^[0-9a-f]{64}$/i.test(trimmed)) {
+    const privateKey = hexToBytes(trimmed)
+    const publicKey = schnorr.getPublicKey(privateKey)
+    return {
+      privateKey,
+      publicKey,
+      nsec: bech32Encode('nsec', privateKey),
+      npub: bech32Encode('npub', publicKey),
+      pubkeyHex: bytesToHex(publicKey),
+    }
+  }
+  throw new Error('Invalid private key format')
+}

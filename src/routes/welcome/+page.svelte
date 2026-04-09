@@ -3,16 +3,17 @@
   import { nostrStore, reconnect } from '$lib/stores/nostr';
   import NavHeader from '$lib/components/NavHeader.svelte';
   import { onMount } from 'svelte';
-  import { importNsecKey, saveKeys } from '../../nostrKeys';
+  import { importPrivateKey, saveKeys } from '../../nostrKeys';
 
   // Subscribe to Nostr store for reactive auth state
   let pubkey = $state<string | null>(null);
   let isReady = $state(false);
   let connecting = $state(false);
 
-  // Key restore state
-  let nsecInput = $state('');
-  let nsecError = $state('');
+  // Key import state
+  let showImport = $state(false);
+  let keyInput = $state('');
+  let keyError = $state('');
   let importing = $state(false);
 
   onMount(() => {
@@ -43,19 +44,15 @@
   }
 
   async function handleKeyImport() {
-    nsecError = '';
-    const trimmed = nsecInput.trim();
-    if (!trimmed.startsWith('nsec1')) {
-      nsecError = 'Invalid key format';
-      return;
-    }
+    keyError = '';
     importing = true;
     try {
-      const keys = importNsecKey(trimmed);
+      const keys = importPrivateKey(keyInput);
       saveKeys(keys);
+      keyInput = '';
       goto('/discuss');
     } catch (err) {
-      nsecError = 'Invalid key format';
+      keyError = 'Invalid private key format';
       importing = false;
     }
   }
@@ -82,30 +79,40 @@
         {connecting ? 'Connecting...' : 'Connect'}
       </button>
 
-      <div class="flex items-center gap-3 py-1">
-        <div class="flex-1 h-px bg-neutral-800"></div>
-        <span class="text-xs text-neutral-500">or</span>
-        <div class="flex-1 h-px bg-neutral-800"></div>
-      </div>
-
-      <div class="space-y-2 text-left">
-        <input
-          type="password"
-          bind:value={nsecInput}
-          placeholder="Private key"
-          class="w-full bg-neutral-900 border border-neutral-700 text-white text-sm px-3 py-2 focus:outline-none focus:border-neutral-500"
-        />
-        {#if nsecError}
-          <p class="text-sm text-rose-400">{nsecError}</p>
-        {/if}
+      {#if !showImport}
         <button
-          onclick={handleKeyImport}
-          disabled={importing || !nsecInput.trim()}
-          class="text-sm text-neutral-400 hover:text-white border border-neutral-700 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          onclick={() => { showImport = true; }}
+          class="text-sm text-neutral-500 hover:text-neutral-300 transition-colors"
         >
-          {importing ? 'Importing...' : 'Restore with key'}
+          Already have a Nostr account? Import your key
         </button>
-      </div>
+      {:else}
+        <div class="flex items-center gap-3 py-1">
+          <div class="flex-1 h-px bg-neutral-800"></div>
+          <span class="text-xs text-neutral-500">or</span>
+          <div class="flex-1 h-px bg-neutral-800"></div>
+        </div>
+
+        <div class="space-y-2 text-left">
+          <input
+            type="password"
+            bind:value={keyInput}
+            placeholder="Private key"
+            class="w-full bg-neutral-900 border border-neutral-700 text-white text-sm px-3 py-2 focus:outline-none focus:border-neutral-500"
+          />
+          <p class="text-xs text-neutral-500">Your 64-character private key or nsec...</p>
+          {#if keyError}
+            <p class="text-sm text-rose-400">{keyError}</p>
+          {/if}
+          <button
+            onclick={handleKeyImport}
+            disabled={importing || !keyInput.trim()}
+            class="text-sm text-neutral-400 hover:text-white border border-neutral-700 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {importing ? 'Importing...' : 'Import key'}
+          </button>
+        </div>
+      {/if}
 
       <div class="text-neutral-500 text-xs">
         New here? <a href="/join" class="text-neutral-300 hover:text-white transition-colors">Create an account</a>

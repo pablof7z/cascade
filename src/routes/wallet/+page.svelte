@@ -248,6 +248,8 @@
           </p>
           {#if balanceError}
             <p class="text-xs text-rose-500 mt-1">{balanceError}</p>
+          {:else if !isLoadingBalance && balance === 0}
+            <p class="text-xs text-neutral-500 mt-1">No tokens yet. Deposit sats to start trading. <button onclick={() => activeTab = 'deposit'} class="text-neutral-300 hover:text-white underline">Deposit</button></p>
           {/if}
         </div>
         <button

@@ -319,7 +319,7 @@
             </p>
           {:else if !hasBalance}
             <p class="text-xs text-neutral-400 mt-2">
-              <a href="/wallet" class="text-neutral-300 hover:text-white underline">Fund your wallet</a> to place a trade.
+              You need sats to trade. <a href="/wallet" class="text-neutral-300 hover:text-white">Fund your wallet →</a>
             </p>
           {/if}
         </div>

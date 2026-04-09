@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Market } from '../../market';
+  import Sparkline from './Sparkline.svelte';
 
   interface Props {
     market: Market;
@@ -71,6 +72,11 @@
       <span class="text-emerald-400">YES {formatPrice(yesPrice)}</span>
       <span class="text-rose-400">NO {formatPrice(noPrice)}</span>
     </div>
+  </div>
+
+  <!-- Sparkline -->
+  <div class="mt-3 overflow-hidden">
+    <Sparkline slug={market.slug} height={40} />
   </div>
 
   <!-- Trading Buttons -->

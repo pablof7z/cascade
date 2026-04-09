@@ -373,7 +373,7 @@
           class="px-6 py-3 bg-white text-neutral-950 font-medium hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {#if !isReady}
-            Connect wallet to publish
+            Sign in to publish
           {:else}
             Publish Thesis
           {/if}

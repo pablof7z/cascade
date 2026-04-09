@@ -1,5 +1,6 @@
 <script lang="ts">
   import NavHeader from '$lib/components/NavHeader.svelte'
+  import { nostrStore } from '$lib/stores/nostr'
   import { isReady, fetchMarketPosts, subscribeToMarketPosts } from '../../services/nostrService'
   import { fetchAllMarkets } from '../../services/marketService'
   import { buildThreadHierarchy, convertSingleEventToThread } from '../../lib/threadBuilder'
@@ -19,6 +20,13 @@
   // Filter options
   type StanceFilter = 'all' | 'bullish' | 'bearish' | 'neutral'
   type TypeFilter = 'all' | 'argument' | 'prediction' | 'question' | 'evidence' | 'rebuttal' | 'analysis'
+
+  // Auth state
+  let pubkey = $state<string | null>(null)
+
+  $effect(() => {
+    pubkey = nostrStore.get().pubkey
+  })
 
   // State
   let discussions = $state<MarketDiscussion[]>([])
@@ -252,7 +260,10 @@
     <div class="max-w-5xl mx-auto px-4 py-6">
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-sans text-white">Discussions</h1>
-        <a href="/thesis/new" class="text-sm text-neutral-400 hover:text-white border border-neutral-700 px-3 py-1.5">
+        <a
+          href={pubkey ? '/thesis/new' : '/join'}
+          class="text-sm text-neutral-400 hover:text-white border border-neutral-700 px-3 py-1.5"
+        >
           Create market
         </a>
       </div>

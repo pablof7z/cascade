@@ -677,7 +677,7 @@ export async function fetchAllPayoutEvents(): Promise<NDKEvent[]> {
 export async function fetchKind0Metadata(
   ndk: NDK,
   pubkey: string
-): Promise<{ name: string; about: string; picture: string; banner: string; website: string; nip05: string } | null> {
+): Promise<{ name: string; displayName: string; about: string; picture: string; banner: string; website: string; nip05: string } | null> {
   try {
     const event = await ndk.fetchEvent({
       kinds: [0],
@@ -693,6 +693,7 @@ export async function fetchKind0Metadata(
       const metadata = JSON.parse(event.content)
       return {
         name: metadata.name || '',
+        displayName: metadata.display_name || '',
         about: metadata.about || '',
         picture: metadata.picture || '',
         banner: metadata.banner || '',

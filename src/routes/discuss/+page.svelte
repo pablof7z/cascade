@@ -17,10 +17,6 @@
   // Sort options
   type SortOption = 'newest' | 'oldest' | 'most_replies' | 'most_upvotes' | 'hot' | 'controversial'
 
-  // Filter options
-  type StanceFilter = 'all' | 'bullish' | 'bearish' | 'neutral'
-  type TypeFilter = 'all' | 'argument' | 'prediction' | 'question' | 'evidence' | 'rebuttal' | 'analysis'
-
   // Auth state
   let pubkey = $state<string | null>(null)
 
@@ -36,8 +32,6 @@
 
   // Filters and sorting
   let sortBy = $state<SortOption>('newest')
-  let stanceFilter = $state<StanceFilter>('all')
-  let typeFilter = $state<TypeFilter>('all')
   let searchQuery = $state('')
 
   // Track unsubscribe functions for memory leak fix (NOT $state - plain variable)
@@ -46,19 +40,6 @@
   // Derived filtered and sorted discussions
   let filteredDiscussions = $derived.by(() => {
     let result = discussions.filter(d => {
-      // Stance filter
-      if (stanceFilter !== 'all') {
-        const stance = d.thread.stance
-        if (stanceFilter === 'bullish' && stance !== 'bullish' && stance !== 'bull') return false
-        if (stanceFilter === 'bearish' && stance !== 'bearish' && stance !== 'bear') return false
-        if (stanceFilter === 'neutral' && stance !== 'neutral') return false
-      }
-
-      // Type filter
-      if (typeFilter !== 'all' && d.thread.type !== typeFilter) {
-        return false
-      }
-
       // Search filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase()
@@ -131,33 +112,6 @@
     if (hours > 0) return `${hours}h ago`
     if (minutes > 0) return `${minutes}m ago`
     return 'just now'
-  }
-
-  // Get stance badge class
-  function getStanceClass(stance: string): string {
-    switch (stance) {
-      case 'bullish':
-      case 'bull':
-        return 'bg-emerald-900/50 text-emerald-400'
-      case 'bearish':
-      case 'bear':
-        return 'bg-rose-900/50 text-rose-400'
-      default:
-        return 'bg-neutral-700 text-neutral-300'
-    }
-  }
-
-  // Get type label
-  function getTypeLabel(type: string): string {
-    switch (type) {
-      case 'argument': return 'Argument'
-      case 'prediction': return 'Prediction'
-      case 'question': return 'Question'
-      case 'evidence': return 'Evidence'
-      case 'rebuttal': return 'Rebuttal'
-      case 'analysis': return 'Analysis'
-      default: return type
-    }
   }
 
   // Navigate to thread
@@ -318,31 +272,6 @@
           {/each}
         </div>
 
-        <!-- Stance Filter -->
-        <div class="flex items-center gap-1 flex-wrap">
-          <span class="text-neutral-500 text-xs mr-1">Stance:</span>
-          {#each [['all', 'All'], ['bullish', 'Bull'], ['bearish', 'Bear']] as [val, label]}
-            <button
-              onclick={() => stanceFilter = val as StanceFilter}
-              class={stanceFilter === val
-                ? 'text-xs text-white border-b border-white px-2 py-1'
-                : 'text-xs text-neutral-500 hover:text-neutral-300 px-2 py-1'}
-            >{label}</button>
-          {/each}
-        </div>
-
-        <!-- Type Filter -->
-        <div class="flex items-center gap-1 flex-wrap">
-          <span class="text-neutral-500 text-xs mr-1">Type:</span>
-          {#each [['all', 'All'], ['argument', 'Argument'], ['prediction', 'Prediction'], ['question', 'Question'], ['evidence', 'Evidence'], ['analysis', 'Analysis']] as [val, label]}
-            <button
-              onclick={() => typeFilter = val as TypeFilter}
-              class={typeFilter === val
-                ? 'text-xs text-white border-b border-white px-2 py-1'
-                : 'text-xs text-neutral-500 hover:text-neutral-300 px-2 py-1'}
-            >{label}</button>
-          {/each}
-        </div>
       </div>
     </div>
   </div>
@@ -354,9 +283,9 @@
     {:else if filteredDiscussions.length === 0}
       <div class="flex flex-col items-center justify-center py-20">
         <span class="text-neutral-500 text-sm mb-4">No discussions found</span>
-        {#if searchQuery || stanceFilter !== 'all' || typeFilter !== 'all'}
+        {#if searchQuery}
           <button
-            onclick={() => { searchQuery = ''; stanceFilter = 'all'; typeFilter = 'all'; }}
+            onclick={() => { searchQuery = ''; }}
             class="text-neutral-400 hover:text-white text-sm"
           >
             Clear filters
@@ -397,23 +326,10 @@
                 </div>
               </div>
 
-              <!-- Badges -->
-              <div class="flex flex-col items-end gap-2">
-                <!-- Stance badge -->
-                <span class="px-2 py-0.5 text-xs font-medium {getStanceClass(thread.stance)}">
-                  {thread.stance === 'bull' ? 'bull' : thread.stance === 'bear' ? 'bear' : thread.stance}
-                </span>
-
-                <!-- Type badge -->
-                <span class="px-2 py-0.5 text-xs bg-neutral-800 text-neutral-400">
-                  {getTypeLabel(thread.type)}
-                </span>
-
-                <!-- Upvotes -->
-                <div class="flex items-center gap-1 text-xs text-neutral-500">
-                  <span>▲</span>
-                  <span>{thread.upvotes}</span>
-                </div>
+              <!-- Upvotes -->
+              <div class="flex items-center gap-1 text-xs text-neutral-500">
+                <span>▲</span>
+                <span>{thread.upvotes}</span>
               </div>
             </div>
           </button>

@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-09 06:30 UTC — Thread page 404 fixed. TradeForm wallet balance CTA shipped. Auth-gate on replies shipped. UX audit complete.*
+*Last updated: 2026-04-09 05:00 UTC — Tracking sweep complete. All work from this session committed to main. No active convs.*
 
 ---
 
@@ -17,12 +17,9 @@
 
 ---
 
-## 🔄 In Flight
+## 🔄 In Flight (main)
 
-| Item | Conv | Status |
-|------|------|--------|
-| **CDK Mint Implementation** | 00b6ea0772 | 🔄 mint-engineer implementing blind signing on phase-8-testnet-mint |
-| **Docs cleanup** | 8767a64e4d | 🔄 resolutionService.ts → withdrawalService.ts rename in progress |
+*(none — all work complete)*
 
 ---
 
@@ -30,10 +27,6 @@
 
 | Item | Commit | Status |
 |------|--------|--------|
-| **Thread page 404 fix** | committed | ✅ Back-button + breadcrumb no longer link to non-existent /discussion sub-route |
-| **TradeForm: wallet balance + fund CTA** | `2e42de0` | ✅ Balance shown, submit disabled at 0 sats, "Fund your wallet →" link to /wallet |
-| **Auth-gate reply buttons** | `a4a9ed3` | ✅ OriginalPost + ReplyThread show "sign in to reply" when logged out |
-| **Nav "Sign in" → /join + welcome page orientation** | `485c0e4` | ✅ New users routed to /join, not Nostr-only reconnect |
 | **Real-time reply subscription overhaul** | `851bf0a` | ✅ Correct e-tag filter, reactive readiness, race condition fix |
 | **Nested reply double-attach fix** | `6f2862f` | ✅ replyTo as direct parent, rootId as fallback |
 | **isReady() polling fix (discuss + analytics)** | `86c0d42` | ✅ Reactive setInterval instead of one-shot effect |

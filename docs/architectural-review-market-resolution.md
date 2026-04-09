@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The plan is **structurally sound with 4 Blocking Issues, 5 Important Issues, and 3 Minor Issues** that must be addressed before implementation. The plan correctly identifies existing infrastructure and proposes a clean bridge pattern. The core architectural decision to wire kind:984 into the existing resolutionService is sound. However, there are critical gaps in vault atomicity, queue idempotency, and Cashu failure handling that create real fund-safety risks.
+The plan is **structurally sound with 4 Blocking Issues, 5 Important Issues, and 3 Minor Issues** that must be addressed before implementation. The plan correctly identifies existing infrastructure and proposes a clean bridge pattern. The core architectural decision to wire kind:984 into the existing withdrawalService is sound. However, there are critical gaps in vault atomicity, queue idempotency, and Cashu failure handling that create real fund-safety risks.
 
 **Overall Assessment:** ⚠️ Proceed with modifications — address all blocking issues first.
 
@@ -21,12 +21,12 @@ All plan claims about existing infrastructure were verified against the actual c
 | Claim | Status | Evidence |
 |-------|--------|----------|
 | Market type needs `resolutionEventId` | ✅ Confirmed | `src/market.ts` has status/outcome/resolvedAt but no resolutionEventId |
-| resolutionService has `resolveMarket(market, outcome, outcomePrice)` | ✅ Confirmed | `src/services/resolutionService.ts` lines 139-142 |
-| resolutionService has `computeWinnerPayouts(positions, outcome, outcomePrice)` | ✅ Confirmed | `src/services/resolutionService.ts` lines 115-131 |
+| withdrawalService has `resolveMarket(market, outcome, outcomePrice)` | ✅ Confirmed | `src/services/withdrawalService.ts` lines 139-142 |
+| withdrawalService has `computeWinnerPayouts(positions, outcome, outcomePrice)` | ✅ Confirmed | `src/services/withdrawalService.ts` lines 115-131 |
 | resolutionQueue FIFO mechanism exists | ✅ Confirmed | `src/resolutionQueue.ts` — `_tail` promise chain, `setResolutionRunner` |
 | vaultStore has `sendPayoutTokens(amount, pubkey)` | ✅ Confirmed | `src/vaultStore.ts` lines 74-81 |
-| 2% platform rake (RAKE_FRACTION = 0.02) | ✅ Confirmed | `src/services/resolutionService.ts` line 30 |
-| localStorage TX log | ✅ Confirmed | `src/services/resolutionService.ts` — `appendTxEntry`, `updateTxEntry` |
+| 2% platform rake (RAKE_FRACTION = 0.02) | ✅ Confirmed | `src/services/withdrawalService.ts` line 30 |
+| localStorage TX log | ✅ Confirmed | `src/services/withdrawalService.ts` — `appendTxEntry`, `updateTxEntry` |
 | kind:30079 payout events | ✅ Confirmed | `src/services/nostrService.ts` line 549 |
 | kind 984 documented in nostr-kinds.md | ✅ Confirmed | `tenex/docs/nostr-kinds.md` lines 87-107 |
 
@@ -38,7 +38,7 @@ All plan claims about existing infrastructure were verified against the actual c
 
 ### ✅ Bridge Pattern Is Correct
 
-The plan correctly proposes wiring kind:984 → `resolutionService.resolveMarket()` into the existing pipeline:
+The plan correctly proposes wiring kind:984 → `withdrawalService.resolveMarket()` into the existing pipeline:
 
 ```
 kind:984 event → publishResolutionEvent() → resolveMarket() → queue → _executeResolution()
@@ -53,7 +53,7 @@ This correctly reuses all existing infrastructure: the FIFO queue, payout comput
 
 ### ✅ Idempotency via Transaction Log Is Sound
 
-The plan correctly proposes logging `{ type: 'resolution', marketId, outcome, resolutionEventId, timestamp }` to localStorage. The existing resolutionService already uses a transaction log with `id = txEntryId(market.slug, w.position.id)` for per-winner entries. Extending this to resolution-level entries is the right approach.
+The plan correctly proposes logging `{ type: 'resolution', marketId, outcome, resolutionEventId, timestamp }` to localStorage. The existing withdrawalService already uses a transaction log with `id = txEntryId(market.slug, w.position.id)` for per-winner entries. Extending this to resolution-level entries is the right approach.
 
 ### ⚠️ Important: `publishResolutionEvent` Is New — Must Be Implemented
 
@@ -109,7 +109,7 @@ The plan proposes `getResolutionEvent(marketId)` for non-creator clients, but th
 |---------|---------------|---------|
 | `nostrService.ts` | Nostr event pub/sub, kind:30079 payout events | ✅ Correct |
 | `marketService.ts` | Market CRUD, fetch by slug, kind:982 subscription | ✅ Correct |
-| `resolutionService.ts` | Resolution pipeline, payout computation, vault interaction | ✅ Correct |
+| `withdrawalService.ts` | Resolution pipeline, payout computation, vault interaction | ✅ Correct |
 | `vaultStore.ts` | Vault wallet operations | ✅ Correct |
 
 ---

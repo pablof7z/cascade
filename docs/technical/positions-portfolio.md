@@ -100,7 +100,7 @@ The profile page displays:
 
 After a successful withdrawal, the app publishes a kind 30079 event recording the completed withdrawal proceeds. This is a parameterized replaceable event (one per position per market).
 
-See `src/services/resolutionService.ts` (note: service name is a historical misnomer) and `src/services/nostrService.ts` (`PAYOUT_EVENT_KIND = 30079`) for the implementation.
+See `src/services/withdrawalService.ts` and `src/services/nostrService.ts` (`PAYOUT_EVENT_KIND = 30079`) for the implementation.
 
 ---
 

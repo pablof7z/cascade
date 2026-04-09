@@ -181,4 +181,4 @@ tags:
 
 **Purpose:** Records completed withdrawals for portfolio history. One event per (market, position) pair — replaces itself if the user withdraws from the same position again.
 
-See `src/services/nostrService.ts` (`PAYOUT_EVENT_KIND = 30079`) and `src/services/resolutionService.ts` (note: service name is a historical misnomer) for the authoritative implementation.
+See `src/services/nostrService.ts` (`PAYOUT_EVENT_KIND = 30079`) and `src/services/withdrawalService.ts` for the authoritative implementation.

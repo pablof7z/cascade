@@ -168,7 +168,7 @@
             direction: position.direction,
             traderPubkey: ownerPubkey,
             traderName: await getUserName(ownerPubkey),
-            timestamp: position.timestamp,
+            timestamp: position.timestamp > 1e12 ? Math.floor(position.timestamp / 1000) : position.timestamp,
           });
         }
 

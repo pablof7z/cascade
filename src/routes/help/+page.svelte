@@ -45,7 +45,7 @@
   ];
 
   const contactLinks = [
-    { name: "X/Twitter", href: "https://x.com/paborlmcik" }
+    { name: "X/Twitter", href: "https://x.com/cascademarkets" }
   ];
 </script>
 

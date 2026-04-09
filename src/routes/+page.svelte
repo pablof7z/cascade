@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { goto } from '$app/navigation'
   import NavHeader from '$lib/components/NavHeader.svelte'
   import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte'
   import { fetchAllMarketsTransport, publishMarket, getPubkey } from '../services/nostrService'
@@ -223,11 +224,12 @@
 
       await publishMarket(market, markdown)
 
-      // Success — close modal and reset
+      // Success — close modal, reset, navigate
       createSuccess = true
       showCreateModal = false
       title = ''
       description = ''
+      goto('/discuss')
 
       // Refresh markets list after short delay
       setTimeout(async () => {

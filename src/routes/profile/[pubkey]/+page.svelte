@@ -209,11 +209,11 @@
       <div class="absolute inset-0 bg-neutral-950/50"></div>
     {/if}
     {#if profile?.picture}
-      <div class="absolute -bottom-8 left-6 w-16 h-16 rounded-sm overflow-hidden border-2 border-neutral-950">
+      <div class="absolute -bottom-8 left-6 w-16 h-16 overflow-hidden border-2 border-neutral-950">
         <img src={profile.picture} alt={profile.name} class="w-full h-full object-cover" />
       </div>
     {:else}
-      <div class="absolute -bottom-8 left-6 w-16 h-16 rounded-sm bg-neutral-800 border-2 border-neutral-950 flex items-center justify-center">
+      <div class="absolute -bottom-8 left-6 w-16 h-16 bg-neutral-800 border-2 border-neutral-950 flex items-center justify-center">
         <span class="text-xl text-neutral-400">{profile?.name?.[0] ?? '?'}</span>
       </div>
     {/if}

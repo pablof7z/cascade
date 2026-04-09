@@ -61,9 +61,9 @@
       Everything you need to know about Cascade prediction markets.
     </p>
 
-    <div class="space-y-6">
-      {#each faqs as faq, i}
-        <div class="bg-neutral-800/50 border border-neutral-700 p-6">
+    <div class="divide-y divide-neutral-800">
+      {#each faqs as faq}
+        <div class="py-6">
           <h2 class="text-lg font-semibold text-white mb-3">
             {faq.question}
           </h2>

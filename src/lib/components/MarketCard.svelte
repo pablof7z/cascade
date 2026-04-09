@@ -15,19 +15,10 @@
   let yesPrice = $derived(market.qLong / (market.qLong + market.qShort + market.b));
   let noPrice = $derived(market.qShort / (market.qLong + market.qShort + market.b));
 
-  // 24h change calculation (would need historical data - using mock for now)
-  // In production, this would come from market.lastTrade or a separate price history
-  let change24h = $derived(0); // Placeholder - real implementation would track price history
-
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
   function formatPrice(value: number): string {
     return `${(value * 100).toFixed(0)}¢`;
-  }
-
-  function formatChange(value: number): string {
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${(value * 100).toFixed(1)}%`;
   }
 
   function handleBuy(side: 'LONG' | 'SHORT') {
@@ -64,9 +55,7 @@
       <div class="text-lg font-semibold text-white">
         {formatPrice(yesPrice)}
       </div>
-      <div class="text-xs {change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
-        {formatChange(change24h)} 24h
-      </div>
+
     </div>
   </div>
 

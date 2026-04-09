@@ -616,7 +616,7 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
                 <button
                   onclick={() => handleInterestToggle(interest)}
                   disabled={selectedInterests.length >= 5 && !selectedInterests.includes(interest)}
-                  class="px-3 py-1.5 text-xs font-medium transition-colors border rounded-sm
+                  class="px-3 py-1.5 text-xs font-medium transition-colors border
                     {selectedInterests.includes(interest)
                       ? 'text-white border-white'
                       : 'text-neutral-300 border-neutral-700 hover:border-neutral-500 disabled:opacity-30 disabled:cursor-not-allowed'}"

@@ -43,6 +43,9 @@
   let activityFeed = $state<ActivityItem[]>([])
   let marketsAtCap = $state(false)
   let discussionsAtCap = $state(false)
+  let error = $state<string | null>(null)
+  let loaded = $state(false)
+  let hasData = $derived(totalMarkets > 0 || activityFeed.length > 0)
   // kind:1111 events on public relays may include non-Cascade discussions.
   // Any event that can't be mapped to a known market is counted here separately.
   let unclassifiedDiscussions = $state(0)
@@ -77,6 +80,8 @@
   })
 
   async function loadPlatformData() {
+    error = null
+    try {
     const now = Math.floor(Date.now() / 1000)
     const weekAgo = now - 7 * 24 * 3600
 
@@ -241,6 +246,11 @@
 
     activity.sort((a, b) => b.createdAt - a.createdAt)
     activityFeed = activity.slice(0, 10)
+    } catch (e) {
+      error = 'Failed to load analytics. Check your connection.'
+    } finally {
+      loaded = true
+    }
   }
 
   function handleReset() {
@@ -274,6 +284,12 @@
       Reset Session
     </button>
   </div>
+
+  {#if error}
+    <p class="text-rose-400 text-sm mb-6">{error}</p>
+  {:else if loaded && !hasData}
+    <p class="text-neutral-500 text-sm mb-6">No market data yet. Create a market to see analytics.</p>
+  {/if}
 
   <!-- Platform Stats -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-px bg-neutral-800 mb-10">

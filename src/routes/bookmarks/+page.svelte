@@ -19,6 +19,7 @@
   let bookmarkedIds = $state<string[]>([]);
   let pubkey = $state<string | null>(null);
   let marketSlugs = $state<Map<string, string>>(new Map());
+  let marketTitles = $state<Map<string, string>>(new Map());
   let unsubscribeNostr: (() => void) | null = null;
   let unsubscribeBookmarks: (() => void) | null = null;
 
@@ -36,6 +37,13 @@
 
   function getMarketSlug(marketId: string): string {
     return marketSlugs.get(marketId) || marketId;
+  }
+
+  function getMarketTitle(marketId: string): string {
+    if (marketTitles.has(marketId)) return marketTitles.get(marketId)!;
+    const slug = marketSlugs.get(marketId);
+    if (!slug || slug === marketId) return marketId;
+    return slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   }
 
   function toggle(marketId: string) {
@@ -59,6 +67,7 @@
       if (!parsed.ok) return eventId;
       const slug = formatMarketSlug(event);
       marketSlugs.set(eventId, slug);
+      if (parsed.market?.title) marketTitles.set(eventId, parsed.market.title);
       return slug;
     } catch {
       return eventId;
@@ -141,7 +150,7 @@
               href="/mkt/{getMarketSlug(marketId)}"
               class="flex-1 min-w-0 text-white font-medium hover:text-neutral-300 transition-colors truncate"
             >
-              {getMarketSlug(marketId)}
+              {getMarketTitle(marketId)}
             </a>
             <div class="flex items-center gap-3 ml-4">
               <BookmarkButton

@@ -504,7 +504,7 @@
 
         {#if npub}
           <div class="mb-3">
-            <p class="text-xs text-neutral-500 mb-1.5">Your public key (npub)</p>
+            <p class="text-xs text-neutral-500 mb-1.5">Your public key</p>
             <div class="flex items-center justify-between px-3 py-2 bg-neutral-900 border border-neutral-700">
               <span class="text-xs text-neutral-300 font-mono truncate">{npub}</span>
               <button

@@ -234,7 +234,7 @@
   <!-- Header -->
   <div class="border-b border-neutral-800">
     <div class="max-w-5xl mx-auto px-4 py-6">
-      <h1 class="text-2xl font-semibold text-white mb-6">Market Discussions</h1>
+      <h1 class="text-2xl font-sans text-white mb-6">Discussions</h1>
 
       <!-- Filters and Sorting -->
       <div class="flex flex-wrap gap-4 items-center">
@@ -249,48 +249,42 @@
         </div>
 
         <!-- Sort -->
-        <div class="flex items-center gap-2">
-          <span class="text-neutral-500 text-sm">Sort:</span>
-          <select
-            bind:value={sortBy}
-            class="bg-neutral-800 border border-neutral-700 text-neutral-300 text-sm px-2 py-2 focus:outline-none focus:border-neutral-600"
-          >
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="most_replies">Most Replies</option>
-            <option value="most_upvotes">Most Upvotes</option>
-          </select>
+        <div class="flex items-center gap-1 flex-wrap">
+          <span class="text-neutral-500 text-xs mr-1">Sort:</span>
+          {#each [['newest', 'Newest'], ['oldest', 'Oldest'], ['most_replies', 'Most Replies']] as [val, label]}
+            <button
+              onclick={() => sortBy = val as SortOption}
+              class={sortBy === val
+                ? 'text-xs text-white border-b border-white px-2 py-1'
+                : 'text-xs text-neutral-500 hover:text-neutral-300 px-2 py-1'}
+            >{label}</button>
+          {/each}
         </div>
 
         <!-- Stance Filter -->
-        <div class="flex items-center gap-2">
-          <span class="text-neutral-500 text-sm">Stance:</span>
-          <select
-            bind:value={stanceFilter}
-            class="bg-neutral-800 border border-neutral-700 text-neutral-300 text-sm px-2 py-2 focus:outline-none focus:border-neutral-600"
-          >
-            <option value="all">All</option>
-            <option value="bullish">Bullish</option>
-            <option value="bearish">Bearish</option>
-            <option value="neutral">Neutral</option>
-          </select>
+        <div class="flex items-center gap-1 flex-wrap">
+          <span class="text-neutral-500 text-xs mr-1">Stance:</span>
+          {#each [['all', 'All'], ['bullish', 'Bull'], ['bearish', 'Bear']] as [val, label]}
+            <button
+              onclick={() => stanceFilter = val as StanceFilter}
+              class={stanceFilter === val
+                ? 'text-xs text-white border-b border-white px-2 py-1'
+                : 'text-xs text-neutral-500 hover:text-neutral-300 px-2 py-1'}
+            >{label}</button>
+          {/each}
         </div>
 
         <!-- Type Filter -->
-        <div class="flex items-center gap-2">
-          <span class="text-neutral-500 text-sm">Type:</span>
-          <select
-            bind:value={typeFilter}
-            class="bg-neutral-800 border border-neutral-700 text-neutral-300 text-sm px-2 py-2 focus:outline-none focus:border-neutral-600"
-          >
-            <option value="all">All</option>
-            <option value="argument">Argument</option>
-            <option value="prediction">Prediction</option>
-            <option value="question">Question</option>
-            <option value="evidence">Evidence</option>
-            <option value="rebuttal">Rebuttal</option>
-            <option value="analysis">Analysis</option>
-          </select>
+        <div class="flex items-center gap-1 flex-wrap">
+          <span class="text-neutral-500 text-xs mr-1">Type:</span>
+          {#each [['all', 'All'], ['argument', 'Argument'], ['prediction', 'Prediction'], ['question', 'Question'], ['evidence', 'Evidence'], ['analysis', 'Analysis']] as [val, label]}
+            <button
+              onclick={() => typeFilter = val as TypeFilter}
+              class={typeFilter === val
+                ? 'text-xs text-white border-b border-white px-2 py-1'
+                : 'text-xs text-neutral-500 hover:text-neutral-300 px-2 py-1'}
+            >{label}</button>
+          {/each}
         </div>
       </div>
     </div>
@@ -311,11 +305,11 @@
         {/if}
       </div>
     {:else}
-      <div class="space-y-4">
+      <div class="divide-y divide-neutral-800">
         {#each filteredDiscussions as { thread, market } (thread.id)}
           <button
             onclick={() => goToThread(market, thread.id)}
-            class="w-full text-left bg-neutral-900 border border-neutral-800 p-4 hover:border-neutral-700 transition-colors"
+            class="w-full text-left py-4 hover:bg-neutral-900/50 transition-colors"
           >
             <div class="flex items-start justify-between gap-4">
               <div class="flex-1 min-w-0">
@@ -352,7 +346,7 @@
                 </span>
 
                 <!-- Type badge -->
-                <span class="px-2 py-0.5 text-xs bg-neutral-800 text-neutral-400 rounded-sm">
+                <span class="px-2 py-0.5 text-xs bg-neutral-800 text-neutral-400">
                   {getTypeLabel(thread.type)}
                 </span>
 
@@ -365,11 +359,6 @@
             </div>
           </button>
         {/each}
-      </div>
-
-      <!-- Result count -->
-      <div class="mt-6 text-center text-neutral-500 text-xs">
-        Showing {filteredDiscussions.length} of {discussions.length} discussions
       </div>
     {/if}
   </div>

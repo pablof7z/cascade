@@ -494,9 +494,36 @@
       {:else if activeTab === 'discussion'}
         <MarketDiscussionList market={market} />
       {:else if activeTab === 'positions'}
-        <div class="text-center py-12">
-          <p class="text-neutral-500 text-sm">No positions yet</p>
-        </div>
+        {#if accountPositions.length === 0}
+          <div class="text-center py-12">
+            <p class="text-neutral-500 text-sm">No positions yet</p>
+          </div>
+        {:else}
+          <div class="py-4">
+            <div class="border border-neutral-800">
+              <table class="w-full">
+                <thead>
+                  <tr class="border-b border-neutral-800 text-xs text-neutral-500">
+                    <th class="text-left px-4 py-2 font-medium">Account</th>
+                    <th class="text-right px-4 py-2 font-medium">YES</th>
+                    <th class="text-right px-4 py-2 font-medium">NO</th>
+                    <th class="text-right px-4 py-2 font-medium">Total</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-800">
+                  {#each accountPositions as acct}
+                    <tr class="text-sm font-mono">
+                      <td class="px-4 py-2 text-neutral-400">{abbreviatePubkey(acct.pubkey)}</td>
+                      <td class="text-right px-4 py-2 {acct.long > 0 ? 'text-emerald-400' : 'text-neutral-600'}">{acct.long > 0 ? acct.long.toLocaleString() : '—'}</td>
+                      <td class="text-right px-4 py-2 {acct.short > 0 ? 'text-rose-400' : 'text-neutral-600'}">{acct.short > 0 ? acct.short.toLocaleString() : '—'}</td>
+                      <td class="text-right px-4 py-2 text-neutral-300">{acct.total.toLocaleString()}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {/if}
       {:else if activeTab === 'activity'}
         {#if marketTrades.length === 0}
           <p class="text-neutral-500 text-sm py-8">No activity yet</p>

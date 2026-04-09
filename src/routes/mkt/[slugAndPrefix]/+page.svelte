@@ -7,6 +7,7 @@
   import { getDisplayName } from '../../../services/nostrService';
   import BookmarkButton from '$lib/components/BookmarkButton.svelte';
   import MarketDiscussionList from '$lib/components/discussion/MarketDiscussionList.svelte';
+  import NavHeader from '$lib/components/NavHeader.svelte';
   
   // Reuse types and structure from the main market page
   type MarketTab = 'overview' | 'charts' | 'discussion' | 'positions';
@@ -134,11 +135,15 @@
 </svelte:head>
 
 {#if !market}
-  <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
-    <span class="text-neutral-500 text-sm">Market not found...</span>
+  <div class="min-h-screen bg-neutral-950">
+    <NavHeader />
+    <div class="flex items-center justify-center" style="height: calc(100vh - 57px);">
+      <span class="text-neutral-500 text-sm">Market not found...</span>
+    </div>
   </div>
 {:else}
   <div class="min-h-screen bg-neutral-950">
+    <NavHeader />
     <!-- Header -->
     <div class="border-b border-neutral-800">
       <div class="max-w-4xl mx-auto px-4 py-4">

@@ -10,7 +10,7 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 use std::collections::HashSet;
 
-use cascade_core::{MarketManager, invoice::InvoiceService};
+use cascade_core::{MarketManager, invoice::InvoiceService, db::CascadeDatabase};
 use crate::handlers::{self, price, resolve, trade, market};
 
 /// Application state shared across route handlers
@@ -23,6 +23,8 @@ pub struct AppState {
     pub spent_proofs: Arc<RwLock<HashSet<String>>>,
     /// CDK mint for proof verification and keyset validation
     pub mint: Arc<cdk::mint::Mint>,
+    /// Cascade database for price history and other queries
+    pub db: Arc<CascadeDatabase>,
     /// Skip CDK proof verification (for integration tests with mock keysets)
     pub test_mode: bool,
 }
@@ -32,12 +34,14 @@ impl AppState {
         market_manager: Arc<MarketManager>,
         invoice_service: Arc<Mutex<InvoiceService>>,
         mint: Arc<cdk::mint::Mint>,
+        db: Arc<CascadeDatabase>,
     ) -> Self {
         Self {
             market_manager,
             invoice_service,
             spent_proofs: Arc::new(RwLock::new(HashSet::new())),
             mint,
+            db,
             test_mode: false,
         }
     }
@@ -46,12 +50,14 @@ impl AppState {
         market_manager: Arc<MarketManager>,
         invoice_service: Arc<Mutex<InvoiceService>>,
         mint: Arc<cdk::mint::Mint>,
+        db: Arc<CascadeDatabase>,
     ) -> Self {
         Self {
             market_manager,
             invoice_service,
             spent_proofs: Arc::new(RwLock::new(HashSet::new())),
             mint,
+            db,
             test_mode: true,
         }
     }
@@ -69,6 +75,7 @@ pub fn build_cascade_routes(state: AppState) -> Router {
         // Market management
         .route("/api/market/create", post(market::create_market))
         .route("/api/market/{id}", get(market::get_market))
+        .route("/api/market/{id}/price-history", get(market::get_price_history))
         .route("/api/market/{id}/resolve", post(resolve::resolve_market))
         // Trade execution
         .route("/api/trade/bid", post(trade::buy))

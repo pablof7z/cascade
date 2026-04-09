@@ -4,8 +4,16 @@ use axum::{
     extract::{Path, State, Json},
     http::StatusCode,
 };
+use serde::Serialize;
 use crate::types::{CreateMarketRequest, MarketResponse, MarketsListResponse};
 use crate::routes::AppState;
+
+#[derive(Serialize)]
+pub struct PriceHistoryPoint {
+    pub timestamp: i64,
+    pub yes_price: f64,
+    pub no_price: f64,
+}
 
 /// List all markets
 pub async fn list_markets(
@@ -159,6 +167,31 @@ pub async fn create_market(
                 reserve: 0,
             }),
         ),
+    }
+}
+
+/// Get price history for a market
+pub async fn get_price_history(
+    State(state): State<AppState>,
+    Path(market_id): Path<String>,
+) -> (StatusCode, Json<Vec<PriceHistoryPoint>>) {
+    match state.db.get_price_history(&market_id, 500).await {
+        Ok(rows) => {
+            // Rows are DESC from DB; reverse to chronological order
+            let points: Vec<PriceHistoryPoint> = rows
+                .into_iter()
+                .rev()
+                .map(|(yes_price, no_price, created_at)| {
+                    // Parse SQLite datetime: "YYYY-MM-DD HH:MM:SS"
+                    let timestamp = chrono::NaiveDateTime::parse_from_str(&created_at, "%Y-%m-%d %H:%M:%S")
+                        .map(|dt| dt.and_utc().timestamp())
+                        .unwrap_or(0);
+                    PriceHistoryPoint { timestamp, yes_price, no_price }
+                })
+                .collect();
+            (StatusCode::OK, Json(points))
+        }
+        Err(_) => (StatusCode::OK, Json(vec![])),
     }
 }
 

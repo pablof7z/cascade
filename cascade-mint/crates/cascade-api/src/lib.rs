@@ -6,6 +6,7 @@ pub mod types;
 
 use axum::Router;
 use cascade_core::lightning::lnd_client::{LndClient, LndConfig};
+use cascade_core::db::CascadeDatabase;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -14,6 +15,7 @@ pub async fn build_server(
     market_manager: Arc<cascade_core::MarketManager>,
     lnd_config: LndConfig,
     mint: Arc<cdk::mint::Mint>,
+    db: Arc<CascadeDatabase>,
 ) -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
     // Create InvoiceService with LND client
     let lnd_client = LndClient::new(lnd_config);
@@ -29,6 +31,7 @@ pub async fn build_server(
         market_manager,
         invoice_service,
         mint.clone(),
+        db,
     );
     
     // Build cascade-specific routes

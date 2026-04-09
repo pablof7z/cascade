@@ -13,9 +13,10 @@
   import BookmarkButton from '$lib/components/BookmarkButton.svelte';
   import MarketDiscussionList from '$lib/components/discussion/MarketDiscussionList.svelte';
   import NavHeader from '$lib/components/NavHeader.svelte';
+  import PriceChart from '$lib/components/PriceChart.svelte';
   
   // Reuse types and structure from the main market page
-  type MarketTab = 'overview' | 'discussion' | 'positions' | 'activity';
+  type MarketTab = 'overview' | 'charts' | 'discussion' | 'positions' | 'activity';
   type Side = 'LONG' | 'SHORT';
   
   // Props from loader
@@ -67,6 +68,7 @@
   // Tab definitions
   const tabs: { key: MarketTab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
+    { key: 'charts', label: 'Charts' },
     { key: 'discussion', label: 'Discussion' },
     { key: 'positions', label: 'Positions' },
     { key: 'activity', label: 'Activity' },
@@ -365,6 +367,27 @@
           <p class="text-neutral-300 leading-relaxed">
             {market.description || 'No description provided.'}
           </p>
+        </div>
+      {:else if activeTab === 'charts'}
+        <div class="py-4">
+          <PriceChart marketId={market.eventId} />
+          {#if marketTrades.length > 0}
+            <div class="mt-6">
+              <h2 class="text-sm font-medium text-neutral-400 mb-3">Recent fills</h2>
+              <div class="divide-y divide-neutral-800">
+                {#each marketTrades.slice(0, 20) as trade (trade.id)}
+                  <div class="py-2 flex items-center gap-3 font-mono text-sm">
+                    <span class="text-neutral-600 w-16 shrink-0">{formatTradeTimestamp(trade.timestamp)}</span>
+                    <span class="text-neutral-500 w-28 shrink-0 truncate">{abbreviatePubkey(trade.ownerPubkey ?? '')}</span>
+                    <span class={trade.direction === 'yes' ? 'text-emerald-400 w-20 shrink-0' : 'text-rose-400 w-20 shrink-0'}>
+                      {trade.direction === 'yes' ? 'YES' : 'NO'}
+                    </span>
+                    <span class="text-neutral-300">· {Math.round(trade.costBasis).toLocaleString()} sats</span>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          {/if}
         </div>
       {:else if activeTab === 'discussion'}
         <MarketDiscussionList market={market} />

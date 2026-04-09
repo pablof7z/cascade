@@ -198,7 +198,8 @@ async fn main() -> Result<()> {
     };
 
     // 13. Build HTTP server (CDK standard + Cascade custom routes)
-    let app = build_server(market_manager.clone(), lnd_config, _mint.clone())
+    let cascade_db = Arc::new(cascade_db);
+    let app = build_server(market_manager.clone(), lnd_config, _mint.clone(), cascade_db)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to build HTTP server: {}", e))?;
 

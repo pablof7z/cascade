@@ -5,6 +5,7 @@
   import { priceLong, priceShort } from '../../../market';
   import { executeTrade } from '../../../services/tradingService';
   import { getDisplayName } from '../../../services/nostrService';
+  import { getCurrentPubkey } from '$lib/stores/nostr.svelte';
   import BookmarkButton from '$lib/components/BookmarkButton.svelte';
   import MarketDiscussionList from '$lib/components/discussion/MarketDiscussionList.svelte';
   import NavHeader from '$lib/components/NavHeader.svelte';
@@ -38,6 +39,9 @@
     });
   });
   
+  // Auth state
+  let isLoggedIn = $derived(getCurrentPubkey() !== null);
+
   // Price calculations (LMSR)
   let yesPrice = $derived(market ? priceLong(market.qLong, market.qShort, market.b) : 0);
   let noPrice = $derived(market ? priceShort(market.qLong, market.qShort, market.b) : 0);
@@ -261,14 +265,14 @@
           
           <button
             onclick={handleTrade}
-            disabled={tradeLoading || amount <= 0}
+            disabled={tradeLoading || amount <= 0 || !isLoggedIn}
             class="w-full py-3 text-sm font-medium transition-colors border disabled:border-neutral-700 disabled:text-neutral-500"
-            class:border-emerald-600={selectedSide === 'LONG' && !tradeLoading}
-            class:text-emerald-400={selectedSide === 'LONG' && !tradeLoading}
-            class:hover:border-emerald-500={selectedSide === 'LONG' && !tradeLoading}
-            class:border-rose-600={selectedSide === 'SHORT' && !tradeLoading}
-            class:text-rose-400={selectedSide === 'SHORT' && !tradeLoading}
-            class:hover:border-rose-500={selectedSide === 'SHORT' && !tradeLoading}
+            class:border-emerald-600={selectedSide === 'LONG' && !tradeLoading && isLoggedIn}
+            class:text-emerald-400={selectedSide === 'LONG' && !tradeLoading && isLoggedIn}
+            class:hover:border-emerald-500={selectedSide === 'LONG' && !tradeLoading && isLoggedIn}
+            class:border-rose-600={selectedSide === 'SHORT' && !tradeLoading && isLoggedIn}
+            class:text-rose-400={selectedSide === 'SHORT' && !tradeLoading && isLoggedIn}
+            class:hover:border-rose-500={selectedSide === 'SHORT' && !tradeLoading && isLoggedIn}
           >
             {#if tradeLoading}
               Processing...
@@ -276,6 +280,12 @@
               Buy {selectedSide === 'LONG' ? 'YES' : 'NO'} Shares · {amount} sats
             {/if}
           </button>
+
+          {#if !isLoggedIn}
+            <p class="mt-3 text-sm text-neutral-400">
+              <a href="/join" class="text-white underline">Sign in</a> to trade
+            </p>
+          {/if}
         </div>
         
         <!-- Description -->

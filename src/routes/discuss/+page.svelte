@@ -132,8 +132,7 @@
 
   // Navigate to thread
   function goToThread(market: Market, threadId: string): void {
-    const slug = `${market.slug}--${market.creatorPubkey.slice(0, 12)}`
-    goto(`/thread/${market.slug}?marketId=${market.slug}&threadId=${threadId}`)
+    goto(`/thread/${market.slug}?threadId=${threadId}`)
   }
 
   // Fetch discussions from all markets

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import NavHeader from '$lib/components/NavHeader.svelte';
   import ThesisBuilder from '$lib/components/ThesisBuilder.svelte';
 </script>
 
@@ -6,4 +7,5 @@
   <title>Create Market | Cascade</title>
 </svelte:head>
 
+<NavHeader />
 <ThesisBuilder />

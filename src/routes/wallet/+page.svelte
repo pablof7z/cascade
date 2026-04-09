@@ -4,6 +4,7 @@
   import { initNostrStore, getCurrentPubkey } from '$lib/stores/nostr.svelte';
   import { getWalletBalance, createDeposit, sendTokens, receiveToken } from '../../walletStore';
   import { initWalletStore, refreshBalance } from '$lib/stores/wallet.svelte';
+  import NavHeader from '$lib/components/NavHeader.svelte';
   import { createMarketDeposit, getAllDeposits, clearInactiveDeposits, type Deposit } from '../../services/depositService';
   import { withdrawToLightning } from '../../services/settlementService';
 
@@ -11,6 +12,7 @@
   let balance = $state(0);
   let isLoadingBalance = $state(true);
   let pubkey = $state<string | null>(null);
+  let balanceError = $state<string | null>(null);
 
   // Deposit state
   let depositAmount = $state('');
@@ -84,6 +86,8 @@
       balance = await getWalletBalance();
     } catch (err) {
       console.error('Failed to load balance:', err);
+      balance = 0;
+      balanceError = 'Could not connect to wallet — check your connection';
     } finally {
       isLoadingBalance = false;
     }
@@ -226,6 +230,7 @@
 </svelte:head>
 
 <main class="min-h-[calc(100vh-80px)] bg-neutral-950 text-white">
+  <NavHeader />
   <div class="max-w-2xl mx-auto px-6 py-12">
     <!-- Header -->
     <div class="mb-8">
@@ -241,6 +246,9 @@
           <p class="text-3xl font-mono font-medium text-white">
             {balance > 0 ? `${formatSats(balance)}` : '—'} <span class="text-lg text-neutral-400">sats</span>
           </p>
+          {#if balanceError}
+            <p class="text-xs text-rose-500 mt-1">{balanceError}</p>
+          {/if}
         </div>
         <button
           onclick={loadBalance}
@@ -324,7 +332,7 @@
           <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-lg font-medium text-white">Lightning Invoice</h2>
-              <span class="text-sm px-2 py-1 rounded {currentDeposit.status === 'completed' ? 'bg-emerald-900 text-emerald-400' : currentDeposit.status === 'failed' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
+              <span class="text-sm px-2 py-1 {currentDeposit.status === 'completed' ? 'bg-emerald-900 text-emerald-400' : currentDeposit.status === 'failed' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
                 {currentDeposit.status}
               </span>
             </div>
@@ -346,7 +354,7 @@
             {#if currentDeposit.quoteId}
               <div class="mb-4">
                 <p class="text-xs text-neutral-500 mb-1">Invoice</p>
-                <p class="text-xs font-mono text-neutral-300 break-all bg-neutral-800 p-2 rounded">
+                <p class="text-xs font-mono text-neutral-300 break-all bg-neutral-800 p-2">
                   {currentDeposit.quoteId}
                 </p>
               </div>
@@ -475,7 +483,7 @@
                 <div>
                   <div class="flex items-center gap-2">
                     <span class="text-emerald-400 font-mono text-sm">+{formatSats(deposit.amount)}</span>
-                    <span class="text-xs px-1.5 py-0.5 rounded {deposit.status === 'completed' ? 'bg-emerald-900 text-emerald-400' : deposit.status === 'failed' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
+                    <span class="text-xs px-1.5 py-0.5 {deposit.status === 'completed' ? 'bg-emerald-900 text-emerald-400' : deposit.status === 'failed' ? 'bg-rose-900 text-rose-400' : 'bg-neutral-800 text-neutral-300'}">
                       {deposit.status}
                     </span>
                   </div>

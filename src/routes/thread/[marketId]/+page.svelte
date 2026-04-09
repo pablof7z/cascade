@@ -1,10 +1,12 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { isReady, fetchMarketPosts, publishMarketReply, fetchReactions, subscribeToReactions } from '../../../services/nostrService';
+  import { isReady, fetchMarketPosts, fetchReactions, subscribeToReactions } from '../../../services/nostrService';
+  import { formatMarketSlug } from '$lib/marketSlug';
   import { buildThreadHierarchy } from '../../../lib/threadBuilder';
   import { trackDiscussionInteraction } from '../../../analytics';
   import { priceLong } from '../../../market';
+  import NavHeader from '$lib/components/NavHeader.svelte';
   import OriginalPost from '../../../lib/components/OriginalPost.svelte';
   import ReplyThread from '../../../lib/components/ReplyThread.svelte';
   
@@ -43,7 +45,7 @@
 
   // Route params
   let marketId = $derived($page.params.marketId);
-  let threadId = $derived($page.params.threadId);
+  let threadId = $derived($page.url.searchParams.get('threadId'));
 
   // State
   let threads = $state<DiscussionThread[]>([]);
@@ -207,6 +209,7 @@
   </div>
 {:else}
   <div class="min-h-screen bg-neutral-950">
+    <NavHeader />
     <div class="max-w-4xl mx-auto px-4 pb-32">
       <!-- Breadcrumb -->
       <div class="py-4 border-b border-neutral-800">

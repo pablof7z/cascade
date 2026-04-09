@@ -52,13 +52,12 @@
         pnlPercent,
         isSettled: isPositionSettled(pos),
         canRedeem: canRedeemPosition(pos),
-        isWon: market?.status === 'resolved' && (market.resolutionOutcome === 'YES' ? pos.direction === 'yes' : pos.direction === 'no'),
       }
     })
   )
 
-  let unsettledPositions = $derived(enrichedPositions.filter(p => !p.isSettled && !p.isWon))
-  let settledPositions = $derived(enrichedPositions.filter(p => p.isSettled || p.isWon))
+  let unsettledPositions = $derived(enrichedPositions.filter(p => !p.isSettled))
+  let settledPositions = $derived(enrichedPositions.filter(p => p.isSettled))
 
   let totalValue = $derived(
     enrichedPositions.reduce((sum, p) => sum + p.currentValue, 0)
@@ -272,7 +271,7 @@
     {#if settledPositions.length > 0}
       <section>
         <h2 class="text-xs font-medium text-neutral-500 mb-3">
-          Settled ({settledPositions.length})
+          Withdrawn ({settledPositions.length})
         </h2>
         <div class="border border-neutral-800 bg-neutral-900">
           <table class="w-full">
@@ -284,7 +283,7 @@
                 <th class="text-right px-4 py-2 font-medium">Entry</th>
                 <th class="text-right px-4 py-2 font-medium">Final</th>
                 <th class="text-right px-4 py-2 font-medium">P&L</th>
-                <th class="text-right px-4 py-2 font-medium">Status</th>
+                <th class="text-right px-4 py-2 font-medium"></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-neutral-800">
@@ -303,9 +302,7 @@
                     {formatSats(pos.pnl)}
                   </td>
                   <td class="text-right px-4 py-3">
-                    <span class="text-xs text-emerald-400">
-                      {pos.isWon ? 'Won' : 'Lost'}
-                    </span>
+                    <span class="text-xs text-neutral-500">Withdrawn</span>
                   </td>
                 </tr>
               {/each}

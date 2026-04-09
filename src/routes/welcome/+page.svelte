@@ -92,7 +92,7 @@
         <input
           type="password"
           bind:value={nsecInput}
-          placeholder="nsec1..."
+          placeholder="Private key"
           class="w-full bg-neutral-900 border border-neutral-700 text-white text-sm px-3 py-2 focus:outline-none focus:border-neutral-500"
         />
         {#if nsecError}

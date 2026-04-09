@@ -528,6 +528,10 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
           </button>
         </div>
 
+        <div class="text-center text-neutral-500 text-xs mt-4">
+          Already have an account? <a href="/welcome" class="text-neutral-300 hover:text-white">Sign in</a>
+        </div>
+
         <!-- Back button -->
         <button
           onclick={() => currentStep = 'choose'}

@@ -85,6 +85,15 @@ pub async fn buy(
                 trade.cost_sats as i64,
             ).await;
 
+            // Record LMSR price snapshot (post-trade prices) — don't fail trade if this errors
+            let new_q_long = market.q_long + delta_long;
+            let new_q_short = market.q_short + delta_short;
+            if let Ok((price_long, price_short)) = state.market_manager.lmsr().get_prices(new_q_long, new_q_short) {
+                if let Err(e) = state.db.insert_lmsr_snapshot(&market.slug, new_q_long, new_q_short, price_long, price_short).await {
+                    tracing::warn!("Failed to record LMSR snapshot for market {}: {}", market.slug, e);
+                }
+            }
+
             // If client provided blinded messages for market token keyset,
             // use CDK process_swap_request to blind-sign them.
             // NOTE: For a full buy flow, the client would also provide SAT proofs as inputs.
@@ -235,6 +244,15 @@ pub async fn sell(
                 delta_short,
                 -(trade.cost_sats as i64), // Negative because we're refunding sats from reserve
             ).await;
+
+            // Record LMSR price snapshot (post-trade prices) — don't fail trade if this errors
+            let new_q_long = market.q_long + delta_long;
+            let new_q_short = market.q_short + delta_short;
+            if let Ok((price_long, price_short)) = state.market_manager.lmsr().get_prices(new_q_long, new_q_short) {
+                if let Err(e) = state.db.insert_lmsr_snapshot(&market.slug, new_q_long, new_q_short, price_long, price_short).await {
+                    tracing::warn!("Failed to record LMSR snapshot for market {}: {}", market.slug, e);
+                }
+            }
 
             // If client provided proofs AND outputs, use CDK process_swap_request
             // to atomically spend the market token proofs and sign SAT outputs.

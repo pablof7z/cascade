@@ -74,9 +74,19 @@
 
   // ─── Platform data loading ──────────────────────────────────────────────────
 
+  // isReady() is not reactive — poll until true, then load data
   $effect(() => {
-    if (!isReady()) return
-    loadPlatformData()
+    if (isReady()) {
+      loadPlatformData()
+      return
+    }
+    const interval = setInterval(() => {
+      if (isReady()) {
+        clearInterval(interval)
+        loadPlatformData()
+      }
+    }, 100)
+    return () => clearInterval(interval)
   })
 
   async function loadPlatformData() {

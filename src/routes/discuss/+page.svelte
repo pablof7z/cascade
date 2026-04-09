@@ -204,10 +204,25 @@
   }
 
   // Wait for Nostr to be ready, then fetch and subscribe for updates
+  // isReady() is not reactive — poll until true
   $effect(() => {
-    if (!isReady()) return
+    if (nostrReady) return
 
-    nostrReady = true
+    if (isReady()) {
+      nostrReady = true
+    } else {
+      const interval = setInterval(() => {
+        if (isReady()) {
+          nostrReady = true
+          clearInterval(interval)
+        }
+      }, 100)
+      return () => clearInterval(interval)
+    }
+  })
+
+  $effect(() => {
+    if (!nostrReady) return
 
     // Clean up previous subscriptions before setting up new ones
     activeUnsubscribes.forEach(unsub => unsub())

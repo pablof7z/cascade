@@ -254,11 +254,11 @@
     </div>
     <div>
       <p class="text-[11px] text-neutral-500">Followers</p>
-      <p class="text-neutral-500 text-sm mt-1">Coming soon</p>
+      <p class="text-lg font-semibold text-white mt-1">—</p>
     </div>
     <div>
       <p class="text-[11px] text-neutral-500">Following</p>
-      <p class="text-neutral-500 text-sm mt-1">Coming soon</p>
+      <p class="text-lg font-semibold text-white mt-1">—</p>
     </div>
   </div>
 

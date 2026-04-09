@@ -693,20 +693,6 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
           </p>
         </div>
 
-        <!-- Pubkey display -->
-        {#if pubkey}
-          <div class="bg-neutral-900 border border-neutral-800 p-4 space-y-2">
-            <p class="text-xs text-neutral-500">Account ID</p>
-            <code class="text-sm font-mono text-white break-all">{pubkey}</code>
-            <button
-              onclick={handleCopyKeys}
-              class="text-xs text-neutral-400 hover:text-white transition-colors"
-            >
-              {copied ? '✓ Copied!' : 'Copy to clipboard'}
-            </button>
-          </div>
-        {/if}
-
         <!-- Profile summary -->
         {#if displayName}
           <div class="flex items-center justify-center gap-3">

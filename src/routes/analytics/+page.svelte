@@ -39,6 +39,8 @@
   let uniqueTraders = $state(0)
   let marketRows = $state<MarketRow[]>([])
   let activityFeed = $state<ActivityItem[]>([])
+  let marketsAtCap = $state(false)
+  let discussionsAtCap = $state(false)
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -76,6 +78,7 @@
     // Fetch markets (kind 982)
     const marketSet = await fetchAllMarketsTransport(100)
     const marketArr = Array.from(marketSet)
+    marketsAtCap = marketArr.length >= 100
 
     const marketTitleById = new Map<string, string>()
     let weeklyCount = 0
@@ -92,24 +95,53 @@
     totalMarkets = marketTitleById.size
     weeklyMarkets = weeklyCount
 
-    // Fetch discussions (kind 1111) scoped to Cascade market event IDs via e-tag
-    const marketEventIds = Array.from(marketTitleById.keys())
+    // Fetch ALL kind 1111 events — no #e filter so replies are included.
+    // Replies tag the root discussion (not the market) in their root e-tag,
+    // so filtering by market IDs at the relay level drops them.
     let discussionArr: NDKEvent[] = []
 
-    if (marketEventIds.length > 0) {
-      const discussionSet = await fetchEvents({
-        kinds: [1111 as NDKKind],
-        '#e': marketEventIds,
-        limit: 500,
-      })
-      discussionArr = Array.from(discussionSet)
+    const discussionSet = await fetchEvents({
+      kinds: [1111 as NDKKind],
+      limit: 500,
+    })
+    discussionArr = Array.from(discussionSet)
+    discussionsAtCap = discussionArr.length >= 500
+
+    // Pass 1: map discussion event IDs to market event IDs for top-level posts
+    // (those with a direct e-tag referencing a known market event ID)
+    const eventToMarket = new Map<string, string>() // discussion eventId → marketEventId
+    for (const event of discussionArr) {
+      if (!event.id) continue
+      for (const tag of event.tags) {
+        if (tag[0] === 'e' && tag[1] && marketTitleById.has(tag[1])) {
+          eventToMarket.set(event.id, tag[1])
+          break
+        }
+      }
     }
 
-    totalDiscussions = discussionArr.length
+    // Pass 2: for replies (no direct market hit), resolve via root discussion chain.
+    // Replies have ['e', rootDiscussionId, '', 'root'] where root is a kind 1111 event.
+    for (const event of discussionArr) {
+      if (!event.id || eventToMarket.has(event.id)) continue
+      for (const tag of event.tags) {
+        if (tag[0] === 'e' && tag[3] === 'root' && tag[1]) {
+          const parentMarket = eventToMarket.get(tag[1])
+          if (parentMarket) {
+            eventToMarket.set(event.id, parentMarket)
+          }
+          break
+        }
+      }
+    }
+
+    // Only count discussions that belong to known Cascade markets
+    const mappedDiscussions = discussionArr.filter((e) => e.id && eventToMarket.has(e.id))
+    totalDiscussions = mappedDiscussions.length
 
     // Unique traders: discussion authors + platform position holders
     const traderPubkeys = new Set<string>()
-    for (const event of discussionArr) {
+    for (const event of mappedDiscussions) {
       if (event.pubkey) traderPubkeys.add(event.pubkey)
     }
 
@@ -126,15 +158,14 @@
     }
     uniqueTraders = traderPubkeys.size
 
-    // Discussion count per market — match any e-tag against known market event IDs
-    // (avoids root-tag assumption which breaks for reply threads)
+    // Discussion count per market — use the resolved eventToMarket mapping
+    // so both top-level posts and replies count toward their market
     const discussByMarket = new Map<string, number>()
-    for (const event of discussionArr) {
-      for (const tag of event.tags) {
-        if (tag[0] === 'e' && tag[1] && marketTitleById.has(tag[1])) {
-          discussByMarket.set(tag[1], (discussByMarket.get(tag[1]) ?? 0) + 1)
-          break
-        }
+    for (const event of mappedDiscussions) {
+      if (!event.id) continue
+      const marketId = eventToMarket.get(event.id)
+      if (marketId) {
+        discussByMarket.set(marketId, (discussByMarket.get(marketId) ?? 0) + 1)
       }
     }
 
@@ -169,16 +200,9 @@
       })
     }
 
-    for (const event of discussionArr) {
+    for (const event of mappedDiscussions) {
       if (!event.pubkey) continue
-      // Resolve the market by finding an e-tag that matches a known market event ID
-      let marketId: string | undefined
-      for (const tag of event.tags) {
-        if (tag[0] === 'e' && tag[1] && marketTitleById.has(tag[1])) {
-          marketId = tag[1]
-          break
-        }
-      }
+      const marketId = event.id ? eventToMarket.get(event.id) : undefined
       const marketTitle = marketId ? marketTitleById.get(marketId) : undefined
       const subjectTag = event.tags.find((t) => t[0] === 'subject')
       const title = subjectTag?.[1] ?? event.content.slice(0, 60)
@@ -229,16 +253,16 @@
   <!-- Platform Stats -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-px bg-neutral-800 mb-10">
     <div class="bg-neutral-950 px-5 py-4">
-      <div class="font-mono text-3xl font-medium text-white tabular-nums">{totalMarkets}</div>
-      <div class="text-xs text-neutral-500 mt-1">Total markets</div>
+      <div class="font-mono text-3xl font-medium text-white tabular-nums">{totalMarkets}{#if marketsAtCap}+{/if}</div>
+      <div class="text-xs text-neutral-500 mt-1">Total markets{#if marketsAtCap}<span class="text-neutral-600"> · recent 100</span>{/if}</div>
     </div>
     <div class="bg-neutral-950 px-5 py-4">
       <div class="font-mono text-3xl font-medium text-emerald-400 tabular-nums">{weeklyMarkets}</div>
       <div class="text-xs text-neutral-500 mt-1">New this week</div>
     </div>
     <div class="bg-neutral-950 px-5 py-4">
-      <div class="font-mono text-3xl font-medium text-white tabular-nums">{totalDiscussions}</div>
-      <div class="text-xs text-neutral-500 mt-1">Total discussions</div>
+      <div class="font-mono text-3xl font-medium text-white tabular-nums">{totalDiscussions}{#if discussionsAtCap}+{/if}</div>
+      <div class="text-xs text-neutral-500 mt-1">Total discussions{#if discussionsAtCap}<span class="text-neutral-600"> · recent 500</span>{/if}</div>
     </div>
     <div class="bg-neutral-950 px-5 py-4">
       <div class="font-mono text-3xl font-medium text-white tabular-nums">{uniqueTraders}</div>

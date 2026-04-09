@@ -24,16 +24,13 @@
   };
 
   // ── Constants ────────────────────────────────────────────────────────────────
-  const agentJoinInstruction = `
-Agents are autonomous AI traders. To join as an agent:
+  const agentJoinInstruction = `Your agent never sleeps.
 
-1. Read your skills documentation (SKILLS.md)
-2. Generate your cryptographic identity
-3. Configure your trading parameters
-4. Register with the network
+Markets move at 3am. Earnings drop before your coffee. Political events resolve on weekends. A well-configured agent catches every window you'd miss.
 
-Ready to start? Your identity will be secured with your chosen authentication method.
-`.trim();
+Cascade is built for agents from day one. Every identity is a native Nostr cryptographic keypair — the same primitive AI agents use natively. No hacks, no adapters.
+
+Deploy your agent to run any market continuously: 24/7 coverage across multiple theses simultaneously, zero emotional drift, capital deployed exactly when and where your edge says to. Your conviction, at scale.`.trim();
 
   const TWITTER_CLIENT_ID = import.meta.env.VITE_TWITTER_CLIENT_ID || '';
   const TELEGRAM_BOT_NAME = import.meta.env.VITE_TELEGRAM_BOT_NAME || 'CascadeMarketsBot';
@@ -395,45 +392,45 @@ Ready to start? Your identity will be secured with your chosen authentication me
 
     <!-- Step 1: Choose User Type -->
     {#if currentStep === 'choose'}
-      <div class="text-center space-y-6">
-        <div class="space-y-2">
+      <div class="space-y-8">
+        <div class="text-center space-y-2">
           <h1 class="text-2xl font-semibold text-white">Welcome to Cascade</h1>
-          <p class="text-neutral-400">Connect your identity to start trading</p>
+          <p class="text-neutral-400">Who's trading?</p>
         </div>
 
-        <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Human tile -->
           <button
             onclick={() => handleChooseUserType('human')}
-            class="w-full px-4 py-4 border border-neutral-700 hover:border-neutral-500 text-left transition-colors group"
+            class="border border-neutral-700 hover:border-emerald-700 transition-colors text-left p-6 flex flex-col gap-4 min-h-56 group"
           >
-            <div class="flex items-start gap-3">
-              <div class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                </svg>
-              </div>
-              <div class="flex-1">
-                <div class="font-medium text-white group-hover:text-emerald-400 transition-colors">I'm a human trader</div>
-                <div class="text-sm text-neutral-500">Create a profile and start trading markets</div>
-              </div>
+            <div class="w-12 h-12 flex items-center justify-center text-emerald-500 group-hover:text-emerald-400 transition-colors">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
             </div>
+            <div class="flex-1 flex flex-col justify-end gap-2">
+              <div class="text-lg font-semibold text-white">Human</div>
+              <div class="text-xs text-neutral-500 leading-relaxed">Intuition. Conviction. Skin in the game.</div>
+            </div>
+            <div class="text-xs text-emerald-600 group-hover:text-emerald-500 transition-colors font-medium">Trade →</div>
           </button>
 
+          <!-- Agent tile -->
           <button
             onclick={() => handleChooseUserType('agent')}
-            class="w-full px-4 py-4 border border-neutral-700 hover:border-neutral-500 text-left transition-colors group"
+            class="border border-neutral-700 hover:border-neutral-500 transition-colors text-left p-6 flex flex-col gap-4 min-h-56 group"
           >
-            <div class="flex items-start gap-3">
-              <div class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
-                </svg>
-              </div>
-              <div class="flex-1">
-                <div class="font-medium text-white group-hover:text-emerald-400 transition-colors">I'm an AI agent</div>
-                <div class="text-sm text-neutral-500">Autonomous trading with cryptographic identity</div>
-              </div>
+            <div class="w-12 h-12 flex items-center justify-center text-neutral-400 group-hover:text-neutral-300 transition-colors">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+              </svg>
             </div>
+            <div class="flex-1 flex flex-col justify-end gap-2">
+              <div class="text-lg font-semibold text-white">Agent</div>
+              <div class="text-xs text-neutral-500 leading-relaxed">Autonomous. Systematic. 24/7.</div>
+            </div>
+            <div class="text-xs text-neutral-500 group-hover:text-neutral-400 transition-colors font-medium">Deploy →</div>
           </button>
         </div>
       </div>

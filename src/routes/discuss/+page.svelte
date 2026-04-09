@@ -329,7 +329,7 @@
   <!-- Content -->
   <div class="max-w-5xl mx-auto px-4 py-6">
     {#if isLoading}
-      <div class="py-20 text-center text-neutral-500 text-sm">Loading markets...</div>
+      <div class="py-20"></div>
     {:else if filteredDiscussions.length === 0}
       <div class="flex flex-col items-center justify-center py-20">
         <span class="text-neutral-500 text-sm mb-4">No discussions found</span>

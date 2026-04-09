@@ -82,6 +82,7 @@
 
   async function loadBalance() {
     isLoadingBalance = true;
+    balanceError = null;
     try {
       balance = await getWalletBalance();
     } catch (err) {

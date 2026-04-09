@@ -16,8 +16,6 @@
   let markets = $state<Map<string, MarketEntry>>(new Map())
   let payoutEvents = $state<NDKEvent[]>([])
   let myPubkey = $state<string>('')
-  let loading = $state(true)
-
   // Redemption modal state
   let redeemModalOpen = $state(false)
   let redeemingPosition = $state<Position | null>(null)
@@ -77,8 +75,6 @@
   // ─── Load data on mount ───────────────────────────────────────────────────────
 
   onMount(async () => {
-    loading = true
-
     // Load positions
     positions = loadPositions()
 
@@ -91,8 +87,6 @@
     if (myPubkey) {
       payoutEvents = await fetchPayoutEvents(myPubkey)
     }
-
-    loading = false
   })
 
   // ─── Redemption handlers ──────────────────────────────────────────────────────
@@ -182,11 +176,7 @@
     <p class="mt-0.5 text-sm text-neutral-500">Track your positions and settlements</p>
   </div>
 
-  {#if loading}
-    <div class="flex items-center justify-center py-12">
-
-    </div>
-  {:else if positions.length === 0}
+  {#if positions.length === 0}
     <div class="text-center py-12 border border-neutral-800">
       <p class="text-sm font-medium text-white">No positions yet</p>
       <p class="mt-1 text-xs text-neutral-500">Start trading on markets to see your positions here.</p>
@@ -217,11 +207,10 @@
     <!-- Active positions -->
     {#if unsettledPositions.length > 0}
       <section class="mb-8">
-        <h2 class="text-xs font-medium text-neutral-500 uppercase tracking-widest mb-3">
+        <h2 class="text-xs text-neutral-500 mb-3">
           Active Positions ({unsettledPositions.length})
         </h2>
-        <div class="border border-neutral-800 bg-neutral-900">
-          <table class="w-full">
+        <table class="w-full">
             <thead>
               <tr class="border-b border-neutral-800 text-xs text-neutral-500">
                 <th class="text-left px-4 py-2 font-medium">Market</th>
@@ -270,18 +259,16 @@
               {/each}
             </tbody>
           </table>
-        </div>
       </section>
     {/if}
 
     <!-- Settled positions -->
     {#if settledPositions.length > 0}
       <section>
-        <h2 class="text-xs font-medium text-neutral-500 uppercase tracking-widest mb-3">
+        <h2 class="text-xs text-neutral-500 mb-3">
           Settled ({settledPositions.length})
         </h2>
-        <div class="border border-neutral-800 bg-neutral-900">
-          <table class="w-full">
+        <table class="w-full">
             <thead>
               <tr class="border-b border-neutral-800 text-xs text-neutral-500">
                 <th class="text-left px-4 py-2 font-medium">Market</th>
@@ -317,7 +304,6 @@
               {/each}
             </tbody>
           </table>
-        </div>
       </section>
     {/if}
   {/if}

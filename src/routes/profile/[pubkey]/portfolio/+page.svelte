@@ -71,7 +71,7 @@
   )
   let totalPayouts = $derived(
     payoutEvents.reduce((sum, e) => {
-      const amount = e.tagValue('amount')
+      const amount = e.tagValue('payout-sats')
       return sum + (amount ? parseInt(amount) : 0)
     }, 0)
   )

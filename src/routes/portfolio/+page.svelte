@@ -3,7 +3,8 @@
   import { loadPositions, type Position } from '../../positionStore'
   import { load as loadMarkets } from '../../storage'
   import { priceLong, priceShort } from '../../market'
-  import { getPubkey, getNDK } from '../../services/nostrService'
+  import { getPubkey, getNDK, fetchPayoutEvents } from '../../services/nostrService'
+  import type { NDKEvent } from '@nostr-dev-kit/ndk'
   import { getRedemptionQuote, isPositionSettled, canRedeemPosition } from '../../services/settlementService'
   import { redeemPosition as doRedemption, type RedemptionResult } from '../../services/redemptionService'
   import type { Market } from '../../market'
@@ -16,6 +17,7 @@
   let positions = $state<Position[]>([])
   let markets = $state<Map<string, MarketEntry>>(new Map())
   let myPubkey = $state<string>('')
+  let payoutEvents = $state<NDKEvent[]>([])
   // Redemption modal state
   let redeemModalOpen = $state(false)
   let redeemingPosition = $state<Position | null>(null)
@@ -64,6 +66,12 @@
   let openValue = $derived(
     openPositions.reduce((sum, p) => sum + p.currentValue, 0)
   )
+  let totalPayouts = $derived(
+    payoutEvents.reduce((sum, e) => {
+      const amt = e.tagValue('payout-sats')
+      return sum + (amt ? parseInt(amt) : 0)
+    }, 0)
+  )
 
   // ─── Load data on mount ───────────────────────────────────────────────────────
 
@@ -76,6 +84,9 @@
     markets = new Map(marketsData.map(m => [m.market.slug, m]))
 
     myPubkey = getPubkey()
+    if (myPubkey) {
+      fetchPayoutEvents(myPubkey).then(events => { payoutEvents = events })
+    }
   })
 
   // ─── Redemption handlers ──────────────────────────────────────────────────────
@@ -309,6 +320,50 @@
       {/if}
     {/if}
   {/if}
+
+  <!-- Payout History -->
+  <div class="mt-8">
+    <h2 class="text-sm font-medium text-white mb-3">Payout History</h2>
+    {#if payoutEvents.length === 0}
+      <div class="border border-neutral-800 py-8 text-center">
+        <p class="text-sm text-neutral-500">No payouts yet</p>
+      </div>
+    {:else}
+      <table class="w-full border border-neutral-800">
+        <thead>
+          <tr class="border-b border-neutral-800 text-xs text-neutral-500">
+            <th class="text-left px-4 py-2 font-medium">Market</th>
+            <th class="text-right px-4 py-2 font-medium">Direction</th>
+            <th class="text-right px-4 py-2 font-medium">Amount</th>
+            <th class="text-right px-4 py-2 font-medium">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-neutral-800">
+          {#each payoutEvents as evt (evt.id)}
+            {@const content = (() => { try { return JSON.parse(evt.content) } catch { return {} } })()}
+            {@const marketTitle = content.marketTitle ?? evt.tagValue('market') ?? 'Unknown market'}
+            {@const direction = evt.tagValue('direction')}
+            {@const payoutSats = evt.tagValue('payout-sats')}
+            {@const date = evt.created_at ? new Date(evt.created_at * 1000) : null}
+            <tr class="text-sm">
+              <td class="px-4 py-3 text-white">{marketTitle}</td>
+              <td class="text-right px-4 py-3">
+                <span class="font-mono {direction === 'yes' ? 'text-emerald-400' : 'text-rose-400'}">
+                  {direction === 'yes' ? 'Long' : 'Short'}
+                </span>
+              </td>
+              <td class="text-right px-4 py-3 font-mono text-emerald-400">
+                {payoutSats ? formatSats(parseInt(payoutSats)) : '—'} sats
+              </td>
+              <td class="text-right px-4 py-3 text-neutral-400 text-xs">
+                {date ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {/if}
+  </div>
 </div>
 
 <!-- Redemption Modal -->

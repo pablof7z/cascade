@@ -19,6 +19,7 @@
   type MarketRow = {
     title: string
     slug: string
+    pubkeyPrefix: string
     discussionCount: number
     createdAt: number
   }
@@ -185,6 +186,7 @@
       rows.push({
         title: result.market.title,
         slug: result.market.slug,
+        pubkeyPrefix: event.pubkey.slice(0, 12),
         discussionCount: discussByMarket.get(event.id) ?? 0,
         createdAt: event.created_at ?? 0,
       })
@@ -314,7 +316,7 @@
               <tr>
                 <td class="py-2.5 pr-4">
                   <a
-                    href="/market/{row.slug}"
+                    href="/mkt/{row.slug}--{row.pubkeyPrefix}"
                     class="text-neutral-300 hover:text-white transition-colors line-clamp-1"
                   >{row.title}</a>
                 </td>

@@ -5,8 +5,9 @@
   import { formatMarketSlug } from '$lib/marketSlug';
   import { priceLong, priceShort } from '../../../market';
   import { executeTrade } from '../../../services/tradingService';
-  import { getDisplayName, getNDK } from '../../../services/nostrService';
+  import { getDisplayName, getNDK, fetchEvents } from '../../../services/nostrService';
   import { fetchAllPositions } from '../../../services/positionService';
+  import type { NDKKind, NDKEvent } from '@nostr-dev-kit/ndk';
   import type { Position } from '../../../positionStore';
   import { getCurrentPubkey } from '$lib/stores/nostr.svelte';
   import { getBalance } from '$lib/stores/wallet.svelte';
@@ -93,6 +94,67 @@
 
   let showCopied = $state(false);
   let marketTrades = $state<Position[]>([]);
+
+  // Tilt copy
+  let tiltText = $derived(
+    yesPrice > 0.7 ? 'Strong YES lean — bulls are in control' :
+    yesPrice > 0.55 ? 'Mild YES lean — slight edge to YES' :
+    yesPrice > 0.45 ? 'Near toss-up — market is undecided' :
+    yesPrice > 0.3 ? 'Mild NO lean — slight edge to NO' :
+    'Strong NO lean — bears are in control'
+  );
+
+  // Recent fills (kind 983 trade events)
+  let recentFills = $state<NDKEvent[]>([]);
+
+  type FillData = { side: 'YES' | 'NO'; sats: number; ts: number };
+
+  function parseFillData(event: NDKEvent): FillData | null {
+    let side: 'YES' | 'NO' | null = null;
+    let sats = 0;
+    const sideTag = event.tags.find((t: string[]) => t[0] === 'side')?.[1];
+    const dirTag = event.tags.find((t: string[]) => t[0] === 'direction')?.[1];
+    const satsTag = event.tags.find((t: string[]) => t[0] === 'sats' || t[0] === 'amount')?.[1];
+    if (sideTag) side = (sideTag === 'LONG' || sideTag === 'yes') ? 'YES' : 'NO';
+    else if (dirTag) side = (dirTag === 'LONG' || dirTag === 'yes') ? 'YES' : 'NO';
+    if (satsTag) sats = parseInt(satsTag, 10);
+    if (!side || !sats) {
+      try {
+        const parsed = JSON.parse(event.content);
+        if (!side && parsed.side) side = (parsed.side === 'LONG' || parsed.side === 'yes') ? 'YES' : 'NO';
+        if (!sats && (parsed.sats || parsed.amount)) sats = parsed.sats ?? parsed.amount;
+      } catch { /* non-JSON content */ }
+    }
+    if (!side || sats <= 0) return null;
+    return { side, sats, ts: ((event.created_at ?? 0) * 1000) };
+  }
+
+  $effect(() => {
+    const m = market;
+    if (!m) return;
+    fetchEvents({ kinds: [983 as NDKKind], '#market': [m.slug] as any, limit: 8 })
+      .then((eventsSet) => {
+        recentFills = Array.from(eventsSet)
+          .sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0))
+          .slice(0, 8);
+      })
+      .catch(() => {});
+  });
+
+  // Largest positioned accounts — grouped from marketTrades
+  type AccountPos = { pubkey: string; long: number; short: number; total: number };
+  let accountPositions = $derived.by((): AccountPos[] => {
+    const map = new Map<string, AccountPos>();
+    for (const pos of marketTrades) {
+      const pk = pos.ownerPubkey ?? 'anon';
+      const entry = map.get(pk) ?? { pubkey: pk, long: 0, short: 0, total: 0 };
+      if (pos.direction === 'yes') entry.long += pos.quantity;
+      else entry.short += pos.quantity;
+      entry.total = entry.long + entry.short;
+      map.set(pk, entry);
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total).slice(0, 8);
+  });
 
   function handleShare() {
     const url = typeof window !== 'undefined' ? window.location.href : '';
@@ -268,6 +330,7 @@
             <span class="text-sm text-neutral-500 mb-1">YES probability</span>
           </div>
           <div class="text-sm text-neutral-500 mt-1">{Math.round((1 - probability) * 100)}% NO</div>
+          <p class="text-xs text-neutral-400 mt-2">{tiltText}</p>
         </div>
         
         <!-- Trade -->
@@ -361,6 +424,25 @@
           {/if}
         </div>
         
+        <!-- Recent Fills -->
+        {#if recentFills.length > 0}
+          {@const parsedFills = recentFills.map(parseFillData).filter((f): f is FillData => f !== null)}
+          {#if parsedFills.length > 0}
+            <div class="py-6 border-b border-neutral-800">
+              <h2 class="text-sm font-medium text-neutral-400 mb-3">Recent Fills</h2>
+              <div class="space-y-1">
+                {#each parsedFills as fill}
+                  <div class="flex items-center gap-3 text-xs font-mono">
+                    <span class="px-1.5 py-0.5 rounded text-xs font-medium {fill.side === 'YES' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-rose-900/50 text-rose-400'}">{fill.side}</span>
+                    <span class="text-neutral-300">{fill.sats.toLocaleString()} sats</span>
+                    <span class="text-neutral-600 ml-auto">{formatTradeTimestamp(fill.ts)}</span>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          {/if}
+        {/if}
+
         <!-- Description -->
         <div class="py-6">
           <h2 class="text-sm font-medium text-neutral-400 mb-4">Description</h2>
@@ -368,6 +450,26 @@
             {market.description || 'No description provided.'}
           </p>
         </div>
+
+        <!-- Largest Positioned Accounts -->
+        {#if accountPositions.length > 0}
+          <div class="py-6 border-t border-neutral-800">
+            <h2 class="text-sm font-medium text-neutral-400 mb-3">Positions</h2>
+            <div class="space-y-1.5">
+              {#each accountPositions as acct}
+                <div class="flex items-center gap-3 text-xs font-mono">
+                  <span class="text-neutral-500 w-20 shrink-0">{acct.pubkey.slice(0, 8)}…</span>
+                  {#if acct.long > 0}
+                    <span class="text-emerald-400">{acct.long.toLocaleString()} YES</span>
+                  {/if}
+                  {#if acct.short > 0}
+                    <span class="text-rose-400">{acct.short.toLocaleString()} NO</span>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
       {:else if activeTab === 'charts'}
         <div class="py-4">
           <PriceChart marketId={market.eventId} />

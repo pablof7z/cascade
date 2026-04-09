@@ -6,6 +6,7 @@
   import { executeTrade } from '../../../services/tradingService';
   import { getDisplayName } from '../../../services/nostrService';
   import { getCurrentPubkey } from '$lib/stores/nostr.svelte';
+  import { getBalance } from '$lib/stores/wallet.svelte';
   import BookmarkButton from '$lib/components/BookmarkButton.svelte';
   import MarketDiscussionList from '$lib/components/discussion/MarketDiscussionList.svelte';
   import NavHeader from '$lib/components/NavHeader.svelte';
@@ -41,6 +42,10 @@
   
   // Auth state
   let isLoggedIn = $derived(getCurrentPubkey() !== null);
+
+  // Wallet balance
+  let balance = $derived(getBalance());
+  let hasBalance = $derived(balance > 0);
 
   // Price calculations (LMSR)
   let yesPrice = $derived(market ? priceLong(market.qLong, market.qShort, market.b) : 0);
@@ -231,6 +236,7 @@
         <!-- Trade -->
         <div class="py-6 border-b border-neutral-800">
           <h2 class="text-sm font-medium text-neutral-400 mb-4">Trade</h2>
+          <p class="text-xs text-neutral-500 mb-2">Balance: {balance} sats</p>
           <div class="flex gap-2 mb-4">
             <button
               onclick={() => selectedSide = 'LONG'}
@@ -287,7 +293,7 @@
           
           <button
             onclick={handleTrade}
-            disabled={tradeLoading || amount <= 0 || !isLoggedIn}
+            disabled={tradeLoading || amount <= 0 || !isLoggedIn || !hasBalance}
             class="w-full py-3 text-sm font-medium transition-colors border disabled:border-neutral-700 disabled:text-neutral-500"
             class:border-emerald-600={selectedSide === 'LONG' && !tradeLoading && isLoggedIn}
             class:text-emerald-400={selectedSide === 'LONG' && !tradeLoading && isLoggedIn}
@@ -310,6 +316,10 @@
           {#if !isLoggedIn}
             <p class="mt-3 text-sm text-neutral-400">
               <a href="/join" class="text-white underline">Sign in</a> to trade
+            </p>
+          {:else if !hasBalance}
+            <p class="text-xs text-neutral-400 mt-2">
+              <a href="/wallet" class="text-neutral-300 hover:text-white underline">Fund your wallet</a> to place a trade.
             </p>
           {/if}
         </div>

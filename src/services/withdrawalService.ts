@@ -112,7 +112,7 @@ async function _executeResolution(job: ResolutionJob): Promise<ResolutionResult>
 
   // Resolution is now a simple state update + event publish.
   // User-initiated redemption (via redemptionService) handles payouts.
-  console.info('[resolutionService] Market resolved:', market.slug, { outcome, outcomePrice })
+  console.info('[withdrawalService] Market resolved:', market.slug, { outcome, outcomePrice })
 
   // Future: could add resolution event publishing here if needed.
   // For now, market status update is handled by the caller (marketStore).
@@ -132,7 +132,7 @@ export function initResolutionService(): void {
   setResolutionRunner(async (job: ResolutionJob) => {
     const result = await _executeResolution(job)
     if (!result.success) {
-      console.error('[resolutionService] Resolution failed for market:', job.market.slug, (result as { success: false; error: ResolutionError }).error)
+      console.error('[withdrawalService] Resolution failed for market:', job.market.slug, (result as { success: false; error: ResolutionError }).error)
     }
   })
 }

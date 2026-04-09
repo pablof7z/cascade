@@ -5,9 +5,8 @@
   import { isTestnet, toggle, TESTNET_LABELS } from '$lib/stores/testnet';
 
   const isDashboardRoute = pageState.url.pathname.startsWith('/dashboard');
-  import { nostrStore, disconnect } from '$lib/stores/nostr';
-  import { initWalletStore, destroyWalletStore } from '$lib/walletStore';
-  import { getDisplayName } from '../../services/nostrService';
+  import { nostrStore, reconnect, disconnect } from '$lib/stores/nostr';
+  import { initWalletStore, destroyWalletStore } from '$lib/stores/wallet.svelte';
   import WalletWidget from './WalletWidget.svelte';
 
   // Reactive state
@@ -18,7 +17,6 @@
   let testnetValue = $state(false);
   let pubkey = $state<string | null>(null);
   let isReady = $state(false);
-  let displayName = $state<string>('');
 
   // Sync with stores using $effect
   $effect(() => {
@@ -38,18 +36,6 @@
       isReady = state.isReady;
     });
     return unsubscribe;
-  });
-
-  // Load display name when pubkey changes
-  $effect(() => {
-    if (!pubkey) {
-      displayName = '';
-      return;
-    }
-    const currentPubkey = pubkey;
-    getDisplayName(currentPubkey).then((name) => {
-      if (pubkey === currentPubkey) displayName = name;
-    });
   });
 
   // Initialize wallet store when pubkey is available, cleanup when null
@@ -83,17 +69,23 @@
     { href: '/activity', label: 'Activity' },
   ];
 
-  let primaryAction = { to: '/thesis/new', label: 'Create Market' };
+  let primaryAction = { to: '/thesis/new', label: 'Build Thesis' };
 
   let searchPlaceholder = 'Search markets...';
 
   let isLoggedIn = $derived(pubkey !== null);
 
-  let avatarInitials = $derived(displayName ? displayName.slice(0, 1).toUpperCase() : '?');
+  let avatarInitials = $derived(pubkey ? pubkey.slice(0, 4).toUpperCase() : '');
 
-  let abbreviatedPubkey = $derived(displayName || 'Anonymous');
+  let abbreviatedPubkey = $derived(
+    pubkey ? `${pubkey.slice(0, 8)}...${pubkey.slice(-4)}` : ''
+  );
 
   // Functions
+  async function handleConnect() {
+    await reconnect();
+  }
+
   function isActive(href: string): boolean {
     if (href === '/') {
       return path === '/';
@@ -113,7 +105,7 @@
   function handleSearch(e: Event) {
     e.preventDefault();
     if (searchQuery.trim()) {
-      const destination = isDashboardRoute ? '/dashboard/fields' : '/discuss';
+      const destination = isDashboardRoute ? '/dashboard/fields' : '/';
       goto(`${destination}?search=${encodeURIComponent(searchQuery.trim())}`);
       searchQuery = '';
     }
@@ -127,14 +119,14 @@
 <header class="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur-sm">
   <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
     <div class="flex items-center gap-6">
-      <a href="/" class="text-xl font-bold text-white">
+      <a href="/" class="text-xl font-bold text-white tracking-tight">
         Cascade
       </a>
       
       {#if testnetValue}
         <button
           onclick={toggle}
-          class="px-2 py-0.5 text-xs font-bold border border-neutral-600 text-neutral-400 hover:border-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+          class="px-2 py-0.5 text-xs font-bold border border-neutral-600 text-neutral-400 uppercase tracking-wide hover:border-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
           title="Click to switch to mainnet"
         >
           {TESTNET_LABELS.label}
@@ -142,7 +134,7 @@
       {:else}
         <button
           onclick={toggle}
-          class="px-2 py-0.5 text-xs font-medium border border-neutral-600 text-neutral-400 hover:border-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+          class="px-2 py-0.5 text-xs font-medium border border-neutral-600 text-neutral-400 uppercase tracking-wide hover:border-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
           title="Click to switch to testnet"
         >
           Mainnet
@@ -218,7 +210,7 @@
 
       <!-- User Menu or Connect Button -->
       {#if !isReady}
-        <div class="w-7 h-7 rounded-sm bg-neutral-800"></div>
+        <div class="w-7 h-7 rounded-sm bg-neutral-800 animate-pulse"></div>
       {:else if isLoggedIn}
         <div class="relative" bind:this={userMenuRef}>
           <button
@@ -273,12 +265,12 @@
           {/if}
         </div>
       {:else}
-        <a
-          href="/join"
+        <button
+          onclick={handleConnect}
           class="text-xs font-medium text-white border border-neutral-700 px-3 py-1.5 hover:border-neutral-500 transition-colors"
         >
-          Sign in
-        </a>
+          Connect Wallet
+        </button>
       {/if}
     </div>
   </div>

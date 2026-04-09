@@ -7,12 +7,49 @@ import { MINT_URL, getMintUrl, setMintUrl as setConfiguredMintUrl } from './lib/
 // Re-export NDKCashuDeposit for use by other services
 export type { NDKCashuDeposit } from '@nostr-dev-kit/wallet'
 
+export interface WithdrawRecord {
+  id: string
+  amount: number
+  fee: number
+  destination: string
+  status: 'pending' | 'complete' | 'failed'
+  preimage?: string
+  timestamp: number
+}
+
+export interface WithdrawHistory {
+  records: WithdrawRecord[]
+}
+
 const WALLET_RELAYS = ['wss://relay.damus.io', 'wss://relay.primal.net', 'wss://nos.lol']
 
 // Current mint URL - initialized from config, can be overridden per-market
 let currentMintUrl: string = MINT_URL
 let walletInstance: NDKCashuWallet | null = null
 let ndkInstance: NDK | null = null
+
+const WITHDRAW_HISTORY_KEY = 'cascade_withdraw_history'
+
+function loadWithdrawHistoryFromStorage(): WithdrawRecord[] {
+  try {
+    const raw = localStorage.getItem(WITHDRAW_HISTORY_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function saveWithdrawHistoryToStorage(records: WithdrawRecord[]): void {
+  try {
+    localStorage.setItem(WITHDRAW_HISTORY_KEY, JSON.stringify(records))
+  } catch {
+    // localStorage unavailable — in-memory only
+  }
+}
+
+let withdrawHistory: WithdrawRecord[] = loadWithdrawHistoryFromStorage()
 
 /**
  * Get the current mint URL being used by the wallet.
@@ -99,7 +136,6 @@ export async function createDeposit(amount: number, mintUrl?: string): Promise<N
 
   try {
     const deposit = wallet.deposit(amount, targetMint)
-    await deposit.start()
     return deposit
   } catch (e) {
     console.error('Deposit error:', e)
@@ -192,4 +228,55 @@ export async function receiveToken(tokenString: string): Promise<boolean> {
 
 export function getWallet(): NDKCashuWallet | null {
   return walletInstance
+}
+
+/**
+ * Check if the wallet has been loaded and is ready for use.
+ */
+export function isWalletReady(): boolean {
+  return walletInstance !== null
+}
+
+/**
+ * Add a new withdrawal record
+ */
+export function addWithdrawRecord(record: Omit<WithdrawRecord, 'id' | 'timestamp'>): WithdrawRecord {
+  const newRecord: WithdrawRecord = {
+    ...record,
+    id: `withdraw_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    timestamp: Math.floor(Date.now() / 1000),
+  }
+  withdrawHistory = [newRecord, ...withdrawHistory]
+  saveWithdrawHistoryToStorage(withdrawHistory)
+  return newRecord
+}
+
+/**
+ * Get all withdraw history
+ */
+export function getWithdrawHistory(): WithdrawRecord[] {
+  return withdrawHistory
+}
+
+/**
+ * Update a withdraw record status (e.g., after completion)
+ */
+export function updateWithdrawRecord(id: string, updates: Partial<WithdrawRecord>): void {
+  withdrawHistory = withdrawHistory.map((r) => (r.id === id ? { ...r, ...updates } : r))
+  saveWithdrawHistoryToStorage(withdrawHistory)
+}
+
+/**
+ * Clear withdraw history
+ */
+export function clearWithdrawHistory(): void {
+  withdrawHistory = []
+  saveWithdrawHistoryToStorage(withdrawHistory)
+}
+
+/**
+ * Refresh wallet balance from NDK
+ */
+export async function refreshBalance(): Promise<number> {
+  return getWalletBalance()
 }

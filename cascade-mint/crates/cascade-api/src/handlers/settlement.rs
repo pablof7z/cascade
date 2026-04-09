@@ -10,14 +10,14 @@ use axum::{
     Json,
 };
 use cascade_core::{market::Side, lmsr::LmsrEngine};
-use cdk::nuts::{Proof, Proofs, Id, PublicKey};
+use cdk::nuts::{Proof, Proofs, Id, PublicKey, BlindedMessage, SwapRequest};
 use cdk::secret::Secret;
 use cdk::Amount;
 use cdk::util::hex;
 use std::str::FromStr;
 use crate::types::{
     MarketRedeemRequest, MarketRedeemResponse, MarketSettleRequest, MarketSettleResponse,
-    TokenOutput, ProofInput, ErrorResponse,
+    TokenOutput, ProofInput, BlindedMessageInput, ErrorResponse,
 };
 use crate::routes::AppState;
 
@@ -50,6 +50,18 @@ fn proof_input_to_cdk_proof(proof: &ProofInput) -> Result<Proof, String> {
         dleq: None,
         p2pk_e: None,
     })
+}
+
+/// Convert a BlindedMessageInput (from request) to a CDK BlindedMessage for blind signing
+fn blinded_msg_input_to_cdk(b: &BlindedMessageInput) -> Result<BlindedMessage, String> {
+    let amount = Amount::from(b.amount);
+    let keyset_id = Id::from_str(&b.id)
+        .map_err(|e| format!("Invalid keyset ID '{}': {}", b.id, e))?;
+    let blinded_secret_bytes = hex::decode(&b.b_)
+        .map_err(|e| format!("Invalid B_ hex: {}", e))?;
+    let blinded_secret = PublicKey::from_slice(&blinded_secret_bytes)
+        .map_err(|e| format!("Invalid B_ public key: {}", e))?;
+    Ok(BlindedMessage::new(amount, keyset_id, blinded_secret))
 }
 
 /// Validate a Cashu proof input using CDK verification
@@ -308,71 +320,115 @@ pub async fn redeem(
         );
     }
 
-    // Atomic check-and-set: acquire write lock FIRST, then check if spent
-    // This prevents race conditions where two concurrent requests both pass the read check
-    {
-        let mut spent = state.spent_proofs.write().await;
-        if spent.contains(&req.proof.secret) {
+    // Calculate payout using proper LMSR refund formula
+    let lmsr = state.market_manager.lmsr();
+    let gross_payout = match calculate_sell_refund(lmsr, market.q_long, market.q_short, side, req.shares) {
+        Ok(refund) => refund,
+        Err(msg) => {
             return (
-                StatusCode::CONFLICT,
+                StatusCode::BAD_REQUEST,
                 Json(Err(ErrorResponse {
-                    error: "Proof already spent".to_string(),
-                    details: Some("This proof has already been redeemed".to_string()),
+                    error: "Refund calculation failed".to_string(),
+                    details: Some(msg),
                 })),
             );
         }
+    };
 
-        // Calculate payout using proper LMSR refund formula
-        let lmsr = state.market_manager.lmsr();
-        let gross_payout = match calculate_sell_refund(lmsr, market.q_long, market.q_short, side, req.shares) {
-            Ok(refund) => refund,
-            Err(msg) => {
+    let fee = (gross_payout * FEE_BASIS_POINTS / 10000) as u64; // 1% fee
+    let net_payout = gross_payout.saturating_sub(fee);
+
+    // Update market LMSR state
+    let (delta_long, delta_short) = match side {
+        Side::Long => (-req.shares, 0.0),
+        Side::Short => (0.0, -req.shares),
+    };
+    let _ = state.market_manager.update_lmsr_state(&req.market_id, delta_long, delta_short, -(gross_payout as i64)).await;
+
+    // Convert client-provided proof to CDK format for swap input
+    let input_proof = match proof_input_to_cdk_proof(&req.proof) {
+        Ok(p) => p,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(Err(ErrorResponse {
+                    error: "Invalid proof".to_string(),
+                    details: Some(e),
+                })),
+            );
+        }
+    };
+    let input_proofs: Proofs = vec![input_proof];
+
+    // Convert client-provided blinded messages to CDK format for swap output
+    let blinded_messages: Vec<BlindedMessage> = if net_payout > 0 {
+        match req.outputs.iter().map(blinded_msg_input_to_cdk).collect::<Result<Vec<_>, _>>() {
+            Ok(msgs) => msgs,
+            Err(e) => {
                 return (
                     StatusCode::BAD_REQUEST,
                     Json(Err(ErrorResponse {
-                        error: "Refund calculation failed".to_string(),
-                        details: Some(msg),
+                        error: "Invalid output".to_string(),
+                        details: Some(e),
                     })),
                 );
             }
-        };
+        }
+    } else {
+        vec![]
+    };
 
-        let fee = (gross_payout * FEE_BASIS_POINTS / 10000) as u64; // 1% fee
-        let net_payout = gross_payout.saturating_sub(fee);
+    // CDK atomic swap: process_swap_request verifies inputs, marks them spent,
+    // and signs outputs — all atomically. No manual spent_proofs tracking needed.
+    let tokens: Vec<TokenOutput> = if !blinded_messages.is_empty() {
+        let swap_request = SwapRequest::new(input_proofs, blinded_messages);
+        match state.mint.process_swap_request(swap_request).await {
+            Ok(swap_response) => swap_response.signatures.into_iter().map(|sig| TokenOutput {
+                amount: sig.amount.to_u64(),
+                id: sig.keyset_id.to_string(),
+                c_: sig.c.to_hex(),
+            }).collect(),
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(Err(ErrorResponse {
+                        error: "Swap failed".to_string(),
+                        details: Some(e.to_string()),
+                    })),
+                );
+            }
+        }
+    } else {
+        // When net_payout is 0 (fee exceeds payout), no swap outputs are needed,
+        // but we still must mark the input proof as spent to prevent double-spend.
+        if let Err(e) = state.mint.verify_proofs(input_proofs).await {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(Err(ErrorResponse {
+                    error: "Proof verification failed".to_string(),
+                    details: Some(e.to_string()),
+                })),
+            );
+        }
+        // Mark spent via manual tracking (process_swap_request handles this
+        // for the normal path, but we need it here for the zero-payout case)
+        {
+            let mut spent = state.spent_proofs.write().await;
+            spent.insert(req.proof.secret.clone());
+        }
+        vec![]
+    };
 
-        // Mark proof as spent BEFORE returning (atomic with check)
-        spent.insert(req.proof.secret.clone());
-
-        // Update market LMSR state
-        let (delta_long, delta_short) = match side {
-            Side::Long => (-req.shares, 0.0),
-            Side::Short => (0.0, -req.shares),
-        };
-        let _ = state.market_manager.update_lmsr_state(&req.market_id, delta_long, delta_short, -(gross_payout as i64)).await;
-
-        // Generate mock token output (in production, this would mint actual Cashu tokens)
-        let tokens = if net_payout > 0 {
-            vec![TokenOutput {
-                amount: net_payout,
-                id: format!("token_{}", uuid::Uuid::new_v4()),
-                blind_nonces: vec!["blind_nonce_1".to_string()],
-                B: "public_key_placeholder".to_string(),
-            }]
-        } else {
-            vec![]
-        };
-
-        return (
-            StatusCode::OK,
-            Json(Ok(MarketRedeemResponse {
-                success: true,
-                payout: gross_payout,
-                fee,
-                net_payout,
-                tokens,
-            })),
-        );
-    }
+    (
+        StatusCode::OK,
+        Json(Ok(MarketRedeemResponse {
+            success: true,
+            payout: gross_payout,
+            fee,
+            net_payout,
+            tokens,
+        })),
+    )
 }
 
 /// Post-resolution settlement endpoint
@@ -463,72 +519,144 @@ pub async fn settle(
         );
     }
 
-    // Atomic check-and-set: acquire write lock FIRST, then check if spent
-    {
-        let mut spent = state.spent_proofs.write().await;
-        if spent.contains(&req.proof.secret) {
+    // Determine if user won based on outcome
+    // Winner payout = shares * 1.0 (full value)
+    // Loser payout = 0
+    let resolution_outcome = market.resolution_outcome;
+    let (won, payout, fee, net_payout) = if resolution_outcome == Some(side) {
+        // User picked the winning side
+        let gross = req.proof.amount; // Use proof amount as shares value
+        let f = (gross * FEE_BASIS_POINTS / 10000) as u64;
+        let net = gross.saturating_sub(f);
+        (true, gross, f, net)
+    } else {
+        // User picked the losing side
+        (false, 0, 0, 0)
+    };
+
+    // Decrement reserve when winner is paid out (payout reduces market's reserve)
+    if won && payout > 0 {
+        let _ = state.market_manager.update_lmsr_state(
+            &market.event_id,
+            0.0, // delta_long
+            0.0, // delta_short
+            -(payout as i64), // reserve_delta: negative to decrement
+        ).await;
+    }
+
+    // CDK atomic swap for winners: process_swap_request verifies inputs,
+    // marks them spent, and signs outputs — all atomically.
+    // No manual spent_proofs tracking needed.
+    let tokens: Vec<TokenOutput> = if won && net_payout > 0 {
+        let blinded_messages: Vec<BlindedMessage> = match req.outputs.iter()
+            .map(blinded_msg_input_to_cdk)
+            .collect::<Result<Vec<_>, _>>()
+        {
+            Ok(msgs) => msgs,
+            Err(e) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(Err(ErrorResponse {
+                        error: "Invalid output".to_string(),
+                        details: Some(e),
+                    })),
+                );
+            }
+        };
+
+        if blinded_messages.is_empty() {
             return (
-                StatusCode::CONFLICT,
+                StatusCode::BAD_REQUEST,
                 Json(Err(ErrorResponse {
-                    error: "Proof already spent".to_string(),
-                    details: Some("This proof has already been settled".to_string()),
+                    error: "No outputs provided".to_string(),
+                    details: Some("Winners must provide blinded messages for SAT payout".to_string()),
                 })),
             );
         }
 
-        // Determine if user won based on outcome
-        // Winner payout = shares * 1.0 (full value)
-        // Loser payout = 0
-        let resolution_outcome = market.resolution_outcome;
-        let (won, payout, fee, net_payout) = if resolution_outcome == Some(side) {
-            // User picked the winning side
-            let gross = req.proof.amount; // Use proof amount as shares value
-            let f = (gross * FEE_BASIS_POINTS / 10000) as u64;
-            let net = gross.saturating_sub(f);
-            (true, gross, f, net)
-        } else {
-            // User picked the losing side
-            (false, 0, 0, 0)
+        // Convert proof to CDK format for swap input
+        let input_proof = match proof_input_to_cdk_proof(&req.proof) {
+            Ok(p) => p,
+            Err(e) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(Err(ErrorResponse {
+                        error: "Invalid proof".to_string(),
+                        details: Some(e),
+                    })),
+                );
+            }
         };
+        let input_proofs: Proofs = vec![input_proof];
 
-        // Mark proof as spent (regardless of win/loss to prevent re-submission)
-        spent.insert(req.proof.secret.clone());
+        let swap_request = SwapRequest::new(input_proofs, blinded_messages);
+        match state.mint.process_swap_request(swap_request).await {
+            Ok(swap_response) => swap_response.signatures.into_iter().map(|sig| TokenOutput {
+                amount: sig.amount.to_u64(),
+                id: sig.keyset_id.to_string(),
+                c_: sig.c.to_hex(),
+            }).collect(),
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(Err(ErrorResponse {
+                        error: "Swap failed".to_string(),
+                        details: Some(e.to_string()),
+                    })),
+                );
+            }
+        }
+    } else {
+        // For losers, we still need to mark the proof spent to prevent re-submission.
+        // We cannot use process_swap_request here because it requires balanced
+        // inputs/outputs (loser tokens → SAT would give the loser tokens they
+        // shouldn't get). Instead, verify the proof cryptographically and then
+        // mark it spent in our tracking set.
+        let input_proof = match proof_input_to_cdk_proof(&req.proof) {
+            Ok(p) => p,
+            Err(e) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(Err(ErrorResponse {
+                        error: "Invalid proof".to_string(),
+                        details: Some(e),
+                    })),
+                );
+            }
+        };
+        let input_proofs: Proofs = vec![input_proof];
 
-        // Decrement reserve when winner is paid out (payout reduces market's reserve)
-        if won && payout > 0 {
-            let _ = state.market_manager.update_lmsr_state(
-                &market.event_id,
-                0.0, // delta_long
-                0.0, // delta_short
-                -(payout as i64), // reserve_delta: negative to decrement
-            ).await;
+        if let Err(e) = state.mint.verify_proofs(input_proofs).await {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(Err(ErrorResponse {
+                    error: "Proof verification failed".to_string(),
+                    details: Some(e.to_string()),
+                })),
+            );
         }
 
-        // Generate mock token output for winners only
-        let tokens = if won && net_payout > 0 {
-            vec![TokenOutput {
-                amount: net_payout,
-                id: format!("settle_token_{}", uuid::Uuid::new_v4()),
-                blind_nonces: vec!["blind_nonce_1".to_string()],
-                B: "public_key_placeholder".to_string(),
-            }]
-        } else {
-            vec![]
-        };
+        // Mark loser proof as spent to prevent re-submission
+        {
+            let mut spent = state.spent_proofs.write().await;
+            spent.insert(req.proof.secret.clone());
+        }
 
-        // Return settlement response
-        return (
-            StatusCode::OK,
-            Json(Ok(MarketSettleResponse {
-                success: true,
-                won,
-                payout,
-                fee,
-                net_payout,
-                tokens,
-            })),
-        );
-    }
+        vec![]
+    };
+
+    // Return settlement response
+    (
+        StatusCode::OK,
+        Json(Ok(MarketSettleResponse {
+            success: true,
+            won,
+            payout,
+            fee,
+            net_payout,
+            tokens,
+        })),
+    )
 }
 
 /// GET /v1/keys - Get the mint's public keys for proof construction

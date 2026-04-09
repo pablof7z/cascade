@@ -40,6 +40,11 @@ pub struct BuyRequest {
     pub side: String, // "long" or "short"
     pub quantity: f64,
     pub buyer_pubkey: String,
+    /// Blinded messages for the market token keyset — client provides these
+    /// so the mint can blind-sign LONG or SHORT tokens via process_swap_request.
+    /// The keyset ID in each BlindedMessage must match the market's LONG or SHORT keyset.
+    #[serde(default)]
+    pub outputs: Vec<BlindedMessageInput>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -48,6 +53,15 @@ pub struct SellRequest {
     pub side: String,
     pub quantity: f64,
     pub seller_pubkey: String,
+    /// Input SAT proofs the user is spending to sell their position.
+    /// If provided, process_swap_request will be used to atomically spend these
+    /// proofs and sign the market token outputs.
+    #[serde(default)]
+    pub proofs: Vec<ProofInput>,
+    /// Blinded messages for the market token keyset — client provides these
+    /// so the mint can blind-sign LONG or SHORT tokens via process_swap_request.
+    #[serde(default)]
+    pub outputs: Vec<BlindedMessageInput>,
 }
 
 #[derive(Debug, Serialize)]
@@ -58,6 +72,9 @@ pub struct TradeResponse {
     pub quantity: f64,
     pub cost_sats: u64,
     pub fee_sats: u64,
+    /// Blind-signed tokens returned to the client (only when outputs are provided)
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub tokens: Vec<TokenOutput>,
 }
 
 // Price endpoints
@@ -227,6 +244,19 @@ pub struct DleqProof {
     pub r: String,
 }
 
+/// Blinded message — provided by the client for CDK blind signing
+/// Matches the CDK NUT-00 BlindedMessage JSON format
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct BlindedMessageInput {
+    /// Denomination in satoshis
+    pub amount: u64,
+    /// Keyset ID the client wants signed with
+    pub id: String,
+    /// Blinded secret (B_) — hex-encoded compressed secp256k1 public key
+    #[serde(rename = "B_")]
+    pub b_: String,
+}
+
 /// Mid-market redemption request
 #[derive(Debug, Deserialize)]
 pub struct MarketRedeemRequest {
@@ -234,6 +264,8 @@ pub struct MarketRedeemRequest {
     pub side: String, // "yes" or "no"
     pub shares: f64,
     pub proof: ProofInput,
+    /// Blinded messages for SAT tokens the client wants minted in exchange
+    pub outputs: Vec<BlindedMessageInput>,
 }
 
 /// Mid-market redemption response
@@ -252,6 +284,8 @@ pub struct MarketSettleRequest {
     pub market_id: String,
     pub side: String, // "yes" or "no"
     pub proof: ProofInput,
+    /// Blinded messages for SAT tokens — provided by winner for blind signing
+    pub outputs: Vec<BlindedMessageInput>,
 }
 
 /// Post-resolution settlement response
@@ -265,11 +299,14 @@ pub struct MarketSettleResponse {
     pub tokens: Vec<TokenOutput>,
 }
 
-/// Token output from minting
+/// Token output from minting — matches CDK NUT-00 BlindSignature JSON format
 #[derive(Debug, Serialize)]
 pub struct TokenOutput {
+    /// Denomination in satoshis
     pub amount: u64,
+    /// Keyset ID that signed this token
     pub id: String,
-    pub blind_nonces: Vec<String>,
-    pub B: String,
+    /// Blinded signature (C_) — hex-encoded compressed secp256k1 public key
+    #[serde(rename = "C_")]
+    pub c_: String,
 }

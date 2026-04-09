@@ -50,21 +50,70 @@ pub async fn create_market(
     Json(req): Json<CreateMarketRequest>,
 ) -> (StatusCode, Json<MarketResponse>) {
     let event_id = uuid::Uuid::new_v4().to_string();
-    
-    // Get real keyset IDs from the CDK mint (not UUID placeholders)
-    let keysets = &state.mint.pubkeys().keysets;
-    
-    let (long_keyset_id, short_keyset_id): (String, String) = if keysets.len() >= 2 {
-        // Use first two keysets for long and short
-        (keysets[0].id.to_string(), keysets[1].id.to_string())
-    } else if let Some(keyset) = keysets.first() {
-        // Only one keyset - use it for both (better than UUID placeholder)
-        (keyset.id.to_string(), keyset.id.to_string())
-    } else {
-        // No keysets available - fall back to UUIDs
-        (uuid::Uuid::new_v4().to_string(), uuid::Uuid::new_v4().to_string())
+
+    // Standard denomination set for market share tokens
+    let denominations: Vec<u64> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192];
+
+    // Register a dedicated LONG keyset for this market via CDK rotate_keyset
+    let long_keyset_id = match state.mint.rotate_keyset(
+        cdk::nuts::CurrencyUnit::Custom(format!("LONG_{}", req.slug)),
+        denominations.clone(),
+        0,
+        false,
+        None,
+    ).await {
+        Ok(info) => info.id.to_string(),
+        Err(e) => {
+            tracing::error!("Failed to create LONG keyset for market {}: {}", req.slug, e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(MarketResponse {
+                    event_id,
+                    slug: String::new(),
+                    title: String::new(),
+                    description: String::new(),
+                    b: 0.0,
+                    q_long: 0.0,
+                    q_short: 0.0,
+                    status: "error".to_string(),
+                    long_keyset_id: String::new(),
+                    short_keyset_id: String::new(),
+                    reserve: 0,
+                }),
+            );
+        }
     };
-    
+
+    // Register a dedicated SHORT keyset for this market via CDK rotate_keyset
+    let short_keyset_id = match state.mint.rotate_keyset(
+        cdk::nuts::CurrencyUnit::Custom(format!("SHORT_{}", req.slug)),
+        denominations,
+        0,
+        false,
+        None,
+    ).await {
+        Ok(info) => info.id.to_string(),
+        Err(e) => {
+            tracing::error!("Failed to create SHORT keyset for market {}: {}", req.slug, e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(MarketResponse {
+                    event_id,
+                    slug: String::new(),
+                    title: String::new(),
+                    description: String::new(),
+                    b: 0.0,
+                    q_long: 0.0,
+                    q_short: 0.0,
+                    status: "error".to_string(),
+                    long_keyset_id: String::new(),
+                    short_keyset_id: String::new(),
+                    reserve: 0,
+                }),
+            );
+        }
+    };
+
     match state.market_manager
         .create_market(
             event_id.clone(),

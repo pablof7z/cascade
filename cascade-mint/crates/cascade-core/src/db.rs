@@ -1,8 +1,8 @@
 //! Database persistence layer using SQLite
 
 use crate::error::Result;
-use crate::market::{Market, MarketStatus};
-use crate::trade::{Trade, Payout};
+use crate::market::{Market, MarketStatus, Side, Trade, TradeDirection};
+use crate::trade::Payout;
 use sqlx::sqlite::{SqlitePool, SqliteConnectOptions};
 use std::str::FromStr;
 
@@ -83,7 +83,7 @@ impl CascadeDatabase {
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
-        Ok(row.map(|(event_id, slug, title, description, b, q_long, q_short, reserve_sats, _status, resolution_outcome, creator_pubkey, created_at, resolved_at, long_keyset_id, short_keyset_id)| {
+        Ok(row.map(|(event_id, slug, title, description, b, q_long, q_short, reserve_sats, status, resolution_outcome, creator_pubkey, created_at, resolved_at, long_keyset_id, short_keyset_id)| {
             Market {
                 event_id,
                 slug,
@@ -93,7 +93,7 @@ impl CascadeDatabase {
                 q_long,
                 q_short,
                 reserve_sats: reserve_sats as u64,
-                status: MarketStatus::Active, // TODO: parse from string
+                status: status.parse().unwrap_or(MarketStatus::Active),
                 resolution_outcome: resolution_outcome.and_then(|s| s.parse().ok()),
                 creator_pubkey,
                 created_at,
@@ -113,7 +113,7 @@ impl CascadeDatabase {
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
-        Ok(rows.into_iter().map(|(event_id, slug, title, description, b, q_long, q_short, reserve_sats, _status, resolution_outcome, creator_pubkey, created_at, resolved_at, long_keyset_id, short_keyset_id)| {
+        Ok(rows.into_iter().map(|(event_id, slug, title, description, b, q_long, q_short, reserve_sats, status, resolution_outcome, creator_pubkey, created_at, resolved_at, long_keyset_id, short_keyset_id)| {
             Market {
                 event_id,
                 slug,
@@ -123,7 +123,7 @@ impl CascadeDatabase {
                 q_long,
                 q_short,
                 reserve_sats: reserve_sats as u64,
-                status: MarketStatus::Active, // TODO: parse from string
+                status: status.parse().unwrap_or(MarketStatus::Active),
                 resolution_outcome: resolution_outcome.and_then(|s| s.parse().ok()),
                 creator_pubkey,
                 created_at,
@@ -153,15 +153,16 @@ impl CascadeDatabase {
     /// Insert a trade record
     pub async fn insert_trade(&self, trade: &Trade) -> Result<()> {
         sqlx::query(
-            "INSERT INTO trades (id, market_id, buyer_pubkey, side, quantity, cost_sats, fee_sats, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO trades (id, market_slug, side, direction, quantity, cost_sats, fee_sats, buyer_pubkey, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&trade.id)
-        .bind(&trade.market_id)
-        .bind(&trade.buyer_pubkey)
-        .bind(format!("{:?}", trade.side))
-        .bind(trade.quantity)
-        .bind(trade.cost_sats as i64)
-        .bind(trade.fee_sats as i64)
+        .bind(&trade.market_slug)
+        .bind(trade.side.to_string())
+        .bind(trade.direction.to_string())
+        .bind(trade.amount)
+        .bind(trade.cost_sats)
+        .bind(trade.fee_sats)
+        .bind("") // buyer_pubkey placeholder — not tracked in market::Trade
         .bind(trade.created_at)
         .execute(&self.pool)
         .await
@@ -171,25 +172,42 @@ impl CascadeDatabase {
     }
 
     /// Get trades for a market
-    pub async fn get_trades(&self, market_id: &str) -> Result<Vec<Trade>> {
-        // This is a stub — full implementation would reconstruct Trade structs from rows
-        let _rows = sqlx::query(
-            "SELECT id, market_id, buyer_pubkey, side, quantity, cost_sats, fee_sats, created_at FROM trades WHERE market_id = ? ORDER BY created_at DESC"
+    pub async fn get_trades(&self, market_slug: &str) -> Result<Vec<Trade>> {
+        let rows = sqlx::query_as::<_, (String, String, String, String, f64, i64, i64, i64)>(
+            "SELECT id, market_slug, side, direction, quantity, cost_sats, fee_sats, created_at FROM trades WHERE market_slug = ? ORDER BY created_at DESC"
         )
-        .bind(market_id)
+        .bind(market_slug)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
-        Ok(Vec::new()) // TODO: Reconstruct Trade structs
+        Ok(rows.into_iter().map(|(id, market_slug, side_str, direction_str, amount, cost_sats, fee_sats, created_at)| {
+            let side = side_str.parse().unwrap_or(Side::Long);
+            let direction = direction_str.parse().unwrap_or(TradeDirection::Buy);
+            Trade {
+                id,
+                market_slug,
+                side,
+                direction,
+                amount,
+                cost_sats,
+                fee_sats,
+                total_sats: cost_sats + fee_sats,
+                q_long_before: 0.0,
+                q_short_before: 0.0,
+                q_long_after: 0.0,
+                q_short_after: 0.0,
+                created_at,
+            }
+        }).collect())
     }
 
     /// Insert LMSR price snapshot
-    pub async fn insert_lmsr_snapshot(&self, market_id: &str, q_long: f64, q_short: f64, price_long: f64, price_short: f64) -> Result<()> {
+    pub async fn insert_lmsr_snapshot(&self, market_slug: &str, q_long: f64, q_short: f64, price_long: f64, price_short: f64) -> Result<()> {
         sqlx::query(
-            "INSERT INTO lmsr_snapshots (market_id, q_long, q_short, price_long, price_short, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))"
+            "INSERT INTO lmsr_snapshots (market_slug, q_long, q_short, price_long, price_short, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))"
         )
-        .bind(market_id)
+        .bind(market_slug)
         .bind(q_long)
         .bind(q_short)
         .bind(price_long)
@@ -202,11 +220,11 @@ impl CascadeDatabase {
     }
 
     /// Get price history for a market
-    pub async fn get_price_history(&self, market_id: &str, limit: i64) -> Result<Vec<(f64, f64, String)>> {
+    pub async fn get_price_history(&self, market_slug: &str, limit: i64) -> Result<Vec<(f64, f64, String)>> {
         let rows = sqlx::query_as::<_, (f64, f64, String)>(
-            "SELECT price_long, price_short, created_at FROM lmsr_snapshots WHERE market_id = ? ORDER BY created_at DESC LIMIT ?"
+            "SELECT price_long, price_short, created_at FROM lmsr_snapshots WHERE market_slug = ? ORDER BY created_at DESC LIMIT ?"
         )
-        .bind(market_id)
+        .bind(market_slug)
         .bind(limit)
         .fetch_all(&self.pool)
         .await
@@ -218,7 +236,7 @@ impl CascadeDatabase {
     /// Insert a payout record
     pub async fn insert_payout(&self, payout: &Payout) -> Result<()> {
         sqlx::query(
-            "INSERT INTO payouts (id, market_id, recipient_pubkey, winning_side, winning_tokens, payout_sats, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO payouts (id, market_slug, recipient_pubkey, winning_side, winning_tokens, payout_sats, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&payout.id)
         .bind(&payout.market_id)

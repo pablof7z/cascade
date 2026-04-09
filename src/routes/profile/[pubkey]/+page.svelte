@@ -38,7 +38,6 @@
   let profile = $state<ProfileData | null>(null);
   let markets = $state<Market[]>([]);
   let positions = $state<Position[]>([]);
-  let loadingProfile = $state(true);
   let activeTab = $state<'markets' | 'positions'>('markets');
 
   // Normalize pubkey: accept both npub and hex
@@ -75,7 +74,6 @@
     const ndk = getNDK();
     if (!ndk) return;
 
-    setLoadingProfile(true);
     fetchKind0Metadata(ndk, normalizedPubkey).then((metadata) => {
       if (metadata) {
         profile = {
@@ -98,7 +96,6 @@
           nip05: '',
         };
       }
-      setLoadingProfile(false);
     });
   });
 
@@ -159,10 +156,6 @@
         positions = [];
       });
   });
-
-  function setLoadingProfile(val: boolean) {
-    loadingProfile = val;
-  }
 
   function navigateToMarket(slug: string) {
     goto(`/mkt/${slug}`);

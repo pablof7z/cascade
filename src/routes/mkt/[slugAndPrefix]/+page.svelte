@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { formatMarketSlug } from '$lib/marketSlug';
-  import { priceLong, priceShort } from '../../../market';
+  import { priceLong, priceShort, solveBuyTokens } from '../../../market';
   import { executeTrade } from '../../../services/tradingService';
   import { getDisplayName, getNDK, fetchEvents } from '../../../services/nostrService';
   import { fetchAllPositions } from '../../../services/positionService';
@@ -56,6 +56,16 @@
   let yesPrice = $derived(market ? priceLong(market.qLong, market.qShort, market.b) : 0);
   let noPrice = $derived(market ? priceShort(market.qLong, market.qShort, market.b) : 0);
   let probability = $derived(yesPrice);
+
+  // Trade estimate using LMSR solver
+  let tradeEstimate = $derived.by(() => {
+    if (!market || amount <= 0) return null;
+    try {
+      return solveBuyTokens(market, selectedSide, amount);
+    } catch {
+      return null;
+    }
+  });
   
   // Format helpers
   function formatCurrency(value: number) {
@@ -374,11 +384,37 @@
             />
           </div>
           
-          <div class="flex items-center justify-between text-sm mb-4">
-            <span class="text-neutral-500">Price per share</span>
-            <span class="font-mono text-white">
-              {formatCurrency(selectedSide === 'LONG' ? yesPrice : noPrice)}
-            </span>
+          <div class="space-y-1.5 text-sm mb-4">
+            <div class="flex items-center justify-between">
+              <span class="text-neutral-500">You receive</span>
+              <span class="font-mono font-bold {selectedSide === 'LONG' ? 'text-emerald-400' : 'text-rose-400'}">
+                {#if tradeEstimate}
+                  ~{Math.floor(tradeEstimate.tokens).toLocaleString()} shares
+                {:else}
+                  —
+                {/if}
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-neutral-500">Avg price</span>
+              <span class="font-mono text-neutral-300">
+                {#if tradeEstimate}
+                  {(tradeEstimate.avgPrice * 100).toFixed(1)}¢
+                {:else}
+                  {Math.round((selectedSide === 'LONG' ? yesPrice : noPrice) * 100)}¢
+                {/if}
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-neutral-500">Price impact</span>
+              <span class="font-mono text-neutral-400">
+                {#if tradeEstimate}
+                  {Math.round(tradeEstimate.startPrice * 100)}¢ → {Math.round(tradeEstimate.endPrice * 100)}¢
+                {:else}
+                  —
+                {/if}
+              </span>
+            </div>
           </div>
           
           {#if tradeError}

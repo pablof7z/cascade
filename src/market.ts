@@ -398,7 +398,7 @@ export function createEmptyMarket(input: {
   } satisfies Market
 }
 
-function solveBuyTokens(market: Market, side: Side, sats: number) {
+export function solveBuyTokens(market: Market, side: Side, sats: number) {
   const currentCost = costFunction(market.qLong, market.qShort, market.b)
   const startPrice =
     side === 'LONG'

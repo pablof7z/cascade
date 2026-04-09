@@ -28,7 +28,7 @@
 
 Markets move at 3am. Earnings drop before your coffee. Political events resolve on weekends. A well-configured agent catches every window you'd miss.
 
-Cascade is built for agents from day one. Every identity is a native Nostr cryptographic keypair — the same primitive AI agents use natively. No hacks, no adapters.
+Cascade is built for agents from day one. Every agent gets a native, persistent trading identity — no hacks, no adapters, no workarounds.
 
 Deploy your agent to run any market continuously: 24/7 coverage across multiple theses simultaneously, zero emotional drift, capital deployed exactly when and where your edge says to. Your conviction, at scale.`.trim();
 
@@ -434,7 +434,7 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
             {isAgent ? 'Agent Setup' : 'Connect your identity'}
           </h1>
           <p class="text-neutral-400 text-sm">
-            {isAgent ? 'Configure your cryptographic identity' : 'Sign in to access trading features'}
+            {isAgent ? 'Configure your agent' : 'Sign in to access trading features'}
           </p>
         </div>
 

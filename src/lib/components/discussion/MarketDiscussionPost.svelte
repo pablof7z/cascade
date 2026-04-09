@@ -12,10 +12,10 @@
 
   let { event, upvotes, downvotes, marketId, onReact }: Props = $props();
 
-  // Parse stance and type from event tags (reactive)
+  // Parse stance and type from event tags (only set if actually present in tags)
   const tags = $derived(parseEventTags(event));
-  const stance = $derived(tags.stance ?? 'neutral');
-  const type = $derived(tags.type ?? 'analysis');
+  const stance = $derived(tags.stance);
+  const postType = $derived(tags.type);
 
   // Local state for voting
   let voted = $state<'up' | 'down' | null>(null);
@@ -53,21 +53,30 @@
     return `${days}d ago`;
   }
 
-  // Stance badge styling
-  function getStanceBadgeClass(s: typeof stance): string {
-    switch (s) {
-      case 'bull':
+  // Stance badge — only shown for bull/bear, displayed as YES/NO
+  function getStanceLabel(s: 'bull' | 'bear' | 'neutral'): string {
+    return s === 'bull' ? 'YES' : 'NO';
+  }
+
+  function getStanceBadgeClass(s: 'bull' | 'bear' | 'neutral'): string {
+    return s === 'bull'
+      ? 'text-emerald-400 bg-emerald-950 border border-emerald-800'
+      : 'text-rose-400 bg-rose-950 border border-rose-800';
+  }
+
+  // Type badge — color coded per type
+  function getTypeBadgeClass(t: 'argument' | 'evidence' | 'rebuttal' | 'analysis'): string {
+    switch (t) {
+      case 'evidence':
         return 'text-emerald-400 bg-emerald-950 border border-emerald-800';
-      case 'bear':
+      case 'rebuttal':
         return 'text-rose-400 bg-rose-950 border border-rose-800';
+      case 'analysis':
+        return 'text-neutral-400 bg-neutral-800 border border-neutral-700 italic';
+      case 'argument':
       default:
         return 'text-neutral-400 bg-neutral-800 border border-neutral-700';
     }
-  }
-
-  // Type badge styling (always neutral)
-  function getTypeBadgeClass(): string {
-    return 'text-neutral-400 bg-neutral-800 border border-neutral-700';
   }
 
   // Score styling
@@ -118,7 +127,7 @@
 
 <div class="py-4 border-b border-neutral-800 last:border-b-0">
   <!-- Header: Author, timestamp, badges -->
-  <div class="flex items-center gap-3 mb-3">
+  <div class="flex items-center gap-3 mb-3 flex-wrap">
     <!-- Vote buttons -->
     <div class="flex items-center gap-1 text-sm">
       <button
@@ -150,15 +159,19 @@
       {formatTimeAgo(event.createdAt)}
     </span>
 
-    <!-- Stance badge -->
-    <span class="px-2 py-0.5 text-xs {getStanceBadgeClass(stance)}">
-      {stance}
-    </span>
+    <!-- Stance badge: only show for bull/bear, not neutral -->
+    {#if stance === 'bull' || stance === 'bear'}
+      <span class="px-2 py-0.5 text-xs font-medium {getStanceBadgeClass(stance)}">
+        {getStanceLabel(stance)}
+      </span>
+    {/if}
 
-    <!-- Type badge -->
-    <span class="px-2 py-0.5 text-xs {getTypeBadgeClass()}">
-      {type}
-    </span>
+    <!-- Type badge: only show if type tag is present -->
+    {#if postType}
+      <span class="px-2 py-0.5 text-xs {getTypeBadgeClass(postType)}">
+        {postType}
+      </span>
+    {/if}
   </div>
 
   <!-- Title (if present) -->

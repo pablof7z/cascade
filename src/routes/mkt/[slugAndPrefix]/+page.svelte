@@ -1,10 +1,13 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
   import { formatMarketSlug } from '$lib/marketSlug';
   import { priceLong, priceShort } from '../../../market';
   import { executeTrade } from '../../../services/tradingService';
-  import { getDisplayName } from '../../../services/nostrService';
+  import { getDisplayName, getNDK } from '../../../services/nostrService';
+  import { fetchAllPositions } from '../../../services/positionService';
+  import type { Position } from '../../../positionStore';
   import { getCurrentPubkey } from '$lib/stores/nostr.svelte';
   import { getBalance } from '$lib/stores/wallet.svelte';
   import BookmarkButton from '$lib/components/BookmarkButton.svelte';
@@ -12,7 +15,7 @@
   import NavHeader from '$lib/components/NavHeader.svelte';
   
   // Reuse types and structure from the main market page
-  type MarketTab = 'overview' | 'discussion' | 'positions';
+  type MarketTab = 'overview' | 'discussion' | 'positions' | 'activity';
   type Side = 'LONG' | 'SHORT';
   
   // Props from loader
@@ -66,6 +69,7 @@
     { key: 'overview', label: 'Overview' },
     { key: 'discussion', label: 'Discussion' },
     { key: 'positions', label: 'Positions' },
+    { key: 'activity', label: 'Activity' },
   ];
   
   function setTab(tab: MarketTab) {
@@ -86,6 +90,7 @@
   }
 
   let showCopied = $state(false);
+  let marketTrades = $state<Position[]>([]);
 
   function handleShare() {
     const url = typeof window !== 'undefined' ? window.location.href : '';
@@ -135,6 +140,36 @@
     }
   }
   
+  function formatTradeTimestamp(tsMs: number): string {
+    const now = Date.now();
+    const diff = now - tsMs;
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+    if (diff < minute) return 'just now';
+    if (diff < hour) return `${Math.floor(diff / minute)}m ago`;
+    if (diff < day) return `${Math.floor(diff / hour)}h ago`;
+    return `${Math.floor(diff / day)}d ago`;
+  }
+
+  function abbreviatePubkey(pubkey: string): string {
+    if (!pubkey || pubkey.length <= 12) return pubkey || 'anon';
+    return `${pubkey.slice(0, 8)}…${pubkey.slice(-4)}`;
+  }
+
+  onMount(() => {
+    const ndk = getNDK();
+    const m = market;
+    if (!ndk || !m) return;
+    fetchAllPositions(ndk)
+      .then((positions) => {
+        marketTrades = positions
+          .filter((p) => p.marketId === m.slug)
+          .sort((a, b) => b.timestamp - a.timestamp);
+      })
+      .catch(() => {});
+  });
+
   // Get slugAndPrefix for nested links
   let slugAndPrefix = $derived(market ? formatMarketSlug(market as any) : '');
 </script>
@@ -337,6 +372,23 @@
         <div class="text-center py-12">
           <p class="text-neutral-500 text-sm">No positions yet</p>
         </div>
+      {:else if activeTab === 'activity'}
+        {#if marketTrades.length === 0}
+          <p class="text-neutral-500 text-sm py-8">No activity yet</p>
+        {:else}
+          <div class="divide-y divide-neutral-800">
+            {#each marketTrades as trade (trade.id)}
+              <div class="py-2 flex items-center gap-3 font-mono text-sm">
+                <span class="text-neutral-600 w-16 shrink-0">{formatTradeTimestamp(trade.timestamp)}</span>
+                <span class="text-neutral-500 w-28 shrink-0 truncate">{abbreviatePubkey(trade.ownerPubkey ?? '')}</span>
+                <span class={trade.direction === 'yes' ? 'text-emerald-400 w-20 shrink-0' : 'text-rose-400 w-20 shrink-0'}>
+                  bought {trade.direction === 'yes' ? 'YES' : 'NO'}
+                </span>
+                <span class="text-neutral-300">· {Math.round(trade.costBasis).toLocaleString()} sats</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
       {/if}
     </div>
   </div>

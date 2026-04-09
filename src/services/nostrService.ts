@@ -186,7 +186,7 @@ export async function publishMarketPost(
   title: string,
   content: string,
   stance: 'bull' | 'bear' | 'neutral',
-  type: 'argument' | 'evidence' | 'rebuttal' | 'analysis',
+  type: 'argument' | 'evidence' | 'rebuttal' | 'analysis' | null,
   marketEventId: string,
   marketCreatorPubkey: string,
 ): Promise<NDKEvent> {
@@ -196,9 +196,11 @@ export async function publishMarketPost(
     ['k', '982'],
     ['p', marketCreatorPubkey],
     ['stance', stance],
-    ['type', type],
     ['subject', title],
   ]
+  if (type) {
+    tags.push(['type', type])
+  }
   return publishEvent(fullContent, tags, 1111)
 }
 

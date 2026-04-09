@@ -78,14 +78,7 @@
     }
   }
 
-  // Computed
-  let showEmptyState = $derived(
-    activeFilter === 'Trades' && trades.length === 0
-  );
 
-  let emptyStateMessage = $derived(
-    'No trade activity yet'
-  );
 
   onMount(() => {
     let cancelled = false;
@@ -187,11 +180,10 @@
       }
     }
 
-    // Load all data
-    Promise.all([loadNewMarkets()]);
-
-    // Load trades after markets map is ready
-    loadTrades().catch(() => {});
+    // Load new markets activity items in parallel with building the markets title map
+    loadNewMarkets().catch(() => {});
+    // Build markets map first, then load trades so titles resolve correctly
+    loadMarkets().then(() => loadTrades()).catch(() => {});
 
     return () => {
       cancelled = true;
@@ -229,10 +221,6 @@
 
   {#if error}
     <p class="text-neutral-500 text-sm py-8 text-center">{error}</p>
-  {/if}
-
-  {#if !error && showEmptyState}
-    <p class="text-neutral-500 text-sm py-8 text-center">{emptyStateMessage}</p>
   {/if}
 
   {#if !error && activeFilter === 'New Markets'}

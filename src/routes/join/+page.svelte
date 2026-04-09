@@ -398,39 +398,29 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
           <p class="text-neutral-400">Who's trading?</p>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <!-- Human tile -->
           <button
             onclick={() => handleChooseUserType('human')}
-            class="border border-neutral-700 hover:border-emerald-700 transition-colors text-left p-6 flex flex-col gap-4 min-h-56 group"
+            class="border border-neutral-700 border-l-4 border-l-neutral-700 hover:border-l-emerald-500 transition-colors text-left p-6 flex flex-col gap-3 min-h-[120px] group"
           >
-            <div class="w-12 h-12 flex items-center justify-center text-emerald-500 group-hover:text-emerald-400 transition-colors">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-              </svg>
+            <div class="flex flex-col gap-1">
+              <div class="text-2xl font-bold text-white">Human</div>
+              <div class="text-sm text-neutral-400">Intuition. Conviction. Skin in the game.</div>
             </div>
-            <div class="flex-1 flex flex-col justify-end gap-2">
-              <div class="text-lg font-semibold text-white">Human</div>
-              <div class="text-xs text-neutral-500 leading-relaxed">Intuition. Conviction. Skin in the game.</div>
-            </div>
-            <div class="text-xs text-emerald-600 group-hover:text-emerald-500 transition-colors font-medium">Trade →</div>
+            <div class="text-xs text-emerald-600 group-hover:text-emerald-500 transition-colors font-medium mt-auto">Trade →</div>
           </button>
 
           <!-- Agent tile -->
           <button
             onclick={() => handleChooseUserType('agent')}
-            class="border border-neutral-700 hover:border-neutral-500 transition-colors text-left p-6 flex flex-col gap-4 min-h-56 group"
+            class="border border-neutral-700 border-l-4 border-l-neutral-500 hover:border-l-white transition-colors text-left p-6 flex flex-col gap-3 min-h-[120px] group"
           >
-            <div class="w-12 h-12 flex items-center justify-center text-neutral-400 group-hover:text-neutral-300 transition-colors">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
-              </svg>
+            <div class="flex flex-col gap-1">
+              <div class="text-2xl font-bold text-white">Agent</div>
+              <div class="text-sm text-neutral-400">Autonomous. Systematic. 24/7.</div>
             </div>
-            <div class="flex-1 flex flex-col justify-end gap-2">
-              <div class="text-lg font-semibold text-white">Agent</div>
-              <div class="text-xs text-neutral-500 leading-relaxed">Autonomous. Systematic. 24/7.</div>
-            </div>
-            <div class="text-xs text-neutral-500 group-hover:text-neutral-400 transition-colors font-medium">Deploy →</div>
+            <div class="text-xs text-neutral-500 group-hover:text-neutral-400 transition-colors font-medium mt-auto">Deploy →</div>
           </button>
         </div>
       </div>

@@ -41,6 +41,9 @@
   let activityFeed = $state<ActivityItem[]>([])
   let marketsAtCap = $state(false)
   let discussionsAtCap = $state(false)
+  // kind:1111 events on public relays may include non-Cascade discussions.
+  // Any event that can't be mapped to a known market is counted here separately.
+  let unclassifiedDiscussions = $state(0)
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -76,9 +79,9 @@
     const weekAgo = now - 7 * 24 * 3600
 
     // Fetch markets (kind 982)
-    const marketSet = await fetchAllMarketsTransport(100)
+    const marketSet = await fetchAllMarketsTransport(500)
     const marketArr = Array.from(marketSet)
-    marketsAtCap = marketArr.length >= 100
+    marketsAtCap = marketArr.length >= 500
 
     const marketTitleById = new Map<string, string>()
     let weeklyCount = 0
@@ -134,6 +137,9 @@
     const topLevelPosts = allDiscussions.filter((e) => e.id && postToMarket.has(e.id))
     const replies = allDiscussions.filter((e) => e.id && replyToMarket.has(e.id))
     totalDiscussions = topLevelPosts.length + replies.length
+    // Events that couldn't be mapped to a known Cascade market — may be non-Cascade
+    // kind:1111 events from public relay pollution, or posts to markets beyond the fetch limit.
+    unclassifiedDiscussions = allDiscussions.length - totalDiscussions
 
     // Unique traders: discussion authors + platform position holders
     const traderPubkeys = new Set<string>()
@@ -269,7 +275,7 @@
   <div class="grid grid-cols-2 md:grid-cols-4 gap-px bg-neutral-800 mb-10">
     <div class="bg-neutral-950 px-5 py-4">
       <div class="font-mono text-3xl font-medium text-white tabular-nums">{totalMarkets}{#if marketsAtCap}+{/if}</div>
-      <div class="text-xs text-neutral-500 mt-1">Total markets{#if marketsAtCap}<span class="text-neutral-500"> · recent 100</span>{/if}</div>
+      <div class="text-xs text-neutral-500 mt-1">Total markets{#if marketsAtCap}<span class="text-neutral-500"> · recent 500</span>{/if}</div>
     </div>
     <div class="bg-neutral-950 px-5 py-4">
       <div class="font-mono text-3xl font-medium text-emerald-400 tabular-nums">{weeklyMarkets}</div>
@@ -277,7 +283,9 @@
     </div>
     <div class="bg-neutral-950 px-5 py-4">
       <div class="font-mono text-3xl font-medium text-white tabular-nums">{totalDiscussions}{#if discussionsAtCap}+{/if}</div>
-      <div class="text-xs text-neutral-500 mt-1">Total discussions{#if discussionsAtCap}<span class="text-neutral-500"> · recent 500</span>{/if}</div>
+      <div class="text-xs text-neutral-500 mt-1">
+        Cascade discussions{#if discussionsAtCap}<span class="text-neutral-500"> · recent 500</span>{/if}{#if unclassifiedDiscussions > 0}<span class="text-neutral-500"> · {unclassifiedDiscussions} unmatched</span>{/if}
+      </div>
     </div>
     <div class="bg-neutral-950 px-5 py-4">
       <div class="font-mono text-3xl font-medium text-white tabular-nums">{uniqueTraders}</div>

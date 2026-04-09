@@ -14,6 +14,7 @@
     initializeBookmarks,
   } from '../../bookmarkStore';
   import BookmarkButton from '$lib/components/BookmarkButton.svelte';
+  import NavHeader from '$lib/components/NavHeader.svelte';
 
   let bookmarkedIds = $state<string[]>([]);
   let pubkey = $state<string | null>(null);
@@ -94,6 +95,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-neutral-950">
+  <NavHeader />
   <div class="max-w-4xl mx-auto px-4 py-6">
     <!-- Header -->
     <div class="mb-6">

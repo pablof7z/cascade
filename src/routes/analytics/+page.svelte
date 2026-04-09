@@ -5,6 +5,7 @@
   import { parseMarketEvent } from '../../services/marketService'
   import { fetchAllPositions } from '../../services/positionService'
   import type { NDKEvent, NDKKind } from '@nostr-dev-kit/ndk'
+  import NavHeader from '$lib/components/NavHeader.svelte'
 
   // ─── Analytics session tracking ─────────────────────────────────────────────
 
@@ -257,6 +258,7 @@
 </svelte:head>
 
 <div class="max-w-5xl mx-auto px-4 py-8">
+  <NavHeader />
 
   <!-- Header -->
   <div class="flex items-center justify-between mb-8">

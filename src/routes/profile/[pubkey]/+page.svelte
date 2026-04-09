@@ -6,6 +6,7 @@
   import { NDKKind } from '@nostr-dev-kit/ndk';
   import { getNDK, fetchKind0Metadata } from '../../../services/nostrService';
   import { fetchPositions } from '../../../services/positionService';
+  import NavHeader from '$lib/components/NavHeader.svelte';
 
   interface ProfileData {
     pubkey: string;
@@ -179,7 +180,7 @@
     {#if profile.picture}
       <meta property="og:image" content={profile.picture} />
     {:else}
-      <meta property="og:image" content="https://cascade.markets/og/profile.png" />
+      <meta property="og:image" content="https://cascade.markets/og/profile.svg" />
     {/if}
     <meta property="og:url" content="https://cascade.markets/profile/{$page.params.pubkey}" />
     
@@ -191,7 +192,7 @@
     {#if profile.picture}
       <meta name="twitter:image" content={profile.picture} />
     {:else}
-      <meta name="twitter:image" content="https://cascade.markets/og/profile.png" />
+      <meta name="twitter:image" content="https://cascade.markets/og/profile.svg" />
     {/if}
   {:else}
     <title>Profile | Cascade</title>
@@ -200,6 +201,7 @@
 </svelte:head>
 
 <div class="max-w-4xl mx-auto">
+  <NavHeader />
   <!-- Banner & Avatar -->
   <div class="relative h-32 bg-neutral-900">
     {#if profile?.banner}

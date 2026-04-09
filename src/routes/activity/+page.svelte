@@ -4,6 +4,7 @@
   import { fetchAllMarketsTransport, getNDK, fetchAllPayoutEvents } from '../../services/nostrService';
   import { fetchAllPositions } from '../../services/positionService';
   import { parseMarketEvent } from '../../services/marketService';
+  import NavHeader from '$lib/components/NavHeader.svelte';
 
   type ActivityFilter = 'All' | 'New Markets' | 'Trades' | 'Resolutions';
 
@@ -265,6 +266,7 @@
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 py-8">
+  <NavHeader />
   <h1 class="text-2xl font-sans text-white mb-6">Activity</h1>
 
   <nav class="flex gap-1 border-b border-neutral-800 mb-6">

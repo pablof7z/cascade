@@ -1,4 +1,6 @@
 <script lang="ts">
+  import NavHeader from '$lib/components/NavHeader.svelte';
+
   const faqs = [
     {
       question: "What is Cascade?",
@@ -52,6 +54,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-neutral-950 py-20">
+  <NavHeader />
   <div class="max-w-3xl mx-auto px-6">
     <h1 class="text-4xl font-bold text-white mb-4">Help Center</h1>
     <p class="text-neutral-400 mb-12">

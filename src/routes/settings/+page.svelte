@@ -7,6 +7,7 @@
     type HumanProfile,
   } from '$lib/profileStore';
   import { nostrStore } from '$lib/stores/nostr';
+  import NavHeader from '$lib/components/NavHeader.svelte';
 
   // ── State ────────────────────────────────────────────────────────────────────
   let displayName = $state('');
@@ -160,6 +161,7 @@
 </svelte:head>
 
 <main class="min-h-[calc(100vh-80px)] bg-neutral-950 text-white">
+  <NavHeader />
   <div class="max-w-2xl mx-auto px-6 py-12">
     <!-- Header -->
     <div class="mb-8">

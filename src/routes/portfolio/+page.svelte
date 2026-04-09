@@ -9,6 +9,7 @@
   import type { NDKEvent } from '@nostr-dev-kit/ndk'
   import type { Market } from '../../market'
   import type { MarketEntry } from '../../storage'
+  import NavHeader from '$lib/components/NavHeader.svelte'
 
   // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -169,6 +170,7 @@
 </svelte:head>
 
 <div class="p-6 max-w-6xl mx-auto">
+  <NavHeader />
 
   <!-- Page header -->
   <div class="mb-6">

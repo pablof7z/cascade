@@ -472,7 +472,7 @@
         {/if}
       {:else if activeTab === 'charts'}
         <div class="py-4">
-          <PriceChart marketId={market.eventId} />
+          <PriceChart marketSlug={market.slug} />
           {#if marketTrades.length > 0}
             <div class="mt-6">
               <h2 class="text-sm font-medium text-neutral-400 mb-3">Recent fills</h2>

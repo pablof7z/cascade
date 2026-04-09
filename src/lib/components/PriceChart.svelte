@@ -4,10 +4,10 @@
   import type { IChartApi } from 'lightweight-charts';
 
   interface Props {
-    marketId: string;
+    marketSlug: string;
   }
 
-  let { marketId }: Props = $props();
+  let { marketSlug }: Props = $props();
 
   interface PricePoint {
     timestamp: number;
@@ -21,7 +21,7 @@
 
   async function fetchPriceHistory(): Promise<PricePoint[]> {
     try {
-      const res = await fetch(`/api/market/${marketId}/price-history`);
+      const res = await fetch(`/api/market/${marketSlug}/price-history`);
       if (!res.ok) return [];
       return await res.json();
     } catch {

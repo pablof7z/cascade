@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-09 00:30 UTC — Session: join page, activity, discuss, market detail all shipped. Analytics dashboard in 3rd iteration.*
+*Last updated: 2026-04-09 03:35 UTC — Massive audit+fix session complete. 30+ issues resolved. Audit #2 (thesis/discuss/search quality) in flight.*
 
 ---
 
@@ -8,10 +8,12 @@
 
 | When | What | Details |
 |------|------|---------|
-| **Pablo ASAP** | **LND wallet creation** | Run: `lncli --lnddir=/Users/customer/.lnd --network=signet create` — one-time setup, blocks all Lightning/testnet testing |
+| **Pablo ASAP** | **LND wallet creation** | Run: `lncli --lnddir=/Users/customer/.lnd --network=signet create` — blocks all Lightning/testnet testing |
 | Pablo decides | Merge phase-8-testnet-mint → main | All wallet work on branch. Pablo decides when mint deployment is ready. |
 | Pablo decides | Growth DM campaign (10 DMs) | DM file: `$AGENT_HOME/research/dm-campaign-10-users.md` |
 | When Pablo publishes | Substack article | Article ready, published to Nostr |
+| Deferred | Market resolution UI | Large feature — market creators can't close markets yet |
+| Deferred | Market search | No search on /discuss or homepage |
 
 ---
 
@@ -19,28 +21,68 @@
 
 | Item | Conv | Status |
 |------|------|--------|
-| **Analytics dashboard** | 1085c84f50 | 🔄 3rd revision — fixing reply-thread drops + hard cap stats. 2 review FAILs so far. |
+| **Audit #2: thesis/discuss/search** | 643502f96d | 🔄 explore-agent reading files — findings expected shortly |
 
-## ✅ Shipped (2026-04-09 ~00:00-00:30 UTC)
+---
 
-| Item | Commit | Status |
-|------|--------|--------|
-| **Join page redesign** | `e78666f`, `ea646d8`, `fab19a3` | ✅ Large human/agent tiles (dominant visual), emerald/neutral left borders, punchy copy, no jargon |
-| **Activity page: remove loading gate** | `f1b4bcc` | ✅ Data streams immediately — no blank page wait |
-| **Discuss page style fixes** | `6348eb5` | ✅ divide-y list, button tabs for filters, header cleanup |
-| **Market detail page redesign** | `293d9d4` | ✅ No card wrappers, border-only YES/NO + submit, clean header |
+## ✅ Shipped Today (2026-04-09) — Main Branch
 
-## ✅ Shipped (2026-04-08)
+### Wave 10 (latest): Welcome + OAuth fixes
+- Welcome page key-file import flow fixed
+- OAuth polling timeout handling added
+- nsec bech32 validation added
+- Commits: `badcd72`, `d0f847c` | Merge: `22123aa`
 
-| Item | Commit | Status |
-|------|--------|--------|
-| **Phase 8 production hardening** | `78b074d`–`550629f` | ✅ All done. walletErrors.ts, walletHistory.ts, all components, mintHealthy defaults false, all 11 error codes. |
-| **Cross-project conversation routing fix** | `1327a124`, `02a0cad6` | ✅ One-off scheduled tasks now fire across projects. ConversationResolver disk fallback + error logging. 3 regression tests. |
-| **Onboarding funnel fixes (3 blockers)** | `dc08d97`, `485c0e4`, `13e023a` | ✅ Post-join 404 fixed, nav→/join, wallet CTA copy |
-| **Wallet Refactor Steps 1-3** | `0e9779f`, `e358fd6`, `da7fbca` | ✅ All committed + pushed |
-| **7 UX fixes** | `6e83c62` | ✅ No spinners, no Nostr jargon across Welcome/Profile/Wallet/NavHeader/TestnetBanner/Discuss/Profile |
-| **Project documentation** | `a64c04c`, `f04da2a` | ✅ 15 docs + 44 tenex/docs + corrections |
-| **SEO fixes** | `fde14de` | ✅ SeoHead, dynamic OG meta |
+### Wave 9: 4 high-priority bugs
+- join page redirects to /discuss (not /)
+- Trade success confirmation message shown
+- Old /market/[marketId] route deleted (SSR 500 time bomb)
+- Insufficient balance error links to /wallet
+- Commits: merged with `2424571`
+
+### Wave 8: Rounded corners + style cleanup
+- rounded corners removed from interactive elements
+- discuss subscription memory leak fixed
+- Portfolio open/settled tabs added
+- Commit: `06ecea5`
+
+### Wave 7: 6 small fixes batch
+- Bookmarks page shows market titles (not pubkeys)
+- Market creation redirects to new market (not /)
+- Fake 24h change removed from market cards
+- Help FAQ style fixed (no cards)
+- Dead DashboardOverview component deleted
+- Analytics empty states added
+- Commit: `0a56705`
+
+### Wave 6: 404 page, help, share, activity filters
+- Custom 404 page built
+- Help page contact link works
+- Share button on market page
+- Activity page filters functional
+- Commit: `2892f40` | Merge: `c371d12`
+
+### Wave 5: Uppercase tracking sweep
+- 49 `uppercase tracking-*` violations removed across 12 files
+- Commits: `2424571`, `ebe376c`
+
+### Wave 4: Thread routing
+- Thread page fixed — threadId from searchParams, correct market loading
+- Commits: `053ffe9`, `e59b9ef`
+
+### Earlier today:
+- ✅ Analytics dashboard — real Nostr-backed stats
+- ✅ Live ticker — scrolls real market titles
+- ✅ Blog article — "If Bitcoin Hits $100k" published
+- ✅ NavHeader added to ALL pages (8-page sweep + individual fixes)
+- ✅ OG/Twitter meta tags fixed
+- ✅ Activity page streams data (no loading gate)
+- ✅ Market detail page style overhaul (no cards)
+- ✅ Fake sparklines removed from landing page
+- ✅ Real keypair generation on join flow
+- ✅ nsec removed from join success screen
+
+---
 
 ## 🗺️ Phase 8 Status — `phase-8-testnet-mint` branch
 
@@ -48,12 +90,6 @@
 - ✅ CDK project compiles, real blind signing
 - ✅ Two keysets per market (LONG/SHORT) via rotate_keyset
 - ✅ NUT-04 + NUT-05 via cdk_axum router
-- ✅ ALL DB column bugs fixed (insert_trade, insert_payout, insert_lmsr_snapshot, get_price_history)
+- ✅ ALL DB column bugs fixed
 - ⏳ LND wallet creation (Pablo must run `lncli create`)
 - ⏳ Testnet deployment to VPS
-
-### Frontend (Complete)
-- ✅ Wallet store consolidation (single source of truth)
-- ✅ Deposit flow (local QR, auto-polling, countdown)
-- ✅ Lightning withdrawal (withdrawService, WithdrawConfirmation, WithdrawStatus)
-- ✅ Production hardening (all 11 error codes, mintHealthy defaults false)

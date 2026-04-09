@@ -23,6 +23,7 @@
   let modules = $state<Module[]>([]);
   let error = $state<string | null>(null);
   let publishedEventId = $state<string | null>(null);
+  let publishedSlug = $state<string | null>(null);
 
   // Module form state
   let newModuleQuestion = $state('');
@@ -180,6 +181,7 @@
       // Clear draft and update state
       clearDraft();
       publishedEventId = event.id;
+      publishedSlug = slug;
       phase = 'published';
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to publish thesis';
@@ -393,10 +395,10 @@
     <div class="flex flex-col items-center justify-center min-h-[40vh]">
       <div class="text-center">
         <div class="text-lg text-emerald-400 mb-4">Thesis Published</div>
-        {#if publishedEventId}
-          <p class="text-sm text-neutral-500 mb-4">
-            Event ID: {publishedEventId.slice(0, 16)}...
-          </p>
+        {#if publishedSlug && pubkey}
+          <a href="/thread/{publishedSlug}--{pubkey.slice(0, 12)}" class="text-white underline text-sm mb-4 block">
+            View your market →
+          </a>
         {/if}
         <button
           onclick={() => {
@@ -405,6 +407,7 @@
             thesisDescription = '';
             modules = [];
             publishedEventId = null;
+            publishedSlug = null;
           }}
           class="mt-4 px-6 py-3 bg-neutral-800 text-white hover:bg-neutral-700"
         >

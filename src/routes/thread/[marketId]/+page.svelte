@@ -186,10 +186,35 @@
     }
   });
 
+  // Sort state for replies
+  type SortMode = 'best' | 'new' | 'old' | 'controversial';
+  let sortMode = $state<SortMode>('best');
+
   // Get probability, thread, and market URL
   let probability = $derived(market ? priceLong(market.qLong, market.qShort, market.b) : 0);
   let thread = $derived(threads.find((t) => t.id === threadId));
   let marketSlug = $derived(market ? `${market.slug}--${market.creatorPubkey.slice(0, 12)}` : marketId);
+
+  function replyCount(reply: Reply): number {
+    return (reply.replies?.reduce((sum, r) => sum + 1 + replyCount(r), 0) ?? 0);
+  }
+
+  let sortedReplies = $derived.by(() => {
+    if (!thread) return [];
+    const replies = [...thread.replies];
+    switch (sortMode) {
+      case 'new':
+        return replies.sort((a, b) => b.timestamp - a.timestamp);
+      case 'old':
+        return replies.sort((a, b) => a.timestamp - b.timestamp);
+      case 'best':
+        return replies.sort((a, b) => b.upvotes - a.upvotes);
+      case 'controversial':
+        return replies.sort((a, b) => replyCount(a) - replyCount(b));
+      default:
+        return replies;
+    }
+  });
 </script>
 
 <svelte:head>
@@ -237,17 +262,20 @@
           <h2 class="text-sm font-medium text-neutral-400">
             {thread.replies.length} {thread.replies.length === 1 ? 'Reply' : 'Replies'}
           </h2>
-          <select class="bg-neutral-800 border border-neutral-700 text-neutral-300 text-xs px-2 py-1">
-            <option>Best</option>
-            <option>New</option>
-            <option>Old</option>
-            <option>Controversial</option>
+          <select
+            class="bg-neutral-800 border border-neutral-700 text-neutral-300 text-xs px-2 py-1"
+            bind:value={sortMode}
+          >
+            <option value="best">Best</option>
+            <option value="new">New</option>
+            <option value="old">Old</option>
+            <option value="controversial">Controversial</option>
           </select>
         </div>
         
         <!-- Threaded replies -->
         <div class="space-y-1">
-          {#each thread.replies as reply (reply.id)}
+          {#each sortedReplies as reply (reply.id)}
             <ReplyThread {reply} depth={0} marketId={marketId!} rootId={thread.id} />
           {/each}
         </div>

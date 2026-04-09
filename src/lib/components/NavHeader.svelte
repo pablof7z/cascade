@@ -113,7 +113,7 @@
   function handleSearch(e: Event) {
     e.preventDefault();
     if (searchQuery.trim()) {
-      const destination = isDashboardRoute ? '/dashboard/fields' : '/';
+      const destination = isDashboardRoute ? '/dashboard/fields' : '/discuss';
       goto(`${destination}?search=${encodeURIComponent(searchQuery.trim())}`);
       searchQuery = '';
     }

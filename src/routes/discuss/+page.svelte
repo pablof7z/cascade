@@ -85,7 +85,7 @@
 
   // Count all replies recursively
   function countReplies(reply: Reply | DiscussionThread): number {
-    return 1 + (reply.replies?.reduce((sum, r) => sum + countReplies(r), 0) ?? 0)
+    return (reply.replies?.reduce((sum, r) => sum + 1 + countReplies(r), 0) ?? 0)
   }
 
   // Format relative time
@@ -132,7 +132,7 @@
 
   // Navigate to thread
   function goToThread(market: Market, threadId: string): void {
-    goto(`/thread/${market.slug}?threadId=${threadId}`)
+    goto(`/thread/${market.slug}--${market.creatorPubkey.slice(0, 12)}?threadId=${threadId}`)
   }
 
   // Fetch discussions from all markets
@@ -335,7 +335,7 @@
                   <span>·</span>
                   <span>{formatRelativeTime(thread.timestamp)}</span>
                   <span>·</span>
-                  <span>{countReplies(thread) - 1} {countReplies(thread) === 2 ? 'reply' : 'replies'}</span>
+                  <span>{countReplies(thread)} {countReplies(thread) === 1 ? 'reply' : 'replies'}</span>
                 </div>
               </div>
 

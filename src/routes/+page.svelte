@@ -328,10 +328,10 @@
                 Start Trading
               </a>
               <a
-                href="#how-it-works"
+                href="/help"
                 class="text-neutral-500 hover:text-neutral-300 transition-colors text-sm"
               >
-                How it works →
+                For agents →
               </a>
             </div>
           </div>

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { isReady, fetchMarketPosts, fetchReactions, subscribeToReactions } from '../../../services/nostrService';
+  import { isReady, fetchMarketPosts, fetchReactions, subscribeToReactions, subscribeToMarketPosts, parseEventTags } from '../../../services/nostrService';
   import { formatMarketSlug } from '$lib/marketSlug';
   import { buildThreadHierarchy } from '../../../lib/threadBuilder';
   import { trackDiscussionInteraction } from '../../../analytics';
@@ -172,6 +172,87 @@
       });
     } catch (err) {
       console.error('[ThreadPage] subscribeToReactions error:', err);
+    }
+
+    return () => {
+      sub?.stop();
+    };
+  });
+
+  // Subscribe to new reply events in real-time
+  $effect(() => {
+    if (!nostrReady || !market?.eventId) return;
+
+    const marketEventId = market.eventId;
+
+    let sub: ReturnType<typeof subscribeToMarketPosts> | null = null;
+    try {
+      sub = subscribeToMarketPosts(marketEventId, (event) => {
+        const eventId = event.id ?? '';
+        if (!eventId) return;
+
+        // Skip if already present
+        const allKnownIds = threads.flatMap(collectEventIds);
+        if (allKnownIds.includes(eventId)) return;
+
+        const tags = parseEventTags(event);
+
+        const newReply: Reply = {
+          id: eventId,
+          author: 'Anonymous',
+          pubkey: event.pubkey,
+          isAgent: false,
+          content: event.content,
+          timestamp: (event.created_at ?? 0) * 1000,
+          upvotes: 0,
+          downvotes: 0,
+          replies: [],
+        };
+
+        if (!tags.replyTo && (tags.rootId === marketEventId || tags.isRoot)) {
+          // New root-level thread — add to threads list
+          threads = [
+            ...threads,
+            {
+              id: eventId,
+              author: 'Anonymous',
+              pubkey: event.pubkey,
+              isAgent: false,
+              type: (tags.type ?? 'argument') as DiscussionThread['type'],
+              stance: (tags.stance ?? 'neutral') as DiscussionThread['stance'],
+              title: event.content.split('\n')[0].slice(0, 80),
+              content: event.content,
+              timestamp: (event.created_at ?? 0) * 1000,
+              upvotes: 0,
+              downvotes: 0,
+              replies: [],
+            },
+          ];
+          return;
+        }
+
+        // Reply to an existing thread or nested reply — find the parent and insert
+        const parentId = tags.replyTo ?? tags.rootId ?? '';
+        if (!parentId) return;
+
+        function insertReply(replies: Reply[]): Reply[] {
+          return replies.map((r) => {
+            if (r.id === parentId) {
+              return { ...r, replies: [...r.replies, newReply] };
+            }
+            return { ...r, replies: insertReply(r.replies) };
+          });
+        }
+
+        threads = threads.map((t) => {
+          if (t.id === parentId) {
+            return { ...t, replies: [...t.replies, newReply] };
+          }
+          return { ...t, replies: insertReply(t.replies) };
+        });
+      });
+    } catch (err) {
+      console.error('[ThreadPage] subscribeToMarketPosts error:', err);
     }
 
     return () => {

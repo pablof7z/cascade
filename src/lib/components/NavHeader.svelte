@@ -127,14 +127,14 @@
 <header class="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur-sm">
   <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
     <div class="flex items-center gap-6">
-      <a href="/" class="text-xl font-bold text-white tracking-tight">
+      <a href="/" class="text-xl font-bold text-white">
         Cascade
       </a>
       
       {#if testnetValue}
         <button
           onclick={toggle}
-          class="px-2 py-0.5 text-xs font-bold border border-neutral-600 text-neutral-400 uppercase tracking-wide hover:border-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+          class="px-2 py-0.5 text-xs font-bold border border-neutral-600 text-neutral-400 hover:border-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
           title="Click to switch to mainnet"
         >
           {TESTNET_LABELS.label}
@@ -142,7 +142,7 @@
       {:else}
         <button
           onclick={toggle}
-          class="px-2 py-0.5 text-xs font-medium border border-neutral-600 text-neutral-400 uppercase tracking-wide hover:border-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+          class="px-2 py-0.5 text-xs font-medium border border-neutral-600 text-neutral-400 hover:border-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
           title="Click to switch to testnet"
         >
           Mainnet

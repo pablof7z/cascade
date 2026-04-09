@@ -343,7 +343,7 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
   }
 
   function handleGoToMarkets() {
-    goto('/');
+    goto('/discuss');
   }
 
   // ── Display Helpers ─────────────────────────────────────────────────────────
@@ -669,7 +669,7 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
         <!-- Pubkey display -->
         {#if pubkey}
           <div class="bg-neutral-900 border border-neutral-800 p-4 space-y-2">
-            <p class="text-xs text-neutral-500 uppercase tracking-wider">Account ID</p>
+            <p class="text-xs text-neutral-500">Account ID</p>
             <code class="text-sm font-mono text-white break-all">{pubkey}</code>
             <button
               onclick={handleCopyKeys}

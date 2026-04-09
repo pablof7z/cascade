@@ -296,7 +296,7 @@
       <div class="max-w-7xl mx-auto w-full px-6 py-16">
         <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <div class="space-y-8">
-            <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight">
+            <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05]">
               The Market Thinks You're Wrong
             </h1>
             <p class="text-xl md:text-2xl text-neutral-400 max-w-lg leading-relaxed">
@@ -322,7 +322,7 @@
           <!-- Right — Featured market -->
           {#if featuredMarket}
             <div class="space-y-6">
-              <span class="text-xs font-medium text-neutral-500 uppercase tracking-[0.2em]">
+              <span class="text-xs font-medium text-neutral-500">
                 Featured Thesis
               </span>
               <a href="/mkt/{featuredMarket.slug}--{featuredMarket.pubkeyPrefix}" class="block space-y-4">
@@ -343,7 +343,7 @@
             </div>
           {:else}
             <div class="space-y-6">
-              <span class="text-xs font-medium text-neutral-500 uppercase tracking-[0.2em]">
+              <span class="text-xs font-medium text-neutral-500">
                 Example theses — this is how Cascade works
               </span>
               <div class="space-y-4">
@@ -413,7 +413,7 @@
           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
           <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
         </span>
-        <span class="text-xs text-neutral-500 uppercase tracking-wider font-medium">Live</span>
+        <span class="text-xs text-neutral-500 font-medium">Live</span>
       </div>
       <div class="overflow-hidden text-sm text-neutral-400 flex-1">
         {#if markets.length > 0}
@@ -422,7 +422,7 @@
               {#each markets as market}
                 {@const prob = Math.round(priceLong(market.qLong, market.qShort, market.b) * 100)}
                 <span class="inline-flex items-center gap-2 shrink-0">
-                  <span class="text-xs text-neutral-600 font-mono uppercase">{getCategory(market)}</span>
+                  <span class="text-xs text-neutral-600 font-mono">{getCategory(market)}</span>
                   <span class="text-neutral-300 max-w-[200px] truncate">{market.title}</span>
                   <span class={prob >= 50 ? 'text-emerald-500 font-mono text-xs' : 'text-rose-500 font-mono text-xs'}>{prob}%</span>
                 </span>
@@ -431,7 +431,7 @@
             {#each markets as market}
               {@const prob = Math.round(priceLong(market.qLong, market.qShort, market.b) * 100)}
               <span class="inline-flex items-center gap-2 shrink-0">
-                <span class="text-xs text-neutral-600 font-mono uppercase">{getCategory(market)}</span>
+                <span class="text-xs text-neutral-600 font-mono">{getCategory(market)}</span>
                 <span class="text-neutral-300 max-w-[200px] truncate">{market.title}</span>
                 <span class={prob >= 50 ? 'text-emerald-500 font-mono text-xs' : 'text-rose-500 font-mono text-xs'}>{prob}%</span>
               </span>
@@ -449,7 +449,7 @@
   ═══════════════════════════════════════════════════════════════════════════ -->
   <section id="how-it-works" class="max-w-7xl mx-auto px-6 py-20 border-t border-neutral-800/30">
     <div class="mb-12">
-      <h2 class="text-3xl md:text-4xl font-bold text-white tracking-tight mb-3">
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-3">
         You have opinions. Now trade on them.
       </h2>
       <p class="text-neutral-500 text-sm">Cascade trades on theses, not just bets.</p>
@@ -459,7 +459,7 @@
       <!-- Step 1 -->
       <div class="space-y-4">
         <div class="flex items-center gap-3">
-          <span class="text-xs font-mono text-neutral-600 uppercase tracking-wider">Step 1</span>
+          <span class="text-xs font-mono text-neutral-600">Step 1</span>
           <div class="h-px flex-1 bg-neutral-800"></div>
         </div>
         <h3 class="text-lg font-semibold text-white">Find or create a prediction</h3>
@@ -474,7 +474,7 @@
       <!-- Step 2 -->
       <div class="space-y-4">
         <div class="flex items-center gap-3">
-          <span class="text-xs font-mono text-neutral-600 uppercase tracking-wider">Step 2</span>
+          <span class="text-xs font-mono text-neutral-600">Step 2</span>
           <div class="h-px flex-1 bg-neutral-800"></div>
         </div>
         <h3 class="text-lg font-semibold text-white">Connect predictions into a thesis</h3>
@@ -489,7 +489,7 @@
       <!-- Step 3 -->
       <div class="space-y-4">
         <div class="flex items-center gap-3">
-          <span class="text-xs font-mono text-neutral-600 uppercase tracking-wider">Step 3</span>
+          <span class="text-xs font-mono text-neutral-600">Step 3</span>
           <div class="h-px flex-1 bg-neutral-800"></div>
         </div>
         <h3 class="text-lg font-semibold text-white">Trade on your conviction</h3>
@@ -514,7 +514,7 @@
   ═══════════════════════════════════════════════════════════════════════════ -->
   <section class="max-w-7xl mx-auto px-6 pt-20 pb-16">
     <div class="flex items-baseline gap-4 mb-10">
-      <h2 id="markets" class="text-3xl font-black text-white tracking-tight">Trending</h2>
+      <h2 id="markets" class="text-3xl font-black text-white">Trending</h2>
       <span class="text-sm text-neutral-600">Most volume · 24h</span>
     </div>
 
@@ -524,7 +524,7 @@
         {#if trendingMarkets.length > 0}
           {@const entry = trendingMarkets[0]}
           <a href="/mkt/{entry.slug}--{entry.pubkeyPrefix}" class="block cursor-pointer group">
-            <span class="text-xs text-emerald-500 uppercase tracking-[0.15em] font-medium">#1 by volume</span>
+            <span class="text-xs text-emerald-500 font-medium">#1 by volume</span>
             <h3 class="text-2xl md:text-3xl font-bold text-white mt-2 mb-4 group-hover:text-emerald-400 transition-colors leading-snug">
               {entry.title}
             </h3>
@@ -578,14 +578,14 @@
     <div class="max-w-7xl mx-auto px-6 py-16">
       <div class="flex items-baseline justify-between mb-8">
         <div class="flex items-baseline gap-4">
-          <h2 class="text-3xl font-black text-white tracking-tight">Low Volume</h2>
+          <h2 class="text-3xl font-black text-white">Low Volume</h2>
           <span class="text-sm text-neutral-600">Smaller markets with lower volume.</span>
         </div>
-        <span class="text-xs text-neutral-600 uppercase tracking-wider hidden sm:block">Updated live</span>
+        <span class="text-xs text-neutral-600 hidden sm:block">Updated live</span>
       </div>
 
       <!-- Table header -->
-      <div class="grid grid-cols-12 gap-2 px-3 pb-2 text-xs text-neutral-600 uppercase tracking-wider font-medium border-b border-neutral-700/50">
+      <div class="grid grid-cols-12 gap-2 px-3 pb-2 text-xs text-neutral-600 font-medium border-b border-neutral-700/50">
         <div class="col-span-5 sm:col-span-4">Market</div>
         <div class="col-span-2 text-right">Price</div>
         <div class="col-span-2 text-right hidden sm:block">Chg</div>
@@ -600,7 +600,7 @@
           class="grid grid-cols-12 gap-2 px-3 py-3 text-sm cursor-pointer transition-colors hover:bg-neutral-800/30 {i % 2 === 0 ? 'bg-neutral-800/10' : ''}"
         >
           <div class="col-span-5 sm:col-span-4 flex items-center gap-2 min-w-0">
-            <span class="text-[10px] text-neutral-600 uppercase tracking-wider shrink-0">{row.category}</span>
+            <span class="text-[10px] text-neutral-600 shrink-0">{row.category}</span>
             <span class="text-white truncate font-medium">{row.title}</span>
           </div>
           <div class="col-span-2 text-right font-mono font-bold text-neutral-200 tabular-nums">
@@ -627,7 +627,7 @@
     <section class="max-w-7xl mx-auto px-6 py-20">
       <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-end mb-10 border-b border-neutral-800/40 pb-6">
         <div class="flex items-baseline gap-4">
-          <h2 class="text-3xl font-black text-white tracking-tight">Most Disputed</h2>
+          <h2 class="text-3xl font-black text-white">Most Disputed</h2>
           <span class="text-sm text-neutral-600">Markets where the odds are close.</span>
         </div>
       </div>
@@ -635,7 +635,7 @@
       <div class="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)] lg:gap-12">
         <!-- Market list -->
         <div>
-          <div class="grid grid-cols-[minmax(0,1.4fr)_76px_72px_88px] gap-3 pb-3 text-[10px] uppercase tracking-[0.18em] text-neutral-600 border-b border-neutral-800/40">
+          <div class="grid grid-cols-[minmax(0,1.4fr)_76px_72px_88px] gap-3 pb-3 text-[10px] text-neutral-600 border-b border-neutral-800/40">
             <div>Market</div>
             <div class="text-right">Yes</div>
             <div class="text-right">Spread</div>
@@ -649,7 +649,7 @@
             >
               <div class="min-w-0">
                 <span class="text-sm font-medium text-white truncate block">{entry.title}</span>
-                <span class="text-[10px] text-neutral-600 uppercase tracking-wider">{entry.category}</span>
+                <span class="text-[10px] text-neutral-600">{entry.category}</span>
               </div>
               <div class="text-right font-mono font-bold text-white tabular-nums">
                 {Math.round(entry.prob * 100)}¢
@@ -676,14 +676,14 @@
     <section class="bg-neutral-900/20 border-t border-neutral-800/30">
       <div class="max-w-7xl mx-auto px-6 py-16">
         <div class="flex items-baseline gap-4 mb-10 border-b border-neutral-800/30 pb-6">
-          <h2 class="text-3xl font-black text-white tracking-tight">New This Week</h2>
+          <h2 class="text-3xl font-black text-white">New This Week</h2>
         </div>
 
         <div class="grid lg:grid-cols-3 gap-12">
           <!-- Column 1: Featured -->
           <div class="lg:col-span-1">
             <a href="/mkt/{featured.slug}--{featured.pubkeyPrefix}" class="block cursor-pointer group">
-              <span class="text-[10px] uppercase tracking-[0.2em] text-emerald-500/70 font-medium">
+              <span class="text-[10px] text-emerald-500/70 font-medium">
                 {featured.category} · {featured.timeAgo}
               </span>
               <h3 class="text-xl font-bold text-white mt-2 mb-3 leading-snug group-hover:text-emerald-400 transition-colors">
@@ -713,7 +713,7 @@
                     {Math.round(item.prob * 100)}¢
                   </span>
                 </div>
-                <span class="text-[10px] text-neutral-700 uppercase tracking-wider">
+                <span class="text-[10px] text-neutral-700">
                   {item.category} · {item.timeAgo}
                 </span>
               </a>
@@ -722,7 +722,7 @@
 
           <!-- Column 3: Compact list -->
           <div>
-            <span class="text-[10px] uppercase tracking-[0.2em] text-neutral-600 font-medium block mb-4">
+            <span class="text-[10px] text-neutral-600 font-medium block mb-4">
               Also new
             </span>
             {#each newThisWeek.slice(4) as item, i}
@@ -768,7 +768,7 @@
 
       <div class="lg:col-span-7 grid sm:grid-cols-2 gap-8">
         <div class="space-y-3">
-          <div class="text-xs font-mono text-neutral-600 uppercase tracking-wider mb-1">Binary markets</div>
+          <div class="text-xs font-mono text-neutral-600 mb-1">Binary markets</div>
           <h3 class="text-lg font-semibold text-neutral-400">"Will X happen?"</h3>
           <p class="text-sm text-neutral-600 leading-relaxed">
             YES or NO. One question, one answer. Resolves when the question is settled.
@@ -778,7 +778,7 @@
           </p>
         </div>
         <div class="space-y-3">
-          <div class="text-xs font-mono text-emerald-500 uppercase tracking-wider mb-1">Conditional markets</div>
+          <div class="text-xs font-mono text-emerald-500 mb-1">Conditional markets</div>
           <h3 class="text-lg font-semibold text-white">"If X, then what?"</h3>
           <p class="text-sm text-neutral-500 leading-relaxed">
             Build a thesis. Connect predictions into chains. The market prices your entire argument.

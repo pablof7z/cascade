@@ -230,8 +230,8 @@
 </svelte:head>
 
 <main class="min-h-[calc(100vh-80px)] bg-neutral-950 text-white">
-  <NavHeader />
   <div class="max-w-2xl mx-auto px-6 py-12">
+    <NavHeader />
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-2xl font-semibold text-white mb-2">Wallet</h1>

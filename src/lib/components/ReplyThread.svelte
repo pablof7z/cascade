@@ -2,6 +2,7 @@
   import { publishMarketReply } from '../../services/nostrService';
   import VoteButtons from './VoteButtons.svelte';
   import ReplyThread from './ReplyThread.svelte';
+  import { nostrStore } from '$lib/stores/nostr';
 
   interface Reply {
     id: string
@@ -27,6 +28,16 @@
   const maxDepth = 6;
   const indentClass = $derived(depth < maxDepth ? 'ml-5 border-l border-neutral-800 pl-4' : '');
   
+  let pubkey = $state<string | null>(null);
+  let isLoggedIn = $derived(pubkey !== null);
+
+  $effect(() => {
+    const unsubscribe = nostrStore.subscribe((state) => {
+      pubkey = state.pubkey;
+    });
+    return unsubscribe;
+  });
+
   let collapsed = $state(false);
   let showReplyBox = $state(false);
   let replyContent = $state('');
@@ -86,7 +97,11 @@
     </div>
     <p class="text-sm text-neutral-300 leading-relaxed whitespace-pre-line">{reply.content}</p>
     <div class="mt-2 flex gap-4 text-xs text-neutral-600">
-      <button onclick={() => showReplyBox = !showReplyBox} class="hover:text-neutral-400">reply</button>
+      {#if isLoggedIn}
+        <button onclick={() => showReplyBox = !showReplyBox} class="hover:text-neutral-400">reply</button>
+      {:else}
+        <a href="/join" class="text-xs text-neutral-500 hover:text-neutral-400">sign in to reply</a>
+      {/if}
     </div>
     
     {#if showReplyBox}

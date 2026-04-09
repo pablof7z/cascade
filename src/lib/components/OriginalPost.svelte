@@ -1,6 +1,7 @@
 <script lang="ts">
   import { publishMarketReply } from '../../services/nostrService';
   import VoteButtons from './VoteButtons.svelte';
+  import { nostrStore } from '$lib/stores/nostr';
 
   interface DiscussionThread {
     id: string
@@ -49,6 +50,16 @@
     rebuttal: 'REBUTTAL',
     analysis: 'ANALYSIS'
   };
+
+  let pubkey = $state<string | null>(null);
+  let isLoggedIn = $derived(pubkey !== null);
+
+  $effect(() => {
+    const unsubscribe = nostrStore.subscribe((state) => {
+      pubkey = state.pubkey;
+    });
+    return unsubscribe;
+  });
 
   let showReplyBox = $state(false);
   let replyContent = $state('');
@@ -136,9 +147,13 @@
       
       <!-- Actions -->
       <div class="flex items-center gap-4 text-sm text-neutral-600">
-        <button onclick={() => showReplyBox = !showReplyBox} class="hover:text-neutral-400">
-          Reply
-        </button>
+        {#if isLoggedIn}
+          <button onclick={() => showReplyBox = !showReplyBox} class="hover:text-neutral-400">
+            Reply
+          </button>
+        {:else}
+          <a href="/join" class="text-xs text-neutral-500 hover:text-neutral-400">sign in to reply</a>
+        {/if}
       </div>
       
       {#if showReplyBox}

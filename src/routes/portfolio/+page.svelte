@@ -3,20 +3,18 @@
   import { loadPositions, type Position } from '../../positionStore'
   import { load as loadMarkets } from '../../storage'
   import { priceLong, priceShort } from '../../market'
-  import { fetchPayoutEvents, getPubkey, getNDK } from '../../services/nostrService'
-  import { getRedemptionQuote, isPositionSettled } from '../../services/settlementService'
+  import { getPubkey, getNDK } from '../../services/nostrService'
+  import { getRedemptionQuote, isPositionSettled, canRedeemPosition } from '../../services/settlementService'
   import { redeemPosition as doRedemption, type RedemptionResult } from '../../services/redemptionService'
-  import type { NDKEvent } from '@nostr-dev-kit/ndk'
   import type { Market } from '../../market'
   import type { MarketEntry } from '../../storage'
   import NavHeader from '$lib/components/NavHeader.svelte'
 
   // ─── State ────────────────────────────────────────────────────────────────────
 
-  let activeTab = $state<'open' | 'settled'>('open')
+  let activeTab = $state<'open' | 'withdrawn'>('open')
   let positions = $state<Position[]>([])
   let markets = $state<Map<string, MarketEntry>>(new Map())
-  let payoutEvents = $state<NDKEvent[]>([])
   let myPubkey = $state<string>('')
   // Redemption modal state
   let redeemModalOpen = $state(false)
@@ -50,13 +48,12 @@
         pnlPercent,
         isSettled: isPositionSettled(pos),
         canRedeem: canRedeemPosition(pos),
-        isWon: market?.status === 'resolved' && (market.resolutionOutcome === 'YES' ? pos.direction === 'yes' : pos.direction === 'no'),
       }
     })
   )
 
-  let unsettledPositions = $derived(enrichedPositions.filter(p => !p.isSettled && !p.isWon))
-  let settledPositions = $derived(enrichedPositions.filter(p => p.isSettled || p.isWon))
+  let openPositions = $derived(enrichedPositions.filter(p => !p.isSettled))
+  let withdrawnPositions = $derived(enrichedPositions.filter(p => !!p.isSettled))
 
   let totalValue = $derived(
     enrichedPositions.reduce((sum, p) => sum + p.currentValue, 0)
@@ -64,14 +61,8 @@
   let totalPnL = $derived(
     enrichedPositions.reduce((sum, p) => sum + p.pnl, 0)
   )
-  let unsettledValue = $derived(
-    unsettledPositions.reduce((sum, p) => sum + p.currentValue, 0)
-  )
-  let totalPayouts = $derived(
-    payoutEvents.reduce((sum, e) => {
-      const amount = e.tagValue('amount')
-      return sum + (amount ? parseInt(amount) : 0)
-    }, 0)
+  let openValue = $derived(
+    openPositions.reduce((sum, p) => sum + p.currentValue, 0)
   )
 
   // ─── Load data on mount ───────────────────────────────────────────────────────
@@ -84,11 +75,7 @@
     const marketsData = await loadMarkets()
     markets = new Map(marketsData.map(m => [m.market.slug, m]))
 
-    // Fetch payout events
     myPubkey = getPubkey()
-    if (myPubkey) {
-      payoutEvents = await fetchPayoutEvents(myPubkey)
-    }
   })
 
   // ─── Redemption handlers ──────────────────────────────────────────────────────
@@ -107,7 +94,7 @@
       redemptionQuote = quote
       redemptionAmount = quote.amount
     } catch (e) {
-      redemptionMessage = 'Failed to get redemption quote'
+      redemptionMessage = 'Failed to get withdrawal quote'
     }
     redemptionLoading = false
   }
@@ -130,7 +117,7 @@
       const result = await doRedemption(market.market, redeemingPosition, ndk)
       
       if (result.success) {
-        redemptionMessage = `Redeemed! Received ${result.payout.netSats} sats.`
+        redemptionMessage = `Withdrawn! Received ${result.payout.netSats} sats.`
         // Refresh positions
         positions = loadPositions()
         setTimeout(() => {
@@ -176,7 +163,7 @@
   <!-- Page header -->
   <div class="mb-6">
     <h1 class="text-lg font-semibold text-white">Your Portfolio</h1>
-    <p class="mt-0.5 text-sm text-neutral-500">Track your positions and settlements</p>
+    <p class="mt-0.5 text-sm text-neutral-500">Track your open positions and withdrawal history.</p>
   </div>
 
   {#if positions.length === 0}
@@ -202,8 +189,8 @@
         <p class="text-sm font-mono text-white">{positions.length}</p>
       </div>
       <div class="bg-neutral-900 px-4 py-3">
-        <p class="text-xs text-neutral-500 mb-1">Total Payouts</p>
-        <p class="text-sm font-mono text-emerald-400">{formatSats(totalPayouts)} sats</p>
+        <p class="text-xs text-neutral-500 mb-1">Withdrawn</p>
+        <p class="text-sm font-mono text-neutral-400">{withdrawnPositions.length} position{withdrawnPositions.length !== 1 ? 's' : ''}</p>
       </div>
     </div>
 
@@ -212,18 +199,18 @@
       <button
         class="{activeTab === 'open' ? '-mb-px border-b-2 border-white text-white' : 'text-neutral-500 hover:text-neutral-300'} px-4 py-2 text-sm font-medium"
         onclick={() => activeTab = 'open'}>
-        Open ({unsettledPositions.length})
+        Open ({openPositions.length})
       </button>
       <button
-        class="{activeTab === 'settled' ? '-mb-px border-b-2 border-white text-white' : 'text-neutral-500 hover:text-neutral-300'} px-4 py-2 text-sm font-medium"
-        onclick={() => activeTab = 'settled'}>
-        Settled ({settledPositions.length})
+        class="{activeTab === 'withdrawn' ? '-mb-px border-b-2 border-white text-white' : 'text-neutral-500 hover:text-neutral-300'} px-4 py-2 text-sm font-medium"
+        onclick={() => activeTab = 'withdrawn'}>
+        Withdrawn ({withdrawnPositions.length})
       </button>
     </div>
 
     <!-- Open positions -->
     {#if activeTab === 'open'}
-      {#if unsettledPositions.length === 0}
+      {#if openPositions.length === 0}
         <p class="text-sm text-neutral-500 py-8 text-center">No open positions</p>
       {:else}
         <table class="w-full">
@@ -240,7 +227,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-neutral-800">
-            {#each unsettledPositions as pos (pos.id)}
+            {#each openPositions as pos (pos.id)}
               <tr class="text-sm">
                 <td class="px-4 py-3">
                   <a href="/mkt/{pos.marketId}" class="text-white hover:text-neutral-300">
@@ -265,7 +252,7 @@
                       onclick={() => handleRedeem(pos)}
                       class="text-xs font-medium text-white border border-neutral-700 px-3 py-1 hover:border-neutral-500 transition-colors"
                     >
-                      Redeem
+                      Withdraw
                     </button>
                   {:else}
                     <span class="text-xs text-neutral-600">-</span>
@@ -278,10 +265,10 @@
       {/if}
     {/if}
 
-    <!-- Settled positions -->
-    {#if activeTab === 'settled'}
-      {#if settledPositions.length === 0}
-        <p class="text-sm text-neutral-500 py-8 text-center">No settled positions</p>
+    <!-- Withdrawn positions -->
+    {#if activeTab === 'withdrawn'}
+      {#if withdrawnPositions.length === 0}
+        <p class="text-sm text-neutral-500 py-8 text-center">No withdrawn positions</p>
       {:else}
         <table class="w-full">
           <thead>
@@ -296,7 +283,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-neutral-800">
-            {#each settledPositions as pos (pos.id)}
+            {#each withdrawnPositions as pos (pos.id)}
               <tr class="text-sm opacity-60">
                 <td class="px-4 py-3 text-neutral-400">{pos.marketName}</td>
                 <td class="text-right px-4 py-3">
@@ -312,7 +299,7 @@
                 </td>
                 <td class="text-right px-4 py-3">
                   <span class="text-xs text-emerald-400">
-                    {pos.isWon ? 'Won' : 'Lost'}
+                    Withdrawn
                   </span>
                 </td>
               </tr>
@@ -336,7 +323,7 @@
 
     <!-- Modal -->
     <div class="relative bg-neutral-900 border border-neutral-700 p-6 w-full max-w-md mx-4">
-      <h2 class="text-base font-semibold text-white mb-4">Redeem Position</h2>
+      <h2 class="text-base font-semibold text-white mb-4">Withdraw Position</h2>
 
       {#if redeemingPosition}
         <div class="mb-4">

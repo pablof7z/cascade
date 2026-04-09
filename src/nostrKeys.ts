@@ -134,6 +134,20 @@ export function saveKeys(keys: NostrKeyPair): void {
   }))
 }
 
+function bech32Verify(str: string): boolean {
+  const sep = str.lastIndexOf('1')
+  if (sep < 1) return false
+  const hrp = str.slice(0, sep)
+  const data = str.slice(sep + 1)
+  const values: number[] = []
+  for (const c of data) {
+    const idx = BECH32_ALPHABET.indexOf(c)
+    if (idx === -1) return false
+    values.push(idx)
+  }
+  return bech32Polymod([...bech32HrpExpand(hrp), ...values]) === 1
+}
+
 function bech32Decode(str: string): Uint8Array {
   const sep = str.lastIndexOf('1')
   const data = str.slice(sep + 1)
@@ -167,4 +181,22 @@ function convertBits5to8(data: number[]): number[] {
   }
 
   return result
+}
+
+export function importNsecKey(nsec: string): NostrKeyPair {
+  if (!nsec.startsWith('nsec1')) {
+    throw new Error('Invalid key format')
+  }
+  if (!bech32Verify(nsec)) {
+    throw new Error('Invalid nsec: checksum mismatch')
+  }
+  const privateKey = bech32Decode(nsec)
+  const publicKey = schnorr.getPublicKey(privateKey)
+  return {
+    privateKey,
+    publicKey,
+    nsec,
+    npub: bech32Encode('npub', publicKey),
+    pubkeyHex: bytesToHex(publicKey),
+  }
 }

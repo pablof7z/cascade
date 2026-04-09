@@ -47,6 +47,9 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
   let userType = $state<UserType>(null);
   let isLoading = $state(false);
   let errorMessage = $state('');
+  let oauthError = $state('');
+  let oauthCheckInterval: ReturnType<typeof setInterval> | null = null;
+  let oauthTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
   // Auth state
   let connected = $state(false);
@@ -141,6 +144,7 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
   async function handleTwitterAuth() {
     isLoading = true;
     errorMessage = '';
+    oauthError = '';
     authMethod = 'oauth_twitter';
 
     try {
@@ -157,9 +161,10 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
 
       // Wait for callback
       if (popup) {
-        const checkClosed = setInterval(() => {
+        oauthCheckInterval = setInterval(() => {
           if (popup.closed) {
-            clearInterval(checkClosed);
+            if (oauthCheckInterval) { clearInterval(oauthCheckInterval); oauthCheckInterval = null; }
+            if (oauthTimeoutHandle) { clearTimeout(oauthTimeoutHandle); oauthTimeoutHandle = null; }
             // Check if we got the pubkey
             const storedPubkey = localStorage.getItem('cascade_pending_pubkey');
             if (storedPubkey) {
@@ -171,6 +176,13 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
             isLoading = false;
           }
         }, 500);
+        oauthTimeoutHandle = setTimeout(() => {
+          if (oauthCheckInterval) { clearInterval(oauthCheckInterval); oauthCheckInterval = null; }
+          oauthTimeoutHandle = null;
+          popup.close();
+          isLoading = false;
+          oauthError = 'Connection timed out. Please try again.';
+        }, 30000);
       } else {
         throw new Error('Popup blocked');
       }
@@ -183,6 +195,7 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
   async function handleTelegramAuth() {
     isLoading = true;
     errorMessage = '';
+    oauthError = '';
     authMethod = 'oauth_telegram';
 
     try {
@@ -201,9 +214,10 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
       );
 
       if (popup) {
-        const checkClosed = setInterval(() => {
+        oauthCheckInterval = setInterval(() => {
           if (popup.closed) {
-            clearInterval(checkClosed);
+            if (oauthCheckInterval) { clearInterval(oauthCheckInterval); oauthCheckInterval = null; }
+            if (oauthTimeoutHandle) { clearTimeout(oauthTimeoutHandle); oauthTimeoutHandle = null; }
             const storedPubkey = localStorage.getItem('cascade_pending_pubkey');
             if (storedPubkey) {
               pubkey = storedPubkey;
@@ -214,6 +228,13 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
             isLoading = false;
           }
         }, 500);
+        oauthTimeoutHandle = setTimeout(() => {
+          if (oauthCheckInterval) { clearInterval(oauthCheckInterval); oauthCheckInterval = null; }
+          oauthTimeoutHandle = null;
+          popup.close();
+          isLoading = false;
+          oauthError = 'Connection timed out. Please try again.';
+        }, 30000);
       } else {
         throw new Error('Popup blocked');
       }
@@ -259,12 +280,15 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
   }
 
   async function handleOAuthCallback(data: { pubkey?: string; error?: string }) {
+    if (oauthCheckInterval) { clearInterval(oauthCheckInterval); oauthCheckInterval = null; }
+    if (oauthTimeoutHandle) { clearTimeout(oauthTimeoutHandle); oauthTimeoutHandle = null; }
     if (data.error) {
       errorMessage = data.error;
       isLoading = false;
       return;
     }
     if (data.pubkey) {
+      oauthError = '';
       pubkey = data.pubkey;
       connected = true;
       currentStep = 'profile';
@@ -443,6 +467,9 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
           <div class="bg-rose-950/50 border border-rose-800 text-rose-400 px-4 py-3 text-sm">
             {errorMessage}
           </div>
+        {/if}
+        {#if oauthError}
+          <p class="text-sm text-rose-400 mt-2">{oauthError}</p>
         {/if}
 
         <!-- Auth options -->

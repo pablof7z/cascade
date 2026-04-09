@@ -8,6 +8,12 @@
   } from '$lib/profileStore';
   import { nostrStore } from '$lib/stores/nostr';
   import NavHeader from '$lib/components/NavHeader.svelte';
+  import { getNDK } from '../../services/nostrService';
+  import { loadStoredKeys } from '../../nostrKeys';
+  import { NDKRelayStatus } from '@nostr-dev-kit/ndk';
+
+  // ── Constants ─────────────────────────────────────────────────────────────────
+  const DEFAULT_RELAYS = ['wss://relay.damus.io', 'wss://relay.nostr.band', 'wss://nos.lol'];
 
   // ── State ────────────────────────────────────────────────────────────────────
   let displayName = $state('');
@@ -18,10 +24,20 @@
   let isPublishing = $state(false);
   let saveMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
   let pubkey = $state<string | null>(null);
+  let npub = $state<string | null>(null);
 
   // Relay configuration state
   let relayUrls = $state<string[]>([]);
   let newRelayUrl = $state('');
+  let relayError = $state('');
+
+  // Notification preferences state
+  let notifMarketTrades = $state(false);
+  let notifPositionChanges = $state(false);
+  let notifLargeTrades = $state(false);
+  let notifLargeTradesThreshold = $state(10000);
+  let notifDiscussionReplies = $state(false);
+  let notifMarketMilestones = $state(false);
 
   // ── Derived ────────────────────────────────────────────────────────────────────
   let hasUnsavedChanges = $derived(
@@ -36,10 +52,6 @@
       displayName = profile.displayName;
       headline = profile.headline;
       bio = profile.bio;
-      // Extract avatar from bio if it's an image URL
-      if (profile.bio.startsWith('https://')) {
-        // Simple heuristic - check if bio contains an image URL
-      }
     }
 
     // Subscribe to Nostr store for pubkey
@@ -47,15 +59,33 @@
       pubkey = state.pubkey;
     });
 
+    // Load npub from stored keys
+    const keys = loadStoredKeys();
+    if (keys) {
+      npub = keys.npub;
+    }
+
     // Load relay configuration from localStorage
     const savedRelays = localStorage.getItem('cascade-relays');
     if (savedRelays) {
       try {
-        relayUrls = JSON.parse(savedRelays);
+        const parsed = JSON.parse(savedRelays);
+        relayUrls = Array.isArray(parsed) && parsed.length > 0 ? parsed : [...DEFAULT_RELAYS];
       } catch {
-        relayUrls = [];
+        relayUrls = [...DEFAULT_RELAYS];
       }
+    } else {
+      relayUrls = [...DEFAULT_RELAYS];
     }
+
+    // Load notification preferences
+    notifMarketTrades = localStorage.getItem('notif:market_trades') === 'true';
+    notifPositionChanges = localStorage.getItem('notif:position_changes') === 'true';
+    notifLargeTrades = localStorage.getItem('notif:large_trades') === 'true';
+    const threshold = localStorage.getItem('notif:large_trades_threshold');
+    notifLargeTradesThreshold = threshold ? parseInt(threshold, 10) : 10000;
+    notifDiscussionReplies = localStorage.getItem('notif:discussion_replies') === 'true';
+    notifMarketMilestones = localStorage.getItem('notif:market_milestones') === 'true';
 
     return unsubscribe;
   });
@@ -127,16 +157,32 @@
 
   function handleAddRelay() {
     const url = newRelayUrl.trim();
-    if (url && !relayUrls.includes(url)) {
-      relayUrls = [...relayUrls, url];
-      localStorage.setItem('cascade-relays', JSON.stringify(relayUrls));
-      newRelayUrl = '';
+    relayError = '';
+    if (!url) return;
+    if (!url.startsWith('wss://') && !url.startsWith('ws://')) {
+      relayError = 'Relay URL must start with wss://';
+      return;
     }
+    if (relayUrls.includes(url)) {
+      relayError = 'Relay already in list';
+      return;
+    }
+    relayUrls = [...relayUrls, url];
+    localStorage.setItem('cascade-relays', JSON.stringify(relayUrls));
+    const ndk = getNDK();
+    if (ndk) {
+      ndk.addExplicitRelay(url, undefined, true);
+    }
+    newRelayUrl = '';
   }
 
   function handleRemoveRelay(url: string) {
     relayUrls = relayUrls.filter((r) => r !== url);
     localStorage.setItem('cascade-relays', JSON.stringify(relayUrls));
+    const ndk = getNDK();
+    if (ndk) {
+      ndk.pool.removeRelay(url);
+    }
   }
 
   function handleRelayKeydown(event: KeyboardEvent) {
@@ -146,13 +192,40 @@
     }
   }
 
+  function getRelayStatus(url: string): 'connected' | 'disconnected' {
+    const ndk = getNDK();
+    if (!ndk) return 'disconnected';
+    const relay = ndk.pool.relays.get(url);
+    if (!relay) return 'disconnected';
+    return relay.status === NDKRelayStatus.CONNECTED || relay.status === NDKRelayStatus.AUTHENTICATED
+      ? 'connected'
+      : 'disconnected';
+  }
+
+  function setNotif(key: string, value: boolean) {
+    localStorage.setItem(key, String(value));
+  }
+
+  function setNotifThreshold(value: number) {
+    notifLargeTradesThreshold = value;
+    localStorage.setItem('notif:large_trades_threshold', String(value));
+  }
+
   let copiedAccountId = $state(false);
+  let copiedNpub = $state(false);
 
   async function copyAccountId() {
     if (!pubkey) return;
     await navigator.clipboard.writeText(pubkey);
     copiedAccountId = true;
     setTimeout(() => { copiedAccountId = false; }, 2000);
+  }
+
+  async function copyNpub() {
+    if (!npub) return;
+    await navigator.clipboard.writeText(npub);
+    copiedNpub = true;
+    setTimeout(() => { copiedNpub = false; }, 2000);
   }
 </script>
 
@@ -287,19 +360,177 @@
       </div>
     </section>
 
+    <!-- Relay Configuration Section -->
+    <section class="space-y-4 mb-12">
+      <h2 class="text-lg font-medium border-b border-neutral-800 pb-3">Relays</h2>
+
+      <div class="space-y-1.5">
+        {#each relayUrls as url}
+          <div class="flex items-center justify-between px-3 py-2 bg-neutral-900 border border-neutral-800">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span
+                class="w-2 h-2 rounded-full flex-shrink-0 {getRelayStatus(url) === 'connected'
+                  ? 'bg-emerald-500'
+                  : 'bg-neutral-600'}"
+              ></span>
+              <span class="text-sm text-neutral-300 font-mono truncate">{url}</span>
+            </div>
+            <button
+              type="button"
+              onclick={() => handleRemoveRelay(url)}
+              class="ml-4 text-xs text-neutral-500 hover:text-rose-400 transition-colors flex-shrink-0"
+            >
+              Remove
+            </button>
+          </div>
+        {/each}
+      </div>
+
+      <!-- Add relay input -->
+      <div class="flex gap-2">
+        <input
+          type="text"
+          bind:value={newRelayUrl}
+          onkeydown={handleRelayKeydown}
+          placeholder="wss://relay.example.com"
+          class="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-700 text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors text-sm font-mono"
+        />
+        <button
+          type="button"
+          onclick={handleAddRelay}
+          class="px-4 py-2 text-sm font-medium bg-white text-neutral-950 hover:bg-neutral-200 transition-colors"
+        >
+          Add
+        </button>
+      </div>
+      {#if relayError}
+        <p class="text-sm text-rose-400">{relayError}</p>
+      {/if}
+    </section>
+
+    <!-- Notification Preferences Section -->
+    <section class="space-y-1 mb-12">
+      <h2 class="text-lg font-medium border-b border-neutral-800 pb-3 mb-4">Notifications</h2>
+
+      <!-- New trades on my markets -->
+      <div class="flex items-center justify-between py-2.5">
+        <span class="text-sm text-neutral-300">New trades on my markets</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            bind:checked={notifMarketTrades}
+            onchange={() => setNotif('notif:market_trades', notifMarketTrades)}
+            class="sr-only peer"
+          />
+          <div class="w-9 h-5 rounded-full peer bg-neutral-700 peer-checked:bg-emerald-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+        </label>
+      </div>
+
+      <!-- Position changes -->
+      <div class="flex items-center justify-between py-2.5">
+        <span class="text-sm text-neutral-300">Position changes</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            bind:checked={notifPositionChanges}
+            onchange={() => setNotif('notif:position_changes', notifPositionChanges)}
+            class="sr-only peer"
+          />
+          <div class="w-9 h-5 rounded-full peer bg-neutral-700 peer-checked:bg-emerald-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+        </label>
+      </div>
+
+      <!-- Large trades -->
+      <div class="flex items-center justify-between py-2.5">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="text-sm text-neutral-300">Large trades</span>
+          {#if notifLargeTrades}
+            <div class="flex items-center gap-1.5">
+              <input
+                type="number"
+                value={notifLargeTradesThreshold}
+                min="1"
+                oninput={(e) => setNotifThreshold(parseInt((e.target as HTMLInputElement).value, 10) || 10000)}
+                class="w-24 px-2 py-0.5 bg-neutral-900 border border-neutral-700 text-white text-sm focus:outline-none focus:border-neutral-500 transition-colors"
+              />
+              <span class="text-xs text-neutral-500">sats</span>
+            </div>
+          {/if}
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-4">
+          <input
+            type="checkbox"
+            bind:checked={notifLargeTrades}
+            onchange={() => setNotif('notif:large_trades', notifLargeTrades)}
+            class="sr-only peer"
+          />
+          <div class="w-9 h-5 rounded-full peer bg-neutral-700 peer-checked:bg-emerald-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+        </label>
+      </div>
+
+      <!-- New discussion replies -->
+      <div class="flex items-center justify-between py-2.5">
+        <span class="text-sm text-neutral-300">New discussion replies</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            bind:checked={notifDiscussionReplies}
+            onchange={() => setNotif('notif:discussion_replies', notifDiscussionReplies)}
+            class="sr-only peer"
+          />
+          <div class="w-9 h-5 rounded-full peer bg-neutral-700 peer-checked:bg-emerald-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+        </label>
+      </div>
+
+      <!-- Market milestones -->
+      <div class="flex items-center justify-between py-2.5">
+        <span class="text-sm text-neutral-300">Market milestones</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            bind:checked={notifMarketMilestones}
+            onchange={() => setNotif('notif:market_milestones', notifMarketMilestones)}
+            class="sr-only peer"
+          />
+          <div class="w-9 h-5 rounded-full peer bg-neutral-700 peer-checked:bg-emerald-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+        </label>
+      </div>
+    </section>
+
     <!-- Account Display -->
-    {#if pubkey}
+    {#if npub || pubkey}
       <section class="mt-12 pt-8 border-t border-neutral-800">
         <h2 class="text-lg font-medium mb-4">Your Account</h2>
-        <div class="flex items-center justify-between px-3 py-2 bg-neutral-900 border border-neutral-700">
-          <span class="text-sm text-neutral-400">Account ID</span>
-          <button
-            onclick={copyAccountId}
-            class="text-xs text-neutral-400 hover:text-white transition-colors"
-          >
-            {copiedAccountId ? '✓ Copied' : 'Copy'}
-          </button>
-        </div>
+
+        {#if npub}
+          <div class="mb-3">
+            <p class="text-xs text-neutral-500 mb-1.5">Your public key (npub)</p>
+            <div class="flex items-center justify-between px-3 py-2 bg-neutral-900 border border-neutral-700">
+              <span class="text-xs text-neutral-300 font-mono truncate">{npub}</span>
+              <button
+                onclick={copyNpub}
+                class="ml-4 text-xs text-neutral-400 hover:text-white transition-colors flex-shrink-0"
+              >
+                {copiedNpub ? '✓ Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        {/if}
+
+        {#if pubkey}
+          <div>
+            <p class="text-xs text-neutral-500 mb-1.5">Account ID (hex)</p>
+            <div class="flex items-center justify-between px-3 py-2 bg-neutral-900 border border-neutral-700">
+              <span class="text-xs text-neutral-500 font-mono truncate">{pubkey}</span>
+              <button
+                onclick={copyAccountId}
+                class="ml-4 text-xs text-neutral-400 hover:text-white transition-colors flex-shrink-0"
+              >
+                {copiedAccountId ? '✓ Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        {/if}
       </section>
     {/if}
   </div>

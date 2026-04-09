@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-08 10:40 UTC — All audit fixes shipped. Phase 8 CDK mint re-kicked. Simulator verified working.*
+*Last updated: 2026-04-09 05:30 UTC — Tracking sweep complete. All work on main. No active delegations.*
 
 ---
 
@@ -8,9 +8,53 @@
 
 | When | What | Details |
 |------|------|---------|
-| When Pablo initiates | Start Phase 8 Phase 1 (testnet mint) | Plan: `.tenex/plans/phase-8-real-money-integration-revised.md` |
-| When Pablo wakes | Send 10 DMs from X account for growth campaign | DM file: `$AGENT_HOME/research/dm-campaign-10-users.md` |
-| When Pablo approves | Publish Substack article | Article ready, published to Nostr |
+| **Pablo ASAP** | **LND wallet creation** | Run: `lncli --lnddir=/Users/customer/.lnd --network=signet create` — one-time setup, blocks all Lightning/testnet testing |
+| Pablo decides | Merge phase-8-testnet-mint → main | All wallet work on branch. Pablo decides when mint deployment is ready. |
+| Pablo decides | Growth DM campaign (10 DMs) | DM file: `$AGENT_HOME/research/dm-campaign-10-users.md` |
+| When Pablo publishes | Substack article | Article ready, published to Nostr |
+| Deferred | Market resolution UI | Large feature — market creators can't close markets yet |
+| Deferred | Market search | No search on /discuss or homepage |
+
+---
+
+## 🔄 In Flight (main)
+
+*(nothing — clean)*
+
+---
+
+## ✅ Shipped Today (2026-04-09)
+
+| Item | Commit | Status |
+|------|--------|--------|
+| **Thread reply subscription overhaul** | `851bf0a` | ✅ Correct e-tag filter, reactive readiness, race condition fix |
+| **Nested reply double-attach fix** | `6f2862f` | ✅ replyTo as direct parent, rootId as fallback |
+| **isReady() polling fix (discuss + analytics)** | `86c0d42` | ✅ Reactive setInterval instead of one-shot effect |
+| **Remove Charts tab (dead placeholder)** | `de1ea60` | ✅ No dead ends on market page |
+| **Remove raw pubkey from join success** | `33a62ec` | ✅ No jargon on success screen |
+| **Profile followers/following → em-dash** | `31e8176` | ✅ No "Coming soon" on profile page |
+| **Real-time reply subscription** | `c2169ba` | ✅ Thread page gets live replies |
+| **Discuss CTA + thread URL + sort** | `09aad7c` + `8e4fadf` | ✅ Wired up |
+| **Key generation fix** | `2da5fdf` | ✅ Real generateKeyPair/saveKeys used |
+| **NSec bech32 validation + OAuth timeout** | `d0f847c` | ✅ Clean |
+| **Uppercase tracking cleanup** | `ebe376c` | ✅ Style guide compliant |
+| **Analytics dashboard** | (multiple) | ✅ Real data, Bloomberg aesthetic, PASS after 6 review cycles |
+| **Live ticker on homepage** | (multiple) | ✅ Seamless animation |
+| **NavHeader on all pages** | (multiple) | ✅ Consistent navigation |
+| **Join page redesign** | `e78666f`, `ea646d8` | ✅ Human/agent tiles, jargon-free |
+
+---
+
+## 📦 Complete (phase-8-testnet-mint branch — awaiting Pablo's merge decision)
+
+| Item | Status |
+|------|--------|
+| **LND + Bitcoin Core installed** | ✅ Homebrew install complete, awaiting `lncli create` |
+| **Wallet error handling (11 error codes)** | ✅ Complete on branch |
+| **walletErrors.ts + walletHistory.ts** | ✅ Complete on branch |
+| **mintHealthy defaults false** | ✅ Complete on branch |
+| **withdrawService.ts + components** | ✅ Complete on branch |
+| **Phase 8 production hardening** | `78b074d`–`550629f` | ✅ On branch |
 
 ---
 
@@ -18,49 +62,28 @@
 
 | Item | Commit | Status |
 |------|--------|--------|
-| **Wallet Refactor Step 1: Mint URL consolidation** | `0e9779f` | ✅ Committed + pushed |
-| **Wallet Refactor Step 2: Svelte 5 $state migration** | `e358fd6` | ✅ Committed + pushed |
-| **Wallet Refactor Step 3: Unify wallet access** | `da7fbca` | ✅ Committed + pushed |
+| **Wallet Refactor Steps 1-3** | `0e9779f`, `e358fd6`, `da7fbca` | ✅ Committed + pushed |
 | **500 Error Hotfix (/market/[marketId])** | `1546887` | ✅ Committed + pushed |
-| **Wallet Runtime Bug Fix (missing declarations)** | `06e601a` | ✅ Committed + pushed |
 | **Memory leak fix (discuss page subscriptions)** | `57eb103` | ✅ Committed + pushed |
-| **NDK subscription migration (discuss page)** | `0b11156` | ✅ Committed + pushed |
+| **UI Audit Fixes (12 page titles, jargon removal)** | `6d88edd` | ✅ Committed + pushed |
 | **Phase 8 Planning Artifacts** | `711bbc4` | ✅ 25 plan files committed |
-| **Phase 8 Plan APPROVED** | — | ✅ Self-hosted mint, LND, no KYC |
-| **UI Audit Fixes (12 page titles, jargon removal, style fixes)** | `6d88edd` | ✅ Committed + pushed |
-| **Svelte 5 Store backward compat fixes** | `799912a` | ✅ Committed + pushed |
-| **getMintUrl() runtime override fix** | `ab04ad2` | ✅ Committed + pushed |
-| **tradeSuccess $state rune bug fix** | `d2e1981` | ✅ Committed + pushed |
-| **Svelte 5 Medium Audit Fixes (3)** | `8fd4728` | ✅ Committed + pushed |
-| **Per-Agent Skill Blocking (TENEX)** | `a4b332b3` | ✅ Merged |
-| **Agent Auto-Categorization (TENEX)** | `23a06d76`+`fed87b79` | ✅ Merged |
-| **Short pubkey + sub-agent routing fix (TENEX)** | `2b5fa019` | ✅ Merged |
-| **Style fixes: rounded pills + wallet rounding** | `8a1540a` | ✅ Committed + pushed |
-| **Style fix: EmbedModal rounding** | `8ef275b` | ✅ Committed + pushed |
-| **Footer icon conditional fix** | `c8630b6` | ✅ Committed + pushed |
-| **Stale branch cleanup (7 branches pruned)** | — | ✅ Done |
-
-## ✅ Shipped (2026-04-07)
-
-| Item | Commit | Status |
-|------|--------|--------|
-| **Svelte 5 Migration (21 routes)** | `4bfd1fd` | ✅ All ported |
-| **Svelte 5 Audit — Critical Fixes (5)** | `8fd4728`, `d2e1981` | ✅ All fixed |
-| **Svelte 5 Audit — Medium Fixes** | `e16ec74` | ✅ Polling→NDK subs |
-| **Product Quality Fixes (5 items)** | `6b9732d` | ✅ Footer, settings, jargon |
-| **Fix /profile 404** | `61b34d0` | ✅ Auth redirect |
-| **Phase 7: Settlement & Withdrawal (CDK Rust)** | — | ✅ 112 tests passing |
+| **Cross-project conversation routing fix** | `1327a124`, `02a0cad6` | ✅ Merged |
+| **Onboarding funnel fixes (3 blockers)** | `dc08d97`, `485c0e4`, `13e023a` | ✅ Post-join 404 fixed, nav→/join, wallet CTA |
 
 ---
 
-## 🚫 CURRENT BLOCKERS
+## 🚫 Current Blockers
 
-### 1. Growth Campaign — Blocked on Pablo ⚠️
+### 1. LND Wallet Creation — Blocked on Pablo ⚠️
+- Bitcoin Core + LND installed via Homebrew (signet mode)
+- **REQUIRES Pablo to run:** `lncli --lnddir=/Users/customer/.lnd --network=signet create`
+- Nothing moves on testnet/Lightning until this is done
+
+### 2. Growth Campaign — Blocked on Pablo
 - 10 personalized DMs ready — all content prepped
 - **REQUIRES Pablo to manually send from his X account** (~20 min)
-- Growth agent cannot send X DMs — no API access
 
-### 2. Substack Article — Blocked on Pablo
+### 3. Substack Article — Blocked on Pablo
 - Article published to Nostr ✅
 - Substack publishing needs Pablo's login/approval
 
@@ -68,7 +91,8 @@
 
 ## 🎯 What's Next (Priority Order)
 
-1. **Pablo: Send 10 DMs from X account** → drive first user interviews
-2. **Review and publish Substack article** — strong piece, ready to go
-3. **Phase 8: Real Money** → persistent storage + Lightning + wallet UI (major effort)
-4. **Domain registration** → contrarian.markets / contrarianmarkets.com
+1. **Pablo: Run LND create command** → unblocks all testnet/Lightning work
+2. **Pablo: Send 10 DMs from X account** → drive first user interviews
+3. **Review and publish Substack article** → strong piece, ready to go
+4. **Phase 8: Merge to main** → after Pablo's LND decision
+5. **Domain registration** → contrarian.markets / contrarianmarkets.com

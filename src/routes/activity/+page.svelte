@@ -100,11 +100,6 @@
     activeFilter === 'Trades' ? 'No trade activity yet' : 'No resolutions yet'
   );
 
-  let filteredItems = $derived(
-    activeFilter === 'New Markets' ? items :
-    activeFilter === 'All' ? items : []
-  );
-
   onMount(() => {
     let cancelled = false;
 
@@ -135,7 +130,7 @@
       const ndk = getNDK();
       if (!ndk) return;
 
-      if (!cancelled) setMarketsError(null);
+      if (!cancelled) marketsError = null;
 
       try {
         const events = await fetchAllMarketsTransport(50);
@@ -163,12 +158,12 @@
         if (!cancelled) {
           items = activityItems;
           if (activityItems.length === 0) {
-            setMarketsError("Couldn't connect to server — check your connection");
+            marketsError = "Couldn't connect to server — check your connection";
           }
         }
       } catch (err) {
         if (!cancelled) {
-          setMarketsError(err instanceof Error ? err.message : "Couldn't load activity — check your connection");
+          marketsError = err instanceof Error ? err.message : "Couldn't load activity — check your connection";
         }
       }
     }

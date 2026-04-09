@@ -81,6 +81,18 @@
     isBookmarked = !isBookmarked;
   }
 
+  let showCopied = $state(false);
+
+  function handleShare() {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        showCopied = true;
+        setTimeout(() => { showCopied = false; }, 2000);
+      });
+    }
+  }
+
   async function handleTrade() {
     if (!market) return;
 
@@ -166,7 +178,13 @@
               Created {new Date(market.createdAt * 1000).toLocaleDateString()}
             </p>
           </div>
-          <div>
+          <div class="flex items-center gap-3">
+            <button
+              onclick={handleShare}
+              class="text-sm text-neutral-400 hover:text-white"
+            >
+              {showCopied ? 'Copied!' : 'Share →'}
+            </button>
             <BookmarkButton
               {isBookmarked}
               onToggle={handleBookmark}

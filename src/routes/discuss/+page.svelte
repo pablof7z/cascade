@@ -15,7 +15,7 @@
   }
 
   // Sort options
-  type SortOption = 'newest' | 'oldest' | 'most_replies' | 'most_upvotes'
+  type SortOption = 'newest' | 'oldest' | 'most_replies' | 'most_upvotes' | 'hot' | 'controversial'
 
   // Filter options
   type StanceFilter = 'all' | 'bullish' | 'bearish' | 'neutral'
@@ -86,6 +86,27 @@
         break
       case 'most_upvotes':
         result.sort((a, b) => b.thread.upvotes - a.thread.upvotes)
+        break
+      case 'hot': {
+        const now = Date.now()
+        result.sort((a, b) => {
+          const aVotes = Math.max(0, a.thread.upvotes - a.thread.downvotes)
+          const bVotes = Math.max(0, b.thread.upvotes - b.thread.downvotes)
+          const aHours = (now - a.thread.timestamp) / 3600000
+          const bHours = (now - b.thread.timestamp) / 3600000
+          const aHot = aVotes / Math.pow(aHours + 2, 1.5)
+          const bHot = bVotes / Math.pow(bHours + 2, 1.5)
+          return bHot - aHot
+        })
+        break
+      }
+      case 'controversial':
+        result = result.filter(d => d.thread.upvotes > 0 && d.thread.downvotes > 0)
+        result.sort((a, b) => {
+          const aScore = Math.min(a.thread.upvotes, a.thread.downvotes) / (a.thread.upvotes + a.thread.downvotes)
+          const bScore = Math.min(b.thread.upvotes, b.thread.downvotes) / (b.thread.upvotes + b.thread.downvotes)
+          return bScore - aScore
+        })
         break
     }
 
@@ -287,7 +308,7 @@
         <!-- Sort -->
         <div class="flex items-center gap-1 flex-wrap">
           <span class="text-neutral-500 text-xs mr-1">Sort:</span>
-          {#each [['newest', 'Newest'], ['oldest', 'Oldest'], ['most_replies', 'Most Replies']] as [val, label]}
+          {#each [['newest', 'New'], ['most_upvotes', 'Top'], ['hot', 'Hot'], ['controversial', 'Controversial']] as [val, label]}
             <button
               onclick={() => sortBy = val as SortOption}
               class={sortBy === val

@@ -7,6 +7,7 @@
   import { parseMarketEvent } from '../services/marketService'
   import { priceLong, createEmptyMarket } from '../market'
   import type { Market } from '../market'
+  import { getCurrentPubkey } from '$lib/stores/nostr.svelte'
 
   type DisplayMarket = {
     slug: string
@@ -24,6 +25,10 @@
     change: string
     mcap: string
   }
+
+  // ─── Auth ───────────────────────────────────────────────────────────────────
+
+  let pubkey = $derived(getCurrentPubkey())
 
   // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -287,6 +292,25 @@
 
 <div class="min-h-screen bg-neutral-950">
   <NavHeader />
+
+  <!-- ═══════════════════════════════════════════════════════════════════════════
+      LOGGED-OUT INTRO — Minimal, information-dense, logged-out users only
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  {#if !pubkey}
+    <div class="border-b border-neutral-800/50 bg-neutral-950">
+      <div class="max-w-7xl mx-auto px-6 py-8">
+        <p class="text-neutral-100 text-lg font-semibold leading-snug mb-1">
+          Prediction markets on Nostr. Mint long or short positions on any topic.
+        </p>
+        <p class="text-neutral-500 text-sm mb-5">
+          Markets never close. Trade in and out any time.
+        </p>
+        <a href="/join" class="text-sm font-medium text-neutral-300 hover:text-white">
+          Start Trading →
+        </a>
+      </div>
+    </div>
+  {/if}
 
   <!-- ═══════════════════════════════════════════════════════════════════════════
       HERO — Provocative statement + Featured Market

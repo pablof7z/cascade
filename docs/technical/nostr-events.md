@@ -8,11 +8,11 @@ Complete reference for all Nostr event kinds used by Cascade.
 |------|-------------|--------------|-----------|--------|
 | 982 | Market definition | No | User | Implemented |
 | 983 | Trade record | No | Mint | **Planned / in-progress** |
-| 984 | Market resolution | No | Creator / Oracle | **Planned** |
+| 984 | Market resolution | No | Creator / Oracle | **NOT APPLICABLE** |
 | 1111 | Comments / discussions (NIP-22) | No | User | Implemented |
 | 10003 | Bookmarks (NIP-51) | Yes | User | Implemented |
 | 30078 | Positions (NIP-78) | Yes | User | Implemented |
-| 30079 | Payout records | Yes | User | Implemented |
+| 30079 | Withdrawal records | Yes | User | Implemented |
 
 ---
 
@@ -29,7 +29,7 @@ tags:
   ["d", "<slug — URL-safe unique identifier, e.g. 'btc-100k-dec-2026'>"]
   ["c", "<category>"]           # repeatable
   ["description", "<one-line summary>"]
-  ["status", "open" | "resolved" | "archived"]
+  ["status", "open" | "archived"]
   ["t", "<topic-hashtag>"]      # repeatable
 ```
 
@@ -40,13 +40,13 @@ tags:
 - No `version: 1` tag.
 - No expiry tags. Markets never expire.
 - `created_at` is the market's open timestamp.
-- Resolution state is NOT stored on the kind 982 event — use kind 984.
+- There is no resolution state. Markets do not close or resolve.
 
 **The `d` tag (slug):**
 The slug is the stable, URL-safe identifier for the market. It's used in routing (`/market/[slug]`). It must be unique per creator pubkey.
 
 **The `content` field:**
-Full markdown. This is the market's written argument — the thesis, evidence, sources, and resolution criteria. Displayed prominently on the market page.
+Full markdown. This is the market's written argument — the thesis, evidence, sources, and rationale. Displayed prominently on the market page.
 
 ---
 
@@ -83,34 +83,9 @@ Kind 983 events let anyone reconstruct the trading history of any market. They'r
 
 ---
 
-## Kind 984 — Market Resolution _(planned)_
+## Kind 984 — NOT APPLICABLE
 
-> **Status:** Not yet implemented. The schema below is the intended design. Current resolution is handled by application-level state updates without a published kind 984 event.
-
-Published by the market creator (or an oracle service) when the real-world outcome is known.
-
-```
-kind: 984
-pubkey: <resolver's pubkey>
-content: "<resolution rationale — explain why this outcome was chosen>"
-tags:
-  ["e", "<kind-982-market-event-id>"]
-  ["resolution", "YES" | "NO"]
-  ["resolved_at", "<unix timestamp>"]
-  ["oracle", "<pubkey of resolver>"]
-```
-
-**What this triggers:**
-The mint monitors for kind 984 events referencing markets it manages. Upon seeing a valid resolution event from the market creator:
-1. The market is marked as resolved
-2. Winning-side shares can be redeemed at 1.0 sat/share (minus 1% fee)
-3. Losing-side shares are marked worthless
-
-**Who can publish:**
-The market creator (whose pubkey matches the kind 982 `pubkey` field). In future implementations, a designated oracle service.
-
-**Note:**
-Markets can economically close without a kind 984 event — if the outcome is obvious, arbitrage will push prices to extremes naturally. But formal payout processing at the canonical 1.0 rate requires a kind 984 event.
+> **This event kind does not apply to Cascade's model.** Cascade markets have no oracle, no resolution authority, and no close mechanism. Kind 984 "market resolution" events are not used and will not be implemented. Markets reach equilibrium through trading and withdrawal alone — all at the continuous LMSR price. There is no declared outcome, no winner, and no loser.
 
 ---
 
@@ -192,18 +167,18 @@ Positions may eventually be derived from kind 983 trade events rather than store
 
 ---
 
-## Kind 30079 — Payout Records
+## Kind 30079 — Withdrawal Records
 
-Published by the user after a successful redemption from a resolved market. Parameterized replaceable per (pubkey, d-tag) pair.
+Published by the user after a successful withdrawal. Parameterized replaceable per (pubkey, d-tag) pair.
 
 ```
 kind: 30079
 pubkey: <user's pubkey>
-content: <JSON-stringified payout details>
+content: <JSON-stringified withdrawal details>
 tags:
   ["d", "cascade:payout:<marketSlug>:<positionId>"]
 ```
 
-**Purpose:** Records completed payouts for portfolio history. One event per (market, position) pair — replaces itself if the user redeems the same position again.
+**Purpose:** Records completed withdrawals for portfolio history. One event per (market, position) pair — replaces itself if the user withdraws from the same position again.
 
-See `src/services/nostrService.ts` (`PAYOUT_EVENT_KIND = 30079`) and `src/services/resolutionService.ts` for the authoritative implementation.
+See `src/services/nostrService.ts` (`PAYOUT_EVENT_KIND = 30079`) and `src/services/resolutionService.ts` (note: service name is a historical misnomer) for the authoritative implementation.

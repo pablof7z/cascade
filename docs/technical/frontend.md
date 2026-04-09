@@ -63,7 +63,7 @@ No polling. Everything is subscription-based. When an event arrives, it renders.
 **Key subscriptions:**
 - `kinds: [982]` — all markets (live feed on homepage and activity page)
 - `kinds: [983]` filtered by market event ID — trade history for a specific market
-- `kinds: [984]` filtered by market event ID — resolution events
+- `kinds: [984]` — NOT USED (kind 984 resolution events are not part of Cascade's model)
 - `kinds: [1111]` filtered by market event ID — discussions
 - `kinds: [30078]` filtered by user pubkey — user's positions
 

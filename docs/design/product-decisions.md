@@ -151,9 +151,11 @@ No pill tabs, no background-fill tabs. Underline only.
 
 ## 5. Data & Events
 
-### Kind 984 for Resolution
+### Kind 984 — NOT APPLICABLE
 
-Market resolution is conveyed via kind 984 events, not by modifying the kind 982 market event (which is immutable).
+Kind 984 "resolution events" are not part of Cascade's model. Markets have no oracle, no resolution authority, and no close mechanism. There is no winner declaration, no losing-side payout, and no formal settlement. Withdrawal value is continuous and determined solely by the LMSR price at time of withdrawal.
+
+> **Do not implement kind 984. Do not design features that assume markets close or resolve.**
 
 ### No Expiry Tags
 

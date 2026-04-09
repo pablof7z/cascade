@@ -14,7 +14,7 @@ Cascade requires a mint that:
 1. Prices share issuance using LMSR (not 1:1)
 2. Maintains `qLong` / `qShort` state per market
 3. Manages separate token keysets per outcome per market
-4. Settles resolved markets at the canonical 1.0/0.0 prices
+4. Prices withdrawals at the current LMSR price (continuous, not a resolution event)
 
 No existing Cashu mint implementation supports this. We build custom.
 
@@ -44,9 +44,9 @@ Every market gets exactly two keysets:
 
 All users trading in the same market share the same keysets. There are no per-user keysets.
 
-The mint maintains a mapping from (keyset ID) → (market event ID, direction). When a token is presented for redemption, the mint looks up which market and side it belongs to, checks the LMSR state, and pays out accordingly.
+The mint maintains a mapping from (keyset ID) → (market event ID, direction). When a token is presented for withdrawal, the mint looks up which market and side it belongs to, checks the current LMSR state, and pays out at the current LMSR price (minus the withdrawal fee).
 
-After resolution, the winning keyset pays out at 1.0 sat/share (minus fee). The losing keyset is worthless.
+Withdrawal value is continuous — it reflects the live probability. Shares near price 0 yield nearly nothing; shares near price 1.0 yield nearly 1 sat each. There is no binary "win/lose" declaration.
 
 ---
 
@@ -82,17 +82,17 @@ Beyond the standard Cashu NUTs, the mint exposes prediction-market-specific endp
 
 - `POST /api/market/create` — register a new market with the mint
 - `GET /api/market/{id}` — fetch current market state
-- `POST /api/market/{id}/resolve` — mark a market as resolved
+- `POST /api/market/{id}/resolve` — internal endpoint (name is a misnomer; used for mint-side market state management, not resolution in the prediction-market sense)
 
 ### Trade Execution
 
-- `POST /api/trade/bid` — buy shares (LMSR-priced)
-- `POST /api/trade/ask` — sell shares (LMSR-priced)
+- `POST /api/trade/bid` — mint shares / buy (LMSR-priced)
+- `POST /api/trade/ask` — withdraw shares / sell (LMSR-priced)
 
-### Settlement & Redemption
+### Withdrawal
 
-- `POST /v1/cascade/redeem` — redeem outcome shares for sats after resolution
-- `POST /v1/cascade/settle` — settle a resolved market (set winning/losing keysets)
+- `POST /v1/cascade/redeem` — withdraw outcome shares for sats at current LMSR price
+- `POST /v1/cascade/settle` — internal: update market keyset state
 
 ### Utility
 
@@ -119,8 +119,8 @@ The frontend computes estimated prices using the same LMSR functions, but the ca
 
 Two separate fees apply:
 
-- **1% trade fee** — applied on every buy and sell. Applied at the mint level (`src/services/tradingService.ts`).
-- **2% redemption rake** — applied on the gross payout when redeeming shares from a resolved market (`src/services/redemptionService.ts`).
+- **1% trade fee** — applied on every mint (buy) and every withdrawal (sell). Applied at the mint level (`src/services/tradingService.ts`).
+- **2% withdrawal fee** — applied on the gross withdrawal proceeds (`src/services/redemptionService.ts` — note: service name is a historical misnomer).
 
 Fees stay in the mint as reserve and treasury. Cascade extracts revenue by melting accumulated ecash via Lightning.
 
@@ -140,7 +140,7 @@ The mint uses URL path segmentation to route between markets — not Nostr relay
 
 ## Solvency
 
-The mint's reserve is always `C(qLong, qShort, b)` sats — the LMSR cost function evaluated at the current share state. This amount is mathematically sufficient to pay out whichever outcome wins entirely.
+The mint's reserve is always `C(qLong, qShort, b)` sats — the LMSR cost function evaluated at the current share state. This amount is mathematically sufficient to pay all holders on the dominant side at full value.
 
 There is no leverage. There is no fractional reserve. The solvency guarantee is a property of the mathematics, not a policy.
 

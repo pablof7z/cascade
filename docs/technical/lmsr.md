@@ -54,24 +54,24 @@ In practice, a user specifies how many sats they want to spend, and the system s
 
 ---
 
-## Selling (Redeeming) Shares
+## Selling (Withdrawing) Shares
 
-To sell Δq LONG shares back, the payout is:
+To sell Δq LONG shares back, the withdrawal proceeds are:
 ```
-payout = C(qLong, qShort) - C(qLong - Δq, qShort)
+proceeds = C(qLong, qShort) - C(qLong - Δq, qShort)
 ```
 
-Selling decreases outstanding shares and reduces the reserve proportionally. The payout is always less than or equal to what was paid to acquire the shares (if the price hasn't moved in your favor).
+Selling decreases outstanding shares and reduces the reserve proportionally. The proceeds are always less than or equal to what was paid to acquire the shares (if the price hasn't moved in your favor).
 
-After resolution, winning shares redeem at the LMSR fill price (minus the 2% redemption rake). Losing shares are worth 0.
+Withdrawals always price at the current LMSR price (minus the 2% withdrawal fee). Shares near price 0 yield nearly nothing; shares near price 1.0 yield nearly 1 sat each. There is no binary resolution — the price is continuous.
 
 ---
 
 ## Solvency Guarantee
 
-The LMSR reserve is always exactly `C(qLong, qShort)` sats. This amount is sufficient to pay out whichever side wins entirely, even in the worst case (e.g., all LONG shares redeem and SHORT shares are worthless).
+The LMSR reserve is always exactly `C(qLong, qShort)` sats. This amount is sufficient to pay all holders on the dominant side at full value, even in the worst case (e.g., price converges to 1.0 and all LONG holders withdraw).
 
-Formally: the reserve always covers `max(qLong, qShort)` sats of payouts. This is a mathematical property of the cost function, not a policy or promise.
+Formally: the reserve always covers `max(qLong, qShort)` sats of withdrawals. This is a mathematical property of the cost function, not a policy or promise.
 
 This is **not** fractional reserve. There is no leverage. The money is there.
 

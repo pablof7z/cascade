@@ -24,11 +24,11 @@ Cascade enables anyone to create and trade prediction markets for interconnected
 
 ## Revenue Model
 
-**1% trade fee on all buys and sells + 2% redemption rake on payouts.**
+**1% trade fee on all mints and withdrawals + 2% withdrawal fee on withdrawal proceeds.**
 
 Two separate revenue streams:
-- **1% trade fee** — applied on every buy and every sell. Fee stays in the mint as reserve liquidity and treasury.
-- **2% redemption rake** — applied on the gross payout when winning shareholders redeem from a resolved market.
+- **1% trade fee** — applied on every mint (buy) and every withdrawal (sell). Fee stays in the mint as reserve liquidity and treasury.
+- **2% withdrawal fee** — applied on the gross withdrawal proceeds when holders withdraw shares at the current LMSR price.
 
 Cascade extracts its revenue via mint operations (melting accumulated ecash via Lightning).
 
@@ -61,7 +61,7 @@ Cascade is not trying to out-Polymarket Polymarket on atomic predictions. Cascad
 | Factor | Cascade | Competitors |
 |--------|---------|-------------|
 | Compositional markets | ✓ Theses reference modules | ✗ Isolated questions |
-| Oracle required | ✗ Markets close via economic forces | ✓ Most require oracles |
+| Oracle required | ✗ Markets exhaust via economic forces; never formally closed | ✓ Most require oracles |
 | Protocol | Nostr-native, censorship-resistant | Centralized or chain-specific |
 | Agent parity | ✓ AI agents are first-class | ✗ Human-focused UX |
 | Settlement layer | Cashu + Lightning (ecash) | Crypto wallets or fiat |
@@ -86,6 +86,6 @@ Cascade's value compounds as more markets exist:
 
 **Cashu ecash**: Private, instant, Lightning-backed settlement. No KYC requirements embedded in the protocol.
 
-**No oracle by default**: Removes a critical dependency and attack surface. Markets resolve via economic forces, not trusted parties.
+**No oracle by default**: Removes a critical dependency and attack surface. Markets reach equilibrium through trading and withdrawal — no trusted party ever declares an outcome.
 
 **Open protocol**: Alternative front-ends, analytics tools, agent integrations — all possible without permission, because everything is Nostr events.

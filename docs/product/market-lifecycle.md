@@ -18,7 +18,7 @@ The creator is the first buyer. Because LMSR prices shares cheapest when the res
 ```
 1. User publishes kind 982 event → market definition is on Nostr
 2. User deposits sats (via Lightning / Cashu)
-3. User executes initial trade → seeds LMSR reserve
+3. User mints initial shares → seeds LMSR reserve
 4. Market is live — tradeable by anyone
 ```
 
@@ -30,84 +30,72 @@ Once funded, a market accepts trades from anyone. Each trade:
 - Moves sats into or out of the LMSR reserve
 - Updates qLong / qShort (outstanding shares per side)
 - Changes the market's probability (price moves continuously)
-- Issues or burns Cashu bearer tokens
+- Mints or burns Cashu bearer tokens
 
 The mint is the authority on LMSR state. Nostr kind 983 events are the public audit log of trades, published by the mint after each transaction.
 
+**Every "buy" is a mint**: you deposit sats and receive new Cashu tokens at the current LMSR price.
+**Every "sell" is a withdrawal**: you return tokens to the mint and receive sats at the current LMSR price.
+
+There is no secondary market. All trading is against the LMSR.
+
 ---
 
-## Markets Never Expire
+## Markets Never Close
 
-There is no expiration mechanism. Markets do not close on a schedule. There is no date field, no countdown timer, no admin action that forces a market closed.
+There is no expiration mechanism. Markets do not close on a schedule. There is no date field, no countdown timer, no admin action that forces a market closed. There is no oracle. There is no resolution event. There is no "winner" declared by anyone.
 
 A market that was created in 2026 is still tradeable in 2030 if the question is still unresolved. This is intentional: forcing closures would require a trusted party to enforce them, which contradicts the open, permissionless design.
 
 ---
 
-## How Markets Actually Close: Economic Gravity
+## Economic Exhaustion
 
-Markets don't close by decree. They close by gravity.
+Markets don't close by decree. They reach exhaustion by gravity.
 
 The process:
 
 1. **Reality asserts itself.** The real-world event the market was predicting either happens or doesn't.
 2. **Information enters the market.** Informed traders recognize that the outcome is now clear.
-3. **Arbitrage kicks in.** Traders buy the winning side heavily (cheap at current price, worth 1.0 at resolution). They sell or abandon the losing side.
+3. **Arbitrage kicks in.** Traders mint the undervalued side and withdraw from the overpriced side.
 4. **Price converges.** The winning side approaches 100%. The losing side approaches 0%.
-5. **Winners redeem.** Traders holding winning shares redeem them for sats at the LMSR price. As they do, the reserve drains and outstanding shares decrease.
-6. **Market exhausts.** When all winning shares are redeemed, the reserve reaches its minimum. The market is economically closed — not by decree, but by participants extracting their winnings.
+5. **Holders withdraw.** Traders holding high-priced tokens withdraw their sats at the LMSR price. As they do, the reserve drains and outstanding shares decrease.
+6. **Market exhausts.** When all profitable positions have been withdrawn, the reserve reaches its minimum. The market is economically exhausted — not closed by decree, but by participants extracting their proceeds.
 
 This is market microstructure working as intended. No oracle needed. No admin button. Just price signals and rational actors.
 
 ---
 
-## Formal Resolution: Kind 984
+## Kind 984 — NOT APPLICABLE
 
-For markets where formal payout processing is needed, the market creator (or an oracle service) can publish a kind 984 event:
-
-```
-kind: 984
-content: "<resolution rationale>"
-tags:
-  ["e", "<kind-982-market-event-id>"]
-  ["resolution", "YES" | "NO"]
-  ["resolved_at", "<unix timestamp>"]
-  ["oracle", "<pubkey of resolver>"]
-```
-
-This event triggers the mint to:
-1. Mark the market as resolved
-2. Enable winning-side shares to redeem at LMSR fill price (minus 2% redemption rake)
-3. Mark losing-side shares as worthless
-
-The kind 984 event is an opt-in convenience for clean settlement — not a gate that blocks the economic process described above. Markets can economically close without a kind 984 event, but formal payout processing requires one.
+> **Kind 984 "resolution events" do not apply to Cascade's model.** Cascade markets have no oracle, no resolution authority, and no close mechanism. The concept of a kind 984 resolution event has been removed from the design. Markets reach equilibrium through trading and withdrawal — not through a declared outcome.
 
 ---
 
-## Payouts
+## Withdrawals
 
-**Winning shares**: Redeem at the LMSR fill price minus the **2% redemption rake** → `gross_sats * 0.98` effective payout. (See `src/services/redemptionService.ts`.)
+**Withdrawing shares**: Return tokens to the mint at any time, receive sats at the current LMSR price minus the **2% withdrawal fee** → `gross_sats * 0.98` effective proceeds. (See `src/services/redemptionService.ts` — note: service name is a historical misnomer.)
 
-**Losing shares**: Worth 0. Cannot be redeemed for sats after resolution.
+**Shares near price 0**: Worth nearly nothing at the current LMSR price. Holders can still withdraw at any time for whatever the current price yields — there is no forced expiry or "worthless" declaration by any authority.
 
 **Fee structure (two separate fees):**
-- **1% trade fee** — applied on every buy and sell (`src/services/tradingService.ts`). Stays in the mint as reserve and treasury.
-- **2% redemption rake** — applied on payouts when redeeming shares from resolved markets (`src/services/redemptionService.ts`). Separate from the trade fee.
+- **1% trade fee** — applied on every mint (buy) and every withdrawal (sell) (`src/services/tradingService.ts`). Stays in the mint as reserve and treasury.
+- **2% withdrawal fee** — applied on the gross withdrawal proceeds (`src/services/redemptionService.ts`). Separate from the trade fee.
 
-These are distinct revenue streams. A winning trader pays the 1% trade fee when buying shares, then a 2% rake on the gross payout when redeeming.
+These are distinct revenue streams. A trader pays the 1% trade fee when minting shares, then a 2% withdrawal fee on gross proceeds when withdrawing.
 
 ---
 
 ## Solvency
 
-The LMSR reserve is mathematically guaranteed to always cover the worst-case payout. It is not fractional reserve.
+The LMSR reserve is mathematically guaranteed to always cover the worst-case withdrawal. It is not fractional reserve.
 
 At any point:
 ```
 Reserve ≥ max(qLong, qShort) × 1.0 sat/share
 ```
 
-This is a property of the cost function, not a policy choice. The reserve can never be insufficient to pay winners.
+This is a property of the cost function, not a policy choice. The reserve can never be insufficient to pay out all holders on the dominant side.
 
 See [lmsr.md](../technical/lmsr.md) for the mathematical details.
 
@@ -120,7 +108,6 @@ A kind 982 event carries a `["status", ...]` tag:
 | Status | Meaning |
 |--------|---------|
 | `open` | Market is live and tradeable |
-| `resolved` | Kind 984 resolution published; payouts available |
 | `archived` | Market removed from active listing (not deleted — events are permanent) |
 
-Status is part of the market event metadata. Because kind 982 is non-replaceable (immutable), status updates are conveyed via kind 984 resolution events or by convention in the application layer.
+Status is part of the market event metadata. Because kind 982 is non-replaceable (immutable), status updates are conveyed by convention in the application layer.

@@ -65,7 +65,7 @@ See [lmsr.md](../technical/lmsr.md) for the full pricing mechanics.
 ## Who Participates
 
 ### Human Traders
-Any person can create markets, take positions, and redeem winning shares. No account required — just a Nostr keypair (handled transparently in the app).
+Any person can create markets, take positions, and withdraw at the current LMSR price. No account required — just a Nostr keypair (handled transparently in the app).
 
 ### AI Agents
 AI agents are first-class participants. They use the same protocol as humans: Nostr keypairs for identity, Cashu bearer tokens for funds, kind 982 events to create markets. There is no "agent mode" — agents and humans are protocol peers.
@@ -88,7 +88,7 @@ Anyone can act as a market maker by seeding liquidity into new markets. The LMSR
 
 **Cashu ecash**: Funds move as Cashu bearer tokens — private, instant, Lightning-backed.
 
-**No oracle by default**: Markets don't need an external oracle to close. Reality asserts itself through economic forces: price converges → arbitrage kicks in → holders redeem → market exhausts naturally. A market creator can optionally publish a kind 984 resolution event to trigger formal payout processing.
+**No oracle by default**: Markets never close and need no external oracle. Reality asserts itself through economic forces: price converges → arbitrage kicks in → holders withdraw → market exhausts naturally. There is no resolution event, no winner declaration, and no administrator.
 
 **Open protocol**: Because everything is Nostr events, third parties can build market explorers, analytics tools, alternative front-ends, and automated traders without permission.
 

@@ -49,7 +49,7 @@ After each trade, the frontend publishes an updated kind 30078 event reflecting 
 
 - After **buying** YES shares: increment `shares`, update `amount` (add sats spent), recalculate `avg_price`
 - After **selling** YES shares: decrement `shares`, update `amount` proportionally
-- After **full redeem**: either delete the event or set `shares` to `"0"`
+- After **full withdrawal**: either delete the event or set `shares` to `"0"`
 
 The average price is recalculated on each buy:
 ```
@@ -67,7 +67,7 @@ unrealized_pnl = (current_lmsr_price * shares_held * 1 sat) - total_sats_committ
 
 Current LMSR price is fetched from the mint (authoritative) or computed from the market's `qLong`/`qShort` values visible in kind 983 trade events.
 
-**Realized PnL**: Locked in after a redeem. The difference between the sats received and the sats paid for the redeemed shares.
+**Realized PnL**: Locked in after a withdrawal. The difference between the sats received and the sats paid for the withdrawn shares.
 
 ---
 
@@ -81,7 +81,7 @@ Shows the current user's open positions across all markets:
 - Current price
 - Unrealized PnL (absolute and percentage)
 
-Only open (non-zero) positions are shown. Closed/redeemed positions may appear in a trade history section.
+Only open (non-zero) positions are shown. Withdrawn positions may appear in a trade history section.
 
 ---
 
@@ -96,11 +96,11 @@ The profile page displays:
 
 ---
 
-## Kind 30079 — Payout Records
+## Kind 30079 — Withdrawal Records
 
-After a successful redemption from a resolved market, the app publishes a kind 30079 payout event recording the completed payout. This is a parameterized replaceable event (one per position per market).
+After a successful withdrawal, the app publishes a kind 30079 event recording the completed withdrawal proceeds. This is a parameterized replaceable event (one per position per market).
 
-See `src/services/resolutionService.ts` and `src/services/nostrService.ts` (`PAYOUT_EVENT_KIND = 30079`) for the implementation.
+See `src/services/resolutionService.ts` (note: service name is a historical misnomer) and `src/services/nostrService.ts` (`PAYOUT_EVENT_KIND = 30079`) for the implementation.
 
 ---
 

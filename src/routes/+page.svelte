@@ -908,7 +908,7 @@
           <textarea
             bind:value={description}
             rows="3"
-            placeholder="Define the resolution criteria clearly."
+            placeholder="Describe what this market is about."
             class="mt-1 w-full px-4 py-3 bg-neutral-950 border-b border-neutral-700 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-600 transition-all resize-y min-h-[88px]"
           ></textarea>
         </label>

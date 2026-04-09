@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { fetchAllMarketsTransport, getNDK, fetchAllPayoutEvents } from '../../services/nostrService';
+  import { fetchAllMarketsTransport, getNDK } from '../../services/nostrService';
   import { fetchAllPositions } from '../../services/positionService';
   import { parseMarketEvent } from '../../services/marketService';
   import NavHeader from '$lib/components/NavHeader.svelte';
 
-  type ActivityFilter = 'All' | 'New Markets' | 'Trades' | 'Resolutions';
+  type ActivityFilter = 'All' | 'New Markets' | 'Trades';
 
   interface ActivityItem {
     id: string;
@@ -28,23 +28,11 @@
     timestamp: number;
   }
 
-  interface ResolutionItem {
-    id: string;
-    marketId: string;
-    marketTitle: string;
-    outcome: 'YES' | 'NO';
-    winnerPubkey: string;
-    winnerName: string;
-    netSats: number;
-    timestamp: number;
-  }
-
-  const filters: ActivityFilter[] = ['All', 'New Markets', 'Trades', 'Resolutions'];
+  const filters: ActivityFilter[] = ['All', 'New Markets', 'Trades'];
 
   let activeFilter = $state<ActivityFilter>('All');
   let items = $state<ActivityItem[]>([]);
   let trades = $state<TradeItem[]>([]);
-  let resolutions = $state<ResolutionItem[]>([]);
   let marketsMap = $state<Map<string, string>>(new Map());
   let error = $state<string | null>(null);
   let marketsError = $state<string | null>(null);
@@ -92,12 +80,11 @@
 
   // Computed
   let showEmptyState = $derived(
-    activeFilter === 'Trades' && trades.length === 0 ||
-    activeFilter === 'Resolutions' && resolutions.length === 0
+    activeFilter === 'Trades' && trades.length === 0
   );
 
   let emptyStateMessage = $derived(
-    activeFilter === 'Trades' ? 'No trade activity yet' : 'No resolutions yet'
+    'No trade activity yet'
   );
 
   onMount(() => {
@@ -200,44 +187,8 @@
       }
     }
 
-    async function loadResolutions() {
-      try {
-        const events = await fetchAllPayoutEvents();
-        if (cancelled) return;
-
-        const resolutionItems: ResolutionItem[] = [];
-        for (const event of events) {
-          const marketTag = event.getMatchingTags('market')[0]?.[1];
-          const marketTitleTag = event.getMatchingTags('market-title')[0]?.[1];
-          const winnerTag = event.getMatchingTags('winner')[0]?.[1];
-          const outcomeTag = event.getMatchingTags('outcome')[0]?.[1];
-          const netSatsTag = event.getMatchingTags('net-sats')[0]?.[1];
-          const resolvedAtTag = event.getMatchingTags('resolved-at')[0]?.[1];
-
-          if (!marketTag) continue;
-
-          resolutionItems.push({
-            id: event.id,
-            marketId: marketTag,
-            marketTitle: marketTitleTag || marketTag,
-            outcome: (outcomeTag as 'YES' | 'NO') || 'YES',
-            winnerPubkey: winnerTag || event.pubkey || '',
-            winnerName: await getUserName(winnerTag || event.pubkey || ''),
-            netSats: netSatsTag ? parseInt(netSatsTag, 10) : 0,
-            timestamp: resolvedAtTag ? parseInt(resolvedAtTag, 10) : event.created_at ?? 0,
-          });
-        }
-
-        if (!cancelled) {
-          resolutions = resolutionItems.sort((a, b) => b.timestamp - a.timestamp);
-        }
-      } catch (err) {
-        console.warn('[Activity] Failed to load resolutions:', err);
-      }
-    }
-
     // Load all data
-    Promise.all([loadNewMarkets(), loadResolutions()]);
+    Promise.all([loadNewMarkets()]);
 
     // Load trades after markets map is ready
     loadTrades().catch(() => {});
@@ -358,49 +309,19 @@
     {/if}
   {/if}
 
-  {#if !error && activeFilter === 'Resolutions'}
-    {#if resolutions.length === 0}
-      <p class="text-neutral-500 text-sm py-8 text-center">No resolutions yet</p>
-    {:else}
-      <div class="divide-y divide-neutral-800">
-        {#each resolutions as resolution (resolution.id)}
-          <div class="flex items-start gap-4 py-4">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-1">
-                <span class="text-white text-sm font-medium">{resolution.marketTitle}</span>
-                <span class="text-xs text-neutral-500">{formatTimestamp(resolution.timestamp)}</span>
-              </div>
-              <div class="text-neutral-300 text-sm mb-1">
-                Resolved
-                <span class={resolution.outcome === 'YES' ? 'text-emerald-400' : 'text-rose-400'}>
-                  {resolution.outcome}
-                </span>
-              </div>
-              <div class="text-neutral-400 text-sm">
-                <span class="text-white">{resolution.winnerName}</span>
-                {' won '}
-                <span class="text-emerald-400 font-mono">{resolution.netSats.toLocaleString()} sats</span>
-              </div>
-            </div>
-          </div>
-        {/each}
-      </div>
-    {/if}
-  {/if}
-
   {#if !error && activeFilter === 'All'}
-    {#if items.length === 0 && trades.length === 0 && resolutions.length === 0}
+    {#if items.length === 0 && trades.length === 0}
       <p class="text-neutral-500 text-sm py-8 text-center">No activity found</p>
     {:else}
       <div class="divide-y divide-neutral-800">
-        {#each [...items, ...trades, ...resolutions]
+        {#each [...items, ...trades]
           .sort((a, b) => b.timestamp - a.timestamp)
           .slice(0, 50) as item (item.id)}
           <div class="flex items-start gap-4 py-4">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
                 <span class="text-white text-sm font-medium">
-                  {'traderName' in item ? item.traderName : 'winnerName' in item ? item.winnerName : item.actor}
+                  {'traderName' in item ? item.traderName : item.actor}
                 </span>
                 <span class="text-xs text-neutral-500">{formatTimestamp(item.timestamp)}</span>
               </div>
@@ -411,11 +332,6 @@
                     {item.direction.toUpperCase()}
                   </span>
                   position
-                {:else if 'winnerName' in item}
-                  Resolved
-                  <span class={item.outcome === 'YES' ? 'text-emerald-400' : 'text-rose-400'}>
-                    {item.outcome}
-                  </span>
                 {:else}
                   {item.action}
                 {/if}

@@ -27,8 +27,8 @@
       answer: "We use a Liquidity-Sensitive Market Maker (LMSR) mechanism. You can buy Yes or No shares on markets. Prices are determined by the current probability and the amount of liquidity in each market."
     },
     {
-      question: "How are markets resolved?",
-      answer: "Market creators can resolve their markets once the outcome is known. The resolution determines the payouts for winning shares. All trades before resolution are honored."
+      question: "How do I exit a position?",
+      answer: "Markets on Cascade never close or resolve. You can withdraw at any time by returning your LONG or SHORT tokens to receive sats at the current LMSR price. A small fee is taken on withdrawal."
     },
     {
       question: "How does Cascade store data?",

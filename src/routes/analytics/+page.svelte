@@ -95,20 +95,23 @@
     totalMarkets = marketTitleById.size
     weeklyMarkets = weeklyCount
 
-    // Fetch ALL kind 1111 events — no #e filter so replies are included.
-    // Replies tag the root discussion (not the market) in their root e-tag,
-    // so filtering by market IDs at the relay level drops them.
+    // Fetch kind 1111 events that directly tag known market event IDs.
+    // Filtering at the relay via #e guarantees every returned event maps to
+    // a Cascade market — no chain-walking needed, no unmapped discussions possible.
+    const marketEventIds = Array.from(marketTitleById.keys())
     let discussionArr: NDKEvent[] = []
 
-    const discussionSet = await fetchEvents({
-      kinds: [1111 as NDKKind],
-      limit: 500,
-    })
-    discussionArr = Array.from(discussionSet)
+    if (marketEventIds.length > 0) {
+      const discussionSet = await fetchEvents({
+        kinds: [1111 as NDKKind],
+        '#e': marketEventIds,
+        limit: 500,
+      })
+      discussionArr = Array.from(discussionSet)
+    }
     discussionsAtCap = discussionArr.length >= 500
 
-    // Pass 1: map discussion event IDs to market event IDs for top-level posts
-    // (those with a direct e-tag referencing a known market event ID)
+    // Map discussion event IDs to their market event ID
     const eventToMarket = new Map<string, string>() // discussion eventId → marketEventId
     for (const event of discussionArr) {
       if (!event.id) continue
@@ -120,22 +123,7 @@
       }
     }
 
-    // Pass 2: for replies (no direct market hit), resolve via root discussion chain.
-    // Replies have ['e', rootDiscussionId, '', 'root'] where root is a kind 1111 event.
-    for (const event of discussionArr) {
-      if (!event.id || eventToMarket.has(event.id)) continue
-      for (const tag of event.tags) {
-        if (tag[0] === 'e' && tag[3] === 'root' && tag[1]) {
-          const parentMarket = eventToMarket.get(tag[1])
-          if (parentMarket) {
-            eventToMarket.set(event.id, parentMarket)
-          }
-          break
-        }
-      }
-    }
-
-    // Only count discussions that belong to known Cascade markets
+    // All fetched discussions are guaranteed to reference a known market
     const mappedDiscussions = discussionArr.filter((e) => e.id && eventToMarket.has(e.id))
     totalDiscussions = mappedDiscussions.length
 

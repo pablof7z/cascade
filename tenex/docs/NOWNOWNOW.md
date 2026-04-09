@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-09 05:30 UTC — Tracking sweep complete. All work on main. No active delegations.*
+*Last updated: 2026-04-09 10:35 UTC — Sweep complete. 3 more commits: portfolio model fix, UX fixes, wallet guidance.*
 
 ---
 
@@ -8,7 +8,6 @@
 
 | When | What | Details |
 |------|------|---------|
-| **Pablo ASAP** | **LND wallet creation** | Run: `lncli --lnddir=/Users/customer/.lnd --network=signet create` — one-time setup, blocks all Lightning/testnet testing |
 | Pablo decides | Merge phase-8-testnet-mint → main | All wallet work on branch. Pablo decides when mint deployment is ready. |
 | Pablo decides | Growth DM campaign (10 DMs) | DM file: `$AGENT_HOME/research/dm-campaign-10-users.md` |
 | When Pablo publishes | Substack article | Article ready, published to Nostr |
@@ -24,6 +23,18 @@
 ---
 
 ## ✅ Shipped Today (2026-04-09)
+
+| Item | Commit | Status |
+|------|--------|--------|
+| **Portfolio page: remove resolution model, use withdraw terminology** | `2e52cb5` | ✅ isWon/payoutEvents removed, tabs renamed Open/Withdrawn, Redeem→Withdraw |
+| **Discuss: loading state + thread dead-end back link** | `8015025` | ✅ No false empty state on /discuss; /thread has back link when market not found |
+| **Wallet: zero-balance guidance** | `77c7e90` | ✅ "No tokens yet. Deposit sats to start trading." with Deposit tab button |
+| **Terminology: remove "Resolutions" tab + fix FAQ + creation placeholder** | `0336b92` | ✅ |
+| **Logged-out hero copy: remove "Nostr" jargon** | `bece802` | ✅ |
+| **/welcome: remove nsec jargon + link from /join** | `bf6dab5` | ✅ |
+| **Auth guards: discuss CTA + ThesisBuilder + /thesis/new** | `7168de0` | ✅ |
+
+## ✅ Shipped Earlier (2026-04-09)
 
 | Item | Commit | Status |
 |------|--------|--------|

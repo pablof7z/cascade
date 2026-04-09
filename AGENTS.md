@@ -28,6 +28,8 @@ Before touching any code or writing any docs, internalize these fundamentals. Th
 | losing side worth 0 | price at withdrawal time |
 | kind 984 resolution event | not applicable |
 
+**→ Full explanation: [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md)**
+
 ---
 
 # Product Decisions — MANDATORY

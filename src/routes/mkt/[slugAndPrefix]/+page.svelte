@@ -156,18 +156,12 @@
               Created {new Date(market.createdAt * 1000).toLocaleDateString()}
             </p>
           </div>
-          <div class="text-right">
-            <div class="text-2xl font-mono font-semibold" class:text-emerald-400={probability >= 0.5} class:text-rose-400={probability < 0.5}>
-              {Math.round(probability * 100)}%
-            </div>
-            <div class="text-xs text-neutral-500">YES probability</div>
-            <div class="mt-2">
-              <BookmarkButton
-                {isBookmarked}
-                onToggle={handleBookmark}
-                size="sm"
-              />
-            </div>
+          <div>
+            <BookmarkButton
+              {isBookmarked}
+              onToggle={handleBookmark}
+              size="sm"
+            />
           </div>
         </div>
       </div>
@@ -198,100 +192,93 @@
     <!-- Content -->
     <div class="max-w-4xl mx-auto px-4 py-6">
       {#if activeTab === 'overview'}
-        <!-- Market Info -->
-        <div class="space-y-6">
-          <!-- Probability Card -->
-          <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
-            <h2 class="text-sm font-medium text-neutral-400 mb-4">Current Probability</h2>
-            <div class="flex items-end gap-4">
-              <div class="text-4xl font-mono font-bold text-white">
-                {Math.round(probability * 100)}%
-              </div>
-              <div class="text-sm text-neutral-500 mb-1">YES</div>
-            </div>
-            <div class="mt-4 h-2 bg-neutral-800 rounded-sm overflow-hidden">
-              <div 
-                class="h-full bg-emerald-500 transition-all"
-                style="width: {probability * 100}%"
-              ></div>
-            </div>
+        <!-- Probability -->
+        <div class="py-6 border-b border-neutral-800">
+          <div class="flex items-end gap-3">
+            <span class="text-4xl font-mono font-bold text-white">{Math.round(probability * 100)}%</span>
+            <span class="text-sm text-neutral-500 mb-1">YES probability</span>
           </div>
-          
-          <!-- Trading Section -->
-          <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
-            <h2 class="text-sm font-medium text-neutral-400 mb-4">Trade</h2>
-            <div class="flex gap-2 mb-4">
-              <button
-                onclick={() => selectedSide = 'LONG'}
-                class="flex-1 px-4 py-2 text-sm font-medium rounded-sm transition-colors"
-                class:bg-emerald-600={selectedSide === 'LONG'}
-                class:bg-neutral-800={selectedSide !== 'LONG'}
-                class:text-white={selectedSide === 'LONG'}
-                class:text-neutral-400={selectedSide !== 'LONG'}
-              >
-                YES
-              </button>
-              <button
-                onclick={() => selectedSide = 'SHORT'}
-                class="flex-1 px-4 py-2 text-sm font-medium rounded-sm transition-colors"
-                class:bg-rose-600={selectedSide === 'SHORT'}
-                class:bg-neutral-800={selectedSide !== 'SHORT'}
-                class:text-white={selectedSide === 'SHORT'}
-                class:text-neutral-400={selectedSide !== 'SHORT'}
-              >
-                NO
-              </button>
-            </div>
-            
-            <div class="mb-4">
-              <label for="amount" class="block text-xs text-neutral-500 mb-2">Amount (sats)</label>
-              <input
-                id="amount"
-                type="number"
-                bind:value={amount}
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-sm text-white text-sm focus:outline-none focus:border-neutral-600"
-                min="10"
-                step="10"
-              />
-            </div>
-            
-            <div class="flex items-center justify-between text-sm mb-4">
-              <span class="text-neutral-500">Price per share</span>
-              <span class="font-mono text-white">
-                {formatCurrency(selectedSide === 'LONG' ? yesPrice : noPrice)}
-              </span>
-            </div>
-            
-            {#if tradeError}
-              <div class="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-sm text-rose-400">
-                {tradeError}
-              </div>
-            {/if}
-            
+          <div class="text-sm text-neutral-500 mt-1">{Math.round((1 - probability) * 100)}% NO</div>
+        </div>
+        
+        <!-- Trade -->
+        <div class="py-6 border-b border-neutral-800">
+          <h2 class="text-sm font-medium text-neutral-400 mb-4">Trade</h2>
+          <div class="flex gap-2 mb-4">
             <button
-              onclick={handleTrade}
-              disabled={tradeLoading || amount <= 0}
-              class="w-full py-3 text-sm font-medium rounded-sm transition-colors disabled:bg-neutral-800 disabled:text-neutral-500"
-              class:bg-emerald-600={selectedSide === 'LONG' && !tradeLoading}
-              class:bg-rose-600={selectedSide === 'SHORT' && !tradeLoading}
-              class:hover:bg-emerald-500={selectedSide === 'LONG' && !tradeLoading}
-              class:hover:bg-rose-500={selectedSide === 'SHORT' && !tradeLoading}
+              onclick={() => selectedSide = 'LONG'}
+              class="flex-1 px-4 py-2 text-sm font-medium transition-colors border"
+              class:border-emerald-500={selectedSide === 'LONG'}
+              class:text-emerald-400={selectedSide === 'LONG'}
+              class:border-neutral-700={selectedSide !== 'LONG'}
+              class:text-neutral-500={selectedSide !== 'LONG'}
+              class:hover:text-neutral-300={selectedSide !== 'LONG'}
             >
-              {#if tradeLoading}
-                Processing...
-              {:else}
-                Buy {selectedSide === 'LONG' ? 'YES' : 'NO'} Shares · {amount} sats
-              {/if}
+              YES
+            </button>
+            <button
+              onclick={() => selectedSide = 'SHORT'}
+              class="flex-1 px-4 py-2 text-sm font-medium transition-colors border"
+              class:border-rose-500={selectedSide === 'SHORT'}
+              class:text-rose-400={selectedSide === 'SHORT'}
+              class:border-neutral-700={selectedSide !== 'SHORT'}
+              class:text-neutral-500={selectedSide !== 'SHORT'}
+              class:hover:text-neutral-300={selectedSide !== 'SHORT'}
+            >
+              NO
             </button>
           </div>
           
-          <!-- Market Details -->
-          <div class="bg-neutral-900 border border-neutral-800 rounded-sm p-6">
-            <h2 class="text-sm font-medium text-neutral-400 mb-4">Description</h2>
-            <p class="text-neutral-300 leading-relaxed">
-              {market.description || 'No description provided.'}
-            </p>
+          <div class="mb-4">
+            <label for="amount" class="block text-xs text-neutral-500 mb-2">Amount (sats)</label>
+            <input
+              id="amount"
+              type="number"
+              bind:value={amount}
+              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 text-white text-sm focus:outline-none focus:border-neutral-600"
+              min="10"
+              step="10"
+            />
           </div>
+          
+          <div class="flex items-center justify-between text-sm mb-4">
+            <span class="text-neutral-500">Price per share</span>
+            <span class="font-mono text-white">
+              {formatCurrency(selectedSide === 'LONG' ? yesPrice : noPrice)}
+            </span>
+          </div>
+          
+          {#if tradeError}
+            <div class="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-sm text-rose-400">
+              {tradeError}
+            </div>
+          {/if}
+          
+          <button
+            onclick={handleTrade}
+            disabled={tradeLoading || amount <= 0}
+            class="w-full py-3 text-sm font-medium transition-colors border disabled:border-neutral-700 disabled:text-neutral-500"
+            class:border-emerald-600={selectedSide === 'LONG' && !tradeLoading}
+            class:text-emerald-400={selectedSide === 'LONG' && !tradeLoading}
+            class:hover:border-emerald-500={selectedSide === 'LONG' && !tradeLoading}
+            class:border-rose-600={selectedSide === 'SHORT' && !tradeLoading}
+            class:text-rose-400={selectedSide === 'SHORT' && !tradeLoading}
+            class:hover:border-rose-500={selectedSide === 'SHORT' && !tradeLoading}
+          >
+            {#if tradeLoading}
+              Processing...
+            {:else}
+              Buy {selectedSide === 'LONG' ? 'YES' : 'NO'} Shares · {amount} sats
+            {/if}
+          </button>
+        </div>
+        
+        <!-- Description -->
+        <div class="py-6">
+          <h2 class="text-sm font-medium text-neutral-400 mb-4">Description</h2>
+          <p class="text-neutral-300 leading-relaxed">
+            {market.description || 'No description provided.'}
+          </p>
         </div>
       {:else if activeTab === 'discussion'}
         <MarketDiscussionList market={market} />

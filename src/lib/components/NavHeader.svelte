@@ -67,6 +67,7 @@
   const navItems = [
     { href: '/', label: 'Markets' },
     { href: '/activity', label: 'Activity' },
+    { href: '/leaderboard', label: 'Leaderboard' },
   ];
 
   let primaryAction = { to: '/thesis/new', label: 'Build Thesis' };

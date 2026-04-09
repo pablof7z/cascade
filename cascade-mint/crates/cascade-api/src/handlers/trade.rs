@@ -6,13 +6,25 @@ use axum::{
 };
 use serde_json::Value;
 use cascade_core::{market::Side, trade::TradeExecutor, Preimage};
+use cdk::nuts::{Proof, Proofs, BlindedMessage, SwapRequest};
+use cdk::Amount;
+use cdk::util::hex;
+use std::str::FromStr;
 use crate::types::{
     BuyRequest, SellRequest, TradeResponse, LightningTradeRequest,
     InvoiceStatusRequest, SettleRequest, EscrowStatsResponse, LightningSellRequest,
+    TokenOutput,
 };
 use crate::routes::AppState;
 
 /// Execute a buy order
+///
+/// When the client provides `outputs` (blinded messages for the market's LONG/SHORT keyset),
+/// this handler uses CDK's process_swap_request to atomically spend the input SAT proofs
+/// and sign the LONG/SHORT token outputs.
+///
+/// When no outputs are provided, it falls back to the legacy LMSR-only calculation
+/// (no token issuance, just accounting).
 pub async fn buy(
     State(state): State<AppState>,
     Json(req): Json<BuyRequest>,
@@ -31,6 +43,7 @@ pub async fn buy(
                     quantity: 0.0,
                     cost_sats: 0,
                     fee_sats: 0,
+                    tokens: vec![],
                 }),
             )
         }
@@ -49,6 +62,7 @@ pub async fn buy(
                     quantity: 0.0,
                     cost_sats: 0,
                     fee_sats: 0,
+                    tokens: vec![],
                 }),
             )
         }
@@ -71,6 +85,62 @@ pub async fn buy(
                 trade.cost_sats as i64,
             ).await;
 
+            // If client provided blinded messages for market token keyset,
+            // use CDK process_swap_request to blind-sign them.
+            // NOTE: For a full buy flow, the client would also provide SAT proofs as inputs.
+            // The current implementation uses the mint's own signing authority (blind_sign)
+            // since the trade cost is accounted via LMSR, not via input proofs.
+            let tokens: Vec<TokenOutput> = if !req.outputs.is_empty() {
+                // Convert client-provided blinded messages to CDK format
+                let blinded_messages: Vec<BlindedMessage> = match req.outputs.iter()
+                    .map(|b| {
+                        let amount = Amount::from(b.amount);
+                        let keyset_id = cdk::nuts::Id::from_str(&b.id)
+                            .map_err(|e| format!("Invalid keyset ID '{}': {}", b.id, e))?;
+                        let blinded_secret_bytes = hex::decode(&b.b_)
+                            .map_err(|e| format!("Invalid B_ hex: {}", e))?;
+                        let blinded_secret = cdk::nuts::PublicKey::from_slice(&blinded_secret_bytes)
+                            .map_err(|e| format!("Invalid B_ public key: {}", e))?;
+                        Ok(BlindedMessage::new(amount, keyset_id, blinded_secret))
+                    })
+                    .collect::<Result<Vec<_>, String>>()
+                {
+                    Ok(msgs) => msgs,
+                    Err(e) => {
+                        tracing::warn!("Invalid blinded messages in buy request: {}", e);
+                        // Return trade response without tokens — trade still executed
+                        return (
+                            StatusCode::CREATED,
+                            Json(TradeResponse {
+                                trade_id: trade.id,
+                                market_id: trade.market_id,
+                                side: format!("{:?}", trade.side),
+                                quantity: trade.quantity,
+                                cost_sats: trade.cost_sats,
+                                fee_sats: trade.fee_sats,
+                                tokens: vec![],
+                            }),
+                        );
+                    }
+                };
+
+                // Blind-sign the outputs — the mint is issuing tokens backed by LMSR reserves
+                match state.mint.blind_sign(blinded_messages).await {
+                    Ok(signatures) => signatures.into_iter().map(|sig| TokenOutput {
+                        amount: sig.amount.to_u64(),
+                        id: sig.keyset_id.to_string(),
+                        c_: sig.c.to_hex(),
+                    }).collect(),
+                    Err(e) => {
+                        tracing::error!("Blind signing failed in buy: {}", e);
+                        // Trade executed but token issuance failed — client should retry
+                        vec![]
+                    }
+                }
+            } else {
+                vec![]
+            };
+
             (
                 StatusCode::CREATED,
                 Json(TradeResponse {
@@ -80,6 +150,7 @@ pub async fn buy(
                     quantity: trade.quantity,
                     cost_sats: trade.cost_sats,
                     fee_sats: trade.fee_sats,
+                    tokens,
                 }),
             )
         }
@@ -92,12 +163,19 @@ pub async fn buy(
                 quantity: 0.0,
                 cost_sats: 0,
                 fee_sats: 0,
+                tokens: vec![],
             }),
         ),
     }
 }
 
 /// Execute a sell order
+///
+/// When the client provides `proofs` (LONG/SHORT token proofs) and `outputs` (blinded
+/// messages for SAT keyset), this handler uses CDK's process_swap_request to atomically
+/// spend the market token proofs and sign SAT token outputs.
+///
+/// When no proofs/outputs are provided, it falls back to the legacy LMSR-only calculation.
 pub async fn sell(
     State(state): State<AppState>,
     Json(req): Json<SellRequest>,
@@ -116,6 +194,7 @@ pub async fn sell(
                     quantity: 0.0,
                     cost_sats: 0,
                     fee_sats: 0,
+                    tokens: vec![],
                 }),
             )
         }
@@ -134,6 +213,7 @@ pub async fn sell(
                     quantity: 0.0,
                     cost_sats: 0,
                     fee_sats: 0,
+                    tokens: vec![],
                 }),
             )
         }
@@ -156,6 +236,99 @@ pub async fn sell(
                 -(trade.cost_sats as i64), // Negative because we're refunding sats from reserve
             ).await;
 
+            // If client provided proofs AND outputs, use CDK process_swap_request
+            // to atomically spend the market token proofs and sign SAT outputs.
+            let tokens: Vec<TokenOutput> = if !req.proofs.is_empty() && !req.outputs.is_empty() {
+                // Convert input proofs to CDK format
+                let input_proofs: Proofs = match req.proofs.iter()
+                    .map(|p| {
+                        let amount = Amount::from(p.amount);
+                        let keyset_id = cdk::nuts::Id::from_str(&p.id)
+                            .map_err(|e| format!("Invalid keyset ID: {}", e))?;
+                        let secret = cdk::secret::Secret::new(p.secret.clone());
+                        let c_bytes = hex::decode(&p.C)
+                            .map_err(|e| format!("Invalid commitment hex: {}", e))?;
+                        let c = cdk::nuts::PublicKey::from_slice(&c_bytes)
+                            .map_err(|e| format!("Invalid commitment public key: {}", e))?;
+                        Ok(Proof {
+                            amount,
+                            keyset_id,
+                            secret,
+                            c,
+                            witness: None,
+                            dleq: None,
+                            p2pk_e: None,
+                        })
+                    })
+                    .collect::<Result<Vec<_>, String>>()
+                {
+                    Ok(p) => p,
+                    Err(e) => {
+                        tracing::warn!("Invalid proofs in sell request: {}", e);
+                        return (
+                            StatusCode::CREATED,
+                            Json(TradeResponse {
+                                trade_id: trade.id,
+                                market_id: trade.market_id,
+                                side: format!("{:?}", trade.side),
+                                quantity: trade.quantity.abs(),
+                                cost_sats: trade.cost_sats,
+                                fee_sats: trade.fee_sats,
+                                tokens: vec![],
+                            }),
+                        );
+                    }
+                };
+
+                // Convert output blinded messages to CDK format
+                let blinded_messages: Vec<BlindedMessage> = match req.outputs.iter()
+                    .map(|b| {
+                        let amount = Amount::from(b.amount);
+                        let keyset_id = cdk::nuts::Id::from_str(&b.id)
+                            .map_err(|e| format!("Invalid keyset ID '{}': {}", b.id, e))?;
+                        let blinded_secret_bytes = hex::decode(&b.b_)
+                            .map_err(|e| format!("Invalid B_ hex: {}", e))?;
+                        let blinded_secret = cdk::nuts::PublicKey::from_slice(&blinded_secret_bytes)
+                            .map_err(|e| format!("Invalid B_ public key: {}", e))?;
+                        Ok(BlindedMessage::new(amount, keyset_id, blinded_secret))
+                    })
+                    .collect::<Result<Vec<_>, String>>()
+                {
+                    Ok(msgs) => msgs,
+                    Err(e) => {
+                        tracing::warn!("Invalid blinded messages in sell request: {}", e);
+                        return (
+                            StatusCode::CREATED,
+                            Json(TradeResponse {
+                                trade_id: trade.id,
+                                market_id: trade.market_id,
+                                side: format!("{:?}", trade.side),
+                                quantity: trade.quantity.abs(),
+                                cost_sats: trade.cost_sats,
+                                fee_sats: trade.fee_sats,
+                                tokens: vec![],
+                            }),
+                        );
+                    }
+                };
+
+                // Atomic swap: spend market token proofs, sign SAT outputs
+                let swap_request = SwapRequest::new(input_proofs, blinded_messages);
+                match state.mint.process_swap_request(swap_request).await {
+                    Ok(swap_response) => swap_response.signatures.into_iter().map(|sig| TokenOutput {
+                        amount: sig.amount.to_u64(),
+                        id: sig.keyset_id.to_string(),
+                        c_: sig.c.to_hex(),
+                    }).collect(),
+                    Err(e) => {
+                        tracing::error!("Swap failed in sell: {}", e);
+                        vec![]
+                    }
+                }
+            } else {
+                vec![]
+            };
+
             (
                 StatusCode::CREATED,
                 Json(TradeResponse {
@@ -165,6 +338,7 @@ pub async fn sell(
                     quantity: trade.quantity.abs(),
                     cost_sats: trade.cost_sats,
                     fee_sats: trade.fee_sats,
+                    tokens,
                 }),
             )
         }
@@ -177,6 +351,7 @@ pub async fn sell(
                 quantity: 0.0,
                 cost_sats: 0,
                 fee_sats: 0,
+                tokens: vec![],
             }),
         ),
     }

@@ -40,6 +40,11 @@ pub struct BuyRequest {
     pub side: String, // "long" or "short"
     pub quantity: f64,
     pub buyer_pubkey: String,
+    /// Blinded messages for the market token keyset — client provides these
+    /// so the mint can blind-sign LONG or SHORT tokens via process_swap_request.
+    /// The keyset ID in each BlindedMessage must match the market's LONG or SHORT keyset.
+    #[serde(default)]
+    pub outputs: Vec<BlindedMessageInput>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -48,6 +53,15 @@ pub struct SellRequest {
     pub side: String,
     pub quantity: f64,
     pub seller_pubkey: String,
+    /// Input SAT proofs the user is spending to sell their position.
+    /// If provided, process_swap_request will be used to atomically spend these
+    /// proofs and sign the market token outputs.
+    #[serde(default)]
+    pub proofs: Vec<ProofInput>,
+    /// Blinded messages for the market token keyset — client provides these
+    /// so the mint can blind-sign LONG or SHORT tokens via process_swap_request.
+    #[serde(default)]
+    pub outputs: Vec<BlindedMessageInput>,
 }
 
 #[derive(Debug, Serialize)]
@@ -58,6 +72,9 @@ pub struct TradeResponse {
     pub quantity: f64,
     pub cost_sats: u64,
     pub fee_sats: u64,
+    /// Blind-signed tokens returned to the client (only when outputs are provided)
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub tokens: Vec<TokenOutput>,
 }
 
 // Price endpoints

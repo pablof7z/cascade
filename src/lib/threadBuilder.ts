@@ -24,7 +24,10 @@ function buildReplies(
 
   for (const [eventId, event] of allEvents) {
     const tags = parseEventTags(event)
-    if (tags.replyTo === parentEventId || tags.rootId === parentEventId) {
+    // Use replyTo as the direct parent. Only fall back to rootId when replyTo is absent,
+    // which means this is a direct reply to the root (no intermediate parent).
+    const directParentId = tags.replyTo ?? tags.rootId
+    if (directParentId === parentEventId) {
       replies.push({
         id: eventId,
         author: 'Anonymous',

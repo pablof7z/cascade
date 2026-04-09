@@ -160,6 +160,7 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
         const checkClosed = setInterval(() => {
           if (popup.closed) {
             clearInterval(checkClosed);
+            clearTimeout(oauthTimeout);
             // Check if we got the pubkey
             const storedPubkey = localStorage.getItem('cascade_pending_pubkey');
             if (storedPubkey) {
@@ -171,6 +172,12 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
             isLoading = false;
           }
         }, 500);
+        const oauthTimeout = setTimeout(() => {
+          clearInterval(checkClosed);
+          popup.close();
+          isLoading = false;
+          errorMessage = 'Connection timed out. Please try again.';
+        }, 30000);
       } else {
         throw new Error('Popup blocked');
       }
@@ -204,6 +211,7 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
         const checkClosed = setInterval(() => {
           if (popup.closed) {
             clearInterval(checkClosed);
+            clearTimeout(oauthTimeout);
             const storedPubkey = localStorage.getItem('cascade_pending_pubkey');
             if (storedPubkey) {
               pubkey = storedPubkey;
@@ -214,6 +222,12 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
             isLoading = false;
           }
         }, 500);
+        const oauthTimeout = setTimeout(() => {
+          clearInterval(checkClosed);
+          popup.close();
+          isLoading = false;
+          errorMessage = 'Connection timed out. Please try again.';
+        }, 30000);
       } else {
         throw new Error('Popup blocked');
       }

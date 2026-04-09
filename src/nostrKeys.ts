@@ -168,3 +168,18 @@ function convertBits5to8(data: number[]): number[] {
 
   return result
 }
+
+export function importNsecKey(nsec: string): NostrKeyPair {
+  if (!nsec.startsWith('nsec1')) {
+    throw new Error('Invalid key format')
+  }
+  const privateKey = bech32Decode(nsec)
+  const publicKey = schnorr.getPublicKey(privateKey)
+  return {
+    privateKey,
+    publicKey,
+    nsec,
+    npub: bech32Encode('npub', publicKey),
+    pubkeyHex: bytesToHex(publicKey),
+  }
+}

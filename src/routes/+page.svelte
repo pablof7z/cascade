@@ -188,23 +188,6 @@
     }
   })
 
-  // ─── Sparkline component (inline) ──────────────────────────────────────────
-
-  function Sparkline({ data, size = 'small' }: { data: number[]; size?: 'small' | 'large' }) {
-    const w = size === 'large' ? 80 : 48
-    const h = size === 'large' ? 24 : 14
-    const min = Math.min(...data)
-    const max = Math.max(...data)
-    const range = max - min || 1
-    const points = data.map((v, i) => {
-      const x = (i / (data.length - 1)) * w
-      const y = h - ((v - min) / range) * h
-      return `${x},${y}`
-    }).join(' ')
-
-    return `<svg width="${w}" height="${h}" class="inline-block"><polyline fill="none" stroke="currentColor" stroke-width="${size === 'large' ? 2 : 1.5}" stroke-linecap="round" stroke-linejoin="round" points="${points}"/></svg>`
-  }
-
   // ─── Form handlers ──────────────────────────────────────────────────────────
 
   async function handleCreateMarket(e: Event) {

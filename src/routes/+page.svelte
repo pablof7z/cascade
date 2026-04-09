@@ -315,6 +315,7 @@
   <!-- ═══════════════════════════════════════════════════════════════════════════
       HERO — Provocative statement + Featured Market
   ═══════════════════════════════════════════════════════════════════════════ -->
+  {#if pubkey}
   <section class="relative min-h-[80vh] flex flex-col">
     <div class="absolute inset-0 bg-neutral-950"></div>
 
@@ -428,6 +429,7 @@
       </div>
     </div>
   </section>
+  {/if}
 
   <!-- ═══════════════════════════════════════════════════════════════════════════
       LIVE TRADES TICKER

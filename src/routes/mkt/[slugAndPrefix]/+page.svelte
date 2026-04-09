@@ -11,7 +11,7 @@
   import NavHeader from '$lib/components/NavHeader.svelte';
   
   // Reuse types and structure from the main market page
-  type MarketTab = 'overview' | 'charts' | 'discussion' | 'positions';
+  type MarketTab = 'overview' | 'discussion' | 'positions';
   type Side = 'LONG' | 'SHORT';
   
   // Props from loader
@@ -59,7 +59,6 @@
   // Tab definitions
   const tabs: { key: MarketTab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
-    { key: 'charts', label: 'Charts' },
     { key: 'discussion', label: 'Discussion' },
     { key: 'positions', label: 'Positions' },
   ];
@@ -327,10 +326,6 @@
       {:else if activeTab === 'positions'}
         <div class="text-center py-12">
           <p class="text-neutral-500 text-sm">No positions yet</p>
-        </div>
-      {:else if activeTab === 'charts'}
-        <div class="text-center py-12">
-          <p class="text-neutral-500 text-sm">Charts coming soon</p>
         </div>
       {/if}
     </div>

@@ -3,6 +3,7 @@
   import { nostrStore, reconnect } from '$lib/stores/nostr';
   import { trackSignupStarted, trackSignupCompleted, identifyUser } from '$lib/posthog';
   import { onMount } from 'svelte';
+  import { generateKeyPair, saveKeys } from '../../nostrKeys';
 
   // ── Types ────────────────────────────────────────────────────────────────────
   type UserType = 'human' | 'agent' | null;
@@ -64,6 +65,8 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
 
   // Success state
   let copied = $state(false);
+  let generatedNsec = $state<string | null>(null);
+  let nsecCopied = $state(false);
 
   // ── Derived ────────────────────────────────────────────────────────────────────
   let isAgent = $derived(userType === 'agent');
@@ -246,10 +249,11 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
 
   async function handleSkipAuth() {
     authMethod = 'skip';
-    // Generate anonymous identity
     try {
-      const keyPair = await generateKeyPair();
-      pubkey = keyPair.pubkey;
+      const keys = generateKeyPair();
+      saveKeys(keys);
+      generatedNsec = keys.nsec;
+      pubkey = keys.pubkeyHex;
       connected = true;
       currentStep = 'profile';
     } catch (err) {
@@ -341,18 +345,15 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
     setTimeout(() => copied = false, 2000);
   }
 
-  function handleGoToMarkets() {
-    goto('/');
+  async function handleCopyNsec() {
+    if (!generatedNsec) return;
+    await navigator.clipboard.writeText(generatedNsec);
+    nsecCopied = true;
+    setTimeout(() => nsecCopied = false, 2000);
   }
 
-  // ── Key Generation (simplified) ─────────────────────────────────────────────
-  async function generateKeyPair(): Promise<{ pubkey: string }> {
-    // In production, use proper Nostr key generation
-    // This is a placeholder that generates a random hex pubkey
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    const pubkey = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
-    return { pubkey };
+  function handleGoToMarkets() {
+    goto('/');
   }
 
   // ── Display Helpers ─────────────────────────────────────────────────────────
@@ -685,6 +686,21 @@ Deploy your agent to run any market continuously: 24/7 coverage across multiple 
               class="text-xs text-neutral-400 hover:text-white transition-colors"
             >
               {copied ? '✓ Copied!' : 'Copy to clipboard'}
+            </button>
+          </div>
+        {/if}
+
+        <!-- Private key backup warning (skip auth only) -->
+        {#if generatedNsec && authMethod === 'skip'}
+          <div class="border border-amber-600/40 bg-amber-950/20 p-4 space-y-3 text-left">
+            <p class="text-sm font-medium text-amber-400">Back up your private key</p>
+            <p class="text-xs text-neutral-400">Without it, you'll lose access to your account.</p>
+            <code class="block text-xs font-mono text-neutral-300 break-all">{generatedNsec}</code>
+            <button
+              onclick={handleCopyNsec}
+              class="text-xs text-neutral-400 hover:text-white transition-colors"
+            >
+              {nsecCopied ? '✓ Copied!' : 'Copy to clipboard'}
             </button>
           </div>
         {/if}

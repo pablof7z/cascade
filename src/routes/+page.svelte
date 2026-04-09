@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation'
   import NavHeader from '$lib/components/NavHeader.svelte'
   import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte'
-  import { fetchAllMarketsTransport, publishMarket, getPubkey } from '../services/nostrService'
+  import { fetchAllMarketsTransport, publishMarket, getPubkey, fetchEvents, extractMarketEventId } from '../services/nostrService'
   import { parseMarketEvent } from '../services/marketService'
   import { priceLong, createEmptyMarket } from '../market'
   import type { Market } from '../market'
@@ -26,6 +26,16 @@
     mcap: string
   }
 
+  type DiscussionItem = {
+    id: string
+    content: string
+    pubkey: string
+    pubkeyPrefix: string
+    createdAt: number
+    marketSlug: string
+    marketTitle: string
+  }
+
   // ─── Auth ───────────────────────────────────────────────────────────────────
 
   let pubkey = $derived(getCurrentPubkey())
@@ -33,6 +43,7 @@
   // ─── State ──────────────────────────────────────────────────────────────────
 
   let markets = $state<Market[]>([])
+  let discussions = $state<DiscussionItem[]>([])
   let error = $state<string | null>(null)
   let showCreateModal = $state(false)
   let title = $state('')
@@ -150,9 +161,12 @@
 
   let newThisWeek = $derived(
     [...activeMarkets]
+      .filter(m => m.createdAt > (Date.now() / 1000) - 7 * 24 * 60 * 60)
       .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, 6)
+      .slice(0, 8)
   )
+
+  let latestDiscussions = $derived(discussions.slice(0, 6))
 
   let featuredMarket = $derived(trendingMarkets[0] ?? null)
 
@@ -180,10 +194,54 @@
             error = "No markets found — check your connection"
           }
         }
+
+        // Load discussions after markets so we can resolve market titles
+        if (!cancelled) {
+          loadDiscussions(parsed).catch(() => { /* silent */ })
+        }
       } catch (err) {
         if (!cancelled) {
           error = err instanceof Error ? err.message : "Couldn't connect to server — check your connection"
         }
+      }
+    }
+
+    async function loadDiscussions(loadedMarkets: Market[]) {
+      try {
+        const eventsSet = await fetchEvents({ kinds: [1111], limit: 30 })
+        if (cancelled) return
+
+        const eventArr = Array.from(eventsSet).sort(
+          (a, b) => (b.created_at ?? 0) - (a.created_at ?? 0)
+        )
+
+        const items: DiscussionItem[] = []
+        for (const event of eventArr) {
+          const marketEventId = extractMarketEventId(event)
+          if (!marketEventId) continue
+
+          const market = loadedMarkets.find(m => m.eventId === marketEventId)
+          if (!market) continue
+
+          const pubkeyPrefix = market.creatorPubkey?.slice(0, 12) ?? ''
+          items.push({
+            id: event.id ?? '',
+            content: (event.content ?? '').slice(0, 120),
+            pubkey: event.pubkey ?? '',
+            pubkeyPrefix: (event.pubkey ?? '').slice(0, 8),
+            createdAt: event.created_at ?? 0,
+            marketSlug: `${market.slug}--${pubkeyPrefix}`,
+            marketTitle: market.title,
+          })
+
+          if (items.length >= 6) break
+        }
+
+        if (!cancelled) {
+          discussions = items
+        }
+      } catch {
+        // Silent — section just won't show
       }
     }
 
@@ -699,7 +757,7 @@
   <!-- ═══════════════════════════════════════════════════════════════════════════
       SECTION 4: NEW THIS WEEK — Magazine layout
   ═══════════════════════════════════════════════════════════════════════════ -->
-  {#if newThisWeek.length >= 3}
+  {#if newThisWeek.length > 0}
     {@const featured = newThisWeek[0]}
     <section class="bg-neutral-900/20 border-t border-neutral-800/30">
       <div class="max-w-7xl mx-auto px-6 py-16">
@@ -774,6 +832,39 @@
             {/each}
           </div>
         </div>
+      </div>
+    </section>
+  {/if}
+
+  <!-- ═══════════════════════════════════════════════════════════════════════════
+      SECTION 5: LATEST DISCUSSIONS — Dense newspaper list
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  {#if latestDiscussions.length > 0}
+    <section class="max-w-7xl mx-auto px-6 py-16 border-t border-neutral-800/30">
+      <div class="flex items-baseline gap-4 mb-8">
+        <h2 class="text-3xl font-black text-white">Latest Discussions</h2>
+        <span class="text-sm text-neutral-600">Recent posts across all markets</span>
+      </div>
+
+      <div class="divide-y divide-neutral-800/40">
+        {#each latestDiscussions as post}
+          <div class="py-3 flex items-start gap-4">
+            <span class="text-[10px] font-mono text-neutral-600 shrink-0 w-14 pt-0.5 tabular-nums">
+              {formatTimeAgo(post.createdAt)}
+            </span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-neutral-300 leading-snug mb-1 line-clamp-2">
+                {post.content}{post.content.length >= 120 ? '…' : ''}
+              </p>
+              <div class="flex items-center gap-3 text-[10px] text-neutral-600">
+                <a href="/mkt/{post.marketSlug}" class="hover:text-neutral-400 transition-colors truncate max-w-[240px]">
+                  {post.marketTitle}
+                </a>
+                <span class="shrink-0 font-mono">{post.pubkeyPrefix}…</span>
+              </div>
+            </div>
+          </div>
+        {/each}
       </div>
     </section>
   {/if}

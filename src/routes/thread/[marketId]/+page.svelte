@@ -343,7 +343,7 @@
 {:else if !thread}
   <div class="min-h-screen bg-neutral-950 flex items-center justify-center">
     <span class="text-neutral-500 text-sm">Thread not found...</span>
-    <button onclick={() => goto(market ? `/mkt/${marketSlug}/discussion` : `/mkt/${marketId}`)} class="ml-4 text-neutral-400 hover:text-white">
+    <button onclick={() => goto(`/mkt/${marketSlug}`)} class="ml-4 text-neutral-400 hover:text-white">
       Back to discussion
     </button>
   </div>
@@ -358,7 +358,7 @@
             {market?.title?.slice(0, 40) || 'Market'}{market?.title && market.title.length > 40 ? '...' : ''}
           </a>
           <span>›</span>
-          <a href={`/mkt/${marketSlug}/discussion`} class="hover:text-neutral-300">
+          <a href={`/mkt/${marketSlug}`} class="hover:text-neutral-300">
             Discussion
           </a>
           <span>›</span>

@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { trackEvent, initAnalytics, destroyAnalytics } from '../../analytics'
-  import { isReady, fetchEvents, fetchAllMarketsTransport } from '../../services/nostrService'
+  import { isReady, fetchEvents, fetchAllMarketsTransport, getNDK } from '../../services/nostrService'
   import { parseMarketEvent } from '../../services/marketService'
-  import type { NDKKind } from '@nostr-dev-kit/ndk'
+  import { fetchAllPositions } from '../../services/positionService'
+  import type { NDKEvent, NDKKind } from '@nostr-dev-kit/ndk'
 
   // ─── Analytics session tracking ─────────────────────────────────────────────
 
@@ -91,25 +92,49 @@
     totalMarkets = marketTitleById.size
     weeklyMarkets = weeklyCount
 
-    // Fetch discussions (kind 1111)
-    const discussionSet = await fetchEvents({ kinds: [1111 as NDKKind], limit: 500 })
-    const discussionArr = Array.from(discussionSet)
+    // Fetch discussions (kind 1111) scoped to Cascade market event IDs via e-tag
+    const marketEventIds = Array.from(marketTitleById.keys())
+    let discussionArr: NDKEvent[] = []
+
+    if (marketEventIds.length > 0) {
+      const discussionSet = await fetchEvents({
+        kinds: [1111 as NDKKind],
+        '#e': marketEventIds,
+        limit: 500,
+      })
+      discussionArr = Array.from(discussionSet)
+    }
 
     totalDiscussions = discussionArr.length
 
+    // Unique traders: discussion authors + platform position holders
     const traderPubkeys = new Set<string>()
     for (const event of discussionArr) {
       if (event.pubkey) traderPubkeys.add(event.pubkey)
     }
+
+    const ndk = getNDK()
+    if (ndk) {
+      try {
+        const positions = await fetchAllPositions(ndk)
+        for (const position of positions) {
+          if (position.ownerPubkey) traderPubkeys.add(position.ownerPubkey)
+        }
+      } catch {
+        // non-fatal — trader count may be partial
+      }
+    }
     uniqueTraders = traderPubkeys.size
 
-    // Discussion count per market
+    // Discussion count per market — match any e-tag against known market event IDs
+    // (avoids root-tag assumption which breaks for reply threads)
     const discussByMarket = new Map<string, number>()
     for (const event of discussionArr) {
-      const rootTag = event.tags.find((t) => t[0] === 'e' && t[3] === 'root')
-      if (rootTag?.[1]) {
-        const mid = rootTag[1]
-        discussByMarket.set(mid, (discussByMarket.get(mid) ?? 0) + 1)
+      for (const tag of event.tags) {
+        if (tag[0] === 'e' && tag[1] && marketTitleById.has(tag[1])) {
+          discussByMarket.set(tag[1], (discussByMarket.get(tag[1]) ?? 0) + 1)
+          break
+        }
       }
     }
 
@@ -146,8 +171,14 @@
 
     for (const event of discussionArr) {
       if (!event.pubkey) continue
-      const rootTag = event.tags.find((t) => t[0] === 'e' && t[3] === 'root')
-      const marketId = rootTag?.[1]
+      // Resolve the market by finding an e-tag that matches a known market event ID
+      let marketId: string | undefined
+      for (const tag of event.tags) {
+        if (tag[0] === 'e' && tag[1] && marketTitleById.has(tag[1])) {
+          marketId = tag[1]
+          break
+        }
+      }
       const marketTitle = marketId ? marketTitleById.get(marketId) : undefined
       const subjectTag = event.tags.find((t) => t[0] === 'subject')
       const title = subjectTag?.[1] ?? event.content.slice(0, 60)
@@ -184,7 +215,7 @@
   <div class="flex items-center justify-between mb-8">
     <div>
       <h1 class="text-2xl font-sans text-white">Platform Briefing</h1>
-      <p class="text-xs text-neutral-500 mt-1">Live data from Nostr relays</p>
+      <p class="text-xs text-neutral-500 mt-1">Live platform data</p>
     </div>
     <button
       type="button"

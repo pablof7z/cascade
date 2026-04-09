@@ -113,7 +113,10 @@
       .then((events) => buildThreadHierarchy(events, marketEventId))
       .then(async (built) => {
         if (cancelled) return;
-        threads = built;
+        // Merge: keep any live events not already in the fetched snapshot
+        const builtIds = new Set(built.flatMap(collectEventIds));
+        const liveOnly = threads.filter(t => liveEventIds.has(t.id) && !builtIds.has(t.id));
+        threads = [...built, ...liveOnly];
         
         const allIds = built.flatMap(collectEventIds);
         if (allIds.length === 0) return;
@@ -180,91 +183,122 @@
   });
 
   // Subscribe to new reply events in real-time
-  $effect(() => {
-    if (!nostrReady || !market?.eventId) return;
+  // liveEventIds guards against the race where a live event arrives before the
+  // initial fetch completes and then gets overwritten when threads = built runs.
+  let liveEventIds = $state(new Set<string>());
 
-    const marketEventId = market.eventId;
+  function handleLiveEvent(event: NDKEvent, marketEventId: string) {
+    const eventId = event.id ?? '';
+    if (!eventId) return;
 
-    let sub: ReturnType<typeof subscribeToMarketPosts> | null = null;
-    try {
-      sub = subscribeToMarketPosts(marketEventId, (event) => {
-        const eventId = event.id ?? '';
-        if (!eventId) return;
+    // Skip if already present in tree
+    const allKnownIds = threads.flatMap(collectEventIds);
+    if (allKnownIds.includes(eventId)) return;
 
-        // Skip if already present
-        const allKnownIds = threads.flatMap(collectEventIds);
-        if (allKnownIds.includes(eventId)) return;
+    // Track so the fetch effect can skip this after threads = built
+    liveEventIds = new Set([...liveEventIds, eventId]);
 
-        const tags = parseEventTags(event);
+    const tags = parseEventTags(event);
 
-        const newReply: Reply = {
+    const newReply: Reply = {
+      id: eventId,
+      author: 'Anonymous',
+      pubkey: event.pubkey,
+      isAgent: false,
+      content: event.content,
+      timestamp: (event.created_at ?? 0) * 1000,
+      upvotes: 0,
+      downvotes: 0,
+      replies: [],
+    };
+
+    if (!tags.replyTo && (tags.rootId === marketEventId || tags.isRoot)) {
+      // New root-level thread — add to threads list
+      threads = [
+        ...threads,
+        {
           id: eventId,
           author: 'Anonymous',
           pubkey: event.pubkey,
           isAgent: false,
+          type: (tags.type ?? 'argument') as DiscussionThread['type'],
+          stance: (tags.stance ?? 'neutral') as DiscussionThread['stance'],
+          title: event.content.split('\n')[0].slice(0, 80),
           content: event.content,
           timestamp: (event.created_at ?? 0) * 1000,
           upvotes: 0,
           downvotes: 0,
           replies: [],
-        };
+        },
+      ];
+      return;
+    }
 
-        if (!tags.replyTo && (tags.rootId === marketEventId || tags.isRoot)) {
-          // New root-level thread — add to threads list
-          threads = [
-            ...threads,
-            {
-              id: eventId,
-              author: 'Anonymous',
-              pubkey: event.pubkey,
-              isAgent: false,
-              type: (tags.type ?? 'argument') as DiscussionThread['type'],
-              stance: (tags.stance ?? 'neutral') as DiscussionThread['stance'],
-              title: event.content.split('\n')[0].slice(0, 80),
-              content: event.content,
-              timestamp: (event.created_at ?? 0) * 1000,
-              upvotes: 0,
-              downvotes: 0,
-              replies: [],
-            },
-          ];
-          return;
+    // Reply to an existing thread or nested reply — find the parent and insert
+    const parentId = tags.replyTo ?? tags.rootId ?? '';
+    if (!parentId) return;
+
+    function insertReply(replies: Reply[]): Reply[] {
+      return replies.map((r) => {
+        if (r.id === parentId) {
+          return { ...r, replies: [...r.replies, newReply] };
         }
+        return { ...r, replies: insertReply(r.replies) };
+      });
+    }
 
-        // Reply to an existing thread or nested reply — find the parent and insert
-        const parentId = tags.replyTo ?? tags.rootId ?? '';
-        if (!parentId) return;
+    threads = threads.map((t) => {
+      if (t.id === parentId) {
+        return { ...t, replies: [...t.replies, newReply] };
+      }
+      return { ...t, replies: insertReply(t.replies) };
+    });
+  }
 
-        function insertReply(replies: Reply[]): Reply[] {
-          return replies.map((r) => {
-            if (r.id === parentId) {
-              return { ...r, replies: [...r.replies, newReply] };
-            }
-            return { ...r, replies: insertReply(r.replies) };
-          });
-        }
-
-        threads = threads.map((t) => {
-          if (t.id === parentId) {
-            return { ...t, replies: [...t.replies, newReply] };
-          }
-          return { ...t, replies: insertReply(t.replies) };
-        });
+  // Market-level subscription: catches new root-level posts on this market
+  $effect(() => {
+    if (!nostrReady || !market?.eventId) return;
+    const marketEventId = market.eventId;
+    let sub: ReturnType<typeof subscribeToMarketPosts> | null = null;
+    try {
+      sub = subscribeToMarketPosts(marketEventId, (event) => {
+        handleLiveEvent(event, marketEventId);
       });
     } catch (err) {
-      console.error('[ThreadPage] subscribeToMarketPosts error:', err);
+      console.error('[ThreadPage] subscribeToMarketPosts (market) error:', err);
     }
-
-    return () => {
-      sub?.stop();
-    };
+    return () => { sub?.stop(); };
   });
 
-  // Wait for Nostr to be ready
+  // Thread-level subscription: catches replies to the specific thread being viewed
   $effect(() => {
+    if (!nostrReady || !threadId) return;
+    const marketEventId = market?.eventId ?? '';
+    let sub: ReturnType<typeof subscribeToMarketPosts> | null = null;
+    try {
+      sub = subscribeToMarketPosts(threadId, (event) => {
+        handleLiveEvent(event, marketEventId);
+      });
+    } catch (err) {
+      console.error('[ThreadPage] subscribeToMarketPosts (thread) error:', err);
+    }
+    return () => { sub?.stop(); };
+  });
+
+  // Wait for Nostr to be ready — isReady() is not reactive, poll until true
+  $effect(() => {
+    if (nostrReady) return;
     if (isReady()) {
       nostrReady = true;
+      return;
     }
+    const interval = setInterval(() => {
+      if (isReady()) {
+        nostrReady = true;
+        clearInterval(interval);
+      }
+    }, 100);
+    return () => clearInterval(interval);
   });
 
   // Sort state for replies

@@ -433,7 +433,11 @@
         <span class="text-xs text-neutral-500 uppercase tracking-wider font-medium">Live</span>
       </div>
       <div class="overflow-hidden text-sm text-neutral-400">
-        Markets updating in real-time
+        {#if markets.length > 0}
+          {markets.length} active market{markets.length === 1 ? '' : 's'} — trade your conviction
+        {:else}
+          Connecting to markets...
+        {/if}
       </div>
     </div>
   </div>

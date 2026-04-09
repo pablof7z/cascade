@@ -10,7 +10,7 @@
 <div class="min-h-screen bg-neutral-950">
   <NavHeader />
   <section class="max-w-3xl mx-auto px-6 py-16 border-b border-neutral-800">
-    <p class="text-xs text-neutral-500 uppercase tracking-widest mb-4">Writing</p>
+    <p class="text-xs text-neutral-500 mb-4">Writing</p>
     <p class="text-neutral-400 text-sm">Thinking about prediction markets, conditional beliefs, and the future of financial forecasting.</p>
   </section>
 

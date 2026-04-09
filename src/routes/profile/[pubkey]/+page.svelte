@@ -245,19 +245,19 @@
   <!-- Credibility Strip -->
   <div class="grid gap-4 border-b border-neutral-800 px-6 py-5 sm:grid-cols-2 xl:grid-cols-4">
     <div>
-      <p class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Markets</p>
+      <p class="text-[11px] text-neutral-500">Markets</p>
       <p class="text-lg font-semibold text-white mt-1">{markets.length}</p>
     </div>
     <div>
-      <p class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Positions</p>
+      <p class="text-[11px] text-neutral-500">Positions</p>
       <p class="text-lg font-semibold text-white mt-1">{positions.length}</p>
     </div>
     <div>
-      <p class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Followers</p>
+      <p class="text-[11px] text-neutral-500">Followers</p>
       <p class="text-neutral-500 text-sm mt-1">Coming soon</p>
     </div>
     <div>
-      <p class="text-[11px] uppercase tracking-[0.2em] text-neutral-500">Following</p>
+      <p class="text-[11px] text-neutral-500">Following</p>
       <p class="text-neutral-500 text-sm mt-1">Coming soon</p>
     </div>
   </div>
@@ -344,9 +344,9 @@
                 </p>
               </div>
               {#if position.resolved}
-                <span class="text-[11px] uppercase tracking-[0.2em] text-neutral-500 ml-2">Resolved</span>
+                <span class="text-[11px] text-neutral-500 ml-2">Resolved</span>
               {:else}
-                <span class="text-[11px] uppercase tracking-[0.2em] text-emerald-500 ml-2">Open</span>
+                <span class="text-[11px] text-emerald-500 ml-2">Open</span>
               {/if}
             </div>
             <p class="text-neutral-500 text-xs mt-2">Created {formatDate(position.createdAt)}</p>

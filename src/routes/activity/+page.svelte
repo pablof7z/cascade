@@ -321,7 +321,7 @@
                 {item.marketName}
               </button>
             </div>
-            <span class="text-xs text-neutral-600 uppercase tracking-wide shrink-0">
+            <span class="text-xs text-neutral-600 shrink-0">
               {item.marketType}
             </span>
           </div>

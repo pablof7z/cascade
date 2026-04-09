@@ -203,7 +203,7 @@
     <!-- Active positions -->
     {#if unsettledPositions.length > 0}
       <section class="mb-8">
-        <h2 class="text-xs font-medium text-neutral-500 uppercase tracking-widest mb-3">
+        <h2 class="text-xs font-medium text-neutral-500 mb-3">
           Active Positions ({unsettledPositions.length})
         </h2>
         <div class="border border-neutral-800 bg-neutral-900">
@@ -271,7 +271,7 @@
     <!-- Settled positions -->
     {#if settledPositions.length > 0}
       <section>
-        <h2 class="text-xs font-medium text-neutral-500 uppercase tracking-widest mb-3">
+        <h2 class="text-xs font-medium text-neutral-500 mb-3">
           Settled ({settledPositions.length})
         </h2>
         <div class="border border-neutral-800 bg-neutral-900">

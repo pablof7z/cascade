@@ -317,7 +317,7 @@
 
     <!-- Most Active Markets -->
     <div>
-      <h2 class="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">Most Active Markets</h2>
+      <h2 class="text-xs font-medium text-neutral-400 mb-3">Most Active Markets</h2>
       {#if marketRows.length === 0}
         <p class="text-sm text-neutral-500 py-4">No markets loaded yet.</p>
       {:else}
@@ -353,7 +353,7 @@
 
     <!-- Recent Activity -->
     <div>
-      <h2 class="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">Recent Activity</h2>
+      <h2 class="text-xs font-medium text-neutral-400 mb-3">Recent Activity</h2>
       {#if activityFeed.length === 0}
         <p class="text-sm text-neutral-500 py-4">No activity loaded yet.</p>
       {:else}

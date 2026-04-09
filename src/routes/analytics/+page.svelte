@@ -24,7 +24,7 @@
   }
 
   type ActivityItem = {
-    kind: 'market' | 'discussion'
+    kind: 'market' | 'post' | 'reply'
     title: string
     pubkey: string
     createdAt: number
@@ -95,41 +95,52 @@
     totalMarkets = marketTitleById.size
     weeklyMarkets = weeklyCount
 
-    // Fetch kind 1111 events that directly tag known market event IDs.
-    // Filtering at the relay via #e guarantees every returned event maps to
-    // a Cascade market — no chain-walking needed, no unmapped discussions possible.
-    const marketEventIds = Array.from(marketTitleById.keys())
-    let discussionArr: NDKEvent[] = []
+    // Fetch ALL kind 1111 events — no #e filter so replies are included.
+    // Replies tag their parent post, not the market, so relay-side #e filtering
+    // would silently drop them.
+    const allDiscussionSet = await fetchEvents({
+      kinds: [1111 as NDKKind],
+      limit: 500,
+    })
+    const allDiscussions = Array.from(allDiscussionSet)
+    discussionsAtCap = allDiscussions.length >= 500
 
-    if (marketEventIds.length > 0) {
-      const discussionSet = await fetchEvents({
-        kinds: [1111 as NDKKind],
-        '#e': marketEventIds,
-        limit: 500,
-      })
-      discussionArr = Array.from(discussionSet)
-    }
-    discussionsAtCap = discussionArr.length >= 500
+    const marketIdSet = new Set(marketTitleById.keys())
 
-    // Map discussion event IDs to their market event ID
-    const eventToMarket = new Map<string, string>() // discussion eventId → marketEventId
-    for (const event of discussionArr) {
+    // Pass 1: identify top-level posts — events with an e-tag pointing to a market event ID
+    const postToMarket = new Map<string, string>() // top-level post event ID → market event ID
+    for (const event of allDiscussions) {
       if (!event.id) continue
       for (const tag of event.tags) {
-        if (tag[0] === 'e' && tag[1] && marketTitleById.has(tag[1])) {
-          eventToMarket.set(event.id, tag[1])
+        if (tag[0] === 'e' && tag[1] && marketIdSet.has(tag[1])) {
+          postToMarket.set(event.id, tag[1])
           break
         }
       }
     }
 
-    // All fetched discussions are guaranteed to reference a known market
-    const mappedDiscussions = discussionArr.filter((e) => e.id && eventToMarket.has(e.id))
-    totalDiscussions = mappedDiscussions.length
+    // Pass 2: identify replies — events whose e-tag references a known top-level post
+    const replyToMarket = new Map<string, string>() // reply event ID → market event ID
+    for (const event of allDiscussions) {
+      if (!event.id || postToMarket.has(event.id)) continue
+      for (const tag of event.tags) {
+        if (tag[0] === 'e' && tag[1] && postToMarket.has(tag[1])) {
+          replyToMarket.set(event.id, postToMarket.get(tag[1])!)
+          break
+        }
+      }
+    }
+
+    const topLevelPosts = allDiscussions.filter((e) => e.id && postToMarket.has(e.id))
+    const replies = allDiscussions.filter((e) => e.id && replyToMarket.has(e.id))
+    totalDiscussions = topLevelPosts.length + replies.length
 
     // Unique traders: discussion authors + platform position holders
     const traderPubkeys = new Set<string>()
-    for (const event of mappedDiscussions) {
+    for (const event of topLevelPosts) {
+      if (event.pubkey) traderPubkeys.add(event.pubkey)
+    }
+    for (const event of replies) {
       if (event.pubkey) traderPubkeys.add(event.pubkey)
     }
 
@@ -146,15 +157,17 @@
     }
     uniqueTraders = traderPubkeys.size
 
-    // Discussion count per market — use the resolved eventToMarket mapping
-    // so both top-level posts and replies count toward their market
+    // Discussion count per market — top-level posts and replies both counted
     const discussByMarket = new Map<string, number>()
-    for (const event of mappedDiscussions) {
+    for (const event of topLevelPosts) {
       if (!event.id) continue
-      const marketId = eventToMarket.get(event.id)
-      if (marketId) {
-        discussByMarket.set(marketId, (discussByMarket.get(marketId) ?? 0) + 1)
-      }
+      const marketId = postToMarket.get(event.id)
+      if (marketId) discussByMarket.set(marketId, (discussByMarket.get(marketId) ?? 0) + 1)
+    }
+    for (const event of replies) {
+      if (!event.id) continue
+      const marketId = replyToMarket.get(event.id)
+      if (marketId) discussByMarket.set(marketId, (discussByMarket.get(marketId) ?? 0) + 1)
     }
 
     // Build most-active market rows
@@ -188,14 +201,28 @@
       })
     }
 
-    for (const event of mappedDiscussions) {
+    for (const event of topLevelPosts) {
       if (!event.pubkey) continue
-      const marketId = event.id ? eventToMarket.get(event.id) : undefined
+      const marketId = event.id ? postToMarket.get(event.id) : undefined
       const marketTitle = marketId ? marketTitleById.get(marketId) : undefined
       const subjectTag = event.tags.find((t) => t[0] === 'subject')
       const title = subjectTag?.[1] ?? event.content.slice(0, 60)
       activity.push({
-        kind: 'discussion',
+        kind: 'post',
+        title,
+        pubkey: event.pubkey,
+        createdAt: event.created_at ?? 0,
+        marketTitle,
+      })
+    }
+
+    for (const event of replies) {
+      if (!event.pubkey) continue
+      const marketId = event.id ? replyToMarket.get(event.id) : undefined
+      const marketTitle = marketId ? marketTitleById.get(marketId) : undefined
+      const title = event.content.slice(0, 60)
+      activity.push({
+        kind: 'reply',
         title,
         pubkey: event.pubkey,
         createdAt: event.created_at ?? 0,
@@ -242,7 +269,7 @@
   <div class="grid grid-cols-2 md:grid-cols-4 gap-px bg-neutral-800 mb-10">
     <div class="bg-neutral-950 px-5 py-4">
       <div class="font-mono text-3xl font-medium text-white tabular-nums">{totalMarkets}{#if marketsAtCap}+{/if}</div>
-      <div class="text-xs text-neutral-500 mt-1">Total markets{#if marketsAtCap}<span class="text-neutral-600"> · recent 100</span>{/if}</div>
+      <div class="text-xs text-neutral-500 mt-1">Total markets{#if marketsAtCap}<span class="text-neutral-500"> · recent 100</span>{/if}</div>
     </div>
     <div class="bg-neutral-950 px-5 py-4">
       <div class="font-mono text-3xl font-medium text-emerald-400 tabular-nums">{weeklyMarkets}</div>
@@ -250,7 +277,7 @@
     </div>
     <div class="bg-neutral-950 px-5 py-4">
       <div class="font-mono text-3xl font-medium text-white tabular-nums">{totalDiscussions}{#if discussionsAtCap}+{/if}</div>
-      <div class="text-xs text-neutral-500 mt-1">Total discussions{#if discussionsAtCap}<span class="text-neutral-600"> · recent 500</span>{/if}</div>
+      <div class="text-xs text-neutral-500 mt-1">Total discussions{#if discussionsAtCap}<span class="text-neutral-500"> · recent 500</span>{/if}</div>
     </div>
     <div class="bg-neutral-950 px-5 py-4">
       <div class="font-mono text-3xl font-medium text-white tabular-nums">{uniqueTraders}</div>
@@ -264,7 +291,7 @@
     <div>
       <h2 class="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">Most Active Markets</h2>
       {#if marketRows.length === 0}
-        <p class="text-sm text-neutral-600 py-4">No markets loaded yet.</p>
+        <p class="text-sm text-neutral-500 py-4">No markets loaded yet.</p>
       {:else}
         <table class="w-full text-sm">
           <thead>
@@ -280,7 +307,7 @@
                 <td class="py-2.5 pr-4">
                   <a
                     href="/market/{row.slug}"
-                    class="text-neutral-200 hover:text-white transition-colors line-clamp-1"
+                    class="text-neutral-300 hover:text-white transition-colors line-clamp-1"
                   >{row.title}</a>
                 </td>
                 <td class="py-2.5 pl-4 text-right font-mono text-neutral-400 text-xs tabular-nums">
@@ -300,24 +327,29 @@
     <div>
       <h2 class="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">Recent Activity</h2>
       {#if activityFeed.length === 0}
-        <p class="text-sm text-neutral-600 py-4">No activity loaded yet.</p>
+        <p class="text-sm text-neutral-500 py-4">No activity loaded yet.</p>
       {:else}
         <ul class="divide-y divide-neutral-800">
           {#each activityFeed as item}
             <li class="py-2.5">
               {#if item.kind === 'market'}
                 <div class="text-xs text-neutral-500 mb-0.5">New market</div>
-                <div class="text-sm text-neutral-200 line-clamp-1">{item.title}</div>
+                <div class="text-sm text-neutral-300 line-clamp-1">{item.title}</div>
+              {:else if item.kind === 'post'}
+                <div class="text-xs text-neutral-500 mb-0.5">
+                  New discussion{item.marketTitle ? ` on ${item.marketTitle}` : ''}
+                </div>
+                <div class="text-sm text-neutral-300 line-clamp-1">{item.title}</div>
               {:else}
                 <div class="text-xs text-neutral-500 mb-0.5">
-                  Discussion{item.marketTitle ? ` on ${item.marketTitle}` : ''}
+                  Reply{item.marketTitle ? ` on ${item.marketTitle}` : ''}
                 </div>
-                <div class="text-sm text-neutral-200 line-clamp-1">{item.title}</div>
+                <div class="text-sm text-neutral-300 line-clamp-1">{item.title}</div>
               {/if}
               <div class="flex gap-2 mt-0.5">
-                <span class="text-xs text-neutral-600 font-mono">{shortPubkey(item.pubkey)}</span>
-                <span class="text-xs text-neutral-600">·</span>
-                <span class="text-xs text-neutral-600">{timeAgo(item.createdAt)}</span>
+                <span class="text-xs text-neutral-500 font-mono">{shortPubkey(item.pubkey)}</span>
+                <span class="text-xs text-neutral-500">·</span>
+                <span class="text-xs text-neutral-500">{timeAgo(item.createdAt)}</span>
               </div>
             </li>
           {/each}

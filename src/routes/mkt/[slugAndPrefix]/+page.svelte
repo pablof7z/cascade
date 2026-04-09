@@ -115,6 +115,7 @@
     } else {
       tradeError = null;
       tradeSuccess = true;
+      setTimeout(() => { tradeSuccess = false; }, 5000);
     }
   }
   
@@ -259,7 +260,11 @@
           
           {#if tradeError}
             <div class="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-sm text-rose-400">
-              {tradeError}
+              {#if tradeError.includes('Insufficient balance')}
+                {tradeError} <a href="/wallet" class="text-white underline">Deposit sats →</a>
+              {:else}
+                {tradeError}
+              {/if}
             </div>
           {/if}
           
@@ -280,6 +285,10 @@
               Buy {selectedSide === 'LONG' ? 'YES' : 'NO'} Shares · {amount} sats
             {/if}
           </button>
+
+          {#if tradeSuccess}
+            <p class="text-sm text-emerald-400 mt-2">Trade confirmed. <a href="/portfolio" class="text-white underline">View portfolio →</a></p>
+          {/if}
 
           {#if !isLoggedIn}
             <p class="mt-3 text-sm text-neutral-400">

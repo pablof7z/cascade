@@ -163,7 +163,7 @@
   <div class="max-w-2xl mx-auto px-6 py-12">
     <!-- Header -->
     <div class="mb-8">
-      <h1 class="text-2xl font-semibold">Settings</h1>
+      <h1 class="text-2xl">Settings</h1>
       <p class="text-neutral-400 mt-1">Manage your profile and preferences</p>
     </div>
 
@@ -177,7 +177,7 @@
           <img
             src={avatarUrl}
             alt="Profile avatar"
-            class="w-16 h-16 rounded-full object-cover border border-neutral-700"
+            class="w-16 h-16 object-cover border border-neutral-700"
             onerror={() => (avatarUrl = '')}
           />
           <button
@@ -201,7 +201,7 @@
             type="text"
             bind:value={displayName}
             placeholder="Your name"
-            class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
+            class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
           />
         </div>
 
@@ -215,7 +215,7 @@
             type="text"
             bind:value={headline}
             placeholder="A brief description of yourself"
-            class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
+            class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
           />
         </div>
 
@@ -229,7 +229,7 @@
             bind:value={bio}
             placeholder="Tell us about yourself"
             rows="4"
-            class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors resize-none"
+            class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors resize-none"
           ></textarea>
         </div>
 
@@ -243,7 +243,7 @@
             type="url"
             bind:value={avatarUrl}
             placeholder="https://example.com/avatar.jpg"
-            class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
+            class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
           />
         </div>
 

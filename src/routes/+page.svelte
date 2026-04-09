@@ -415,11 +415,20 @@
         </span>
         <span class="text-xs text-neutral-500 uppercase tracking-wider font-medium">Live</span>
       </div>
-      <div class="overflow-hidden text-sm text-neutral-400">
+      <div class="overflow-hidden text-sm text-neutral-400 flex-1">
         {#if markets.length > 0}
-          {markets.length} active market{markets.length === 1 ? '' : 's'} — trade your conviction
+          <div class="ticker-track flex gap-8 whitespace-nowrap animate-ticker">
+            {#each [...markets, ...markets] as market}
+              {@const prob = Math.round(priceLong(market.qLong, market.qShort, market.b) * 100)}
+              <span class="inline-flex items-center gap-2 shrink-0">
+                <span class="text-xs text-neutral-600 font-mono uppercase">{getCategory(market)}</span>
+                <span class="text-neutral-300">{market.title}</span>
+                <span class={prob >= 50 ? 'text-emerald-500 font-mono text-xs' : 'text-rose-500 font-mono text-xs'}>{prob}%</span>
+              </span>
+            {/each}
+          </div>
         {:else}
-          Connecting to markets...
+          <span class="text-neutral-600">Connecting to markets...</span>
         {/if}
       </div>
     </div>
@@ -896,3 +905,16 @@
     ✓ Market published
   </div>
 {/if}
+
+<style>
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-ticker {
+  animation: ticker 40s linear infinite;
+}
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+</style>

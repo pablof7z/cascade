@@ -235,7 +235,12 @@
   <!-- Header -->
   <div class="border-b border-neutral-800">
     <div class="max-w-5xl mx-auto px-4 py-6">
-      <h1 class="text-2xl font-sans text-white mb-6">Discussions</h1>
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-sans text-white">Discussions</h1>
+        <a href="/thesis/new" class="text-sm text-neutral-400 hover:text-white border border-neutral-700 px-3 py-1.5">
+          Create market
+        </a>
+      </div>
 
       <!-- Filters and Sorting -->
       <div class="flex flex-wrap gap-4 items-center">

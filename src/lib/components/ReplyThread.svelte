@@ -87,7 +87,6 @@
     <p class="text-sm text-neutral-300 leading-relaxed whitespace-pre-line">{reply.content}</p>
     <div class="mt-2 flex gap-4 text-xs text-neutral-600">
       <button onclick={() => showReplyBox = !showReplyBox} class="hover:text-neutral-400">reply</button>
-      <button class="hover:text-neutral-400">share</button>
     </div>
     
     {#if showReplyBox}

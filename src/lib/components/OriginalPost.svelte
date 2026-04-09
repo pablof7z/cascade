@@ -139,8 +139,6 @@
         <button onclick={() => showReplyBox = !showReplyBox} class="hover:text-neutral-400">
           Reply
         </button>
-        <button class="hover:text-neutral-400">Share</button>
-        <button class="hover:text-neutral-400">Report</button>
       </div>
       
       {#if showReplyBox}

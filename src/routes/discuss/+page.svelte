@@ -162,7 +162,8 @@
             }
 
             // Subscribe to live updates for this market
-            subscribeToMarket(market.eventId, market)
+            const sub = subscribeToMarket(market.eventId, market)
+            if (sub) unsubscribes.push(() => sub.stop())
           } catch (err) {
             console.error(`[Discuss] Error fetching posts for market ${market.slug}:`, err)
           }
@@ -178,9 +179,9 @@
   }
 
   // Subscribe to live updates for a market
-  function subscribeToMarket(marketEventId: string, market: Market): void {
+  function subscribeToMarket(marketEventId: string, market: Market) {
     try {
-      subscribeToMarketPosts(marketEventId, async (event) => {
+      const sub = subscribeToMarketPosts(marketEventId, async (event) => {
         // Check if this is a root post (not a reply)
         const tags = event.tags
         const hasReplyTag = tags.some(t => t[0] === 'e' && t[3] === 'reply')
@@ -196,6 +197,7 @@
           }
         }
       })
+      return sub
     } catch (err) {
       console.error(`[Discuss] Error subscribing to market ${market.slug}:`, err)
     }

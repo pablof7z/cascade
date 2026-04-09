@@ -442,7 +442,7 @@
               bind:value={receiveTokenInput}
               placeholder="Paste your token here"
               rows="4"
-              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 resize-none font-mono text-xs"
+              class="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 resize-none font-mono text-xs"
             ></textarea>
           </div>
 
@@ -467,7 +467,7 @@
 
     <!-- History Tab -->
     {#if activeTab === 'history'}
-      <div class="bg-neutral-900 border border-neutral-800 rounded-sm overflow-hidden">
+      <div class="bg-neutral-900 border border-neutral-800 overflow-hidden">
         <div class="p-4 border-b border-neutral-800">
           <h2 class="text-lg font-medium text-white">Transaction History</h2>
         </div>

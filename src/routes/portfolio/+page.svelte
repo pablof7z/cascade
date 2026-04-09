@@ -13,6 +13,7 @@
 
   // ─── State ────────────────────────────────────────────────────────────────────
 
+  let activeTab = $state<'open' | 'settled'>('open')
   let positions = $state<Position[]>([])
   let markets = $state<Map<string, MarketEntry>>(new Map())
   let payoutEvents = $state<NDKEvent[]>([])
@@ -206,107 +207,119 @@
       </div>
     </div>
 
-    <!-- Active positions -->
-    {#if unsettledPositions.length > 0}
-      <section class="mb-8">
-        <h2 class="text-xs text-neutral-500 mb-3">
-          Active Positions ({unsettledPositions.length})
-        </h2>
+    <!-- Tabs -->
+    <div class="flex gap-1 border-b border-neutral-800 mb-6">
+      <button
+        class="{activeTab === 'open' ? '-mb-px border-b-2 border-white text-white' : 'text-neutral-500 hover:text-neutral-300'} px-4 py-2 text-sm font-medium"
+        onclick={() => activeTab = 'open'}>
+        Open ({unsettledPositions.length})
+      </button>
+      <button
+        class="{activeTab === 'settled' ? '-mb-px border-b-2 border-white text-white' : 'text-neutral-500 hover:text-neutral-300'} px-4 py-2 text-sm font-medium"
+        onclick={() => activeTab = 'settled'}>
+        Settled ({settledPositions.length})
+      </button>
+    </div>
+
+    <!-- Open positions -->
+    {#if activeTab === 'open'}
+      {#if unsettledPositions.length === 0}
+        <p class="text-sm text-neutral-500 py-8 text-center">No open positions</p>
+      {:else}
         <table class="w-full">
-            <thead>
-              <tr class="border-b border-neutral-800 text-xs text-neutral-500">
-                <th class="text-left px-4 py-2 font-medium">Market</th>
-                <th class="text-right px-4 py-2 font-medium">Direction</th>
-                <th class="text-right px-4 py-2 font-medium">Quantity</th>
-                <th class="text-right px-4 py-2 font-medium">Entry</th>
-                <th class="text-right px-4 py-2 font-medium">Current</th>
-                <th class="text-right px-4 py-2 font-medium">Value</th>
-                <th class="text-right px-4 py-2 font-medium">P&L</th>
-                <th class="px-4 py-2"></th>
+          <thead>
+            <tr class="border-b border-neutral-800 text-xs text-neutral-500">
+              <th class="text-left px-4 py-2 font-medium">Market</th>
+              <th class="text-right px-4 py-2 font-medium">Direction</th>
+              <th class="text-right px-4 py-2 font-medium">Quantity</th>
+              <th class="text-right px-4 py-2 font-medium">Entry</th>
+              <th class="text-right px-4 py-2 font-medium">Current</th>
+              <th class="text-right px-4 py-2 font-medium">Value</th>
+              <th class="text-right px-4 py-2 font-medium">P&L</th>
+              <th class="px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-800">
+            {#each unsettledPositions as pos (pos.id)}
+              <tr class="text-sm">
+                <td class="px-4 py-3">
+                  <a href="/mkt/{pos.marketId}" class="text-white hover:text-neutral-300">
+                    {pos.marketName}
+                  </a>
+                </td>
+                <td class="text-right px-4 py-3">
+                  <span class="font-mono {pos.direction === 'yes' ? 'text-emerald-400' : 'text-rose-400'}">
+                    {pos.direction === 'yes' ? 'Long' : 'Short'}
+                  </span>
+                </td>
+                <td class="text-right px-4 py-3 font-mono text-white">{formatSats(pos.quantity)}</td>
+                <td class="text-right px-4 py-3 font-mono text-neutral-400">{formatSats(pos.entryPrice)}</td>
+                <td class="text-right px-4 py-3 font-mono text-white">{formatSats(pos.currentPrice)}</td>
+                <td class="text-right px-4 py-3 font-mono text-white">{formatSats(pos.currentValue)}</td>
+                <td class="text-right px-4 py-3 font-mono {pos.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+                  {formatSats(pos.pnl)}
+                </td>
+                <td class="px-4 py-3 text-right">
+                  {#if pos.canRedeem}
+                    <button
+                      onclick={() => handleRedeem(pos)}
+                      class="text-xs font-medium text-white border border-neutral-700 px-3 py-1 hover:border-neutral-500 transition-colors"
+                    >
+                      Redeem
+                    </button>
+                  {:else}
+                    <span class="text-xs text-neutral-600">-</span>
+                  {/if}
+                </td>
               </tr>
-            </thead>
-            <tbody class="divide-y divide-neutral-800">
-              {#each unsettledPositions as pos (pos.id)}
-                <tr class="text-sm">
-                  <td class="px-4 py-3">
-                    <a href="/mkt/{pos.marketId}" class="text-white hover:text-neutral-300">
-                      {pos.marketName}
-                    </a>
-                  </td>
-                  <td class="text-right px-4 py-3">
-                    <span class="font-mono {pos.direction === 'yes' ? 'text-emerald-400' : 'text-rose-400'}">
-                      {pos.direction === 'yes' ? 'Long' : 'Short'}
-                    </span>
-                  </td>
-                  <td class="text-right px-4 py-3 font-mono text-white">{formatSats(pos.quantity)}</td>
-                  <td class="text-right px-4 py-3 font-mono text-neutral-400">{formatSats(pos.entryPrice)}</td>
-                  <td class="text-right px-4 py-3 font-mono text-white">{formatSats(pos.currentPrice)}</td>
-                  <td class="text-right px-4 py-3 font-mono text-white">{formatSats(pos.currentValue)}</td>
-                  <td class="text-right px-4 py-3 font-mono {pos.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
-                    {formatSats(pos.pnl)}
-                  </td>
-                  <td class="px-4 py-3 text-right">
-                    {#if pos.canRedeem}
-                      <button
-                        onclick={() => handleRedeem(pos)}
-                        class="text-xs font-medium text-white border border-neutral-700 px-3 py-1 hover:border-neutral-500 transition-colors"
-                      >
-                        Redeem
-                      </button>
-                    {:else}
-                      <span class="text-xs text-neutral-600">-</span>
-                    {/if}
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-      </section>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
     {/if}
 
     <!-- Settled positions -->
-    {#if settledPositions.length > 0}
-      <section>
-        <h2 class="text-xs text-neutral-500 mb-3">
-          Settled ({settledPositions.length})
-        </h2>
+    {#if activeTab === 'settled'}
+      {#if settledPositions.length === 0}
+        <p class="text-sm text-neutral-500 py-8 text-center">No settled positions</p>
+      {:else}
         <table class="w-full">
-            <thead>
-              <tr class="border-b border-neutral-800 text-xs text-neutral-500">
-                <th class="text-left px-4 py-2 font-medium">Market</th>
-                <th class="text-right px-4 py-2 font-medium">Direction</th>
-                <th class="text-right px-4 py-2 font-medium">Quantity</th>
-                <th class="text-right px-4 py-2 font-medium">Entry</th>
-                <th class="text-right px-4 py-2 font-medium">Final</th>
-                <th class="text-right px-4 py-2 font-medium">P&L</th>
-                <th class="text-right px-4 py-2 font-medium">Status</th>
+          <thead>
+            <tr class="border-b border-neutral-800 text-xs text-neutral-500">
+              <th class="text-left px-4 py-2 font-medium">Market</th>
+              <th class="text-right px-4 py-2 font-medium">Direction</th>
+              <th class="text-right px-4 py-2 font-medium">Quantity</th>
+              <th class="text-right px-4 py-2 font-medium">Entry</th>
+              <th class="text-right px-4 py-2 font-medium">Final</th>
+              <th class="text-right px-4 py-2 font-medium">P&L</th>
+              <th class="text-right px-4 py-2 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-800">
+            {#each settledPositions as pos (pos.id)}
+              <tr class="text-sm opacity-60">
+                <td class="px-4 py-3 text-neutral-400">{pos.marketName}</td>
+                <td class="text-right px-4 py-3">
+                  <span class="font-mono {pos.direction === 'yes' ? 'text-emerald-400' : 'text-rose-400'}">
+                    {pos.direction === 'yes' ? 'Long' : 'Short'}
+                  </span>
+                </td>
+                <td class="text-right px-4 py-3 font-mono text-neutral-400">{formatSats(pos.quantity)}</td>
+                <td class="text-right px-4 py-3 font-mono text-neutral-400">{formatSats(pos.entryPrice)}</td>
+                <td class="text-right px-4 py-3 font-mono text-white">{formatSats(pos.currentPrice)}</td>
+                <td class="text-right px-4 py-3 font-mono {pos.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+                  {formatSats(pos.pnl)}
+                </td>
+                <td class="text-right px-4 py-3">
+                  <span class="text-xs text-emerald-400">
+                    {pos.isWon ? 'Won' : 'Lost'}
+                  </span>
+                </td>
               </tr>
-            </thead>
-            <tbody class="divide-y divide-neutral-800">
-              {#each settledPositions as pos (pos.id)}
-                <tr class="text-sm opacity-60">
-                  <td class="px-4 py-3 text-neutral-400">{pos.marketName}</td>
-                  <td class="text-right px-4 py-3">
-                    <span class="font-mono {pos.direction === 'yes' ? 'text-emerald-400' : 'text-rose-400'}">
-                      {pos.direction === 'yes' ? 'Long' : 'Short'}
-                    </span>
-                  </td>
-                  <td class="text-right px-4 py-3 font-mono text-neutral-400">{formatSats(pos.quantity)}</td>
-                  <td class="text-right px-4 py-3 font-mono text-neutral-400">{formatSats(pos.entryPrice)}</td>
-                  <td class="text-right px-4 py-3 font-mono text-white">{formatSats(pos.currentPrice)}</td>
-                  <td class="text-right px-4 py-3 font-mono {pos.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
-                    {formatSats(pos.pnl)}
-                  </td>
-                  <td class="text-right px-4 py-3">
-                    <span class="text-xs text-emerald-400">
-                      {pos.isWon ? 'Won' : 'Lost'}
-                    </span>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-      </section>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
     {/if}
   {/if}
 </div>

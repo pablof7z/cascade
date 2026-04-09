@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { nostrStore, reconnect } from '$lib/stores/nostr';
+  import NavHeader from '$lib/components/NavHeader.svelte';
   import { onMount } from 'svelte';
 
   // Subscribe to Nostr store for reactive auth state
@@ -40,6 +41,7 @@
   <title>Welcome — Cascade</title>
 </svelte:head>
 
+<NavHeader />
 <main class="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-6">
   <div class="max-w-md w-full text-center space-y-8">
     <div class="space-y-2">

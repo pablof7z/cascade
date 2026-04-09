@@ -530,16 +530,7 @@
               <span class="text-5xl font-black text-emerald-500 tabular-nums">
                 {Math.round(entry.prob * 100)}¢
               </span>
-              <svg width="80" height="24" class="inline-block {entry.prob > 0.4 ? 'text-emerald-500' : 'text-rose-500'}">
-                <polyline
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  points="0,20 20,16 40,12 60,14 80,8"
-                />
-              </svg>
+
             </div>
             <div class="flex gap-6 text-sm text-neutral-500">
               <span>{entry.volume} vol</span>
@@ -565,16 +556,7 @@
               </div>
               <div class="flex items-center gap-4 shrink-0">
                 <span class="text-xs text-neutral-600">{entry.category}</span>
-                <svg width="48" height="14" class="inline-block {entry.prob > 0.5 ? 'text-emerald-500' : 'text-rose-500'}">
-                  <polyline
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    points="0,10 16,8 32,6 48,7"
-                  />
-                </svg>
+
                 <span class="text-sm font-mono font-bold text-white w-12 text-right tabular-nums">
                   {Math.round(entry.prob * 100)}¢
                 </span>
@@ -651,9 +633,8 @@
       <div class="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)] lg:gap-12">
         <!-- Market list -->
         <div>
-          <div class="grid grid-cols-[minmax(0,1.4fr)_88px_76px_72px_88px] gap-3 pb-3 text-[10px] uppercase tracking-[0.18em] text-neutral-600 border-b border-neutral-800/40">
+          <div class="grid grid-cols-[minmax(0,1.4fr)_76px_72px_88px] gap-3 pb-3 text-[10px] uppercase tracking-[0.18em] text-neutral-600 border-b border-neutral-800/40">
             <div>Market</div>
-            <div class="text-right">Trend</div>
             <div class="text-right">Yes</div>
             <div class="text-right">Spread</div>
             <div class="text-right hidden sm:block">Volume</div>
@@ -662,23 +643,11 @@
           {#each disputedMarkets as entry}
             <a
               href="/mkt/{entry.slug}--{entry.pubkeyPrefix}"
-              class="grid grid-cols-[minmax(0,1.4fr)_88px_76px_72px_88px] gap-3 py-3 border-b border-neutral-800/20 last:border-0 cursor-pointer hover:bg-neutral-900/30 -mx-2 px-2 transition-colors items-center"
+              class="grid grid-cols-[minmax(0,1.4fr)_76px_72px_88px] gap-3 py-3 border-b border-neutral-800/20 last:border-0 cursor-pointer hover:bg-neutral-900/30 -mx-2 px-2 transition-colors items-center"
             >
               <div class="min-w-0">
                 <span class="text-sm font-medium text-white truncate block">{entry.title}</span>
                 <span class="text-[10px] text-neutral-600 uppercase tracking-wider">{entry.category}</span>
-              </div>
-              <div class="text-right">
-                <svg width="40" height="12" class="inline-block {entry.prob > 0.5 ? 'text-emerald-500' : 'text-rose-500'}">
-                  <polyline
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    points="0,8 20,6 40,4"
-                  />
-                </svg>
               </div>
               <div class="text-right font-mono font-bold text-white tabular-nums">
                 {Math.round(entry.prob * 100)}¢

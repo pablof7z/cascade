@@ -45,10 +45,8 @@
   let trades = $state<TradeItem[]>([]);
   let resolutions = $state<ResolutionItem[]>([]);
   let marketsMap = $state<Map<string, string>>(new Map());
-  let loading = $state(true);
   let error = $state<string | null>(null);
   let marketsError = $state<string | null>(null);
-  let retryKey = $state(0);
 
   // Cache for pubkey -> name lookups
   const nameCache = new Map<string, string>();
@@ -243,9 +241,7 @@
     }
 
     // Load all data
-    Promise.all([loadNewMarkets(), loadResolutions()]).then(() => {
-      if (!cancelled) loading = false;
-    });
+    Promise.all([loadNewMarkets(), loadResolutions()]);
 
     // Load trades after markets map is ready
     loadTrades().catch(() => {});
@@ -256,8 +252,7 @@
   });
 
   function handleRetry() {
-    retryKey++;
-    loading = true;
+    marketsError = null;
   }
 
   function navigateToMarket(marketId: string) {
@@ -284,15 +279,15 @@
     {/each}
   </nav>
 
-  {#if !loading && error}
+  {#if error}
     <p class="text-neutral-500 text-sm py-8 text-center">{error}</p>
   {/if}
 
-  {#if !loading && !error && showEmptyState}
+  {#if !error && showEmptyState}
     <p class="text-neutral-500 text-sm py-8 text-center">{emptyStateMessage}</p>
   {/if}
 
-  {#if !loading && !error && activeFilter === 'New Markets'}
+  {#if !error && activeFilter === 'New Markets'}
     {#if marketsError}
       <div class="flex flex-col items-center justify-center py-12 gap-4">
         <p class="text-rose-400 text-sm">{marketsError}</p>
@@ -333,7 +328,7 @@
     {/if}
   {/if}
 
-  {#if !loading && !error && activeFilter === 'Trades'}
+  {#if !error && activeFilter === 'Trades'}
     {#if trades.length === 0}
       <p class="text-neutral-500 text-sm py-8 text-center">No trade activity yet</p>
     {:else}
@@ -366,7 +361,7 @@
     {/if}
   {/if}
 
-  {#if !loading && !error && activeFilter === 'Resolutions'}
+  {#if !error && activeFilter === 'Resolutions'}
     {#if resolutions.length === 0}
       <p class="text-neutral-500 text-sm py-8 text-center">No resolutions yet</p>
     {:else}
@@ -396,7 +391,7 @@
     {/if}
   {/if}
 
-  {#if !loading && !error && activeFilter === 'All'}
+  {#if !error && activeFilter === 'All'}
     {#if items.length === 0 && trades.length === 0 && resolutions.length === 0}
       <p class="text-neutral-500 text-sm py-8 text-center">No activity found</p>
     {:else}

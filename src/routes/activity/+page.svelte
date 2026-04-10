@@ -33,7 +33,7 @@
   let activeFilter = $state<ActivityFilter>('All');
   let items = $state<ActivityItem[]>([]);
   let trades = $state<TradeItem[]>([]);
-  let marketsMap = $state<Map<string, string>>(new Map());
+  let marketsMap = $state<Map<string, { title: string; slugAndPrefix: string }>>(new Map());
   let error = $state<string | null>(null);
   let marketsError = $state<string | null>(null);
 
@@ -91,11 +91,14 @@
         const events = await fetchAllMarketsTransport(500);
         if (cancelled) return;
 
-        const map = new Map<string, string>();
+        const map = new Map<string, { title: string; slugAndPrefix: string }>();
         for (const event of events) {
           const result = parseMarketEvent(event);
           if (result.ok && result.market) {
-            map.set(result.market.slug, result.market.title);
+            map.set(result.market.slug, {
+              title: result.market.title,
+              slugAndPrefix: `${result.market.slug}--${result.market.creatorPubkey.slice(0, 12)}`,
+            });
           }
         }
         if (!cancelled) {
@@ -158,7 +161,7 @@
 
         const tradeItems: TradeItem[] = [];
         for (const position of positions) {
-          const marketTitle = marketsMap.get(position.marketId) || position.marketId;
+          const marketTitle = marketsMap.get(position.marketId)?.title || position.marketId;
           const ownerPubkey = position.ownerPubkey || '';
 
           tradeItems.push({
@@ -195,7 +198,8 @@
   }
 
   function navigateToMarket(marketId: string) {
-    goto(`/mkt/${marketId}`);
+    const entry = marketsMap.get(marketId);
+    goto(entry ? `/mkt/${entry.slugAndPrefix}` : `/mkt/${marketId}`);
   }
 </script>
 

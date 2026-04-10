@@ -162,6 +162,12 @@
     const sign = pct >= 0 ? '+' : ''
     return `${sign}${pct.toFixed(1)}%`
   }
+
+  function marketLink(marketId: string): string {
+    const entry = markets.get(marketId)
+    if (!entry) return `/mkt/${marketId}`
+    return `/mkt/${entry.market.slug}--${entry.market.creatorPubkey.slice(0, 12)}`
+  }
 </script>
 
 <svelte:head>
@@ -241,7 +247,7 @@
             {#each openPositions as pos (pos.id)}
               <tr class="text-sm">
                 <td class="px-4 py-3">
-                  <a href="/mkt/{pos.marketId}" class="text-white hover:text-neutral-300">
+                  <a href={marketLink(pos.marketId)} class="text-white hover:text-neutral-300">
                     {pos.marketName}
                   </a>
                 </td>

@@ -31,9 +31,10 @@
   // Enrich positions with market data
   let enrichedPositions = $derived(
     positions.map(pos => {
-      const market = markets.get(pos.marketId)
-      const longPrice = market ? priceLong(market) : 0
-      const shortPrice = market ? priceShort(market) : 0
+      const entry = markets.get(pos.marketId)
+      const m = entry?.market
+      const longPrice = m ? priceLong(m.qLong, m.qShort, m.b) : 0
+      const shortPrice = m ? priceShort(m.qLong, m.qShort, m.b) : 0
       const currentPrice = pos.direction === 'yes' ? longPrice : shortPrice
       const entryValue = pos.quantity * pos.entryPrice
       const currentValue = pos.quantity * currentPrice
@@ -42,7 +43,7 @@
 
       return {
         ...pos,
-        marketName: market?.title ?? 'Unknown Market',
+        marketName: m?.title ?? 'Unknown Market',
         currentPrice,
         entryValue,
         currentValue,
@@ -80,8 +81,10 @@
     positions = loadPositions()
 
     // Load markets for enrichment
-    const marketsData = await loadMarkets()
-    markets = new Map(marketsData.map(m => [m.market.slug, m]))
+    const marketsData = loadMarkets()
+    if (marketsData) {
+      markets = new Map(Object.values(marketsData).map(entry => [entry.market.slug, entry]))
+    }
 
     myPubkey = getPubkey()
     if (myPubkey) {

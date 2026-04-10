@@ -274,9 +274,10 @@
 {:else}
   <div class="min-h-screen bg-neutral-950">
     <NavHeader />
+
     <!-- Header -->
     <div class="border-b border-neutral-800">
-      <div class="max-w-4xl mx-auto px-4 py-4">
+      <div class="max-w-6xl mx-auto px-4 py-4">
         <div class="flex items-center justify-between">
           <div class="flex-1">
             <h1 class="text-xl font-semibold text-white truncate">{market.title}</h1>
@@ -307,45 +308,16 @@
         </div>
       </div>
     </div>
-    
-    <!-- Tabs -->
-    <div class="border-b border-neutral-800">
-      <div class="max-w-4xl mx-auto px-4">
-        <nav class="flex gap-1">
-          {#each tabs as tab}
-            <button
-              onclick={() => setTab(tab.key)}
-              class="px-4 py-3 text-sm font-medium transition-colors relative"
-              class:text-white={activeTab === tab.key}
-              class:text-neutral-500={activeTab !== tab.key}
-              class:hover:text-neutral-300={activeTab !== tab.key}
-            >
-              {tab.label}
-              {#if activeTab === tab.key}
-                <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-white"></span>
-              {/if}
-            </button>
-          {/each}
-        </nav>
-      </div>
-    </div>
-    
-    <!-- Content -->
-    <div class="max-w-4xl mx-auto px-4 py-6">
-      {#if activeTab === 'overview'}
-        <!-- Probability -->
-        <div class="py-6 border-b border-neutral-800">
-          <div class="flex items-end gap-3">
+
+    <!-- Mobile trade box (visible below lg breakpoint) -->
+    <div class="lg:hidden border-b border-neutral-800">
+      <div class="max-w-6xl mx-auto px-4 py-4">
+        <div class="border border-neutral-800 p-4">
+          <div class="mb-4 pb-4 border-b border-neutral-800">
             <span class="text-4xl font-mono font-bold text-white">{Math.round(probability * 100)}%</span>
-            <span class="text-sm text-neutral-500 mb-1">YES probability</span>
+            <span class="text-sm text-neutral-500 ml-2">YES</span>
+            <div class="text-sm text-neutral-500 mt-1">{Math.round((1 - probability) * 100)}% NO · {tiltText}</div>
           </div>
-          <div class="text-sm text-neutral-500 mt-1">{Math.round((1 - probability) * 100)}% NO</div>
-          <p class="text-xs text-neutral-400 mt-2">{tiltText}</p>
-        </div>
-        
-        <!-- Trade -->
-        <div class="py-6 border-b border-neutral-800">
-          <h2 class="text-sm font-medium text-neutral-400 mb-4">Trade</h2>
           <p class="text-xs text-neutral-500 mb-2">Balance: {balance} sats</p>
           <div class="flex gap-2 mb-4">
             <button
@@ -371,11 +343,10 @@
               NO
             </button>
           </div>
-          
           <div class="mb-4">
-            <label for="amount" class="block text-xs text-neutral-500 mb-2">Amount (sats)</label>
+            <label for="amount-mobile" class="block text-xs text-neutral-500 mb-2">Amount (sats)</label>
             <input
-              id="amount"
+              id="amount-mobile"
               type="number"
               bind:value={amount}
               class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 text-white text-sm focus:outline-none focus:border-neutral-600"
@@ -383,7 +354,6 @@
               step="10"
             />
           </div>
-          
           <div class="space-y-1.5 text-sm mb-4">
             <div class="flex items-center justify-between">
               <span class="text-neutral-500">You receive</span>
@@ -416,7 +386,6 @@
               </span>
             </div>
           </div>
-          
           {#if tradeError}
             <div class="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-sm text-rose-400">
               {#if tradeError.includes('Insufficient balance')}
@@ -426,7 +395,6 @@
               {/if}
             </div>
           {/if}
-          
           <button
             onclick={handleTrade}
             disabled={tradeLoading || amount <= 0 || !isLoggedIn || !hasBalance}
@@ -444,11 +412,9 @@
               Buy {selectedSide === 'LONG' ? 'YES' : 'NO'} Shares · {amount} sats
             {/if}
           </button>
-
           {#if tradeSuccess}
             <p class="text-sm text-emerald-400 mt-2">Trade confirmed. <a href="/portfolio" class="text-white underline">View portfolio →</a></p>
           {/if}
-
           {#if !isLoggedIn}
             <p class="mt-3 text-sm text-neutral-400">
               <a href="/join" class="text-white underline">Sign in</a> to trade
@@ -459,125 +425,290 @@
             </p>
           {/if}
         </div>
-        
-        <!-- Recent Fills -->
-        {#if recentFills.length > 0}
-          {@const parsedFills = recentFills.map(parseFillData).filter((f): f is FillData => f !== null)}
-          {#if parsedFills.length > 0}
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-b border-neutral-800">
+      <div class="max-w-6xl mx-auto px-4">
+        <nav class="flex gap-1">
+          {#each tabs as tab}
+            <button
+              onclick={() => setTab(tab.key)}
+              class="px-4 py-3 text-sm font-medium transition-colors relative"
+              class:text-white={activeTab === tab.key}
+              class:text-neutral-500={activeTab !== tab.key}
+              class:hover:text-neutral-300={activeTab !== tab.key}
+            >
+              {tab.label}
+              {#if activeTab === tab.key}
+                <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-white"></span>
+              {/if}
+            </button>
+          {/each}
+        </nav>
+      </div>
+    </div>
+
+    <!-- Two-column content layout -->
+    <div class="max-w-6xl mx-auto px-4 py-6">
+      <div class="lg:flex gap-8 items-start">
+
+        <!-- Left: main content -->
+        <div class="flex-1 min-w-0">
+          {#if activeTab === 'overview'}
+            <!-- Probability -->
             <div class="py-6 border-b border-neutral-800">
-              <h2 class="text-sm font-medium text-neutral-400 mb-3">Recent Fills</h2>
-              <div class="space-y-1">
-                {#each parsedFills as fill}
-                  <div class="flex items-center gap-3 text-xs font-mono">
-                    <span class="px-1.5 py-0.5 rounded text-xs font-medium {fill.side === 'YES' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-rose-900/50 text-rose-400'}">{fill.side}</span>
-                    <span class="text-neutral-300">{fill.sats.toLocaleString()} sats</span>
-                    <span class="text-neutral-600 ml-auto">{formatTradeTimestamp(fill.ts)}</span>
-                  </div>
-                {/each}
+              <div class="flex items-end gap-3">
+                <span class="text-4xl font-mono font-bold text-white">{Math.round(probability * 100)}%</span>
+                <span class="text-sm text-neutral-500 mb-1">YES probability</span>
               </div>
+              <div class="text-sm text-neutral-500 mt-1">{Math.round((1 - probability) * 100)}% NO</div>
+              <p class="text-xs text-neutral-400 mt-2">{tiltText}</p>
             </div>
-          {/if}
-        {/if}
 
-        <!-- Description -->
-        <div class="py-6">
-          <h2 class="text-sm font-medium text-neutral-400 mb-4">Description</h2>
-          <p class="text-neutral-300 leading-relaxed">
-            {market.description || 'No description provided.'}
-          </p>
-        </div>
-
-        <!-- Largest Positioned Accounts -->
-        {#if accountPositions.length > 0}
-          <div class="py-6 border-t border-neutral-800">
-            <h2 class="text-sm font-medium text-neutral-400 mb-3">Positions</h2>
-            <div class="space-y-1.5">
-              {#each accountPositions as acct}
-                <div class="flex items-center gap-3 text-xs font-mono">
-                  <span class="text-neutral-500 w-20 shrink-0">{acct.pubkey.slice(0, 8)}…</span>
-                  {#if acct.long > 0}
-                    <span class="text-emerald-400">{acct.long.toLocaleString()} YES</span>
-                  {/if}
-                  {#if acct.short > 0}
-                    <span class="text-rose-400">{acct.short.toLocaleString()} NO</span>
-                  {/if}
+            <!-- Recent Fills -->
+            {#if recentFills.length > 0}
+              {@const parsedFills = recentFills.map(parseFillData).filter((f): f is FillData => f !== null)}
+              {#if parsedFills.length > 0}
+                <div class="py-6 border-b border-neutral-800">
+                  <h2 class="text-sm font-medium text-neutral-400 mb-3">Recent Fills</h2>
+                  <div class="space-y-1">
+                    {#each parsedFills as fill}
+                      <div class="flex items-center gap-3 text-xs font-mono">
+                        <span class="px-1.5 py-0.5 rounded text-xs font-medium {fill.side === 'YES' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-rose-900/50 text-rose-400'}">{fill.side}</span>
+                        <span class="text-neutral-300">{fill.sats.toLocaleString()} sats</span>
+                        <span class="text-neutral-600 ml-auto">{formatTradeTimestamp(fill.ts)}</span>
+                      </div>
+                    {/each}
+                  </div>
                 </div>
-              {/each}
+              {/if}
+            {/if}
+
+            <!-- Description -->
+            <div class="py-6">
+              <h2 class="text-sm font-medium text-neutral-400 mb-4">Description</h2>
+              <p class="text-neutral-300 leading-relaxed">
+                {market.description || 'No description provided.'}
+              </p>
             </div>
-          </div>
-        {/if}
-      {:else if activeTab === 'charts'}
-        <div class="py-4">
-          <PriceChart marketSlug={market.slug} />
-          {#if marketTrades.length > 0}
-            <div class="mt-6">
-              <h2 class="text-sm font-medium text-neutral-400 mb-3">Recent fills</h2>
+
+            <!-- Largest Positioned Accounts -->
+            {#if accountPositions.length > 0}
+              <div class="py-6 border-t border-neutral-800">
+                <h2 class="text-sm font-medium text-neutral-400 mb-3">Positions</h2>
+                <div class="space-y-1.5">
+                  {#each accountPositions as acct}
+                    <div class="flex items-center gap-3 text-xs font-mono">
+                      <span class="text-neutral-500 w-20 shrink-0">{acct.pubkey.slice(0, 8)}…</span>
+                      {#if acct.long > 0}
+                        <span class="text-emerald-400">{acct.long.toLocaleString()} YES</span>
+                      {/if}
+                      {#if acct.short > 0}
+                        <span class="text-rose-400">{acct.short.toLocaleString()} NO</span>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+          {:else if activeTab === 'charts'}
+            <div class="py-4">
+              <PriceChart marketSlug={market.slug} />
+              {#if marketTrades.length > 0}
+                <div class="mt-6">
+                  <h2 class="text-sm font-medium text-neutral-400 mb-3">Recent fills</h2>
+                  <div class="divide-y divide-neutral-800">
+                    {#each marketTrades.slice(0, 20) as trade (trade.id)}
+                      <div class="py-2 flex items-center gap-3 font-mono text-sm">
+                        <span class="text-neutral-600 w-16 shrink-0">{formatTradeTimestamp(trade.timestamp)}</span>
+                        <span class="text-neutral-500 w-28 shrink-0 truncate">{abbreviatePubkey(trade.ownerPubkey ?? '')}</span>
+                        <span class={trade.direction === 'yes' ? 'text-emerald-400 w-20 shrink-0' : 'text-rose-400 w-20 shrink-0'}>
+                          {trade.direction === 'yes' ? 'YES' : 'NO'}
+                        </span>
+                        <span class="text-neutral-300">· {Math.round(trade.costBasis).toLocaleString()} sats</span>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+            </div>
+          {:else if activeTab === 'discussion'}
+            <MarketDiscussionList market={market} />
+          {:else if activeTab === 'positions'}
+            {#if accountPositions.length === 0}
+              <div class="text-center py-12">
+                <p class="text-neutral-500 text-sm">No positions yet</p>
+              </div>
+            {:else}
+              <div class="py-4">
+                <div class="border border-neutral-800">
+                  <table class="w-full">
+                    <thead>
+                      <tr class="border-b border-neutral-800 text-xs text-neutral-500">
+                        <th class="text-left px-4 py-2 font-medium">Account</th>
+                        <th class="text-right px-4 py-2 font-medium">YES</th>
+                        <th class="text-right px-4 py-2 font-medium">NO</th>
+                        <th class="text-right px-4 py-2 font-medium">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-neutral-800">
+                      {#each accountPositions as acct}
+                        <tr class="text-sm font-mono">
+                          <td class="px-4 py-2 text-neutral-400">{abbreviatePubkey(acct.pubkey)}</td>
+                          <td class="text-right px-4 py-2 {acct.long > 0 ? 'text-emerald-400' : 'text-neutral-600'}">{acct.long > 0 ? acct.long.toLocaleString() : '—'}</td>
+                          <td class="text-right px-4 py-2 {acct.short > 0 ? 'text-rose-400' : 'text-neutral-600'}">{acct.short > 0 ? acct.short.toLocaleString() : '—'}</td>
+                          <td class="text-right px-4 py-2 text-neutral-300">{acct.total.toLocaleString()}</td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            {/if}
+          {:else if activeTab === 'activity'}
+            {#if marketTrades.length === 0}
+              <p class="text-neutral-500 text-sm py-8">No activity yet</p>
+            {:else}
               <div class="divide-y divide-neutral-800">
-                {#each marketTrades.slice(0, 20) as trade (trade.id)}
+                {#each marketTrades as trade (trade.id)}
                   <div class="py-2 flex items-center gap-3 font-mono text-sm">
                     <span class="text-neutral-600 w-16 shrink-0">{formatTradeTimestamp(trade.timestamp)}</span>
                     <span class="text-neutral-500 w-28 shrink-0 truncate">{abbreviatePubkey(trade.ownerPubkey ?? '')}</span>
                     <span class={trade.direction === 'yes' ? 'text-emerald-400 w-20 shrink-0' : 'text-rose-400 w-20 shrink-0'}>
-                      {trade.direction === 'yes' ? 'YES' : 'NO'}
+                      bought {trade.direction === 'yes' ? 'YES' : 'NO'}
                     </span>
                     <span class="text-neutral-300">· {Math.round(trade.costBasis).toLocaleString()} sats</span>
                   </div>
                 {/each}
               </div>
-            </div>
+            {/if}
           {/if}
         </div>
-      {:else if activeTab === 'discussion'}
-        <MarketDiscussionList market={market} />
-      {:else if activeTab === 'positions'}
-        {#if accountPositions.length === 0}
-          <div class="text-center py-12">
-            <p class="text-neutral-500 text-sm">No positions yet</p>
-          </div>
-        {:else}
-          <div class="py-4">
-            <div class="border border-neutral-800">
-              <table class="w-full">
-                <thead>
-                  <tr class="border-b border-neutral-800 text-xs text-neutral-500">
-                    <th class="text-left px-4 py-2 font-medium">Account</th>
-                    <th class="text-right px-4 py-2 font-medium">YES</th>
-                    <th class="text-right px-4 py-2 font-medium">NO</th>
-                    <th class="text-right px-4 py-2 font-medium">Total</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-neutral-800">
-                  {#each accountPositions as acct}
-                    <tr class="text-sm font-mono">
-                      <td class="px-4 py-2 text-neutral-400">{abbreviatePubkey(acct.pubkey)}</td>
-                      <td class="text-right px-4 py-2 {acct.long > 0 ? 'text-emerald-400' : 'text-neutral-600'}">{acct.long > 0 ? acct.long.toLocaleString() : '—'}</td>
-                      <td class="text-right px-4 py-2 {acct.short > 0 ? 'text-rose-400' : 'text-neutral-600'}">{acct.short > 0 ? acct.short.toLocaleString() : '—'}</td>
-                      <td class="text-right px-4 py-2 text-neutral-300">{acct.total.toLocaleString()}</td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        {/if}
-      {:else if activeTab === 'activity'}
-        {#if marketTrades.length === 0}
-          <p class="text-neutral-500 text-sm py-8">No activity yet</p>
-        {:else}
-          <div class="divide-y divide-neutral-800">
-            {#each marketTrades as trade (trade.id)}
-              <div class="py-2 flex items-center gap-3 font-mono text-sm">
-                <span class="text-neutral-600 w-16 shrink-0">{formatTradeTimestamp(trade.timestamp)}</span>
-                <span class="text-neutral-500 w-28 shrink-0 truncate">{abbreviatePubkey(trade.ownerPubkey ?? '')}</span>
-                <span class={trade.direction === 'yes' ? 'text-emerald-400 w-20 shrink-0' : 'text-rose-400 w-20 shrink-0'}>
-                  bought {trade.direction === 'yes' ? 'YES' : 'NO'}
-                </span>
-                <span class="text-neutral-300">· {Math.round(trade.costBasis).toLocaleString()} sats</span>
+
+        <!-- Right: sticky trade box (desktop only) -->
+        <div class="hidden lg:block w-80 shrink-0 sticky top-4">
+          <div class="border border-neutral-800 p-4">
+            <!-- Probability -->
+            <div class="mb-4 pb-4 border-b border-neutral-800">
+              <div class="flex items-baseline gap-2">
+                <span class="text-4xl font-mono font-bold text-white">{Math.round(probability * 100)}%</span>
+                <span class="text-sm text-neutral-500">YES</span>
               </div>
-            {/each}
+              <div class="text-sm text-neutral-500 mt-1">{Math.round((1 - probability) * 100)}% NO</div>
+            </div>
+            <!-- Trade -->
+            <p class="text-xs text-neutral-500 mb-2">Balance: {balance} sats</p>
+            <div class="flex gap-2 mb-4">
+              <button
+                onclick={() => selectedSide = 'LONG'}
+                class="flex-1 px-4 py-2 text-sm font-medium transition-colors border"
+                class:border-emerald-500={selectedSide === 'LONG'}
+                class:text-emerald-400={selectedSide === 'LONG'}
+                class:border-neutral-700={selectedSide !== 'LONG'}
+                class:text-neutral-500={selectedSide !== 'LONG'}
+                class:hover:text-neutral-300={selectedSide !== 'LONG'}
+              >
+                YES
+              </button>
+              <button
+                onclick={() => selectedSide = 'SHORT'}
+                class="flex-1 px-4 py-2 text-sm font-medium transition-colors border"
+                class:border-rose-500={selectedSide === 'SHORT'}
+                class:text-rose-400={selectedSide === 'SHORT'}
+                class:border-neutral-700={selectedSide !== 'SHORT'}
+                class:text-neutral-500={selectedSide !== 'SHORT'}
+                class:hover:text-neutral-300={selectedSide !== 'SHORT'}
+              >
+                NO
+              </button>
+            </div>
+            <div class="mb-4">
+              <label for="amount-desktop" class="block text-xs text-neutral-500 mb-2">Amount (sats)</label>
+              <input
+                id="amount-desktop"
+                type="number"
+                bind:value={amount}
+                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 text-white text-sm focus:outline-none focus:border-neutral-600"
+                min="10"
+                step="10"
+              />
+            </div>
+            <div class="space-y-1.5 text-sm mb-4">
+              <div class="flex items-center justify-between">
+                <span class="text-neutral-500">You receive</span>
+                <span class="font-mono font-bold {selectedSide === 'LONG' ? 'text-emerald-400' : 'text-rose-400'}">
+                  {#if tradeEstimate}
+                    ~{Math.floor(tradeEstimate.tokens).toLocaleString()} shares
+                  {:else}
+                    —
+                  {/if}
+                </span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-neutral-500">Avg price</span>
+                <span class="font-mono text-neutral-300">
+                  {#if tradeEstimate}
+                    {(tradeEstimate.avgPrice * 100).toFixed(1)}¢
+                  {:else}
+                    {Math.round((selectedSide === 'LONG' ? yesPrice : noPrice) * 100)}¢
+                  {/if}
+                </span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-neutral-500">Price impact</span>
+                <span class="font-mono text-neutral-400">
+                  {#if tradeEstimate}
+                    {Math.round(tradeEstimate.startPrice * 100)}¢ → {Math.round(tradeEstimate.endPrice * 100)}¢
+                  {:else}
+                    —
+                  {/if}
+                </span>
+              </div>
+            </div>
+            {#if tradeError}
+              <div class="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 text-sm text-rose-400">
+                {#if tradeError.includes('Insufficient balance')}
+                  {tradeError} <a href="/wallet" class="text-white underline">Deposit sats →</a>
+                {:else}
+                  {tradeError}
+                {/if}
+              </div>
+            {/if}
+            <button
+              onclick={handleTrade}
+              disabled={tradeLoading || amount <= 0 || !isLoggedIn || !hasBalance}
+              class="w-full py-3 text-sm font-medium transition-colors border disabled:border-neutral-700 disabled:text-neutral-500"
+              class:border-emerald-600={selectedSide === 'LONG' && !tradeLoading && isLoggedIn}
+              class:text-emerald-400={selectedSide === 'LONG' && !tradeLoading && isLoggedIn}
+              class:hover:border-emerald-500={selectedSide === 'LONG' && !tradeLoading && isLoggedIn}
+              class:border-rose-600={selectedSide === 'SHORT' && !tradeLoading && isLoggedIn}
+              class:text-rose-400={selectedSide === 'SHORT' && !tradeLoading && isLoggedIn}
+              class:hover:border-rose-500={selectedSide === 'SHORT' && !tradeLoading && isLoggedIn}
+            >
+              {#if tradeLoading}
+                Processing...
+              {:else}
+                Buy {selectedSide === 'LONG' ? 'YES' : 'NO'} Shares · {amount} sats
+              {/if}
+            </button>
+            {#if tradeSuccess}
+              <p class="text-sm text-emerald-400 mt-2">Trade confirmed. <a href="/portfolio" class="text-white underline">View portfolio →</a></p>
+            {/if}
+            {#if !isLoggedIn}
+              <p class="mt-3 text-sm text-neutral-400">
+                <a href="/join" class="text-white underline">Sign in</a> to trade
+              </p>
+            {:else if !hasBalance}
+              <p class="text-xs text-neutral-400 mt-2">
+                You need sats to trade. <a href="/wallet" class="text-neutral-300 hover:text-white">Fund your wallet →</a>
+              </p>
+            {/if}
           </div>
-        {/if}
-      {/if}
+        </div>
+
+      </div>
     </div>
   </div>
 {/if}

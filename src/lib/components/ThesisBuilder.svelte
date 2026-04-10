@@ -245,7 +245,7 @@
                 <div class="flex-1 min-w-0">
                   <p class="text-sm text-white truncate">{mod.question}</p>
                   <p class="text-xs text-neutral-500 mt-1">
-                    {mod.probability}% — {mod.direction}
+                    {mod.probability}% — {mod.direction === 'YES' ? 'LONG' : 'SHORT'}
                   </p>
                 </div>
                 <button

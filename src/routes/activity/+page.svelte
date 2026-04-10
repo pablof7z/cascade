@@ -283,7 +283,7 @@
               <div class="text-neutral-300 text-sm mb-2">
                 Opened
                 <span class={trade.direction === 'yes' ? 'text-emerald-400' : 'text-rose-400'}>
-                  {trade.direction.toUpperCase()}
+                  {trade.direction === 'yes' ? 'LONG' : 'SHORT'}
                 </span>
                 position
               </div>
@@ -321,7 +321,7 @@
                 {#if 'traderName' in item}
                   Opened
                   <span class={item.direction === 'yes' ? 'text-emerald-400' : 'text-rose-400'}>
-                    {item.direction.toUpperCase()}
+                    {item.direction === 'yes' ? 'LONG' : 'SHORT'}
                   </span>
                   position
                 {:else}

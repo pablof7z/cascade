@@ -312,7 +312,6 @@
     <!-- Mobile trade box (visible below lg breakpoint) -->
     <div class="lg:hidden border-b border-neutral-800">
       <div class="max-w-6xl mx-auto px-4 py-4">
-        <div class="border border-neutral-800 p-4">
           <div class="mb-4 pb-4 border-b border-neutral-800">
             <span class="text-4xl font-mono font-bold text-white">{Math.round(probability * 100)}%</span>
             <span class="text-sm text-neutral-500 ml-2">YES</span>
@@ -424,29 +423,6 @@
               You need sats to trade. <a href="/wallet" class="text-neutral-300 hover:text-white">Fund your wallet →</a>
             </p>
           {/if}
-        </div>
-      </div>
-    </div>
-
-    <!-- Tabs -->
-    <div class="border-b border-neutral-800">
-      <div class="max-w-6xl mx-auto px-4">
-        <nav class="flex gap-1">
-          {#each tabs as tab}
-            <button
-              onclick={() => setTab(tab.key)}
-              class="px-4 py-3 text-sm font-medium transition-colors relative"
-              class:text-white={activeTab === tab.key}
-              class:text-neutral-500={activeTab !== tab.key}
-              class:hover:text-neutral-300={activeTab !== tab.key}
-            >
-              {tab.label}
-              {#if activeTab === tab.key}
-                <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-white"></span>
-              {/if}
-            </button>
-          {/each}
-        </nav>
       </div>
     </div>
 
@@ -456,6 +432,25 @@
 
         <!-- Left: main content -->
         <div class="flex-1 min-w-0">
+
+          <!-- Tab nav -->
+          <nav class="flex gap-1 border-b border-neutral-800 mb-6">
+            {#each tabs as tab}
+              <button
+                onclick={() => setTab(tab.key)}
+                class="px-4 py-3 text-sm font-medium transition-colors relative"
+                class:text-white={activeTab === tab.key}
+                class:text-neutral-500={activeTab !== tab.key}
+                class:hover:text-neutral-300={activeTab !== tab.key}
+              >
+                {tab.label}
+                {#if activeTab === tab.key}
+                  <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-white"></span>
+                {/if}
+              </button>
+            {/each}
+          </nav>
+
           {#if activeTab === 'overview'}
             <!-- Probability -->
             <div class="py-6 border-b border-neutral-800">
@@ -476,7 +471,7 @@
                   <div class="space-y-1">
                     {#each parsedFills as fill}
                       <div class="flex items-center gap-3 text-xs font-mono">
-                        <span class="px-1.5 py-0.5 rounded text-xs font-medium {fill.side === 'YES' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-rose-900/50 text-rose-400'}">{fill.side}</span>
+                        <span class="px-1.5 py-0.5 text-xs font-medium {fill.side === 'YES' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-rose-900/50 text-rose-400'}">{fill.side}</span>
                         <span class="text-neutral-300">{fill.sats.toLocaleString()} sats</span>
                         <span class="text-neutral-600 ml-auto">{formatTradeTimestamp(fill.ts)}</span>
                       </div>
@@ -588,7 +583,7 @@
         </div>
 
         <!-- Right: sticky trade box (desktop only) -->
-        <div class="hidden lg:block w-80 shrink-0 sticky top-4">
+        <div class="hidden lg:block w-80 shrink-0 sticky top-20">
           <div class="border border-neutral-800 p-4">
             <!-- Probability -->
             <div class="mb-4 pb-4 border-b border-neutral-800">

@@ -22,7 +22,6 @@
     timeAgo: string
     spread: number
     comments: number
-    change: string
     mcap: string
   }
 
@@ -122,7 +121,6 @@
       timeAgo: formatTimeAgo(market.createdAt),
       spread: calculateSpread(prob),
       comments: 0,
-      change: '--',
       mcap: formatSats(mcap),
     }
   }
@@ -694,7 +692,7 @@
       <div class="grid grid-cols-12 gap-2 px-3 pb-2 text-xs text-neutral-600 font-medium border-b border-neutral-700/50">
         <div class="col-span-5 sm:col-span-4">Market</div>
         <div class="col-span-2 text-right">Price</div>
-        <div class="col-span-2 text-right hidden sm:block">Chg</div>
+        <div class="col-span-2 text-right hidden sm:block">Traders</div>
         <div class="col-span-2 text-right hidden md:block">Vol</div>
         <div class="col-span-3 sm:col-span-2 text-right">Mkt Cap</div>
       </div>
@@ -713,7 +711,7 @@
             {Math.round(row.prob * 100)}¢
           </div>
           <div class="col-span-2 text-right font-mono tabular-nums hidden sm:block text-neutral-500">
-            {row.change}
+            {row.traders}
           </div>
           <div class="col-span-2 text-right font-mono text-neutral-500 tabular-nums hidden md:block">
             {row.volume}

@@ -142,8 +142,11 @@
       .slice(0, 6)
   )
 
+  let trendingSet = $derived(new Set(trendingMarkets.map(m => `${m.slug}--${m.pubkeyPrefix}`)))
+
   let lowVolumeMarkets = $derived(
     [...activeMarkets]
+      .filter(m => !trendingSet.has(`${m.slug}--${m.pubkeyPrefix}`))
       .sort((a, b) => a.traders - b.traders)
       .slice(0, 8)
   )

@@ -419,7 +419,7 @@
                   <span class="text-6xl font-black text-emerald-500 tabular-nums">
                     {Math.round(featuredMarket.prob * 100)}¢
                   </span>
-                  <span class="text-lg text-emerald-500/70">YES</span>
+                  <span class="text-lg text-emerald-500/70">LONG</span>
                 </div>
                 <div class="flex gap-8 text-sm text-neutral-500">
                   <span>{featuredMarket.volume} vol</span>
@@ -604,7 +604,7 @@
           Mint LONG or SHORT tokens. The market prices your thesis in real-time as new information arrives.
         </p>
         <p class="text-xs text-neutral-600 font-mono">
-          e.g. 73¢ YES — market thinks you're wrong, prove it.
+          e.g. 73¢ LONG — market thinks you're wrong, prove it.
         </p>
       </div>
     </div>

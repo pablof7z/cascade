@@ -418,7 +418,7 @@
             <div class="text-xs text-neutral-500">Current probability</div>
             <div class="flex items-baseline gap-2">
               <span class="text-2xl font-bold text-emerald-500">{Math.round(probability * 100)}%</span>
-              <span class="text-sm text-neutral-500">YES</span>
+              <span class="text-sm text-neutral-500">LONG</span>
             </div>
           </div>
           <div class="hidden sm:block">

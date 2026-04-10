@@ -264,15 +264,15 @@
 <svelte:head>
   {#if market}
     {@const pct = Math.round(probability * 100)}
-    <title>{market.title} — {pct}% YES | Cascade</title>
+    <title>{market.title} — {pct}% LONG | Cascade</title>
     <meta name="description" content="{market.description?.slice(0, 140) || 'Market on Cascade'}. Currently {pct}% probability." />
-    <meta property="og:title" content="{market.title} — {pct}% YES" />
+    <meta property="og:title" content="{market.title} — {pct}% LONG" />
     <meta property="og:description" content="{market.description?.slice(0, 200) || 'Prediction market on Cascade'}" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://cascade.markets/mkt/{slugAndPrefix}" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:site" content="@cascademarkets" />
-    <meta name="twitter:title" content="{market.title} — {pct}% YES" />
+    <meta name="twitter:title" content="{market.title} — {pct}% LONG" />
     <meta name="twitter:description" content="{market.description?.slice(0, 200) || 'Prediction market on Cascade'}" />
   {/if}
 </svelte:head>
@@ -327,8 +327,8 @@
       <div class="max-w-6xl mx-auto px-4 py-4">
           <div class="mb-4 pb-4 border-b border-neutral-800">
             <span class="text-4xl font-mono font-bold text-white">{Math.round(probability * 100)}%</span>
-            <span class="text-sm text-neutral-500 ml-2">YES</span>
-            <div class="text-sm text-neutral-500 mt-1">{Math.round((1 - probability) * 100)}% NO · {tiltText}</div>
+            <span class="text-sm text-neutral-500 ml-2">LONG</span>
+            <div class="text-sm text-neutral-500 mt-1">{Math.round((1 - probability) * 100)}% SHORT · {tiltText}</div>
           </div>
           <p class="text-xs text-neutral-500 mb-2">Balance: {balance} sats</p>
           <div class="flex gap-2 mb-4">
@@ -469,9 +469,9 @@
             <div class="py-6 border-b border-neutral-800">
               <div class="flex items-end gap-3">
                 <span class="text-4xl font-mono font-bold text-white">{Math.round(probability * 100)}%</span>
-                <span class="text-sm text-neutral-500 mb-1">YES probability</span>
+                <span class="text-sm text-neutral-500 mb-1">LONG probability</span>
               </div>
-              <div class="text-sm text-neutral-500 mt-1">{Math.round((1 - probability) * 100)}% NO</div>
+              <div class="text-sm text-neutral-500 mt-1">{Math.round((1 - probability) * 100)}% SHORT</div>
               <p class="text-xs text-neutral-400 mt-2">{tiltText}</p>
             </div>
 
@@ -602,9 +602,9 @@
             <div class="mb-4 pb-4 border-b border-neutral-800">
               <div class="flex items-baseline gap-2">
                 <span class="text-4xl font-mono font-bold text-white">{Math.round(probability * 100)}%</span>
-                <span class="text-sm text-neutral-500">YES</span>
+                <span class="text-sm text-neutral-500">LONG</span>
               </div>
-              <div class="text-sm text-neutral-500 mt-1">{Math.round((1 - probability) * 100)}% NO</div>
+              <div class="text-sm text-neutral-500 mt-1">{Math.round((1 - probability) * 100)}% SHORT</div>
             </div>
             <!-- Trade -->
             <p class="text-xs text-neutral-500 mb-2">Balance: {balance} sats</p>

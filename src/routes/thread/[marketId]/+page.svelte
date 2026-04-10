@@ -431,13 +431,13 @@
             href={`/mkt/${formatMarketSlug(market)}`}
             class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium"
           >
-            Buy YES
+            Mint LONG
           </a>
           <a
             href={`/mkt/${formatMarketSlug(market)}`}
             class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium"
           >
-            Buy NO
+            Mint SHORT
           </a>
         </div>
       </div>

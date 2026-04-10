@@ -86,13 +86,13 @@
         onclick={() => handleBuy('LONG')}
         class="px-3 py-2 text-sm font-medium bg-neutral-800 hover:bg-emerald-900/30 border border-neutral-700 hover:border-emerald-600 text-white transition-colors"
       >
-        Buy YES
+        Mint LONG
       </button>
       <button
         onclick={() => handleBuy('SHORT')}
         class="px-3 py-2 text-sm font-medium bg-neutral-800 hover:bg-rose-900/30 border border-neutral-700 hover:border-rose-600 text-white transition-colors"
       >
-        Buy NO
+        Mint SHORT
       </button>
     </div>
   {/if}

@@ -601,7 +601,7 @@
         </div>
         <h3 class="text-lg font-semibold text-white">Trade on your conviction</h3>
         <p class="text-sm text-neutral-500 leading-relaxed">
-          Buy YES or NO shares. The market prices your thesis in real-time as new information arrives.
+          Mint LONG or SHORT tokens. The market prices your thesis in real-time as new information arrives.
         </p>
         <p class="text-xs text-neutral-600 font-mono">
           e.g. 73¢ YES — market thinks you're wrong, prove it.

@@ -358,7 +358,7 @@
               <span class="text-neutral-500">You receive</span>
               <span class="font-mono font-bold {selectedSide === 'LONG' ? 'text-emerald-400' : 'text-rose-400'}">
                 {#if tradeEstimate}
-                  ~{Math.floor(tradeEstimate.tokens).toLocaleString()} shares
+                  ~{Math.floor(tradeEstimate.tokens).toLocaleString()} tokens
                 {:else}
                   —
                 {/if}
@@ -408,7 +408,7 @@
             {#if tradeLoading}
               Processing...
             {:else}
-              Buy {selectedSide === 'LONG' ? 'YES' : 'NO'} Shares · {amount} sats
+              Mint {selectedSide === 'LONG' ? 'LONG' : 'SHORT'} · {amount} sats
             {/if}
           </button>
           {#if tradeSuccess}
@@ -635,7 +635,7 @@
                 <span class="text-neutral-500">You receive</span>
                 <span class="font-mono font-bold {selectedSide === 'LONG' ? 'text-emerald-400' : 'text-rose-400'}">
                   {#if tradeEstimate}
-                    ~{Math.floor(tradeEstimate.tokens).toLocaleString()} shares
+                    ~{Math.floor(tradeEstimate.tokens).toLocaleString()} tokens
                   {:else}
                     —
                   {/if}
@@ -685,7 +685,7 @@
               {#if tradeLoading}
                 Processing...
               {:else}
-                Buy {selectedSide === 'LONG' ? 'YES' : 'NO'} Shares · {amount} sats
+                Mint {selectedSide === 'LONG' ? 'LONG' : 'SHORT'} · {amount} sats
               {/if}
             </button>
             {#if tradeSuccess}

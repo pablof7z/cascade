@@ -1,6 +1,6 @@
 # NowNowNow
 
-*Last updated: 2026-04-09 10:35 UTC — Sweep complete. 3 more commits: portfolio model fix, UX fixes, wallet guidance.*
+*Last updated: 2026-04-10 04:30 UTC — Portfolio bug fix shipped: priceLong args + MarketEntry field access corrected in both portfolio pages.*
 
 ---
 
@@ -8,10 +8,8 @@
 
 | When | What | Details |
 |------|------|---------|
-| Pablo decides | Merge phase-8-testnet-mint → main | All wallet work on branch. Pablo decides when mint deployment is ready. |
 | Pablo decides | Growth DM campaign (10 DMs) | DM file: `$AGENT_HOME/research/dm-campaign-10-users.md` |
 | When Pablo publishes | Substack article | Article ready, published to Nostr |
-| Deferred | Market resolution UI | Large feature — market creators can't close markets yet |
 | Deferred | Market search | No search on /discuss or homepage |
 
 ---
@@ -22,7 +20,20 @@
 
 ---
 
-## ✅ Shipped Today (2026-04-09)
+## ✅ Shipped (2026-04-10)
+
+| Item | Commit | Status |
+|------|--------|--------|
+| **Market detail: 2-col layout with sticky trade box** | `e8d7ce9` | ✅ Desktop sticky sidebar, probability (text-4xl), mobile inline above tabs |
+| **Landing: Low Volume excludes Trending markets** | `bd3431e` | ✅ No more market overlap between sections |
+| **Fix market navigation links** | `ce18559` | ✅ slug--pubkeyPrefix format everywhere; marketLink() helper |
+| **Landing/Discuss fixes** | `f2b5052` | ✅ Real Traders column, loading text |
+| **Portfolio: fix priceLong args + MarketEntry field access** | `dff0aa6` | ✅ Both /portfolio and /profile/[pubkey]/portfolio — correct args, Object.values() for Record→array |
+| **Terminology: Mint LONG/SHORT, tokens not shares** | `93cd6fd` | ✅ mkt page (×4), MarketCard, thread page, landing page |
+
+---
+
+## ✅ Shipped (2026-04-09)
 
 | Item | Commit | Status |
 |------|--------|--------|

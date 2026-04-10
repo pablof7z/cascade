@@ -107,31 +107,31 @@
 
   // Tilt copy
   let tiltText = $derived(
-    yesPrice > 0.7 ? 'Strong YES lean — bulls are in control' :
-    yesPrice > 0.55 ? 'Mild YES lean — slight edge to YES' :
+    yesPrice > 0.7 ? 'Strong LONG lean — bulls are in control' :
+    yesPrice > 0.55 ? 'Mild LONG lean — slight edge to LONG' :
     yesPrice > 0.45 ? 'Near toss-up — market is undecided' :
-    yesPrice > 0.3 ? 'Mild NO lean — slight edge to NO' :
-    'Strong NO lean — bears are in control'
+    yesPrice > 0.3 ? 'Mild SHORT lean — slight edge to SHORT' :
+    'Strong SHORT lean — bears are in control'
   );
 
   // Recent fills (kind 983 trade events)
   let recentFills = $state<NDKEvent[]>([]);
 
-  type FillData = { side: 'YES' | 'NO'; sats: number; ts: number };
+  type FillData = { side: 'LONG' | 'SHORT'; sats: number; ts: number };
 
   function parseFillData(event: NDKEvent): FillData | null {
-    let side: 'YES' | 'NO' | null = null;
+    let side: 'LONG' | 'SHORT' | null = null;
     let sats = 0;
     const sideTag = event.tags.find((t: string[]) => t[0] === 'side')?.[1];
     const dirTag = event.tags.find((t: string[]) => t[0] === 'direction')?.[1];
     const satsTag = event.tags.find((t: string[]) => t[0] === 'sats' || t[0] === 'amount')?.[1];
-    if (sideTag) side = (sideTag === 'LONG' || sideTag === 'yes') ? 'YES' : 'NO';
-    else if (dirTag) side = (dirTag === 'LONG' || dirTag === 'yes') ? 'YES' : 'NO';
+    if (sideTag) side = (sideTag === 'LONG' || sideTag === 'yes') ? 'LONG' : 'SHORT';
+    else if (dirTag) side = (dirTag === 'LONG' || dirTag === 'yes') ? 'LONG' : 'SHORT';
     if (satsTag) sats = parseInt(satsTag, 10);
     if (!side || !sats) {
       try {
         const parsed = JSON.parse(event.content);
-        if (!side && parsed.side) side = (parsed.side === 'LONG' || parsed.side === 'yes') ? 'YES' : 'NO';
+        if (!side && parsed.side) side = (parsed.side === 'LONG' || parsed.side === 'yes') ? 'LONG' : 'SHORT';
         if (!sats && (parsed.sats || parsed.amount)) sats = parsed.sats ?? parsed.amount;
       } catch { /* non-JSON content */ }
     }
@@ -341,7 +341,7 @@
               class:text-neutral-500={selectedSide !== 'LONG'}
               class:hover:text-neutral-300={selectedSide !== 'LONG'}
             >
-              YES
+              LONG
             </button>
             <button
               onclick={() => selectedSide = 'SHORT'}
@@ -352,7 +352,7 @@
               class:text-neutral-500={selectedSide !== 'SHORT'}
               class:hover:text-neutral-300={selectedSide !== 'SHORT'}
             >
-              NO
+              SHORT
             </button>
           </div>
           <div class="mb-4">
@@ -484,7 +484,7 @@
                   <div class="space-y-1">
                     {#each parsedFills as fill}
                       <div class="flex items-center gap-3 text-xs font-mono">
-                        <span class="px-1.5 py-0.5 text-xs font-medium {fill.side === 'YES' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-rose-900/50 text-rose-400'}">{fill.side}</span>
+                        <span class="px-1.5 py-0.5 text-xs font-medium {fill.side === 'LONG' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-rose-900/50 text-rose-400'}">{fill.side}</span>
                         <span class="text-neutral-300">{fill.sats.toLocaleString()} sats</span>
                         <span class="text-neutral-600 ml-auto">{formatTradeTimestamp(fill.ts)}</span>
                       </div>
@@ -511,10 +511,10 @@
                     <div class="flex items-center gap-3 text-xs font-mono">
                       <span class="text-neutral-500 w-20 shrink-0">{acct.pubkey.slice(0, 8)}…</span>
                       {#if acct.long > 0}
-                        <span class="text-emerald-400">{acct.long.toLocaleString()} YES</span>
+                        <span class="text-emerald-400">{acct.long.toLocaleString()} LONG</span>
                       {/if}
                       {#if acct.short > 0}
-                        <span class="text-rose-400">{acct.short.toLocaleString()} NO</span>
+                        <span class="text-rose-400">{acct.short.toLocaleString()} SHORT</span>
                       {/if}
                     </div>
                   {/each}
@@ -556,8 +556,8 @@
                     <thead>
                       <tr class="border-b border-neutral-800 text-xs text-neutral-500">
                         <th class="text-left px-4 py-2 font-medium">Account</th>
-                        <th class="text-right px-4 py-2 font-medium">YES</th>
-                        <th class="text-right px-4 py-2 font-medium">NO</th>
+                        <th class="text-right px-4 py-2 font-medium">LONG</th>
+                        <th class="text-right px-4 py-2 font-medium">SHORT</th>
                         <th class="text-right px-4 py-2 font-medium">Total</th>
                       </tr>
                     </thead>
@@ -618,7 +618,7 @@
                 class:text-neutral-500={selectedSide !== 'LONG'}
                 class:hover:text-neutral-300={selectedSide !== 'LONG'}
               >
-                YES
+                LONG
               </button>
               <button
                 onclick={() => selectedSide = 'SHORT'}
@@ -629,7 +629,7 @@
                 class:text-neutral-500={selectedSide !== 'SHORT'}
                 class:hover:text-neutral-300={selectedSide !== 'SHORT'}
               >
-                NO
+                SHORT
               </button>
             </div>
             <div class="mb-4">

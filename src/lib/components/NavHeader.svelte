@@ -66,11 +66,16 @@
   
   const navItems = [
     { href: '/', label: 'Markets' },
+    { href: '/discuss', label: 'Discuss' },
     { href: '/activity', label: 'Activity' },
     { href: '/leaderboard', label: 'Leaderboard' },
   ];
 
-  let primaryAction = { to: '/thesis/new', label: 'Build Thesis' };
+  let primaryAction = $derived(
+    isLoggedIn
+      ? { to: '/thesis/new', label: 'Build Thesis' }
+      : { to: '/join', label: 'Get Started' }
+  );
 
   let searchPlaceholder = 'Search markets...';
 

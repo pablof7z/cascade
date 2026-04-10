@@ -353,28 +353,8 @@
   <NavHeader />
 
   <!-- ═══════════════════════════════════════════════════════════════════════════
-      LOGGED-OUT INTRO — Minimal, information-dense, logged-out users only
-  ═══════════════════════════════════════════════════════════════════════════ -->
-  {#if !pubkey}
-    <div class="border-b border-neutral-800/50 bg-neutral-950">
-      <div class="max-w-7xl mx-auto px-6 py-8">
-        <p class="text-neutral-100 text-lg font-semibold leading-snug mb-1">
-          Prediction markets that never close. Mint long or short positions on any topic.
-        </p>
-        <p class="text-neutral-500 text-sm mb-5">
-          Markets never close. Trade in and out any time.
-        </p>
-        <a href="/join" class="text-sm font-medium text-neutral-300 hover:text-white">
-          Start Trading →
-        </a>
-      </div>
-    </div>
-  {/if}
-
-  <!-- ═══════════════════════════════════════════════════════════════════════════
       HERO — Provocative statement + Featured Market
   ═══════════════════════════════════════════════════════════════════════════ -->
-  {#if pubkey}
   <section class="relative min-h-[80vh] flex flex-col">
     <div class="absolute inset-0 bg-neutral-950"></div>
 
@@ -390,10 +370,10 @@
             </p>
             <div class="flex flex-wrap items-center gap-4 pt-4">
               <a
-                href="/join"
+                href={pubkey ? '/discuss' : '/join'}
                 class="px-8 py-4 bg-white text-neutral-950 font-semibold hover:bg-neutral-100 transition-colors text-lg"
               >
-                Start Trading
+                {pubkey ? 'Go to Markets' : 'Start Trading'}
               </a>
               <a
                 href="#markets"
@@ -508,7 +488,6 @@
       </div>
     </div>
   </section>
-  {/if}
 
   <!-- ═══════════════════════════════════════════════════════════════════════════
       LIVE TRADES TICKER

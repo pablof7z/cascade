@@ -246,6 +246,19 @@
 
   // Get slugAndPrefix for nested links
   let slugAndPrefix = $derived(market ? formatMarketSlug(market as any) : '');
+
+  // Price history for chart — current price anchored at each fill timestamp
+  type PricePoint = { timestamp: number; yes_price: number; no_price: number };
+  let priceHistory = $derived.by((): PricePoint[] => {
+    if (!market || recentFills.length === 0) return [];
+    const yp = priceLong(market.qLong, market.qShort, market.b);
+    const np = priceShort(market.qLong, market.qShort, market.b);
+    const seen = new Set<number>();
+    return [...recentFills]
+      .reverse()
+      .map((e) => ({ timestamp: e.created_at ?? 0, yes_price: yp, no_price: np }))
+      .filter((p) => p.timestamp > 0 && !seen.has(p.timestamp) && seen.add(p.timestamp));
+  });
 </script>
 
 <svelte:head>
@@ -510,7 +523,7 @@
             {/if}
           {:else if activeTab === 'charts'}
             <div class="py-4">
-              <PriceChart marketSlug={market.slug} />
+              <PriceChart marketSlug={market.slug} {priceHistory} />
               {#if marketTrades.length > 0}
                 <div class="mt-6">
                   <h2 class="text-sm font-medium text-neutral-400 mb-3">Recent fills</h2>
@@ -520,7 +533,7 @@
                         <span class="text-neutral-600 w-16 shrink-0">{formatTradeTimestamp(trade.timestamp)}</span>
                         <span class="text-neutral-500 w-28 shrink-0 truncate">{abbreviatePubkey(trade.ownerPubkey ?? '')}</span>
                         <span class={trade.direction === 'yes' ? 'text-emerald-400 w-20 shrink-0' : 'text-rose-400 w-20 shrink-0'}>
-                          {trade.direction === 'yes' ? 'YES' : 'NO'}
+                          {trade.direction === 'yes' ? 'LONG' : 'SHORT'}
                         </span>
                         <span class="text-neutral-300">· {Math.round(trade.costBasis).toLocaleString()} sats</span>
                       </div>
@@ -572,7 +585,7 @@
                     <span class="text-neutral-600 w-16 shrink-0">{formatTradeTimestamp(trade.timestamp)}</span>
                     <span class="text-neutral-500 w-28 shrink-0 truncate">{abbreviatePubkey(trade.ownerPubkey ?? '')}</span>
                     <span class={trade.direction === 'yes' ? 'text-emerald-400 w-20 shrink-0' : 'text-rose-400 w-20 shrink-0'}>
-                      bought {trade.direction === 'yes' ? 'YES' : 'NO'}
+                      minted {trade.direction === 'yes' ? 'LONG' : 'SHORT'}
                     </span>
                     <span class="text-neutral-300">· {Math.round(trade.costBasis).toLocaleString()} sats</span>
                   </div>

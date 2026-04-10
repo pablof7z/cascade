@@ -5,9 +5,10 @@
 
   interface Props {
     marketSlug: string;
+    priceHistory?: Array<{ timestamp: number; yes_price: number; no_price: number }>;
   }
 
-  let { marketSlug }: Props = $props();
+  let { marketSlug, priceHistory }: Props = $props();
 
   interface PricePoint {
     timestamp: number;
@@ -32,7 +33,7 @@
   onMount(async () => {
     if (!container) return;
 
-    const data = await fetchPriceHistory();
+    const data = priceHistory && priceHistory.length > 0 ? priceHistory : await fetchPriceHistory();
 
     if (data.length === 0) {
       empty = true;

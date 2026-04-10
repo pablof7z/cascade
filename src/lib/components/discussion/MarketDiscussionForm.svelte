@@ -70,7 +70,7 @@
       <div class="flex-1">
         <span class="block text-xs text-neutral-500 mb-2">Stance</span>
         <div class="flex gap-0 border border-neutral-800">
-          {#each [{ value: 'neutral', label: '—' }, { value: 'bull', label: 'YES' }, { value: 'bear', label: 'NO' }] as opt}
+          {#each [{ value: 'neutral', label: '—' }, { value: 'bull', label: 'LONG' }, { value: 'bear', label: 'SHORT' }] as opt}
             <button
               type="button"
               onclick={() => stance = opt.value as typeof stance}

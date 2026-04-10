@@ -288,8 +288,8 @@
                 bind:value={newModuleDirection}
                 class="px-3 py-2 bg-neutral-950 border border-neutral-800 text-white text-sm focus:outline-none"
               >
-                <option value="YES">Yes</option>
-                <option value="NO">No</option>
+                <option value="YES">LONG</option>
+                <option value="NO">SHORT</option>
               </select>
             </div>
 
@@ -351,7 +351,7 @@
                   </span>
                   <span class="text-sm text-white flex-1">{mod.question}</span>
                   <span class="text-xs text-neutral-500">
-                    {mod.direction === 'YES' ? 'YES' : 'NO'}
+                    {mod.direction === 'YES' ? 'LONG' : 'SHORT'}
                   </span>
                 </div>
               {/each}

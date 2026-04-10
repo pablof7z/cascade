@@ -53,9 +53,9 @@
     return `${days}d ago`;
   }
 
-  // Stance badge — only shown for bull/bear, displayed as YES/NO
+  // Stance badge — only shown for bull/bear, displayed as LONG/SHORT
   function getStanceLabel(s: 'bull' | 'bear' | 'neutral'): string {
-    return s === 'bull' ? 'YES' : 'NO';
+    return s === 'bull' ? 'LONG' : 'SHORT';
   }
 
   function getStanceBadgeClass(s: 'bull' | 'bear' | 'neutral'): string {

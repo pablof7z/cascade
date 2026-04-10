@@ -43,6 +43,12 @@
     bear: 'text-rose-500 bg-rose-950/30',
     neutral: 'text-neutral-500 bg-neutral-800/50'
   };
+
+  const stanceLabels: Record<string, string> = {
+    bull: 'LONG',
+    bear: 'SHORT',
+    neutral: 'NEUTRAL'
+  };
   
   const typeLabels: Record<string, string> = {
     argument: 'ARGUMENT',
@@ -109,7 +115,7 @@
       <!-- Meta badges -->
       <div class="flex flex-wrap items-center gap-2 mb-3">
         <span class="text-xs font-medium uppercase px-2 py-0.5 {stanceColors[thread.stance]}">
-          {thread.stance}
+          {stanceLabels[thread.stance] ?? thread.stance}
         </span>
         <span class="text-xs text-neutral-500 bg-neutral-800/50 px-2 py-0.5">
           {typeLabels[thread.type]}

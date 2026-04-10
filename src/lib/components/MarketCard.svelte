@@ -69,8 +69,8 @@
       ></div>
     </div>
     <div class="mt-1.5 flex justify-between text-xs">
-      <span class="text-emerald-400">YES {formatPrice(yesPrice)}</span>
-      <span class="text-rose-400">NO {formatPrice(noPrice)}</span>
+      <span class="text-emerald-400">LONG {formatPrice(yesPrice)}</span>
+      <span class="text-rose-400">SHORT {formatPrice(noPrice)}</span>
     </div>
   </div>
 

@@ -32,7 +32,7 @@
     return nip05 && nip05 !== primaryLabel ? nip05 : '';
   });
 
-  const href = $derived(`/profile/${profileIdentifier(resolvedProfile, pubkey)}`);
+  const href = $derived(`/p/${profileIdentifier(resolvedProfile, pubkey)}`);
 </script>
 
 <User.Root {ndk} {pubkey} profile={resolvedProfile}>

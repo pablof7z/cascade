@@ -3,7 +3,7 @@
   import type { NDKUserProfile } from '@nostr-dev-kit/ndk';
   import { ndk } from '$lib/ndk/client';
   import { parseDiscussionEvent, parseMarketEvent, type DiscussionRecord, type MarketRecord } from '$lib/ndk/cascade';
-  import { displayName, shortPubkey } from '$lib/ndk/format';
+  import { displayName, profileIdentifier, shortPubkey } from '$lib/ndk/format';
   import type { PageProps } from './$types';
 
   type LeaderboardTab = 'Top Predictors' | 'Top Creators' | 'Most Accurate' | 'Most Bookmarked';
@@ -83,6 +83,10 @@
   function label(pubkey: string): string {
     return displayName(profiles[pubkey], shortPubkey(pubkey));
   }
+
+  function profileHref(pubkey: string): string {
+    return `/p/${profileIdentifier(profiles[pubkey], pubkey)}`;
+  }
 </script>
 
 <section class="leaderboard-header">
@@ -119,7 +123,7 @@
   <section class="leaderboard-list">
     {#if creatorRows.length > 0}
       {#each creatorRows as row, index (row.pubkey)}
-        <a class="leaderboard-row" href="/u/{row.pubkey}">
+        <a class="leaderboard-row" href={profileHref(row.pubkey)}>
           <span class="rank">{index + 1}</span>
           <div class="leaderboard-main">
             <strong>{label(row.pubkey)}</strong>

@@ -103,11 +103,6 @@ Launch does not require:
 - `/404` or equivalent catch-all not-found handling
 - `/SKILL.md`
 
-### Compatibility redirects allowed at launch
-
-- `/u/:pubkey` -> `/p/:identifier`
-- `/profile/:identifier` -> `/p/:identifier`
-
 ### Later milestone routes
 
 - `/embed`
@@ -127,6 +122,8 @@ Launch does not require:
 - `/about` unless repurposed into canonical product content
 - `/highlights` unless repurposed into a real Cascade surface
 - `/note/:id` unless repurposed into blog/article rendering
+- `/u/:pubkey` should not ship as a public route
+- `/profile/:identifier` should not ship as a public route
 - `/wallet` should be removed and its behavior folded into `/portfolio`
 - `/relays` and `/relay/:hostname` as public product routes
 
@@ -139,7 +136,7 @@ These route choices are part of the launch target unless a later explicit produc
 - `/p/:identifier` is the canonical public-profile route.
 - `/portfolio` is the canonical self-custodied capital and positions surface.
 - `/wallet` should not ship as a product route at launch.
-- `/u/:pubkey` and `/profile/:identifier` are compatibility redirects only.
+- `/u/:pubkey` and `/profile/:identifier` should not ship at launch, including as compatibility redirects.
 - `/blog` is a curated narrative route, not a required full CMS.
 
 ## Current Gap Summary
@@ -439,10 +436,8 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Signed-in viewers can follow and unfollow using real follow events.
 - [ ] Sharing and direct linking work correctly.
 
-### Compatibility
-
-- [x] `/u/:pubkey` redirects to `/p/:identifier`.
-- [x] `/profile/:identifier` redirects to `/p/:identifier`.
+- [x] `/u/:pubkey` route is removed before launch.
+- [x] `/profile/:identifier` route is removed before launch.
 
 ### Non-launch profile features
 

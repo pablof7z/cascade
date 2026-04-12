@@ -25,11 +25,11 @@
 
 <div class="event-author-header">
   <User.Root {ndk} {pubkey}>
-    <a class="event-author-avatar-link" href={`/profile/${pubkey}`}>
+    <a class="event-author-avatar-link" href={`/p/${pubkey}`}>
       <User.Avatar class={avatarClass} />
     </a>
     <div class="event-author-header-copy">
-      <a class="event-author-name" href={`/profile/${pubkey}`}>
+      <a class="event-author-name" href={`/p/${pubkey}`}>
         <User.Name fallback={fallbackName} />
       </a>
       <span class="event-author-date">{dateLabel}</span>

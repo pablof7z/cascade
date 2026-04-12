@@ -73,7 +73,7 @@ All should become clickable links to the user's profile.
 
 - Preferred public route: `/p/:nip05`
 - Fallback public route: `/p/:npub`
-- If older routes such as `/profile/:npub` or `/u/:pubkey` still exist, they should redirect to the canonical `/p/...` form
+- Public profiles should exist only under `/p/...`; do not keep `/profile/:npub` or `/u/:pubkey` as parallel public routes
 
 **Phase 1 (This Task)**
 - Extend data models with creatorPubkey, authorPubkey fields

@@ -18,9 +18,9 @@
     if (!user) return undefined;
 
     try {
-      return `/profile/${user.npub}`;
+      return `/p/${user.npub}`;
     } catch {
-      return `/profile/${user.pubkey}`;
+      return `/p/${user.pubkey}`;
     }
   });
 

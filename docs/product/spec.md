@@ -267,9 +267,9 @@ When the deployment exposes a managed NIP-05 domain:
 - `/p/bob@cascade.f7z.io` is the canonical direct identifier URL
 - `/p/bob` should work as a local shortcut to that same identity on the deployment
 
-#### Legacy Profile Routes
+There should be exactly one public-profile route family: `/p/:identifier`.
 
-Old React-era routes such as `/u/:pubkey` and `/profile/:npub` exist only as compatibility redirects. They are not the main public-profile mental model.
+Do not ship parallel public-profile routes such as `/u/:pubkey` or `/profile/:npub`, even as compatibility redirects. This project is pre-launch and the public profile mental model should stay singular.
 
 #### Portfolio: `/portfolio`
 

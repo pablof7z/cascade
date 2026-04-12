@@ -291,12 +291,12 @@
 
       <div class="article-byline">
         <User.Root {ndk} pubkey={authorPubkey} profile={authorProfile}>
-          <a class="article-author-link" href={`/profile/${authorLinkIdentifier}`}>
+          <a class="article-author-link" href={`/p/${authorLinkIdentifier}`}>
             <User.Avatar class="article-author-avatar" />
           </a>
           <div class="article-author-copy">
             <div class="feed-meta">
-              <a class="article-author-name" href={`/profile/${authorLinkIdentifier}`}>{authorName}</a>
+              <a class="article-author-name" href={`/p/${authorLinkIdentifier}`}>{authorName}</a>
               <span>
                 {#if isArticle}
                   {formatDisplayDate(articlePublishedAt(event.rawEvent()))}

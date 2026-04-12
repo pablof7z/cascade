@@ -47,7 +47,6 @@
 
   <div class="profile-actions">
     <a class="button-primary" href="/onboarding">Edit profile</a>
-    <a class="button-secondary" href="/u/{resolvedPubkey}">Compatibility URL</a>
   </div>
 </section>
 

@@ -50,6 +50,7 @@ For launch, `web/` is scoped to the public market product, the account layer, an
 - Stripe and Lightning are the launch portfolio top-up rails
 - Lightning may exist as hidden settlement infrastructure, but it is not normal product language
 - The product has separate paper-trading and mainnet editions, and they must not mix proofs or public discovery
+- Signet and mainnet use the same browser-local proof custody and proof-based trade mechanics
 
 ## Product Areas
 
@@ -114,6 +115,14 @@ Those tabs are not optional garnish. In the React app they formed one market she
 - Activity / audit trail
 
 Discussion is append-only under NIP-22-style semantics. Launch does not include moderation, edit, or delete flows on market discussions or thread pages.
+
+Trade execution on the market page is proof-based:
+
+- buys consume locally held USD proofs and return newly issued LONG or SHORT proofs plus any USD change proofs
+- withdrawals consume locally held market proofs and return newly issued USD proofs plus any market-proof change
+- the browser is the source of truth for spendable proofs in both signet and mainnet
+
+Because proofs are integer-denominated, market-proof balances are stored as fixed share-minor units rather than floats. Launch uses `10_000` stored units per whole share and converts to human share quantities only at the UI boundary.
 
 #### Market Creation: `/builder`
 

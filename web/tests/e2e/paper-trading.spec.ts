@@ -271,8 +271,8 @@ test('funded portfolio users can create a market, buy the other side, and withdr
         mintUrl: usdKey.slice('cascade:proof-wallet:'.length, -':usd'.length),
         unit: `LONG_${slug}`,
         proofs: [
-          { id: 'local-test', amount: 6, secret: `proof-${slug}-1`, C: `c-${slug}-1` },
-          { id: 'local-test', amount: 4, secret: `proof-${slug}-2`, C: `c-${slug}-2` }
+          { id: 'local-test', amount: 60_000, secret: `proof-${slug}-1`, C: `c-${slug}-1` },
+          { id: 'local-test', amount: 40_000, secret: `proof-${slug}-2`, C: `c-${slug}-2` }
         ],
         updatedAt: Date.now()
       })
@@ -288,8 +288,39 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   await expect(
     page.getByText('Derived from local market-proof holdings and current public market prices.')
   ).toBeVisible();
-  const localPositionRow = page.locator('.position-row').filter({ hasText: market.title }).first();
-  await expect(localPositionRow).toContainText('YES · 10.00 shares');
+
+  const migratedLocalPosition = await page.evaluate(({ slug }) => {
+    const upperKey = Object.keys(localStorage).find((key) => key.endsWith(`:LONG_${slug}`));
+    const lowerKey = Object.keys(localStorage).find((key) => key.endsWith(`:long_${slug}`));
+    const lowerRaw = lowerKey ? localStorage.getItem(lowerKey) : null;
+    const lowerWallet = lowerRaw
+      ? (JSON.parse(lowerRaw) as {
+          proofs?: Array<{ secret?: string; amount?: number }>;
+        })
+      : null;
+
+    return {
+      hasUpperKey: Boolean(upperKey),
+      hasLowerKey: Boolean(lowerKey),
+      containsInjectedProofs: Boolean(
+        lowerWallet?.proofs?.some((proof) => proof.secret === `proof-${slug}-1`) &&
+          lowerWallet?.proofs?.some((proof) => proof.secret === `proof-${slug}-2`)
+      ),
+      totalAmount: lowerWallet?.proofs?.reduce((sum, proof) => sum + (proof.amount ?? 0), 0) ?? 0
+    };
+  }, { slug: market.slug });
+
+  expect(migratedLocalPosition.hasUpperKey).toBe(false);
+  expect(migratedLocalPosition.hasLowerKey).toBe(true);
+  expect(migratedLocalPosition.containsInjectedProofs).toBe(true);
+  expect(migratedLocalPosition.totalAmount).toBeGreaterThanOrEqual(100_000);
+
+  const localPositionRow = page
+    .locator('.position-row')
+    .filter({ hasText: market.title })
+    .filter({ hasText: 'LONG' })
+    .first();
+  await expect(localPositionRow).toBeVisible();
 });
 
 test('portfolio can export and import local USD proofs', async ({ page }) => {

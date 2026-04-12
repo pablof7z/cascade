@@ -63,6 +63,47 @@ pub struct WalletFundingEvent {
     pub created_at: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioProofRecord {
+    pub secret: String,
+    pub keyset_id: String,
+    pub unit: String,
+    pub amount: u64,
+    pub commitment: String,
+    pub market_event_id: Option<String>,
+    pub direction: Option<String>,
+    pub source: String,
+    pub created_at: i64,
+    pub spent_trade_id: Option<String>,
+    pub spent_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioProofInsert {
+    pub secret: String,
+    pub keyset_id: String,
+    pub unit: String,
+    pub amount: u64,
+    pub commitment: String,
+    pub market_event_id: Option<String>,
+    pub direction: Option<String>,
+    pub source: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioProofSpend {
+    pub secret: String,
+    pub keyset_id: String,
+    pub amount: u64,
+    pub commitment: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioPositionSnapshot {
+    pub quantity: f64,
+    pub cost_basis_minor: u64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WalletTopupStatus {

@@ -148,6 +148,22 @@ The frontend needs local state for at least two proof classes:
 
 Trading surfaces should let the user spend dollars on YES or NO and then persist the resulting market proofs locally.
 
+The launch trade path is proof-native in both signet and mainnet:
+
+- the browser selects locally stored USD proofs for buys
+- the browser selects locally stored market proofs for withdrawals
+- the mint returns newly issued target-side proofs plus any source-side change proofs
+- the browser removes the consumed proofs from local storage and persists the returned proofs locally
+
+Canonical market-proof units are lowercase and slug-based:
+
+- `long_<market-slug>`
+- `short_<market-slug>`
+
+If the browser encounters older uppercase market-proof buckets from earlier builds, it should migrate them into the lowercase canonical buckets during local storage reads rather than maintaining parallel holdings.
+
+The older pubkey-keyed portfolio mirror can still be used for recovery hints and non-canonical compatibility reads, but it is not the spendable source of truth for trading.
+
 The `/portfolio` surface derives both spendable state and performance from:
 
 - local proof state
@@ -176,6 +192,15 @@ For valuation, the frontend should use a two-layer model:
 - exact exit value = a fresh sell quote from the mint for the full quantity the user wants to withdraw
 
 The fast portfolio view should use current public market prices for mark-to-market display. When the user is about to exit, the client should call the sell-quote endpoint because LMSR pricing is size-dependent and the executable withdrawal value may differ from the simple mark price.
+
+Market-proof amounts are stored as fixed share-minor units rather than floats:
+
+- one proof amount unit = `0.0001` share
+- one whole share = `10_000` stored units
+
+The frontend should convert between stored integer units and displayed decimal share quantities at the edge of the UI instead of storing float quantities in browser state.
+
+Mint-side market keysets must also expose large denominations for these share-minor units. Otherwise a single position near the edge of the LMSR curve can turn into thousands of tiny proofs and overflow browser-local storage.
 
 It is not a private custody dashboard backed by server-held proofs.
 

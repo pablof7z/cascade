@@ -129,11 +129,18 @@ export type ProductTradeSettlement = {
   completed_at?: number | null;
 };
 
+export type ProductTradeProofBundle = {
+  unit: string;
+  proofs: ProductProof[];
+};
+
 export type ProductTradeExecution = {
   wallet: ProductWallet;
   market: ProductMarketSummary;
   trade: ProductTradeEvent;
   settlement?: ProductTradeSettlement | null;
+  issued?: ProductTradeProofBundle | null;
+  change?: ProductTradeProofBundle | null;
 };
 
 export type ProductTradeQuote = {
@@ -143,6 +150,7 @@ export type ProductTradeQuote = {
   side: string;
   fx_quote_id?: string | null;
   quantity: number;
+  quantity_minor: number;
   spend_minor: number;
   fee_minor: number;
   net_minor: number;
@@ -203,6 +211,7 @@ export async function buyMarketPosition(input: {
   pubkey: string;
   side: 'yes' | 'no';
   spendMinor: number;
+  proofs: ProductProof[];
   quoteId?: string;
   requestId?: string;
 }): Promise<Response> {
@@ -214,6 +223,7 @@ export async function buyMarketPosition(input: {
       pubkey: input.pubkey,
       side: input.side,
       spend_minor: input.spendMinor,
+      proofs: input.proofs,
       quote_id: input.quoteId,
       request_id: input.requestId
     })
@@ -225,6 +235,7 @@ export async function sellMarketPosition(input: {
   pubkey: string;
   side: 'yes' | 'no';
   quantity: number;
+  proofs: ProductProof[];
   quoteId?: string;
   requestId?: string;
 }): Promise<Response> {
@@ -236,6 +247,7 @@ export async function sellMarketPosition(input: {
       pubkey: input.pubkey,
       side: input.side,
       quantity: input.quantity,
+      proofs: input.proofs,
       quote_id: input.quoteId,
       request_id: input.requestId
     })
@@ -338,6 +350,48 @@ export function hasCompletedTradeSettlement(
     | undefined
 ): boolean {
   return value?.settlement?.status === 'complete';
+}
+
+function isProductProofBundle(value: unknown): value is ProductTradeProofBundle {
+  if (!value || typeof value !== 'object') return false;
+  const bundle = value as { unit?: unknown; proofs?: unknown };
+  return (
+    typeof bundle.unit === 'string' &&
+    Array.isArray(bundle.proofs) &&
+    bundle.proofs.every(
+      (proof) =>
+        proof &&
+        typeof proof === 'object' &&
+        typeof (proof as { id?: unknown }).id === 'string' &&
+        typeof (proof as { secret?: unknown }).secret === 'string' &&
+        typeof (proof as { C?: unknown }).C === 'string' &&
+        typeof (proof as { amount?: unknown }).amount === 'number'
+    )
+  );
+}
+
+export function extractTradeProofBundles(value: {
+  settlement?: ProductTradeSettlement | null;
+  issued?: ProductTradeProofBundle | null;
+  change?: ProductTradeProofBundle | null;
+}): {
+  issued: ProductTradeProofBundle | null;
+  change: ProductTradeProofBundle | null;
+} {
+  const directIssued = value.issued && isProductProofBundle(value.issued) ? value.issued : null;
+  const directChange = value.change && isProductProofBundle(value.change) ? value.change : null;
+  if (directIssued || directChange) {
+    return {
+      issued: directIssued,
+      change: directChange
+    };
+  }
+
+  const metadata = value.settlement?.metadata;
+  return {
+    issued: isProductProofBundle(metadata?.issued) ? metadata.issued : null,
+    change: isProductProofBundle(metadata?.change) ? metadata.change : null
+  };
 }
 
 export async function parseJson<T>(response: Response, fallback: string): Promise<T> {

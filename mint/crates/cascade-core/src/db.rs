@@ -4,10 +4,10 @@ use crate::error::Result;
 use crate::market::{Market, MarketStatus, Side, Trade, TradeDirection};
 use crate::product::{
     FxQuoteObservation, FxQuoteSnapshot, MarketLaunchState, MarketPosition, MarketTradeRecord,
-    MarketVisibility, TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot,
-    TradeSettlementInsert, TradeSettlementRecord, TradeSettlementStatus, WalletBalanceRecord,
-    WalletFundingEvent, WalletTopupQuote, WalletTopupRequest, WalletTopupRequestStatus,
-    WalletTopupStatus,
+    MarketVisibility, PortfolioPositionSnapshot, PortfolioProofInsert, PortfolioProofSpend,
+    TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot, TradeSettlementInsert,
+    TradeSettlementRecord, TradeSettlementStatus, WalletBalanceRecord, WalletFundingEvent,
+    WalletTopupQuote, WalletTopupRequest, WalletTopupRequestStatus, WalletTopupStatus,
 };
 use crate::trade::Payout;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
@@ -102,6 +102,11 @@ impl CascadeDatabase {
         .execute(&self.pool)
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        sqlx::query(include_str!("../../../migrations/012_portfolio_proofs.sql"))
+            .execute(&self.pool)
+            .await
+            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         Ok(())
     }
@@ -2742,6 +2747,597 @@ impl CascadeDatabase {
             .bind(settlement.metadata_json.as_deref())
             .bind(now)
             .bind(now)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        if let Some(quote_id) = quote_id.filter(|value| !value.trim().is_empty()) {
+            let result = sqlx::query(
+                r#"
+                UPDATE trade_quote_snapshots
+                SET executed_trade_id = ?, executed_at = ?
+                WHERE id = ? AND executed_trade_id IS NULL AND expires_at > ?
+                "#,
+            )
+            .bind(trade_id)
+            .bind(now)
+            .bind(quote_id)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+
+            if result.rows_affected() != 1 {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "trade quote is no longer executable".to_string(),
+                ));
+            }
+        }
+
+        tx.commit().await?;
+
+        Ok(MarketTradeRecord {
+            id: trade_id.to_string(),
+            market_event_id: market.event_id.clone(),
+            market_slug: market.slug.clone(),
+            pubkey: wallet_pubkey.to_string(),
+            direction: direction.to_string(),
+            trade_type: trade_type.to_string(),
+            amount_minor,
+            fee_minor,
+            quantity: quantity_delta.abs(),
+            price_ppm,
+            created_at: now,
+            raw_event_json: raw_event_json.to_string(),
+        })
+    }
+
+    pub async fn insert_portfolio_proofs(&self, proofs: &[PortfolioProofInsert]) -> Result<()> {
+        if proofs.is_empty() {
+            return Ok(());
+        }
+
+        let mut tx = self.pool.begin().await?;
+        let now = chrono::Utc::now().timestamp();
+
+        for proof in proofs {
+            sqlx::query(
+                r#"
+                INSERT OR IGNORE INTO portfolio_proofs (
+                    secret,
+                    keyset_id,
+                    unit,
+                    amount,
+                    commitment,
+                    market_event_id,
+                    direction,
+                    source,
+                    created_at,
+                    spent_trade_id,
+                    spent_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)
+                "#,
+            )
+            .bind(&proof.secret)
+            .bind(&proof.keyset_id)
+            .bind(proof.unit.to_lowercase())
+            .bind(proof.amount as i64)
+            .bind(&proof.commitment)
+            .bind(proof.market_event_id.as_deref())
+            .bind(proof.direction.as_deref())
+            .bind(&proof.source)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn apply_trade_execution_with_portfolio_proofs(
+        &self,
+        trade_id: &str,
+        created_at: i64,
+        quote_id: Option<&str>,
+        wallet_pubkey: &str,
+        market: &Market,
+        direction: &str,
+        trade_type: &str,
+        amount_minor: u64,
+        fee_minor: u64,
+        quantity_delta: f64,
+        cost_basis_delta_minor: i64,
+        wallet_delta_minor: i64,
+        price_ppm: u64,
+        raw_event_json: &str,
+        next_q_long: f64,
+        next_q_short: f64,
+        next_reserve_minor: u64,
+        settlement: Option<&TradeSettlementInsert>,
+        input_proofs: &[PortfolioProofSpend],
+        expected_input_unit: &str,
+        expected_market_event_id: Option<&str>,
+        expected_direction: Option<&str>,
+        issued_proofs: &[PortfolioProofInsert],
+        change_proofs: &[PortfolioProofInsert],
+        wallet_snapshot_minor: Option<u64>,
+        position_snapshot: Option<&PortfolioPositionSnapshot>,
+    ) -> Result<MarketTradeRecord> {
+        let mut tx = self.pool.begin().await?;
+        let now = created_at;
+
+        if let Some(quote_id) = quote_id.filter(|value| !value.trim().is_empty()) {
+            let quote_row = sqlx::query_as::<_, (Option<String>, i64)>(
+                r#"
+                SELECT executed_trade_id, expires_at
+                FROM trade_quote_snapshots
+                WHERE id = ?
+                LIMIT 1
+                "#,
+            )
+            .bind(quote_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+            let Some((executed_trade_id, expires_at)) = quote_row else {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "trade quote not found".to_string(),
+                ));
+            };
+
+            if executed_trade_id.is_some() {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "trade quote already executed".to_string(),
+                ));
+            }
+
+            if expires_at <= now {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "trade quote has expired".to_string(),
+                ));
+            }
+        }
+
+        for proof in input_proofs {
+            let row = sqlx::query_as::<
+                _,
+                (
+                    String,
+                    String,
+                    String,
+                    i64,
+                    String,
+                    Option<String>,
+                    Option<String>,
+                    Option<String>,
+                    Option<i64>,
+                ),
+            >(
+                r#"
+                SELECT
+                    secret,
+                    keyset_id,
+                    unit,
+                    amount,
+                    commitment,
+                    market_event_id,
+                    direction,
+                    spent_trade_id,
+                    spent_at
+                FROM portfolio_proofs
+                WHERE secret = ?
+                LIMIT 1
+                "#,
+            )
+            .bind(&proof.secret)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+            let Some((
+                secret,
+                keyset_id,
+                unit,
+                amount,
+                commitment,
+                market_event_id,
+                proof_direction,
+                _spent_trade_id,
+                spent_at,
+            )) = row
+            else {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "portfolio_proof_not_found".to_string(),
+                ));
+            };
+
+            if spent_at.is_some() {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "portfolio_proof_already_spent".to_string(),
+                ));
+            }
+
+            if secret != proof.secret
+                || keyset_id != proof.keyset_id
+                || amount as u64 != proof.amount
+                || commitment != proof.commitment
+            {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "portfolio_proof_mismatch".to_string(),
+                ));
+            }
+
+            if !unit.eq_ignore_ascii_case(expected_input_unit) {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "portfolio_proof_wrong_unit".to_string(),
+                ));
+            }
+
+            if let Some(expected_market_event_id) = expected_market_event_id {
+                if market_event_id.as_deref() != Some(expected_market_event_id) {
+                    return Err(crate::error::CascadeError::invalid_input(
+                        "portfolio_proof_wrong_market".to_string(),
+                    ));
+                }
+            }
+
+            if let Some(expected_direction) = expected_direction {
+                if proof_direction.as_deref() != Some(expected_direction) {
+                    return Err(crate::error::CascadeError::invalid_input(
+                        "portfolio_proof_wrong_direction".to_string(),
+                    ));
+                }
+            }
+        }
+
+        if let Some(wallet_snapshot_minor) = wallet_snapshot_minor {
+            sqlx::query(
+                r#"
+                INSERT INTO wallet_balances (pubkey, available_minor, total_deposited_minor, updated_at)
+                VALUES (?, ?, 0, ?)
+                ON CONFLICT(pubkey) DO UPDATE SET
+                    available_minor = excluded.available_minor,
+                    updated_at = excluded.updated_at
+                "#,
+            )
+            .bind(wallet_pubkey)
+            .bind(wallet_snapshot_minor as i64)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        if let Some(position_snapshot) = position_snapshot {
+            sqlx::query(
+                r#"
+                INSERT INTO market_positions (
+                    pubkey,
+                    market_event_id,
+                    market_slug,
+                    direction,
+                    quantity,
+                    cost_basis_minor,
+                    updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(pubkey, market_event_id, direction) DO UPDATE SET
+                    market_slug = excluded.market_slug,
+                    quantity = excluded.quantity,
+                    cost_basis_minor = excluded.cost_basis_minor,
+                    updated_at = excluded.updated_at
+                "#,
+            )
+            .bind(wallet_pubkey)
+            .bind(&market.event_id)
+            .bind(&market.slug)
+            .bind(direction)
+            .bind(position_snapshot.quantity)
+            .bind(position_snapshot.cost_basis_minor as i64)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        let wallet_row = sqlx::query_as::<_, (i64,)>(
+            "SELECT available_minor FROM wallet_balances WHERE pubkey = ?",
+        )
+        .bind(wallet_pubkey)
+        .fetch_optional(&mut *tx)
+        .await?;
+        let current_wallet = wallet_row.map(|(value,)| value).unwrap_or(0);
+        let next_wallet = current_wallet + wallet_delta_minor;
+        if next_wallet < 0 {
+            return Err(crate::error::CascadeError::InsufficientFunds {
+                need: wallet_delta_minor.unsigned_abs(),
+                have: current_wallet.max(0) as u64,
+            });
+        }
+
+        sqlx::query(
+            r#"
+            INSERT INTO wallet_balances (pubkey, available_minor, total_deposited_minor, updated_at)
+            VALUES (?, ?, 0, ?)
+            ON CONFLICT(pubkey) DO UPDATE SET
+                available_minor = ?,
+                updated_at = excluded.updated_at
+            "#,
+        )
+        .bind(wallet_pubkey)
+        .bind(next_wallet)
+        .bind(now)
+        .bind(next_wallet)
+        .execute(&mut *tx)
+        .await?;
+
+        let existing_position = sqlx::query_as::<_, (f64, i64)>(
+            r#"
+            SELECT quantity, cost_basis_minor
+            FROM market_positions
+            WHERE pubkey = ? AND market_event_id = ? AND direction = ?
+            "#,
+        )
+        .bind(wallet_pubkey)
+        .bind(&market.event_id)
+        .bind(direction)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let (current_qty, current_cost_basis) = existing_position.unwrap_or((0.0, 0));
+        let next_qty = current_qty + quantity_delta;
+        if next_qty < -f64::EPSILON {
+            return Err(crate::error::CascadeError::invalid_input(
+                "Position quantity cannot go negative",
+            ));
+        }
+        let next_cost_basis = (current_cost_basis + cost_basis_delta_minor).max(0);
+
+        if next_qty <= f64::EPSILON {
+            sqlx::query(
+                r#"
+                DELETE FROM market_positions
+                WHERE pubkey = ? AND market_event_id = ? AND direction = ?
+                "#,
+            )
+            .bind(wallet_pubkey)
+            .bind(&market.event_id)
+            .bind(direction)
+            .execute(&mut *tx)
+            .await?;
+        } else {
+            sqlx::query(
+                r#"
+                INSERT INTO market_positions (
+                    pubkey,
+                    market_event_id,
+                    market_slug,
+                    direction,
+                    quantity,
+                    cost_basis_minor,
+                    updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(pubkey, market_event_id, direction) DO UPDATE SET
+                    market_slug = excluded.market_slug,
+                    quantity = excluded.quantity,
+                    cost_basis_minor = excluded.cost_basis_minor,
+                    updated_at = excluded.updated_at
+                "#,
+            )
+            .bind(wallet_pubkey)
+            .bind(&market.event_id)
+            .bind(&market.slug)
+            .bind(direction)
+            .bind(next_qty)
+            .bind(next_cost_basis)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        sqlx::query(
+            r#"
+            UPDATE markets
+            SET q_long = ?, q_short = ?, reserve_sats = ?
+            WHERE event_id = ?
+            "#,
+        )
+        .bind(next_q_long)
+        .bind(next_q_short)
+        .bind(next_reserve_minor as i64)
+        .bind(&market.event_id)
+        .execute(&mut *tx)
+        .await?;
+
+        let existing_state = sqlx::query_as::<_, (i64, i64, Option<i64>)>(
+            r#"
+            SELECT volume_minor, trade_count, first_trade_at
+            FROM market_launch_state
+            WHERE event_id = ?
+            "#,
+        )
+        .bind(&market.event_id)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        let next_volume_minor = existing_state.0 + amount_minor as i64;
+        let next_trade_count = existing_state.1 + 1;
+        let first_trade_at = existing_state.2.unwrap_or(now);
+        let visibility = if next_trade_count > 0 {
+            "public"
+        } else {
+            "pending"
+        };
+
+        sqlx::query(
+            r#"
+            UPDATE market_launch_state
+            SET
+                visibility = ?,
+                first_trade_at = ?,
+                public_visible_at = COALESCE(public_visible_at, ?),
+                volume_minor = ?,
+                trade_count = ?,
+                last_price_yes_ppm = ?,
+                last_price_no_ppm = ?,
+                updated_at = ?
+            WHERE event_id = ?
+            "#,
+        )
+        .bind(visibility)
+        .bind(first_trade_at)
+        .bind(now)
+        .bind(next_volume_minor)
+        .bind(next_trade_count)
+        .bind(if direction == "yes" {
+            price_ppm as i64
+        } else {
+            (1_000_000_u64.saturating_sub(price_ppm)) as i64
+        })
+        .bind(if direction == "yes" {
+            (1_000_000_u64.saturating_sub(price_ppm)) as i64
+        } else {
+            price_ppm as i64
+        })
+        .bind(now)
+        .bind(&market.event_id)
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO market_trade_events (
+                id,
+                market_event_id,
+                market_slug,
+                pubkey,
+                direction,
+                trade_type,
+                amount_minor,
+                fee_minor,
+                quantity,
+                price_ppm,
+                created_at,
+                raw_event_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(trade_id)
+        .bind(&market.event_id)
+        .bind(&market.slug)
+        .bind(wallet_pubkey)
+        .bind(direction)
+        .bind(trade_type)
+        .bind(amount_minor as i64)
+        .bind(fee_minor as i64)
+        .bind(quantity_delta.abs())
+        .bind(price_ppm as i64)
+        .bind(now)
+        .bind(raw_event_json)
+        .execute(&mut *tx)
+        .await?;
+
+        if let Some(settlement) = settlement {
+            sqlx::query(
+                r#"
+                INSERT INTO trade_settlements (
+                    id,
+                    trade_id,
+                    quote_id,
+                    pubkey,
+                    market_event_id,
+                    trade_type,
+                    side,
+                    rail,
+                    mode,
+                    settlement_minor,
+                    settlement_msat,
+                    settlement_fee_msat,
+                    fx_quote_id,
+                    invoice,
+                    payment_hash,
+                    status,
+                    metadata_json,
+                    created_at,
+                    settled_at,
+                    completed_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'complete', ?, ?, ?, ?)
+                "#,
+            )
+            .bind(uuid::Uuid::new_v4().to_string())
+            .bind(trade_id)
+            .bind(settlement.quote_id.as_deref())
+            .bind(&settlement.pubkey)
+            .bind(&settlement.market_event_id)
+            .bind(&settlement.trade_type)
+            .bind(&settlement.side)
+            .bind(&settlement.rail)
+            .bind(&settlement.mode)
+            .bind(settlement.settlement_minor as i64)
+            .bind(settlement.settlement_msat as i64)
+            .bind(settlement.settlement_fee_msat as i64)
+            .bind(settlement.fx_quote_id.as_deref())
+            .bind(settlement.invoice.as_deref())
+            .bind(settlement.payment_hash.as_deref())
+            .bind(settlement.metadata_json.as_deref())
+            .bind(now)
+            .bind(now)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        for proof in input_proofs {
+            let result = sqlx::query(
+                r#"
+                UPDATE portfolio_proofs
+                SET spent_trade_id = ?, spent_at = ?
+                WHERE secret = ? AND spent_at IS NULL
+                "#,
+            )
+            .bind(trade_id)
+            .bind(now)
+            .bind(&proof.secret)
+            .execute(&mut *tx)
+            .await?;
+
+            if result.rows_affected() != 1 {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "portfolio_proof_is_no_longer_spendable".to_string(),
+                ));
+            }
+        }
+
+        for proof in issued_proofs.iter().chain(change_proofs.iter()) {
+            sqlx::query(
+                r#"
+                INSERT INTO portfolio_proofs (
+                    secret,
+                    keyset_id,
+                    unit,
+                    amount,
+                    commitment,
+                    market_event_id,
+                    direction,
+                    source,
+                    created_at,
+                    spent_trade_id,
+                    spent_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)
+                "#,
+            )
+            .bind(&proof.secret)
+            .bind(&proof.keyset_id)
+            .bind(proof.unit.to_lowercase())
+            .bind(proof.amount as i64)
+            .bind(&proof.commitment)
+            .bind(proof.market_event_id.as_deref())
+            .bind(proof.direction.as_deref())
+            .bind(&proof.source)
             .bind(now)
             .execute(&mut *tx)
             .await?;

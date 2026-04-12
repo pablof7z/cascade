@@ -8,6 +8,14 @@ use axum::{
 };
 use serde::Serialize;
 
+const MAX_MARKET_DENOMINATION_POWER: u32 = 32;
+
+fn market_share_denominations() -> Vec<u64> {
+    (0..=MAX_MARKET_DENOMINATION_POWER)
+        .map(|power| 1_u64 << power)
+        .collect()
+}
+
 #[derive(Serialize)]
 pub struct PriceHistoryPoint {
     pub timestamp: i64,
@@ -60,9 +68,7 @@ pub async fn create_market(
     let event_id = req.event_id.clone();
 
     // Standard denomination set for market share tokens
-    let denominations: Vec<u64> = vec![
-        1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
-    ];
+    let denominations = market_share_denominations();
 
     // Register a dedicated LONG keyset for this market via CDK rotate_keyset
     let long_keyset_id = match state

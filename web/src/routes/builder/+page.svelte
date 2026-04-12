@@ -4,8 +4,7 @@
   import { goto } from '$app/navigation';
   import {
     buyMarketPosition,
-    expectOk,
-    fetchPortfolioMirror,
+    extractTradeProofBundles,
     fetchTradeQuoteStatus,
     quoteBuyTrade,
     fetchTradeRequestStatus,
@@ -29,6 +28,12 @@
   } from '$lib/cascade/recovery';
   import { ndk } from '$lib/ndk/client';
   import { parseMarketEvent, type MarketRecord } from '$lib/ndk/cascade';
+  import {
+    addLocalProofs,
+    localProofBalance,
+    removeLocalProofs,
+    selectLocalProofsForAmount
+  } from '$lib/wallet/localProofs';
 
   type DraftLink = {
     id: string;
@@ -126,6 +131,10 @@
   const portfolioLabel = $derived(paperEdition ? 'signet portfolio' : 'portfolio');
   const parsedSeedAmount = $derived(Number.parseInt(seedAmount, 10) || 0);
 
+  function proofMintUrl(): string {
+    return getProductApiUrl().replace(/\/+$/, '');
+  }
+
   function slugify(value: string): string {
     return value
       .toLowerCase()
@@ -177,13 +186,30 @@
     }
   }
 
-  async function loadPortfolioMirror(pubkey: string): Promise<{ available_minor?: number }> {
-    const portfolio = await fetchPortfolioMirror(pubkey);
-    if (!portfolio.ok) {
-      throw new Error('Failed to load your portfolio.');
+  function availableLocalUsdMinor(): number {
+    return localProofBalance(proofMintUrl(), 'usd');
+  }
+
+  function applyRecoveredSeedProofs(
+    receipt: ReturnType<typeof listTradeReceipts>[number],
+    payload: ProductTradeExecution | ProductTradeStatus
+  ) {
+    const { issued, change } = extractTradeProofBundles(payload);
+    if (!issued && !change) {
+      throw new Error('seed_proofs_missing');
     }
 
-    return (await portfolio.json()) as { available_minor?: number };
+    if (receipt.spentUnit && receipt.spentProofs?.length) {
+      removeLocalProofs(proofMintUrl(), receipt.spentUnit, receipt.spentProofs);
+    }
+
+    if (change) {
+      addLocalProofs(proofMintUrl(), change.unit, change.proofs);
+    }
+
+    if (issued) {
+      addLocalProofs(proofMintUrl(), issued.unit, issued.proofs);
+    }
   }
 
   function createSeedRequestId(eventId: string): string {
@@ -210,8 +236,7 @@
     builderStatus = `Checking portfolio balance for ${formatUsdMinor(parsedSeedAmount)}.`;
 
     try {
-      const walletPayload = await loadPortfolioMirror(currentUser.pubkey);
-      const availableMinor = walletPayload.available_minor ?? 0;
+      const availableMinor = availableLocalUsdMinor();
 
       if (availableMinor < parsedSeedAmount) {
         builderStatus = `Market is pending. Fund your ${portfolioLabel}, then seed it from here.`;
@@ -235,6 +260,10 @@
         throw new Error('Seed quote is missing a quote id.');
       }
       const lockedQuoteId = quote.quote_id;
+      const spendProofs = selectLocalProofsForAmount(proofMintUrl(), 'usd', quote.spend_minor);
+      if (!spendProofs.length) {
+        throw new Error(`Your ${portfolioLabel} no longer has enough local proofs for this seed.`);
+      }
 
       trackTradeReceipt({
         id: requestId,
@@ -243,7 +272,9 @@
         eventId,
         marketSlug: slug,
         action: 'seed',
-        side: seedSide
+        side: seedSide,
+        spentUnit: 'usd',
+        spentProofs: spendProofs
       });
 
       const seed = await buyMarketPosition({
@@ -251,17 +282,32 @@
         pubkey: currentUser.pubkey,
         side: (quote.side as 'yes' | 'no') ?? seedSide,
         spendMinor: quote.spend_minor,
+        proofs: spendProofs,
         quoteId: lockedQuoteId,
         requestId
       });
-      await expectOk(seed, 'Failed to seed the market.');
-      const payload = (await seed.json()) as ProductTradeExecution;
+      const payload = await parseJson<ProductTradeExecution>(seed, 'Failed to seed the market.');
       const tradeId = typeof payload.trade.id === 'string' ? payload.trade.id : null;
       if (tradeId) {
         markTradeReceiptTradeId(requestId, tradeId);
       } else {
         attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
+
+      applyRecoveredSeedProofs(
+        {
+          id: requestId,
+          pubkey: currentUser.pubkey,
+          eventId,
+          marketSlug: slug,
+          action: 'seed',
+          side: seedSide,
+          spentUnit: 'usd',
+          spentProofs: spendProofs,
+          createdAt: Date.now()
+        },
+        payload
+      );
 
       if (hasCompletedTradeSettlement(payload)) {
         clearTradeReceipt(requestId);
@@ -365,8 +411,7 @@
 
       await loadCreatorMarkets();
 
-      const walletPayload = await loadPortfolioMirror(currentUser.pubkey);
-      const availableMinor = walletPayload.available_minor ?? 0;
+      const availableMinor = availableLocalUsdMinor();
       if (availableMinor < parsedSeedAmount) {
         builderStatus = `Market is pending. Fund your ${portfolioLabel}, then seed the market from this page.`;
         errorMessage = `Your ${portfolioLabel} has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
@@ -419,6 +464,7 @@
             builderStatus = `Recovered pending settlement for ${receipt.marketSlug}.`;
             continue;
           }
+          applyRecoveredSeedProofs(receipt, payload);
           clearTradeReceipt(receipt.id);
           builderStatus = 'Recovered seeded market and now public.';
           await loadCreatorMarkets();
@@ -455,6 +501,7 @@
               builderStatus = `Recovered pending settlement for ${receipt.marketSlug}.`;
               continue;
             }
+            applyRecoveredSeedProofs(receipt, tradePayload);
             clearTradeReceipt(receipt.id);
             builderStatus = 'Recovered seeded market and now public.';
             await loadCreatorMarkets();
@@ -498,6 +545,7 @@
             builderStatus = `Recovered pending settlement for ${receipt.marketSlug}.`;
             continue;
           }
+          applyRecoveredSeedProofs(receipt, tradePayload);
           clearTradeReceipt(receipt.id);
           builderStatus = 'Recovered seeded market and now public.';
           await loadCreatorMarkets();

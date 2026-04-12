@@ -301,6 +301,43 @@ Execution routes consume bearer proofs.
 - `GET /api/trades/requests/{request_id}` exists so interrupted clients can recover a trade by idempotency key before they know the final `trade_id`
 - `GET /api/trades/{trade_id}` exists so interrupted clients can recover a pending execution
 
+Launch execution is proof-native, but intentionally narrower than a fully general Cashu wallet client:
+
+- the browser submits the locally held bearer proofs it wants to spend
+- the mint validates and consumes those proofs
+- the mint returns newly issued target-side proofs plus any source-side change proofs
+- the launch web client stores those returned proofs locally in the browser
+- the older pubkey-keyed portfolio mirror is legacy compatibility and recovery support only; it is not the spendable source of truth
+
+Canonical market-proof units are lowercase:
+
+- `long_<market-slug>` for YES-side proofs
+- `short_<market-slug>` for NO-side proofs
+
+Clients may still encounter older uppercase proof buckets from pre-convergence builds. They should normalize those locally into the lowercase canonical units instead of treating them as separate holdings.
+
+Launch trade execution does not yet require browser-generated blinded outputs. The current product contract is:
+
+- proof inputs from the client
+- mint-generated issued proofs in the response
+- mint-generated change proofs in the response when the selected input proofs exceed the executable quote amount
+
+That keeps signet and mainnet on the same self-custodied browser-local proof model while the blind-output hardening path remains future work.
+
+### Market Proof Denomination
+
+USD proofs use integer USD minor units.
+
+Market proofs also use integer amounts, but those amounts represent fixed share-minor units rather than whole shares.
+
+- one market-proof amount unit = `0.0001` share
+- one whole share = `10_000` market-proof amount units
+- trade quotes still render human share quantities as decimal `quantity`
+- buy and sell execution must quantize the executable share amount onto this fixed share-minor grid before minting or consuming market proofs
+- market keysets must expose a wide enough denomination ladder that large share-minor positions do not explode into thousands of tiny proofs
+
+This fixed scale is part of the launch machine contract. It lets the browser store real bearer market proofs locally without inventing a float-based proof format.
+
 ## Self-Custodied Wallet State
 
 Cascade does not custody user funds in a canonical account ledger.

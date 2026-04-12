@@ -1,4 +1,5 @@
 import { storageKey } from '$lib/cascade/config';
+import type { ProductProof } from '$lib/cascade/api';
 
 type PendingTopupRecord = {
   id: string;
@@ -20,6 +21,8 @@ type TradeReceiptRecord = {
   marketSlug: string;
   action: 'buy' | 'sell' | 'seed';
   side: 'yes' | 'no';
+  spentUnit?: string;
+  spentProofs?: ProductProof[];
   createdAt: number;
 };
 

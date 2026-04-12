@@ -364,6 +364,7 @@ pub struct ProductTradeQuoteResponse {
     pub side: String,
     pub fx_quote_id: Option<String>,
     pub quantity: f64,
+    pub quantity_minor: u64,
     pub spend_minor: u64,
     pub fee_minor: u64,
     pub net_minor: u64,
@@ -390,6 +391,8 @@ pub struct ProductBuyRequest {
     pub pubkey: String,
     pub side: String,
     pub spend_minor: u64,
+    #[serde(default)]
+    pub proofs: Vec<ProofInput>,
     pub quote_id: Option<String>,
     pub request_id: Option<String>,
 }
@@ -400,6 +403,8 @@ pub struct ProductCoordinatorBuyRequest {
     pub pubkey: String,
     pub side: String,
     pub spend_minor: u64,
+    #[serde(default)]
+    pub proofs: Vec<ProofInput>,
     pub quote_id: Option<String>,
     pub request_id: Option<String>,
 }
@@ -409,6 +414,8 @@ pub struct ProductSellRequest {
     pub pubkey: String,
     pub side: String,
     pub quantity: f64,
+    #[serde(default)]
+    pub proofs: Vec<ProofInput>,
     pub quote_id: Option<String>,
     pub request_id: Option<String>,
 }
@@ -419,8 +426,16 @@ pub struct ProductCoordinatorSellRequest {
     pub pubkey: String,
     pub side: String,
     pub quantity: f64,
+    #[serde(default)]
+    pub proofs: Vec<ProofInput>,
     pub quote_id: Option<String>,
     pub request_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ProductTradeProofBundleResponse {
+    pub unit: String,
+    pub proofs: Vec<ProofInput>,
 }
 
 #[derive(Debug, Serialize)]
@@ -429,6 +444,8 @@ pub struct ProductTradeExecutionResponse {
     pub market: ProductMarketSummary,
     pub trade: Value,
     pub settlement: Option<ProductTradeSettlementResponse>,
+    pub issued: Option<ProductTradeProofBundleResponse>,
+    pub change: Option<ProductTradeProofBundleResponse>,
 }
 
 #[derive(Debug, Serialize)]

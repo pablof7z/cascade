@@ -518,6 +518,12 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] There is no canonical `/api/wallet` route in the launch contract.
 - [ ] There is no canonical `/api/product/portfolio/:pubkey` or legacy `/api/product/wallet/:pubkey` pubkey-keyed balance API in the launch contract.
 - [ ] `/portfolio` derives balance and spendable state from local proof storage.
+- [ ] Trade execution consumes locally stored proofs and writes returned issued/change proofs back into browser-local storage.
+- [ ] The older pubkey-keyed portfolio mirror is treated as legacy compatibility and recovery support only, not as the spendable source of truth.
+- [ ] Market-proof storage uses a fixed integer share-minor scale of `10_000` units per whole share in both signet and mainnet.
+- [ ] Market-proof bucket names are canonicalized to lowercase `long_<slug>` / `short_<slug>`.
+- [ ] Browser storage migrates any legacy uppercase market-proof buckets into the lowercase canonical buckets during load.
+- [ ] Market keysets use a wide denomination ladder so browser-local proof buckets stay compact even for large share positions.
 - [ ] Builder, market trading, and `/portfolio` do not depend on a server-side per-pubkey wallet ledger in signet.
 - [ ] Agent flows use a local proof manager rather than a Cascade portfolio API.
 - [ ] Local proof storage covers both USD portfolio proofs and market proofs.

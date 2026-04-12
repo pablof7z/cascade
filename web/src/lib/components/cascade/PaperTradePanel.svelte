@@ -58,19 +58,25 @@
   let errorMessage = $state('');
 
   const currentPosition = $derived.by(() => {
-    const quantity = shareMinorToQuantity(
-      localProofBalance(proofMintUrl(), marketUnitForSide(buySide))
+    const yesQuantity = shareMinorToQuantity(
+      localProofBalance(proofMintUrl(), marketUnitForSide('yes'))
     );
-    if (quantity > 0) {
-      return { side: buySide, quantity };
+    const noQuantity = shareMinorToQuantity(
+      localProofBalance(proofMintUrl(), marketUnitForSide('no'))
+    );
+
+    if (yesQuantity > 0 && noQuantity > 0) {
+      return buySide === 'no'
+        ? { side: 'no' as const, quantity: noQuantity }
+        : { side: 'yes' as const, quantity: yesQuantity };
     }
 
-    const oppositeSide: 'yes' | 'no' = buySide === 'yes' ? 'no' : 'yes';
-    const oppositeQuantity = shareMinorToQuantity(
-      localProofBalance(proofMintUrl(), marketUnitForSide(oppositeSide))
-    );
-    if (oppositeQuantity > 0) {
-      return { side: oppositeSide, quantity: oppositeQuantity };
+    if (yesQuantity > 0) {
+      return { side: 'yes' as const, quantity: yesQuantity };
+    }
+
+    if (noQuantity > 0) {
+      return { side: 'no' as const, quantity: noQuantity };
     }
 
     return null;
@@ -84,16 +90,6 @@
     return side === 'yes' ? `long_${marketSlug}` : `short_${marketSlug}`;
   }
 
-  function alignSideToLocalProofs() {
-    const yesQuantity = localProofBalance(proofMintUrl(), marketUnitForSide('yes'));
-    const noQuantity = localProofBalance(proofMintUrl(), marketUnitForSide('no'));
-    if (buySide === 'yes' && yesQuantity === 0 && noQuantity > 0) {
-      buySide = 'no';
-    } else if (buySide === 'no' && noQuantity === 0 && yesQuantity > 0) {
-      buySide = 'yes';
-    }
-  }
-
   function createTradeRequestId(): string {
     if (browser && typeof crypto?.randomUUID === 'function') {
       return crypto.randomUUID();
@@ -104,7 +100,6 @@
 
   function refreshLocalWallet() {
     availableMinor = localProofBalance(proofMintUrl(), 'usd');
-    alignSideToLocalProofs();
   }
 
   async function loadWallet() {
@@ -271,7 +266,7 @@
       return;
     }
 
-    status = `Buying ${buySide === 'yes' ? 'LONG' : 'SHORT'} with ${formatUsdMinor(spendMinor)}.`;
+    status = `Buying ${buySide.toUpperCase()} with ${formatUsdMinor(spendMinor)}.`;
     errorMessage = '';
 
     try {
@@ -340,7 +335,7 @@
 
       if (hasCompletedTradeSettlement(payload)) {
         clearTradeReceipt(requestId);
-        status = `Bought ${buySide === 'yes' ? 'LONG' : 'SHORT'} on ${marketSlug}.`;
+        status = `Bought ${buySide.toUpperCase()} on ${marketSlug}.`;
       } else {
         status = `Buy submitted on ${marketSlug}. Waiting for settlement.`;
       }
@@ -357,19 +352,25 @@
       return;
     }
 
+    const sellSide = currentPosition?.side;
+    if (!sellSide) {
+      errorMessage = 'No current position is available to withdraw.';
+      return;
+    }
+
     const quantity = Number.parseFloat(sellQuantity);
     if (!Number.isFinite(quantity) || quantity <= 0) {
       errorMessage = 'Enter a sell quantity greater than zero.';
       return;
     }
 
-    status = `Withdrawing ${quantity.toFixed(2)} ${buySide === 'yes' ? 'LONG' : 'SHORT'} shares.`;
+    status = `Withdrawing ${quantity.toFixed(2)} ${sellSide.toUpperCase()} shares.`;
     errorMessage = '';
 
     try {
       const quoteResponse = await quoteSellTrade({
         eventId: marketId,
-        side: buySide,
+        side: sellSide,
         quantity
       });
       const quote = await parseJson<ProductTradeQuote>(
@@ -380,14 +381,14 @@
         throw new Error('Sell quote is missing a quote id.');
       }
       const lockedQuoteId = quote.quote_id;
-      const marketUnit = marketUnitForSide((quote.side as 'yes' | 'no') ?? buySide);
+      const marketUnit = marketUnitForSide((quote.side as 'yes' | 'no') ?? sellSide);
       const spendProofs = selectLocalProofsForAmount(
         proofMintUrl(),
         marketUnit,
         quote.quantity_minor
       );
       if (!spendProofs.length) {
-        throw new Error(`Not enough local ${buySide === 'yes' ? 'LONG' : 'SHORT'} proofs to withdraw.`);
+        throw new Error(`Not enough local ${sellSide.toUpperCase()} proofs to withdraw.`);
       }
 
       const requestId = createTradeRequestId();
@@ -398,7 +399,7 @@
         eventId: marketId,
         marketSlug,
         action: 'sell',
-        side: buySide,
+        side: sellSide,
         spentUnit: marketUnit,
         spentProofs: spendProofs
       });
@@ -406,7 +407,7 @@
       const response = await sellMarketPosition({
         eventId: marketId,
         pubkey: currentUser.pubkey,
-        side: (quote.side as 'yes' | 'no') ?? buySide,
+        side: (quote.side as 'yes' | 'no') ?? sellSide,
         quantity: quote.quantity,
         proofs: spendProofs,
         quoteId: lockedQuoteId,
@@ -427,7 +428,7 @@
           eventId: marketId,
           marketSlug,
           action: 'sell',
-          side: buySide,
+          side: sellSide,
           spentUnit: marketUnit,
           spentProofs: spendProofs,
           createdAt: Date.now()
@@ -437,7 +438,7 @@
 
       if (hasCompletedTradeSettlement(payload)) {
         clearTradeReceipt(requestId);
-        status = `Withdrew ${buySide === 'yes' ? 'LONG' : 'SHORT'} on ${marketSlug}.`;
+        status = `Withdrew ${sellSide.toUpperCase()} on ${marketSlug}.`;
       } else {
         status = `Withdrawal submitted on ${marketSlug}. Waiting for settlement.`;
       }
@@ -478,10 +479,10 @@
       <span>Side</span>
       <div class="trade-side-row">
         <button class:active={buySide === 'yes'} type="button" onclick={() => (buySide = 'yes')}>
-          LONG {formatProbability(yesProbability)}
+          YES {formatProbability(yesProbability)}
         </button>
         <button class:active={buySide === 'no'} type="button" onclick={() => (buySide = 'no')}>
-          SHORT {formatProbability(noProbability)}
+          NO {formatProbability(noProbability)}
         </button>
       </div>
     </div>
@@ -489,7 +490,7 @@
     <div class="trade-field">
       <span>Buy spend</span>
       <input bind:value={buySpend} min="100" step="100" type="number" />
-      <button class="button-primary" type="button" onclick={buy}>Buy {buySide === 'yes' ? 'LONG' : 'SHORT'}</button>
+      <button class="button-primary" type="button" onclick={buy}>Buy {buySide.toUpperCase()}</button>
     </div>
 
     <div class="trade-field">
@@ -497,7 +498,7 @@
       <strong>{currentPosition ? `${currentPosition.quantity.toFixed(2)} shares` : 'None yet'}</strong>
       <input bind:value={sellQuantity} min="0" step="0.1" type="number" />
       <button class="button-secondary" disabled={!currentPosition} type="button" onclick={sell}>
-        Withdraw {buySide === 'yes' ? 'LONG' : 'SHORT'}
+        Withdraw {currentPosition ? currentPosition.side.toUpperCase() : buySide.toUpperCase()}
       </button>
     </div>
   {/if}

@@ -43,6 +43,16 @@ Cascade needs a paper-trading edition and a real-money edition.
 - Mainnet and signet must run as separate app + mint deployments.
 - Proofs, reserves, databases, Nostr publishing identities, relay projections, and payment rails must not mix between editions.
 - The paper-trading edition exists so humans, agents, and the owner can exercise the full flow without mainnet funds.
+- Mainnet and signet use the same proof-custody implementation. The difference is value and infrastructure, not different wallet mechanics.
+- Launch proof custody is browser-local storage in both editions. NIP-60 is deferred and may return later, but it is not part of the current product.
+
+### User-Facing Capital Surface Is Portfolio
+
+The user-facing capital surface is called `Portfolio`.
+
+- The canonical route is `/portfolio`.
+- `/wallet` exists only as a compatibility redirect.
+- Avoid calling the product surface "wallet" in UI copy, onboarding copy, or product docs unless the reference is specifically about internal wallet-mint infrastructure.
 
 ### Svelte — React Is Gone
 

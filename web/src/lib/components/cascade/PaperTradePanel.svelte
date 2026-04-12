@@ -4,7 +4,7 @@
   import {
     buyMarketPosition,
     expectOk,
-    fetchPaperWallet,
+    fetchPortfolioMirror,
     fetchTradeQuoteStatus,
     quoteBuyTrade,
     quoteSellTrade,
@@ -91,7 +91,7 @@
 
   async function loadWallet() {
     if (!currentUser) return;
-    const response = await fetchPaperWallet(currentUser.pubkey);
+    const response = await fetchPortfolioMirror(currentUser.pubkey);
     if (!response.ok) return;
     const nextWallet = (await response.json()) as PaperWallet;
     alignSideToWallet(nextWallet);
@@ -386,7 +386,7 @@
   <div class="trade-panel-head">
     <div>
       <h3>Paper trade</h3>
-      <p>Trade this market from your signet wallet.</p>
+      <p>Trade this market from your signet portfolio.</p>
     </div>
   </div>
 

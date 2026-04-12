@@ -22,6 +22,7 @@
 - USDC is an additive later rail, not a launch blocker.
 - Paper trading and real-money trading are separate editions.
 - Mainnet and signet use the same product model, but never the same funds, proofs, relays, or backing infrastructure.
+- Mainnet and signet also use the same proof-custody implementation: browser-local proof storage, not NIP-60 in only one edition.
 
 ## Edition Model
 
@@ -54,6 +55,7 @@ Cascade runs two editions from one codebase.
 - separate Nostr publisher keys
 - separate relay inputs or environment filters for discovery
 - separate frontend environment labels and local proof namespaces
+- same browser-local proof manager implementation in both editions
 
 If any of those boundaries are blurred, the editions are not safe.
 
@@ -76,6 +78,7 @@ Launch should prefer a small number of deployable services with clear logical mo
 - `Stripe webhook handler`
 - `Lightning integration`
 - `local proof manager in web`
+- no launch dependency on NIP-60
 
 ### Optional Supporting Modules
 
@@ -245,7 +248,7 @@ Paper trading should not require real card rails. The signet edition should expo
 
 Those signet-only rails should still feed the same wallet model as mainnet:
 
-- one canonical `/wallet` product surface in both editions
+- one canonical `/portfolio` product surface in both editions
 - local proof custody in both editions
 - no signet-only "paper wallet" account model backed by a per-pubkey balance API
 
@@ -253,8 +256,8 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 
 ### Success Gates
 
-- a user with `$0` can fund the wallet in signet without real money
-- a user with `$0` can fund the wallet in mainnet through Stripe or Lightning
+- a user with `$0` can fund the portfolio in signet without real money
+- a user with `$0` can fund the portfolio in mainnet through Stripe or Lightning
 - no funding path issues proofs before confirmed payment
 
 ### Failure Gates
@@ -262,7 +265,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 - signet paper trading depends on real-money rails
 - Stripe completion depends on browser redirect rather than webhook confirmation
 - signet funding credits a pubkey-keyed server wallet instead of issuing signet-edition proofs to the user or agent
-- the signet app depends on a separate wallet product model rather than the same self-custodied wallet behavior as mainnet
+- the signet app depends on a separate portfolio product model rather than the same self-custodied proof behavior as mainnet
 
 ### Best Practices
 
@@ -281,7 +284,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 ### Deliverables
 
 - LONG and SHORT issuance via paid quotes
-- exit path from market proofs to wallet proofs
+- exit path from market proofs to portfolio proofs
 - exact quantity and proceeds handling for finite LMSR trades
 
 ### Success Gates
@@ -383,7 +386,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 - creator builder flow with pending visibility and resume
 - portfolio and activity views wired to real data
 - environment banner or switcher
-- `/portfolio` is the canonical self-custodied account route and `/wallet` is removed before launch
+- `/portfolio` is the canonical self-custodied account route and `/wallet` is only a compatibility redirect at launch
 
 ### Success Gates
 

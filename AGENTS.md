@@ -2,7 +2,7 @@
 
 ## How markets work
 
-- **Fund wallet**: user buys USD ecash through the wallet mint. That's wallet balance.
+- **Fund portfolio**: user buys USD ecash through the wallet mint. That's portfolio balance.
 - **Mint** (verb): user spends USD from the wallet mint → receives LONG or SHORT Cashu tokens from the market mint. That's a position.
 - **Withdraw** (verb): user returns market tokens → receives USD ecash at the current LMSR price. That's exiting.
 - **Markets never close.** There is no expiry, no countdown, no admin close button.

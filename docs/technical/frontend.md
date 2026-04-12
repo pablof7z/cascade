@@ -61,7 +61,7 @@ The local edition env templates live in:
 | `/profile` | Current-user profile surface |
 | `/relays` | Relay configuration / diagnostics |
 | `/terms` | Terms of service |
-| `/wallet` | Temporary pre-launch route to be removed as `/portfolio` absorbs wallet behavior |
+| `/wallet` | Compatibility redirect to `/portfolio`; not a distinct product surface |
 
 The full target product route model is defined in [../product/spec.md](../product/spec.md). The `web/` app is still being built toward that target.
 
@@ -137,13 +137,13 @@ The portfolio stores proofs locally. The mint is the issuer; the user's device i
 
 There is no canonical server wallet API for current balance because the proofs are self-custodied.
 
-The current `web/` implementation may still expose `/wallet` while this merge is in progress, but `/wallet` is not part of the launch route model and should be removed before launch.
+`/portfolio` is the canonical proof-custody route. `/wallet` exists only as a compatibility redirect and should not diverge into a separate product surface.
 
 ## Trading And Portfolio State
 
 The frontend needs local state for at least two proof classes:
 
-- USD wallet proofs
+- USD portfolio proofs
 - market proofs for LONG/SHORT positions
 
 Trading surfaces should let the user spend dollars on YES or NO and then persist the resulting market proofs locally.
@@ -178,6 +178,8 @@ The frontend may use localStorage for categories of state such as:
 - offline action queues
 
 Every local-storage key involved in wallet or portfolio state should be namespaced by edition and mint URL.
+
+NIP-60 is deferred. The current launch frontend should use browser-local proof storage for both signet and mainnet rather than a separate NIP-60 wallet implementation in one edition.
 
 The failed `webapp/` migration remains legacy implementation reference only, not the active architecture.
 

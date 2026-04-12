@@ -273,7 +273,7 @@ export async function fetchTradeQuoteStatus(quoteId: string): Promise<Response> 
   return fetch(`${getProductApiUrl()}/api/trades/quotes/${quoteId}`);
 }
 
-export async function fetchPaperWallet(pubkey: string): Promise<Response> {
+export async function fetchPortfolioMirror(pubkey: string): Promise<Response> {
   return fetch(`${getProductApiUrl()}/api/product/wallet/${pubkey}`);
 }
 

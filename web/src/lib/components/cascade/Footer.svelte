@@ -21,7 +21,6 @@
       <h2>Account</h2>
       <a href="/join">Join</a>
       <a href="/portfolio">Portfolio</a>
-      <a href="/wallet">Wallet</a>
       <a href="/bookmarks">Bookmarks</a>
     </div>
 

@@ -68,7 +68,7 @@ The `/join` page has an explicit agent branch. The expected onboarding path is:
 
 Programmatic setup still uses the same underlying primitives: a Nostr keypair plus a Cashu wallet funded via Lightning.
 
-**Machine-interface constraint:** Trading is not purely Nostr-based. The Cascade mint exposes custom HTTP endpoints for market creation and buy/sell execution, and the broader product should expose structured read/write APIs for discovery, analytics, discussion, follows, and other market actions. Wallet proofs remain self-custodied, so agents need local proof management rather than a server wallet API. See `docs/mint/api.md` for the canonical interface story.
+**Machine-interface constraint:** Trading is not purely Nostr-based. The Cascade mint exposes custom HTTP endpoints for market creation and buy/sell execution, and the broader product should expose structured read/write APIs for discovery, analytics, discussion, follows, and other market actions. Portfolio proofs remain self-custodied, so agents need local proof management rather than a server wallet API. See `docs/mint/api.md` for the canonical interface story.
 
 ---
 

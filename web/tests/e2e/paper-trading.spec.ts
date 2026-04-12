@@ -70,14 +70,14 @@ async function ensureLoggedIn(page: Page, secretKey: string) {
 }
 
 async function loginWithPrivateKey(page: Page, secretKey: string) {
-  await page.goto('/wallet');
+  await page.goto('/portfolio');
   await ensureLoggedIn(page, secretKey);
 }
 
-async function fundPaperWallet(page: Page, secretKey: string, amountMinor: number) {
-  await page.goto('/wallet');
+async function fundPortfolio(page: Page, secretKey: string, amountMinor: number) {
+  await page.goto('/portfolio');
   await ensureLoggedIn(page, secretKey);
-  await expect(page.getByRole('heading', { name: 'Browser-local proof wallet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
 
   let remainingMinor = amountMinor;
 
@@ -143,13 +143,13 @@ test('pending markets stay private until the first mint trade, then become publi
   await page.getByRole('button', { name: 'Create Market' }).click();
 
   await expect(page).toHaveURL(/\/builder$/);
-  await expect(page.getByText(/Market is pending\. Fund your signet wallet/)).toBeVisible();
+  await expect(page.getByText(/Market is pending\. Fund your signet portfolio/)).toBeVisible();
   await expect(pendingMarketRow(page, market.title)).toContainText('Pending');
 
   const privateMarketResponse = await fetch(`${BASE_URL}/market/${market.slug}`);
   expect(privateMarketResponse.status).toBe(404);
 
-  await fundPaperWallet(page, creatorSecret, 10_000);
+  await fundPortfolio(page, creatorSecret, 10_000);
 
   await page.goto('/builder');
   await ensureLoggedIn(page, creatorSecret);
@@ -196,14 +196,14 @@ test('pending markets stay private until the first mint trade, then become publi
   await marketPage.close();
 });
 
-test('funded users can create a market, buy the other side, and withdraw part of the position', async ({
+test('funded portfolio users can create a market, buy the other side, and withdraw part of the position', async ({
   page
 }) => {
   const market = uniqueMarket('Public paper market');
   const creatorSecret = secretKeyFor(`public:${market.title}`);
 
   await loginWithPrivateKey(page, creatorSecret);
-  await fundPaperWallet(page, creatorSecret, 15_000);
+  await fundPortfolio(page, creatorSecret, 15_000);
   await createPublicMarket(page, creatorSecret, market, 10_000);
 
   const tradePanel = page.locator('.trade-panel');
@@ -252,19 +252,19 @@ test('funded users can create a market, buy the other side, and withdraw part of
   await withdrawButton.click();
   await expect(tradePanel.getByText(/Withdrew (YES|NO) on/)).toContainText(market.slug);
 
-  await page.goto('/wallet');
+  await page.goto('/portfolio');
   await ensureLoggedIn(page, creatorSecret);
-  await expect(page.getByRole('heading', { name: 'Browser-local proof wallet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
   await expect(page.locator('.position-row').filter({ hasText: market.title }).first()).toBeVisible();
 });
 
-test('signet wallet can fund through the Lightning top-up flow', async ({ page }) => {
+test('signet portfolio can fund through the Lightning top-up flow', async ({ page }) => {
   const secret = secretKeyFor(`lightning-wallet:${Date.now()}`);
 
   await loginWithPrivateKey(page, secret);
-  await page.goto('/wallet');
+  await page.goto('/portfolio');
   await ensureLoggedIn(page, secret);
-  await expect(page.getByRole('heading', { name: 'Browser-local proof wallet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
   await page.getByRole('spinbutton', { name: 'Lightning amount' }).fill('2500');
   await page.getByRole('button', { name: 'Create Lightning invoice' }).click();
   await expect(page.getByText(`Created a Lightning top-up for ${formatUsdMinor(2500)}.`)).toBeVisible();
@@ -295,7 +295,7 @@ test('signet wallet can fund through the Lightning top-up flow', async ({ page }
     page.getByText(`Lightning top-up added ${formatUsdMinor(2500)} of browser-local proofs.`)
   ).toBeVisible();
 
-  await page.goto('/wallet');
+  await page.goto('/portfolio');
   await ensureLoggedIn(page, secret);
   const walletPanels = page.locator('.wallet-grid .wallet-panel');
   await expect(walletPanels.first()).toContainText('Local Proofs');

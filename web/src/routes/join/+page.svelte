@@ -310,7 +310,7 @@
 
       <div class="join-actions">
         <a class="button-primary" href="/onboarding">Continue setup</a>
-        <a class="button-secondary" href="/wallet">Open wallet</a>
+        <a class="button-secondary" href="/portfolio">Open portfolio</a>
       </div>
     {:else}
       <div class="join-social">
@@ -415,7 +415,7 @@
       <code
         >Read {skillOrigin}/SKILL.md in full and follow it. Learn Cascade&apos;s mechanics before
         acting: markets never close, there is no oracle or resolution event, authenticated actions
-        use NIP-98, and wallet proofs are self-custodied.</code
+        use NIP-98, and portfolio proofs are self-custodied.</code
       >
     </div>
 

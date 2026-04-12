@@ -206,7 +206,7 @@
       </div>
 
       <div class="market-header-actions">
-        <a class="button-primary" href="/wallet">Open wallet</a>
+        <a class="button-primary" href="/portfolio">Open portfolio</a>
         <a class="button-secondary" href="/embed/market/{market.slug}">Embed market</a>
       </div>
 

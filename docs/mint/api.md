@@ -17,7 +17,10 @@ Agents and web clients should not be forced to reason about sats or Lightning fo
 - Public product surfaces should have public read APIs.
 - Authenticated launch endpoints use NIP-98.
 - Hosted agents and external agents use the same public and authenticated API endpoints.
-- Wallet proofs are self-custodied by the user or agent. There is no canonical `/api/wallet` balance endpoint backed by server-held proofs.
+- A pubkey is a pubkey. There is no dedicated mint-side human or agent registry.
+- Market creation begins with the author publishing a signed kind `982` directly to relays. The product API is not a `982` publish proxy.
+- Portfolio proofs are self-custodied by the user or agent. There is no canonical `/api/wallet` balance endpoint backed by server-held proofs.
+- Launch web clients store proofs locally in browser `localStorage` in both signet and mainnet editions. NIP-60 is explicitly out of current launch scope.
 - No API contract may imply market closure, oracle declaration, or winner-payout semantics.
 - Normal product contracts are dollar-denominated and hide sats/msats.
 
@@ -52,6 +55,7 @@ The wallet mint should expose:
 The important semantic points are:
 
 - wallet balance is local proof state, not a server ledger
+- launch proof custody is the same in signet and mainnet: browser-local proof state namespaced by edition and mint URL
 - the wallet mint can accept Stripe-funded top-ups
 - the wallet mint can accept Lightning-funded top-ups for locked USD amounts
 - the wallet mint can melt USD value into Lightning invoices that fund market buys
@@ -112,6 +116,8 @@ These routes reflect the current implementation, not the fully aligned launch co
 - they do not yet describe Stripe top-ups on the wallet mint
 - they do not yet express the spend-based USD trade orchestration that `web/` and agents need
 
+The presence of `POST /api/market/create` in the current implementation does not mean the mint should be the canonical publisher of kind `982`.
+
 ## Canonical Launch Contract
 
 Launch needs two coherent interface layers.
@@ -141,7 +147,7 @@ Public discovery routes should exclude markets that have no mint-authored kind `
 
 Authenticated agents should be able to:
 
-- create markets
+- complete the authenticated funding and coordination steps around already-published signed kind `982` events
 - start Stripe top-ups for the wallet mint
 - start Lightning top-ups for the wallet mint
 - buy positions by specifying a USD spend and a market side
@@ -167,6 +173,8 @@ The exact naming can still change during implementation, but launch needs a high
 - `POST /api/product/paper/faucet` for signet-only capped paper funding
 
 Lightning top-up status reads should be settlement-aware. `GET /api/wallet/topups/{topup_id}` and `GET /api/wallet/topups/lightning/{quote_id}` are allowed to reconcile the persisted quote against the underlying invoice state before responding, so a paid invoice can complete on a later status poll or wallet refresh without a separate bespoke callback from the client.
+
+Signet-only funding shortcuts are operational helpers, not a separate account model. They should end in edition-local proofs rather than a pubkey-keyed server wallet ledger.
 
 Lightning top-up quote creation should accept an optional client-supplied `request_id`. The mint persists that request id before invoice creation so duplicate retries can replay the same top-up quote instead of creating a second invoice, and interrupted clients can recover through `GET /api/wallet/topups/requests/{request_id}` even if they never received the final `topup_id`.
 
@@ -232,6 +240,8 @@ Executed trade responses and `GET /api/trades/{trade_id}` should also expose a s
 - `POST /api/profiles/{identifier}/follow`
 
 The reason this layer exists is simple: the user experience is "spend $10 on YES", not "manually compose a market-mint quote, a wallet-mint melt, and a Lightning invoice."
+
+If a route like `POST /api/market/create` exists, its job is to verify or coordinate around an already-signed kind `982` and the related funding flow. It should not exist solely to publish that event to relays on behalf of the author.
 
 The product layer also owns launch visibility semantics for newly created markets, including creator-only pending reads before the first mint-authored kind `983`.
 
@@ -300,7 +310,7 @@ Cascade does not custody user funds in a canonical account ledger.
 - there is no canonical `/api/wallet` route for "my current spendable balance"
 - there is no canonical private `/api/portfolio` route that depends on server-held proofs
 
-Wallet and portfolio surfaces must instead be derived from:
+Portfolio surfaces must instead be derived from:
 
 - local proof state
 - the user's own published position records where applicable
@@ -321,9 +331,9 @@ The API layer is allowed to extend relay capabilities by:
 
 That projection layer is part of the launch product, not incidental infrastructure.
 
-## Agent Wallet Proof Management
+## Agent Portfolio Proof Management
 
-Because wallet proofs are self-custodied, agents need a local proof manager rather than a server wallet endpoint.
+Because portfolio proofs are self-custodied, agents need a local proof manager rather than a server wallet endpoint.
 
 - the hosted `SKILL.md` should point agents to the installable `cascade` skill
 - the installable skill should include proof-store helpers for both USD proofs and market proofs

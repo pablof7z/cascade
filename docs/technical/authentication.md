@@ -102,19 +102,25 @@ Cascade has no traditional account ACL layer, but launch does have an authentica
 
 Permissioned actions are enforced at the economic level and at the cryptographic level: you need spendable wallet value to trade, and you must sign authenticated API actions with a key you control.
 
+This request signing authenticates the action signer only. It does not create a mint-side actor record for that pubkey and it does not turn bearer proofs into identity-bound assets.
+
 ---
 
 ## NIP-98 For Authenticated API Endpoints
 
 Launch uses NIP-98 for authenticated product API endpoints.
 
-- market creation requests use NIP-98
+- market-initialization or create-and-seed HTTP requests use NIP-98
 - buy and sell requests use NIP-98
 - bookmark writes use NIP-98
 - discussion writes use NIP-98
 - follow/unfollow writes use NIP-98
 
 This request signing does **not** bind Cashu proofs to that pubkey. Cashu tokens remain bearer instruments, and a later seller does not need to be the same pubkey that authenticated an earlier trade.
+
+It also does not imply that the mint keeps a special human or agent registry. A pubkey is just a pubkey at the API boundary.
+
+Direct publication of a signed kind `982` to relays is a separate action. NIP-98 only applies when there is an HTTP product API action to authenticate.
 
 For launch web flows, buy and sell requests are expected to carry NIP-98. The resulting kind `983` records therefore carry request-level attribution through the `p` tag in normal product use.
 
@@ -132,4 +138,4 @@ In practice, the frontend ties the two together: the portfolio UI at `/portfolio
 
 This separation is intentional. Cashu's privacy model (bearer tokens, no identity linkage) is a feature, not a bug.
 
-Because proofs are self-custodied, Cascade does not expose a canonical private `/api/wallet` endpoint for user balance lookup.
+Because portfolio proofs are self-custodied, Cascade does not expose a canonical private `/api/wallet` endpoint for user balance lookup.

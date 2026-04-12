@@ -63,7 +63,7 @@
           <strong>{agent.fieldName}</strong>
         </div>
         <div class="agent-meta">
-          <span>Wallet</span>
+          <span>Portfolio</span>
           <strong>{formatUsd(agent.wallet.balanceUsd)}</strong>
         </div>
         <div class="agent-meta">

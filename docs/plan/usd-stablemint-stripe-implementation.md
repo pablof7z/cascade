@@ -160,9 +160,9 @@ Definition of done:
 
 Wire the active frontend to the new financial layer.
 
-- show wallet balance in USD
-- launch Stripe top-up from `/wallet`
-- launch Lightning top-up from `/wallet` for a chosen USD amount
+- show portfolio balance in USD
+- launch Stripe top-up from `/portfolio`
+- launch Lightning top-up from `/portfolio` for a chosen USD amount
 - store USD proofs and market proofs locally
 - show trade inputs in USD on market pages
 - show portfolio and PnL in USD
@@ -170,7 +170,7 @@ Wire the active frontend to the new financial layer.
 
 Definition of done:
 
-- a signed-in user can add funds, buy a position, and see the resulting wallet and portfolio state in the active `web/` app
+- a signed-in user can add funds, buy a position, and see the resulting portfolio and position state in the active `web/` app
 
 ## Workstream 7: Position, Event, And Analytics Consistency
 
@@ -202,7 +202,7 @@ This work is complete when a human user can:
 3. add funds in dollars through Stripe or Lightning
 4. spend dollars on a market position without seeing sats or Lightning settlement details
 5. sell that position back into dollar wallet value
-6. see wallet balance, position state, and PnL update coherently across wallet, market, activity, and portfolio surfaces
+6. see portfolio balance, position state, and PnL update coherently across portfolio, market, and activity surfaces
 
 ## Explicit Non-Goals For Launch
 

@@ -175,13 +175,13 @@
     }
   }
 
-  async function loadPaperWallet(pubkey: string): Promise<{ available_minor?: number }> {
-    const wallet = await fetch(`${getProductApiUrl()}/api/product/wallet/${pubkey}`);
-    if (!wallet.ok) {
-      throw new Error('Failed to load your signet wallet.');
+  async function loadPortfolioMirror(pubkey: string): Promise<{ available_minor?: number }> {
+    const portfolio = await fetch(`${getProductApiUrl()}/api/product/wallet/${pubkey}`);
+    if (!portfolio.ok) {
+      throw new Error('Failed to load your signet portfolio.');
     }
 
-    return (await wallet.json()) as { available_minor?: number };
+    return (await portfolio.json()) as { available_minor?: number };
   }
 
   function createSeedRequestId(eventId: string): string {
@@ -205,15 +205,15 @@
 
     saving = true;
     errorMessage = '';
-    builderStatus = `Checking wallet balance for ${formatUsdMinor(parsedSeedAmount)}.`;
+    builderStatus = `Checking portfolio balance for ${formatUsdMinor(parsedSeedAmount)}.`;
 
     try {
-      const walletPayload = await loadPaperWallet(currentUser.pubkey);
+      const walletPayload = await loadPortfolioMirror(currentUser.pubkey);
       const availableMinor = walletPayload.available_minor ?? 0;
 
       if (availableMinor < parsedSeedAmount) {
-        builderStatus = 'Market is pending. Fund your signet wallet, then seed it from here.';
-        errorMessage = `Your signet wallet has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
+        builderStatus = 'Market is pending. Fund your signet portfolio, then seed it from here.';
+        errorMessage = `Your signet portfolio has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
         return;
       }
 
@@ -363,11 +363,11 @@
 
       await loadCreatorMarkets();
 
-      const walletPayload = await loadPaperWallet(currentUser.pubkey);
+      const walletPayload = await loadPortfolioMirror(currentUser.pubkey);
       const availableMinor = walletPayload.available_minor ?? 0;
       if (availableMinor < parsedSeedAmount) {
-        builderStatus = 'Market is pending. Fund your signet wallet, then seed the market from this page.';
-        errorMessage = `Your signet wallet has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
+        builderStatus = 'Market is pending. Fund your signet portfolio, then seed the market from this page.';
+        errorMessage = `Your signet portfolio has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
         return;
       }
 
@@ -745,7 +745,7 @@
                   <button class="button-secondary" disabled={saving || parsedSeedAmount <= 0} onclick={() => void seedPendingMarket(market.event_id, market.slug)} type="button">
                     Seed now
                   </button>
-                  <a class="button-secondary" href="/wallet">Fund wallet</a>
+                  <a class="button-secondary" href="/portfolio">Fund portfolio</a>
                 {/if}
               </div>
             </div>

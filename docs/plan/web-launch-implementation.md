@@ -32,10 +32,11 @@ Launch means:
 - all authenticated product actions execute through NIP-98-signed API endpoints
 - the agent onboarding path is functional through `/join` and `/SKILL.md`
 - discovery and search are API-backed projections over real event data
-- wallet proofs remain self-custodied by the user or agent
-- wallet and trading surfaces are dollar-denominated
-- wallet top-ups run through Stripe and Lightning
+- portfolio proofs remain self-custodied by the user or agent
+- portfolio and trading surfaces are dollar-denominated
+- portfolio top-ups run through Stripe and Lightning
 - signet and mainnet are separate frontend editions with separate proof namespaces and environment labeling
+- both editions use the same browser-local proof storage implementation; NIP-60 is deferred
 - template/demo routes that are not part of Cascade are removed, redirected, or repurposed
 - no launch-critical surface depends on `webapp/`
 
@@ -69,9 +70,9 @@ Launch does not require:
 - Authenticated API endpoints use NIP-98.
 - Follow graph data comes from real kind `3` follow events.
 - Discovery and search can be served from API projections over relay data.
-- Wallet proofs are self-custodied. There is no canonical `/api/wallet` balance endpoint.
+- Portfolio proofs are self-custodied. There is no canonical `/api/wallet` balance endpoint.
 - The normal human product UI does not expose sats, msats, or Lightning invoices.
-- Wallet funding is Stripe and Lightning-based and market trading spends USD value.
+- Portfolio funding is Stripe and Lightning-based and market trading spends USD value.
 - Public market discovery excludes markets until the first mint-authored kind `983`.
 - No mock data in production.
 - No Nostr jargon in user-facing UI.
@@ -124,7 +125,7 @@ Launch does not require:
 - `/note/:id` unless repurposed into blog/article rendering
 - `/u/:pubkey` should not ship as a public route
 - `/profile/:identifier` should not ship as a public route
-- `/wallet` should be removed and its behavior folded into `/portfolio`
+- `/wallet` should only exist as a compatibility redirect to `/portfolio`
 - `/relays` and `/relay/:hostname` as public product routes
 
 ## Route Assumptions Locked By This Plan
@@ -135,7 +136,7 @@ These route choices are part of the launch target unless a later explicit produc
 - `/profile` is the canonical self-profile surface.
 - `/p/:identifier` is the canonical public-profile route.
 - `/portfolio` is the canonical self-custodied capital and positions surface.
-- `/wallet` should not ship as a product route at launch.
+- `/wallet` should only redirect to `/portfolio` at launch.
 - `/u/:pubkey` and `/profile/:identifier` should not ship at launch, including as compatibility redirects.
 - `/blog` is a curated narrative route, not a required full CMS.
 
@@ -167,14 +168,14 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - current public profile still lacks recent discussion activity and follow controls
 - current `web/` still includes template routes outside the Cascade product surface
 - current content routes do not yet prove the full public market + identity launch surface
-- current wallet and portfolio surfaces still need to be fully wired to real local proof state
+- current portfolio surface still needs to be fully wired to real local proof state
 - current wallet and market flows still need the USD stablemint + Stripe and Lightning funding story wired end to end
 - dashboard/workspace surfaces still exist conceptually, but they are future scope and must not distort launch acceptance
 
 ## Workstream 1: Public Shell And Navigation
 
 - [ ] Public site header matches the canonical Cascade nav, not the starter template nav.
-- [ ] Header gives fast access to markets, activity, leaderboard, analytics, builder, wallet, portfolio, and join/profile.
+- [ ] Header gives fast access to markets, activity, leaderboard, analytics, builder, portfolio, and join/profile.
 - [ ] Authenticated state swaps `Join` for session-aware profile/account affordances.
 - [ ] Current edition is always visible in the shell.
 - [ ] Footer links to blog, how-it-works, privacy, and terms.
@@ -503,26 +504,28 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Follow graph loads from real kind `3` data.
 - [ ] Discussion surfaces remain append-only under NIP-22-style semantics. No moderation, edit, or delete feature is built into launch.
 
-### Wallet and portfolio state
+### Portfolio and proof state
 
-- [ ] Wallet proofs are stored client-side or agent-side, not on Cascade servers.
+- [ ] Portfolio proofs are stored client-side or agent-side, not on Cascade servers.
+- [ ] Browser-local proof storage is the active implementation for both signet and mainnet.
+- [ ] NIP-60 is explicitly deferred and does not power one edition while another uses local proof state.
 - [ ] There is no canonical `/api/wallet` route in the launch contract.
 - [ ] There is no canonical `/api/product/wallet/:pubkey` or equivalent pubkey-keyed wallet-balance API in the launch contract.
 - [ ] `/portfolio` derives balance and spendable state from local proof storage.
 - [ ] Builder, market trading, and `/portfolio` do not depend on a server-side per-pubkey wallet ledger in signet.
-- [ ] Agent flows use a local proof manager rather than a Cascade wallet API.
-- [ ] Local proof storage covers both USD wallet proofs and market proofs.
+- [ ] Agent flows use a local proof manager rather than a Cascade portfolio API.
+- [ ] Local proof storage covers both USD portfolio proofs and market proofs.
 - [ ] Portfolio views are derived from local proof state, user-authored position records, and public market data.
 
-### Trading and wallet integration
+### Trading and portfolio integration
 
 - [ ] `web/` talks to real mint endpoints.
 - [ ] Buy flows use real USD spend quote and execution endpoints.
-- [ ] Sell flows use real exit quote and execution endpoints that return USD wallet value.
-- [ ] Wallet funding uses the real Stripe and Lightning wallet-mint flows.
+- [ ] Sell flows use real exit quote and execution endpoints that return USD portfolio value.
+- [ ] Portfolio funding uses the real Stripe and Lightning wallet-mint flows.
 - [ ] Discovery and market detail reads respect the creator-only pending visibility rule.
-- [ ] Wallet proof storage and token import/export happen locally.
-- [ ] Wallet proof storage is namespaced by edition so signet and mainnet proofs cannot collide.
+- [ ] Portfolio proof storage and token import/export happen locally.
+- [ ] Portfolio proof storage is namespaced by edition so signet and mainnet proofs cannot collide.
 - [ ] Launch web trades execute through NIP-98-authenticated requests.
 - [ ] Normal web flows hide Lightning settlement details from the user.
 
@@ -532,7 +535,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Agent-facing public read routes have corresponding JSON APIs.
 - [ ] Authenticated product actions are available through NIP-98-signed API endpoints.
 - [ ] Hosted agents and external agents use the same public and authenticated API endpoints.
-- [ ] Wallet-proof handling is explicitly local and not modeled as a Cascade account API.
+- [ ] Portfolio-proof handling is explicitly local and not modeled as a Cascade account API.
 - [ ] The hosted `SKILL.md` points agents to the installable `cascade` skill for local proof management.
 - [ ] Discovery/search APIs extend relay capabilities rather than requiring HTML scraping or relay-only querying.
 
@@ -564,11 +567,11 @@ The launch plan is complete only when all of the following are true:
 - [ ] The public market product is fully navigable end to end
 - [ ] The account layer is usable end to end
 - [ ] Agent onboarding through `/join` and `/SKILL.md` is coherent
-- [ ] Wallet and trading flows function against the real mint
+- [ ] Portfolio and trading flows function against the real mint
 - [ ] Authenticated write actions function through NIP-98-signed API endpoints
 - [ ] Discovery and search function through the API-backed data layer
 - [ ] Public profiles include real follow-graph behavior from kind `3`
-- [ ] Wallet behavior is self-custodied and does not depend on a server wallet API
+- [ ] Portfolio behavior is self-custodied and does not depend on a server wallet API
 - [ ] Template leftovers are removed or repurposed
 - [ ] Copy and mechanics are fully aligned with "markets never close"
 - [ ] Mobile and desktop layouts are both launch-safe

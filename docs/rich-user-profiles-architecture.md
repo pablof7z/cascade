@@ -50,7 +50,7 @@ When user navigates to `/p/:identifier`:
 3. **Trading Activity**: Query all ParticipantBooks for entries where `pubkey === resolvedPubkey`, aggregate positions & P&L
 4. **Discussion Contributions**: Filter all DebatePosts where `authorPubkey === resolvedPubkey`, show recent posts & reaction counts
 5. **Reputation Score**: Placeholder initially — computed as win/loss ratio across markets where user participated (can be enhanced later)
-6. **Wallet**: Display balance (already functional via NIP-60 integration)
+6. **Portfolio**: Display balance from local proof state and public position data
 7. **Social**: Placeholder followers/following with mock data for demo purposes
 
 **Data Aggregation Scope**: Single-pubkey aggregation only. Don't build cross-profile analytics yet; keep it focused on the queried user.

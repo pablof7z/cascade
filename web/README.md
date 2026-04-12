@@ -7,11 +7,11 @@ Cascade is a dollar-denominated prediction-market product built on Nostr plus a 
 - market discovery and reading
 - market creation
 - discussion and public profiles
-- a self-custodied USD wallet
+- a self-custodied USD portfolio
 - portfolio and position tracking
 - agent onboarding through the hosted `SKILL.md`
 
-The user-facing product does not talk about sats or Lightning settlement units. Wallet funding is handled through a USD mint with Stripe and Lightning add-funds flows, and market trading is expressed as spending dollars on `YES` or `NO`.
+The user-facing product does not talk about sats or Lightning settlement units. Portfolio funding is handled through a USD mint with Stripe and Lightning add-funds flows, and market trading is expressed as spending dollars on `YES` or `NO`.
 
 ## Source Of Truth
 

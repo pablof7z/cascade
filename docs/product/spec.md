@@ -36,6 +36,7 @@ For launch, `web/` is scoped to the public market product, the account layer, an
 - Price is determined only by LMSR trading activity
 - Thesis-linked markets are informational only; they do not mathematically drive another market's price
 - Market creation is kind `982`
+- Kind `982` is authored and published directly to relays by the market creator
 - Trade records are mint-authored kind `983`
 - Kind `983` carries the NIP-98 request signer in `p`; absence of `p` means that trade path had no valid NIP-98 attribution
 - The market creator must seed the initial position/liquidity
@@ -46,7 +47,7 @@ For launch, `web/` is scoped to the public market product, the account layer, an
 - Discovery and search may use API-backed projections over relay data
 - User-facing UI should not expose Nostr jargon
 - User-facing portfolio and trading surfaces should be dollar-denominated
-- Stripe and Lightning are the launch wallet top-up rails
+- Stripe and Lightning are the launch portfolio top-up rails
 - Lightning may exist as hidden settlement infrastructure, but it is not normal product language
 - The product has separate paper-trading and mainnet editions, and they must not mix proofs or public discovery
 
@@ -126,7 +127,7 @@ The retained flow should be:
 4. Choose the creator's initial side
 5. Choose the creator's initial seed amount in USD as total spend
 6. Review
-7. Publish kind `982` and enter a creator-visible pending state if the wallet is not yet funded
+7. Publish kind `982` directly to relays and enter a creator-visible pending state if the portfolio is not yet funded
 8. Complete funding and seed the market
 9. After the first mint-authored kind `983`, navigate to the publicly visible market
 
@@ -225,7 +226,9 @@ The intended path is:
 4. The hosted `SKILL.md` teaches Cascade mechanics, forbidden assumptions, public routes, and machine-interface expectations
 5. The agent then connects or creates the identity it will use on Cascade
 
-The hosted `SKILL.md` is the canonical onboarding artifact for connected agents. It must stay in sync with the product, must never advertise mock-only routes or outdated mechanics, and must tell agents to use the same authenticated/public API surface regardless of whether they are hosted by Cascade or run externally. For local helper tooling such as wallet-proof management, it should point agents to the installable `cascade` skill bundle.
+First-class participation means protocol parity only. There is no mint-side "agent account" or separate actor registry behind this onboarding path.
+
+The hosted `SKILL.md` is the canonical onboarding artifact for connected agents. It must stay in sync with the product, must never advertise mock-only routes or outdated mechanics, must not imply a mint-side agent registry, and must tell agents to use the same authenticated/public API surface regardless of whether they are hosted by Cascade or run externally. For local helper tooling such as wallet-proof management, it should point agents to the installable `cascade` skill bundle.
 
 #### Profile Editing: `/profile`
 
@@ -359,13 +362,15 @@ Cascade must expose a full machine-friendly interface for agents. This is a prod
 That interface should provide:
 
 - public read APIs for market discovery, market detail, price history, discussion, activity, leaderboard, analytics, and public profiles
-- authenticated APIs for market creation, wallet top-up, buy/sell execution, bookmarks, discussion posting, and follow actions
+- authenticated APIs for market creation, portfolio top-up, buy/sell execution, bookmarks, discussion posting, and follow actions
 - NIP-98 authentication on authenticated endpoints
 - structured JSON responses suitable for agents; HTML scraping is not the intended interface
 - discovery and search APIs that can project over relay data
 - the same endpoints for hosted agents and external agents
-- local proof management for wallet state rather than a server wallet endpoint
-- the installable `cascade` skill as the place where local wallet-proof tooling lives
+- no dedicated `/api/product/agents*` actor-registry surface
+- direct kind `982` publication to relays by the market author rather than a mint proxy endpoint that only republishes the signed event
+- local proof management for portfolio state rather than a server wallet endpoint
+- the installable `cascade` skill as the place where local portfolio-proof tooling lives
 - the same economic rules as humans; no privileged agent-only mechanics
 
 The old React-era `/api/agent/*` mock is useful as a prototype for discovery endpoints, but it is not the canonical production contract.
@@ -382,7 +387,7 @@ The minimum launch entity model implied by the React app plus current mechanics 
 - Bookmark
 - User profile
 - Follow graph
-- Wallet transaction
+- Portfolio transaction
 
 The later workspace product adds:
 
@@ -421,7 +426,7 @@ The later workspace product adds:
 
 1. Join via `/join`
 2. Set up profile state
-3. Add funds via `/wallet`
+3. Add funds via `/portfolio`
 4. Trade on markets
 5. Monitor open and exited positions in `/portfolio`
 
@@ -466,6 +471,6 @@ These were strong product choices in the React app and should remain:
 - Builder as a structured authoring flow, not a single text box
 - Explicit human vs agent split in onboarding
 - Separate self-profile and public-profile routes
-- Wallet and portfolio as distinct pages
+- Portfolio as the canonical self-custodied capital route, with `/wallet` only as a compatibility redirect
 - Public discovery and market-reading surfaces that are dense and information-first
 - Private dashboard/workspace separated from the public market product when that later subsystem ships

@@ -24,6 +24,7 @@ esac
 
 curl -fsS "${BASE_URL}/" >/dev/null
 curl -fsS "${BASE_URL}/builder" >/dev/null
-curl -fsS "${BASE_URL}/wallet" >/dev/null
+curl -fsS "${BASE_URL}/portfolio" >/dev/null
+curl -fsSI "${BASE_URL}/wallet" | grep -qi '^location: /portfolio'
 
 echo "web ${EDITION} smoke checks passed for ${BASE_URL}"

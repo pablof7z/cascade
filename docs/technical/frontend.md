@@ -56,12 +56,12 @@ The local edition env templates live in:
 | `/join` | Account creation (human or agent) |
 | `/leaderboard` | Rankings |
 | `/onboarding` | Post-join onboarding |
-| `/portfolio` | Current user's positions and PnL |
+| `/portfolio` | Canonical account surface for balances, funding, positions, and PnL |
 | `/privacy` | Privacy policy |
 | `/profile` | Current-user profile surface |
 | `/relays` | Relay configuration / diagnostics |
 | `/terms` | Terms of service |
-| `/wallet` | USD wallet UI |
+| `/wallet` | Temporary pre-launch route to be removed as `/portfolio` absorbs wallet behavior |
 
 The full target product route model is defined in [../product/spec.md](../product/spec.md). The `web/` app is still being built toward that target.
 
@@ -116,11 +116,11 @@ The normal product surface is dollar-denominated.
 - fill previews and PnL are shown in USD
 - sats, msats, and Lightning invoices are not part of the normal human UI
 
-If Lightning is used to settle between mints, that stays behind the product boundary. The exception is an explicit Lightning add-funds flow on `/wallet`, where the user still starts from a USD amount and receives an invoice only as the funding mechanism.
+If Lightning is used to settle between mints, that stays behind the product boundary. The exception is an explicit Lightning add-funds flow on `/portfolio`, where the user still starts from a USD amount and receives an invoice only as the funding mechanism.
 
-## Wallet
+## Portfolio
 
-The `/wallet` route is a self-custodied Cashu wallet surface for USD ecash.
+The canonical self-custodied capital route is `/portfolio`.
 
 It should allow users to:
 
@@ -130,10 +130,14 @@ It should allow users to:
 - receive or import ecash tokens
 - send or export ecash tokens
 - review transaction history
+- review open positions and exited-position history
+- review aggregate invested, value, and PnL state
 
-The wallet stores proofs locally. The mint is the issuer; the user's device is the wallet.
+The portfolio stores proofs locally. The mint is the issuer; the user's device is the holder.
 
 There is no canonical server wallet API for current balance because the proofs are self-custodied.
+
+The current `web/` implementation may still expose `/wallet` while this merge is in progress, but `/wallet` is not part of the launch route model and should be removed before launch.
 
 ## Trading And Portfolio State
 
@@ -144,7 +148,7 @@ The frontend needs local state for at least two proof classes:
 
 Trading surfaces should let the user spend dollars on YES or NO and then persist the resulting market proofs locally.
 
-The `/portfolio` surface derives performance from:
+The `/portfolio` surface derives both spendable state and performance from:
 
 - local proof state
 - user-published position records

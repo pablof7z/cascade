@@ -383,7 +383,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 - creator builder flow with pending visibility and resume
 - portfolio and activity views wired to real data
 - environment banner or switcher
-- `/portfolio` is the canonical self-custodied account route and `/wallet` redirects there
+- `/portfolio` is the canonical self-custodied account route and `/wallet` is removed before launch
 
 ### Success Gates
 

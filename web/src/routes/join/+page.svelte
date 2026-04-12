@@ -14,6 +14,15 @@
     stopNostrConnectSigner,
     type LoginMode
   } from '$lib/features/auth/auth';
+  import {
+    clearSocialProfileBootstrap,
+    consumeSocialProfileError,
+    consumeSocialProfilePrefill,
+    socialProviderLabel,
+    storeSocialProfilePrefill,
+    type SocialProfilePrefill,
+    type SocialProvider
+  } from '$lib/features/auth/social-prefill';
   import '$lib/features/auth/auth.css';
   import { ndk } from '$lib/ndk/client';
 
@@ -33,11 +42,16 @@
   let qrCodeDataUrl = $state('');
   let nostrConnectUri = $state('');
   let nostrConnectSigner: NDKNip46Signer | null = $state(null);
+  let socialAuthPopup: Window | null = $state(null);
+  let socialAuthProvider = $state<SocialProvider | null>(null);
+  let socialAuthSettling = $state(false);
   let error = $state('');
+  let socialAuthCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   const currentUser = $derived(ndk.$currentUser);
   const extensionAvailable = $derived(hasNostrExtension());
   const remoteSignerReady = $derived(Boolean(qrCodeDataUrl && nostrConnectUri));
+  const socialAuthPending = $derived(Boolean(socialAuthProvider || socialAuthSettling));
 
   function clearRemoteSigner() {
     bunkerUri = '';
@@ -56,9 +70,91 @@
     clearRemoteSigner();
   }
 
+  function stopSocialAuthWatcher() {
+    if (socialAuthCheckInterval) {
+      clearInterval(socialAuthCheckInterval);
+      socialAuthCheckInterval = null;
+    }
+    socialAuthProvider = null;
+    socialAuthPopup = null;
+    socialAuthSettling = false;
+  }
+
   function finishHumanEntry() {
     clearAuthState();
     void goto('/onboarding');
+  }
+
+  async function finalizeSocialPrefill(prefill: SocialProfilePrefill) {
+    if (!ndk.$sessions || socialAuthSettling) return;
+
+    try {
+      socialAuthSettling = true;
+      error = '';
+
+      if (!currentUser) {
+        await ndk.$sessions.login(NDKPrivateKeySigner.generate());
+      }
+
+      storeSocialProfilePrefill(prefill);
+      finishHumanEntry();
+    } catch (caught) {
+      error =
+        caught instanceof Error
+          ? caught.message
+          : `Couldn't finish setup with ${socialProviderLabel(prefill.provider)}.`;
+    } finally {
+      stopSocialAuthWatcher();
+    }
+  }
+
+  async function checkSocialAuthResult(options: { treatMissingAsCancel: boolean }) {
+    const socialError = consumeSocialProfileError();
+    if (socialError) {
+      error = socialError;
+      stopSocialAuthWatcher();
+      return;
+    }
+
+    const prefill = consumeSocialProfilePrefill();
+    if (prefill) {
+      await finalizeSocialPrefill(prefill);
+      return;
+    }
+
+    if (options.treatMissingAsCancel && socialAuthProvider) {
+      error = `${socialProviderLabel(socialAuthProvider)} login was cancelled.`;
+      stopSocialAuthWatcher();
+    }
+  }
+
+  function startSocialProfileBootstrap(provider: SocialProvider) {
+    if (!browser || pending || preparingRemoteSigner || connectingBunker || socialAuthPending) return;
+
+    clearSocialProfileBootstrap();
+    error = '';
+
+    const width = 620;
+    const height = provider === 'telegram' ? 720 : 760;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    const popup = window.open(
+      `/api/social-auth/${provider}/start`,
+      `${provider}_profile_bootstrap`,
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    if (!popup) {
+      error = 'Allow popups to import profile details from another app.';
+      return;
+    }
+
+    socialAuthPopup = popup;
+    socialAuthProvider = provider;
+    socialAuthCheckInterval = setInterval(() => {
+      const closed = Boolean(socialAuthPopup?.closed);
+      void checkSocialAuthResult({ treatMissingAsCancel: closed });
+    }, 400);
   }
 
   async function createAccount() {
@@ -165,8 +261,26 @@
     }
   });
 
+  $effect(() => {
+    if (!browser) return;
+
+    const handleStorage = (event: StorageEvent) => {
+      if (!event.key || !socialAuthProvider) return;
+      void checkSocialAuthResult({ treatMissingAsCancel: false });
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+    };
+  });
+
   onDestroy(() => {
     stopNostrConnectSigner(nostrConnectSigner);
+    if (socialAuthPopup && !socialAuthPopup.closed) {
+      socialAuthPopup.close();
+    }
+    stopSocialAuthWatcher();
   });
 </script>
 
@@ -199,8 +313,40 @@
         <a class="button-secondary" href="/wallet">Open wallet</a>
       </div>
     {:else}
+      <div class="join-social">
+        <div class="join-social-head">
+          <h3>Start with profile data you already use.</h3>
+          <p>Import a name and avatar from another app, then finish setting up your Cascade profile.</p>
+        </div>
+
+        <div class="join-social-actions">
+          {#each ([
+            { provider: 'x', label: 'Continue with X' },
+            { provider: 'google', label: 'Continue with Google' },
+            { provider: 'telegram', label: 'Continue with Telegram' }
+          ] satisfies Array<{ provider: SocialProvider; label: string }>) as option (option.provider)}
+            <button
+              class="button-secondary join-social-button"
+              type="button"
+              disabled={socialAuthPending}
+              onclick={() => startSocialProfileBootstrap(option.provider)}
+            >
+              {#if socialAuthProvider === option.provider || (socialAuthSettling && socialAuthProvider === option.provider)}
+                Connecting…
+              {:else}
+                {option.label}
+              {/if}
+            </button>
+          {/each}
+        </div>
+
+        <p class="join-social-note">
+          This does not replace your Cascade identity. It just saves you from starting your profile from a blank form.
+        </p>
+      </div>
+
       <div class="join-actions">
-        <button class="button-primary" type="button" onclick={() => void createAccount()} disabled={pending}>
+        <button class="button-primary" type="button" onclick={() => void createAccount()} disabled={pending || socialAuthPending}>
           {pending ? 'Creating account...' : 'Create account'}
         </button>
         <a class="button-secondary" href="/how-it-works">How Cascade works</a>
@@ -353,6 +499,7 @@
 
   .join-status,
   .join-login,
+  .join-social,
   .agent-instruction {
     display: grid;
     gap: 0.85rem;
@@ -362,15 +509,34 @@
   }
 
   .join-status strong,
+  .join-social-head h3,
   .join-login-head h3 {
     color: var(--text);
     font-size: 0.98rem;
   }
 
   .join-status p,
+  .join-social-head p,
   .join-login-head p {
     color: var(--text-muted);
     line-height: 1.65;
+  }
+
+  .join-social-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .join-social-button {
+    min-width: 12.5rem;
+    justify-content: center;
+  }
+
+  .join-social-note {
+    color: var(--text-faint);
+    font-size: 0.86rem;
+    line-height: 1.6;
   }
 
   .agent-instruction span {

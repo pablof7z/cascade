@@ -26,6 +26,12 @@
     mergeBlossomServers,
     parseBlossomServer
   } from '$lib/onboarding';
+  import {
+    consumeSocialProfileError,
+    consumeSocialProfilePrefill,
+    socialProviderLabel,
+    type SocialProfilePrefill
+  } from '$lib/features/auth/social-prefill';
 
   type Nip05Status = 'idle' | 'checking' | 'available' | 'owned' | 'taken' | 'error';
 
@@ -89,6 +95,7 @@
   let managedNip05Status = $state<Nip05Status>('idle');
   let managedNip05StatusPubkey = $state<string | null>(null);
   let fileInput: HTMLInputElement | null = $state(null);
+  let importedSocialPrefill: SocialProfilePrefill | null = $state(null);
 
   // ── derived ─────────────────────────────────────────────────────
   const currentUser = $derived(ndk.$currentUser);
@@ -179,6 +186,23 @@
 
     if (!managedNip05Touched && managedNip05Domain) {
       managedNip05Name = managedNip05NameFromIdentifier(profile?.nip05, managedNip05Domain) ?? '';
+    }
+  }
+
+  function applySocialPrefill(prefill: SocialProfilePrefill) {
+    importedSocialPrefill = prefill;
+    profileTouched = true;
+    name = cleanText(prefill.username);
+    display = cleanText(prefill.displayName);
+    about = cleanText(prefill.bio);
+    avatarUrl = cleanText(prefill.avatarUrl);
+    selectedDicebear = null;
+    avatarFile = null;
+    clearAvatarPreview();
+    if (fileInput) fileInput.value = '';
+
+    if (!managedNip05Touched && managedNip05Domain && prefill.username) {
+      managedNip05Name = normalizeManagedNip05Name(prefill.username);
     }
   }
 
@@ -519,6 +543,20 @@
   onDestroy(() => {
     clearAvatarPreview();
   });
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+
+    const socialError = consumeSocialProfileError();
+    if (socialError) {
+      saveError = socialError;
+    }
+
+    const prefill = consumeSocialProfilePrefill();
+    if (prefill) {
+      applySocialPrefill(prefill);
+    }
+  });
 </script>
 
 <div class="ob-shell">
@@ -545,6 +583,12 @@
       <div class="ob-step-head">
         <h1>Tell people who you are.</h1>
         <p>Set the basics for the public profile other traders and agents will see.</p>
+        {#if importedSocialPrefill}
+          <div class="ob-prefill-note">
+            <strong>Imported from {socialProviderLabel(importedSocialPrefill.provider)}.</strong>
+            <p>Everything here is editable before you publish your Cascade profile.</p>
+          </div>
+        {/if}
       </div>
 
       <div class="ob-step-body">
@@ -760,6 +804,23 @@
 </div>
 
 <style>
+  .ob-prefill-note {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(64, 64, 64, 0.9);
+    background: rgba(23, 23, 23, 0.88);
+  }
+
+  .ob-prefill-note strong {
+    font-size: 0.95rem;
+  }
+
+  .ob-prefill-note p {
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
   .ob-profile-summary {
     display: grid;
     gap: 0.45rem;

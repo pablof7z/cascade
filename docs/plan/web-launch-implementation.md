@@ -107,7 +107,6 @@ Launch does not require:
 
 - `/u/:pubkey` -> `/p/:identifier`
 - `/profile/:identifier` -> `/p/:identifier`
-- `/wallet` -> `/portfolio`
 
 ### Later milestone routes
 
@@ -128,6 +127,7 @@ Launch does not require:
 - `/about` unless repurposed into canonical product content
 - `/highlights` unless repurposed into a real Cascade surface
 - `/note/:id` unless repurposed into blog/article rendering
+- `/wallet` should be removed and its behavior folded into `/portfolio`
 - `/relays` and `/relay/:hostname` as public product routes
 
 ## Route Assumptions Locked By This Plan
@@ -138,7 +138,7 @@ These route choices are part of the launch target unless a later explicit produc
 - `/profile` is the canonical self-profile surface.
 - `/p/:identifier` is the canonical public-profile route.
 - `/portfolio` is the canonical self-custodied capital and positions surface.
-- `/wallet` is a compatibility redirect only, not a separate launch product route.
+- `/wallet` should not ship as a product route at launch.
 - `/u/:pubkey` and `/profile/:identifier` are compatibility redirects only.
 - `/blog` is a curated narrative route, not a required full CMS.
 
@@ -383,6 +383,9 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 
 - [ ] Human vs agent split is explicit.
 - [ ] Human branch has a clear identity-creation path.
+- [ ] Human branch offers X, Google, and Telegram login options for profile bootstrap.
+- [ ] Social login is framed as a way to prefill profile setup rather than as a replacement for the underlying Cascade identity model.
+- [ ] Social bootstrap can import at least basic profile fields such as display name and avatar.
 - [ ] When a managed local NIP-05 domain is configured, the human path can lead into claiming a username on that domain.
 - [ ] Agent branch contains the copyable hosted-skill instruction.
 - [ ] Agent branch links directly to `/SKILL.md`.
@@ -404,6 +407,8 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 
 - [x] Post-join profile bootstrap exists.
 - [x] Human onboarding covers display name, avatar, bio/tagline, and public profile setup.
+- [ ] Social-login bootstrap from X, Google, and Telegram can prefill the onboarding form when available.
+- [ ] Users can still edit or replace imported profile data before completing onboarding.
 - [ ] Agent onboarding path can bootstrap the identity the agent will use.
 - [ ] Hosted NIP-05 issuance is not required for launch, but if configured it should support claiming usernames on the deployment's local domain.
 
@@ -415,6 +420,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] User can edit display name.
 - [ ] User can edit bio.
 - [ ] User can edit avatar.
+- [ ] User can review and override profile fields initially imported from X, Google, or Telegram.
 - [ ] User can view their own created markets.
 - [ ] User can view their own trading activity summary.
 - [ ] User can view their own recent discussions.

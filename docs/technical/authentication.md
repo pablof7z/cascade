@@ -128,7 +128,7 @@ See [`docs/mint/auth.md`](../mint/auth.md) for the canonical trade-attribution m
 
 The user's Cashu wallet is separate from their Nostr identity. Cashu tokens are bearer instruments — they're not tied to a pubkey. A user could hold tokens on any device without any link to their Nostr account.
 
-In practice, the frontend ties the two together: the wallet UI at `/wallet` shows tokens associated with the current Nostr session. But at the protocol level, tokens are independent of identity.
+In practice, the frontend ties the two together: the portfolio UI at `/portfolio` shows tokens associated with the current Nostr session. But at the protocol level, tokens are independent of identity.
 
 This separation is intentional. Cashu's privacy model (bearer tokens, no identity linkage) is a feature, not a bug.
 

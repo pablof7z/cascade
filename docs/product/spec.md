@@ -20,7 +20,7 @@ If the React app contradicts the current mechanics, the current mechanics win.
 Cascade has two launch product layers and one later product line:
 
 - A public market network for discovering, creating, trading, and discussing markets
-- An account layer for identity, self-custodied wallet, portfolio, and public reputation
+- An account layer for identity, self-custodied portfolio state, and public reputation
 - A later private agent workspace for field-centered research and execution
 
 The React app was a mock, but it was a strong expression of the intended UX. This spec keeps the strongest parts of that product shape while removing the fake mechanics embedded in the mock.
@@ -45,7 +45,7 @@ For launch, `web/` is scoped to the public market product, the account layer, an
 - Follow graph data comes from real kind `3` follow events
 - Discovery and search may use API-backed projections over relay data
 - User-facing UI should not expose Nostr jargon
-- User-facing wallet and trading surfaces should be dollar-denominated
+- User-facing portfolio and trading surfaces should be dollar-denominated
 - Stripe and Lightning are the launch wallet top-up rails
 - Lightning may exist as hidden settlement infrastructure, but it is not normal product language
 - The product has separate paper-trading and mainnet editions, and they must not mix proofs or public discovery
@@ -205,10 +205,13 @@ Required properties:
 - Human and agent split at the top of the flow
 - No Nostr jargon in the UI
 - Support for creating a usable identity without requiring the user to understand protocol internals
+- Human onboarding should offer X, Google, and Telegram login as profile-bootstrap inputs
+- Those social logins exist primarily to prefill basic profile data such as display name, avatar, and username-like context so the user does not start from a blank profile
+- Those social logins are convenience onboarding inputs, not the canonical long-term identity model or a replacement for the user's Cascade/Nostr identity
 - Human onboarding can expose local-domain username claiming when the deployment has a managed NIP-05 domain configured
 - Agent onboarding path should give the user a short instruction they can copy into the agent, pointing it at the hosted `SKILL.md`
 
-The React mock showed multiple social-connect buttons. Treat those as optional onboarding affordances, not as canonical product requirements.
+The social-login affordances are part of the intended product shape for human onboarding, but their role is profile bootstrap and setup convenience rather than account abstraction of the underlying identity model.
 
 #### Agent Onboarding
 
@@ -232,6 +235,7 @@ Current-user profile editing surface. It owns:
 - Bio
 - Avatar
 - Session-aware self-profile state
+- Review and editing of profile fields initially imported from X, Google, or Telegram onboarding
 
 #### Public Profiles: `/p/:identifier`
 
@@ -267,37 +271,32 @@ When the deployment exposes a managed NIP-05 domain:
 
 Old React-era routes such as `/u/:pubkey` and `/profile/:npub` exist only as compatibility redirects. They are not the main public-profile mental model.
 
-#### Wallet: `/wallet`
+#### Portfolio: `/portfolio`
 
-The wallet is the only place where direct money movement should be managed.
+The portfolio is the canonical self-custodied capital, funding, and positions surface.
 
-It is a self-custodied Cashu wallet surface for USD ecash, not a server account balance page.
+It is the only place where direct money movement should be managed.
 
-It owns:
+It is a self-custodied Cashu surface for USD ecash and market positions, not a server account balance page.
 
-- Balance display in USD
+It should show:
+
+- Spendable USD balance
 - Add-funds flow through Stripe
 - Add-funds flow through Lightning for a locked dollar amount
 - Token import / receive flow
 - Token export / send flow
 - Transaction history
-
-Market exits return value to this wallet as USD ecash. Off-platform bank payout is a later milestone, not a launch requirement.
-
-The user's bearer proofs live with the user or agent, not with Cascade. There is no canonical private `/api/wallet` endpoint that can tell a caller "your current balance" from server-held state.
-
-#### Portfolio: `/portfolio`
-
-The portfolio is the user's positions and performance surface.
-
-It should show:
-
 - Open positions
 - Total invested
 - Current value
 - Total PnL
 - Position-level averages and current prices
 - Exited-position history
+
+Market exits return value to the portfolio balance as USD ecash. Off-platform bank payout is a later milestone, not a launch requirement.
+
+The user's bearer proofs live with the user or agent, not with Cascade. There is no canonical private `/api/wallet` endpoint that can tell a caller "your current balance" from server-held state.
 
 Portfolio is not a custody surface. It is derived from user-side proof state, user-published position records, and public market data.
 

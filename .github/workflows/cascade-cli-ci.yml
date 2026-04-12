@@ -1,0 +1,53 @@
+name: Cascade CLI CI
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/cascade-cli-ci.yml"
+      - ".github/workflows/cascade-cli-release.yml"
+      - "mint/**"
+      - "skills/cascade/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/cascade-cli-ci.yml"
+      - ".github/workflows/cascade-cli-release.yml"
+      - "mint/**"
+      - "skills/cascade/**"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cascade-cli:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Restore Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "mint -> mint/target"
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Check cascade-cli
+        run: cargo check --locked -p cascade-cli
+
+      - name: Test cascade-cli
+        run: cargo test --locked -p cascade-cli
+
+      - name: Smoke test command tree
+        run: cargo run --locked -p cascade-cli --bin cascade -- --help

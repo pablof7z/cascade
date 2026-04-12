@@ -4,6 +4,7 @@ members = [
     "crates/cascade-core",
     "crates/cascade-api",
     "crates/cascade-mint",
+    "crates/cascade-cli",
 ]
 # cascade-mint binary added in Section 4 (04-http-api.md)
 

@@ -1,6 +1,6 @@
 ---
 name: cascade
-description: Use when operating on Cascade markets or bootstrapping a local Cascade signet identity. Covers Cascade's LMSR trading model, protocol parity between humans and agents, direct kind 982 publication, the product API surface, and bundled scripts for local bootstrap, authenticated HTTP calls, and local Cashu proof storage.
+description: Use when operating on Cascade markets or bootstrapping a local Cascade identity. Covers Cascade's LMSR trading model, protocol parity between humans and agents, the Rust `cascade` CLI, direct kind 982 market authorship, the product API surface, and local Cashu proof storage.
 ---
 
 # Cascade
@@ -30,52 +30,100 @@ If you assume market closure, winner payout, or oracle-based settlement, you are
 
 - A pubkey is a pubkey. Cascade does not have separate protocol mechanics for humans versus agents.
 - The mint should not track a special agent or human identity record.
-- Local metadata such as thesis, role, or operator notes belongs in local config and Nostr content, not in mint state.
+- Local runtime config belongs in local files. Human-readable profile metadata belongs in Nostr content, not in mint state.
 - Market creation begins with the author signing and publishing kind `982` directly to relays.
 - The product API handles discovery, pending-market reads, funding, and trading around that market event.
 
 If you need the exact local bootstrap shape and interface expectations, read [references/agent-api.md](references/agent-api.md).
 
-## Scripts
+## CLI
 
-This skill ships with three local helpers:
+This skill should use the Rust `cascade` binary as the canonical machine interface.
 
-- `scripts/start-signet-agent.mjs`
-  Creates or reuses a local signet identity, writes an `agent.json` file, and initializes an empty proof-store file.
-- `scripts/cascade-agent-http.mjs`
-  Makes authenticated HTTP calls with that identity using the saved secret key and `nak curl`.
-- `scripts/cashu-proof-store.mjs`
-  Maintains a local proof-store JSON file for self-custodied Cashu proofs.
+Requirements:
 
-The bootstrap and HTTP helpers expect:
+- `cascade` available on `PATH`
+- preferred install path from GitHub Releases:
 
-- `node`
-- `nak` on `PATH`
+```bash
+bash skills/cascade/install-cascade.sh --version cascade-cli-v0.1.0
+```
+
+- until a matching release exists, build locally from source when you are in this repository:
+
+```bash
+cargo build -p cascade-cli --manifest-path mint/Cargo.toml --release
+```
+
+The resulting binary is:
+
+```bash
+mint/target/release/cascade
+```
+
+This skill no longer ships Node `.mjs` execution helpers.
 
 ## Quick start
 
-1. Start a local signet agent identity.
+1. Initialize a local identity and runtime config.
 
 ```bash
-node scripts/start-signet-agent.mjs \
+cascade \
+  --signet \
+  --config ./.cascade/signet/agent.json \
   --api-base http://127.0.0.1:8080 \
+  identity init \
   --name "Macro Scout" \
-  --role "Research analyst" \
-  --thesis "Track second-order AI infrastructure bottlenecks."
+  --avatar-url "https://example.com/avatar.png" \
+  --about "Track second-order AI infrastructure bottlenecks."
 ```
 
-2. Inspect the created `agent.json` and `wallet.json` paths from the JSON output.
+The CLI keeps the compatible `agent.json` runtime shape even though the interface is not agent-specific.
+
+2. Inspect the local identity.
+
+```bash
+cascade --signet --config ./.cascade/signet/agent.json identity show
+```
 
 3. Use the saved identity for authenticated product calls when a route expects NIP-98.
 
 ```bash
-node scripts/cascade-agent-http.mjs ./.cascade/agents/macro-scout/agent.json POST /api/trades/quote @./trade-quote.json
+cascade --signet --config ./.cascade/signet/agent.json api request POST /api/trades/quote @./trade-quote.json --auth nip98
 ```
 
-4. If you need local proof storage, initialize or inspect the proof store.
+4. Create a market through the domain command that owns kind `982` publication plus seed funding.
 
 ```bash
-node scripts/cashu-proof-store.mjs balance ./.cascade/agents/macro-scout/wallet.json
+cascade \
+  --signet \
+  --config ./.cascade/signet/agent.json \
+  market create \
+  --title "Will BTC trade above $150k before July 2026?" \
+  --description "Spot BTC on a major public exchange." \
+  --slug btc-150k-before-july-2026 \
+  --body @./market-body.txt \
+  --seed-side yes \
+  --seed-spend-minor 10000
+```
+
+5. Write discussion through the domain command that owns kind `1111`.
+
+```bash
+cascade \
+  --signet \
+  --config ./.cascade/signet/agent.json \
+  discussion \
+  --market btc-150k-before-july-2026 \
+  --title "Why the path is still plausible" \
+  --content @./discussion.md
+```
+
+6. Inspect local proofs and sync position state.
+
+```bash
+cascade --signet --config ./.cascade/signet/agent.json proofs balance
+cascade --signet --config ./.cascade/signet/agent.json position sync
 ```
 
 ## Public routes
@@ -96,12 +144,14 @@ node scripts/cashu-proof-store.mjs balance ./.cascade/agents/macro-scout/wallet.
 
 ## Machine interface
 
+- Prefer the Rust `cascade` CLI over the old Node helper scripts.
 - Prefer the structured JSON interface exposed by the Cascade deployment you are connected to.
 - Do not rely on old React-era mock `/api/agent/*` routes.
 - There is no dedicated `/api/product/agents*` registry surface in the intended contract.
 - Discovery, search, discussion, profiles, follows, bookmarks, and analytics should come from the real product APIs.
 - Authenticated API actions use the same NIP-98-oriented product endpoints for humans and agents.
-- Market creation should publish the signed kind `982` directly to relays rather than asking the mint to proxy publication.
+- Market creation should go through `cascade market create`, which signs and publishes the kind `982` internally rather than asking the mint to proxy publication.
+- There is no generic event-publisher command in the canonical interface. Use domain commands such as `profile update`, `market create`, `discussion`, `bookmarks`, and `position sync`.
 - Hosted agents and external agents use the same product interface shape.
 
 ## Wallet model

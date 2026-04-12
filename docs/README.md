@@ -49,6 +49,9 @@ Backend architecture: Rust + PostgreSQL + LND. The mint as authoritative LMSR st
 ### [technical/authentication.md](technical/authentication.md)
 Identity and auth model. Users are Nostr keypairs. nsec in localStorage, never sent to server. Covers current local/NIP-07 signing, planned NIP-46 support, and optional NIP-98 request attribution for mint trades. No Nostr jargon in user-facing UI.
 
+### [technical/cascade-cli.md](technical/cascade-cli.md)
+Target command surface for the Rust `cascade` CLI used by humans and skills. Defines the full machine-first interface including `market create`, proof-native trading, portfolio funding, local proof management, profile actions, bookmarks, and discussion writes.
+
 ### [technical/positions-portfolio.md](technical/positions-portfolio.md)
 How positions are stored (kind 30078 NIP-78 events), PnL calculation, portfolio and profile pages, and the constraints around any future kind 983-based position derivation.
 

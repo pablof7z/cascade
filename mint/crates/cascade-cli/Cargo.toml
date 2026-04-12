@@ -1,0 +1,27 @@
+[package]
+name = "cascade-cli"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "cascade"
+path = "src/main.rs"
+
+[dependencies]
+cascade-api = { path = "../cascade-api" }
+
+anyhow.workspace = true
+base64 = "0.22"
+chrono.workspace = true
+clap = { workspace = true, features = ["derive", "env"] }
+cdk.workspace = true
+hex.workspace = true
+nostr = "0.44.2"
+nostr-sdk = "0.44.1"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tokio.workspace = true
+uuid.workspace = true

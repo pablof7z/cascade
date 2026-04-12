@@ -271,6 +271,38 @@ pub struct ProductLightningTopupQuoteRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct MintQuoteBolt11Request {
+    pub amount: u64,
+    pub unit: String,
+    pub description: Option<String>,
+    #[serde(default)]
+    pub pubkey: Option<String>,
+    #[serde(default)]
+    pub request_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct MintQuoteBolt11Response {
+    pub quote: String,
+    pub request: String,
+    pub amount: u64,
+    pub unit: String,
+    pub state: String,
+    pub expiry: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MintBolt11Request {
+    pub quote: String,
+    pub outputs: Vec<BlindedMessageInput>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MintBolt11Response {
+    pub signatures: Vec<TokenOutput>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductStripeTopupRequest {
     pub pubkey: String,
     pub amount_minor: u64,

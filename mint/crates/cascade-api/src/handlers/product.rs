@@ -32,6 +32,11 @@ const PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR: u64 = 10_000;
 const PAPER_FAUCET_WINDOW_LIMIT_MINOR: u64 = 25_000;
 const PAPER_FAUCET_WINDOW_SECONDS: i64 = 24 * 60 * 60;
 
+struct PreparedTradeQuote {
+    response: ProductTradeQuoteResponse,
+    fx_quote: FxQuoteSnapshot,
+}
+
 fn signet_only_unavailable(feature: &str) -> (StatusCode, Json<Value>) {
     (
         StatusCode::NOT_IMPLEMENTED,
@@ -1049,7 +1054,7 @@ async fn quote_trade_by_event(
     req: &ProductTradeQuoteRequest,
 ) -> (StatusCode, Json<Value>) {
     match load_market_for_trading(state, event_id).await {
-        Ok(market) => match build_quote_response(state, &market, req) {
+        Ok(market) => match build_quote_response(state, &market, req).await {
             Ok(quote) => match create_persisted_trade_quote(state, &market, &quote).await {
                 Ok(persisted) => (StatusCode::OK, Json(json!(persisted))),
                 Err(error) => (
@@ -1154,8 +1159,8 @@ async fn buy_trade_by_event(
                     quantity: None,
                 };
 
-                match build_quote_response(state, &market, &quote_request) {
-                    Ok(quote) => quote,
+                match build_quote_response(state, &market, &quote_request).await {
+                    Ok(quote) => quote.response,
                     Err(error) => {
                         if let Some(request_id) = request_id {
                             let _ = state
@@ -1395,8 +1400,8 @@ async fn sell_trade_by_event(
                     spend_minor: None,
                     quantity: Some(req.quantity),
                 };
-                match build_quote_response(state, &market, &quote_request) {
-                    Ok(quote) => quote,
+                match build_quote_response(state, &market, &quote_request).await {
+                    Ok(quote) => quote.response,
                     Err(error) => {
                         if let Some(request_id) = request_id {
                             let _ = state
@@ -1630,24 +1635,53 @@ fn trade_quote_state_label(snapshot: &TradeQuoteSnapshot, now: i64) -> &'static 
     }
 }
 
-fn product_trade_quote_from_snapshot(snapshot: &TradeQuoteSnapshot) -> ProductTradeQuoteResponse {
+fn product_fx_observation_response(
+    observation: &cascade_core::product::FxQuoteObservation,
+) -> ProductFxObservationResponse {
+    ProductFxObservationResponse {
+        source: observation.source.clone(),
+        btc_usd_price: observation.btc_usd_price,
+        observed_at: observation.observed_at,
+    }
+}
+
+fn product_trade_quote_from_snapshot(
+    snapshot: &TradeQuoteSnapshot,
+    fx_quote: Option<&FxQuoteSnapshot>,
+) -> ProductTradeQuoteResponse {
     ProductTradeQuoteResponse {
         quote_id: Some(snapshot.id.clone()),
         market_event_id: snapshot.market_event_id.clone(),
         trade_type: snapshot.trade_type.clone(),
         side: snapshot.side.clone(),
+        fx_quote_id: Some(snapshot.fx_quote_id.clone()),
         quantity: snapshot.quantity,
         spend_minor: snapshot.spend_minor,
         fee_minor: snapshot.fee_minor,
         net_minor: snapshot.net_minor,
+        settlement_minor: snapshot.settlement_minor,
+        settlement_msat: snapshot.settlement_msat,
+        settlement_fee_msat: snapshot.settlement_fee_msat,
         average_price_ppm: snapshot.average_price_ppm,
+        marginal_price_before_ppm: snapshot.marginal_price_before_ppm,
+        marginal_price_after_ppm: snapshot.marginal_price_after_ppm,
         current_price_yes_ppm: snapshot.current_price_yes_ppm,
         current_price_no_ppm: snapshot.current_price_no_ppm,
+        fx_source: fx_quote.map(|quote| quote.source.clone()),
+        btc_usd_price: fx_quote.map(|quote| quote.btc_usd_price),
+        spread_bps: fx_quote.map(|quote| quote.spread_bps),
+        fx_observations: fx_quote
+            .map(|quote| {
+                quote
+                    .observations
+                    .iter()
+                    .map(product_fx_observation_response)
+                    .collect()
+            })
+            .unwrap_or_default(),
         created_at: Some(snapshot.created_at),
         expires_at: Some(snapshot.expires_at),
-        status: Some(
-            trade_quote_state_label(snapshot, chrono::Utc::now().timestamp()).to_string(),
-        ),
+        status: Some(trade_quote_state_label(snapshot, chrono::Utc::now().timestamp()).to_string()),
         trade_id: snapshot.executed_trade_id.clone(),
     }
 }
@@ -1665,28 +1699,43 @@ async fn load_trade_quote_response(
         return Ok(None);
     };
 
-    Ok(Some(product_trade_quote_from_snapshot(&snapshot)))
+    let fx_quote = state
+        .db
+        .get_fx_quote_snapshot(&snapshot.fx_quote_id)
+        .await
+        .map_err(|error| error.to_string())?;
+
+    Ok(Some(product_trade_quote_from_snapshot(
+        &snapshot,
+        fx_quote.as_ref(),
+    )))
 }
 
 async fn create_persisted_trade_quote(
     state: &AppState,
     market: &Market,
-    quote: &ProductTradeQuoteResponse,
+    quote: &PreparedTradeQuote,
 ) -> Result<ProductTradeQuoteResponse, String> {
     let expires_at = chrono::Utc::now().timestamp() + TRADE_QUOTE_TTL_SECONDS;
     let snapshot = state
         .db
         .create_trade_quote_snapshot(
             &market.event_id,
-            &quote.trade_type,
-            &quote.side,
-            quote.spend_minor,
-            quote.fee_minor,
-            quote.net_minor,
-            quote.quantity,
-            quote.average_price_ppm,
-            quote.current_price_yes_ppm,
-            quote.current_price_no_ppm,
+            &quote.response.trade_type,
+            &quote.response.side,
+            &quote.fx_quote,
+            quote.response.spend_minor,
+            quote.response.fee_minor,
+            quote.response.net_minor,
+            quote.response.settlement_minor,
+            quote.response.settlement_msat,
+            quote.response.settlement_fee_msat,
+            quote.response.quantity,
+            quote.response.average_price_ppm,
+            quote.response.marginal_price_before_ppm,
+            quote.response.marginal_price_after_ppm,
+            quote.response.current_price_yes_ppm,
+            quote.response.current_price_no_ppm,
             market.q_long,
             market.q_short,
             market.reserve_sats,
@@ -1695,7 +1744,10 @@ async fn create_persisted_trade_quote(
         .await
         .map_err(|error| error.to_string())?;
 
-    Ok(product_trade_quote_from_snapshot(&snapshot))
+    Ok(product_trade_quote_from_snapshot(
+        &snapshot,
+        Some(&quote.fx_quote),
+    ))
 }
 
 fn quote_snapshot_matches(
@@ -1758,7 +1810,18 @@ async fn load_locked_trade_quote(
     match trade_quote_state_label(&snapshot, chrono::Utc::now().timestamp()) {
         "executed" => Err("trade_quote_already_executed".to_string()),
         "expired" => Err("trade_quote_expired".to_string()),
-        _ => Ok(product_trade_quote_from_snapshot(&snapshot)),
+        _ => {
+            let fx_quote = state
+                .db
+                .get_fx_quote_snapshot(&snapshot.fx_quote_id)
+                .await
+                .map_err(|error| error.to_string())?;
+
+            Ok(product_trade_quote_from_snapshot(
+                &snapshot,
+                fx_quote.as_ref(),
+            ))
+        }
     }
 }
 
@@ -1972,11 +2035,21 @@ fn solve_buy_quantity(
     Ok((quantity, market_cost_minor, fee_minor, total_minor))
 }
 
-fn build_quote_response(
+fn usd_minor_to_msat(amount_minor: u64, btc_usd_price: f64) -> u64 {
+    if amount_minor == 0 || !btc_usd_price.is_finite() || btc_usd_price <= 0.0 {
+        return 0;
+    }
+
+    let amount_usd = amount_minor as f64 / 100.0;
+    let amount_btc = amount_usd / btc_usd_price;
+    (amount_btc * 100_000_000_000.0).round().max(0.0) as u64
+}
+
+async fn build_quote_response(
     state: &AppState,
     market: &Market,
     req: &ProductTradeQuoteRequest,
-) -> Result<ProductTradeQuoteResponse, String> {
+) -> Result<PreparedTradeQuote, String> {
     let side = parse_side(&req.side)?;
     let (current_yes_ppm, current_no_ppm) = current_prices_ppm(state, market);
 
@@ -1992,27 +2065,70 @@ fn build_quote_response(
                 } else {
                     return Err("buy quote requires spend_minor or quantity".to_string());
                 };
+            let settlement_minor = total_minor;
+            let fx_quote = state
+                .fx_service
+                .quote_wallet_topup(settlement_minor)
+                .await?;
+            let (next_q_long, next_q_short) = next_buy_quantities(market, side, quantity);
+            let (post_yes_ppm, post_no_ppm) = current_prices_ppm(
+                state,
+                &Market {
+                    q_long: next_q_long,
+                    q_short: next_q_short,
+                    ..market.clone()
+                },
+            );
+            let marginal_price_before_ppm = if side == Side::Long {
+                current_yes_ppm
+            } else {
+                current_no_ppm
+            };
+            let marginal_price_after_ppm = if side == Side::Long {
+                post_yes_ppm
+            } else {
+                post_no_ppm
+            };
+            let settlement_fee_msat = usd_minor_to_msat(fee_minor, fx_quote.snapshot.btc_usd_price);
 
             let average_price_ppm = ((market_cost_minor as f64 / quantity) * 1_000_000.0)
                 .round()
                 .clamp(0.0, 1_000_000.0) as u64;
 
-            Ok(ProductTradeQuoteResponse {
-                quote_id: None,
-                market_event_id: market.event_id.clone(),
-                trade_type: "buy".to_string(),
-                side: side_label(side).to_string(),
-                quantity,
-                spend_minor: total_minor,
-                fee_minor,
-                net_minor: market_cost_minor,
-                average_price_ppm,
-                current_price_yes_ppm: current_yes_ppm,
-                current_price_no_ppm: current_no_ppm,
-                created_at: None,
-                expires_at: None,
-                status: None,
-                trade_id: None,
+            Ok(PreparedTradeQuote {
+                response: ProductTradeQuoteResponse {
+                    quote_id: None,
+                    market_event_id: market.event_id.clone(),
+                    trade_type: "buy".to_string(),
+                    side: side_label(side).to_string(),
+                    fx_quote_id: Some(fx_quote.snapshot.id.clone()),
+                    quantity,
+                    spend_minor: total_minor,
+                    fee_minor,
+                    net_minor: market_cost_minor,
+                    settlement_minor,
+                    settlement_msat: fx_quote.snapshot.amount_msat,
+                    settlement_fee_msat,
+                    average_price_ppm,
+                    marginal_price_before_ppm,
+                    marginal_price_after_ppm,
+                    current_price_yes_ppm: current_yes_ppm,
+                    current_price_no_ppm: current_no_ppm,
+                    fx_source: Some(fx_quote.snapshot.source.clone()),
+                    btc_usd_price: Some(fx_quote.snapshot.btc_usd_price),
+                    spread_bps: Some(fx_quote.snapshot.spread_bps),
+                    fx_observations: fx_quote
+                        .snapshot
+                        .observations
+                        .iter()
+                        .map(product_fx_observation_response)
+                        .collect(),
+                    created_at: None,
+                    expires_at: None,
+                    status: None,
+                    trade_id: None,
+                },
+                fx_quote: fx_quote.snapshot,
             })
         }
         "sell" => {
@@ -2021,26 +2137,69 @@ fn build_quote_response(
                 .ok_or_else(|| "sell quote requires quantity".to_string())?;
             let (gross_minor, fee_minor, net_minor) =
                 sell_value_for_quantity(state, market, side, quantity)?;
+            let settlement_minor = net_minor;
+            let fx_quote = state
+                .fx_service
+                .quote_wallet_topup(settlement_minor)
+                .await?;
+            let (next_q_long, next_q_short) = next_sell_quantities(market, side, quantity);
+            let (post_yes_ppm, post_no_ppm) = current_prices_ppm(
+                state,
+                &Market {
+                    q_long: next_q_long,
+                    q_short: next_q_short,
+                    ..market.clone()
+                },
+            );
+            let marginal_price_before_ppm = if side == Side::Long {
+                current_yes_ppm
+            } else {
+                current_no_ppm
+            };
+            let marginal_price_after_ppm = if side == Side::Long {
+                post_yes_ppm
+            } else {
+                post_no_ppm
+            };
+            let settlement_fee_msat = usd_minor_to_msat(fee_minor, fx_quote.snapshot.btc_usd_price);
             let average_price_ppm = ((gross_minor as f64 / quantity) * 1_000_000.0)
                 .round()
                 .clamp(0.0, 1_000_000.0) as u64;
 
-            Ok(ProductTradeQuoteResponse {
-                quote_id: None,
-                market_event_id: market.event_id.clone(),
-                trade_type: "sell".to_string(),
-                side: side_label(side).to_string(),
-                quantity,
-                spend_minor: gross_minor,
-                fee_minor,
-                net_minor,
-                average_price_ppm,
-                current_price_yes_ppm: current_yes_ppm,
-                current_price_no_ppm: current_no_ppm,
-                created_at: None,
-                expires_at: None,
-                status: None,
-                trade_id: None,
+            Ok(PreparedTradeQuote {
+                response: ProductTradeQuoteResponse {
+                    quote_id: None,
+                    market_event_id: market.event_id.clone(),
+                    trade_type: "sell".to_string(),
+                    side: side_label(side).to_string(),
+                    fx_quote_id: Some(fx_quote.snapshot.id.clone()),
+                    quantity,
+                    spend_minor: gross_minor,
+                    fee_minor,
+                    net_minor,
+                    settlement_minor,
+                    settlement_msat: fx_quote.snapshot.amount_msat,
+                    settlement_fee_msat,
+                    average_price_ppm,
+                    marginal_price_before_ppm,
+                    marginal_price_after_ppm,
+                    current_price_yes_ppm: current_yes_ppm,
+                    current_price_no_ppm: current_no_ppm,
+                    fx_source: Some(fx_quote.snapshot.source.clone()),
+                    btc_usd_price: Some(fx_quote.snapshot.btc_usd_price),
+                    spread_bps: Some(fx_quote.snapshot.spread_bps),
+                    fx_observations: fx_quote
+                        .snapshot
+                        .observations
+                        .iter()
+                        .map(product_fx_observation_response)
+                        .collect(),
+                    created_at: None,
+                    expires_at: None,
+                    status: None,
+                    trade_id: None,
+                },
+                fx_quote: fx_quote.snapshot,
             })
         }
         _ => Err("trade_type must be buy or sell".to_string()),
@@ -2233,13 +2392,10 @@ fn lightning_fx_quote_response(quote: &FxQuoteEnvelope) -> ProductLightningFxQuo
         expires_at: quote.snapshot.expires_at,
         fallback_used: quote.fallback_used,
         observations: quote
+            .snapshot
             .observations
             .iter()
-            .map(|observation| ProductFxObservationResponse {
-                source: observation.source.clone(),
-                btc_usd_price: observation.btc_usd_price,
-                observed_at: observation.observed_at,
-            })
+            .map(product_fx_observation_response)
             .collect(),
     }
 }
@@ -2259,6 +2415,12 @@ fn wallet_topup_response(
         fx_source: fx_quote.source.clone(),
         btc_usd_price: fx_quote.btc_usd_price,
         spread_bps: fx_quote.spread_bps,
+        fx_quote_id: fx_quote.id.clone(),
+        observations: fx_quote
+            .observations
+            .iter()
+            .map(product_fx_observation_response)
+            .collect(),
         created_at: quote.created_at,
         expires_at: quote.expires_at,
     }

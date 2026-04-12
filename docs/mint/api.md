@@ -170,6 +170,14 @@ Lightning top-up status reads should be settlement-aware. `GET /api/wallet/topup
 
 Lightning top-up quote creation should accept an optional client-supplied `request_id`. The mint persists that request id before invoice creation so duplicate retries can replay the same top-up quote instead of creating a second invoice, and interrupted clients can recover through `GET /api/wallet/topups/requests/{request_id}` even if they never received the final `topup_id`.
 
+Persisted wallet top-up responses should carry the locked FX snapshot metadata, not just the invoice:
+
+- `fx_quote_id`
+- `amount_msat`
+- `btc_usd_price`
+- `spread_bps`
+- `observations[]`
+
 ### Trading
 
 - `POST /api/trades/quote`
@@ -183,6 +191,19 @@ Lightning top-up quote creation should accept an optional client-supplied `reque
 Trade execution routes should accept an optional client-supplied `request_id`. The mint persists that request id before execution so duplicate retries can replay the same completed trade instead of creating a second fill, and interrupted clients can recover through `GET /api/trades/requests/{request_id}` even if they never received the final `trade_id`.
 
 Trade quote routes should persist executable quote snapshots and return a `quote_id` with an expiry. Buy and sell execution routes may accept that `quote_id` to execute against the locked quote instead of recomputing price mid-flight. The persisted quote payload is authoritative for execution: clients should submit the returned `spend_minor` or `quantity` values alongside `quote_id`, rather than reusing the pre-quote input blindly. `GET /api/trades/quotes/{quote_id}` should report whether the quote is still open, has expired, or has already been executed.
+
+The persisted quote is also the settlement contract for the coordinator. It should include at least:
+
+- `fx_quote_id`
+- `settlement_minor`
+- `settlement_msat`
+- `settlement_fee_msat`
+- `marginal_price_before_ppm`
+- `marginal_price_after_ppm`
+- `fx_source`
+- `btc_usd_price`
+- `spread_bps`
+- `fx_observations[]`
 
 ### Public Read
 
@@ -233,9 +254,12 @@ The response should include at least:
 - `cost_usd_minor`
 - `average_price_ppm`
 - `fees_usd_minor`
+- `settlement_msat`
+- `marginal_price_before_ppm`
+- `marginal_price_after_ppm`
 - `expires_at`
 
-The backend persists the lower-level `msat` market quote and FX quote, but the normal product response stays dollar-denominated.
+The backend persists the lower-level `msat` market quote and FX quote, but the normal product response still treats USD as the primary unit of account.
 
 ### Sell Quote
 
@@ -251,6 +275,9 @@ The response should include at least:
 - `receive_usd_minor`
 - `average_price_ppm`
 - `fees_usd_minor`
+- `settlement_msat`
+- `marginal_price_before_ppm`
+- `marginal_price_after_ppm`
 - `expires_at`
 
 ### Execution

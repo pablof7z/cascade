@@ -3,10 +3,10 @@
 use crate::error::Result;
 use crate::market::{Market, MarketStatus, Side, Trade, TradeDirection};
 use crate::product::{
-    FxQuoteSnapshot, MarketLaunchState, MarketPosition, MarketTradeRecord, MarketVisibility,
-    TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot, WalletBalanceRecord,
-    WalletFundingEvent, WalletTopupQuote, WalletTopupRequest, WalletTopupRequestStatus,
-    WalletTopupStatus,
+    FxQuoteObservation, FxQuoteSnapshot, MarketLaunchState, MarketPosition, MarketTradeRecord,
+    MarketVisibility, TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot,
+    WalletBalanceRecord, WalletFundingEvent, WalletTopupQuote, WalletTopupRequest,
+    WalletTopupRequestStatus, WalletTopupStatus,
 };
 use crate::trade::Payout;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
@@ -16,6 +16,15 @@ use std::str::FromStr;
 /// Database connection pool
 pub struct CascadeDatabase {
     pool: SqlitePool,
+}
+
+fn serialize_fx_observations(observations: &[FxQuoteObservation]) -> Result<String> {
+    serde_json::to_string(observations)
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))
+}
+
+fn deserialize_fx_observations(observations_json: &str) -> Vec<FxQuoteObservation> {
+    serde_json::from_str::<Vec<FxQuoteObservation>>(observations_json).unwrap_or_default()
 }
 
 impl CascadeDatabase {
@@ -78,6 +87,84 @@ impl CascadeDatabase {
         sqlx::query(include_str!(
             "../../../migrations/007_trade_quote_snapshots.sql"
         ))
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.ensure_fx_quote_observations_column().await?;
+        self.ensure_trade_quote_settlement_columns().await?;
+
+        Ok(())
+    }
+
+    async fn column_exists(&self, table: &str, column: &str) -> Result<bool> {
+        let pragma = format!("PRAGMA table_info({table})");
+        let rows = sqlx::query(&pragma)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .any(|row| row.get::<String, _>("name").eq_ignore_ascii_case(column)))
+    }
+
+    async fn ensure_fx_quote_observations_column(&self) -> Result<()> {
+        if !self
+            .column_exists("fx_quote_snapshots", "observations_json")
+            .await?
+        {
+            sqlx::query(
+                "ALTER TABLE fx_quote_snapshots ADD COLUMN observations_json TEXT NOT NULL DEFAULT '[]'",
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+        }
+
+        Ok(())
+    }
+
+    async fn ensure_trade_quote_settlement_columns(&self) -> Result<()> {
+        let upgrades = [
+            (
+                "fx_quote_id",
+                "ALTER TABLE trade_quote_snapshots ADD COLUMN fx_quote_id TEXT NOT NULL DEFAULT ''",
+            ),
+            (
+                "settlement_minor",
+                "ALTER TABLE trade_quote_snapshots ADD COLUMN settlement_minor INTEGER NOT NULL DEFAULT 0",
+            ),
+            (
+                "settlement_msat",
+                "ALTER TABLE trade_quote_snapshots ADD COLUMN settlement_msat INTEGER NOT NULL DEFAULT 0",
+            ),
+            (
+                "settlement_fee_msat",
+                "ALTER TABLE trade_quote_snapshots ADD COLUMN settlement_fee_msat INTEGER NOT NULL DEFAULT 0",
+            ),
+            (
+                "marginal_price_before_ppm",
+                "ALTER TABLE trade_quote_snapshots ADD COLUMN marginal_price_before_ppm INTEGER NOT NULL DEFAULT 0",
+            ),
+            (
+                "marginal_price_after_ppm",
+                "ALTER TABLE trade_quote_snapshots ADD COLUMN marginal_price_after_ppm INTEGER NOT NULL DEFAULT 0",
+            ),
+        ];
+
+        for (column, sql) in upgrades {
+            if !self.column_exists("trade_quote_snapshots", column).await? {
+                sqlx::query(sql)
+                    .execute(&self.pool)
+                    .await
+                    .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+            }
+        }
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_trade_quote_snapshots_fx_quote_id ON trade_quote_snapshots(fx_quote_id)",
+        )
         .execute(&self.pool)
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
@@ -739,6 +826,7 @@ impl CascadeDatabase {
     ) -> Result<WalletTopupQuote> {
         let mut tx = self.pool.begin().await?;
         let now = chrono::Utc::now().timestamp();
+        let observations_json = serialize_fx_observations(&fx_quote.observations)?;
         let quote = WalletTopupQuote {
             id: uuid::Uuid::new_v4().to_string(),
             pubkey: pubkey.to_string(),
@@ -765,10 +853,11 @@ impl CascadeDatabase {
                 btc_usd_price,
                 source,
                 spread_bps,
+                observations_json,
                 created_at,
                 expires_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&fx_quote.id)
@@ -777,6 +866,7 @@ impl CascadeDatabase {
         .bind(fx_quote.btc_usd_price)
         .bind(&fx_quote.source)
         .bind(fx_quote.spread_bps as i64)
+        .bind(&observations_json)
         .bind(fx_quote.created_at)
         .bind(fx_quote.expires_at)
         .execute(&mut *tx)
@@ -942,7 +1032,7 @@ impl CascadeDatabase {
     }
 
     pub async fn get_fx_quote_snapshot(&self, quote_id: &str) -> Result<Option<FxQuoteSnapshot>> {
-        let row = sqlx::query_as::<_, (String, i64, i64, f64, String, i64, i64, i64)>(
+        let row = sqlx::query_as::<_, (String, i64, i64, f64, String, i64, String, i64, i64)>(
             r#"
             SELECT
                 id,
@@ -951,6 +1041,7 @@ impl CascadeDatabase {
                 btc_usd_price,
                 source,
                 spread_bps,
+                observations_json,
                 created_at,
                 expires_at
             FROM fx_quote_snapshots
@@ -971,6 +1062,7 @@ impl CascadeDatabase {
                 btc_usd_price,
                 source,
                 spread_bps,
+                observations_json,
                 created_at,
                 expires_at,
             )| FxQuoteSnapshot {
@@ -980,6 +1072,7 @@ impl CascadeDatabase {
                 btc_usd_price,
                 source,
                 spread_bps: spread_bps.max(0) as u64,
+                observations: deserialize_fx_observations(&observations_json),
                 created_at,
                 expires_at,
             },
@@ -1711,11 +1804,17 @@ impl CascadeDatabase {
         market_event_id: &str,
         trade_type: &str,
         side: &str,
+        fx_quote: &FxQuoteSnapshot,
         spend_minor: u64,
         fee_minor: u64,
         net_minor: u64,
+        settlement_minor: u64,
+        settlement_msat: u64,
+        settlement_fee_msat: u64,
         quantity: f64,
         average_price_ppm: u64,
+        marginal_price_before_ppm: u64,
+        marginal_price_after_ppm: u64,
         current_price_yes_ppm: u64,
         current_price_no_ppm: u64,
         snapshot_q_long: f64,
@@ -1723,17 +1822,25 @@ impl CascadeDatabase {
         snapshot_reserve_minor: u64,
         expires_at: i64,
     ) -> Result<TradeQuoteSnapshot> {
+        let mut tx = self.pool.begin().await?;
         let now = chrono::Utc::now().timestamp();
+        let observations_json = serialize_fx_observations(&fx_quote.observations)?;
         let quote = TradeQuoteSnapshot {
             id: uuid::Uuid::new_v4().to_string(),
             market_event_id: market_event_id.to_string(),
             trade_type: trade_type.to_string(),
             side: side.to_string(),
+            fx_quote_id: fx_quote.id.clone(),
             spend_minor,
             fee_minor,
             net_minor,
+            settlement_minor,
+            settlement_msat,
+            settlement_fee_msat,
             quantity,
             average_price_ppm,
+            marginal_price_before_ppm,
+            marginal_price_after_ppm,
             current_price_yes_ppm,
             current_price_no_ppm,
             snapshot_q_long,
@@ -1747,16 +1854,50 @@ impl CascadeDatabase {
 
         sqlx::query(
             r#"
+            INSERT INTO fx_quote_snapshots (
+                id,
+                amount_minor,
+                amount_msat,
+                btc_usd_price,
+                source,
+                spread_bps,
+                observations_json,
+                created_at,
+                expires_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&fx_quote.id)
+        .bind(fx_quote.amount_minor as i64)
+        .bind(fx_quote.amount_msat as i64)
+        .bind(fx_quote.btc_usd_price)
+        .bind(&fx_quote.source)
+        .bind(fx_quote.spread_bps as i64)
+        .bind(&observations_json)
+        .bind(fx_quote.created_at)
+        .bind(fx_quote.expires_at)
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            r#"
             INSERT INTO trade_quote_snapshots (
                 id,
                 market_event_id,
                 trade_type,
                 side,
+                fx_quote_id,
                 spend_minor,
                 fee_minor,
                 net_minor,
+                settlement_minor,
+                settlement_msat,
+                settlement_fee_msat,
                 quantity,
                 average_price_ppm,
+                marginal_price_before_ppm,
+                marginal_price_after_ppm,
                 current_price_yes_ppm,
                 current_price_no_ppm,
                 snapshot_q_long,
@@ -1765,18 +1906,24 @@ impl CascadeDatabase {
                 created_at,
                 expires_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&quote.id)
         .bind(&quote.market_event_id)
         .bind(&quote.trade_type)
         .bind(&quote.side)
+        .bind(&quote.fx_quote_id)
         .bind(quote.spend_minor as i64)
         .bind(quote.fee_minor as i64)
         .bind(quote.net_minor as i64)
+        .bind(quote.settlement_minor as i64)
+        .bind(quote.settlement_msat as i64)
+        .bind(quote.settlement_fee_msat as i64)
         .bind(quote.quantity)
         .bind(quote.average_price_ppm as i64)
+        .bind(quote.marginal_price_before_ppm as i64)
+        .bind(quote.marginal_price_after_ppm as i64)
         .bind(quote.current_price_yes_ppm as i64)
         .bind(quote.current_price_no_ppm as i64)
         .bind(quote.snapshot_q_long)
@@ -1784,9 +1931,10 @@ impl CascadeDatabase {
         .bind(quote.snapshot_reserve_minor as i64)
         .bind(quote.created_at)
         .bind(quote.expires_at)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
 
         Ok(quote)
     }
@@ -1802,11 +1950,17 @@ impl CascadeDatabase {
                 market_event_id,
                 trade_type,
                 side,
+                fx_quote_id,
                 spend_minor,
                 fee_minor,
                 net_minor,
+                settlement_minor,
+                settlement_msat,
+                settlement_fee_msat,
                 quantity,
                 average_price_ppm,
+                marginal_price_before_ppm,
+                marginal_price_after_ppm,
                 current_price_yes_ppm,
                 current_price_no_ppm,
                 snapshot_q_long,
@@ -1831,11 +1985,17 @@ impl CascadeDatabase {
             market_event_id: row.get::<String, _>("market_event_id"),
             trade_type: row.get::<String, _>("trade_type"),
             side: row.get::<String, _>("side"),
+            fx_quote_id: row.get::<String, _>("fx_quote_id"),
             spend_minor: row.get::<i64, _>("spend_minor").max(0) as u64,
             fee_minor: row.get::<i64, _>("fee_minor").max(0) as u64,
             net_minor: row.get::<i64, _>("net_minor").max(0) as u64,
+            settlement_minor: row.get::<i64, _>("settlement_minor").max(0) as u64,
+            settlement_msat: row.get::<i64, _>("settlement_msat").max(0) as u64,
+            settlement_fee_msat: row.get::<i64, _>("settlement_fee_msat").max(0) as u64,
             quantity: row.get::<f64, _>("quantity"),
             average_price_ppm: row.get::<i64, _>("average_price_ppm").max(0) as u64,
+            marginal_price_before_ppm: row.get::<i64, _>("marginal_price_before_ppm").max(0) as u64,
+            marginal_price_after_ppm: row.get::<i64, _>("marginal_price_after_ppm").max(0) as u64,
             current_price_yes_ppm: row.get::<i64, _>("current_price_yes_ppm").max(0) as u64,
             current_price_no_ppm: row.get::<i64, _>("current_price_no_ppm").max(0) as u64,
             snapshot_q_long: row.get::<f64, _>("snapshot_q_long"),

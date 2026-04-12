@@ -133,6 +133,7 @@ The `USD <-> msat` boundary should be implemented as a modular multi-provider qu
 - adapters fetch data from multiple large providers
 - quote construction applies one documented combination policy
 - persisted quote snapshots include contributing provider prices, final executable rate, spread, and expiry
+- persisted trade quotes also store the selected FX snapshot id, the `msat` settlement amount, and the marginal price movement for the exact LMSR fill
 - trade and top-up execution consumes locked quotes rather than ad hoc spot reads
 - launch quote preview should be inspectable through a dedicated endpoint so operators can curl a locked `USD <-> msat` quote without creating a payment object
 
@@ -155,6 +156,7 @@ Lightning is both a launch wallet-funding rail and the settlement rail between t
 
 - the wallet mint can create USD top-up invoices by locking `USD <-> msat` FX quotes
 - incoming top-up status polling reconciles persisted quote state against real invoice state, so a paid invoice can complete after restart or client interruption
+- persisted buy/sell quotes carry the Lightning-facing settlement budget and provider observations needed for the eventual inter-mint saga
 - the market mint can return a standard invoice-backed quote for a LONG or SHORT trade
 - the wallet mint can pay that quote by consuming USD proofs
 - the reverse path can return market exit value back into the wallet mint

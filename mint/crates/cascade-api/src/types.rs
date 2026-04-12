@@ -265,6 +265,8 @@ pub struct ProductWalletTopupResponse {
     pub fx_source: String,
     pub btc_usd_price: f64,
     pub spread_bps: u64,
+    pub fx_quote_id: String,
+    pub observations: Vec<ProductFxObservationResponse>,
     pub created_at: i64,
     pub expires_at: i64,
 }
@@ -279,7 +281,7 @@ pub struct ProductWalletTopupRequestStatusResponse {
     pub topup: Option<ProductWalletTopupResponse>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ProductFxObservationResponse {
     pub source: String,
     pub btc_usd_price: f64,
@@ -351,13 +353,23 @@ pub struct ProductTradeQuoteResponse {
     pub market_event_id: String,
     pub trade_type: String,
     pub side: String,
+    pub fx_quote_id: Option<String>,
     pub quantity: f64,
     pub spend_minor: u64,
     pub fee_minor: u64,
     pub net_minor: u64,
+    pub settlement_minor: u64,
+    pub settlement_msat: u64,
+    pub settlement_fee_msat: u64,
     pub average_price_ppm: u64,
+    pub marginal_price_before_ppm: u64,
+    pub marginal_price_after_ppm: u64,
     pub current_price_yes_ppm: u64,
     pub current_price_no_ppm: u64,
+    pub fx_source: Option<String>,
+    pub btc_usd_price: Option<f64>,
+    pub spread_bps: Option<u64>,
+    pub fx_observations: Vec<ProductFxObservationResponse>,
     pub created_at: Option<i64>,
     pub expires_at: Option<i64>,
     pub status: Option<String>,

@@ -647,6 +647,16 @@ async fn test_coordinator_trade_routes_and_status() {
     let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
     assert_eq!(quote_payload["trade_type"].as_str(), Some("buy"));
     assert!(quote_payload["quantity"].as_f64().unwrap() > 0.0);
+    assert_eq!(quote_payload["settlement_minor"].as_u64(), Some(4000));
+    assert!(quote_payload["settlement_msat"].as_u64().unwrap() > 0);
+    assert!(quote_payload["settlement_fee_msat"].as_u64().unwrap() > 0);
+    assert!(quote_payload["fx_quote_id"].as_str().is_some());
+    assert!(quote_payload["fx_source"].as_str().is_some());
+    assert!(quote_payload["btc_usd_price"].as_f64().unwrap() > 0.0);
+    assert!(quote_payload["spread_bps"].as_u64().is_some());
+    assert!(quote_payload["marginal_price_before_ppm"].as_u64().unwrap() > 0);
+    assert!(quote_payload["marginal_price_after_ppm"].as_u64().unwrap() > 0);
+    assert!(quote_payload["fx_observations"].as_array().is_some());
     let buy_quote_id = quote_payload["quote_id"].as_str().unwrap().to_string();
     assert_eq!(quote_payload["status"].as_str(), Some("open"));
 
@@ -660,6 +670,10 @@ async fn test_coordinator_trade_routes_and_status() {
     assert_eq!(
         quote_status_payload["quote_id"].as_str(),
         Some(buy_quote_id.as_str())
+    );
+    assert_eq!(
+        quote_status_payload["fx_quote_id"].as_str(),
+        quote_payload["fx_quote_id"].as_str()
     );
 
     let buy_response = client
@@ -732,6 +746,11 @@ async fn test_coordinator_trade_routes_and_status() {
     let sell_quote_payload: serde_json::Value = sell_quote_response.json().await.unwrap();
     assert_eq!(sell_quote_payload["trade_type"].as_str(), Some("sell"));
     assert!(sell_quote_payload["net_minor"].as_u64().unwrap() > 0);
+    assert_eq!(
+        sell_quote_payload["settlement_minor"].as_u64(),
+        sell_quote_payload["net_minor"].as_u64()
+    );
+    assert!(sell_quote_payload["settlement_msat"].as_u64().unwrap() > 0);
     let sell_quote_id = sell_quote_payload["quote_id"].as_str().unwrap().to_string();
 
     let sell_response = client
@@ -791,6 +810,8 @@ async fn test_lightning_topup_quote_and_settlement_flow() {
         .unwrap()
         .starts_with("lnbc"));
     assert!(quote_payload["amount_msat"].as_u64().unwrap() > 0);
+    assert!(quote_payload["fx_quote_id"].as_str().is_some());
+    assert!(quote_payload["observations"].as_array().is_some());
 
     let wallet_pending_response = client
         .get(format!("{url}/api/product/wallet/{pubkey}"))

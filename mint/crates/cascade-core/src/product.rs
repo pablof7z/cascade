@@ -98,6 +98,13 @@ impl std::str::FromStr for WalletTopupStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FxQuoteObservation {
+    pub source: String,
+    pub btc_usd_price: f64,
+    pub observed_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FxQuoteSnapshot {
     pub id: String,
     pub amount_minor: u64,
@@ -105,6 +112,7 @@ pub struct FxQuoteSnapshot {
     pub btc_usd_price: f64,
     pub source: String,
     pub spread_bps: u64,
+    pub observations: Vec<FxQuoteObservation>,
     pub created_at: i64,
     pub expires_at: i64,
 }
@@ -178,11 +186,17 @@ pub struct TradeQuoteSnapshot {
     pub market_event_id: String,
     pub trade_type: String,
     pub side: String,
+    pub fx_quote_id: String,
     pub spend_minor: u64,
     pub fee_minor: u64,
     pub net_minor: u64,
+    pub settlement_minor: u64,
+    pub settlement_msat: u64,
+    pub settlement_fee_msat: u64,
     pub quantity: f64,
     pub average_price_ppm: u64,
+    pub marginal_price_before_ppm: u64,
+    pub marginal_price_after_ppm: u64,
     pub current_price_yes_ppm: u64,
     pub current_price_no_ppm: u64,
     pub snapshot_q_long: f64,

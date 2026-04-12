@@ -25,6 +25,12 @@ export type ProductFundingEvent = {
   created_at: number;
 };
 
+export type ProductFxObservation = {
+  source: string;
+  btc_usd_price: number;
+  observed_at: number;
+};
+
 export type ProductWalletTopup = {
   id: string;
   rail: string;
@@ -36,6 +42,8 @@ export type ProductWalletTopup = {
   fx_source: string;
   btc_usd_price: number;
   spread_bps: number;
+  fx_quote_id: string;
+  observations: ProductFxObservation[];
   created_at: number;
   expires_at: number;
 };
@@ -97,13 +105,23 @@ export type ProductTradeQuote = {
   market_event_id: string;
   trade_type: string;
   side: string;
+  fx_quote_id?: string | null;
   quantity: number;
   spend_minor: number;
   fee_minor: number;
   net_minor: number;
+  settlement_minor: number;
+  settlement_msat: number;
+  settlement_fee_msat: number;
   average_price_ppm: number;
+  marginal_price_before_ppm: number;
+  marginal_price_after_ppm: number;
   current_price_yes_ppm: number;
   current_price_no_ppm: number;
+  fx_source?: string | null;
+  btc_usd_price?: number | null;
+  spread_bps?: number | null;
+  fx_observations: ProductFxObservation[];
   created_at?: number | null;
   expires_at?: number | null;
   status?: string | null;

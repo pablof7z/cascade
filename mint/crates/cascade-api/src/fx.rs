@@ -1,20 +1,12 @@
-use cascade_core::product::FxQuoteSnapshot;
+use cascade_core::product::{FxQuoteObservation, FxQuoteSnapshot};
 use chrono::Utc;
 use serde::Deserialize;
 use std::time::Duration;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
-pub struct FxObservation {
-    pub source: String,
-    pub btc_usd_price: f64,
-    pub observed_at: i64,
-}
-
-#[derive(Debug, Clone)]
 pub struct FxQuoteEnvelope {
     pub snapshot: FxQuoteSnapshot,
-    pub observations: Vec<FxObservation>,
     pub fallback_used: bool,
 }
 
@@ -89,7 +81,7 @@ impl FxQuoteService {
         let (btc_usd_price, spread_bps, fallback_used) = if observations.is_empty() {
             match self.fallback_btc_usd_price {
                 Some(price) => {
-                    observations.push(FxObservation {
+                    observations.push(FxQuoteObservation {
                         source: "signet-static".to_string(),
                         btc_usd_price: price,
                         observed_at: Utc::now().timestamp(),
@@ -141,15 +133,15 @@ impl FxQuoteService {
                 btc_usd_price,
                 source,
                 spread_bps,
+                observations,
                 created_at: now,
                 expires_at: now + self.quote_ttl_seconds,
             },
-            observations,
             fallback_used,
         })
     }
 
-    async fn fetch_provider_observations(&self) -> Vec<FxObservation> {
+    async fn fetch_provider_observations(&self) -> Vec<FxQuoteObservation> {
         let mut observations = Vec::new();
 
         for provider in &self.providers {
@@ -161,7 +153,7 @@ impl FxQuoteService {
         observations
     }
 
-    async fn fetch_provider(&self, provider: FxProvider) -> Option<FxObservation> {
+    async fn fetch_provider(&self, provider: FxProvider) -> Option<FxQuoteObservation> {
         match provider {
             FxProvider::Coinbase => self.fetch_coinbase().await,
             FxProvider::Kraken => self.fetch_kraken().await,
@@ -169,7 +161,7 @@ impl FxQuoteService {
         }
     }
 
-    async fn fetch_coinbase(&self) -> Option<FxObservation> {
+    async fn fetch_coinbase(&self) -> Option<FxQuoteObservation> {
         #[derive(Deserialize)]
         struct CoinbasePayload {
             data: CoinbasePrice,
@@ -192,14 +184,14 @@ impl FxQuoteService {
             return None;
         }
 
-        Some(FxObservation {
+        Some(FxQuoteObservation {
             source: "coinbase".to_string(),
             btc_usd_price,
             observed_at: Utc::now().timestamp(),
         })
     }
 
-    async fn fetch_kraken(&self) -> Option<FxObservation> {
+    async fn fetch_kraken(&self) -> Option<FxQuoteObservation> {
         #[derive(Deserialize)]
         struct KrakenPayload {
             result: std::collections::HashMap<String, KrakenTicker>,
@@ -223,14 +215,14 @@ impl FxQuoteService {
             return None;
         }
 
-        Some(FxObservation {
+        Some(FxQuoteObservation {
             source: "kraken".to_string(),
             btc_usd_price,
             observed_at: Utc::now().timestamp(),
         })
     }
 
-    async fn fetch_bitstamp(&self) -> Option<FxObservation> {
+    async fn fetch_bitstamp(&self) -> Option<FxQuoteObservation> {
         #[derive(Deserialize)]
         struct BitstampPayload {
             last: String,
@@ -248,7 +240,7 @@ impl FxQuoteService {
             return None;
         }
 
-        Some(FxObservation {
+        Some(FxQuoteObservation {
             source: "bitstamp".to_string(),
             btc_usd_price,
             observed_at: Utc::now().timestamp(),
@@ -258,7 +250,8 @@ impl FxQuoteService {
 
 #[cfg(test)]
 mod tests {
-    use super::{FxObservation, FxQuoteService};
+    use super::FxQuoteService;
+    use cascade_core::product::FxQuoteObservation;
 
     #[tokio::test]
     async fn static_fallback_quotes_msat() {
@@ -268,18 +261,18 @@ mod tests {
         assert_eq!(quote.snapshot.amount_msat, 50_000_000);
         assert_eq!(quote.snapshot.btc_usd_price, 50_000.0);
         assert!(quote.fallback_used);
-        assert_eq!(quote.observations.len(), 1);
+        assert_eq!(quote.snapshot.observations.len(), 1);
     }
 
     #[test]
     fn observations_sort_by_price() {
         let mut observations = [
-            FxObservation {
+            FxQuoteObservation {
                 source: "b".to_string(),
                 btc_usd_price: 84_000.0,
                 observed_at: 0,
             },
-            FxObservation {
+            FxQuoteObservation {
                 source: "a".to_string(),
                 btc_usd_price: 82_000.0,
                 observed_at: 0,

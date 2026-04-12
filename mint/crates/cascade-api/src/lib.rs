@@ -43,6 +43,7 @@ pub async fn build_server(
         fx_service,
         mint.clone(),
         db,
+        network_type == "signet",
     );
 
     // Build cascade-specific routes

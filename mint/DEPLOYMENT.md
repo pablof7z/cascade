@@ -222,6 +222,7 @@ As the wallet mint lands, also verify:
 ## Operational Notes
 
 - Card payments are reversible; bearer ecash is not. Add explicit top-up risk controls.
+- The signet faucet should stay capped. Current policy is `100.00 USD` max per top-up and `250.00 USD` max per pubkey over a rolling 24 hour window.
 - Do not expose sats or Lightning concepts in the normal product UI.
 - Treat the older sat-oriented route set as migration debt, not the final deployment contract.
 

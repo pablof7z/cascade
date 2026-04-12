@@ -23,6 +23,9 @@ use serde_json::{json, Value};
 const TRADE_FEE_BPS: u64 = 100;
 const FALLBACK_MINT_PUBKEY: &str =
     "1111111111111111111111111111111111111111111111111111111111111111";
+const PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR: u64 = 10_000;
+const PAPER_FAUCET_WINDOW_LIMIT_MINOR: u64 = 25_000;
+const PAPER_FAUCET_WINDOW_SECONDS: i64 = 24 * 60 * 60;
 
 fn signet_only_unavailable(feature: &str) -> (StatusCode, Json<Value>) {
     (
@@ -348,6 +351,44 @@ pub async fn paper_faucet(
         return (
             StatusCode::BAD_REQUEST,
             Json(json!({ "error": "pubkey_and_amount_minor_are_required" })),
+        );
+    }
+
+    if req.amount_minor > PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": format!(
+                    "paper_faucet_single_topup_limit_exceeded:max_minor={PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR}"
+                )
+            })),
+        );
+    }
+
+    let window_started_at = chrono::Utc::now().timestamp() - PAPER_FAUCET_WINDOW_SECONDS;
+    let funded_in_window = match state
+        .db
+        .sum_wallet_funding_amount_since(&req.pubkey, "paper", window_started_at)
+        .await
+    {
+        Ok(amount_minor) => amount_minor,
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error.to_string() })),
+            )
+        }
+    };
+
+    if funded_in_window.saturating_add(req.amount_minor) > PAPER_FAUCET_WINDOW_LIMIT_MINOR {
+        let remaining_minor = PAPER_FAUCET_WINDOW_LIMIT_MINOR.saturating_sub(funded_in_window);
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(json!({
+                "error": format!(
+                    "paper_faucet_window_limit_exceeded:window_minor={PAPER_FAUCET_WINDOW_LIMIT_MINOR}:remaining_minor={remaining_minor}"
+                )
+            })),
         );
     }
 

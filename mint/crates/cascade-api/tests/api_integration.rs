@@ -817,3 +817,55 @@ async fn test_lightning_fx_quote_preview() {
         .map(|items| !items.is_empty())
         .unwrap_or(false));
 }
+
+#[tokio::test]
+async fn test_paper_faucet_enforces_single_and_window_limits() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+    let pubkey = "abababababababababababababababababababababababababababababababab";
+
+    let too_large_response = client
+        .post(format!("{url}/api/product/paper/faucet"))
+        .json(&serde_json::json!({
+            "pubkey": pubkey,
+            "amount_minor": 10001
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(too_large_response.status(), 400);
+    let too_large_payload: serde_json::Value = too_large_response.json().await.unwrap();
+    assert_eq!(
+        too_large_payload["error"].as_str(),
+        Some("paper_faucet_single_topup_limit_exceeded:max_minor=10000")
+    );
+
+    for amount_minor in [10_000_u64, 10_000_u64, 5_000_u64] {
+        let response = client
+            .post(format!("{url}/api/product/paper/faucet"))
+            .json(&serde_json::json!({
+                "pubkey": pubkey,
+                "amount_minor": amount_minor
+            }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 201);
+    }
+
+    let capped_response = client
+        .post(format!("{url}/api/product/paper/faucet"))
+        .json(&serde_json::json!({
+            "pubkey": pubkey,
+            "amount_minor": 100
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(capped_response.status(), 429);
+    let capped_payload: serde_json::Value = capped_response.json().await.unwrap();
+    assert_eq!(
+        capped_payload["error"].as_str(),
+        Some("paper_faucet_window_limit_exceeded:window_minor=25000:remaining_minor=0")
+    );
+}

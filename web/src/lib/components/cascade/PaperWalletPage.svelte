@@ -43,6 +43,9 @@
   let faucetAmount = $state('10000');
   let lightningAmount = $state('2500');
 
+  const paperFaucetSingleLimitMinor = 10000;
+  const paperFaucetWindowLimitMinor = 25000;
+
   async function loadWallet() {
     if (!currentUser) return;
     loading = true;
@@ -55,6 +58,18 @@
     } finally {
       loading = false;
     }
+  }
+
+  function formatPaperFaucetError(message: string): string {
+    if (message.startsWith('paper_faucet_single_topup_limit_exceeded')) {
+      return `Paper funding is capped at ${formatUsdMinor(paperFaucetSingleLimitMinor)} per top-up.`;
+    }
+
+    if (message.startsWith('paper_faucet_window_limit_exceeded')) {
+      return `Paper funding is capped at ${formatUsdMinor(paperFaucetWindowLimitMinor)} per 24 hours.`;
+    }
+
+    return message;
   }
 
   async function addPaperFunds() {
@@ -82,7 +97,7 @@
 
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      errorMessage = payload?.error || 'Paper funding failed.';
+      errorMessage = formatPaperFaucetError(payload?.error || 'Paper funding failed.');
       status = '';
       return;
     }
@@ -237,7 +252,10 @@
       <div class="panel-header">
         <div>
           <h2>Add paper funds</h2>
-          <p class="muted">This faucet exists only for signet testing.</p>
+          <p class="muted">
+            This faucet exists only for signet testing. Limit {formatUsdMinor(paperFaucetSingleLimitMinor)}
+            per top-up and {formatUsdMinor(paperFaucetWindowLimitMinor)} per 24 hours.
+          </p>
         </div>
       </div>
 

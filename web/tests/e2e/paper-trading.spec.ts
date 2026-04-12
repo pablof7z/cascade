@@ -4,6 +4,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 test.describe.configure({ mode: 'serial' });
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4173';
+const PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR = 10_000;
 
 function formatUsdMinor(amountMinor: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -77,9 +78,16 @@ async function fundPaperWallet(page: Page, secretKey: string, amountMinor: numbe
   await page.goto('/wallet');
   await ensureLoggedIn(page, secretKey);
   await expect(page.getByRole('heading', { name: 'Paper wallet' })).toBeVisible();
-  await page.getByRole('spinbutton', { name: 'Paper amount' }).fill(String(amountMinor));
-  await page.getByRole('button', { name: 'Add funds' }).click();
-  await expect(page.getByText(`Added ${formatUsdMinor(amountMinor)} to your paper wallet.`)).toBeVisible();
+
+  let remainingMinor = amountMinor;
+
+  while (remainingMinor > 0) {
+    const chunkMinor = Math.min(remainingMinor, PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR);
+    await page.getByRole('spinbutton', { name: 'Paper amount' }).fill(String(chunkMinor));
+    await page.getByRole('button', { name: 'Add funds' }).click();
+    await expect(page.getByText(`Added ${formatUsdMinor(chunkMinor)} to your paper wallet.`)).toBeVisible();
+    remainingMinor -= chunkMinor;
+  }
 }
 
 async function completeBuilderDraft(

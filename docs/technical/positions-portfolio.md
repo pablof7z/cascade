@@ -100,6 +100,7 @@ For launch, that means:
 - spendable cash comes from locally stored USD proofs
 - open-position quantities come from locally stored market proofs
 - current portfolio value comes from public market prices
+- launch cost basis comes from a browser-local executed-trade position book maintained by the active browser
 - exact withdrawal previews come from sell quotes
 - token import/export is a browser-local proof-management action, not a server wallet API
 - the first import/export implementation can operate on one proof bucket at a time: one mint, one unit, one encoded Cashu token string
@@ -122,7 +123,15 @@ That includes:
 
 - USD proofs in the wallet
 - market proofs for open positions
+- a browser-local position book derived from executed buys, seeds, and withdrawals in that browser
 - NIP-78 position records used for public profile and cross-device hints
+
+The launch browser-local position book is intentionally narrow:
+
+- it tracks quantity and cost basis for trades executed in this browser
+- it is enough to show local cost basis and unrealized PnL for normal launch usage
+- imported proofs or proofs acquired on another device may not have local cost basis
+- those holdings should still appear in `/portfolio`, but with mark-only valuation rather than fabricated PnL
 
 ## Future: Deriving Positions From Kind 983
 

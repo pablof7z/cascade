@@ -167,15 +167,23 @@ The older pubkey-keyed portfolio mirror can still be used for recovery hints and
 
 Mirror data is informational only:
 
-- it can help with cost basis and recovery hints
+- it can help with funding history, pending top-up compatibility, and recovery hints
 - it must not be treated as spend authority
+- it must not be treated as the canonical source for open-position valuation or PnL
 - if mirror data disagrees with local proofs, local proofs win for spendable state
 
 The `/portfolio` surface derives both spendable state and performance from:
 
 - local proof state
-- user-published position records
+- a browser-local executed-trade position book for launch cost basis
 - public market data
+
+For launch cost basis and PnL:
+
+- successful buy, seed, and withdrawal executions in this browser update a browser-local position book
+- that local position book tracks quantity and cost basis by market side
+- imported proofs or older proofs without local trade history may have quantity but no local cost basis
+- when local cost basis is unavailable, `/portfolio` should show a mark-only value instead of inventing PnL from the mirror
 
 The launch `/portfolio` surface must also handle local proof movement directly in the browser:
 

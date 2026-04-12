@@ -34,6 +34,7 @@
     removeLocalProofs,
     selectLocalProofsForAmount
   } from '$lib/wallet/localProofs';
+  import { applyLocalPositionTradeFromPayload } from '$lib/wallet/localPositionBook';
 
   type DraftLink = {
     id: string;
@@ -210,6 +211,8 @@
     if (issued) {
       addLocalProofs(proofMintUrl(), issued.unit, issued.proofs);
     }
+
+    applyLocalPositionTradeFromPayload(proofMintUrl(), payload, receipt.action, receipt.side);
   }
 
   function createSeedRequestId(eventId: string): string {

@@ -521,6 +521,8 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Trade execution consumes locally stored proofs and writes returned issued/change proofs back into browser-local storage.
 - [ ] `POST /api/trades/buy` and `POST /api/trades/sell` reject proofless pubkey-only execution in both editions.
 - [ ] The older pubkey-keyed portfolio mirror is treated as legacy compatibility and recovery support only, not as the spendable source of truth.
+- [ ] Open-position cost basis and unrealized PnL come from a browser-local executed-trade position book, not from the pubkey-keyed mirror.
+- [ ] Imported or older local proofs without browser-local trade history still appear in `/portfolio`, but as mark-only holdings.
 - [ ] Market-proof storage uses a fixed integer share-minor scale of `10_000` units per whole share in both signet and mainnet.
 - [ ] Market-proof bucket names are canonicalized to lowercase `long_<slug>` / `short_<slug>`.
 - [ ] Browser storage migrates any legacy uppercase market-proof buckets into the lowercase canonical buckets during load.

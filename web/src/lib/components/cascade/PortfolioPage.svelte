@@ -19,7 +19,7 @@
   } from '$lib/cascade/api';
   import { getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
   import { formatUsdMinor } from '$lib/cascade/format';
-  import { shareMinorToQuantity } from '$lib/cascade/shares';
+  import { quantityToShareMinor, shareMinorToQuantity } from '$lib/cascade/shares';
   import {
     attachPendingTopupId,
     clearPendingTopup,
@@ -37,6 +37,7 @@
     localProofBalance,
     type StoredProofWallet
   } from '$lib/wallet/localProofs';
+  import { listLocalPositionBook } from '$lib/wallet/localPositionBook';
 
   type PaperWallet = ProductWallet & {
     funding_events: ProductFundingEvent[];
@@ -132,7 +133,18 @@
     return null;
   }
 
+  function describePositionPrice(position: LocalPortfolioPosition): string {
+    if (position.current_price_ppm <= 0) {
+      return 'Price unavailable';
+    }
+
+    return formatProbability(position.current_price_ppm / 1_000_000);
+  }
+
   async function loadLocalPositionMarks() {
+    const localBookByKey = new Map(
+      listLocalPositionBook(proofMintUrl()).map((entry) => [`${entry.marketSlug}:${entry.side}`, entry])
+    );
     const mirrorByKey = new Map(
       (wallet?.positions ?? []).map((position) => [
         `${position.market_slug}:${position.direction.toLowerCase()}`,
@@ -167,8 +179,13 @@
 
     const positions: Array<LocalPortfolioPosition | null> = await Promise.all(
       marketWallets.map(async (entry) => {
+        const localBookEntry = localBookByKey.get(`${entry.slug}:${entry.direction}`) ?? null;
         const mirrorKey = `${entry.slug}:${entry.direction}`;
         const mirrorPosition = mirrorByKey.get(mirrorKey) ?? null;
+        const localCostBasisMinor =
+          localBookEntry && localBookEntry.quantityMinor === quantityToShareMinor(entry.quantity)
+            ? localBookEntry.costBasisMinor
+            : null;
 
         try {
           const response = await fetchMarketDetailBySlug(entry.slug);
@@ -185,7 +202,6 @@
               ? payload.market.price_yes_ppm
               : payload.market.price_no_ppm;
           const marketValueMinor = Math.floor((entry.quantity * currentPricePpm) / 1_000_000);
-          const costBasisMinor = mirrorPosition?.cost_basis_minor ?? null;
 
           return {
             market_event_id: payload.market.event_id,
@@ -195,12 +211,24 @@
             quantity: entry.quantity,
             current_price_ppm: currentPricePpm,
             market_value_minor: marketValueMinor,
-            cost_basis_minor: costBasisMinor,
+            cost_basis_minor: localCostBasisMinor,
             unrealized_pnl_minor:
-              costBasisMinor === null ? null : marketValueMinor - costBasisMinor
+              localCostBasisMinor === null ? null : marketValueMinor - localCostBasisMinor
           } satisfies LocalPortfolioPosition;
         } catch {
-          if (!mirrorPosition) return null;
+          if (!mirrorPosition) {
+            return {
+              market_event_id: localBookEntry?.marketEventId ?? '',
+              market_slug: entry.slug,
+              market_title: entry.slug,
+              direction: entry.direction,
+              quantity: entry.quantity,
+              current_price_ppm: 0,
+              market_value_minor: 0,
+              cost_basis_minor: localCostBasisMinor,
+              unrealized_pnl_minor: null
+            } satisfies LocalPortfolioPosition;
+          }
 
           return {
             market_event_id: mirrorPosition.market_event_id,
@@ -210,8 +238,11 @@
             quantity: entry.quantity,
             current_price_ppm: mirrorPosition.current_price_ppm,
             market_value_minor: mirrorPosition.market_value_minor,
-            cost_basis_minor: mirrorPosition.cost_basis_minor,
-            unrealized_pnl_minor: mirrorPosition.unrealized_pnl_minor
+            cost_basis_minor: localCostBasisMinor,
+            unrealized_pnl_minor:
+              localCostBasisMinor === null
+                ? null
+                : mirrorPosition.market_value_minor - localCostBasisMinor
           } satisfies LocalPortfolioPosition;
         }
       })
@@ -230,16 +261,11 @@
     );
   }
 
-  const mirrorPositionValueMinor = $derived.by(() =>
-    (wallet?.positions ?? []).reduce((sum, position) => sum + position.market_value_minor, 0)
-  );
   const selectedExportWallet = $derived(
     localProofWallets.find((walletEntry) => walletEntry.unit === selectedExportUnit) ?? null
   );
   const usingLocalPositionMarks = $derived(localPositions.length > 0);
-  const displayedPositionValueMinor = $derived(
-    usingLocalPositionMarks ? localPositionValueMinor : mirrorPositionValueMinor
-  );
+  const displayedPositionValueMinor = $derived(localPositionValueMinor);
   const displayedTotalValueMinor = $derived(localBalanceMinor + displayedPositionValueMinor);
 
   async function loadWallet() {
@@ -248,11 +274,13 @@
     errorMessage = '';
     try {
       const response = await fetchPortfolioMirror(currentUser.pubkey);
-      wallet = await parseJson<PaperWallet>(response, 'Failed to load your market mirror.');
-      await loadLocalPositionMarks();
+      wallet = await parseJson<PaperWallet>(response, 'Failed to load portfolio funding activity.');
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Failed to load your market mirror.';
+      wallet = null;
+      errorMessage =
+        error instanceof Error ? error.message : 'Failed to load portfolio funding activity.';
     } finally {
+      await loadLocalPositionMarks();
       loading = false;
     }
   }
@@ -574,9 +602,9 @@
         <strong>{formatUsdMinor(displayedPositionValueMinor)}</strong>
         <p class="muted">
           {#if usingLocalPositionMarks}
-            Derived from local market-proof holdings and current public market prices.
+            Derived from local market-proof holdings, the browser-local trade book, and current public market prices.
           {:else}
-            No local market proofs found in this browser yet. Falling back to the temporary market mirror.
+            No local market proofs found in this browser yet.
           {/if}
         </p>
       </article>
@@ -743,22 +771,22 @@
           <h2>Open positions</h2>
           <p class="muted">
             {#if usingLocalPositionMarks}
-              Position quantity comes from local proof holdings. Current USD value uses public market prices.
+              Position quantity comes from local proofs. Cost basis comes from trades executed in this browser. Current USD value uses public market prices.
             {:else}
-              No local market proofs found in this browser yet, so open positions still fall back to the temporary market mirror.
+              No local market proofs found in this browser yet.
             {/if}
           </p>
         </div>
         <a class="button-secondary" href="/builder">Create market</a>
       </div>
 
-      {#if usingLocalPositionMarks ? localPositions.length : wallet?.positions?.length}
+      {#if localPositions.length}
         <div class="position-list">
-          {#each (usingLocalPositionMarks ? localPositions : wallet?.positions ?? []) as position (position.market_slug + position.direction)}
+          {#each localPositions as position (position.market_slug + position.direction)}
             <a class="position-row" href={`/market/${position.market_slug}`}>
               <div class="position-copy">
                 <strong>{position.market_title}</strong>
-                <p>{position.direction === 'yes' ? 'LONG' : 'SHORT'} · {position.quantity.toFixed(2)} shares · {formatProbability(position.current_price_ppm / 1_000_000)}</p>
+                <p>{position.direction === 'yes' ? 'LONG' : 'SHORT'} · {position.quantity.toFixed(2)} shares · {describePositionPrice(position)}</p>
               </div>
               <div class="position-metrics">
                 <span>{formatUsdMinor(position.market_value_minor)}</span>

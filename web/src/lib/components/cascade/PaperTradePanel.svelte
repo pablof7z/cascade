@@ -35,6 +35,7 @@
     removeLocalProofs,
     selectLocalProofsForAmount
   } from '$lib/wallet/localProofs';
+  import { applyLocalPositionTradeFromPayload } from '$lib/wallet/localPositionBook';
 
   let {
     marketId,
@@ -127,6 +128,8 @@
     if (issued) {
       addLocalProofs(proofMintUrl(), issued.unit, issued.proofs);
     }
+
+    applyLocalPositionTradeFromPayload(proofMintUrl(), payload, receipt.action, receipt.side);
 
     refreshLocalWallet();
   }

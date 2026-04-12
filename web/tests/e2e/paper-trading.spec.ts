@@ -256,7 +256,9 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   await page.goto('/portfolio');
   await ensureLoggedIn(page, creatorSecret);
   await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
-  await expect(page.locator('.position-row').filter({ hasText: market.title }).first()).toBeVisible();
+  const tradedPositionRow = page.locator('.position-row').filter({ hasText: market.title }).first();
+  await expect(tradedPositionRow).toBeVisible();
+  await expect(tradedPositionRow.getByText('Mark only')).toHaveCount(0);
 
   const injectedLocalPosition = await page.evaluate(({ slug }) => {
     const usdKey = Object.keys(localStorage).find(
@@ -286,7 +288,9 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   await page.reload();
   await ensureLoggedIn(page, creatorSecret);
   await expect(
-    page.getByText('Derived from local market-proof holdings and current public market prices.')
+    page.getByText(
+      'Derived from local market-proof holdings, the browser-local trade book, and current public market prices.'
+    )
   ).toBeVisible();
 
   const migratedLocalPosition = await page.evaluate(({ slug }) => {
@@ -321,6 +325,7 @@ test('funded portfolio users can create a market, buy the other side, and withdr
     .filter({ hasText: 'LONG' })
     .first();
   await expect(localPositionRow).toBeVisible();
+  await expect(localPositionRow.getByText('Mark only')).toBeVisible();
 });
 
 test('portfolio can export and import local USD proofs', async ({ page }) => {

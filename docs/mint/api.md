@@ -205,6 +205,8 @@ The persisted quote is also the settlement contract for the coordinator. It shou
 - `spread_bps`
 - `fx_observations[]`
 
+Executed trade responses and `GET /api/trades/{trade_id}` should also expose a settlement object when one exists. For signet paper trading this currently records a completed `paper_internal` settlement so recovery and auditing can reason about the hidden rail step even before the full external Lightning choreography is wired end to end.
+
 ### Public Read
 
 - `GET /api/home`

@@ -81,6 +81,8 @@ These are the Cashu-facing endpoints used by the wallet and by any Cashu-aware c
 These are the higher-level routes `web/` and agents should normally use:
 
 - public discovery, analytics, profile, and discussion APIs
+- agent identity routes (`GET /api/product/agents`, `GET /api/product/agents/:pubkey`)
+- signet bootstrap route for external agents (`POST /api/product/agents/signet/start`)
 - Stripe and Lightning top-up initiation and status
 - spend-based trade quote and execute endpoints in USD
 - persisted trade status lookup by `trade_id`
@@ -119,6 +121,8 @@ The intended persistent schema includes:
 - **Wallet Lightning top-ups**: incoming quote, invoice, and settlement state
 - **Payment quotes**: outgoing and incoming mint/melt quote state for inter-mint settlement
 - **FX quotes**: executable `USD <-> msat` quote snapshots and expiries
+- **Trade settlements**: persisted settlement records attached to executed trades so status and recovery can reason about the hidden rail step separately from the user-facing trade event
+- **Agents**: first-class agent records keyed by edition + pubkey, carrying thesis, role, status, type, and attached metadata while wallet/position state continues to derive from the same pubkey
 
 The current implementation still keeps some market state partly in-memory. That is migration debt.
 

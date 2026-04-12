@@ -1,13 +1,15 @@
 use crate::fx::FxQuoteEnvelope;
 use crate::routes::AppState;
 use crate::types::{
-    CreatorMarketsResponse, ProductBuyRequest, ProductCoordinatorBuyRequest,
+    CreatorMarketsResponse, ProductAgentDetailResponse, ProductAgentPortfolioSummary,
+    ProductAgentSummary, ProductAgentsResponse, ProductBuyRequest, ProductCoordinatorBuyRequest,
     ProductCoordinatorSellRequest, ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest,
     ProductFeedResponse, ProductFundingEventResponse, ProductFxObservationResponse,
     ProductLightningFxQuoteResponse, ProductLightningTopupQuoteRequest,
     ProductMarketDetailResponse, ProductMarketSummary, ProductPaperFaucetRequest,
-    ProductSellRequest, ProductTradeExecutionResponse, ProductTradeQuoteRequest,
-    ProductTradeQuoteResponse, ProductTradeRequestStatusResponse, ProductTradeStatusResponse,
+    ProductSellRequest, ProductStartSignetAgentRequest, ProductStartSignetAgentResponse,
+    ProductTradeExecutionResponse, ProductTradeQuoteRequest, ProductTradeQuoteResponse,
+    ProductTradeRequestStatusResponse, ProductTradeSettlementResponse, ProductTradeStatusResponse,
     ProductWalletPositionResponse, ProductWalletResponse, ProductWalletTopupExecutionResponse,
     ProductWalletTopupRequestStatusResponse, ProductWalletTopupResponse,
 };
@@ -17,8 +19,10 @@ use axum::{
 };
 use cascade_core::{
     product::{
-        FxQuoteSnapshot, MarketLaunchState, TradeExecutionRequest, TradeExecutionRequestStatus,
-        TradeQuoteSnapshot, WalletTopupQuote, WalletTopupRequest, WalletTopupRequestStatus,
+        AgentRecord, AgentRecordInsert, AgentStatus, AgentType, FxQuoteSnapshot, MarketLaunchState,
+        TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot,
+        TradeSettlementInsert, TradeSettlementRecord, WalletTopupQuote, WalletTopupRequest,
+        WalletTopupRequestStatus,
     },
     Market, Side, WalletBalanceRecord,
 };
@@ -89,6 +93,200 @@ pub async fn creator_markets(
                 .collect(),
         }),
     )
+}
+
+pub async fn agents(State(state): State<AppState>) -> (StatusCode, Json<Value>) {
+    match state.db.list_agents(&state.network_type, 240).await {
+        Ok(records) => {
+            let mut agents = Vec::with_capacity(records.len());
+            for record in records {
+                match agent_summary_response(&state, &record).await {
+                    Ok(agent) => agents.push(agent),
+                    Err(error) => {
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({ "error": error })),
+                        )
+                    }
+                }
+            }
+
+            (
+                StatusCode::OK,
+                Json(json!(ProductAgentsResponse { agents })),
+            )
+        }
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": error.to_string() })),
+        ),
+    }
+}
+
+pub async fn agent_detail(
+    State(state): State<AppState>,
+    Path(pubkey): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    match load_agent_detail_response(&state, &pubkey).await {
+        Ok(Some(response)) => (StatusCode::OK, Json(json!(response))),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "agent_not_found" })),
+        ),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": error })),
+        ),
+    }
+}
+
+pub async fn start_signet_agent(
+    State(state): State<AppState>,
+    Json(req): Json<ProductStartSignetAgentRequest>,
+) -> (StatusCode, Json<Value>) {
+    if !state.paper_mode {
+        return signet_only_unavailable("signet_agent_start");
+    }
+
+    if req.pubkey.trim().is_empty() || req.name.trim().is_empty() || req.thesis.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "pubkey_name_and_thesis_are_required" })),
+        );
+    }
+
+    let existing_agent = match state.db.get_agent(&state.network_type, &req.pubkey).await {
+        Ok(agent) => agent,
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error.to_string() })),
+            )
+        }
+    };
+
+    let created = existing_agent.is_none();
+    let agent_type = match parse_agent_type(req.agent_type.as_deref()) {
+        Ok(agent_type) => agent_type,
+        Err(error) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": error }))),
+    };
+
+    let funding_amount_minor = req.funding_amount_minor.unwrap_or(0);
+    let existing_balance = match state.db.get_wallet_balance(&req.pubkey).await {
+        Ok(balance) => balance,
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error.to_string() })),
+            )
+        }
+    };
+    let should_fund = funding_amount_minor > 0
+        && existing_balance
+            .as_ref()
+            .map(|balance| balance.total_deposited_minor == 0)
+            .unwrap_or(true);
+
+    if should_fund {
+        if let Err(response) =
+            enforce_paper_funding_limits(&state, &req.pubkey, funding_amount_minor).await
+        {
+            return response;
+        }
+    }
+
+    let metadata_json = match req.metadata.as_ref() {
+        Some(metadata) => match serde_json::to_string(metadata) {
+            Ok(value) => Some(value),
+            Err(error) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": format!("invalid_metadata: {error}") })),
+                )
+            }
+        },
+        None => None,
+    };
+
+    let now = chrono::Utc::now().timestamp();
+    let agent = match state
+        .db
+        .upsert_agent(&AgentRecordInsert {
+            edition: state.network_type.clone(),
+            pubkey: req.pubkey.clone(),
+            name: req.name.trim().to_string(),
+            role: req.role.as_ref().map(|value| value.trim().to_string()),
+            thesis: req.thesis.trim().to_string(),
+            owner_pubkey: req
+                .owner_pubkey
+                .as_ref()
+                .map(|value| value.trim().to_string()),
+            agent_type,
+            status: AgentStatus::Active,
+            metadata_json,
+            last_active_at: Some(now),
+        })
+        .await
+    {
+        Ok(agent) => agent,
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error.to_string() })),
+            )
+        }
+    };
+
+    if should_fund {
+        let metadata_json = json!({
+            "source": "signet-agent-start",
+            "agent_name": agent.name,
+            "agent_type": agent.agent_type.to_string(),
+            "owner_pubkey": agent.owner_pubkey,
+        })
+        .to_string();
+
+        if let Err(error) = state
+            .db
+            .credit_wallet(
+                &req.pubkey,
+                funding_amount_minor,
+                "paper",
+                Some("paper"),
+                Some(&metadata_json),
+            )
+            .await
+        {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error.to_string() })),
+            );
+        }
+    }
+
+    match load_agent_detail_response(&state, &req.pubkey).await {
+        Ok(Some(detail)) => (
+            if created {
+                StatusCode::CREATED
+            } else {
+                StatusCode::OK
+            },
+            Json(json!(ProductStartSignetAgentResponse {
+                created,
+                funded: should_fund,
+                agent: detail.agent,
+                wallet: detail.wallet,
+            })),
+        ),
+        Ok(None) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": "agent_missing_after_start" })),
+        ),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": error })),
+        ),
+    }
 }
 
 pub async fn market_detail(
@@ -436,42 +634,9 @@ pub async fn paper_faucet(
         );
     }
 
-    if req.amount_minor > PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({
-                "error": format!(
-                    "paper_faucet_single_topup_limit_exceeded:max_minor={PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR}"
-                )
-            })),
-        );
-    }
-
-    let window_started_at = chrono::Utc::now().timestamp() - PAPER_FAUCET_WINDOW_SECONDS;
-    let funded_in_window = match state
-        .db
-        .sum_wallet_funding_amount_since(&req.pubkey, "paper", window_started_at)
-        .await
+    if let Err(response) = enforce_paper_funding_limits(&state, &req.pubkey, req.amount_minor).await
     {
-        Ok(amount_minor) => amount_minor,
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    if funded_in_window.saturating_add(req.amount_minor) > PAPER_FAUCET_WINDOW_LIMIT_MINOR {
-        let remaining_minor = PAPER_FAUCET_WINDOW_LIMIT_MINOR.saturating_sub(funded_in_window);
-        return (
-            StatusCode::TOO_MANY_REQUESTS,
-            Json(json!({
-                "error": format!(
-                    "paper_faucet_window_limit_exceeded:window_minor={PAPER_FAUCET_WINDOW_LIMIT_MINOR}:remaining_minor={remaining_minor}"
-                )
-            })),
-        );
+        return response;
     }
 
     match state
@@ -1045,6 +1210,7 @@ async fn load_trade_execution_response_for_request(
         wallet,
         market: trade_status.market,
         trade: trade_status.trade,
+        settlement: trade_status.settlement,
     })
 }
 
@@ -1214,6 +1380,7 @@ async fn buy_trade_by_event(
                     );
                 }
             };
+            let settlement = build_trade_settlement_insert(state, &req.pubkey, &quote);
 
             match state
                 .db
@@ -1235,6 +1402,7 @@ async fn buy_trade_by_event(
                     next_q_long,
                     next_q_short,
                     next_reserve_minor,
+                    settlement.as_ref(),
                 )
                 .await
             {
@@ -1458,6 +1626,7 @@ async fn sell_trade_by_event(
             let proportion = (req.quantity / position.quantity).clamp(0.0, 1.0);
             let released_cost_basis =
                 ((position.cost_basis_minor as f64) * proportion).round() as i64;
+            let settlement = build_trade_settlement_insert(state, &req.pubkey, &quote);
 
             match state
                 .db
@@ -1479,6 +1648,7 @@ async fn sell_trade_by_event(
                     next_q_long,
                     next_q_short,
                     next_reserve_minor,
+                    settlement.as_ref(),
                 )
                 .await
             {
@@ -1564,10 +1734,18 @@ async fn load_trade_status_response(
 
     let trade = serde_json::from_str::<Value>(&trade_record.raw_event_json)
         .map_err(|error| format!("invalid_trade_event_json: {error}"))?;
+    let settlement = state
+        .db
+        .get_trade_settlement_by_trade_id(trade_id)
+        .await
+        .map_err(|error| error.to_string())?
+        .as_ref()
+        .map(product_trade_settlement_response);
 
     Ok(ProductTradeStatusResponse {
         market: summary,
         trade,
+        settlement,
     })
 }
 
@@ -1642,6 +1820,34 @@ fn product_fx_observation_response(
         source: observation.source.clone(),
         btc_usd_price: observation.btc_usd_price,
         observed_at: observation.observed_at,
+    }
+}
+
+fn product_trade_settlement_response(
+    settlement: &TradeSettlementRecord,
+) -> ProductTradeSettlementResponse {
+    ProductTradeSettlementResponse {
+        id: settlement.id.clone(),
+        trade_id: settlement.trade_id.clone(),
+        quote_id: settlement.quote_id.clone(),
+        rail: settlement.rail.clone(),
+        mode: settlement.mode.clone(),
+        side: settlement.side.clone(),
+        trade_type: settlement.trade_type.clone(),
+        settlement_minor: settlement.settlement_minor,
+        settlement_msat: settlement.settlement_msat,
+        settlement_fee_msat: settlement.settlement_fee_msat,
+        fx_quote_id: settlement.fx_quote_id.clone(),
+        invoice: settlement.invoice.clone(),
+        payment_hash: settlement.payment_hash.clone(),
+        status: settlement.status.to_string(),
+        metadata: settlement
+            .metadata_json
+            .as_deref()
+            .and_then(|json| serde_json::from_str(json).ok()),
+        created_at: settlement.created_at,
+        settled_at: settlement.settled_at,
+        completed_at: settlement.completed_at,
     }
 }
 
@@ -1873,6 +2079,16 @@ async fn trade_execution_response(
             );
         }
     };
+    let settlement = if let Some(trade_id) = raw_event.get("id").and_then(Value::as_str) {
+        state
+            .db
+            .get_trade_settlement_by_trade_id(trade_id)
+            .await
+            .ok()
+            .flatten()
+    } else {
+        None
+    };
     let updated_market = match state.db.get_market_launch_state(&market.event_id).await {
         Ok(Some(launch)) => product_market_summary(
             state,
@@ -1894,6 +2110,7 @@ async fn trade_execution_response(
                 wallet,
                 market: summary,
                 trade: raw_event,
+                settlement: settlement.as_ref().map(product_trade_settlement_response),
             })),
         ),
         None => (
@@ -1930,6 +2147,83 @@ async fn market_detail_response(
             Json(json!({ "error": "failed_to_build_market_summary" })),
         ),
     }
+}
+
+async fn load_agent_detail_response(
+    state: &AppState,
+    pubkey: &str,
+) -> Result<Option<ProductAgentDetailResponse>, String> {
+    let Some(agent) = state
+        .db
+        .get_agent(&state.network_type, pubkey)
+        .await
+        .map_err(|error| error.to_string())?
+    else {
+        return Ok(None);
+    };
+
+    let wallet = wallet_response(state, pubkey)
+        .await
+        .map_err(|error| error.to_string())?;
+    let summary = product_agent_summary(&agent, &wallet);
+
+    Ok(Some(ProductAgentDetailResponse {
+        agent: summary,
+        wallet,
+    }))
+}
+
+async fn agent_summary_response(
+    state: &AppState,
+    record: &AgentRecord,
+) -> Result<ProductAgentSummary, String> {
+    let wallet = wallet_response(state, &record.pubkey)
+        .await
+        .map_err(|error| error.to_string())?;
+    Ok(product_agent_summary(record, &wallet))
+}
+
+async fn enforce_paper_funding_limits(
+    state: &AppState,
+    pubkey: &str,
+    amount_minor: u64,
+) -> Result<(), (StatusCode, Json<Value>)> {
+    if amount_minor > PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": format!(
+                    "paper_faucet_single_topup_limit_exceeded:max_minor={PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR}"
+                )
+            })),
+        ));
+    }
+
+    let window_started_at = chrono::Utc::now().timestamp() - PAPER_FAUCET_WINDOW_SECONDS;
+    let funded_in_window = state
+        .db
+        .sum_wallet_funding_amount_since(pubkey, "paper", window_started_at)
+        .await
+        .map_err(|error| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error.to_string() })),
+            )
+        })?;
+
+    if funded_in_window.saturating_add(amount_minor) > PAPER_FAUCET_WINDOW_LIMIT_MINOR {
+        let remaining_minor = PAPER_FAUCET_WINDOW_LIMIT_MINOR.saturating_sub(funded_in_window);
+        return Err((
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(json!({
+                "error": format!(
+                    "paper_faucet_window_limit_exceeded:window_minor={PAPER_FAUCET_WINDOW_LIMIT_MINOR}:remaining_minor={remaining_minor}"
+                )
+            })),
+        ));
+    }
+
+    Ok(())
 }
 
 fn parse_side(value: &str) -> Result<Side, String> {
@@ -2220,6 +2514,45 @@ fn current_prices_ppm(state: &AppState, market: &Market) -> (u64, u64) {
     }
 }
 
+fn build_trade_settlement_insert(
+    state: &AppState,
+    pubkey: &str,
+    quote: &ProductTradeQuoteResponse,
+) -> Option<TradeSettlementInsert> {
+    if !state.paper_mode {
+        return None;
+    }
+
+    Some(TradeSettlementInsert {
+        quote_id: quote.quote_id.clone(),
+        pubkey: pubkey.to_string(),
+        market_event_id: quote.market_event_id.clone(),
+        trade_type: quote.trade_type.clone(),
+        side: quote.side.clone(),
+        rail: "paper".to_string(),
+        mode: "paper_internal".to_string(),
+        settlement_minor: quote.settlement_minor,
+        settlement_msat: quote.settlement_msat,
+        settlement_fee_msat: quote.settlement_fee_msat,
+        fx_quote_id: if quote.quote_id.is_some() {
+            quote.fx_quote_id.clone()
+        } else {
+            None
+        },
+        invoice: None,
+        payment_hash: None,
+        metadata_json: Some(
+            json!({
+                "fx_source": quote.fx_source,
+                "btc_usd_price": quote.btc_usd_price,
+                "spread_bps": quote.spread_bps,
+                "fx_observations": quote.fx_observations,
+            })
+            .to_string(),
+        ),
+    })
+}
+
 fn post_trade_price_ppm(
     state: &AppState,
     q_long: f64,
@@ -2371,6 +2704,51 @@ async fn wallet_response(state: &AppState, pubkey: &str) -> Result<ProductWallet
     })
 }
 
+fn product_agent_summary(
+    record: &AgentRecord,
+    wallet: &ProductWalletResponse,
+) -> ProductAgentSummary {
+    ProductAgentSummary {
+        edition: record.edition.clone(),
+        pubkey: record.pubkey.clone(),
+        name: record.name.clone(),
+        role: record.role.clone(),
+        thesis: record.thesis.clone(),
+        owner_pubkey: record.owner_pubkey.clone(),
+        agent_type: record.agent_type.to_string(),
+        status: record.status.to_string(),
+        metadata: parse_metadata_json(record.metadata_json.as_deref()),
+        created_at: record.created_at,
+        updated_at: record.updated_at,
+        last_active_at: record.last_active_at,
+        portfolio: agent_portfolio_summary(wallet),
+    }
+}
+
+fn agent_portfolio_summary(wallet: &ProductWalletResponse) -> ProductAgentPortfolioSummary {
+    ProductAgentPortfolioSummary {
+        available_minor: wallet.available_minor,
+        pending_minor: wallet.pending_minor,
+        total_deposited_minor: wallet.total_deposited_minor,
+        position_count: wallet.positions.len() as u64,
+        invested_minor: wallet
+            .positions
+            .iter()
+            .map(|position| position.cost_basis_minor)
+            .sum(),
+        market_value_minor: wallet
+            .positions
+            .iter()
+            .map(|position| position.market_value_minor)
+            .sum(),
+        unrealized_pnl_minor: wallet
+            .positions
+            .iter()
+            .map(|position| position.unrealized_pnl_minor)
+            .sum(),
+    }
+}
+
 async fn load_wallet_topup_response(
     state: &AppState,
     quote: &WalletTopupQuote,
@@ -2506,6 +2884,17 @@ fn product_market_summary(
         reserve_minor: market.reserve_sats,
         raw_event,
     })
+}
+
+fn parse_agent_type(value: Option<&str>) -> Result<AgentType, String> {
+    match value.map(str::trim).filter(|value| !value.is_empty()) {
+        Some(value) => value.parse(),
+        None => Ok(AgentType::Connected),
+    }
+}
+
+fn parse_metadata_json(value: Option<&str>) -> Option<Value> {
+    value.and_then(|raw| serde_json::from_str(raw).ok())
 }
 
 fn build_trade_event(

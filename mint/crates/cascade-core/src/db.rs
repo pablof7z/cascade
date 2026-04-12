@@ -3,10 +3,11 @@
 use crate::error::Result;
 use crate::market::{Market, MarketStatus, Side, Trade, TradeDirection};
 use crate::product::{
-    FxQuoteObservation, FxQuoteSnapshot, MarketLaunchState, MarketPosition, MarketTradeRecord,
-    MarketVisibility, TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot,
-    WalletBalanceRecord, WalletFundingEvent, WalletTopupQuote, WalletTopupRequest,
-    WalletTopupRequestStatus, WalletTopupStatus,
+    AgentRecord, AgentRecordInsert, AgentStatus, AgentType, FxQuoteObservation, FxQuoteSnapshot,
+    MarketLaunchState, MarketPosition, MarketTradeRecord, MarketVisibility, TradeExecutionRequest,
+    TradeExecutionRequestStatus, TradeQuoteSnapshot, TradeSettlementInsert, TradeSettlementRecord,
+    TradeSettlementStatus, WalletBalanceRecord, WalletFundingEvent, WalletTopupQuote,
+    WalletTopupRequest, WalletTopupRequestStatus, WalletTopupStatus,
 };
 use crate::trade::Payout;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
@@ -93,6 +94,18 @@ impl CascadeDatabase {
 
         self.ensure_fx_quote_observations_column().await?;
         self.ensure_trade_quote_settlement_columns().await?;
+
+        sqlx::query(include_str!(
+            "../../../migrations/009_trade_settlements.sql"
+        ))
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        sqlx::query(include_str!("../../../migrations/010_agent_records.sql"))
+            .execute(&self.pool)
+            .await
+            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         Ok(())
     }
@@ -681,6 +694,121 @@ impl CascadeDatabase {
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         Ok(row.map(|row| map_market_and_launch_state_row(&row)))
+    }
+
+    pub async fn upsert_agent(&self, agent: &AgentRecordInsert) -> Result<AgentRecord> {
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            INSERT INTO agents (
+                edition,
+                pubkey,
+                name,
+                role,
+                thesis,
+                owner_pubkey,
+                agent_type,
+                status,
+                metadata_json,
+                created_at,
+                updated_at,
+                last_active_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(edition, pubkey) DO UPDATE SET
+                name = excluded.name,
+                role = excluded.role,
+                thesis = excluded.thesis,
+                owner_pubkey = excluded.owner_pubkey,
+                agent_type = excluded.agent_type,
+                status = excluded.status,
+                metadata_json = excluded.metadata_json,
+                updated_at = excluded.updated_at,
+                last_active_at = excluded.last_active_at
+            "#,
+        )
+        .bind(&agent.edition)
+        .bind(&agent.pubkey)
+        .bind(&agent.name)
+        .bind(agent.role.as_deref())
+        .bind(&agent.thesis)
+        .bind(agent.owner_pubkey.as_deref())
+        .bind(agent.agent_type.to_string())
+        .bind(agent.status.to_string())
+        .bind(agent.metadata_json.as_deref())
+        .bind(now)
+        .bind(now)
+        .bind(agent.last_active_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_agent(&agent.edition, &agent.pubkey)
+            .await?
+            .ok_or_else(|| {
+                crate::error::CascadeError::database("agent missing after upsert".to_string())
+            })
+    }
+
+    pub async fn get_agent(&self, edition: &str, pubkey: &str) -> Result<Option<AgentRecord>> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                edition,
+                pubkey,
+                name,
+                role,
+                thesis,
+                owner_pubkey,
+                agent_type,
+                status,
+                metadata_json,
+                created_at,
+                updated_at,
+                last_active_at
+            FROM agents
+            WHERE edition = ? AND pubkey = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(edition)
+        .bind(pubkey)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(row.map(|row| map_agent_row(&row)))
+    }
+
+    pub async fn list_agents(&self, edition: &str, limit: i64) -> Result<Vec<AgentRecord>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                edition,
+                pubkey,
+                name,
+                role,
+                thesis,
+                owner_pubkey,
+                agent_type,
+                status,
+                metadata_json,
+                created_at,
+                updated_at,
+                last_active_at
+            FROM agents
+            WHERE edition = ?
+            ORDER BY updated_at DESC, created_at DESC
+            LIMIT ?
+            "#,
+        )
+        .bind(edition)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(rows.into_iter().map(|row| map_agent_row(&row)).collect())
     }
 
     pub async fn ensure_wallet(&self, pubkey: &str) -> Result<()> {
@@ -2008,6 +2136,70 @@ impl CascadeDatabase {
         }))
     }
 
+    pub async fn get_trade_settlement_by_trade_id(
+        &self,
+        trade_id: &str,
+    ) -> Result<Option<TradeSettlementRecord>> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                id,
+                trade_id,
+                quote_id,
+                pubkey,
+                market_event_id,
+                trade_type,
+                side,
+                rail,
+                mode,
+                settlement_minor,
+                settlement_msat,
+                settlement_fee_msat,
+                fx_quote_id,
+                invoice,
+                payment_hash,
+                status,
+                metadata_json,
+                created_at,
+                settled_at,
+                completed_at
+            FROM trade_settlements
+            WHERE trade_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(trade_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(row.map(|row| TradeSettlementRecord {
+            id: row.get::<String, _>("id"),
+            trade_id: row.get::<String, _>("trade_id"),
+            quote_id: row.get::<Option<String>, _>("quote_id"),
+            pubkey: row.get::<String, _>("pubkey"),
+            market_event_id: row.get::<String, _>("market_event_id"),
+            trade_type: row.get::<String, _>("trade_type"),
+            side: row.get::<String, _>("side"),
+            rail: row.get::<String, _>("rail"),
+            mode: row.get::<String, _>("mode"),
+            settlement_minor: row.get::<i64, _>("settlement_minor").max(0) as u64,
+            settlement_msat: row.get::<i64, _>("settlement_msat").max(0) as u64,
+            settlement_fee_msat: row.get::<i64, _>("settlement_fee_msat").max(0) as u64,
+            fx_quote_id: row.get::<Option<String>, _>("fx_quote_id"),
+            invoice: row.get::<Option<String>, _>("invoice"),
+            payment_hash: row.get::<Option<String>, _>("payment_hash"),
+            status: row
+                .get::<String, _>("status")
+                .parse()
+                .unwrap_or(TradeSettlementStatus::Complete),
+            metadata_json: row.get::<Option<String>, _>("metadata_json"),
+            created_at: row.get::<i64, _>("created_at"),
+            settled_at: row.get::<Option<i64>, _>("settled_at"),
+            completed_at: row.get::<Option<i64>, _>("completed_at"),
+        }))
+    }
+
     pub async fn list_positions(&self, pubkey: &str) -> Result<Vec<MarketPosition>> {
         let rows = sqlx::query_as::<_, (String, String, String, String, f64, i64, i64)>(
             r#"
@@ -2307,6 +2499,7 @@ impl CascadeDatabase {
         next_q_long: f64,
         next_q_short: f64,
         next_reserve_minor: u64,
+        settlement: Option<&TradeSettlementInsert>,
     ) -> Result<MarketTradeRecord> {
         let mut tx = self.pool.begin().await?;
         let now = created_at;
@@ -2542,6 +2735,57 @@ impl CascadeDatabase {
         .execute(&mut *tx)
         .await?;
 
+        if let Some(settlement) = settlement {
+            sqlx::query(
+                r#"
+                INSERT INTO trade_settlements (
+                    id,
+                    trade_id,
+                    quote_id,
+                    pubkey,
+                    market_event_id,
+                    trade_type,
+                    side,
+                    rail,
+                    mode,
+                    settlement_minor,
+                    settlement_msat,
+                    settlement_fee_msat,
+                    fx_quote_id,
+                    invoice,
+                    payment_hash,
+                    status,
+                    metadata_json,
+                    created_at,
+                    settled_at,
+                    completed_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'complete', ?, ?, ?, ?)
+                "#,
+            )
+            .bind(uuid::Uuid::new_v4().to_string())
+            .bind(trade_id)
+            .bind(settlement.quote_id.as_deref())
+            .bind(&settlement.pubkey)
+            .bind(&settlement.market_event_id)
+            .bind(&settlement.trade_type)
+            .bind(&settlement.side)
+            .bind(&settlement.rail)
+            .bind(&settlement.mode)
+            .bind(settlement.settlement_minor as i64)
+            .bind(settlement.settlement_msat as i64)
+            .bind(settlement.settlement_fee_msat as i64)
+            .bind(settlement.fx_quote_id.as_deref())
+            .bind(settlement.invoice.as_deref())
+            .bind(settlement.payment_hash.as_deref())
+            .bind(settlement.metadata_json.as_deref())
+            .bind(now)
+            .bind(now)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+        }
+
         if let Some(quote_id) = quote_id.filter(|value| !value.trim().is_empty()) {
             let result = sqlx::query(
                 r#"
@@ -2580,6 +2824,29 @@ impl CascadeDatabase {
             created_at: now,
             raw_event_json: raw_event_json.to_string(),
         })
+    }
+}
+
+fn map_agent_row(row: &sqlx::sqlite::SqliteRow) -> AgentRecord {
+    AgentRecord {
+        edition: row.get("edition"),
+        pubkey: row.get("pubkey"),
+        name: row.get("name"),
+        role: row.get("role"),
+        thesis: row.get("thesis"),
+        owner_pubkey: row.get("owner_pubkey"),
+        agent_type: row
+            .get::<String, _>("agent_type")
+            .parse()
+            .unwrap_or(AgentType::Connected),
+        status: row
+            .get::<String, _>("status")
+            .parse()
+            .unwrap_or(AgentStatus::Idle),
+        metadata_json: row.get("metadata_json"),
+        created_at: row.get("created_at"),
+        updated_at: row.get("updated_at"),
+        last_active_at: row.get("last_active_at"),
     }
 }
 
@@ -2723,6 +2990,18 @@ mod tests {
 
         // Verify nip47_requests table exists
         let result: Result<(i64,)> = sqlx::query_as("SELECT COUNT(*) FROM nip47_requests")
+            .fetch_one(&db.pool)
+            .await
+            .map_err(|e| crate::error::CascadeError::database(e.to_string()));
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_trade_settlements_table_exists() {
+        let db = create_test_db().await;
+
+        let result: Result<(i64,)> = sqlx::query_as("SELECT COUNT(*) FROM trade_settlements")
             .fetch_one(&db.pool)
             .await
             .map_err(|e| crate::error::CascadeError::database(e.to_string()));

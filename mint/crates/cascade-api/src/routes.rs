@@ -32,6 +32,8 @@ pub struct AppState {
     pub test_mode: bool,
     /// Whether signet-only product shortcuts are enabled
     pub paper_mode: bool,
+    /// Current runtime edition/network label
+    pub network_type: String,
 }
 
 impl AppState {
@@ -42,6 +44,7 @@ impl AppState {
         mint: Arc<cdk::mint::Mint>,
         db: Arc<CascadeDatabase>,
         paper_mode: bool,
+        network_type: &str,
     ) -> Self {
         Self {
             market_manager,
@@ -52,6 +55,7 @@ impl AppState {
             db,
             test_mode: false,
             paper_mode,
+            network_type: network_type.to_string(),
         }
     }
 
@@ -71,6 +75,7 @@ impl AppState {
             db,
             test_mode: true,
             paper_mode: true,
+            network_type: "signet".to_string(),
         }
     }
 
@@ -112,6 +117,12 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             get(market::get_price_history),
         )
         .route("/api/product/feed", get(product::feed))
+        .route("/api/product/agents", get(product::agents))
+        .route(
+            "/api/product/agents/signet/start",
+            post(product::start_signet_agent),
+        )
+        .route("/api/product/agents/{pubkey}", get(product::agent_detail))
         .route(
             "/api/product/markets/creator/{pubkey}",
             get(product::creator_markets),

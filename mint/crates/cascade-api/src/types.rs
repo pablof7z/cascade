@@ -219,6 +219,7 @@ pub struct ProductMarketDetailResponse {
 pub struct ProductTradeStatusResponse {
     pub market: ProductMarketSummary,
     pub trade: Value,
+    pub settlement: Option<ProductTradeSettlementResponse>,
 }
 
 #[derive(Debug, Serialize)]
@@ -331,6 +332,65 @@ pub struct ProductWalletResponse {
     pub funding_events: Vec<ProductFundingEventResponse>,
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct ProductAgentPortfolioSummary {
+    pub available_minor: u64,
+    pub pending_minor: u64,
+    pub total_deposited_minor: u64,
+    pub position_count: u64,
+    pub invested_minor: u64,
+    pub market_value_minor: u64,
+    pub unrealized_pnl_minor: i64,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct ProductAgentSummary {
+    pub edition: String,
+    pub pubkey: String,
+    pub name: String,
+    pub role: Option<String>,
+    pub thesis: String,
+    pub owner_pubkey: Option<String>,
+    pub agent_type: String,
+    pub status: String,
+    pub metadata: Option<Value>,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub last_active_at: Option<i64>,
+    pub portfolio: ProductAgentPortfolioSummary,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProductAgentsResponse {
+    pub agents: Vec<ProductAgentSummary>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProductAgentDetailResponse {
+    pub agent: ProductAgentSummary,
+    pub wallet: ProductWalletResponse,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ProductStartSignetAgentRequest {
+    pub pubkey: String,
+    pub name: String,
+    pub thesis: String,
+    pub role: Option<String>,
+    pub owner_pubkey: Option<String>,
+    pub agent_type: Option<String>,
+    pub funding_amount_minor: Option<u64>,
+    pub metadata: Option<Value>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProductStartSignetAgentResponse {
+    pub created: bool,
+    pub funded: bool,
+    pub agent: ProductAgentSummary,
+    pub wallet: ProductWalletResponse,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ProductTradeQuoteRequest {
     pub trade_type: String,
@@ -419,6 +479,29 @@ pub struct ProductTradeExecutionResponse {
     pub wallet: ProductWalletResponse,
     pub market: ProductMarketSummary,
     pub trade: Value,
+    pub settlement: Option<ProductTradeSettlementResponse>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProductTradeSettlementResponse {
+    pub id: String,
+    pub trade_id: String,
+    pub quote_id: Option<String>,
+    pub rail: String,
+    pub mode: String,
+    pub side: String,
+    pub trade_type: String,
+    pub settlement_minor: u64,
+    pub settlement_msat: u64,
+    pub settlement_fee_msat: u64,
+    pub fx_quote_id: Option<String>,
+    pub invoice: Option<String>,
+    pub payment_hash: Option<String>,
+    pub status: String,
+    pub metadata: Option<Value>,
+    pub created_at: i64,
+    pub settled_at: Option<i64>,
+    pub completed_at: Option<i64>,
 }
 
 // Lightning trade endpoints

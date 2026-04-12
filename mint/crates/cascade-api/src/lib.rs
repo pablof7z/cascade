@@ -44,6 +44,7 @@ pub async fn build_server(
         mint.clone(),
         db,
         network_type == "signet",
+        network_type,
     );
 
     // Build cascade-specific routes

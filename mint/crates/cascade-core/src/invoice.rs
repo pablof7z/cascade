@@ -190,6 +190,10 @@ impl InvoiceService {
             .await
     }
 
+    pub async fn pay_invoice(&self, invoice: &str) -> Result<Preimage> {
+        self.lnd_client.pay_invoice(invoice).await
+    }
+
     /// Generate an invoice for a trade
     pub async fn generate_trade_invoice(
         &mut self,

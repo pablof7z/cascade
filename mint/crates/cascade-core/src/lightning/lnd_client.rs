@@ -49,6 +49,7 @@ impl Default for LndConfig {
 enum LndBackend {
     Mock {
         invoices: Arc<RwLock<HashMap<String, LightningInvoice>>>,
+        preimages: Arc<RwLock<HashMap<String, Preimage>>>,
     },
     Cli {
         lncli_path: String,
@@ -59,6 +60,7 @@ impl Default for LndBackend {
     fn default() -> Self {
         Self::Mock {
             invoices: Arc::new(RwLock::new(HashMap::new())),
+            preimages: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }
@@ -123,6 +125,23 @@ struct DecodePayReqResponse {
     description: String,
     #[serde(default)]
     cltv_expiry: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct PayInvoiceResponse {
+    payment_hash: String,
+    #[serde(default)]
+    payment_preimage: String,
+    #[serde(default)]
+    value_msat: String,
+    #[serde(default)]
+    fee_msat: String,
+    #[serde(default)]
+    payment_request: String,
+    #[serde(default)]
+    status: String,
+    #[serde(default)]
+    failure_reason: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -205,7 +224,7 @@ impl LndClient {
         self.ensure_connected()?;
 
         match &self.backend {
-            LndBackend::Mock { invoices } => {
+            LndBackend::Mock { invoices, .. } => {
                 let stored = invoices.read().await.get(&payment_hash.to_hex()).cloned();
                 Ok(stored.map(|invoice| self.normalize_invoice(invoice)))
             }
@@ -243,13 +262,20 @@ impl LndClient {
         self.ensure_connected()?;
 
         match &self.backend {
-            LndBackend::Mock { invoices } => {
-                let invoice =
+            LndBackend::Mock {
+                invoices,
+                preimages,
+            } => {
+                let (invoice, preimage) =
                     self.create_mock_invoice(amount_msat, description, expiry_seconds, cltv_expiry);
                 invoices
                     .write()
                     .await
                     .insert(invoice.payment_hash.to_hex(), invoice.clone());
+                preimages
+                    .write()
+                    .await
+                    .insert(invoice.payment_hash.to_hex(), preimage);
                 Ok(invoice)
             }
             LndBackend::Cli { lncli_path } => {
@@ -328,7 +354,7 @@ impl LndClient {
         self.ensure_connected()?;
 
         match &self.backend {
-            LndBackend::Mock { invoices } => invoices
+            LndBackend::Mock { invoices, .. } => invoices
                 .read()
                 .await
                 .values()
@@ -361,6 +387,104 @@ impl LndClient {
                     description: empty_string_to_none(raw.description),
                     state: InvoiceState::Open,
                 })
+            }
+        }
+    }
+
+    /// Pay a BOLT11 invoice and return the resulting preimage when settled.
+    pub async fn pay_invoice(&self, invoice: &str) -> Result<Preimage> {
+        self.ensure_connected()?;
+
+        match &self.backend {
+            LndBackend::Mock {
+                invoices,
+                preimages,
+            } => {
+                let mut invoices_guard = invoices.write().await;
+                let Some((payment_hash_hex, stored_invoice)) = invoices_guard
+                    .iter_mut()
+                    .find(|(_, stored)| stored.payment_request == invoice)
+                else {
+                    return Err(CascadeError::PaymentError(
+                        "Mock invoice not found".to_string(),
+                    ));
+                };
+
+                let normalized = self.normalize_invoice(stored_invoice.clone());
+                if normalized.state != InvoiceState::Open {
+                    return Err(CascadeError::PaymentError(format!(
+                        "Mock invoice is not payable: {:?}",
+                        normalized.state
+                    )));
+                }
+
+                stored_invoice.state = InvoiceState::Settled;
+                let payment_hash_hex = payment_hash_hex.clone();
+                drop(invoices_guard);
+
+                preimages
+                    .read()
+                    .await
+                    .get(&payment_hash_hex)
+                    .cloned()
+                    .ok_or_else(|| {
+                        CascadeError::PaymentError(
+                            "Mock preimage not found for invoice".to_string(),
+                        )
+                    })
+            }
+            LndBackend::Cli { lncli_path } => {
+                let args = vec![
+                    "payinvoice".to_string(),
+                    "--force".to_string(),
+                    "--json".to_string(),
+                    invoice.to_string(),
+                ];
+                let result = self.run_cli_command_with_path(lncli_path, &args).await?;
+                let raw: PayInvoiceResponse = parse_cli_json(&result).map_err(|error| {
+                    CascadeError::PaymentError(format!(
+                        "LND payinvoice failed: {}",
+                        if result.success {
+                            error.to_string()
+                        } else {
+                            cli_error_message(&result)
+                        }
+                    ))
+                })?;
+
+                if !raw.status.eq_ignore_ascii_case("SUCCEEDED") {
+                    let reason = if !raw.failure_reason.trim().is_empty() {
+                        raw.failure_reason
+                    } else if !result.success {
+                        cli_error_message(&result)
+                    } else {
+                        format!("unexpected_payment_status: {}", raw.status)
+                    };
+                    return Err(CascadeError::PaymentError(format!(
+                        "LND payinvoice failed: {reason}"
+                    )));
+                }
+
+                if raw.payment_hash.trim().is_empty() || raw.payment_request.trim().is_empty() {
+                    return Err(CascadeError::PaymentError(
+                        "LND payinvoice returned an incomplete payment result".to_string(),
+                    ));
+                }
+
+                let _ = parse_u64_field("value_msat", &raw.value_msat)?;
+                let _ = parse_u64_field("fee_msat", &raw.fee_msat)?;
+
+                let trimmed_preimage = raw.payment_preimage.trim();
+                if trimmed_preimage.is_empty()
+                    || trimmed_preimage
+                        == "0000000000000000000000000000000000000000000000000000000000000000"
+                {
+                    return Err(CascadeError::PaymentError(
+                        "LND payinvoice returned an empty preimage".to_string(),
+                    ));
+                }
+
+                Preimage::from_hex(trimmed_preimage)
             }
         }
     }
@@ -416,8 +540,8 @@ impl LndClient {
         description: Option<String>,
         expiry_seconds: Option<u64>,
         cltv_expiry: Option<u64>,
-    ) -> LightningInvoice {
-        let mut hash_bytes = [0u8; 32];
+    ) -> (LightningInvoice, Preimage) {
+        let mut preimage_bytes = [0u8; 32];
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(
@@ -428,23 +552,27 @@ impl LndClient {
         );
         hasher.update(amount_msat.to_le_bytes());
         let result = hasher.finalize();
-        hash_bytes.copy_from_slice(&result);
-        let payment_hash = PaymentHash::from_bytes(hash_bytes);
+        preimage_bytes.copy_from_slice(&result);
+        let preimage = Preimage::from_bytes(preimage_bytes);
+        let payment_hash = preimage.payment_hash();
 
-        LightningInvoice {
-            payment_request: format!(
-                "lnbc{}1p{}",
-                amount_msat / 1000,
-                &payment_hash.to_hex()[..16]
-            ),
-            payment_hash,
-            amount_msat,
-            created_at: chrono::Utc::now().timestamp(),
-            expiry_seconds: expiry_seconds.unwrap_or(3600),
-            cltv_expiry,
-            description,
-            state: InvoiceState::Open,
-        }
+        (
+            LightningInvoice {
+                payment_request: format!(
+                    "lnbc{}1p{}",
+                    amount_msat / 1000,
+                    &payment_hash.to_hex()[..16]
+                ),
+                payment_hash,
+                amount_msat,
+                created_at: chrono::Utc::now().timestamp(),
+                expiry_seconds: expiry_seconds.unwrap_or(3600),
+                cltv_expiry,
+                description,
+                state: InvoiceState::Open,
+            },
+            preimage,
+        )
     }
 
     fn normalize_invoice(&self, mut invoice: LightningInvoice) -> LightningInvoice {
@@ -769,6 +897,45 @@ mod tests {
         assert_eq!(looked_up.payment_hash, invoice.payment_hash);
         assert_eq!(looked_up.amount_msat, invoice.amount_msat);
         assert_eq!(looked_up.description, invoice.description);
+    }
+
+    #[tokio::test]
+    async fn test_mock_pay_invoice_settles_invoice() {
+        let mut client = LndClient::new(LndConfig::default());
+        client.connect().await.unwrap();
+
+        let invoice = client
+            .add_invoice(
+                10_000,
+                Some("Cascade pay test".to_string()),
+                Some(120),
+                Some(40),
+            )
+            .await
+            .unwrap();
+
+        let preimage = client.pay_invoice(invoice.bolt11()).await.unwrap();
+        assert_eq!(preimage.payment_hash(), invoice.payment_hash);
+
+        let looked_up = client
+            .get_invoice(&invoice.payment_hash)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(looked_up.state, InvoiceState::Settled);
+    }
+
+    #[tokio::test]
+    async fn test_mock_pay_unknown_invoice_fails() {
+        let mut client = LndClient::new(LndConfig::default());
+        client.connect().await.unwrap();
+
+        let error = client
+            .pay_invoice("lnbc1definitelynotreal")
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("Mock invoice not found"));
     }
 
     #[test]

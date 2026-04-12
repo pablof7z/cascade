@@ -104,6 +104,7 @@ For launch, that means:
 - exact withdrawal previews come from sell quotes
 - token import/export is a browser-local proof-management action, not a server wallet API
 - the first import/export implementation can operate on one proof bucket at a time: one mint, one unit, one encoded Cashu token string
+- if public market pricing is unavailable, the holding still appears from local proof state and local trade metadata, but with price unavailable / mark-only display rather than mirror-derived valuation
 
 ## Public Profile Surface
 
@@ -132,6 +133,7 @@ The launch browser-local position book is intentionally narrow:
 - it is enough to show local cost basis and unrealized PnL for normal launch usage
 - imported proofs or proofs acquired on another device may not have local cost basis
 - those holdings should still appear in `/portfolio`, but with mark-only valuation rather than fabricated PnL
+- it should also retain enough local market metadata to render a readable holding row even if public market detail fetches fail temporarily
 
 ## Future: Deriving Positions From Kind 983
 

@@ -145,12 +145,6 @@
     const localBookByKey = new Map(
       listLocalPositionBook(proofMintUrl()).map((entry) => [`${entry.marketSlug}:${entry.side}`, entry])
     );
-    const mirrorByKey = new Map(
-      (wallet?.positions ?? []).map((position) => [
-        `${position.market_slug}:${position.direction.toLowerCase()}`,
-        position
-      ])
-    );
     const proofWallets = listLocalProofWallets(proofMintUrl());
     const marketWallets = proofWallets
       .filter((walletEntry) => walletEntry.unit !== proofUnit)
@@ -180,8 +174,6 @@
     const positions: Array<LocalPortfolioPosition | null> = await Promise.all(
       marketWallets.map(async (entry) => {
         const localBookEntry = localBookByKey.get(`${entry.slug}:${entry.direction}`) ?? null;
-        const mirrorKey = `${entry.slug}:${entry.direction}`;
-        const mirrorPosition = mirrorByKey.get(mirrorKey) ?? null;
         const localCostBasisMinor =
           localBookEntry && localBookEntry.quantityMinor === quantityToShareMinor(entry.quantity)
             ? localBookEntry.costBasisMinor
@@ -216,33 +208,16 @@
               localCostBasisMinor === null ? null : marketValueMinor - localCostBasisMinor
           } satisfies LocalPortfolioPosition;
         } catch {
-          if (!mirrorPosition) {
-            return {
-              market_event_id: localBookEntry?.marketEventId ?? '',
-              market_slug: entry.slug,
-              market_title: entry.slug,
-              direction: entry.direction,
-              quantity: entry.quantity,
-              current_price_ppm: 0,
-              market_value_minor: 0,
-              cost_basis_minor: localCostBasisMinor,
-              unrealized_pnl_minor: null
-            } satisfies LocalPortfolioPosition;
-          }
-
           return {
-            market_event_id: mirrorPosition.market_event_id,
-            market_slug: mirrorPosition.market_slug,
-            market_title: mirrorPosition.market_title,
-            direction: mirrorPosition.direction.toLowerCase() === 'no' ? 'no' : 'yes',
+            market_event_id: localBookEntry?.marketEventId ?? '',
+            market_slug: entry.slug,
+            market_title: localBookEntry?.marketTitle ?? entry.slug,
+            direction: entry.direction,
             quantity: entry.quantity,
-            current_price_ppm: mirrorPosition.current_price_ppm,
-            market_value_minor: mirrorPosition.market_value_minor,
+            current_price_ppm: 0,
+            market_value_minor: 0,
             cost_basis_minor: localCostBasisMinor,
-            unrealized_pnl_minor:
-              localCostBasisMinor === null
-                ? null
-                : mirrorPosition.market_value_minor - localCostBasisMinor
+            unrealized_pnl_minor: null
           } satisfies LocalPortfolioPosition;
         }
       })

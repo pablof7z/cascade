@@ -6,6 +6,7 @@ export type LocalPositionBookEntry = {
   mintUrl: string;
   marketEventId: string;
   marketSlug: string;
+  marketTitle: string;
   side: 'yes' | 'no';
   quantityMinor: number;
   costBasisMinor: number;
@@ -23,6 +24,7 @@ type LocalPositionTradeInput = {
   tradeId: string;
   marketEventId: string;
   marketSlug: string;
+  marketTitle: string;
   side: 'yes' | 'no';
   action: 'buy' | 'sell' | 'seed';
   quantityMinor: number;
@@ -45,9 +47,42 @@ function loadState(): LocalPositionBookState {
     const raw = localStorage.getItem(POSITION_BOOK_KEY);
     if (!raw) return emptyState();
     const parsed = JSON.parse(raw) as Partial<LocalPositionBookState>;
+    const entries = Array.isArray(parsed.entries)
+      ? parsed.entries
+          .map((entry) => {
+            if (!entry || typeof entry !== 'object') return null;
+            const candidate = entry as Partial<LocalPositionBookEntry>;
+            if (
+              typeof candidate.mintUrl !== 'string' ||
+              typeof candidate.marketEventId !== 'string' ||
+              typeof candidate.marketSlug !== 'string' ||
+              (candidate.side !== 'yes' && candidate.side !== 'no') ||
+              typeof candidate.quantityMinor !== 'number' ||
+              typeof candidate.costBasisMinor !== 'number'
+            ) {
+              return null;
+            }
+
+            return {
+              mintUrl: candidate.mintUrl,
+              marketEventId: candidate.marketEventId,
+              marketSlug: candidate.marketSlug,
+              marketTitle:
+                typeof candidate.marketTitle === 'string' && candidate.marketTitle.trim()
+                  ? candidate.marketTitle
+                  : candidate.marketSlug,
+              side: candidate.side,
+              quantityMinor: candidate.quantityMinor,
+              costBasisMinor: candidate.costBasisMinor,
+              updatedAt:
+                typeof candidate.updatedAt === 'number' ? candidate.updatedAt : Date.now()
+            } satisfies LocalPositionBookEntry;
+          })
+          .filter((entry): entry is LocalPositionBookEntry => entry !== null)
+      : [];
     return {
       version: 1,
-      entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+      entries,
       appliedTradeIds: Array.isArray(parsed.appliedTradeIds) ? parsed.appliedTradeIds : []
     };
   } catch {
@@ -117,6 +152,7 @@ export function applyLocalPositionTrade(input: LocalPositionTradeInput): boolean
       ? {
           ...current,
           marketSlug: input.marketSlug,
+          marketTitle: input.marketTitle,
           quantityMinor: current.quantityMinor + input.quantityMinor,
           costBasisMinor: current.costBasisMinor + input.amountMinor,
           updatedAt: now
@@ -125,6 +161,7 @@ export function applyLocalPositionTrade(input: LocalPositionTradeInput): boolean
           mintUrl: input.mintUrl,
           marketEventId: input.marketEventId,
           marketSlug: input.marketSlug,
+          marketTitle: input.marketTitle,
           side: input.side,
           quantityMinor: input.quantityMinor,
           costBasisMinor: input.amountMinor,
@@ -148,6 +185,7 @@ export function applyLocalPositionTrade(input: LocalPositionTradeInput): boolean
       state.entries[index] = {
         ...current,
         marketSlug: input.marketSlug,
+        marketTitle: input.marketTitle,
         quantityMinor: remainingQuantityMinor,
         costBasisMinor: remainingCostBasisMinor,
         updatedAt: now
@@ -195,6 +233,7 @@ export function applyLocalPositionTradeFromPayload(
     tradeId,
     marketEventId: payload.market.event_id,
     marketSlug: payload.market.slug,
+    marketTitle: payload.market.title,
     side,
     action: tradeType,
     quantityMinor: quantityToShareMinor(quantity),

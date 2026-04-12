@@ -170,6 +170,7 @@ Mirror data is informational only:
 - it can help with funding history, pending top-up compatibility, and recovery hints
 - it must not be treated as spend authority
 - it must not be treated as the canonical source for open-position valuation or PnL
+- it must not be used as a fallback price or PnL source for open positions in `/portfolio`
 - if mirror data disagrees with local proofs, local proofs win for spendable state
 
 The `/portfolio` surface derives both spendable state and performance from:
@@ -184,6 +185,7 @@ For launch cost basis and PnL:
 - that local position book tracks quantity and cost basis by market side
 - imported proofs or older proofs without local trade history may have quantity but no local cost basis
 - when local cost basis is unavailable, `/portfolio` should show a mark-only value instead of inventing PnL from the mirror
+- when public market pricing is temporarily unavailable, `/portfolio` should keep the local holding visible with price unavailable rather than falling back to mirror valuation
 
 The launch `/portfolio` surface must also handle local proof movement directly in the browser:
 

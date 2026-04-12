@@ -325,6 +325,12 @@ When the user is preparing a withdrawal, the client should call the sell-quote e
 
 Token import and export are local proof-management actions, not canonical server wallet routes.
 
+The first launch implementation should keep that model narrow and explicit:
+
+- export one local proof bucket at a time as a standard Cashu token string
+- import one standard Cashu token string at a time into the matching local proof bucket
+- do not add a mint-side send/receive custody route just to support portfolio movement
+
 ## Discovery And Search
 
 Launch discovery should not depend on raw relay queries from the browser alone.

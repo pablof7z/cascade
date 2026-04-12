@@ -154,6 +154,21 @@ The `/portfolio` surface derives both spendable state and performance from:
 - user-published position records
 - public market data
 
+The launch `/portfolio` surface must also handle local proof movement directly in the browser:
+
+- export a locally held proof bucket as a standard Cashu token string
+- import a Cashu token string into the local browser store
+- keep import/export entirely local rather than introducing a server custody API
+- use the same browser-local proof manager in signet and mainnet
+
+The immediate implementation target is one export/import action per local proof bucket:
+
+- one mint URL
+- one unit
+- one encoded Cashu token string
+
+That keeps export/import aligned with the current storage model and avoids inventing a non-standard multi-unit wrapper before trade execution itself is fully proof-native.
+
 For valuation, the frontend should use a two-layer model:
 
 - liquid USD balance = sum of locally held USD proofs

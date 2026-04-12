@@ -303,6 +303,12 @@ The user's bearer proofs live with the user or agent, not with Cascade. There is
 
 Portfolio is not a custody surface. It is derived from user-side proof state, user-published position records, and public market data.
 
+At launch, token import/export should remain a browser-local proof-management action:
+
+- export one local proof bucket at a time as a standard Cashu token string
+- import a standard Cashu token string and merge it into the matching local proof bucket
+- do not introduce a private server wallet API for send/receive
+
 Do not carry forward React's payout, rake, or settlement framing. The modern meaning is:
 
 - open positions

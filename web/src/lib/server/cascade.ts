@@ -16,6 +16,7 @@ import {
 
 const MARKET_CACHE_TTL_MS = 60_000;
 const DISCUSSION_CACHE_TTL_MS = 30_000;
+const RELAY_FETCH_TIMEOUT_MS = 2_500;
 
 let marketCache: MarketRecord[] = [];
 let marketCacheUpdatedAt = 0;
@@ -128,13 +129,16 @@ export async function fetchRecentDiscussions(limit = 80): Promise<DiscussionReco
 
 export async function fetchMarketDiscussions(marketId: string, limit = 200): Promise<DiscussionRecord[]> {
   const ndk = await getServerNdk();
-  const events = await ndk.fetchEvents(
-    {
-      kinds: [1111 as NDKKind],
-      '#e': [marketId],
-      limit
-    } satisfies NDKFilter,
-    { closeOnEose: true }
+  const events = await withRelayEventTimeout(
+    ndk.fetchEvents(
+      {
+        kinds: [1111 as NDKKind],
+        '#e': [marketId],
+        limit
+      } satisfies NDKFilter,
+      { closeOnEose: true }
+    ),
+    `fetchMarketDiscussions(${marketId})`
   );
 
   return Array.from(events)
@@ -228,7 +232,12 @@ export async function fetchProfileContext(identifier: string) {
 }
 
 export async function fetchProfilesForPubkeys(pubkeys: readonly string[]) {
-  return fetchProfilesByPubkeys(pubkeys);
+  try {
+    return await fetchProfilesByPubkeys(pubkeys);
+  } catch (error) {
+    console.warn('fetchProfilesForPubkeys failed', error);
+    return {};
+  }
 }
 
 export function groupTradesByMarket(trades: TradeRecord[]): Map<string, TradeRecord[]> {
@@ -326,12 +335,15 @@ async function refreshRecentDiscussions(limit: number): Promise<void> {
 
   discussionRefresh = (async () => {
     const ndk = await getServerNdk();
-    const events = await ndk.fetchEvents(
-      {
-        kinds: [1111 as NDKKind],
-        limit
-      } satisfies NDKFilter,
-      { closeOnEose: true }
+    const events = await withRelayEventTimeout(
+      ndk.fetchEvents(
+        {
+          kinds: [1111 as NDKKind],
+          limit
+        } satisfies NDKFilter,
+        { closeOnEose: true }
+      ),
+      `refreshRecentDiscussions(${limit})`
     );
 
     const next = Array.from(events)
@@ -354,4 +366,24 @@ async function fetchProductJson<T>(path: string): Promise<T | null> {
   const response = await fetch(`${getProductApiUrl()}${path}`);
   if (!response.ok) return null;
   return (await response.json()) as T;
+}
+
+function withRelayEventTimeout<T>(
+  promise: Promise<T>,
+  label: string,
+  timeoutMs = RELAY_FETCH_TIMEOUT_MS
+): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => {
+      timeoutHandle = setTimeout(() => {
+        console.warn(`${label} timed out after ${timeoutMs}ms`);
+        resolve(new Set() as T);
+      }, timeoutMs);
+    })
+  ]).finally(() => {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  });
 }

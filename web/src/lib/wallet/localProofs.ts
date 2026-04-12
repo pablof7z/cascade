@@ -3,7 +3,7 @@ import type { ProductProof } from '$lib/cascade/api';
 
 const STORAGE_VERSION = 1;
 
-type StoredProofWallet = {
+export type StoredProofWallet = {
   version: number;
   mintUrl: string;
   unit: string;

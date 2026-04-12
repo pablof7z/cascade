@@ -101,6 +101,8 @@ For launch, that means:
 - open-position quantities come from locally stored market proofs
 - current portfolio value comes from public market prices
 - exact withdrawal previews come from sell quotes
+- token import/export is a browser-local proof-management action, not a server wallet API
+- the first import/export implementation can operate on one proof bucket at a time: one mint, one unit, one encoded Cashu token string
 
 ## Public Profile Surface
 

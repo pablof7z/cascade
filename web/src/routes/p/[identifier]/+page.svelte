@@ -109,7 +109,7 @@
           <div class="profile-row">
             <div>
               <strong>{position.marketTitle || position.marketId}</strong>
-              <p>{position.direction === 'yes' ? 'YES' : 'NO'} · {position.quantity} units</p>
+              <p>{position.direction === 'yes' ? 'LONG' : 'SHORT'} · {position.quantity} units</p>
             </div>
             <span>{formatRelativeTime(Math.floor(position.createdAt / 1000))}</span>
           </div>

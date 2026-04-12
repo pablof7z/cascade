@@ -19,6 +19,7 @@
   } from '$lib/cascade/api';
   import { getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
   import { formatUsdMinor } from '$lib/cascade/format';
+  import { shareMinorToQuantity } from '$lib/cascade/shares';
   import {
     attachPendingTopupId,
     clearPendingTopup,
@@ -99,7 +100,7 @@
 
     const parsed = parseMarketProofUnit(unit);
     if (parsed) {
-      return `${parsed.direction.toUpperCase()} ${amount.toFixed(2)} shares`;
+      return `${parsed.direction.toUpperCase()} ${shareMinorToQuantity(amount).toFixed(2)} shares`;
     }
 
     return `${amount.toFixed(2)} ${unit}`;
@@ -113,19 +114,19 @@
 
     const parsed = parseMarketProofUnit(walletEntry.unit);
     if (parsed) {
-      return `${parsed.direction.toUpperCase()} · ${parsed.slug} · ${amount.toFixed(2)} shares`;
+      return `${parsed.direction.toUpperCase()} · ${parsed.slug} · ${shareMinorToQuantity(amount).toFixed(2)} shares`;
     }
 
     return `${walletEntry.unit} · ${amount.toFixed(2)}`;
   }
 
   function parseMarketProofUnit(unit: string): { slug: string; direction: 'yes' | 'no' } | null {
-    if (unit.startsWith('LONG_')) {
-      return { slug: unit.slice('LONG_'.length), direction: 'yes' };
+    if (/^long_/i.test(unit)) {
+      return { slug: unit.slice('long_'.length), direction: 'yes' };
     }
 
-    if (unit.startsWith('SHORT_')) {
-      return { slug: unit.slice('SHORT_'.length), direction: 'no' };
+    if (/^short_/i.test(unit)) {
+      return { slug: unit.slice('short_'.length), direction: 'no' };
     }
 
     return null;
@@ -145,7 +146,8 @@
         const parsed = parseMarketProofUnit(walletEntry.unit);
         if (!parsed) return null;
 
-        const quantity = walletEntry.proofs.reduce((sum, proof) => sum + proof.amount, 0);
+        const quantityMinor = walletEntry.proofs.reduce((sum, proof) => sum + proof.amount, 0);
+        const quantity = shareMinorToQuantity(quantityMinor);
         if (quantity <= 0) return null;
 
         return {
@@ -756,7 +758,7 @@
             <a class="position-row" href={`/market/${position.market_slug}`}>
               <div class="position-copy">
                 <strong>{position.market_title}</strong>
-                <p>{position.direction.toUpperCase()} · {position.quantity.toFixed(2)} shares · {formatProbability(position.current_price_ppm / 1_000_000)}</p>
+                <p>{position.direction === 'yes' ? 'LONG' : 'SHORT'} · {position.quantity.toFixed(2)} shares · {formatProbability(position.current_price_ppm / 1_000_000)}</p>
               </div>
               <div class="position-metrics">
                 <span>{formatUsdMinor(position.market_value_minor)}</span>

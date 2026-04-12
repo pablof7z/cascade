@@ -3,8 +3,7 @@
   import { invalidateAll } from '$app/navigation';
   import {
     buyMarketPosition,
-    expectOk,
-    fetchPortfolioMirror,
+    extractTradeProofBundles,
     fetchTradeQuoteStatus,
     quoteBuyTrade,
     quoteSellTrade,
@@ -16,10 +15,11 @@
     type ProductTradeQuote,
     type ProductTradeExecution,
     type ProductTradeRequestStatus,
-    type ProductTradeStatus,
-    type ProductWallet
+    type ProductTradeStatus
   } from '$lib/cascade/api';
+  import { getProductApiUrl } from '$lib/cascade/config';
   import { formatUsdMinor } from '$lib/cascade/format';
+  import { shareMinorToQuantity } from '$lib/cascade/shares';
   import {
     attachTradeReceiptQuoteId,
     clearTradeReceipt,
@@ -29,6 +29,12 @@
   } from '$lib/cascade/recovery';
   import { ndk } from '$lib/ndk/client';
   import { formatProbability } from '$lib/ndk/cascade';
+  import {
+    addLocalProofs,
+    localProofBalance,
+    removeLocalProofs,
+    selectLocalProofsForAmount
+  } from '$lib/wallet/localProofs';
 
   let {
     marketId,
@@ -42,13 +48,9 @@
     noProbability: number;
   } = $props();
 
-  type WalletPosition = ProductWallet['positions'][number];
-
-  type PaperWallet = Pick<ProductWallet, 'available_minor' | 'positions'>;
-
   const currentUser = $derived(ndk.$currentUser);
 
-  let wallet = $state<PaperWallet | null>(null);
+  let availableMinor = $state(0);
   let buySide = $state<'yes' | 'no'>('yes');
   let buySpend = $state('2500');
   let sellQuantity = $state('');
@@ -56,28 +58,39 @@
   let errorMessage = $state('');
 
   const currentPosition = $derived.by(() => {
-    if (!wallet) return null;
-    return (
-      wallet.positions.find(
-        (position) => position.market_event_id === marketId && position.direction === buySide
-      ) ??
-      wallet.positions.find((position) => position.market_event_id === marketId) ??
-      null
+    const quantity = shareMinorToQuantity(
+      localProofBalance(proofMintUrl(), marketUnitForSide(buySide))
     );
+    if (quantity > 0) {
+      return { side: buySide, quantity };
+    }
+
+    const oppositeSide: 'yes' | 'no' = buySide === 'yes' ? 'no' : 'yes';
+    const oppositeQuantity = shareMinorToQuantity(
+      localProofBalance(proofMintUrl(), marketUnitForSide(oppositeSide))
+    );
+    if (oppositeQuantity > 0) {
+      return { side: oppositeSide, quantity: oppositeQuantity };
+    }
+
+    return null;
   });
 
-  function alignSideToWallet(nextWallet: PaperWallet) {
-    const ownedPosition = nextWallet.positions.find((position) => position.market_event_id === marketId);
-    if (!ownedPosition) return;
+  function proofMintUrl(): string {
+    return getProductApiUrl().replace(/\/+$/, '');
+  }
 
-    const normalizedDirection = ownedPosition.direction.toLowerCase() === 'no' ? 'no' : 'yes';
-    const hasCurrentSidePosition = nextWallet.positions.some(
-      (position) =>
-        position.market_event_id === marketId && position.direction.toLowerCase() === buySide
-    );
+  function marketUnitForSide(side: 'yes' | 'no'): string {
+    return side === 'yes' ? `long_${marketSlug}` : `short_${marketSlug}`;
+  }
 
-    if (!hasCurrentSidePosition) {
-      buySide = normalizedDirection;
+  function alignSideToLocalProofs() {
+    const yesQuantity = localProofBalance(proofMintUrl(), marketUnitForSide('yes'));
+    const noQuantity = localProofBalance(proofMintUrl(), marketUnitForSide('no'));
+    if (buySide === 'yes' && yesQuantity === 0 && noQuantity > 0) {
+      buySide = 'no';
+    } else if (buySide === 'no' && noQuantity === 0 && yesQuantity > 0) {
+      buySide = 'yes';
     }
   }
 
@@ -89,13 +102,38 @@
     return `${marketId}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
   }
 
+  function refreshLocalWallet() {
+    availableMinor = localProofBalance(proofMintUrl(), 'usd');
+    alignSideToLocalProofs();
+  }
+
   async function loadWallet() {
     if (!currentUser) return;
-    const response = await fetchPortfolioMirror(currentUser.pubkey);
-    if (!response.ok) return;
-    const nextWallet = (await response.json()) as PaperWallet;
-    alignSideToWallet(nextWallet);
-    wallet = nextWallet;
+    refreshLocalWallet();
+  }
+
+  function applyRecoveredTradeProofs(
+    receipt: ReturnType<typeof listTradeReceipts>[number],
+    payload: ProductTradeExecution | ProductTradeStatus
+  ) {
+    const { issued, change } = extractTradeProofBundles(payload);
+    if (!issued && !change) {
+      throw new Error('trade_proofs_missing');
+    }
+
+    if (receipt.spentUnit && receipt.spentProofs?.length) {
+      removeLocalProofs(proofMintUrl(), receipt.spentUnit, receipt.spentProofs);
+    }
+
+    if (change) {
+      addLocalProofs(proofMintUrl(), change.unit, change.proofs);
+    }
+
+    if (issued) {
+      addLocalProofs(proofMintUrl(), issued.unit, issued.proofs);
+    }
+
+    refreshLocalWallet();
   }
 
   async function reconcileRecentTrades() {
@@ -119,6 +157,7 @@
             status = `Recovered pending settlement for ${receipt.action} on ${payload.market.slug}.`;
             continue;
           }
+          applyRecoveredTradeProofs(receipt, payload);
           clearTradeReceipt(receipt.id);
           recoveredSide = receipt.side;
           status = `Recovered ${receipt.action} on ${payload.market.slug}.`;
@@ -162,6 +201,7 @@
             status = `Recovered pending settlement for ${receipt.action} on ${receipt.marketSlug}.`;
             continue;
           }
+          applyRecoveredTradeProofs(receipt, tradePayload);
           clearTradeReceipt(receipt.id);
           recoveredSide = receipt.side;
           status = `Recovered ${receipt.action} on ${tradePayload.market.slug}.`;
@@ -173,16 +213,8 @@
 
     await loadWallet();
 
-    if (recoveredSide && wallet) {
-      const hasRecoveredSidePosition = wallet.positions.some(
-        (position) =>
-          position.market_event_id === marketId &&
-          position.direction.toLowerCase() === recoveredSide
-      );
-
-      if (hasRecoveredSidePosition) {
-        buySide = recoveredSide;
-      }
+    if (recoveredSide && currentPosition?.side === recoveredSide) {
+      buySide = recoveredSide;
     }
   }
 
@@ -213,6 +245,7 @@
         status = `Recovered pending settlement for ${receipt.action} on ${receipt.marketSlug}.`;
         return 'handled';
       }
+      applyRecoveredTradeProofs(receipt, tradePayload);
       clearTradeReceipt(receipt.id);
       status = `Recovered ${receipt.action} on ${tradePayload.market.slug}.`;
       return 'executed';
@@ -238,7 +271,7 @@
       return;
     }
 
-    status = `Buying ${buySide.toUpperCase()} with ${formatUsdMinor(spendMinor)}.`;
+    status = `Buying ${buySide === 'yes' ? 'LONG' : 'SHORT'} with ${formatUsdMinor(spendMinor)}.`;
     errorMessage = '';
 
     try {
@@ -255,6 +288,10 @@
         throw new Error('Buy quote is missing a quote id.');
       }
       const lockedQuoteId = quote.quote_id;
+      const spendProofs = selectLocalProofsForAmount(proofMintUrl(), 'usd', quote.spend_minor);
+      if (!spendProofs.length) {
+        throw new Error('Not enough local USD proofs to cover this trade.');
+      }
 
       const requestId = createTradeRequestId();
       trackTradeReceipt({
@@ -264,7 +301,9 @@
         eventId: marketId,
         marketSlug,
         action: 'buy',
-        side: buySide
+        side: buySide,
+        spentUnit: 'usd',
+        spentProofs: spendProofs
       });
 
       const response = await buyMarketPosition({
@@ -272,11 +311,11 @@
         pubkey: currentUser.pubkey,
         side: (quote.side as 'yes' | 'no') ?? buySide,
         spendMinor: quote.spend_minor,
+        proofs: spendProofs,
         quoteId: lockedQuoteId,
         requestId
       });
-      await expectOk(response, 'Trade failed.');
-      const payload = (await response.json()) as ProductTradeExecution;
+      const payload = await parseJson<ProductTradeExecution>(response, 'Trade failed.');
       const tradeId = typeof payload.trade.id === 'string' ? payload.trade.id : null;
       if (tradeId) {
         markTradeReceiptTradeId(requestId, tradeId);
@@ -284,14 +323,27 @@
         attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
+      applyRecoveredTradeProofs(
+        {
+          id: requestId,
+          pubkey: currentUser.pubkey,
+          eventId: marketId,
+          marketSlug,
+          action: 'buy',
+          side: buySide,
+          spentUnit: 'usd',
+          spentProofs: spendProofs,
+          createdAt: Date.now()
+        },
+        payload
+      );
+
       if (hasCompletedTradeSettlement(payload)) {
         clearTradeReceipt(requestId);
-        status = `Bought ${buySide.toUpperCase()} on ${marketSlug}.`;
+        status = `Bought ${buySide === 'yes' ? 'LONG' : 'SHORT'} on ${marketSlug}.`;
       } else {
         status = `Buy submitted on ${marketSlug}. Waiting for settlement.`;
       }
-      alignSideToWallet(payload.wallet);
-      wallet = payload.wallet;
       await invalidateAll();
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : 'Trade failed.';
@@ -311,7 +363,7 @@
       return;
     }
 
-    status = `Withdrawing ${quantity.toFixed(2)} ${buySide.toUpperCase()} shares.`;
+    status = `Withdrawing ${quantity.toFixed(2)} ${buySide === 'yes' ? 'LONG' : 'SHORT'} shares.`;
     errorMessage = '';
 
     try {
@@ -328,6 +380,15 @@
         throw new Error('Sell quote is missing a quote id.');
       }
       const lockedQuoteId = quote.quote_id;
+      const marketUnit = marketUnitForSide((quote.side as 'yes' | 'no') ?? buySide);
+      const spendProofs = selectLocalProofsForAmount(
+        proofMintUrl(),
+        marketUnit,
+        quote.quantity_minor
+      );
+      if (!spendProofs.length) {
+        throw new Error(`Not enough local ${buySide === 'yes' ? 'LONG' : 'SHORT'} proofs to withdraw.`);
+      }
 
       const requestId = createTradeRequestId();
       trackTradeReceipt({
@@ -337,7 +398,9 @@
         eventId: marketId,
         marketSlug,
         action: 'sell',
-        side: buySide
+        side: buySide,
+        spentUnit: marketUnit,
+        spentProofs: spendProofs
       });
 
       const response = await sellMarketPosition({
@@ -345,11 +408,11 @@
         pubkey: currentUser.pubkey,
         side: (quote.side as 'yes' | 'no') ?? buySide,
         quantity: quote.quantity,
+        proofs: spendProofs,
         quoteId: lockedQuoteId,
         requestId
       });
-      await expectOk(response, 'Sell failed.');
-      const payload = (await response.json()) as ProductTradeExecution;
+      const payload = await parseJson<ProductTradeExecution>(response, 'Sell failed.');
       const tradeId = typeof payload.trade.id === 'string' ? payload.trade.id : null;
       if (tradeId) {
         markTradeReceiptTradeId(requestId, tradeId);
@@ -357,15 +420,28 @@
         attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
+      applyRecoveredTradeProofs(
+        {
+          id: requestId,
+          pubkey: currentUser.pubkey,
+          eventId: marketId,
+          marketSlug,
+          action: 'sell',
+          side: buySide,
+          spentUnit: marketUnit,
+          spentProofs: spendProofs,
+          createdAt: Date.now()
+        },
+        payload
+      );
+
       if (hasCompletedTradeSettlement(payload)) {
         clearTradeReceipt(requestId);
-        status = `Withdrew ${buySide.toUpperCase()} on ${marketSlug}.`;
+        status = `Withdrew ${buySide === 'yes' ? 'LONG' : 'SHORT'} on ${marketSlug}.`;
       } else {
         status = `Withdrawal submitted on ${marketSlug}. Waiting for settlement.`;
       }
       sellQuantity = '';
-      alignSideToWallet(payload.wallet);
-      wallet = payload.wallet;
       await invalidateAll();
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : 'Sell failed.';
@@ -395,17 +471,17 @@
   {:else}
     <div class="trade-balance">
       <span>Available</span>
-      <strong>{formatUsdMinor(wallet?.available_minor ?? 0)}</strong>
+      <strong>{formatUsdMinor(availableMinor)}</strong>
     </div>
 
     <div class="trade-field">
       <span>Side</span>
       <div class="trade-side-row">
         <button class:active={buySide === 'yes'} type="button" onclick={() => (buySide = 'yes')}>
-          YES {formatProbability(yesProbability)}
+          LONG {formatProbability(yesProbability)}
         </button>
         <button class:active={buySide === 'no'} type="button" onclick={() => (buySide = 'no')}>
-          NO {formatProbability(noProbability)}
+          SHORT {formatProbability(noProbability)}
         </button>
       </div>
     </div>
@@ -413,7 +489,7 @@
     <div class="trade-field">
       <span>Buy spend</span>
       <input bind:value={buySpend} min="100" step="100" type="number" />
-      <button class="button-primary" type="button" onclick={buy}>Buy {buySide.toUpperCase()}</button>
+      <button class="button-primary" type="button" onclick={buy}>Buy {buySide === 'yes' ? 'LONG' : 'SHORT'}</button>
     </div>
 
     <div class="trade-field">
@@ -421,7 +497,7 @@
       <strong>{currentPosition ? `${currentPosition.quantity.toFixed(2)} shares` : 'None yet'}</strong>
       <input bind:value={sellQuantity} min="0" step="0.1" type="number" />
       <button class="button-secondary" disabled={!currentPosition} type="button" onclick={sell}>
-        Withdraw {buySide.toUpperCase()}
+        Withdraw {buySide === 'yes' ? 'LONG' : 'SHORT'}
       </button>
     </div>
   {/if}

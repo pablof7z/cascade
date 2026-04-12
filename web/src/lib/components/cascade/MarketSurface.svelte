@@ -78,7 +78,7 @@
         id: trade.id,
         kind: 'trade' as const,
         createdAt: trade.createdAt,
-        headline: `${trade.type === 'buy' ? 'Minted' : 'Withdrew'} ${trade.direction === 'yes' ? 'YES' : 'NO'}`,
+        headline: `${trade.type === 'buy' ? 'Minted' : 'Withdrew'} ${trade.direction === 'yes' ? 'LONG' : 'SHORT'}`,
         detail: `${formatProductAmount(trade.amount, trade.unit)} at ${formatProbability(trade.probability)}`
       })),
       ...discussions.map((discussion) => ({
@@ -152,7 +152,7 @@
       {
         eyebrow: 'Flow',
         title: latestTrade
-          ? `${latestTrade.type === 'buy' ? 'Mint' : 'Withdraw'} on ${latestTrade.direction === 'yes' ? 'YES' : 'NO'}`
+          ? `${latestTrade.type === 'buy' ? 'Mint' : 'Withdraw'} on ${latestTrade.direction === 'yes' ? 'LONG' : 'SHORT'}`
           : 'No visible fills yet',
         detail: latestTrade
           ? `${formatProductAmount(latestTrade.amount, latestTrade.unit)} moved ${formatRelativeTime(latestTrade.createdAt)}.`
@@ -283,7 +283,7 @@
           <dt>Latest fill</dt>
           <dd>
             {#if latestTrade}
-              {latestTrade.direction === 'yes' ? 'YES' : 'NO'} {latestTrade.type === 'buy' ? 'mint' : 'withdraw'}
+              {latestTrade.direction === 'yes' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'mint' : 'withdraw'}
             {:else}
               None
             {/if}
@@ -386,7 +386,7 @@
           {#each orderedTrades.slice(0, 6) as trade (trade.id)}
             <div class="dense-row">
               <div>
-                <strong>{trade.type === 'buy' ? 'Mint' : 'Withdraw'} · {trade.direction === 'yes' ? 'YES' : 'NO'}</strong>
+                <strong>{trade.type === 'buy' ? 'Mint' : 'Withdraw'} · {trade.direction === 'yes' ? 'LONG' : 'SHORT'}</strong>
                 <p>{formatRelativeTime(trade.createdAt)}</p>
               </div>
               <div class="dense-aside">

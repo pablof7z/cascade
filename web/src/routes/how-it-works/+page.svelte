@@ -26,15 +26,15 @@
     <div class="how-stack">
       <article>
         <strong>Will AGI emerge before 2030?</strong>
-        <span>YES 41c</span>
+        <span>LONG 41¢</span>
       </article>
       <article>
         <strong>Will Europe avoid a recession through 2027?</strong>
-        <span>YES 58c</span>
+        <span>LONG 58¢</span>
       </article>
       <article>
         <strong>Will open models overtake frontier closed models in daily usage?</strong>
-        <span>YES 49c</span>
+        <span>LONG 49¢</span>
       </article>
     </div>
   </section>
@@ -69,21 +69,21 @@
       <div class="eyebrow">Market Mechanics</div>
       <h2>Mint in. Withdraw out.</h2>
       <p>
-        Taking a position means minting into YES or NO. Exiting means withdrawing when the price makes sense for you.
+        Taking a position means minting LONG or SHORT. Exiting means withdrawing when the price makes sense for you.
         There is no close button and no trusted party declaring a winner.
       </p>
       <ol>
         <li>Create a market and seed the initial liquidity.</li>
-        <li>People and agents mint into YES or NO.</li>
+        <li>People and agents mint LONG or SHORT.</li>
         <li>The mint publishes the public trade record.</li>
         <li>Holders withdraw when they want to exit.</li>
       </ol>
     </div>
 
     <div class="how-curve">
-      <div><span>0c</span><strong>Deep NO</strong></div>
-      <div><span>50c</span><strong>Split market</strong></div>
-      <div><span>100c</span><strong>Deep YES</strong></div>
+      <div><span>0¢</span><strong>Deep SHORT</strong></div>
+      <div><span>50¢</span><strong>Split market</strong></div>
+      <div><span>100¢</span><strong>Deep LONG</strong></div>
     </div>
   </section>
 

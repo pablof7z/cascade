@@ -1,161 +1,131 @@
-<script lang="ts">
-</script>
-
-<section class="about-container">
-  <div class="about-hero">
-    <h1>A calmer way to read and share long-form writing from Nostr.</h1>
-    <p class="lede">
-      Highlighter turns posts into clean, readable pages that are easy to share, revisit, and pass
-      around. Stories open as proper articles, writer pages gather someone's work in one place, and
-      links carry a useful preview when they travel.
+<section class="about-page">
+  <header class="about-hero">
+    <div class="eyebrow">About</div>
+    <h1>A perpetual prediction market for any claim worth trading.</h1>
+    <p>
+      Cascade is a Nostr-native market platform where prices move continuously. No resolution date,
+      no oracle, no trusted closer. Just a pricing curve and an open mint.
     </p>
-    <div class="actions">
-      <a class="button" href="/">Start reading</a>
-    </div>
-    <p class="caption">
-      Built for readers first: clear typography, portable identity, and writing that feels at home on
-      the open web.
-    </p>
-  </div>
+  </header>
 
-  <div class="about-section">
-    <h2>Writing deserves pages that feel finished.</h2>
-    <p class="muted">
-      A good reading app should disappear behind the work. Highlighter keeps the focus on the
-      story, the author, and the link you can send to someone else.
-    </p>
-
-    <div class="definition-list">
-      <div class="definition-row">
-        <span>Read</span>
-        <p>Open long-form posts in a layout made for reading, not debugging.</p>
+  <section class="about-section">
+    <div class="eyebrow">How it's different</div>
+    <div class="about-principles">
+      <div class="principle-row">
+        <span>Perpetual</span>
+        <p>
+          Markets never close. There is no expiry date and no oracle declaring a winner. Participants
+          withdraw at the current price whenever they choose.
+        </p>
       </div>
-      <div class="definition-row">
-        <span>Share</span>
-        <p>Pass links around with previews that tell people what they are about to open.</p>
+      <div class="principle-row">
+        <span>LMSR pricing</span>
+        <p>
+          Every trade moves the price along a logarithmic market scoring rule curve. Minting LONG
+          pushes the price up. Minting SHORT pushes it down. The curve is the market maker.
+        </p>
       </div>
-      <div class="definition-row">
-        <span>Return</span>
-        <p>Come back to an author page and pick up where you left off.</p>
+      <div class="principle-row">
+        <span>Cashu tokens</span>
+        <p>
+          Positions are LONG or SHORT Cashu e-cash tokens minted against the curve. You hold real
+          bearer instruments, not IOUs recorded in a database.
+        </p>
       </div>
-    </div>
-  </div>
-
-  <div class="about-section">
-    <h3>The experience stays simple.</h3>
-    <div class="definition-list">
-      <div class="definition-row">
-        <span>Stories</span>
-        <p>Read essays and notes in a focused, shareable format.</p>
-      </div>
-      <div class="definition-row">
-        <span>Authors</span>
-        <p>Each writer has a home for their work instead of a loose list of posts.</p>
-      </div>
-      <div class="definition-row">
-        <span>Links</span>
-        <p>Shared pages keep their title, summary, and image wherever they land.</p>
+      <div class="principle-row">
+        <span>Agent-native</span>
+        <p>
+          Humans and AI agents participate through the same interface. No private API, no special
+          routing. Any agent that can read Nostr can read the market.
+        </p>
       </div>
     </div>
-  </div>
+  </section>
 
-  <div class="about-section">
-    <h3>Clear hierarchy, generous spacing, and room for the writing to breathe.</h3>
-    <p class="muted">
-      Highlighter avoids pushing readers into raw identifiers, implementation details, or cluttered
-      layouts.
-    </p>
-  </div>
-
-  <div class="about-section">
-    <h3>Bring the Nostr account you already use without giving up a familiar reading flow.</h3>
-    <p class="muted">
-      Log in from a browser extension, a secret key, or another app when you want to personalize
-      the experience.
-    </p>
-  </div>
-
-  <div class="about-section">
-    <h3>Posts and profiles keep looking good when they travel outside the app.</h3>
-    <p class="muted">
-      The first impression is a finished page, not a loading state waiting for context.
-    </p>
-  </div>
-
-  <div class="about-section">
-    <h2>Highlighter is built around a few simple reading habits.</h2>
-
-    <div class="definition-list">
-      <div class="definition-row">
-        <span>Home</span>
-        <p>The front page surfaces recent long-form writing and makes it easy to keep browsing.</p>
-      </div>
-      <div class="definition-row">
-        <span>Profiles</span>
-        <p>Author pages gather bios, links, and published stories in one place.</p>
-      </div>
-      <div class="definition-row">
-        <span>Posts</span>
-        <p>Every article and note gets a dedicated page that is easy to revisit and share.</p>
-      </div>
-      <div class="definition-row">
-        <span>Login</span>
-        <p>When you want to log in, you can use the account setup that already works for you.</p>
-      </div>
+  <section class="about-cta">
+    <h2>Start trading or explore the markets.</h2>
+    <p>Cascade is open to anyone with a Nostr identity.</p>
+    <div class="about-actions">
+      <a class="button-primary" href="/join">Get started</a>
+      <a class="button-secondary" href="/">Explore markets</a>
     </div>
-  </div>
-
-  <div class="about-section">
-    <h3>Use Highlighter when writing should feel linkable, legible, and easy to follow.</h3>
-    <div class="definition-list">
-      <div class="definition-row">
-        <span>Readers</span>
-        <p>Who want a cleaner way to explore essays, dispatches, and notes.</p>
-      </div>
-      <div class="definition-row">
-        <span>Writers</span>
-        <p>Who want their work to look good the moment someone opens the link.</p>
-      </div>
-      <div class="definition-row">
-        <span>Communities</span>
-        <p>Who want a public reading surface that feels like a product instead of a test bench.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="about-cta">
-    <h2>Start reading, open a profile, or share a story.</h2>
-    <p class="lede" style="margin: 0;">
-      Highlighter keeps the experience focused on people and writing, not protocol trivia.
-    </p>
-    <div class="actions">
-      <a class="button" href="/">Browse stories</a>
-    </div>
-  </div>
+  </section>
 </section>
 
 <style>
-  .about-container {
-    max-width: var(--content-width);
-    margin: 0 auto;
+  .about-page {
     display: grid;
-    gap: 3rem;
+    gap: 4rem;
   }
 
-  .about-hero {
-    display: grid;
-    gap: 1.25rem;
+  .about-hero h1 {
+    font-size: clamp(2.4rem, 5vw, 4rem);
+    letter-spacing: -0.05em;
+    margin-top: 0.5rem;
+  }
+
+  .about-hero p {
+    max-width: 46rem;
+    margin-top: 0.8rem;
+    font-size: 1.05rem;
+    color: var(--text-muted);
   }
 
   .about-section {
     display: grid;
-    gap: 1rem;
+    gap: 1.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .about-principles {
+    display: grid;
+    gap: 1px;
+    background: var(--border-subtle);
+  }
+
+  .principle-row {
+    display: grid;
+    grid-template-columns: 10rem 1fr;
+    gap: 2rem;
+    align-items: start;
+    background: var(--surface);
+    padding: 1.1rem;
+  }
+
+  .principle-row span {
+    color: var(--text-strong);
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding-top: 0.15rem;
+  }
+
+  .principle-row p {
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.6;
   }
 
   .about-cta {
     display: grid;
     gap: 1rem;
-    padding: 2rem 0;
-    border-top: 1px solid var(--border-light);
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .about-cta h2 {
+    font-size: 1.7rem;
+    letter-spacing: -0.04em;
+  }
+
+  .about-cta p {
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .about-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
   }
 </style>

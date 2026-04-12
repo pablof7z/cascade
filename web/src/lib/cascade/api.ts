@@ -94,10 +94,32 @@ export type ProductTradeEvent = {
   [key: string]: unknown;
 };
 
+export type ProductTradeSettlement = {
+  id: string;
+  trade_id: string;
+  quote_id?: string | null;
+  rail: string;
+  mode: string;
+  side: string;
+  trade_type: string;
+  settlement_minor: number;
+  settlement_msat: number;
+  settlement_fee_msat: number;
+  fx_quote_id?: string | null;
+  invoice?: string | null;
+  payment_hash?: string | null;
+  status: string;
+  metadata?: Record<string, unknown> | null;
+  created_at: number;
+  settled_at?: number | null;
+  completed_at?: number | null;
+};
+
 export type ProductTradeExecution = {
   wallet: ProductWallet;
   market: ProductMarketSummary;
   trade: ProductTradeEvent;
+  settlement?: ProductTradeSettlement | null;
 };
 
 export type ProductTradeQuote = {
@@ -131,6 +153,7 @@ export type ProductTradeQuote = {
 export type ProductTradeStatus = {
   market: ProductMarketSummary;
   trade: ProductTradeEvent;
+  settlement?: ProductTradeSettlement | null;
 };
 
 export type ProductTradeRequestStatus = {
@@ -271,6 +294,17 @@ export async function fetchTradeStatus(tradeId: string): Promise<Response> {
 
 export async function fetchTradeRequestStatus(requestId: string): Promise<Response> {
   return fetch(`${getProductApiUrl()}/api/trades/requests/${requestId}`);
+}
+
+export function hasCompletedTradeSettlement(
+  value:
+    | {
+        settlement?: ProductTradeSettlement | null;
+      }
+    | null
+    | undefined
+): boolean {
+  return value?.settlement?.status === 'complete';
 }
 
 export async function parseJson<T>(response: Response, fallback: string): Promise<T> {

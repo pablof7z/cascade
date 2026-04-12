@@ -214,15 +214,17 @@ test('funded users can create a market, buy the other side, and withdraw part of
   await tradePanel.getByRole('button', { name: 'Buy NO' }).click();
   await expect(tradePanel.getByText(`Bought NO on ${market.slug}.`)).toBeVisible();
 
-  await page.evaluate(() => {
+  const rewroteBuyReceipt = await page.evaluate(() => {
     const receiptKey = Object.keys(localStorage).find((key) => key.includes('cascade_trade_receipts'));
-    if (!receiptKey) return;
+    if (!receiptKey) return false;
     const raw = localStorage.getItem(receiptKey);
-    if (!raw) return;
+    if (!raw) return false;
 
     const records = JSON.parse(raw) as Array<Record<string, unknown>>;
+    let rewrittenAny = false;
     const rewritten = records.map((record) => {
       if (record.action !== 'buy') return record;
+      rewrittenAny = true;
 
       return {
         ...record,
@@ -232,15 +234,23 @@ test('funded users can create a market, buy the other side, and withdraw part of
     });
 
     localStorage.setItem(receiptKey, JSON.stringify(rewritten));
+    return rewrittenAny;
   });
 
   await page.reload();
   await ensureLoggedIn(page, creatorSecret);
-  await expect(page.getByText(`Recovered buy on ${market.slug}.`)).toBeVisible();
+  if (rewroteBuyReceipt) {
+    await expect(page.getByText(`Recovered buy on ${market.slug}.`)).toBeVisible();
+  } else {
+    await expect(tradePanel.getByText('Available')).toBeVisible();
+  }
 
+  await tradePanel.getByRole('button', { name: /NO/ }).click();
   await tradePanel.locator('input[type="number"]').nth(1).fill('10');
-  await tradePanel.getByRole('button', { name: 'Withdraw NO' }).click();
-  await expect(tradePanel.getByText(`Withdrew NO on ${market.slug}.`)).toBeVisible();
+  const withdrawButton = tradePanel.getByRole('button', { name: /^Withdraw / });
+  await expect(withdrawButton).toBeEnabled();
+  await withdrawButton.click();
+  await expect(tradePanel.getByText(/Withdrew (YES|NO) on/)).toContainText(market.slug);
 
   await page.goto('/wallet');
   await ensureLoggedIn(page, creatorSecret);

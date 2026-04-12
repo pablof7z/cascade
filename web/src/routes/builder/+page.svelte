@@ -9,8 +9,10 @@
     quoteBuyTrade,
     fetchTradeRequestStatus,
     fetchTradeStatus,
+    hasCompletedTradeSettlement,
     parseJson,
     type ProductTradeQuote,
+    type ProductTradeExecution,
     type ProductTradeRequestStatus,
     type ProductTradeStatus
   } from '$lib/cascade/api';
@@ -251,14 +253,20 @@
         requestId
       });
       await expectOk(seed, 'Failed to seed the market.');
-      const payload = (await seed.json()) as { trade?: { id?: string } };
-      if (typeof payload.trade?.id === 'string') {
-        markTradeReceiptTradeId(requestId, payload.trade.id);
+      const payload = (await seed.json()) as ProductTradeExecution;
+      const tradeId = typeof payload.trade.id === 'string' ? payload.trade.id : null;
+      if (tradeId) {
+        markTradeReceiptTradeId(requestId, tradeId);
       } else {
         attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
-      builderStatus = 'Market seeded and now public.';
+      if (hasCompletedTradeSettlement(payload)) {
+        clearTradeReceipt(requestId);
+        builderStatus = 'Market seeded and now public.';
+      } else {
+        builderStatus = 'Market seed submitted. Waiting for settlement.';
+      }
       await loadCreatorMarkets();
       await navigateToMarket(slug);
     } catch (error) {
@@ -405,6 +413,10 @@
             response,
             'Failed to recover the seeded market.'
           );
+          if (!hasCompletedTradeSettlement(payload)) {
+            builderStatus = `Recovered pending settlement for ${receipt.marketSlug}.`;
+            continue;
+          }
           clearTradeReceipt(receipt.id);
           builderStatus = 'Recovered seeded market and now public.';
           await loadCreatorMarkets();
@@ -437,6 +449,10 @@
               tradeResponse,
               'Failed to recover the completed seed.'
             );
+            if (!hasCompletedTradeSettlement(tradePayload)) {
+              builderStatus = `Recovered pending settlement for ${receipt.marketSlug}.`;
+              continue;
+            }
             clearTradeReceipt(receipt.id);
             builderStatus = 'Recovered seeded market and now public.';
             await loadCreatorMarkets();
@@ -476,6 +492,10 @@
             tradeResponse,
             'Failed to recover the completed seed.'
           );
+          if (!hasCompletedTradeSettlement(tradePayload)) {
+            builderStatus = `Recovered pending settlement for ${receipt.marketSlug}.`;
+            continue;
+          }
           clearTradeReceipt(receipt.id);
           builderStatus = 'Recovered seeded market and now public.';
           await loadCreatorMarkets();

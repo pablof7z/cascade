@@ -10,6 +10,7 @@
     quoteSellTrade,
     fetchTradeRequestStatus,
     fetchTradeStatus,
+    hasCompletedTradeSettlement,
     parseJson,
     sellMarketPosition,
     type ProductTradeQuote,
@@ -114,6 +115,10 @@
             response,
             'Failed to recover the latest trade status.'
           );
+          if (!hasCompletedTradeSettlement(payload)) {
+            status = `Recovered pending settlement for ${receipt.action} on ${payload.market.slug}.`;
+            continue;
+          }
           clearTradeReceipt(receipt.id);
           recoveredSide = receipt.side;
           status = `Recovered ${receipt.action} on ${payload.market.slug}.`;
@@ -153,6 +158,10 @@
             tradeResponse,
             'Failed to recover the completed trade status.'
           );
+          if (!hasCompletedTradeSettlement(tradePayload)) {
+            status = `Recovered pending settlement for ${receipt.action} on ${receipt.marketSlug}.`;
+            continue;
+          }
           clearTradeReceipt(receipt.id);
           recoveredSide = receipt.side;
           status = `Recovered ${receipt.action} on ${tradePayload.market.slug}.`;
@@ -200,6 +209,10 @@
         tradeResponse,
         'Failed to recover the completed trade status.'
       );
+      if (!hasCompletedTradeSettlement(tradePayload)) {
+        status = `Recovered pending settlement for ${receipt.action} on ${receipt.marketSlug}.`;
+        return 'handled';
+      }
       clearTradeReceipt(receipt.id);
       status = `Recovered ${receipt.action} on ${tradePayload.market.slug}.`;
       return 'executed';
@@ -271,7 +284,12 @@
         attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
-      status = `Bought ${buySide.toUpperCase()} on ${marketSlug}.`;
+      if (hasCompletedTradeSettlement(payload)) {
+        clearTradeReceipt(requestId);
+        status = `Bought ${buySide.toUpperCase()} on ${marketSlug}.`;
+      } else {
+        status = `Buy submitted on ${marketSlug}. Waiting for settlement.`;
+      }
       alignSideToWallet(payload.wallet);
       wallet = payload.wallet;
       await invalidateAll();
@@ -339,7 +357,12 @@
         attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
-      status = `Withdrew ${buySide.toUpperCase()} on ${marketSlug}.`;
+      if (hasCompletedTradeSettlement(payload)) {
+        clearTradeReceipt(requestId);
+        status = `Withdrew ${buySide.toUpperCase()} on ${marketSlug}.`;
+      } else {
+        status = `Withdrawal submitted on ${marketSlug}. Waiting for settlement.`;
+      }
       sellQuantity = '';
       alignSideToWallet(payload.wallet);
       wallet = payload.wallet;

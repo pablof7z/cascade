@@ -173,6 +173,7 @@ Lightning top-up quote creation should accept an optional client-supplied `reque
 ### Trading
 
 - `POST /api/trades/quote`
+- `GET /api/trades/quotes/{quote_id}`
 - `POST /api/trades/buy`
 - `GET /api/trades/requests/{request_id}`
 - `GET /api/trades/{trade_id}`
@@ -180,6 +181,8 @@ Lightning top-up quote creation should accept an optional client-supplied `reque
 - `POST /api/trades/sell`
 
 Trade execution routes should accept an optional client-supplied `request_id`. The mint persists that request id before execution so duplicate retries can replay the same completed trade instead of creating a second fill, and interrupted clients can recover through `GET /api/trades/requests/{request_id}` even if they never received the final `trade_id`.
+
+Trade quote routes should persist executable quote snapshots and return a `quote_id` with an expiry. Buy and sell execution routes may accept that `quote_id` to execute against the locked quote instead of recomputing price mid-flight. The persisted quote payload is authoritative for execution: clients should submit the returned `spend_minor` or `quantity` values alongside `quote_id`, rather than reusing the pre-quote input blindly. `GET /api/trades/quotes/{quote_id}` should report whether the quote is still open, has expired, or has already been executed.
 
 ### Public Read
 

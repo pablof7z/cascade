@@ -92,6 +92,24 @@ export type ProductTradeExecution = {
   trade: ProductTradeEvent;
 };
 
+export type ProductTradeQuote = {
+  quote_id?: string | null;
+  market_event_id: string;
+  trade_type: string;
+  side: string;
+  quantity: number;
+  spend_minor: number;
+  fee_minor: number;
+  net_minor: number;
+  average_price_ppm: number;
+  current_price_yes_ppm: number;
+  current_price_no_ppm: number;
+  created_at?: number | null;
+  expires_at?: number | null;
+  status?: string | null;
+  trade_id?: string | null;
+};
+
 export type ProductTradeStatus = {
   market: ProductMarketSummary;
   trade: ProductTradeEvent;
@@ -120,6 +138,7 @@ export async function buyMarketPosition(input: {
   pubkey: string;
   side: 'yes' | 'no';
   spendMinor: number;
+  quoteId?: string;
   requestId?: string;
 }): Promise<Response> {
   return fetch(`${getProductApiUrl()}/api/trades/buy`, {
@@ -130,6 +149,7 @@ export async function buyMarketPosition(input: {
       pubkey: input.pubkey,
       side: input.side,
       spend_minor: input.spendMinor,
+      quote_id: input.quoteId,
       request_id: input.requestId
     })
   });
@@ -140,6 +160,7 @@ export async function sellMarketPosition(input: {
   pubkey: string;
   side: 'yes' | 'no';
   quantity: number;
+  quoteId?: string;
   requestId?: string;
 }): Promise<Response> {
   return fetch(`${getProductApiUrl()}/api/trades/sell`, {
@@ -150,9 +171,46 @@ export async function sellMarketPosition(input: {
       pubkey: input.pubkey,
       side: input.side,
       quantity: input.quantity,
+      quote_id: input.quoteId,
       request_id: input.requestId
     })
   });
+}
+
+export async function quoteBuyTrade(input: {
+  eventId: string;
+  side: 'yes' | 'no';
+  spendMinor: number;
+}): Promise<Response> {
+  return fetch(`${getProductApiUrl()}/api/trades/quote`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      event_id: input.eventId,
+      side: input.side,
+      spend_minor: input.spendMinor
+    })
+  });
+}
+
+export async function quoteSellTrade(input: {
+  eventId: string;
+  side: 'yes' | 'no';
+  quantity: number;
+}): Promise<Response> {
+  return fetch(`${getProductApiUrl()}/api/trades/sell/quote`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      event_id: input.eventId,
+      side: input.side,
+      quantity: input.quantity
+    })
+  });
+}
+
+export async function fetchTradeQuoteStatus(quoteId: string): Promise<Response> {
+  return fetch(`${getProductApiUrl()}/api/trades/quotes/${quoteId}`);
 }
 
 export async function fetchPaperWallet(pubkey: string): Promise<Response> {

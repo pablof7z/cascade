@@ -5,9 +5,11 @@
   import {
     buyMarketPosition,
     expectOk,
+    quoteBuyTrade,
     fetchTradeRequestStatus,
     fetchTradeStatus,
     parseJson,
+    type ProductTradeQuote,
     type ProductTradeRequestStatus,
     type ProductTradeStatus
   } from '$lib/cascade/api';
@@ -222,11 +224,25 @@
         side: seedSide
       });
 
+      const quoteResponse = await quoteBuyTrade({
+        eventId,
+        side: seedSide,
+        spendMinor: parsedSeedAmount
+      });
+      const quote = await parseJson<ProductTradeQuote>(
+        quoteResponse,
+        'Failed to lock the seed quote.'
+      );
+      if (!quote.quote_id) {
+        throw new Error('Seed quote is missing a quote id.');
+      }
+
       const seed = await buyMarketPosition({
         eventId,
         pubkey: currentUser.pubkey,
-        side: seedSide,
-        spendMinor: parsedSeedAmount,
+        side: (quote.side as 'yes' | 'no') ?? seedSide,
+        spendMinor: quote.spend_minor,
+        quoteId: quote.quote_id,
         requestId
       });
       await expectOk(seed, 'Failed to seed the market.');

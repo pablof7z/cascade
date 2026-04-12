@@ -4,8 +4,9 @@ use crate::error::Result;
 use crate::market::{Market, MarketStatus, Side, Trade, TradeDirection};
 use crate::product::{
     FxQuoteSnapshot, MarketLaunchState, MarketPosition, MarketTradeRecord, MarketVisibility,
-    TradeExecutionRequest, TradeExecutionRequestStatus, WalletBalanceRecord, WalletFundingEvent,
-    WalletTopupQuote, WalletTopupRequest, WalletTopupRequestStatus, WalletTopupStatus,
+    TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot, WalletBalanceRecord,
+    WalletFundingEvent, WalletTopupQuote, WalletTopupRequest, WalletTopupRequestStatus,
+    WalletTopupStatus,
 };
 use crate::trade::Payout;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
@@ -69,6 +70,13 @@ impl CascadeDatabase {
 
         sqlx::query(include_str!(
             "../../../migrations/006_wallet_topup_requests.sql"
+        ))
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        sqlx::query(include_str!(
+            "../../../migrations/007_trade_quote_snapshots.sql"
         ))
         .execute(&self.pool)
         .await
@@ -1697,6 +1705,149 @@ impl CascadeDatabase {
         self.get_trade_execution_request(request_id).await
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_trade_quote_snapshot(
+        &self,
+        market_event_id: &str,
+        trade_type: &str,
+        side: &str,
+        spend_minor: u64,
+        fee_minor: u64,
+        net_minor: u64,
+        quantity: f64,
+        average_price_ppm: u64,
+        current_price_yes_ppm: u64,
+        current_price_no_ppm: u64,
+        snapshot_q_long: f64,
+        snapshot_q_short: f64,
+        snapshot_reserve_minor: u64,
+        expires_at: i64,
+    ) -> Result<TradeQuoteSnapshot> {
+        let now = chrono::Utc::now().timestamp();
+        let quote = TradeQuoteSnapshot {
+            id: uuid::Uuid::new_v4().to_string(),
+            market_event_id: market_event_id.to_string(),
+            trade_type: trade_type.to_string(),
+            side: side.to_string(),
+            spend_minor,
+            fee_minor,
+            net_minor,
+            quantity,
+            average_price_ppm,
+            current_price_yes_ppm,
+            current_price_no_ppm,
+            snapshot_q_long,
+            snapshot_q_short,
+            snapshot_reserve_minor,
+            created_at: now,
+            expires_at,
+            executed_trade_id: None,
+            executed_at: None,
+        };
+
+        sqlx::query(
+            r#"
+            INSERT INTO trade_quote_snapshots (
+                id,
+                market_event_id,
+                trade_type,
+                side,
+                spend_minor,
+                fee_minor,
+                net_minor,
+                quantity,
+                average_price_ppm,
+                current_price_yes_ppm,
+                current_price_no_ppm,
+                snapshot_q_long,
+                snapshot_q_short,
+                snapshot_reserve_minor,
+                created_at,
+                expires_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&quote.id)
+        .bind(&quote.market_event_id)
+        .bind(&quote.trade_type)
+        .bind(&quote.side)
+        .bind(quote.spend_minor as i64)
+        .bind(quote.fee_minor as i64)
+        .bind(quote.net_minor as i64)
+        .bind(quote.quantity)
+        .bind(quote.average_price_ppm as i64)
+        .bind(quote.current_price_yes_ppm as i64)
+        .bind(quote.current_price_no_ppm as i64)
+        .bind(quote.snapshot_q_long)
+        .bind(quote.snapshot_q_short)
+        .bind(quote.snapshot_reserve_minor as i64)
+        .bind(quote.created_at)
+        .bind(quote.expires_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(quote)
+    }
+
+    pub async fn get_trade_quote_snapshot(
+        &self,
+        quote_id: &str,
+    ) -> Result<Option<TradeQuoteSnapshot>> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                id,
+                market_event_id,
+                trade_type,
+                side,
+                spend_minor,
+                fee_minor,
+                net_minor,
+                quantity,
+                average_price_ppm,
+                current_price_yes_ppm,
+                current_price_no_ppm,
+                snapshot_q_long,
+                snapshot_q_short,
+                snapshot_reserve_minor,
+                created_at,
+                expires_at,
+                executed_trade_id,
+                executed_at
+            FROM trade_quote_snapshots
+            WHERE id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(quote_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(row.map(|row| TradeQuoteSnapshot {
+            id: row.get::<String, _>("id"),
+            market_event_id: row.get::<String, _>("market_event_id"),
+            trade_type: row.get::<String, _>("trade_type"),
+            side: row.get::<String, _>("side"),
+            spend_minor: row.get::<i64, _>("spend_minor").max(0) as u64,
+            fee_minor: row.get::<i64, _>("fee_minor").max(0) as u64,
+            net_minor: row.get::<i64, _>("net_minor").max(0) as u64,
+            quantity: row.get::<f64, _>("quantity"),
+            average_price_ppm: row.get::<i64, _>("average_price_ppm").max(0) as u64,
+            current_price_yes_ppm: row.get::<i64, _>("current_price_yes_ppm").max(0) as u64,
+            current_price_no_ppm: row.get::<i64, _>("current_price_no_ppm").max(0) as u64,
+            snapshot_q_long: row.get::<f64, _>("snapshot_q_long"),
+            snapshot_q_short: row.get::<f64, _>("snapshot_q_short"),
+            snapshot_reserve_minor: row.get::<i64, _>("snapshot_reserve_minor").max(0) as u64,
+            created_at: row.get::<i64, _>("created_at"),
+            expires_at: row.get::<i64, _>("expires_at"),
+            executed_trade_id: row.get::<Option<String>, _>("executed_trade_id"),
+            executed_at: row.get::<Option<i64>, _>("executed_at"),
+        }))
+    }
+
     pub async fn list_positions(&self, pubkey: &str) -> Result<Vec<MarketPosition>> {
         let rows = sqlx::query_as::<_, (String, String, String, String, f64, i64, i64)>(
             r#"
@@ -1981,6 +2132,7 @@ impl CascadeDatabase {
         &self,
         trade_id: &str,
         created_at: i64,
+        quote_id: Option<&str>,
         wallet_pubkey: &str,
         market: &Market,
         direction: &str,
@@ -1998,6 +2150,38 @@ impl CascadeDatabase {
     ) -> Result<MarketTradeRecord> {
         let mut tx = self.pool.begin().await?;
         let now = created_at;
+
+        if let Some(quote_id) = quote_id.filter(|value| !value.trim().is_empty()) {
+            let quote_row = sqlx::query_as::<_, (Option<String>, i64)>(
+                r#"
+                SELECT executed_trade_id, expires_at
+                FROM trade_quote_snapshots
+                WHERE id = ?
+                LIMIT 1
+                "#,
+            )
+            .bind(quote_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+            let Some((executed_trade_id, expires_at)) = quote_row else {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "trade quote not found".to_string(),
+                ));
+            };
+
+            if executed_trade_id.is_some() {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "trade quote already executed".to_string(),
+                ));
+            }
+
+            if expires_at <= now {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "trade quote has expired".to_string(),
+                ));
+            }
+        }
 
         let wallet_row = sqlx::query_as::<_, (i64,)>(
             "SELECT available_minor FROM wallet_balances WHERE pubkey = ?",
@@ -2197,6 +2381,28 @@ impl CascadeDatabase {
         .bind(raw_event_json)
         .execute(&mut *tx)
         .await?;
+
+        if let Some(quote_id) = quote_id.filter(|value| !value.trim().is_empty()) {
+            let result = sqlx::query(
+                r#"
+                UPDATE trade_quote_snapshots
+                SET executed_trade_id = ?, executed_at = ?
+                WHERE id = ? AND executed_trade_id IS NULL AND expires_at > ?
+                "#,
+            )
+            .bind(trade_id)
+            .bind(now)
+            .bind(quote_id)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+
+            if result.rows_affected() != 1 {
+                return Err(crate::error::CascadeError::invalid_input(
+                    "trade quote is no longer executable".to_string(),
+                ));
+            }
+        }
 
         tx.commit().await?;
 

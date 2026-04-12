@@ -5,10 +5,13 @@
     buyMarketPosition,
     expectOk,
     fetchPaperWallet,
+    quoteBuyTrade,
+    quoteSellTrade,
     fetchTradeRequestStatus,
     fetchTradeStatus,
     parseJson,
     sellMarketPosition,
+    type ProductTradeQuote,
     type ProductTradeExecution,
     type ProductTradeRequestStatus,
     type ProductTradeStatus,
@@ -180,6 +183,19 @@
     errorMessage = '';
 
     try {
+      const quoteResponse = await quoteBuyTrade({
+        eventId: marketId,
+        side: buySide,
+        spendMinor
+      });
+      const quote = await parseJson<ProductTradeQuote>(
+        quoteResponse,
+        'Failed to lock a buy quote.'
+      );
+      if (!quote.quote_id) {
+        throw new Error('Buy quote is missing a quote id.');
+      }
+
       const requestId = createTradeRequestId();
       trackTradeReceipt({
         id: requestId,
@@ -193,8 +209,9 @@
       const response = await buyMarketPosition({
         eventId: marketId,
         pubkey: currentUser.pubkey,
-        side: buySide,
-        spendMinor,
+        side: (quote.side as 'yes' | 'no') ?? buySide,
+        spendMinor: quote.spend_minor,
+        quoteId: quote.quote_id,
         requestId
       });
       await expectOk(response, 'Trade failed.');
@@ -230,6 +247,19 @@
     errorMessage = '';
 
     try {
+      const quoteResponse = await quoteSellTrade({
+        eventId: marketId,
+        side: buySide,
+        quantity
+      });
+      const quote = await parseJson<ProductTradeQuote>(
+        quoteResponse,
+        'Failed to lock a withdrawal quote.'
+      );
+      if (!quote.quote_id) {
+        throw new Error('Sell quote is missing a quote id.');
+      }
+
       const requestId = createTradeRequestId();
       trackTradeReceipt({
         id: requestId,
@@ -243,8 +273,9 @@
       const response = await sellMarketPosition({
         eventId: marketId,
         pubkey: currentUser.pubkey,
-        side: buySide,
-        quantity,
+        side: (quote.side as 'yes' | 'no') ?? buySide,
+        quantity: quote.quantity,
+        quoteId: quote.quote_id,
         requestId
       });
       await expectOk(response, 'Sell failed.');

@@ -172,6 +172,28 @@ pub struct WalletTopupRequest {
     pub completed_at: Option<i64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TradeQuoteSnapshot {
+    pub id: String,
+    pub market_event_id: String,
+    pub trade_type: String,
+    pub side: String,
+    pub spend_minor: u64,
+    pub fee_minor: u64,
+    pub net_minor: u64,
+    pub quantity: f64,
+    pub average_price_ppm: u64,
+    pub current_price_yes_ppm: u64,
+    pub current_price_no_ppm: u64,
+    pub snapshot_q_long: f64,
+    pub snapshot_q_short: f64,
+    pub snapshot_reserve_minor: u64,
+    pub created_at: i64,
+    pub expires_at: i64,
+    pub executed_trade_id: Option<String>,
+    pub executed_at: Option<i64>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TradeExecutionRequestStatus {

@@ -347,6 +347,7 @@ pub struct ProductCoordinatorTradeQuoteRequest {
 
 #[derive(Debug, Serialize)]
 pub struct ProductTradeQuoteResponse {
+    pub quote_id: Option<String>,
     pub market_event_id: String,
     pub trade_type: String,
     pub side: String,
@@ -357,6 +358,10 @@ pub struct ProductTradeQuoteResponse {
     pub average_price_ppm: u64,
     pub current_price_yes_ppm: u64,
     pub current_price_no_ppm: u64,
+    pub created_at: Option<i64>,
+    pub expires_at: Option<i64>,
+    pub status: Option<String>,
+    pub trade_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -364,6 +369,7 @@ pub struct ProductBuyRequest {
     pub pubkey: String,
     pub side: String,
     pub spend_minor: u64,
+    pub quote_id: Option<String>,
     pub request_id: Option<String>,
 }
 
@@ -373,6 +379,7 @@ pub struct ProductCoordinatorBuyRequest {
     pub pubkey: String,
     pub side: String,
     pub spend_minor: u64,
+    pub quote_id: Option<String>,
     pub request_id: Option<String>,
 }
 
@@ -381,6 +388,7 @@ pub struct ProductSellRequest {
     pub pubkey: String,
     pub side: String,
     pub quantity: f64,
+    pub quote_id: Option<String>,
     pub request_id: Option<String>,
 }
 
@@ -390,6 +398,7 @@ pub struct ProductCoordinatorSellRequest {
     pub pubkey: String,
     pub side: String,
     pub quantity: f64,
+    pub quote_id: Option<String>,
     pub request_id: Option<String>,
 }
 

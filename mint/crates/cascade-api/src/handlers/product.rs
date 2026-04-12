@@ -18,13 +18,14 @@ use axum::{
 use cascade_core::{
     product::{
         FxQuoteSnapshot, MarketLaunchState, TradeExecutionRequest, TradeExecutionRequestStatus,
-        WalletTopupQuote, WalletTopupRequest, WalletTopupRequestStatus,
+        TradeQuoteSnapshot, WalletTopupQuote, WalletTopupRequest, WalletTopupRequestStatus,
     },
     Market, Side, WalletBalanceRecord,
 };
 use serde_json::{json, Value};
 
 const TRADE_FEE_BPS: u64 = 100;
+const TRADE_QUOTE_TTL_SECONDS: i64 = 30;
 const FALLBACK_MINT_PUBKEY: &str =
     "1111111111111111111111111111111111111111111111111111111111111111";
 const PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR: u64 = 10_000;
@@ -683,6 +684,7 @@ pub async fn buy_trade(
         pubkey: req.pubkey,
         side: req.side,
         spend_minor: req.spend_minor,
+        quote_id: req.quote_id,
         request_id: req.request_id,
     };
     buy_trade_by_event(&state, &req.event_id, &buy_request).await
@@ -696,9 +698,27 @@ pub async fn sell_trade(
         pubkey: req.pubkey,
         side: req.side,
         quantity: req.quantity,
+        quote_id: req.quote_id,
         request_id: req.request_id,
     };
     sell_trade_by_event(&state, &req.event_id, &sell_request).await
+}
+
+pub async fn trade_quote_status(
+    State(state): State<AppState>,
+    Path(quote_id): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    match load_trade_quote_response(&state, &quote_id).await {
+        Ok(Some(response)) => (StatusCode::OK, Json(json!(response))),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "trade_quote_not_found" })),
+        ),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": error })),
+        ),
+    }
 }
 
 async fn prepare_wallet_topup_request(
@@ -1030,7 +1050,13 @@ async fn quote_trade_by_event(
 ) -> (StatusCode, Json<Value>) {
     match load_market_for_trading(state, event_id).await {
         Ok(market) => match build_quote_response(state, &market, req) {
-            Ok(quote) => (StatusCode::OK, Json(json!(quote))),
+            Ok(quote) => match create_persisted_trade_quote(state, &market, &quote).await {
+                Ok(persisted) => (StatusCode::OK, Json(json!(persisted))),
+                Err(error) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": error })),
+                ),
+            },
             Err(error) => (
                 StatusCode::BAD_REQUEST,
                 Json(json!({ "error": error.to_string() })),
@@ -1050,60 +1076,10 @@ async fn buy_trade_by_event(
 ) -> (StatusCode, Json<Value>) {
     match load_market_for_trading(state, event_id).await {
         Ok(market) => {
-            let quote_request = ProductTradeQuoteRequest {
-                trade_type: "buy".to_string(),
-                side: req.side.clone(),
-                spend_minor: Some(req.spend_minor),
-                quantity: None,
-            };
-
-            let quote = match build_quote_response(state, &market, &quote_request) {
-                Ok(quote) => quote,
-                Err(error) => {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(json!({ "error": error.to_string() })),
-                    );
-                }
-            };
-
             let side = match parse_side(&req.side) {
                 Ok(side) => side,
                 Err(error) => {
                     return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
-                }
-            };
-            let direction = side_label(side);
-            let (next_q_long, next_q_short) = next_buy_quantities(&market, side, quote.quantity);
-            let next_reserve_minor = market.reserve_sats.saturating_add(quote.spend_minor);
-            let created_at = chrono::Utc::now().timestamp();
-            let trade_id = uuid::Uuid::new_v4().to_string();
-            let post_price_ppm = post_trade_price_ppm(state, next_q_long, next_q_short, side)
-                .unwrap_or_else(|_| {
-                    if direction == "yes" {
-                        quote.current_price_yes_ppm
-                    } else {
-                        quote.current_price_no_ppm
-                    }
-                });
-            let raw_event = build_trade_event(
-                &trade_id,
-                mint_pubkey_from_market(&quote.market_event_id, &quote.side),
-                &market.event_id,
-                direction,
-                "buy",
-                quote.spend_minor,
-                quote.quantity,
-                post_price_ppm,
-                created_at,
-            );
-            let raw_event_json = match serde_json::to_string(&raw_event) {
-                Ok(raw) => raw,
-                Err(error) => {
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!({ "error": error.to_string() })),
-                    );
                 }
             };
             let request_id = req
@@ -1142,11 +1118,104 @@ async fn buy_trade_by_event(
                 }
             }
 
+            let quote = if let Some(quote_id) = req
+                .quote_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+            {
+                match load_locked_trade_quote(
+                    state,
+                    quote_id,
+                    &market.event_id,
+                    "buy",
+                    &req.side,
+                    Some(req.spend_minor),
+                    None,
+                )
+                .await
+                {
+                    Ok(quote) => quote,
+                    Err(error) => {
+                        if let Some(request_id) = request_id {
+                            let _ = state
+                                .db
+                                .fail_trade_execution_request(request_id, &error)
+                                .await;
+                        }
+                        return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
+                    }
+                }
+            } else {
+                let quote_request = ProductTradeQuoteRequest {
+                    trade_type: "buy".to_string(),
+                    side: req.side.clone(),
+                    spend_minor: Some(req.spend_minor),
+                    quantity: None,
+                };
+
+                match build_quote_response(state, &market, &quote_request) {
+                    Ok(quote) => quote,
+                    Err(error) => {
+                        if let Some(request_id) = request_id {
+                            let _ = state
+                                .db
+                                .fail_trade_execution_request(request_id, &error.to_string())
+                                .await;
+                        }
+                        return (
+                            StatusCode::BAD_REQUEST,
+                            Json(json!({ "error": error.to_string() })),
+                        );
+                    }
+                }
+            };
+            let direction = side_label(side);
+            let (next_q_long, next_q_short) = next_buy_quantities(&market, side, quote.quantity);
+            let next_reserve_minor = market.reserve_sats.saturating_add(quote.spend_minor);
+            let created_at = chrono::Utc::now().timestamp();
+            let trade_id = uuid::Uuid::new_v4().to_string();
+            let post_price_ppm = post_trade_price_ppm(state, next_q_long, next_q_short, side)
+                .unwrap_or_else(|_| {
+                    if direction == "yes" {
+                        quote.current_price_yes_ppm
+                    } else {
+                        quote.current_price_no_ppm
+                    }
+                });
+            let raw_event = build_trade_event(
+                &trade_id,
+                mint_pubkey_from_market(&quote.market_event_id, &quote.side),
+                &market.event_id,
+                direction,
+                "buy",
+                quote.spend_minor,
+                quote.quantity,
+                post_price_ppm,
+                created_at,
+            );
+            let raw_event_json = match serde_json::to_string(&raw_event) {
+                Ok(raw) => raw,
+                Err(error) => {
+                    if let Some(request_id) = request_id {
+                        let _ = state
+                            .db
+                            .fail_trade_execution_request(request_id, &error.to_string())
+                            .await;
+                    }
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!({ "error": error.to_string() })),
+                    );
+                }
+            };
+
             match state
                 .db
                 .apply_trade_execution(
                     &trade_id,
                     created_at,
+                    req.quote_id.as_deref(),
                     &req.pubkey,
                     &market,
                     direction,
@@ -1255,57 +1324,6 @@ async fn sell_trade_by_event(
                 );
             }
 
-            let quote_request = ProductTradeQuoteRequest {
-                trade_type: "sell".to_string(),
-                side: req.side.clone(),
-                spend_minor: None,
-                quantity: Some(req.quantity),
-            };
-            let quote = match build_quote_response(state, &market, &quote_request) {
-                Ok(quote) => quote,
-                Err(error) => {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(json!({ "error": error.to_string() })),
-                    );
-                }
-            };
-
-            let (next_q_long, next_q_short) = next_sell_quantities(&market, side, req.quantity);
-            let next_reserve_minor = market.reserve_sats.saturating_sub(quote.net_minor);
-            let created_at = chrono::Utc::now().timestamp();
-            let trade_id = uuid::Uuid::new_v4().to_string();
-            let post_price_ppm = post_trade_price_ppm(state, next_q_long, next_q_short, side)
-                .unwrap_or_else(|_| {
-                    if direction == "yes" {
-                        quote.current_price_yes_ppm
-                    } else {
-                        quote.current_price_no_ppm
-                    }
-                });
-            let raw_event = build_trade_event(
-                &trade_id,
-                mint_pubkey_from_market(&quote.market_event_id, &quote.side),
-                &market.event_id,
-                direction,
-                "sell",
-                quote.net_minor,
-                req.quantity,
-                post_price_ppm,
-                created_at,
-            );
-            let raw_event_json = match serde_json::to_string(&raw_event) {
-                Ok(raw) => raw,
-                Err(error) => {
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!({ "error": error.to_string() })),
-                    );
-                }
-            };
-            let proportion = (req.quantity / position.quantity).clamp(0.0, 1.0);
-            let released_cost_basis =
-                ((position.cost_basis_minor as f64) * proportion).round() as i64;
             let request_id = req
                 .request_id
                 .as_deref()
@@ -1342,11 +1360,106 @@ async fn sell_trade_by_event(
                 }
             }
 
+            let quote = if let Some(quote_id) = req
+                .quote_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+            {
+                match load_locked_trade_quote(
+                    state,
+                    quote_id,
+                    &market.event_id,
+                    "sell",
+                    &req.side,
+                    None,
+                    Some(req.quantity),
+                )
+                .await
+                {
+                    Ok(quote) => quote,
+                    Err(error) => {
+                        if let Some(request_id) = request_id {
+                            let _ = state
+                                .db
+                                .fail_trade_execution_request(request_id, &error)
+                                .await;
+                        }
+                        return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
+                    }
+                }
+            } else {
+                let quote_request = ProductTradeQuoteRequest {
+                    trade_type: "sell".to_string(),
+                    side: req.side.clone(),
+                    spend_minor: None,
+                    quantity: Some(req.quantity),
+                };
+                match build_quote_response(state, &market, &quote_request) {
+                    Ok(quote) => quote,
+                    Err(error) => {
+                        if let Some(request_id) = request_id {
+                            let _ = state
+                                .db
+                                .fail_trade_execution_request(request_id, &error.to_string())
+                                .await;
+                        }
+                        return (
+                            StatusCode::BAD_REQUEST,
+                            Json(json!({ "error": error.to_string() })),
+                        );
+                    }
+                }
+            };
+
+            let (next_q_long, next_q_short) = next_sell_quantities(&market, side, req.quantity);
+            let next_reserve_minor = market.reserve_sats.saturating_sub(quote.net_minor);
+            let created_at = chrono::Utc::now().timestamp();
+            let trade_id = uuid::Uuid::new_v4().to_string();
+            let post_price_ppm = post_trade_price_ppm(state, next_q_long, next_q_short, side)
+                .unwrap_or_else(|_| {
+                    if direction == "yes" {
+                        quote.current_price_yes_ppm
+                    } else {
+                        quote.current_price_no_ppm
+                    }
+                });
+            let raw_event = build_trade_event(
+                &trade_id,
+                mint_pubkey_from_market(&quote.market_event_id, &quote.side),
+                &market.event_id,
+                direction,
+                "sell",
+                quote.net_minor,
+                req.quantity,
+                post_price_ppm,
+                created_at,
+            );
+            let raw_event_json = match serde_json::to_string(&raw_event) {
+                Ok(raw) => raw,
+                Err(error) => {
+                    if let Some(request_id) = request_id {
+                        let _ = state
+                            .db
+                            .fail_trade_execution_request(request_id, &error.to_string())
+                            .await;
+                    }
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!({ "error": error.to_string() })),
+                    );
+                }
+            };
+            let proportion = (req.quantity / position.quantity).clamp(0.0, 1.0);
+            let released_cost_basis =
+                ((position.cost_basis_minor as f64) * proportion).round() as i64;
+
             match state
                 .db
                 .apply_trade_execution(
                     &trade_id,
                     created_at,
+                    req.quote_id.as_deref(),
                     &req.pubkey,
                     &market,
                     direction,
@@ -1505,6 +1618,148 @@ async fn load_wallet_topup_request_status_response(
         error: request.error_message,
         topup,
     }))
+}
+
+fn trade_quote_state_label(snapshot: &TradeQuoteSnapshot, now: i64) -> &'static str {
+    if snapshot.executed_trade_id.is_some() {
+        "executed"
+    } else if snapshot.expires_at <= now {
+        "expired"
+    } else {
+        "open"
+    }
+}
+
+fn product_trade_quote_from_snapshot(snapshot: &TradeQuoteSnapshot) -> ProductTradeQuoteResponse {
+    ProductTradeQuoteResponse {
+        quote_id: Some(snapshot.id.clone()),
+        market_event_id: snapshot.market_event_id.clone(),
+        trade_type: snapshot.trade_type.clone(),
+        side: snapshot.side.clone(),
+        quantity: snapshot.quantity,
+        spend_minor: snapshot.spend_minor,
+        fee_minor: snapshot.fee_minor,
+        net_minor: snapshot.net_minor,
+        average_price_ppm: snapshot.average_price_ppm,
+        current_price_yes_ppm: snapshot.current_price_yes_ppm,
+        current_price_no_ppm: snapshot.current_price_no_ppm,
+        created_at: Some(snapshot.created_at),
+        expires_at: Some(snapshot.expires_at),
+        status: Some(
+            trade_quote_state_label(snapshot, chrono::Utc::now().timestamp()).to_string(),
+        ),
+        trade_id: snapshot.executed_trade_id.clone(),
+    }
+}
+
+async fn load_trade_quote_response(
+    state: &AppState,
+    quote_id: &str,
+) -> Result<Option<ProductTradeQuoteResponse>, String> {
+    let Some(snapshot) = state
+        .db
+        .get_trade_quote_snapshot(quote_id)
+        .await
+        .map_err(|error| error.to_string())?
+    else {
+        return Ok(None);
+    };
+
+    Ok(Some(product_trade_quote_from_snapshot(&snapshot)))
+}
+
+async fn create_persisted_trade_quote(
+    state: &AppState,
+    market: &Market,
+    quote: &ProductTradeQuoteResponse,
+) -> Result<ProductTradeQuoteResponse, String> {
+    let expires_at = chrono::Utc::now().timestamp() + TRADE_QUOTE_TTL_SECONDS;
+    let snapshot = state
+        .db
+        .create_trade_quote_snapshot(
+            &market.event_id,
+            &quote.trade_type,
+            &quote.side,
+            quote.spend_minor,
+            quote.fee_minor,
+            quote.net_minor,
+            quote.quantity,
+            quote.average_price_ppm,
+            quote.current_price_yes_ppm,
+            quote.current_price_no_ppm,
+            market.q_long,
+            market.q_short,
+            market.reserve_sats,
+            expires_at,
+        )
+        .await
+        .map_err(|error| error.to_string())?;
+
+    Ok(product_trade_quote_from_snapshot(&snapshot))
+}
+
+fn quote_snapshot_matches(
+    snapshot: &TradeQuoteSnapshot,
+    market_event_id: &str,
+    trade_type: &str,
+    side: &str,
+    spend_minor: Option<u64>,
+    quantity: Option<f64>,
+) -> bool {
+    if snapshot.market_event_id != market_event_id
+        || snapshot.trade_type != trade_type
+        || snapshot.side != side
+    {
+        return false;
+    }
+
+    if let Some(spend_minor) = spend_minor {
+        if snapshot.spend_minor != spend_minor {
+            return false;
+        }
+    }
+
+    if let Some(quantity) = quantity {
+        if (snapshot.quantity - quantity).abs() > f64::EPSILON {
+            return false;
+        }
+    }
+
+    true
+}
+
+async fn load_locked_trade_quote(
+    state: &AppState,
+    quote_id: &str,
+    market_event_id: &str,
+    trade_type: &str,
+    side: &str,
+    spend_minor: Option<u64>,
+    quantity: Option<f64>,
+) -> Result<ProductTradeQuoteResponse, String> {
+    let snapshot = state
+        .db
+        .get_trade_quote_snapshot(quote_id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "trade_quote_not_found".to_string())?;
+
+    if !quote_snapshot_matches(
+        &snapshot,
+        market_event_id,
+        trade_type,
+        side,
+        spend_minor,
+        quantity,
+    ) {
+        return Err("trade_quote_conflict".to_string());
+    }
+
+    match trade_quote_state_label(&snapshot, chrono::Utc::now().timestamp()) {
+        "executed" => Err("trade_quote_already_executed".to_string()),
+        "expired" => Err("trade_quote_expired".to_string()),
+        _ => Ok(product_trade_quote_from_snapshot(&snapshot)),
+    }
 }
 
 async fn load_trade_request_status_response(
@@ -1743,6 +1998,7 @@ fn build_quote_response(
                 .clamp(0.0, 1_000_000.0) as u64;
 
             Ok(ProductTradeQuoteResponse {
+                quote_id: None,
                 market_event_id: market.event_id.clone(),
                 trade_type: "buy".to_string(),
                 side: side_label(side).to_string(),
@@ -1753,6 +2009,10 @@ fn build_quote_response(
                 average_price_ppm,
                 current_price_yes_ppm: current_yes_ppm,
                 current_price_no_ppm: current_no_ppm,
+                created_at: None,
+                expires_at: None,
+                status: None,
+                trade_id: None,
             })
         }
         "sell" => {
@@ -1766,6 +2026,7 @@ fn build_quote_response(
                 .clamp(0.0, 1_000_000.0) as u64;
 
             Ok(ProductTradeQuoteResponse {
+                quote_id: None,
                 market_event_id: market.event_id.clone(),
                 trade_type: "sell".to_string(),
                 side: side_label(side).to_string(),
@@ -1776,6 +2037,10 @@ fn build_quote_response(
                 average_price_ppm,
                 current_price_yes_ppm: current_yes_ppm,
                 current_price_no_ppm: current_no_ppm,
+                created_at: None,
+                expires_at: None,
+                status: None,
+                trade_id: None,
             })
         }
         _ => Err("trade_type must be buy or sell".to_string()),

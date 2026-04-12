@@ -647,6 +647,20 @@ async fn test_coordinator_trade_routes_and_status() {
     let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
     assert_eq!(quote_payload["trade_type"].as_str(), Some("buy"));
     assert!(quote_payload["quantity"].as_f64().unwrap() > 0.0);
+    let buy_quote_id = quote_payload["quote_id"].as_str().unwrap().to_string();
+    assert_eq!(quote_payload["status"].as_str(), Some("open"));
+
+    let quote_status_response = client
+        .get(format!("{url}/api/trades/quotes/{buy_quote_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(quote_status_response.status(), 200);
+    let quote_status_payload: serde_json::Value = quote_status_response.json().await.unwrap();
+    assert_eq!(
+        quote_status_payload["quote_id"].as_str(),
+        Some(buy_quote_id.as_str())
+    );
 
     let buy_response = client
         .post(format!("{url}/api/trades/buy"))
@@ -654,7 +668,8 @@ async fn test_coordinator_trade_routes_and_status() {
             "event_id": event_id,
             "pubkey": creator,
             "side": "yes",
-            "spend_minor": 4000
+            "spend_minor": 4000,
+            "quote_id": buy_quote_id
         }))
         .send()
         .await
@@ -683,6 +698,26 @@ async fn test_coordinator_trade_routes_and_status() {
         Some(event_id)
     );
 
+    let executed_quote_status_response = client
+        .get(format!(
+            "{url}/api/trades/quotes/{}",
+            quote_payload["quote_id"].as_str().unwrap()
+        ))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(executed_quote_status_response.status(), 200);
+    let executed_quote_status_payload: serde_json::Value =
+        executed_quote_status_response.json().await.unwrap();
+    assert_eq!(
+        executed_quote_status_payload["status"].as_str(),
+        Some("executed")
+    );
+    assert_eq!(
+        executed_quote_status_payload["trade_id"].as_str(),
+        Some(trade_id.as_str())
+    );
+
     let sell_quote_response = client
         .post(format!("{url}/api/trades/sell/quote"))
         .json(&serde_json::json!({
@@ -697,6 +732,7 @@ async fn test_coordinator_trade_routes_and_status() {
     let sell_quote_payload: serde_json::Value = sell_quote_response.json().await.unwrap();
     assert_eq!(sell_quote_payload["trade_type"].as_str(), Some("sell"));
     assert!(sell_quote_payload["net_minor"].as_u64().unwrap() > 0);
+    let sell_quote_id = sell_quote_payload["quote_id"].as_str().unwrap().to_string();
 
     let sell_response = client
         .post(format!("{url}/api/trades/sell"))
@@ -704,7 +740,8 @@ async fn test_coordinator_trade_routes_and_status() {
             "event_id": event_id,
             "pubkey": creator,
             "side": "yes",
-            "quantity": quantity / 2.0
+            "quantity": quantity / 2.0,
+            "quote_id": sell_quote_id
         }))
         .send()
         .await
@@ -712,6 +749,22 @@ async fn test_coordinator_trade_routes_and_status() {
     assert_eq!(sell_response.status(), 201);
     let sell_payload: serde_json::Value = sell_response.json().await.unwrap();
     assert!(sell_payload["wallet"]["available_minor"].as_u64().unwrap() > 0);
+
+    let executed_sell_quote_status_response = client
+        .get(format!(
+            "{url}/api/trades/quotes/{}",
+            sell_quote_payload["quote_id"].as_str().unwrap()
+        ))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(executed_sell_quote_status_response.status(), 200);
+    let executed_sell_quote_status_payload: serde_json::Value =
+        executed_sell_quote_status_response.json().await.unwrap();
+    assert_eq!(
+        executed_sell_quote_status_payload["status"].as_str(),
+        Some("executed")
+    );
 }
 
 #[tokio::test]

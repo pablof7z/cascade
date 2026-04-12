@@ -144,6 +144,10 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             get(product::preview_lightning_fx_quote),
         )
         .route("/api/trades/quote", post(product::quote_trade))
+        .route(
+            "/api/trades/quotes/{quote_id}",
+            get(product::trade_quote_status),
+        )
         .route("/api/trades/buy", post(product::buy_trade))
         .route("/api/trades/sell/quote", post(product::quote_trade_sell))
         .route("/api/trades/sell", post(product::sell_trade))

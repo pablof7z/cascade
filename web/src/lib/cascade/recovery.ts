@@ -15,7 +15,7 @@ type TradeReceiptRecord = {
   pubkey: string;
   eventId: string;
   marketSlug: string;
-  action: 'buy' | 'sell';
+  action: 'buy' | 'sell' | 'seed';
   side: 'yes' | 'no';
   createdAt: number;
 };

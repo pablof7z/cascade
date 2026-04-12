@@ -2,10 +2,24 @@
   import { browser } from '$app/environment';
   import { env } from '$env/dynamic/public';
   import { goto } from '$app/navigation';
-  import { buyMarketPosition, expectOk } from '$lib/cascade/api';
+  import {
+    buyMarketPosition,
+    expectOk,
+    fetchTradeRequestStatus,
+    fetchTradeStatus,
+    parseJson,
+    type ProductTradeRequestStatus,
+    type ProductTradeStatus
+  } from '$lib/cascade/api';
   import { NDKEvent, type NostrEvent } from '@nostr-dev-kit/ndk';
   import { formatUsdMinor } from '$lib/cascade/format';
   import { getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
+  import {
+    clearTradeReceipt,
+    listTradeReceipts,
+    markTradeReceiptTradeId,
+    trackTradeReceipt
+  } from '$lib/cascade/recovery';
   import { ndk } from '$lib/ndk/client';
   import { parseMarketEvent, type MarketRecord } from '$lib/ndk/cascade';
 
@@ -164,6 +178,14 @@
     return (await wallet.json()) as { available_minor?: number };
   }
 
+  function createSeedRequestId(eventId: string): string {
+    if (browser && typeof crypto?.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+
+    return `${eventId}-${Date.now()}`;
+  }
+
   async function seedPendingMarket(eventId: string, slug: string) {
     if (!currentUser) {
       errorMessage = 'Sign in before seeding a market.';
@@ -190,17 +212,28 @@
       }
 
       builderStatus = `Seeding ${seedSide.toUpperCase()} with ${formatUsdMinor(parsedSeedAmount)}.`;
+      const requestId = createSeedRequestId(eventId);
+      trackTradeReceipt({
+        id: requestId,
+        pubkey: currentUser.pubkey,
+        eventId,
+        marketSlug: slug,
+        action: 'seed',
+        side: seedSide
+      });
+
       const seed = await buyMarketPosition({
         eventId,
         pubkey: currentUser.pubkey,
         side: seedSide,
         spendMinor: parsedSeedAmount,
-        requestId:
-          browser && typeof crypto?.randomUUID === 'function'
-            ? crypto.randomUUID()
-            : `${eventId}-${Date.now()}`
+        requestId
       });
       await expectOk(seed, 'Failed to seed the market.');
+      const payload = (await seed.json()) as { trade?: { id?: string } };
+      if (typeof payload.trade?.id === 'string') {
+        markTradeReceiptTradeId(requestId, payload.trade.id);
+      }
 
       builderStatus = 'Market seeded and now public.';
       await loadCreatorMarkets();
@@ -335,9 +368,70 @@
       .filter((market): market is MarketRecord => Boolean(market));
   }
 
+  async function reconcileSeedRequests() {
+    if (!browser || !paperEdition || !currentUser) return;
+
+    const receipts = listTradeReceipts(currentUser.pubkey).filter((receipt) => receipt.action === 'seed');
+    if (!receipts.length) return;
+
+    for (const receipt of receipts) {
+      try {
+        if (receipt.tradeId) {
+          const response = await fetchTradeStatus(receipt.tradeId);
+          const payload = await parseJson<ProductTradeStatus>(
+            response,
+            'Failed to recover the seeded market.'
+          );
+          clearTradeReceipt(receipt.id);
+          builderStatus = 'Recovered seeded market and now public.';
+          await loadCreatorMarkets();
+          await navigateToMarket(payload.market.slug);
+          return;
+        }
+
+        const response = await fetchTradeRequestStatus(receipt.id);
+        const payload = await parseJson<ProductTradeRequestStatus>(
+          response,
+          'Failed to recover the seed request.'
+        );
+
+        if (payload.status === 'pending') {
+          builderStatus = `Recovered pending seed for ${receipt.marketSlug}.`;
+          continue;
+        }
+
+        if (payload.status === 'failed') {
+          clearTradeReceipt(receipt.id);
+          errorMessage = payload.error || `Recovered failed seed for ${receipt.marketSlug}.`;
+          continue;
+        }
+
+        const tradeId = typeof payload.trade?.id === 'string' ? payload.trade.id : null;
+        if (tradeId) {
+          markTradeReceiptTradeId(receipt.id, tradeId);
+          const tradeResponse = await fetchTradeStatus(tradeId);
+          const tradePayload = await parseJson<ProductTradeStatus>(
+            tradeResponse,
+            'Failed to recover the completed seed.'
+          );
+          clearTradeReceipt(receipt.id);
+          builderStatus = 'Recovered seeded market and now public.';
+          await loadCreatorMarkets();
+          await navigateToMarket(tradePayload.market.slug);
+          return;
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
   $effect(() => {
     if (!browser || !paperEdition || !currentUser) return;
-    void loadCreatorMarkets();
+    void (async () => {
+      await loadCreatorMarkets();
+      await reconcileSeedRequests();
+    })();
   });
 
   $effect(() => {

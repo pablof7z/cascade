@@ -95,7 +95,9 @@
   async function reconcileRecentTrades() {
     if (!currentUser) return;
 
-    const receipts = listTradeReceipts(currentUser.pubkey, marketId);
+    const receipts = listTradeReceipts(currentUser.pubkey, marketId).filter(
+      (receipt) => receipt.action !== 'seed'
+    );
     if (!receipts.length) return;
     let recoveredSide: 'yes' | 'no' | null = null;
 

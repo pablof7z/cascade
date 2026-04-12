@@ -214,6 +214,26 @@ test('funded users can create a market, buy the other side, and withdraw part of
   await tradePanel.getByRole('button', { name: 'Buy NO' }).click();
   await expect(tradePanel.getByText(`Bought NO on ${market.slug}.`)).toBeVisible();
 
+  await page.evaluate(() => {
+    const receiptKey = Object.keys(localStorage).find((key) => key.includes('cascade_trade_receipts'));
+    if (!receiptKey) return;
+    const raw = localStorage.getItem(receiptKey);
+    if (!raw) return;
+
+    const records = JSON.parse(raw) as Array<Record<string, unknown>>;
+    const rewritten = records.map((record) => {
+      if (record.action !== 'buy') return record;
+
+      return {
+        ...record,
+        id: `missing-request-${Date.now()}`,
+        tradeId: undefined
+      };
+    });
+
+    localStorage.setItem(receiptKey, JSON.stringify(rewritten));
+  });
+
   await page.reload();
   await ensureLoggedIn(page, creatorSecret);
   await expect(page.getByText(`Recovered buy on ${market.slug}.`)).toBeVisible();

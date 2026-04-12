@@ -5,6 +5,7 @@
   import {
     buyMarketPosition,
     expectOk,
+    fetchTradeQuoteStatus,
     quoteBuyTrade,
     fetchTradeRequestStatus,
     fetchTradeStatus,
@@ -17,6 +18,7 @@
   import { formatUsdMinor } from '$lib/cascade/format';
   import { getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
   import {
+    attachTradeReceiptQuoteId,
     clearTradeReceipt,
     listTradeReceipts,
     markTradeReceiptTradeId,
@@ -215,14 +217,6 @@
 
       builderStatus = `Seeding ${seedSide.toUpperCase()} with ${formatUsdMinor(parsedSeedAmount)}.`;
       const requestId = createSeedRequestId(eventId);
-      trackTradeReceipt({
-        id: requestId,
-        pubkey: currentUser.pubkey,
-        eventId,
-        marketSlug: slug,
-        action: 'seed',
-        side: seedSide
-      });
 
       const quoteResponse = await quoteBuyTrade({
         eventId,
@@ -236,19 +230,32 @@
       if (!quote.quote_id) {
         throw new Error('Seed quote is missing a quote id.');
       }
+      const lockedQuoteId = quote.quote_id;
+
+      trackTradeReceipt({
+        id: requestId,
+        quoteId: lockedQuoteId,
+        pubkey: currentUser.pubkey,
+        eventId,
+        marketSlug: slug,
+        action: 'seed',
+        side: seedSide
+      });
 
       const seed = await buyMarketPosition({
         eventId,
         pubkey: currentUser.pubkey,
         side: (quote.side as 'yes' | 'no') ?? seedSide,
         spendMinor: quote.spend_minor,
-        quoteId: quote.quote_id,
+        quoteId: lockedQuoteId,
         requestId
       });
       await expectOk(seed, 'Failed to seed the market.');
       const payload = (await seed.json()) as { trade?: { id?: string } };
       if (typeof payload.trade?.id === 'string') {
         markTradeReceiptTradeId(requestId, payload.trade.id);
+      } else {
+        attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
       builderStatus = 'Market seeded and now public.';
@@ -406,6 +413,45 @@
         }
 
         const response = await fetchTradeRequestStatus(receipt.id);
+        if (!response.ok) {
+          if (!receipt.quoteId) {
+            clearTradeReceipt(receipt.id);
+            continue;
+          }
+
+          const quoteResponse = await fetchTradeQuoteStatus(receipt.quoteId);
+          if (!quoteResponse.ok) {
+            clearTradeReceipt(receipt.id);
+            continue;
+          }
+
+          const quotePayload = await parseJson<ProductTradeQuote>(
+            quoteResponse,
+            'Failed to recover the locked seed quote.'
+          );
+
+          if (quotePayload.status === 'executed' && quotePayload.trade_id) {
+            markTradeReceiptTradeId(receipt.id, quotePayload.trade_id);
+            const tradeResponse = await fetchTradeStatus(quotePayload.trade_id);
+            const tradePayload = await parseJson<ProductTradeStatus>(
+              tradeResponse,
+              'Failed to recover the completed seed.'
+            );
+            clearTradeReceipt(receipt.id);
+            builderStatus = 'Recovered seeded market and now public.';
+            await loadCreatorMarkets();
+            await navigateToMarket(tradePayload.market.slug);
+            return;
+          }
+
+          clearTradeReceipt(receipt.id);
+          errorMessage =
+            quotePayload.status === 'expired'
+              ? `Recovered expired seed quote for ${receipt.marketSlug}. Retry seeding the market.`
+              : `Recovered open seed quote for ${receipt.marketSlug}. Retry seeding the market.`;
+          continue;
+        }
+
         const payload = await parseJson<ProductTradeRequestStatus>(
           response,
           'Failed to recover the seed request.'

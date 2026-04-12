@@ -5,6 +5,7 @@
     buyMarketPosition,
     expectOk,
     fetchPaperWallet,
+    fetchTradeQuoteStatus,
     quoteBuyTrade,
     quoteSellTrade,
     fetchTradeRequestStatus,
@@ -19,6 +20,7 @@
   } from '$lib/cascade/api';
   import { formatUsdMinor } from '$lib/cascade/format';
   import {
+    attachTradeReceiptQuoteId,
     clearTradeReceipt,
     listTradeReceipts,
     markTradeReceiptTradeId,
@@ -119,6 +121,14 @@
         }
 
         const response = await fetchTradeRequestStatus(receipt.id);
+        if (!response.ok) {
+          const quoteRecovery = await recoverTradeReceiptFromQuote(receipt);
+          if (quoteRecovery === 'executed') {
+            recoveredSide = receipt.side;
+          }
+          continue;
+        }
+
         const payload = await parseJson<ProductTradeRequestStatus>(
           response,
           'Failed to recover the latest trade request.'
@@ -167,6 +177,42 @@
     }
   }
 
+  async function recoverTradeReceiptFromQuote(
+    receipt: ReturnType<typeof listTradeReceipts>[number]
+  ): Promise<'executed' | 'handled' | null> {
+    if (!receipt.quoteId) return null;
+
+    const response = await fetchTradeQuoteStatus(receipt.quoteId);
+    if (!response.ok) {
+      clearTradeReceipt(receipt.id);
+      return 'handled';
+    }
+
+    const payload = await parseJson<ProductTradeQuote>(
+      response,
+      'Failed to recover the locked trade quote.'
+    );
+
+    if (payload.status === 'executed' && payload.trade_id) {
+      markTradeReceiptTradeId(receipt.id, payload.trade_id);
+      const tradeResponse = await fetchTradeStatus(payload.trade_id);
+      const tradePayload = await parseJson<ProductTradeStatus>(
+        tradeResponse,
+        'Failed to recover the completed trade status.'
+      );
+      clearTradeReceipt(receipt.id);
+      status = `Recovered ${receipt.action} on ${tradePayload.market.slug}.`;
+      return 'executed';
+    }
+
+    clearTradeReceipt(receipt.id);
+    status =
+      payload.status === 'expired'
+        ? `Recovered expired ${receipt.action} quote on ${receipt.marketSlug}. Retry the trade.`
+        : `Recovered open ${receipt.action} quote on ${receipt.marketSlug}. Retry the trade.`;
+    return 'handled';
+  }
+
   async function buy() {
     if (!currentUser) {
       errorMessage = 'Sign in before trading.';
@@ -195,10 +241,12 @@
       if (!quote.quote_id) {
         throw new Error('Buy quote is missing a quote id.');
       }
+      const lockedQuoteId = quote.quote_id;
 
       const requestId = createTradeRequestId();
       trackTradeReceipt({
         id: requestId,
+        quoteId: lockedQuoteId,
         pubkey: currentUser.pubkey,
         eventId: marketId,
         marketSlug,
@@ -211,7 +259,7 @@
         pubkey: currentUser.pubkey,
         side: (quote.side as 'yes' | 'no') ?? buySide,
         spendMinor: quote.spend_minor,
-        quoteId: quote.quote_id,
+        quoteId: lockedQuoteId,
         requestId
       });
       await expectOk(response, 'Trade failed.');
@@ -219,6 +267,8 @@
       const tradeId = typeof payload.trade.id === 'string' ? payload.trade.id : null;
       if (tradeId) {
         markTradeReceiptTradeId(requestId, tradeId);
+      } else {
+        attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
       status = `Bought ${buySide.toUpperCase()} on ${marketSlug}.`;
@@ -259,10 +309,12 @@
       if (!quote.quote_id) {
         throw new Error('Sell quote is missing a quote id.');
       }
+      const lockedQuoteId = quote.quote_id;
 
       const requestId = createTradeRequestId();
       trackTradeReceipt({
         id: requestId,
+        quoteId: lockedQuoteId,
         pubkey: currentUser.pubkey,
         eventId: marketId,
         marketSlug,
@@ -275,7 +327,7 @@
         pubkey: currentUser.pubkey,
         side: (quote.side as 'yes' | 'no') ?? buySide,
         quantity: quote.quantity,
-        quoteId: quote.quote_id,
+        quoteId: lockedQuoteId,
         requestId
       });
       await expectOk(response, 'Sell failed.');
@@ -283,6 +335,8 @@
       const tradeId = typeof payload.trade.id === 'string' ? payload.trade.id : null;
       if (tradeId) {
         markTradeReceiptTradeId(requestId, tradeId);
+      } else {
+        attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
       status = `Withdrew ${buySide.toUpperCase()} on ${marketSlug}.`;

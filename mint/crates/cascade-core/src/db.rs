@@ -854,7 +854,7 @@ impl CascadeDatabase {
             FROM wallet_topup_quotes
             WHERE pubkey = ?
               AND rail = ?
-              AND status IN ('invoice_pending', 'complete')
+              AND status IN ('invoice_pending', 'complete', 'review_required')
               AND created_at >= ?
             "#,
         )
@@ -869,23 +869,52 @@ impl CascadeDatabase {
         Ok(amount_minor.max(0) as u64)
     }
 
+    pub async fn sum_wallet_topup_quote_amount_since_all_rails(
+        &self,
+        pubkey: &str,
+        since: i64,
+    ) -> Result<u64> {
+        let amount_minor = sqlx::query_scalar::<_, Option<i64>>(
+            r#"
+            SELECT SUM(amount_minor)
+            FROM wallet_topup_quotes
+            WHERE pubkey = ?
+              AND status IN ('invoice_pending', 'complete', 'review_required')
+              AND created_at >= ?
+            "#,
+        )
+        .bind(pubkey)
+        .bind(since)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?
+        .unwrap_or(0);
+
+        Ok(amount_minor.max(0) as u64)
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub async fn create_wallet_topup_quote(
         &self,
+        quote_id: Option<&str>,
         pubkey: &str,
         rail: &str,
         amount_minor: u64,
         amount_msat: u64,
         invoice: Option<&str>,
         payment_hash: Option<&str>,
+        metadata_json: Option<&str>,
         request_id: Option<&str>,
         fx_quote: &FxQuoteSnapshot,
     ) -> Result<WalletTopupQuote> {
         let mut tx = self.pool.begin().await?;
         let now = chrono::Utc::now().timestamp();
         let observations_json = serialize_fx_observations(&fx_quote.observations)?;
+        let quote_id = quote_id
+            .map(str::to_string)
+            .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
         let quote = WalletTopupQuote {
-            id: uuid::Uuid::new_v4().to_string(),
+            id: quote_id,
             pubkey: pubkey.to_string(),
             rail: rail.to_string(),
             amount_minor,
@@ -895,7 +924,7 @@ impl CascadeDatabase {
             payment_hash: payment_hash.map(str::to_string),
             fx_quote_id: fx_quote.id.clone(),
             funding_event_id: None,
-            metadata_json: None,
+            metadata_json: metadata_json.map(str::to_string),
             created_at: now,
             expires_at: fx_quote.expires_at,
             settled_at: None,
@@ -942,10 +971,11 @@ impl CascadeDatabase {
                 invoice,
                 payment_hash,
                 fx_quote_id,
+                metadata_json,
                 created_at,
                 expires_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&quote.id)
@@ -957,6 +987,7 @@ impl CascadeDatabase {
         .bind(quote.invoice.as_deref())
         .bind(quote.payment_hash.as_deref())
         .bind(&quote.fx_quote_id)
+        .bind(quote.metadata_json.as_deref())
         .bind(quote.created_at)
         .bind(quote.expires_at)
         .execute(&mut *tx)
@@ -1360,7 +1391,9 @@ impl CascadeDatabase {
                 tx.commit().await?;
                 return Ok(existing);
             }
-            WalletTopupStatus::Expired | WalletTopupStatus::Cancelled => {
+            WalletTopupStatus::Expired
+            | WalletTopupStatus::Cancelled
+            | WalletTopupStatus::ReviewRequired => {
                 return Err(crate::error::CascadeError::invalid_input(format!(
                     "cannot complete topup in status {}",
                     existing.status
@@ -1464,6 +1497,107 @@ impl CascadeDatabase {
         )
         .bind(existing.amount_minor as i64)
         .bind(existing.amount_minor as i64)
+        .bind(existing.amount_minor as i64)
+        .bind(existing.amount_minor as i64)
+        .bind(now)
+        .bind(&existing.pubkey)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        self.get_wallet_topup_quote(quote_id)
+            .await?
+            .ok_or_else(|| crate::error::CascadeError::invalid_input("topup quote not found"))
+    }
+
+    pub async fn mark_wallet_topup_quote_review_required(
+        &self,
+        quote_id: &str,
+        risk_level: Option<&str>,
+        metadata_json: Option<&str>,
+    ) -> Result<WalletTopupQuote> {
+        let mut tx = self.pool.begin().await?;
+        let Some(existing) = self.get_wallet_topup_quote(quote_id).await? else {
+            return Err(crate::error::CascadeError::invalid_input(
+                "topup quote not found".to_string(),
+            ));
+        };
+
+        match existing.status {
+            WalletTopupStatus::ReviewRequired => {
+                tx.commit().await?;
+                return Ok(existing);
+            }
+            WalletTopupStatus::Complete
+            | WalletTopupStatus::Expired
+            | WalletTopupStatus::Cancelled => {
+                return Err(crate::error::CascadeError::invalid_input(format!(
+                    "cannot review topup in status {}",
+                    existing.status
+                )));
+            }
+            WalletTopupStatus::InvoicePending => {}
+        }
+
+        let now = chrono::Utc::now().timestamp();
+        let funding_event_id = uuid::Uuid::new_v4().to_string();
+        let metadata_json = metadata_json.map(str::to_string).or(existing.metadata_json);
+        sqlx::query(
+            r#"
+            INSERT INTO wallet_funding_events (
+                id,
+                pubkey,
+                rail,
+                amount_minor,
+                status,
+                risk_level,
+                metadata_json,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, 'review_required', ?, ?, ?)
+            "#,
+        )
+        .bind(&funding_event_id)
+        .bind(&existing.pubkey)
+        .bind(&existing.rail)
+        .bind(existing.amount_minor as i64)
+        .bind(risk_level)
+        .bind(metadata_json.as_deref())
+        .bind(now)
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            r#"
+            UPDATE wallet_topup_quotes
+            SET status = 'review_required',
+                funding_event_id = ?,
+                metadata_json = ?,
+                settled_at = ?,
+                completed_at = ?
+            WHERE id = ? AND status = 'invoice_pending'
+            "#,
+        )
+        .bind(&funding_event_id)
+        .bind(metadata_json)
+        .bind(now)
+        .bind(now)
+        .bind(quote_id)
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            r#"
+            UPDATE wallet_balances
+            SET pending_minor = CASE
+                WHEN pending_minor >= ? THEN pending_minor - ?
+                ELSE 0
+            END,
+                updated_at = ?
+            WHERE pubkey = ?
+            "#,
+        )
         .bind(existing.amount_minor as i64)
         .bind(existing.amount_minor as i64)
         .bind(now)

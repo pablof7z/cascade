@@ -12,6 +12,7 @@ use tokio::sync::{Mutex, RwLock};
 
 use crate::fx::FxQuoteService;
 use crate::handlers::{self, market, price, product, resolve, trade};
+use crate::stripe::StripeGateway;
 use cascade_core::{db::CascadeDatabase, invoice::InvoiceService, MarketManager};
 
 /// Application state shared across route handlers
@@ -24,6 +25,8 @@ pub struct AppState {
     pub spent_proofs: Arc<RwLock<HashSet<String>>>,
     /// FX quote service for USD <-> msat conversion
     pub fx_service: Arc<FxQuoteService>,
+    /// Optional Stripe gateway for hosted card top-ups
+    pub stripe_gateway: Option<Arc<StripeGateway>>,
     /// CDK mint for proof verification and keyset validation
     pub mint: Arc<cdk::mint::Mint>,
     /// Cascade database for price history and other queries
@@ -39,6 +42,7 @@ impl AppState {
         market_manager: Arc<MarketManager>,
         invoice_service: Arc<Mutex<InvoiceService>>,
         fx_service: Arc<FxQuoteService>,
+        stripe_gateway: Option<Arc<StripeGateway>>,
         mint: Arc<cdk::mint::Mint>,
         db: Arc<CascadeDatabase>,
         paper_mode: bool,
@@ -48,6 +52,7 @@ impl AppState {
             invoice_service,
             spent_proofs: Arc::new(RwLock::new(HashSet::new())),
             fx_service,
+            stripe_gateway,
             mint,
             db,
             test_mode: false,
@@ -59,6 +64,7 @@ impl AppState {
         market_manager: Arc<MarketManager>,
         invoice_service: Arc<Mutex<InvoiceService>>,
         fx_service: Arc<FxQuoteService>,
+        stripe_gateway: Option<Arc<StripeGateway>>,
         mint: Arc<cdk::mint::Mint>,
         db: Arc<CascadeDatabase>,
     ) -> Self {
@@ -67,6 +73,7 @@ impl AppState {
             invoice_service,
             spent_proofs: Arc::new(RwLock::new(HashSet::new())),
             fx_service,
+            stripe_gateway,
             mint,
             db,
             test_mode: true,
@@ -139,7 +146,6 @@ pub fn build_cascade_routes(state: AppState) -> Router {
         )
         .route("/api/product/portfolio/{pubkey}", get(product::portfolio))
         .route("/api/product/wallet/{pubkey}", get(product::wallet))
-        .route("/api/product/paper/faucet", post(product::paper_faucet))
         .route(
             "/api/product/fx/lightning/{amount_minor}",
             get(product::preview_lightning_fx_quote),
@@ -166,16 +172,20 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             get(product::get_wallet_topup_status),
         )
         .route(
+            "/api/wallet/topups/stripe",
+            post(product::create_stripe_topup),
+        )
+        .route(
+            "/api/wallet/topups/stripe/webhook",
+            post(product::stripe_webhook),
+        )
+        .route(
             "/api/wallet/topups/lightning/quote",
             post(product::create_lightning_topup_quote),
         )
         .route(
             "/api/wallet/topups/lightning/{quote_id}",
             get(product::get_lightning_topup_quote),
-        )
-        .route(
-            "/api/wallet/topups/lightning/{quote_id}/settle",
-            post(product::settle_lightning_topup_quote),
         )
         .route("/api/market/{id}/resolve", post(resolve::resolve_market))
         // Trade execution

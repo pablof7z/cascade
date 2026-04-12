@@ -83,7 +83,7 @@ async function fundPortfolio(page: Page, secretKey: string, amountMinor: number)
 
   while (remainingMinor > 0) {
     const chunkMinor = Math.min(remainingMinor, SIGNET_TOPUP_SINGLE_LIMIT_MINOR);
-    await page.getByRole('spinbutton', { name: 'Lightning amount' }).fill(String(chunkMinor));
+    await page.getByRole('spinbutton', { name: 'Funding amount' }).fill(String(chunkMinor));
     await page.getByRole('button', { name: 'Create Lightning invoice' }).click();
     await expect(
       page.getByText(`Created a Lightning top-up for ${formatUsdMinor(chunkMinor)}.`)
@@ -398,7 +398,8 @@ test('signet portfolio can fund through the Lightning top-up flow', async ({ pag
   await page.goto('/portfolio');
   await ensureLoggedIn(page, secret);
   await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
-  await page.getByRole('spinbutton', { name: 'Lightning amount' }).fill('2500');
+  await expect(page.getByRole('button', { name: 'Create Lightning invoice' })).toBeVisible();
+  await page.getByRole('spinbutton', { name: 'Funding amount' }).fill('2500');
   await page.getByRole('button', { name: 'Create Lightning invoice' }).click();
   await expect(
     page.getByText(`Created a Lightning top-up for ${formatUsdMinor(2500)}.`)
@@ -417,5 +418,5 @@ test('signet portfolio can fund through the Lightning top-up flow', async ({ pag
   await expect(walletPanels.first()).toContainText('Local Proofs');
   await expect(walletPanels.first()).toContainText('$25.00');
   await expect(page.locator('.history-row').filter({ hasText: 'lightning · complete' }).first()).toBeVisible();
-  await expect(page.getByText('No pending Lightning top-ups.')).toBeVisible();
+  await expect(page.getByText('No pending top-ups.')).toBeVisible();
 });

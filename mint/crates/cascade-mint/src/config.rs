@@ -36,6 +36,8 @@ pub struct MintConfig {
     pub database: DatabaseSettings,
     pub seed: SeedSettings,
     pub lnd: LndSettings,
+    #[serde(default)]
+    pub stripe: StripeSettings,
     pub network: NetworkSettings,
     pub server: ServerSettings,
     pub fees: FeeSettings,
@@ -77,6 +79,32 @@ pub struct NetworkSettings {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct StripeSettings {
+    #[serde(default)]
+    pub secret_key: String,
+    #[serde(default)]
+    pub webhook_secret: String,
+    #[serde(default)]
+    pub success_url: String,
+    #[serde(default)]
+    pub cancel_url: String,
+    #[serde(default = "default_stripe_base_url")]
+    pub base_url: String,
+    #[serde(default = "default_stripe_checkout_expiry_seconds")]
+    pub checkout_expiry_seconds: u64,
+    #[serde(default = "default_stripe_product_name")]
+    pub product_name: String,
+    #[serde(default = "default_stripe_max_topup_minor")]
+    pub max_topup_minor: u64,
+    #[serde(default = "default_stripe_window_limit_minor")]
+    pub window_limit_minor: u64,
+    #[serde(default = "default_stripe_window_seconds")]
+    pub window_seconds: i64,
+    #[serde(default = "default_stripe_allowed_risk_levels")]
+    pub allowed_risk_levels: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ServerSettings {
     pub host: String,
     pub port: u16,
@@ -103,6 +131,34 @@ fn default_mint_description() -> String {
 
 fn default_trade_fee_percent() -> u64 {
     1
+}
+
+fn default_stripe_base_url() -> String {
+    "https://api.stripe.com".to_string()
+}
+
+fn default_stripe_checkout_expiry_seconds() -> u64 {
+    30 * 60
+}
+
+fn default_stripe_product_name() -> String {
+    "Cascade Portfolio Top-up".to_string()
+}
+
+fn default_stripe_max_topup_minor() -> u64 {
+    10_000
+}
+
+fn default_stripe_window_limit_minor() -> u64 {
+    25_000
+}
+
+fn default_stripe_window_seconds() -> i64 {
+    24 * 60 * 60
+}
+
+fn default_stripe_allowed_risk_levels() -> Vec<String> {
+    vec!["normal".to_string()]
 }
 
 impl MintConfig {
@@ -166,6 +222,51 @@ impl MintConfig {
         if let Ok(network) = std::env::var("NETWORK") {
             config.network.network_type = network;
         }
+        if let Ok(secret_key) = std::env::var("STRIPE_SECRET_KEY") {
+            config.stripe.secret_key = secret_key;
+        }
+        if let Ok(webhook_secret) = std::env::var("STRIPE_WEBHOOK_SECRET") {
+            config.stripe.webhook_secret = webhook_secret;
+        }
+        if let Ok(success_url) = std::env::var("STRIPE_SUCCESS_URL") {
+            config.stripe.success_url = success_url;
+        }
+        if let Ok(cancel_url) = std::env::var("STRIPE_CANCEL_URL") {
+            config.stripe.cancel_url = cancel_url;
+        }
+        if let Ok(base_url) = std::env::var("STRIPE_BASE_URL") {
+            config.stripe.base_url = base_url;
+        }
+        if let Ok(expiry_seconds) = std::env::var("STRIPE_CHECKOUT_EXPIRY_SECONDS") {
+            config.stripe.checkout_expiry_seconds = expiry_seconds
+                .parse()
+                .unwrap_or(config.stripe.checkout_expiry_seconds);
+        }
+        if let Ok(product_name) = std::env::var("STRIPE_PRODUCT_NAME") {
+            config.stripe.product_name = product_name;
+        }
+        if let Ok(max_topup_minor) = std::env::var("STRIPE_MAX_TOPUP_MINOR") {
+            config.stripe.max_topup_minor = max_topup_minor
+                .parse()
+                .unwrap_or(config.stripe.max_topup_minor);
+        }
+        if let Ok(window_limit_minor) = std::env::var("STRIPE_WINDOW_LIMIT_MINOR") {
+            config.stripe.window_limit_minor = window_limit_minor
+                .parse()
+                .unwrap_or(config.stripe.window_limit_minor);
+        }
+        if let Ok(window_seconds) = std::env::var("STRIPE_WINDOW_SECONDS") {
+            config.stripe.window_seconds = window_seconds
+                .parse()
+                .unwrap_or(config.stripe.window_seconds);
+        }
+        if let Ok(allowed_risk_levels) = std::env::var("STRIPE_ALLOWED_RISK_LEVELS") {
+            config.stripe.allowed_risk_levels = allowed_risk_levels
+                .split(',')
+                .map(|value| value.trim().to_ascii_lowercase())
+                .filter(|value| !value.is_empty())
+                .collect();
+        }
         if let Ok(host) = std::env::var("LISTEN_HOST") {
             config.server.host = host;
         }
@@ -204,6 +305,24 @@ impl MintConfig {
         {
             anyhow::bail!("network.network_type must be 'signet', 'testnet', or 'mainnet'");
         }
+        if self.stripe.is_partially_configured() && !self.stripe.is_enabled() {
+            anyhow::bail!(
+                "stripe must set secret_key, webhook_secret, success_url, and cancel_url together"
+            );
+        }
+        if self.stripe.is_enabled() {
+            if self.stripe.max_topup_minor == 0 || self.stripe.window_limit_minor == 0 {
+                anyhow::bail!(
+                    "stripe.max_topup_minor and stripe.window_limit_minor must be greater than zero"
+                );
+            }
+            if self.stripe.window_seconds <= 0 {
+                anyhow::bail!("stripe.window_seconds must be greater than zero");
+            }
+            if self.stripe.allowed_risk_levels.is_empty() {
+                anyhow::bail!("stripe.allowed_risk_levels must contain at least one value");
+            }
+        }
         Ok(())
     }
 }
@@ -229,6 +348,7 @@ impl Default for MintConfig {
                 macaroon_path: "/path/to/admin.macaroon".to_string(),
                 cli_path: None,
             },
+            stripe: StripeSettings::default(),
             network: NetworkSettings {
                 network_type: "testnet".to_string(),
             },
@@ -239,6 +359,40 @@ impl Default for MintConfig {
             fees: FeeSettings {
                 trade_fee_percent: default_trade_fee_percent(),
             },
+        }
+    }
+}
+
+impl StripeSettings {
+    pub fn is_enabled(&self) -> bool {
+        !self.secret_key.trim().is_empty()
+            && !self.webhook_secret.trim().is_empty()
+            && !self.success_url.trim().is_empty()
+            && !self.cancel_url.trim().is_empty()
+    }
+
+    fn is_partially_configured(&self) -> bool {
+        !self.secret_key.trim().is_empty()
+            || !self.webhook_secret.trim().is_empty()
+            || !self.success_url.trim().is_empty()
+            || !self.cancel_url.trim().is_empty()
+    }
+}
+
+impl Default for StripeSettings {
+    fn default() -> Self {
+        Self {
+            secret_key: String::new(),
+            webhook_secret: String::new(),
+            success_url: String::new(),
+            cancel_url: String::new(),
+            base_url: default_stripe_base_url(),
+            checkout_expiry_seconds: default_stripe_checkout_expiry_seconds(),
+            product_name: default_stripe_product_name(),
+            max_topup_minor: default_stripe_max_topup_minor(),
+            window_limit_minor: default_stripe_window_limit_minor(),
+            window_seconds: default_stripe_window_seconds(),
+            allowed_risk_levels: default_stripe_allowed_risk_levels(),
         }
     }
 }

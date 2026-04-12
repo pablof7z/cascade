@@ -136,7 +136,7 @@ The wallet mint is the source of truth for:
 - Lightning top-up state
 - outgoing melt state when the wallet funds a market buy
 - incoming mint state when market exits return value to the wallet
-- temporary risk-policy state attached to freshly card-funded value
+- Stripe risk-policy state attached to pending card top-ups before proof issuance
 
 The intended steady state is full mint-side persistence for both wallet-mint and market-mint state. The current code still has some in-memory market state, which is implementation debt.
 
@@ -158,7 +158,7 @@ The wallet mint needs:
 - an incoming `stripe` payment method for card top-ups
 - an incoming Lightning mint-quote path that prices a USD amount into `msat`
 - an outgoing Lightning melt path that prices a market-mint invoice into USD minor units and consumes the correct USD proofs
-- a risk-policy hook that can limit purchases or proof export shortly after higher-risk card funding
+- a risk-policy hook that can cap Stripe top-up volume before checkout creation and gate proof issuance after webhook completion
 
 ### Market Mint Processors
 
@@ -199,9 +199,9 @@ The product contract exists because the user experience is "spend $10 on YES", n
 1. User starts an add-funds flow in dollars.
 2. Wallet mint creates a Stripe-backed top-up.
 3. User completes the card payment through Stripe.
-4. Stripe webhook marks the payment complete.
-5. Wallet mint issues USD proofs to the user's local wallet.
-6. The wallet applies temporary purchase/export limits according to Stripe-driven risk policy.
+4. Stripe webhook fetches Stripe risk data for the completed payment.
+5. If the payment passes the configured Stripe risk policy, wallet mint issues USD proofs to the user's local wallet.
+6. If the payment fails the configured Stripe risk policy, the top-up moves to `review_required` and no proofs are issued.
 
 ### Wallet Funding With Lightning
 
@@ -267,8 +267,8 @@ Launch therefore needs explicit risk controls around the Stripe gateway. Example
 
 - top-up limits
 - fraud checks
-- temporary restrictions on exporting freshly card-funded USD proofs off-platform
-- temporary purchase limits tied to Stripe risk signals
+- webhook-time proof issuance gates keyed off Stripe risk signals
+- `review_required` handling for completed but higher-risk payments
 
 Launch also needs explicit quote and saga controls:
 

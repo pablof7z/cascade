@@ -197,6 +197,22 @@ async fn main() -> Result<()> {
     let app = build_server(
         market_manager.clone(),
         lnd_config,
+        config
+            .stripe
+            .is_enabled()
+            .then(|| cascade_api::stripe::StripeConfig {
+                secret_key: config.stripe.secret_key.clone(),
+                webhook_secret: config.stripe.webhook_secret.clone(),
+                success_url: config.stripe.success_url.clone(),
+                cancel_url: config.stripe.cancel_url.clone(),
+                base_url: config.stripe.base_url.clone(),
+                checkout_expiry_seconds: config.stripe.checkout_expiry_seconds,
+                product_name: config.stripe.product_name.clone(),
+                max_topup_minor: config.stripe.max_topup_minor,
+                window_limit_minor: config.stripe.window_limit_minor,
+                window_seconds: config.stripe.window_seconds,
+                allowed_risk_levels: config.stripe.allowed_risk_levels.clone(),
+            }),
         _mint.clone(),
         cascade_db,
         &config.network.network_type,

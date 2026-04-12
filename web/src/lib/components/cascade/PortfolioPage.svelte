@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import {
+    createStripeTopup,
     createLightningTopupQuote,
     fetchMarketDetailBySlug,
     fetchPortfolioMirror,
@@ -14,7 +15,7 @@
     type ProductWalletTopup,
     type ProductWalletTopupRequestStatus
   } from '$lib/cascade/api';
-  import { getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
+  import { getProductApiUrl, isPaperEdition, isStripeTopupEnabled } from '$lib/cascade/config';
   import { formatUsdMinor } from '$lib/cascade/format';
   import { quantityToShareMinor, shareMinorToQuantity } from '$lib/cascade/shares';
   import {
@@ -54,6 +55,7 @@
 
   const currentUser = $derived(ndk.$currentUser);
   const paperEdition = isPaperEdition();
+  const stripeTopupEnabled = isStripeTopupEnabled();
   const editionLabel = paperEdition ? 'Signet' : 'Mainnet';
   const portfolioLabel = paperEdition ? 'signet portfolio' : 'portfolio';
 
@@ -65,7 +67,7 @@
   let loading = $state(false);
   let errorMessage = $state('');
   let status = $state('');
-  let lightningAmount = $state(paperEdition ? '10000' : '2500');
+  let fundingAmount = $state(paperEdition ? '10000' : '2500');
   let localBalanceMinor = $state(0);
   let localProofCount = $state(0);
   let localProofWallets = $state<StoredProofWallet[]>([]);
@@ -328,13 +330,41 @@
     return message;
   }
 
+  function formatStripeTopupError(message: string): string {
+    if (message.startsWith('stripe_topup_single_limit_exceeded')) {
+      const maxMinor = Number.parseInt(message.split('max_minor=')[1] ?? '', 10);
+      if (Number.isFinite(maxMinor) && maxMinor > 0) {
+        return `Card top-ups are capped at ${formatUsdMinor(maxMinor)} per top-up right now.`;
+      }
+      return 'Card top-ups are capped per top-up right now.';
+    }
+
+    if (message.startsWith('stripe_topup_window_limit_exceeded')) {
+      const windowMinor = Number.parseInt(message.split('window_minor=')[1]?.split(':')[0] ?? '', 10);
+      if (Number.isFinite(windowMinor) && windowMinor > 0) {
+        return `Card top-ups are capped at ${formatUsdMinor(windowMinor)} per 24 hours right now.`;
+      }
+      return 'Card top-ups are capped per 24 hours right now.';
+    }
+
+    return message;
+  }
+
+  function topupLabel(rail: string): string {
+    return rail === 'stripe' ? 'Stripe top-up' : 'Lightning top-up';
+  }
+
+  function isPendingTopupStatus(status: string): boolean {
+    return status === 'invoice_pending' || status === 'pending';
+  }
+
   async function createLightningTopup() {
     if (!currentUser) {
-      errorMessage = `Sign in before starting a Lightning top-up for your ${portfolioLabel}.`;
+      errorMessage = `Sign in before starting a top-up for your ${portfolioLabel}.`;
       return;
     }
 
-    const amountMinor = Number.parseInt(lightningAmount, 10) || 0;
+    const amountMinor = Number.parseInt(fundingAmount, 10) || 0;
     if (amountMinor <= 0) {
       errorMessage = 'Enter a Lightning top-up amount greater than zero.';
       return;
@@ -376,14 +406,77 @@
       if (message === 'wallet_topup_request_in_progress') {
         status = `Recovering the Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
       } else {
+        clearPendingTopup(requestId);
         errorMessage = formatSignetTopupError(message);
         status = '';
       }
     }
   }
 
+  async function createStripeCheckout() {
+    if (!currentUser) {
+      errorMessage = `Sign in before starting a top-up for your ${portfolioLabel}.`;
+      return;
+    }
+
+    const amountMinor = Number.parseInt(fundingAmount, 10) || 0;
+    if (amountMinor <= 0) {
+      errorMessage = 'Enter a Stripe top-up amount greater than zero.';
+      return;
+    }
+
+    status = `Creating a Stripe top-up for ${formatUsdMinor(amountMinor)}.`;
+    errorMessage = '';
+    const requestId = crypto.randomUUID();
+    trackPendingTopup({
+      id: requestId,
+      requestId,
+      pubkey: currentUser.pubkey,
+      amountMinor,
+      rail: 'stripe'
+    });
+
+    try {
+      const response = await createStripeTopup({
+        pubkey: currentUser.pubkey,
+        amountMinor,
+        requestId
+      });
+      const topup = await parseJson<ProductWalletTopup>(response, 'Stripe top-up creation failed.');
+
+      attachPendingTopupId(requestId, topup.id);
+      await loadWallet();
+
+      if (topup.status === 'complete') {
+        clearPendingTopup(requestId);
+        if (!applyIssuedProofs(topup.issued_proofs, 'Stripe top-up')) {
+          status = `Completed the Stripe top-up for ${formatUsdMinor(amountMinor)}.`;
+        }
+        return;
+      }
+
+      status = `Created a Stripe top-up for ${formatUsdMinor(amountMinor)}.`;
+      if (browser && topup.checkout_url) {
+        window.location.assign(topup.checkout_url);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Stripe top-up creation failed.';
+      if (message === 'wallet_topup_request_in_progress') {
+        status = `Recovering the Stripe top-up for ${formatUsdMinor(amountMinor)}.`;
+      } else if (message === 'stripe_topups_unavailable') {
+        clearPendingTopup(requestId);
+        errorMessage = 'Stripe top-ups are not configured for this edition yet.';
+        status = '';
+      } else {
+        clearPendingTopup(requestId);
+        errorMessage = formatStripeTopupError(message);
+        status = '';
+      }
+    }
+  }
+
   async function refreshPendingTopups() {
-    status = 'Refreshing pending Lightning top-ups.';
+    status = 'Refreshing pending top-ups.';
     errorMessage = '';
     await loadWallet();
     await reconcilePendingTopups();
@@ -405,12 +498,12 @@
           const requestResponse = await fetchWalletTopupRequestStatus(trackedTopup.requestId);
           const requestStatus = await parseJson<ProductWalletTopupRequestStatus>(
             requestResponse,
-            'Failed to recover the Lightning top-up status.'
+            `Failed to recover the ${topupLabel(trackedTopup.rail).toLowerCase()} status.`
           );
 
           if (requestStatus.status === 'pending') {
             if (!trackedTopup.pendingNotified) {
-              status = `Recovered pending Lightning top-up for ${formatUsdMinor(trackedTopup.amountMinor)}.`;
+              status = `Recovered pending ${topupLabel(trackedTopup.rail).toLowerCase()} for ${formatUsdMinor(trackedTopup.amountMinor)}.`;
               markPendingTopupNotified(trackedTopup.id);
             }
             continue;
@@ -418,7 +511,8 @@
 
           if (requestStatus.status === 'failed') {
             clearPendingTopup(trackedTopup.id);
-            errorMessage = requestStatus.error || 'Lightning top-up creation failed.';
+            errorMessage =
+              requestStatus.error || `${topupLabel(trackedTopup.rail)} creation failed.`;
             continue;
           }
 
@@ -433,13 +527,13 @@
           const response = await fetchWalletTopupStatus(topupId);
           topup = await parseJson<ProductWalletTopup>(
             response,
-            'Failed to recover the Lightning top-up status.'
+            `Failed to recover the ${topupLabel(trackedTopup.rail).toLowerCase()} status.`
           );
         }
 
-        if (topup.status === 'invoice_pending') {
+        if (isPendingTopupStatus(topup.status)) {
           if (!trackedTopup.pendingNotified) {
-            status = `Recovered pending Lightning top-up for ${formatUsdMinor(topup.amount_minor)}.`;
+            status = `Recovered pending ${topupLabel(topup.rail).toLowerCase()} for ${formatUsdMinor(topup.amount_minor)}.`;
             markPendingTopupNotified(trackedTopup.id);
           }
           continue;
@@ -449,9 +543,12 @@
         walletNeedsRefresh = true;
 
         if (topup.status === 'complete') {
-          applyIssuedProofs(topup.issued_proofs, 'Recovered Lightning top-up');
+          applyIssuedProofs(topup.issued_proofs, `Recovered ${topupLabel(topup.rail)}`);
         } else {
-          status = `Recovered ${topup.status.replace(/_/g, ' ')} Lightning top-up for ${formatUsdMinor(topup.amount_minor)}.`;
+          status =
+            topup.status === 'review_required'
+              ? `Recovered ${topupLabel(topup.rail).toLowerCase()} under review for ${formatUsdMinor(topup.amount_minor)}. No proofs were issued.`
+              : `Recovered ${topup.status.replace(/_/g, ' ')} ${topupLabel(topup.rail).toLowerCase()} for ${formatUsdMinor(topup.amount_minor)}.`;
         }
       } catch {
         // Keep tracked topups in storage until the status endpoint is reachable again.
@@ -538,11 +635,11 @@
     <section class="wallet-panel">
       <div class="panel-header">
         <div>
-          <h2>Lightning top-up</h2>
+          <h2>Add funds</h2>
           <p class="muted">
-            Create a Lightning invoice to fund browser-local USD proofs.
+            Fund browser-local USD proofs with Stripe or Lightning.
             {#if paperEdition}
-              In signet, the quote completes immediately for paper trading. Limit {formatUsdMinor(signetTopupSingleLimitMinor)}
+              In signet, funding still follows the normal pending-topup lifecycle. Limit {formatUsdMinor(signetTopupSingleLimitMinor)}
               per top-up and {formatUsdMinor(signetTopupWindowLimitMinor)} per 24 hours.
             {/if}
           </p>
@@ -551,16 +648,21 @@
 
       <div class="funding-row">
         <label class="field">
-          <span>Lightning amount</span>
+          <span>Funding amount</span>
           <input
-            aria-label="Lightning amount"
-            bind:value={lightningAmount}
+            aria-label="Funding amount"
+            bind:value={fundingAmount}
             min="100"
             step="100"
             type="number"
           />
         </label>
-        <button class="button-primary" onclick={createLightningTopup} type="button">
+        {#if stripeTopupEnabled}
+          <button class="button-primary" onclick={createStripeCheckout} type="button">
+            Checkout with card
+          </button>
+        {/if}
+        <button class="button-secondary" onclick={createLightningTopup} type="button">
           Create Lightning invoice
         </button>
       </div>
@@ -571,19 +673,32 @@
             <div class="history-row history-row-stack">
               <div class="history-copy">
                 <strong>{formatUsdMinor(topup.amount_minor)}</strong>
-                <p class="muted">{topup.rail} · {topup.status} · fx {topup.fx_source}</p>
+                <p class="muted">
+                  {topup.rail} · {topup.status}
+                  {#if topup.fx_source}
+                    · fx {topup.fx_source}
+                  {/if}
+                </p>
                 {#if topup.invoice}
                   <code>{topup.invoice}</code>
                 {/if}
+                {#if topup.checkout_session_id}
+                  <p class="muted">Checkout session {topup.checkout_session_id}</p>
+                {/if}
               </div>
-              <button class="button-secondary" onclick={refreshPendingTopups} type="button">
-                Refresh status
-              </button>
+              <div class="proof-transfer-actions">
+                {#if topup.checkout_url}
+                  <a class="button-secondary" href={topup.checkout_url}>Open checkout</a>
+                {/if}
+                <button class="button-secondary" onclick={refreshPendingTopups} type="button">
+                  Refresh status
+                </button>
+              </div>
             </div>
           {/each}
         </div>
       {:else}
-        <p class="muted">No pending Lightning top-ups.</p>
+        <p class="muted">No pending top-ups.</p>
       {/if}
     </section>
 

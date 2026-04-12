@@ -453,6 +453,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Add-funds flow exists.
 - [ ] Add-funds flow offers Stripe and Lightning.
 - [ ] Signet funding uses the normal top-up rails and the same invoice lifecycle in the same edition-local proof model rather than introducing a separate "paper wallet" account system.
+- [ ] Stripe and Lightning top-ups share the same pending-topup local recovery model and the same final proof-import path.
 - [ ] Add-funds pending, paid, and minted states exist.
 - [ ] Builder preserves pending market state after kind `982` publication when the creator still needs funding.
 - [ ] Public users do not see pending markets until the first mint-authored kind `983`.

@@ -159,12 +159,13 @@ The product should execute against locked quotes, not loose spot tickers.
 
 ### Stripe Risk Controls
 
-Freshly card-funded USD value needs temporary restrictions.
+Freshly card-funded USD value is portable bearer ecash once proofs are issued, so launch risk controls must happen before proof issuance.
 
 - Stripe risk signals should feed a wallet-risk policy layer.
-- Higher-risk top-ups should have tighter temporary limits on what can be purchased or exported.
-- Low-risk top-ups can graduate to normal behavior faster.
-- The precise scoring model can evolve, but launch must have an explicit temporary-limits policy.
+- Launch should enforce conservative Stripe volume caps before checkout creation.
+- Stripe webhook completion must fetch Stripe risk data before issuing proofs.
+- Higher-risk top-ups should end in `review_required` or rejection, not in immediately portable proofs with server-side "limits" that cannot actually be enforced.
+- The precise scoring model can evolve, but launch must have an explicit pre-issuance risk gate.
 
 ### Mint URL Routing
 

@@ -112,7 +112,8 @@ Implement the USD wallet mint with both launch funding paths.
 - map Stripe and Lightning payment completion to mint quote completion
 - issue USD proofs to the user's local wallet after successful funding
 - add risk controls for reversible card payments
-- map Stripe risk signals into temporary purchase/export limits on newly funded value
+- gate proof issuance on Stripe risk signals and conservative volume caps
+- keep one persisted top-up saga model across Stripe and Lightning, with rail-specific metadata instead of rail-specific custody paths
 
 Definition of done:
 
@@ -121,6 +122,7 @@ Definition of done:
 - user can start a Lightning top-up for a locked USD amount
 - Lightning payment marks the top-up quote paid
 - wallet mint issues USD proofs for both funding paths
+- the same top-up request recovery and status endpoints work for both rails
 
 ## Workstream 4: Market Mint Quote And Payment Processors
 

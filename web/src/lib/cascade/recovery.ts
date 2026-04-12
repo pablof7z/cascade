@@ -7,7 +7,7 @@ type PendingTopupRecord = {
   topupId?: string;
   pubkey: string;
   amountMinor: number;
-  rail: 'lightning';
+  rail: 'lightning' | 'stripe';
   pendingNotified: boolean;
   createdAt: number;
 };

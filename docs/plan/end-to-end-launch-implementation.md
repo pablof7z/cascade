@@ -237,6 +237,7 @@ The preferred first implementation is one backend deployment with these modules,
 - Stripe top-up initiation and webhook completion
 - Lightning top-up quote and completion flow
 - signet top-up settlement that ends in edition-local Cashu proofs, not a pubkey-keyed server wallet ledger
+- one rail-agnostic top-up recovery model shared by Stripe and Lightning
 
 ### Signet Recommendation
 
@@ -257,12 +258,14 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 
 - a user with `$0` can fund the portfolio in signet without real money
 - a user with `$0` can fund the portfolio in mainnet through Stripe or Lightning
+- Stripe redirect returns to the product, but proof issuance still depends on webhook completion
 - no funding path issues proofs before confirmed payment
 
 ### Failure Gates
 
 - signet paper trading depends on real-money rails
 - Stripe completion depends on browser redirect rather than webhook confirmation
+- Stripe introduces a second recovery/status model that diverges from Lightning
 - signet funding credits a pubkey-keyed server wallet instead of issuing signet-edition proofs to the user or agent
 - the signet app depends on a separate portfolio product model rather than the same self-custodied proof behavior as mainnet
 

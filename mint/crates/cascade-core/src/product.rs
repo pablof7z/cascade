@@ -109,6 +109,7 @@ pub struct PortfolioPositionSnapshot {
 pub enum WalletTopupStatus {
     InvoicePending,
     Complete,
+    ReviewRequired,
     Expired,
     Cancelled,
 }
@@ -118,6 +119,7 @@ impl std::fmt::Display for WalletTopupStatus {
         match self {
             Self::InvoicePending => write!(f, "invoice_pending"),
             Self::Complete => write!(f, "complete"),
+            Self::ReviewRequired => write!(f, "review_required"),
             Self::Expired => write!(f, "expired"),
             Self::Cancelled => write!(f, "cancelled"),
         }
@@ -131,6 +133,7 @@ impl std::str::FromStr for WalletTopupStatus {
         match value.to_lowercase().as_str() {
             "invoice_pending" => Ok(Self::InvoicePending),
             "complete" => Ok(Self::Complete),
+            "review_required" => Ok(Self::ReviewRequired),
             "expired" => Ok(Self::Expired),
             "cancelled" => Ok(Self::Cancelled),
             _ => Err(format!("Invalid wallet topup status: {value}")),

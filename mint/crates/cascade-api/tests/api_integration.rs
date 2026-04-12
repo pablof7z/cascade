@@ -6,8 +6,12 @@
 use axum::Router;
 use cdk::mint::{MintBuilder, UnitConfig};
 use cdk::nuts::CurrencyUnit;
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+
+type HmacSha256 = Hmac<Sha256>;
 
 /// Test helper to create a test server
 async fn create_test_server() -> String {
@@ -38,6 +42,12 @@ async fn create_test_server() -> String {
 }
 
 async fn create_product_test_server() -> String {
+    create_product_test_server_with_stripe(None).await
+}
+
+async fn create_product_test_server_with_stripe(
+    stripe_config: Option<cascade_api::stripe::StripeConfig>,
+) -> String {
     let cdk_db = Arc::new(cdk_sqlite::mint::memory::empty().await.unwrap());
     let mut builder = MintBuilder::new(cdk_db.clone());
     builder
@@ -83,6 +93,7 @@ async fn create_product_test_server() -> String {
             network: None,
             cli_path: None,
         },
+        stripe_config,
         mint,
         cascade_db,
         "signet",
@@ -100,6 +111,58 @@ async fn create_product_test_server() -> String {
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     url
+}
+
+async fn create_mock_stripe_server() -> String {
+    create_mock_stripe_server_with_risk_level("normal").await
+}
+
+async fn create_mock_stripe_server_with_risk_level(risk_level: &'static str) -> String {
+    let app = Router::new()
+        .route(
+            "/v1/checkout/sessions",
+            axum::routing::post(|| async move {
+                let expires_at = chrono::Utc::now().timestamp() + 1800;
+                axum::Json(serde_json::json!({
+                    "id": "cs_test_cascade",
+                    "url": "https://checkout.stripe.test/cs_test_cascade",
+                    "expires_at": expires_at
+                }))
+            }),
+        )
+        .route(
+            "/v1/payment_intents/{id}",
+            axum::routing::get(
+                move |axum::extract::Path(id): axum::extract::Path<String>| async move {
+                    axum::Json(serde_json::json!({
+                        "id": id,
+                        "latest_charge": {
+                            "outcome": {
+                                "risk_level": risk_level
+                            }
+                        }
+                    }))
+                },
+            ),
+        );
+
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let url = format!("http://{}", addr);
+
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    url
+}
+
+fn stripe_signature(secret: &str, body: &str, timestamp: i64) -> String {
+    let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).unwrap();
+    mac.update(format!("{timestamp}.{body}").as_bytes());
+    let signature = hex::encode(mac.finalize().into_bytes());
+    format!("t={timestamp},v1={signature}")
 }
 
 fn sample_market_event(event_id: &str, slug: &str, pubkey: &str) -> serde_json::Value {
@@ -1031,6 +1094,220 @@ async fn test_lightning_topup_request_id_is_idempotent() {
 
     let completed_payload = wait_for_topup_completion(&client, &url, &quote_id).await;
     assert_eq!(completed_payload["status"].as_str(), Some("complete"));
+}
+
+#[tokio::test]
+async fn test_stripe_topup_completes_from_webhook() {
+    let stripe_base_url = create_mock_stripe_server().await;
+    let webhook_secret = "whsec_test_cascade";
+    let url = create_product_test_server_with_stripe(Some(cascade_api::stripe::StripeConfig {
+        secret_key: "sk_test_cascade".to_string(),
+        webhook_secret: webhook_secret.to_string(),
+        success_url: "https://cascade.test/portfolio?stripe=success&topup_id={TOPUP_ID}"
+            .to_string(),
+        cancel_url: "https://cascade.test/portfolio?stripe=cancel&topup_id={TOPUP_ID}".to_string(),
+        base_url: stripe_base_url,
+        checkout_expiry_seconds: 1800,
+        product_name: "Cascade Portfolio Top-up".to_string(),
+        max_topup_minor: 10_000,
+        window_limit_minor: 25_000,
+        window_seconds: 24 * 60 * 60,
+        allowed_risk_levels: vec!["normal".to_string()],
+    }))
+    .await;
+    let client = reqwest::Client::new();
+    let pubkey = "f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0";
+    let request_id = "stripe-topup-request-1";
+
+    let create_response = client
+        .post(format!("{url}/api/wallet/topups/stripe"))
+        .json(&serde_json::json!({
+            "pubkey": pubkey,
+            "amount_minor": 4200,
+            "request_id": request_id
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), 201);
+    let create_payload: serde_json::Value = create_response.json().await.unwrap();
+    let topup_id = create_payload["id"].as_str().unwrap().to_string();
+    assert_eq!(create_payload["status"].as_str(), Some("pending"));
+    assert_eq!(create_payload["rail"].as_str(), Some("stripe"));
+    assert_eq!(
+        create_payload["checkout_session_id"].as_str(),
+        Some("cs_test_cascade")
+    );
+    assert_eq!(
+        create_payload["checkout_url"].as_str(),
+        Some("https://checkout.stripe.test/cs_test_cascade")
+    );
+    assert!(create_payload["invoice"].is_null());
+    assert!(create_payload["fx_quote_id"].is_null());
+
+    let request_status_response = client
+        .get(format!("{url}/api/wallet/topups/requests/{request_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(request_status_response.status(), 200);
+    let request_status_payload: serde_json::Value = request_status_response.json().await.unwrap();
+    assert_eq!(request_status_payload["status"].as_str(), Some("complete"));
+    assert_eq!(
+        request_status_payload["topup"]["id"].as_str(),
+        Some(topup_id.as_str())
+    );
+
+    let event_body = serde_json::json!({
+        "id": "evt_stripe_checkout_completed",
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "id": "cs_test_cascade",
+                "client_reference_id": topup_id,
+                "payment_status": "paid",
+                "payment_intent": "pi_test_cascade",
+                "expires_at": chrono::Utc::now().timestamp() + 1800,
+                "metadata": {
+                    "topup_id": request_status_payload["topup"]["id"].as_str().unwrap()
+                }
+            }
+        }
+    })
+    .to_string();
+    let timestamp = chrono::Utc::now().timestamp();
+    let signature = stripe_signature(webhook_secret, &event_body, timestamp);
+
+    let webhook_response = client
+        .post(format!("{url}/api/wallet/topups/stripe/webhook"))
+        .header("stripe-signature", signature)
+        .header("content-type", "application/json")
+        .body(event_body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(webhook_response.status(), 200);
+
+    let topup_status_response = client
+        .get(format!("{url}/api/wallet/topups/{topup_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(topup_status_response.status(), 200);
+    let topup_status_payload: serde_json::Value = topup_status_response.json().await.unwrap();
+    assert_eq!(topup_status_payload["status"].as_str(), Some("complete"));
+    assert_eq!(topup_status_payload["risk_level"].as_str(), Some("normal"));
+    assert!(topup_status_payload["issued_proofs"].as_array().is_some());
+
+    let portfolio_response = client
+        .get(format!("{url}/api/product/portfolio/{pubkey}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(portfolio_response.status(), 200);
+    let portfolio_payload: serde_json::Value = portfolio_response.json().await.unwrap();
+    assert_eq!(portfolio_payload["available_minor"].as_u64(), Some(4200));
+    assert_eq!(portfolio_payload["pending_minor"].as_u64(), Some(0));
+    assert_eq!(
+        portfolio_payload["funding_events"][0]["rail"].as_str(),
+        Some("stripe")
+    );
+}
+
+#[tokio::test]
+async fn test_stripe_topup_moves_to_review_required_for_high_risk() {
+    let stripe_base_url = create_mock_stripe_server_with_risk_level("highest").await;
+    let webhook_secret = "whsec_test_cascade";
+    let url = create_product_test_server_with_stripe(Some(cascade_api::stripe::StripeConfig {
+        secret_key: "sk_test_cascade".to_string(),
+        webhook_secret: webhook_secret.to_string(),
+        success_url: "https://cascade.test/portfolio?stripe=success&topup_id={TOPUP_ID}"
+            .to_string(),
+        cancel_url: "https://cascade.test/portfolio?stripe=cancel&topup_id={TOPUP_ID}".to_string(),
+        base_url: stripe_base_url,
+        checkout_expiry_seconds: 1800,
+        product_name: "Cascade Portfolio Top-up".to_string(),
+        max_topup_minor: 10_000,
+        window_limit_minor: 25_000,
+        window_seconds: 24 * 60 * 60,
+        allowed_risk_levels: vec!["normal".to_string()],
+    }))
+    .await;
+    let client = reqwest::Client::new();
+    let pubkey = "1111111111111111111111111111111111111111111111111111111111111111";
+
+    let create_response = client
+        .post(format!("{url}/api/wallet/topups/stripe"))
+        .json(&serde_json::json!({
+            "pubkey": pubkey,
+            "amount_minor": 4200
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), 201);
+    let create_payload: serde_json::Value = create_response.json().await.unwrap();
+    let topup_id = create_payload["id"].as_str().unwrap().to_string();
+
+    let event_body = serde_json::json!({
+        "id": "evt_stripe_checkout_high_risk",
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "id": "cs_test_cascade",
+                "client_reference_id": topup_id,
+                "payment_status": "paid",
+                "payment_intent": "pi_test_high_risk",
+                "expires_at": chrono::Utc::now().timestamp() + 1800,
+                "metadata": {
+                    "topup_id": create_payload["id"].as_str().unwrap()
+                }
+            }
+        }
+    })
+    .to_string();
+    let timestamp = chrono::Utc::now().timestamp();
+    let signature = stripe_signature(webhook_secret, &event_body, timestamp);
+
+    let webhook_response = client
+        .post(format!("{url}/api/wallet/topups/stripe/webhook"))
+        .header("stripe-signature", signature)
+        .header("content-type", "application/json")
+        .body(event_body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(webhook_response.status(), 200);
+    let webhook_payload: serde_json::Value = webhook_response.json().await.unwrap();
+    assert_eq!(webhook_payload["status"].as_str(), Some("review_required"));
+
+    let topup_status_response = client
+        .get(format!("{url}/api/wallet/topups/{topup_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(topup_status_response.status(), 200);
+    let topup_status_payload: serde_json::Value = topup_status_response.json().await.unwrap();
+    assert_eq!(
+        topup_status_payload["status"].as_str(),
+        Some("review_required")
+    );
+    assert_eq!(topup_status_payload["risk_level"].as_str(), Some("highest"));
+    assert!(topup_status_payload["issued_proofs"].is_null());
+
+    let portfolio_response = client
+        .get(format!("{url}/api/product/portfolio/{pubkey}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(portfolio_response.status(), 200);
+    let portfolio_payload: serde_json::Value = portfolio_response.json().await.unwrap();
+    assert_eq!(portfolio_payload["available_minor"].as_u64(), Some(0));
+    assert_eq!(portfolio_payload["pending_minor"].as_u64(), Some(0));
+    assert_eq!(
+        portfolio_payload["funding_events"][0]["status"].as_str(),
+        Some("review_required")
+    );
 }
 
 #[tokio::test]

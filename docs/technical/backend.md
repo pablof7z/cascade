@@ -153,7 +153,25 @@ Stripe is a launch funding rail for the wallet mint.
 
 Card payments are reversible, so launch needs explicit risk controls around freshly funded balances.
 
-The backend should ingest Stripe risk signals and map them into temporary purchase and proof-portability limits for newly funded value.
+Because wallet proofs are browser-local bearer assets, the backend cannot safely rely on post-issuance portability limits. Launch should instead:
+
+- cap Stripe top-up size and rolling Stripe volume before Checkout creation
+- fetch Stripe risk data from the webhook completion path
+- issue proofs only when the configured risk policy accepts the payment
+- move rejected card top-ups into `review_required` or failure without issuing proofs
+
+The hosted Stripe flow should be:
+
+- client requests `POST /api/wallet/topups/stripe` with `pubkey`, `amount_minor`, and optional `request_id`
+- backend persists the top-up request before creating the Checkout Session
+- backend creates a hosted Checkout Session with top-up identifiers in metadata
+- backend persists the top-up quote with rail `stripe` and pending status
+- browser redirects to the returned `checkout_url`
+- Stripe webhook is the authoritative completion path
+- webhook fetches Stripe risk data, then either issues browser-local USD proofs or marks the top-up `review_required`
+- browser resumes by polling `GET /api/wallet/topups/{topup_id}` or `GET /api/wallet/topups/requests/{request_id}`
+
+Stripe must not introduce a separate balance ledger or a separate proof issuance path. It terminates in the same proof issuance and recovery logic already used by Lightning top-ups.
 
 ## Lightning Integration
 
@@ -169,7 +187,7 @@ Lightning is both a launch wallet-funding rail and the settlement rail between t
 
 This is backend plumbing, not normal product UX. The frontend should not force the user to think in sats or Lightning invoices.
 
-In signet, the product should preserve these same quote shapes and the same invoice lifecycle. The difference is the backing rail and value, not whether the mint skips invoice settlement.
+In signet, the product should preserve these same quote shapes and the same payment lifecycle. The difference is the backing rail and value, not whether the mint skips settlement.
 
 The current mint runtime uses the local `lncli` binary as the concrete LND adapter. Runtime config should therefore include TLS cert path, macaroon path, network, and either an explicit `lncli` path or a deployment environment where `lncli` is resolvable on `PATH`.
 

@@ -48,15 +48,19 @@ export type ProductWalletTopup = {
   id: string;
   rail: string;
   amount_minor: number;
-  amount_msat: number;
+  amount_msat?: number | null;
   status: string;
   invoice?: string | null;
   payment_hash?: string | null;
-  fx_source: string;
-  btc_usd_price: number;
-  spread_bps: number;
-  fx_quote_id: string;
+  checkout_url?: string | null;
+  checkout_session_id?: string | null;
+  checkout_expires_at?: number | null;
+  fx_source?: string | null;
+  btc_usd_price?: number | null;
+  spread_bps?: number | null;
+  fx_quote_id?: string | null;
   observations: ProductFxObservation[];
+  risk_level?: string | null;
   issued_proofs?: ProductProof[] | null;
   created_at: number;
   expires_at: number;
@@ -191,16 +195,6 @@ export type ProductTradeRequestStatus = {
   trade?: ProductTradeEvent | null;
 };
 
-export type ProductWalletTopupExecution = {
-  topup: ProductWalletTopup;
-  wallet: ProductWallet;
-};
-
-export type ProductWalletFundingExecution = {
-  wallet: ProductWallet;
-  proofs: ProductProof[];
-};
-
 async function parseApiError(response: Response, fallback: string): Promise<string> {
   const payload = (await response.json().catch(() => null)) as ApiErrorPayload | null;
   return payload?.error || fallback;
@@ -319,18 +313,28 @@ export async function createLightningTopupQuote(input: {
   });
 }
 
+export async function createStripeTopup(input: {
+  pubkey: string;
+  amountMinor: number;
+  requestId?: string;
+}): Promise<Response> {
+  return fetch(`${getProductApiUrl()}/api/wallet/topups/stripe`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      pubkey: input.pubkey,
+      amount_minor: input.amountMinor,
+      request_id: input.requestId
+    })
+  });
+}
+
 export async function fetchWalletTopupRequestStatus(requestId: string): Promise<Response> {
   return fetch(`${getProductApiUrl()}/api/wallet/topups/requests/${requestId}`);
 }
 
 export async function fetchWalletTopupStatus(topupId: string): Promise<Response> {
   return fetch(`${getProductApiUrl()}/api/wallet/topups/${topupId}`);
-}
-
-export async function settleLightningTopupQuote(topupId: string): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/wallet/topups/lightning/${topupId}/settle`, {
-    method: 'POST'
-  });
 }
 
 export async function fetchTradeStatus(tradeId: string): Promise<Response> {

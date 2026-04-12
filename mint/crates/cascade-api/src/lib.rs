@@ -3,8 +3,10 @@
 pub mod fx;
 pub mod handlers;
 pub mod routes;
+pub mod stripe;
 pub mod types;
 
+use crate::stripe::{StripeConfig, StripeGateway};
 use axum::Router;
 use cascade_core::db::CascadeDatabase;
 use cascade_core::lightning::lnd_client::{LndClient, LndConfig};
@@ -16,6 +18,7 @@ use tower_http::cors::{Any, CorsLayer};
 pub async fn build_server(
     market_manager: Arc<cascade_core::MarketManager>,
     lnd_config: LndConfig,
+    stripe_config: Option<StripeConfig>,
     mint: Arc<cdk::mint::Mint>,
     db: Arc<CascadeDatabase>,
     network_type: &str,
@@ -35,6 +38,11 @@ pub async fn build_server(
         fx::FxQuoteService::for_network(network_type)
             .map_err(|e| format!("Failed to initialize FX quote service: {e}"))?,
     );
+    let stripe_gateway = stripe_config
+        .map(StripeGateway::new)
+        .transpose()
+        .map_err(|e| format!("Failed to initialize Stripe gateway: {e}"))?
+        .map(Arc::new);
 
     mint.start()
         .await
@@ -45,6 +53,7 @@ pub async fn build_server(
         market_manager,
         invoice_service,
         fx_service,
+        stripe_gateway,
         mint.clone(),
         db,
         network_type == "signet",

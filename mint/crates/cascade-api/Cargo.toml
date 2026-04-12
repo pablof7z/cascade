@@ -36,6 +36,7 @@ base64 = "0.22"
 bitcoin.workspace = true
 hex.workspace = true
 sha2.workspace = true
+hmac = "0.12"
 
 [dev-dependencies]
 tokio-test = "0.4"

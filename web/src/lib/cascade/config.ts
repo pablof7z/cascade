@@ -26,6 +26,10 @@ export function getProductApiUrl(): string {
   return normalizeMintUrl(env.PUBLIC_CASCADE_API_URL || getMintUrl());
 }
 
+export function isStripeTopupEnabled(): boolean {
+  return env.PUBLIC_CASCADE_ENABLE_STRIPE_TOPUPS === 'true';
+}
+
 export function storageKey(base: string): string {
   return `${base}:${getCascadeEdition()}`;
 }

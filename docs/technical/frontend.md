@@ -189,7 +189,25 @@ For launch cost basis and PnL:
 
 The launch `/portfolio` surface must also handle local proof movement directly in the browser:
 
-In signet, funding still starts from the normal top-up UI and API contract, and the quote remains pending until the invoice is actually paid. Paper trading comes from signet-value rails and test infrastructure, not from a separate faucet surface or instant quote completion.
+In signet, funding still starts from the normal top-up UI and API contract, and the quote remains pending until the payment object is actually settled. Paper trading comes from signet-value rails and test infrastructure, not from a separate faucet surface or instant quote completion.
+
+Portfolio funding uses one recovery model across both launch rails:
+
+- the browser creates a top-up request with a client `request_id`
+- the mint returns a persisted top-up id plus rail-specific payment metadata
+- the browser stores pending-topup recovery state in local storage
+- Lightning top-ups remain pending until the invoice is actually paid
+- Stripe top-ups remain pending until the verified webhook completes them
+- after completion, the browser polls the same top-up status route and imports the issued proofs into local storage
+- if a Stripe payment is captured but not accepted by the configured issuance policy, the browser should show `review_required` and must not assume funded proofs exist
+
+For Stripe specifically:
+
+- `/portfolio` offers a hosted Checkout action alongside Lightning when the edition has Stripe configured
+- the UI can navigate the user to the returned `checkout_url`
+- the return from Stripe is not the source of truth for proof issuance
+- the browser must recover through the same pending-topup polling path used for Lightning
+- signet and mainnet use the same browser-local proof storage and the same top-up recovery mechanics
 
 - export a locally held proof bucket as a standard Cashu token string
 - import a Cashu token string into the local browser store

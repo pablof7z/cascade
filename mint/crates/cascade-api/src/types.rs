@@ -167,7 +167,7 @@ pub struct MarketMintKeysResponse {
 
 // Product endpoints
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductCreateMarketRequest {
     pub event_id: String,
     pub title: String,
@@ -180,7 +180,7 @@ pub struct ProductCreateMarketRequest {
     pub b: f64,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ProductMarketSummary {
     pub event_id: String,
     pub slug: String,
@@ -198,31 +198,31 @@ pub struct ProductMarketSummary {
     pub raw_event: Value,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductFeedResponse {
     pub markets: Vec<Value>,
     pub trades: Vec<Value>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CreatorMarketsResponse {
     pub markets: Vec<ProductMarketSummary>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductMarketDetailResponse {
     pub market: ProductMarketSummary,
     pub trades: Vec<Value>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductTradeStatusResponse {
     pub market: ProductMarketSummary,
     pub trade: Value,
     pub settlement: Option<ProductTradeSettlementResponse>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductTradeRequestStatusResponse {
     pub request_id: String,
     pub status: String,
@@ -231,13 +231,7 @@ pub struct ProductTradeRequestStatusResponse {
     pub trade: Option<Value>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct ProductPaperFaucetRequest {
-    pub pubkey: String,
-    pub amount_minor: u64,
-}
-
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductFundingEventResponse {
     pub id: String,
     pub rail: String,
@@ -247,34 +241,56 @@ pub struct ProductFundingEventResponse {
     pub created_at: i64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductLightningTopupQuoteRequest {
     pub pubkey: String,
     pub amount_minor: u64,
     pub request_id: Option<String>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ProductStripeTopupRequest {
+    pub pubkey: String,
+    pub amount_minor: u64,
+    pub request_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ProductWalletTopupResponse {
     pub id: String,
     pub rail: String,
     pub amount_minor: u64,
-    pub amount_msat: u64,
     pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub amount_msat: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub invoice: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_hash: Option<String>,
-    pub fx_source: String,
-    pub btc_usd_price: f64,
-    pub spread_bps: u64,
-    pub fx_quote_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub checkout_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub checkout_session_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub checkout_expires_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fx_source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub btc_usd_price: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spread_bps: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fx_quote_id: Option<String>,
     pub observations: Vec<ProductFxObservationResponse>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub risk_level: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub issued_proofs: Option<Vec<ProofInput>>,
     pub created_at: i64,
     pub expires_at: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductWalletTopupRequestStatusResponse {
     pub request_id: String,
     pub rail: String,
@@ -284,14 +300,14 @@ pub struct ProductWalletTopupRequestStatusResponse {
     pub topup: Option<ProductWalletTopupResponse>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ProductFxObservationResponse {
     pub source: String,
     pub btc_usd_price: f64,
     pub observed_at: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductLightningFxQuoteResponse {
     pub amount_minor: u64,
     pub amount_msat: u64,
@@ -304,19 +320,7 @@ pub struct ProductLightningFxQuoteResponse {
     pub observations: Vec<ProductFxObservationResponse>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct ProductWalletTopupExecutionResponse {
-    pub topup: ProductWalletTopupResponse,
-    pub wallet: ProductWalletResponse,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ProductWalletFundingExecutionResponse {
-    pub wallet: ProductWalletResponse,
-    pub proofs: Vec<ProofInput>,
-}
-
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductWalletPositionResponse {
     pub market_event_id: String,
     pub market_slug: String,
@@ -329,7 +333,7 @@ pub struct ProductWalletPositionResponse {
     pub unrealized_pnl_minor: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductWalletResponse {
     pub pubkey: String,
     pub available_minor: u64,
@@ -340,7 +344,7 @@ pub struct ProductWalletResponse {
     pub funding_events: Vec<ProductFundingEventResponse>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductTradeQuoteRequest {
     pub trade_type: String,
     pub side: String,
@@ -348,7 +352,7 @@ pub struct ProductTradeQuoteRequest {
     pub quantity: Option<f64>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductCoordinatorTradeQuoteRequest {
     pub event_id: String,
     pub side: String,
@@ -356,7 +360,7 @@ pub struct ProductCoordinatorTradeQuoteRequest {
     pub quantity: Option<f64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductTradeQuoteResponse {
     pub quote_id: Option<String>,
     pub market_event_id: String,
@@ -386,7 +390,7 @@ pub struct ProductTradeQuoteResponse {
     pub trade_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductBuyRequest {
     pub pubkey: String,
     pub side: String,
@@ -397,7 +401,7 @@ pub struct ProductBuyRequest {
     pub request_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductCoordinatorBuyRequest {
     pub event_id: String,
     pub pubkey: String,
@@ -409,7 +413,7 @@ pub struct ProductCoordinatorBuyRequest {
     pub request_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductSellRequest {
     pub pubkey: String,
     pub side: String,
@@ -420,7 +424,7 @@ pub struct ProductSellRequest {
     pub request_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductCoordinatorSellRequest {
     pub event_id: String,
     pub pubkey: String,
@@ -438,7 +442,7 @@ pub struct ProductTradeProofBundleResponse {
     pub proofs: Vec<ProofInput>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductTradeExecutionResponse {
     pub wallet: ProductWalletResponse,
     pub market: ProductMarketSummary,
@@ -448,7 +452,7 @@ pub struct ProductTradeExecutionResponse {
     pub change: Option<ProductTradeProofBundleResponse>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductTradeSettlementResponse {
     pub id: String,
     pub trade_id: String,

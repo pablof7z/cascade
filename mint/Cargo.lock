@@ -512,6 +512,7 @@ dependencies = [
  "cdk-sqlite",
  "chrono",
  "hex",
+ "hmac",
  "reqwest",
  "serde",
  "serde_json",
@@ -522,6 +523,27 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "cascade-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "cascade-api",
+ "cdk",
+ "chrono",
+ "clap",
+ "hex",
+ "nostr",
+ "nostr-sdk",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
  "uuid",
 ]
 

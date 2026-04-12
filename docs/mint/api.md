@@ -166,24 +166,52 @@ The exact naming can still change during implementation, but launch needs a high
 
 - `GET /api/product/fx/lightning/{amount_minor}`
 - `POST /api/wallet/topups/stripe`
+- `POST /api/wallet/topups/stripe/webhook`
 - `GET /api/wallet/topups/requests/{request_id}`
 - `GET /api/wallet/topups/{topup_id}`
 - `POST /api/wallet/topups/lightning/quote`
 - `GET /api/wallet/topups/lightning/{quote_id}`
 
+Wallet top-ups are one persisted saga with rail-specific payment metadata.
+
+- Lightning top-ups carry invoice metadata and reconcile against the underlying invoice state.
+- Stripe top-ups carry hosted Checkout metadata and complete from a verified Stripe webhook only after Stripe risk checks pass.
+- `GET /api/wallet/topups/{topup_id}` is the canonical status route for both rails.
+- `GET /api/wallet/topups/lightning/{quote_id}` remains the Lightning-specific alias.
+
 Lightning top-up status reads should be settlement-aware. `GET /api/wallet/topups/{topup_id}` and `GET /api/wallet/topups/lightning/{quote_id}` are allowed to reconcile the persisted quote against the underlying invoice state before responding, so a paid invoice can complete on a later status poll or wallet refresh without a separate bespoke callback from the client.
 
 In signet, the wallet mint should keep the same top-up quote API and the same invoice lifecycle as mainnet. The difference is that the invoice and backing value live on signet or test infrastructure, not that the quote auto-completes without payment.
 
-Lightning top-up quote creation should accept an optional client-supplied `request_id`. The mint persists that request id before invoice creation so duplicate retries can replay the same top-up quote instead of creating a second invoice, and interrupted clients can recover through `GET /api/wallet/topups/requests/{request_id}` even if they never received the final `topup_id`.
+Top-up creation should accept an optional client-supplied `request_id`. The mint persists that request id before payment-object creation so duplicate retries can replay the same top-up quote instead of creating a second invoice or Checkout session, and interrupted clients can recover through `GET /api/wallet/topups/requests/{request_id}` even if they never received the final `topup_id`.
 
-Persisted wallet top-up responses should carry the locked FX snapshot metadata, not just the invoice:
+Persisted wallet top-up responses should carry rail-specific metadata in one shared shape:
 
-- `fx_quote_id`
-- `amount_msat`
-- `btc_usd_price`
-- `spread_bps`
-- `observations[]`
+- common:
+  - `id`
+  - `rail`
+  - `amount_minor`
+  - `status`
+  - `issued_proofs`
+  - `created_at`
+  - `expires_at`
+- Lightning-specific:
+  - `invoice`
+  - `payment_hash`
+  - `fx_quote_id`
+  - `amount_msat`
+  - `btc_usd_price`
+  - `spread_bps`
+  - `observations[]`
+- Stripe-specific:
+  - `checkout_url`
+  - `checkout_session_id`
+  - `checkout_expires_at`
+  - `risk_level`
+
+Wallet top-up statuses should include the normal pending/completed states plus a non-issuance review path for card rails. A Stripe top-up that was paid but failed the configured issuance policy should surface as `review_required`, with no `issued_proofs`.
+
+Stripe top-ups should complete only from a verified webhook, not from the browser redirect. The browser return from Checkout is allowed to resume the normal `GET /api/wallet/topups/{topup_id}` polling flow, but it is not the authoritative settlement signal.
 
 ### Trading
 

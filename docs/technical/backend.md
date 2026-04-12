@@ -162,11 +162,14 @@ Lightning is both a launch wallet-funding rail and the settlement rail between t
 - the wallet mint can create USD top-up invoices by locking `USD <-> msat` FX quotes
 - incoming top-up status polling reconciles persisted quote state against real invoice state, so a paid invoice can complete after restart or client interruption
 - persisted buy/sell quotes carry the Lightning-facing settlement budget and provider observations needed for the eventual inter-mint saga
+- executed buy/sell records should carry the completed hidden BOLT11 settlement metadata, not a signet-only synthetic settlement label
 - the market mint can return a standard invoice-backed quote for a LONG or SHORT trade
 - the wallet mint can pay that quote by consuming USD proofs
 - the reverse path can return market exit value back into the wallet mint
 
 This is backend plumbing, not normal product UX. The frontend should not force the user to think in sats or Lightning invoices.
+
+In signet, the product should preserve these same quote shapes but may auto-complete the quote immediately for paper trading rather than exposing a separate faucet rail.
 
 The current mint runtime uses the local `lncli` binary as the concrete LND adapter. Runtime config should therefore include TLS cert path, macaroon path, network, and either an explicit `lncli` path or a deployment environment where `lncli` is resolvable on `PATH`.
 

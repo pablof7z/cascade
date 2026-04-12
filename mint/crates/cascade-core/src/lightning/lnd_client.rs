@@ -65,6 +65,13 @@ impl Default for LndBackend {
     }
 }
 
+#[derive(Debug, Clone)]
+struct IssuedInvoiceRecord {
+    invoice: LightningInvoice,
+    preimage: Preimage,
+    internal_payable: bool,
+}
+
 /// LND client wrapper
 #[derive(Debug, Clone)]
 pub struct LndClient {
@@ -76,6 +83,8 @@ pub struct LndClient {
     macaroon: Option<String>,
     /// Selected backend implementation
     backend: LndBackend,
+    /// Locally tracked invoices created by this client, keyed by payment hash hex.
+    issued_invoices: Arc<RwLock<HashMap<String, IssuedInvoiceRecord>>>,
 }
 
 #[derive(Debug)]
@@ -161,6 +170,7 @@ impl LndClient {
             connected: false,
             macaroon: None,
             backend: LndBackend::default(),
+            issued_invoices: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -223,9 +233,23 @@ impl LndClient {
     ) -> Result<Option<LightningInvoice>> {
         self.ensure_connected()?;
 
+        let payment_hash_hex = payment_hash.to_hex();
+        if let Some(record) = self
+            .issued_invoices
+            .read()
+            .await
+            .get(&payment_hash_hex)
+            .cloned()
+        {
+            let normalized = self.normalize_invoice(record.invoice);
+            if normalized.state != InvoiceState::Open {
+                return Ok(Some(normalized));
+            }
+        }
+
         match &self.backend {
             LndBackend::Mock { invoices, .. } => {
-                let stored = invoices.read().await.get(&payment_hash.to_hex()).cloned();
+                let stored = invoices.read().await.get(&payment_hash_hex).cloned();
                 Ok(stored.map(|invoice| self.normalize_invoice(invoice)))
             }
             LndBackend::Cli { lncli_path } => {
@@ -246,7 +270,10 @@ impl LndClient {
                 }
 
                 let raw: LookupInvoiceResponse = parse_cli_json(&result)?;
-                Ok(Some(self.invoice_from_lookup(raw)?))
+                let invoice = self.invoice_from_lookup(raw)?;
+                self.upsert_issued_invoice(invoice.clone(), None, false)
+                    .await;
+                Ok(Some(invoice))
             }
         }
     }
@@ -258,6 +285,7 @@ impl LndClient {
         description: Option<String>,
         expiry_seconds: Option<u64>,
         cltv_expiry: Option<u64>,
+        internal_payable: bool,
     ) -> Result<LightningInvoice> {
         self.ensure_connected()?;
 
@@ -275,13 +303,18 @@ impl LndClient {
                 preimages
                     .write()
                     .await
-                    .insert(invoice.payment_hash.to_hex(), preimage);
+                    .insert(invoice.payment_hash.to_hex(), preimage.clone());
+                self.upsert_issued_invoice(invoice.clone(), Some(preimage), internal_payable)
+                    .await;
                 Ok(invoice)
             }
             LndBackend::Cli { lncli_path } => {
+                let preimage = self.generate_preimage(amount_msat);
+                let payment_hash = preimage.payment_hash();
                 let mut args = vec![
                     "addinvoice".to_string(),
                     format!("--amt_msat={amount_msat}"),
+                    format!("--preimage={}", preimage.to_hex()),
                 ];
                 if let Some(description) = description.clone().filter(|memo| !memo.is_empty()) {
                     args.push(format!("--memo={description}"));
@@ -302,7 +335,7 @@ impl LndClient {
                 }
 
                 let raw: AddInvoiceResponse = parse_cli_json(&result)?;
-                Ok(LightningInvoice {
+                let invoice = LightningInvoice {
                     payment_request: raw.payment_request,
                     payment_hash: PaymentHash::from_hex(&raw.r_hash)?,
                     amount_msat,
@@ -311,7 +344,16 @@ impl LndClient {
                     cltv_expiry,
                     description,
                     state: InvoiceState::Open,
-                })
+                };
+                if invoice.payment_hash != payment_hash {
+                    return Err(CascadeError::PaymentError(
+                        "LND addinvoice returned a payment hash different from the requested preimage"
+                            .to_string(),
+                    ));
+                }
+                self.upsert_issued_invoice(invoice.clone(), Some(preimage), internal_payable)
+                    .await;
+                Ok(invoice)
             }
         }
     }
@@ -395,6 +437,10 @@ impl LndClient {
     pub async fn pay_invoice(&self, invoice: &str) -> Result<Preimage> {
         self.ensure_connected()?;
 
+        if let Some(preimage) = self.try_pay_internal_invoice(invoice).await? {
+            return Ok(preimage);
+        }
+
         match &self.backend {
             LndBackend::Mock {
                 invoices,
@@ -437,6 +483,7 @@ impl LndClient {
                 let args = vec![
                     "payinvoice".to_string(),
                     "--force".to_string(),
+                    "--allow_self_payment".to_string(),
                     "--json".to_string(),
                     invoice.to_string(),
                 ];
@@ -541,19 +588,7 @@ impl LndClient {
         expiry_seconds: Option<u64>,
         cltv_expiry: Option<u64>,
     ) -> (LightningInvoice, Preimage) {
-        let mut preimage_bytes = [0u8; 32];
-        use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
-        hasher.update(
-            chrono::Utc::now()
-                .timestamp_nanos_opt()
-                .unwrap_or_default()
-                .to_le_bytes(),
-        );
-        hasher.update(amount_msat.to_le_bytes());
-        let result = hasher.finalize();
-        preimage_bytes.copy_from_slice(&result);
-        let preimage = Preimage::from_bytes(preimage_bytes);
+        let preimage = self.generate_preimage(amount_msat);
         let payment_hash = preimage.payment_hash();
 
         (
@@ -573,6 +608,71 @@ impl LndClient {
             },
             preimage,
         )
+    }
+
+    fn generate_preimage(&self, amount_msat: u64) -> Preimage {
+        let mut preimage_bytes = [0u8; 32];
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(
+            chrono::Utc::now()
+                .timestamp_nanos_opt()
+                .unwrap_or_default()
+                .to_le_bytes(),
+        );
+        hasher.update(amount_msat.to_le_bytes());
+        let result = hasher.finalize();
+        preimage_bytes.copy_from_slice(&result);
+        Preimage::from_bytes(preimage_bytes)
+    }
+
+    async fn upsert_issued_invoice(
+        &self,
+        invoice: LightningInvoice,
+        preimage: Option<Preimage>,
+        internal_payable: bool,
+    ) {
+        let initial_preimage = preimage
+            .clone()
+            .unwrap_or_else(|| Preimage::from_bytes([0u8; 32]));
+        let payment_hash_hex = invoice.payment_hash.to_hex();
+        let mut issued = self.issued_invoices.write().await;
+        let record = issued
+            .entry(payment_hash_hex)
+            .or_insert_with(|| IssuedInvoiceRecord {
+                invoice: invoice.clone(),
+                preimage: initial_preimage,
+                internal_payable,
+            });
+        record.invoice = invoice;
+        record.internal_payable = record.internal_payable || internal_payable;
+        if let Some(preimage) = preimage {
+            record.preimage = preimage;
+        }
+    }
+
+    async fn try_pay_internal_invoice(&self, invoice: &str) -> Result<Option<Preimage>> {
+        let mut issued = self.issued_invoices.write().await;
+        let Some(record) = issued
+            .values_mut()
+            .find(|record| record.invoice.payment_request == invoice)
+        else {
+            return Ok(None);
+        };
+
+        let normalized = self.normalize_invoice(record.invoice.clone());
+        if normalized.state != InvoiceState::Open {
+            return Err(CascadeError::PaymentError(format!(
+                "Invoice is not payable: {:?}",
+                normalized.state
+            )));
+        }
+        if !record.internal_payable {
+            return Ok(None);
+        }
+
+        record.invoice.state = InvoiceState::Settled;
+        Ok(Some(record.preimage.clone()))
     }
 
     fn normalize_invoice(&self, mut invoice: LightningInvoice) -> LightningInvoice {
@@ -880,6 +980,7 @@ mod tests {
                 Some("Cascade test invoice".to_string()),
                 Some(120),
                 Some(40),
+                false,
             )
             .await
             .unwrap();
@@ -910,6 +1011,7 @@ mod tests {
                 Some("Cascade pay test".to_string()),
                 Some(120),
                 Some(40),
+                true,
             )
             .await
             .unwrap();

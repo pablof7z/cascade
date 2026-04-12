@@ -179,6 +179,7 @@ impl InvoiceService {
         amount_msat: u64,
         description: Option<String>,
         expiry_seconds: Option<u64>,
+        internal_payable: bool,
     ) -> Result<LightningInvoice> {
         self.lnd_client
             .add_invoice(
@@ -186,6 +187,7 @@ impl InvoiceService {
                 description,
                 expiry_seconds.or(Some(self.default_expiry_seconds)),
                 Some(self.cltv_delta),
+                internal_payable,
             )
             .await
     }
@@ -220,6 +222,7 @@ impl InvoiceService {
                 }),
                 Some(self.default_expiry_seconds),
                 Some(self.cltv_delta),
+                false,
             )
             .await?;
 
@@ -297,6 +300,7 @@ impl InvoiceService {
                 )),
                 Some(self.default_expiry_seconds),
                 Some(self.cltv_delta),
+                false,
             )
             .await?;
 

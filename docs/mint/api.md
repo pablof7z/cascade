@@ -170,11 +170,10 @@ The exact naming can still change during implementation, but launch needs a high
 - `GET /api/wallet/topups/{topup_id}`
 - `POST /api/wallet/topups/lightning/quote`
 - `GET /api/wallet/topups/lightning/{quote_id}`
-- `POST /api/product/paper/faucet` for signet-only capped paper funding
 
 Lightning top-up status reads should be settlement-aware. `GET /api/wallet/topups/{topup_id}` and `GET /api/wallet/topups/lightning/{quote_id}` are allowed to reconcile the persisted quote against the underlying invoice state before responding, so a paid invoice can complete on a later status poll or wallet refresh without a separate bespoke callback from the client.
 
-Signet-only funding shortcuts are operational helpers, not a separate account model. They should end in edition-local proofs rather than a pubkey-keyed server wallet ledger.
+In signet, the wallet mint should keep the same top-up quote API but auto-complete the quote as if the underlying payment had already arrived. That keeps signet close to normal Cashu mint behavior while still ending in edition-local proofs rather than a pubkey-keyed server wallet ledger.
 
 Lightning top-up quote creation should accept an optional client-supplied `request_id`. The mint persists that request id before invoice creation so duplicate retries can replay the same top-up quote instead of creating a second invoice, and interrupted clients can recover through `GET /api/wallet/topups/requests/{request_id}` even if they never received the final `topup_id`.
 
@@ -213,7 +212,7 @@ The persisted quote is also the settlement contract for the coordinator. It shou
 - `spread_bps`
 - `fx_observations[]`
 
-Executed trade responses and `GET /api/trades/{trade_id}` should also expose a settlement object when one exists. For signet paper trading this currently records a completed `paper_internal` settlement so recovery and auditing can reason about the hidden rail step even before the full external Lightning choreography is wired end to end.
+Executed trade responses and `GET /api/trades/{trade_id}` should also expose a settlement object when one exists. The canonical launch shape is a completed hidden BOLT11 settlement record: the mint creates the invoice for the receiving side, pays it over the Lightning abstraction, and records the invoice, payment hash, FX snapshot, and proof bundles so recovery and auditing can reason about the hidden rail step without inventing a bespoke public swap primitive.
 
 ### Public Read
 
@@ -314,7 +313,7 @@ Proofless pubkey-only trade execution is not part of the launch contract.
 
 - `POST /api/trades/buy` must require spendable USD proofs from the caller
 - `POST /api/trades/sell` must require spendable market proofs from the caller
-- signet-only funding helpers may mint proofs more easily, but they still feed the same proof-native execution path as mainnet
+- signet top-up quotes may auto-complete more easily, but they still feed the same proof-native execution path as mainnet
 
 Canonical market-proof units are lowercase:
 

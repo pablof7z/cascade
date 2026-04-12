@@ -5,13 +5,11 @@ use crate::types::{
     ProductCoordinatorSellRequest, ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest,
     ProductFeedResponse, ProductFundingEventResponse, ProductFxObservationResponse,
     ProductLightningFxQuoteResponse, ProductLightningTopupQuoteRequest,
-    ProductMarketDetailResponse, ProductMarketSummary, ProductPaperFaucetRequest,
-    ProductSellRequest, ProductTradeExecutionResponse, ProductTradeProofBundleResponse,
-    ProductTradeQuoteRequest, ProductTradeQuoteResponse, ProductTradeRequestStatusResponse,
-    ProductTradeSettlementResponse, ProductTradeStatusResponse,
-    ProductWalletFundingExecutionResponse, ProductWalletPositionResponse, ProductWalletResponse,
-    ProductWalletTopupExecutionResponse, ProductWalletTopupRequestStatusResponse,
-    ProductWalletTopupResponse, ProofInput,
+    ProductMarketDetailResponse, ProductMarketSummary, ProductSellRequest,
+    ProductTradeExecutionResponse, ProductTradeProofBundleResponse, ProductTradeQuoteRequest,
+    ProductTradeQuoteResponse, ProductTradeRequestStatusResponse, ProductTradeSettlementResponse,
+    ProductTradeStatusResponse, ProductWalletPositionResponse, ProductWalletResponse,
+    ProductWalletTopupRequestStatusResponse, ProductWalletTopupResponse, ProofInput,
 };
 use axum::{
     extract::{Json, Path, State},
@@ -40,9 +38,9 @@ const TRADE_FEE_BPS: u64 = 100;
 const TRADE_QUOTE_TTL_SECONDS: i64 = 30;
 const FALLBACK_MINT_PUBKEY: &str =
     "1111111111111111111111111111111111111111111111111111111111111111";
-const PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR: u64 = 10_000;
-const PAPER_FAUCET_WINDOW_LIMIT_MINOR: u64 = 25_000;
-const PAPER_FAUCET_WINDOW_SECONDS: i64 = 24 * 60 * 60;
+const SIGNET_TOPUP_SINGLE_LIMIT_MINOR: u64 = 10_000;
+const SIGNET_TOPUP_WINDOW_LIMIT_MINOR: u64 = 25_000;
+const SIGNET_TOPUP_WINDOW_SECONDS: i64 = 24 * 60 * 60;
 const NIP98_AUTH_KIND: i64 = 27_235;
 const NIP98_AUTH_WINDOW_SECONDS: i64 = 120;
 const SHARE_MINOR_SCALE: u64 = 10_000;
@@ -66,16 +64,6 @@ struct Nip98AuthEvent {
 struct PreparedTradeQuote {
     response: ProductTradeQuoteResponse,
     fx_quote: FxQuoteSnapshot,
-}
-
-fn signet_only_unavailable(feature: &str) -> (StatusCode, Json<Value>) {
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({
-            "error": "signet_only_endpoint",
-            "feature": feature
-        })),
-    )
 }
 
 fn proof_input_from_cdk_proof(proof: &cdk::nuts::Proof) -> Result<ProofInput, serde_json::Error> {
@@ -485,6 +473,16 @@ pub async fn create_lightning_topup_quote(
         }
     }
 
+    if state.paper_mode {
+        if let Err(error) = enforce_signet_topup_limits(&state, &req.pubkey, req.amount_minor).await
+        {
+            if let Some(request_id) = req.request_id.as_deref() {
+                let _ = state.db.fail_wallet_topup_request(request_id, &error).await;
+            }
+            return signet_topup_limit_error_response(&error);
+        }
+    }
+
     let fx_quote = match state.fx_service.quote_wallet_topup(req.amount_minor).await {
         Ok(quote) => quote.snapshot,
         Err(error) => {
@@ -502,6 +500,7 @@ pub async fn create_lightning_topup_quote(
                 fx_quote.amount_msat,
                 Some(format!("Cascade wallet top-up for {}", req.pubkey)),
                 Some(invoice_expiry_seconds),
+                false,
             )
             .await
         {
@@ -536,10 +535,13 @@ pub async fn create_lightning_topup_quote(
         )
         .await
     {
-        Ok(quote) => {
-            let response = wallet_topup_response(&quote, &fx_quote, None);
-            (StatusCode::CREATED, Json(json!(response)))
-        }
+        Ok(quote) => match load_wallet_topup_response(&state, &quote).await {
+            Ok(response) => (StatusCode::CREATED, Json(json!(response))),
+            Err(error) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error })),
+            ),
+        },
         Err(error) => {
             let error_message = error.to_string();
             if let Some(request_id) = req.request_id.as_deref() {
@@ -644,189 +646,6 @@ pub async fn get_wallet_topup_status(
     Path(quote_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
     get_lightning_topup_quote(State(state), Path(quote_id)).await
-}
-
-pub async fn settle_lightning_topup_quote(
-    State(state): State<AppState>,
-    Path(quote_id): Path<String>,
-) -> (StatusCode, Json<Value>) {
-    if !state.paper_mode {
-        return signet_only_unavailable("wallet_lightning_topup_settlement");
-    }
-
-    let existing_quote = match state.db.get_wallet_topup_quote(&quote_id).await {
-        Ok(Some(quote)) => quote,
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "error": "topup_quote_not_found" })),
-            )
-        }
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    let proofs = if existing_quote.status.to_string() == "complete" {
-        issued_proofs_from_metadata(existing_quote.metadata_json.as_deref()).unwrap_or_default()
-    } else {
-        match issue_wallet_proofs(&state, existing_quote.amount_minor).await {
-            Ok(proofs) => proofs,
-            Err(error) => {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(json!({ "error": error })),
-                )
-            }
-        }
-    };
-
-    let metadata_json = match wallet_proofs_metadata_json(
-        "signet-lightning-topup",
-        &proofs,
-        json!({ "topup_quote_id": quote_id }),
-    ) {
-        Ok(metadata) => metadata,
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    let proof_records = proofs
-        .iter()
-        .map(|proof| {
-            portfolio_proof_insert_from_input(proof, "usd", None, None, "signet_lightning_topup")
-        })
-        .collect::<Vec<_>>();
-
-    if let Err(error) = state.db.insert_portfolio_proofs(&proof_records).await {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": error.to_string() })),
-        );
-    }
-
-    match state
-        .db
-        .complete_wallet_topup_quote(&quote_id, Some("paper"), Some(&metadata_json))
-        .await
-    {
-        Ok(quote) => match wallet_response(&state, &quote.pubkey).await {
-            Ok(wallet) => match load_wallet_topup_response(&state, &quote).await {
-                Ok(topup) => (
-                    StatusCode::OK,
-                    Json(json!(ProductWalletTopupExecutionResponse { topup, wallet })),
-                ),
-                Err(error) => (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(json!({ "error": error })),
-                ),
-            },
-            Err(error) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error })),
-            ),
-        },
-        Err(error) => (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": error.to_string() })),
-        ),
-    }
-}
-
-pub async fn paper_faucet(
-    State(state): State<AppState>,
-    Json(req): Json<ProductPaperFaucetRequest>,
-) -> (StatusCode, Json<Value>) {
-    if !state.paper_mode {
-        return signet_only_unavailable("paper_wallet_faucet");
-    }
-
-    if req.pubkey.trim().is_empty() || req.amount_minor == 0 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "pubkey_and_amount_minor_are_required" })),
-        );
-    }
-
-    if let Err(response) = enforce_paper_funding_limits(&state, &req.pubkey, req.amount_minor).await
-    {
-        return response;
-    }
-
-    let proofs = match issue_wallet_proofs(&state, req.amount_minor).await {
-        Ok(proofs) => proofs,
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error })),
-            )
-        }
-    };
-
-    let metadata_json = match wallet_proofs_metadata_json(
-        "signet-paper-faucet",
-        &proofs,
-        json!({ "pubkey": req.pubkey }),
-    ) {
-        Ok(metadata) => metadata,
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    let proof_records = proofs
-        .iter()
-        .map(|proof| {
-            portfolio_proof_insert_from_input(proof, "usd", None, None, "signet_paper_faucet")
-        })
-        .collect::<Vec<_>>();
-
-    if let Err(error) = state.db.insert_portfolio_proofs(&proof_records).await {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": error.to_string() })),
-        );
-    }
-
-    match state
-        .db
-        .credit_wallet(
-            &req.pubkey,
-            req.amount_minor,
-            "paper",
-            Some("paper"),
-            Some(&metadata_json),
-        )
-        .await
-    {
-        Ok(_) => match wallet_response(&state, &req.pubkey).await {
-            Ok(wallet) => (
-                StatusCode::CREATED,
-                Json(json!(ProductWalletFundingExecutionResponse {
-                    wallet,
-                    proofs
-                })),
-            ),
-            Err(error) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            ),
-        },
-        Err(error) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": error.to_string() })),
-        ),
-    }
 }
 
 pub async fn create_market(
@@ -1604,7 +1423,21 @@ async fn buy_trade_by_event(
                 };
 
                 match build_quote_response(state, &market, &quote_request).await {
-                    Ok(quote) => quote.response,
+                    Ok(quote) => match create_persisted_trade_quote(state, &market, &quote).await {
+                        Ok(persisted) => persisted,
+                        Err(error) => {
+                            if let Some(request_id) = request_id {
+                                let _ = state
+                                    .db
+                                    .fail_trade_execution_request(request_id, &error)
+                                    .await;
+                            }
+                            return (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(json!({ "error": error })),
+                            );
+                        }
+                    },
                     Err(error) => {
                         if let Some(request_id) = request_id {
                             let _ = state
@@ -1722,13 +1555,26 @@ async fn buy_trade_by_event(
             let issued_unit = market_proof_unit(&market, side);
             let issued_bundle = trade_proof_bundle(&issued_unit, issued_proofs.clone());
             let change_bundle = trade_proof_bundle("usd", change_proofs.clone());
-            let settlement = build_trade_settlement_insert(
+            let settlement = match build_trade_settlement_insert(
                 state,
                 &req.pubkey,
                 &quote,
                 issued_bundle.as_ref(),
                 change_bundle.as_ref(),
-            );
+            )
+            .await
+            {
+                Ok(settlement) => settlement,
+                Err(error) => {
+                    if let Some(request_id) = request_id {
+                        let _ = state
+                            .db
+                            .fail_trade_execution_request(request_id, &error)
+                            .await;
+                    }
+                    return (StatusCode::BAD_GATEWAY, Json(json!({ "error": error })));
+                }
+            };
             let issued_inserts = issued_proofs
                 .iter()
                 .map(|proof| {
@@ -1951,7 +1797,21 @@ async fn sell_trade_by_event(
                     quantity: Some(req.quantity),
                 };
                 match build_quote_response(state, &market, &quote_request).await {
-                    Ok(quote) => quote.response,
+                    Ok(quote) => match create_persisted_trade_quote(state, &market, &quote).await {
+                        Ok(persisted) => persisted,
+                        Err(error) => {
+                            if let Some(request_id) = request_id {
+                                let _ = state
+                                    .db
+                                    .fail_trade_execution_request(request_id, &error)
+                                    .await;
+                            }
+                            return (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(json!({ "error": error })),
+                            );
+                        }
+                    },
                     Err(error) => {
                         if let Some(request_id) = request_id {
                             let _ = state
@@ -2091,13 +1951,26 @@ async fn sell_trade_by_event(
             let market_unit = market_proof_unit(&market, side);
             let issued_bundle = trade_proof_bundle("usd", issued_proofs.clone());
             let change_bundle = trade_proof_bundle(&market_unit, change_proofs.clone());
-            let settlement = build_trade_settlement_insert(
+            let settlement = match build_trade_settlement_insert(
                 state,
                 &req.pubkey,
                 &quote,
                 issued_bundle.as_ref(),
                 change_bundle.as_ref(),
-            );
+            )
+            .await
+            {
+                Ok(settlement) => settlement,
+                Err(error) => {
+                    if let Some(request_id) = request_id {
+                        let _ = state
+                            .db
+                            .fail_trade_execution_request(request_id, &error)
+                            .await;
+                    }
+                    return (StatusCode::BAD_GATEWAY, Json(json!({ "error": error })));
+                }
+            };
             let issued_inserts = issued_proofs
                 .iter()
                 .map(|proof| {
@@ -2656,47 +2529,41 @@ async fn market_detail_response(
     }
 }
 
-async fn enforce_paper_funding_limits(
+async fn enforce_signet_topup_limits(
     state: &AppState,
     pubkey: &str,
     amount_minor: u64,
-) -> Result<(), (StatusCode, Json<Value>)> {
-    if amount_minor > PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({
-                "error": format!(
-                    "paper_faucet_single_topup_limit_exceeded:max_minor={PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR}"
-                )
-            })),
+) -> Result<(), String> {
+    if amount_minor > SIGNET_TOPUP_SINGLE_LIMIT_MINOR {
+        return Err(format!(
+            "signet_topup_single_limit_exceeded:max_minor={SIGNET_TOPUP_SINGLE_LIMIT_MINOR}"
         ));
     }
 
-    let window_started_at = chrono::Utc::now().timestamp() - PAPER_FAUCET_WINDOW_SECONDS;
+    let window_started_at = chrono::Utc::now().timestamp() - SIGNET_TOPUP_WINDOW_SECONDS;
     let funded_in_window = state
         .db
-        .sum_wallet_funding_amount_since(pubkey, "paper", window_started_at)
+        .sum_wallet_funding_amount_since(pubkey, "lightning", window_started_at)
         .await
-        .map_err(|error| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        })?;
+        .map_err(|error| error.to_string())?;
 
-    if funded_in_window.saturating_add(amount_minor) > PAPER_FAUCET_WINDOW_LIMIT_MINOR {
-        let remaining_minor = PAPER_FAUCET_WINDOW_LIMIT_MINOR.saturating_sub(funded_in_window);
-        return Err((
-            StatusCode::TOO_MANY_REQUESTS,
-            Json(json!({
-                "error": format!(
-                    "paper_faucet_window_limit_exceeded:window_minor={PAPER_FAUCET_WINDOW_LIMIT_MINOR}:remaining_minor={remaining_minor}"
-                )
-            })),
+    if funded_in_window.saturating_add(amount_minor) > SIGNET_TOPUP_WINDOW_LIMIT_MINOR {
+        let remaining_minor = SIGNET_TOPUP_WINDOW_LIMIT_MINOR.saturating_sub(funded_in_window);
+        return Err(format!(
+            "signet_topup_window_limit_exceeded:window_minor={SIGNET_TOPUP_WINDOW_LIMIT_MINOR}:remaining_minor={remaining_minor}"
         ));
     }
 
     Ok(())
+}
+
+fn signet_topup_limit_error_response(error: &str) -> (StatusCode, Json<Value>) {
+    let status = if error.starts_with("signet_topup_window_limit_exceeded") {
+        StatusCode::TOO_MANY_REQUESTS
+    } else {
+        StatusCode::BAD_REQUEST
+    };
+    (status, Json(json!({ "error": error })))
 }
 
 fn parse_side(value: &str) -> Result<Side, String> {
@@ -2996,47 +2863,71 @@ fn current_prices_ppm(state: &AppState, market: &Market) -> (u64, u64) {
     }
 }
 
-fn build_trade_settlement_insert(
+async fn build_trade_settlement_insert(
     state: &AppState,
     pubkey: &str,
     quote: &ProductTradeQuoteResponse,
     issued: Option<&ProductTradeProofBundleResponse>,
     change: Option<&ProductTradeProofBundleResponse>,
-) -> Option<TradeSettlementInsert> {
-    if !state.paper_mode {
-        return None;
+) -> Result<Option<TradeSettlementInsert>, String> {
+    if quote.settlement_msat == 0 {
+        return Err("trade_settlement_msat_must_be_positive".to_string());
     }
 
-    Some(TradeSettlementInsert {
+    let now = chrono::Utc::now().timestamp();
+    let invoice_expiry_seconds = quote
+        .expires_at
+        .map(|expires_at| (expires_at - now).max(60) as u64)
+        .unwrap_or(300);
+
+    let (invoice, preimage) = {
+        let mut invoice_service = state.invoice_service.lock().await;
+        let invoice = invoice_service
+            .create_invoice(
+                quote.settlement_msat,
+                Some(format!(
+                    "Cascade {} settlement for {} {}",
+                    quote.trade_type, quote.market_event_id, quote.side
+                )),
+                Some(invoice_expiry_seconds),
+                true,
+            )
+            .await
+            .map_err(|error| format!("failed_to_create_trade_settlement_invoice: {error}"))?;
+        let preimage = invoice_service
+            .pay_invoice(invoice.bolt11())
+            .await
+            .map_err(|error| format!("failed_to_pay_trade_settlement_invoice: {error}"))?;
+        (invoice, preimage)
+    };
+
+    Ok(Some(TradeSettlementInsert {
         quote_id: quote.quote_id.clone(),
         pubkey: pubkey.to_string(),
         market_event_id: quote.market_event_id.clone(),
         trade_type: quote.trade_type.clone(),
         side: quote.side.clone(),
-        rail: "paper".to_string(),
-        mode: "paper_internal".to_string(),
+        rail: "lightning".to_string(),
+        mode: "bolt11_internal".to_string(),
         settlement_minor: quote.settlement_minor,
         settlement_msat: quote.settlement_msat,
         settlement_fee_msat: quote.settlement_fee_msat,
-        fx_quote_id: if quote.quote_id.is_some() {
-            quote.fx_quote_id.clone()
-        } else {
-            None
-        },
-        invoice: None,
-        payment_hash: None,
+        fx_quote_id: quote.fx_quote_id.clone(),
+        invoice: Some(invoice.bolt11().to_string()),
+        payment_hash: Some(invoice.payment_hash.to_hex()),
         metadata_json: Some(
             json!({
                 "fx_source": quote.fx_source,
                 "btc_usd_price": quote.btc_usd_price,
                 "spread_bps": quote.spread_bps,
                 "fx_observations": quote.fx_observations,
+                "payment_preimage": preimage.to_hex(),
                 "issued": issued,
                 "change": change,
             })
             .to_string(),
         ),
-    })
+    }))
 }
 
 fn post_trade_price_ppm(
@@ -3269,12 +3160,66 @@ async fn wallet_topup_response_for_state(
     Ok(wallet_topup_response(quote, &fx_quote, issued_proofs))
 }
 
+async fn complete_wallet_topup_quote_with_proofs(
+    state: &AppState,
+    quote: &WalletTopupQuote,
+    risk_level: Option<&str>,
+    metadata_source: &str,
+    proof_source: &str,
+    extra: Value,
+) -> Result<WalletTopupQuote, String> {
+    if quote.status.to_string() != "invoice_pending" {
+        return Ok(quote.clone());
+    }
+
+    let proofs = if let Some(existing) = issued_proofs_from_metadata(quote.metadata_json.as_deref())
+    {
+        existing
+    } else {
+        let proofs = issue_wallet_proofs(state, quote.amount_minor).await?;
+        let proof_records = proofs
+            .iter()
+            .map(|proof| portfolio_proof_insert_from_input(proof, "usd", None, None, proof_source))
+            .collect::<Vec<_>>();
+        state
+            .db
+            .insert_portfolio_proofs(&proof_records)
+            .await
+            .map_err(|error| error.to_string())?;
+        proofs
+    };
+
+    let metadata_json = wallet_proofs_metadata_json(metadata_source, &proofs, extra)
+        .map_err(|error| error.to_string())?;
+
+    state
+        .db
+        .complete_wallet_topup_quote(&quote.id, risk_level, Some(&metadata_json))
+        .await
+        .map_err(|error| error.to_string())
+}
+
 async fn sync_wallet_topup_quote_best_effort(
     state: &AppState,
     quote: &WalletTopupQuote,
 ) -> Result<WalletTopupQuote, String> {
     if quote.status.to_string() != "invoice_pending" {
         return Ok(quote.clone());
+    }
+
+    if state.paper_mode {
+        return complete_wallet_topup_quote_with_proofs(
+            state,
+            quote,
+            Some("paper"),
+            "signet-topup-autosettle",
+            "signet_topup_autosettle",
+            json!({
+                "topup_quote_id": quote.id,
+                "simulated_payment": true
+            }),
+        )
+        .await;
     }
 
     let Some(payment_hash) = quote.payment_hash.as_deref() else {
@@ -3291,45 +3236,18 @@ async fn sync_wallet_topup_quote_best_effort(
 
     match invoice_status.as_str() {
         "settled" => {
-            let proofs = if let Some(existing) =
-                issued_proofs_from_metadata(quote.metadata_json.as_deref())
-            {
-                existing
-            } else {
-                let proofs = issue_wallet_proofs(state, quote.amount_minor).await?;
-                let proof_records = proofs
-                    .iter()
-                    .map(|proof| {
-                        portfolio_proof_insert_from_input(
-                            proof,
-                            "usd",
-                            None,
-                            None,
-                            "lightning_topup",
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                state
-                    .db
-                    .insert_portfolio_proofs(&proof_records)
-                    .await
-                    .map_err(|error| error.to_string())?;
-                proofs
-            };
-            let metadata_json = wallet_proofs_metadata_json(
+            complete_wallet_topup_quote_with_proofs(
+                state,
+                quote,
+                None,
                 "lightning",
-                &proofs,
+                "lightning_topup",
                 json!({
                     "payment_hash": payment_hash,
                     "topup_quote_id": quote.id
                 }),
             )
-            .map_err(|error| error.to_string())?;
-            state
-                .db
-                .complete_wallet_topup_quote(&quote.id, None, Some(&metadata_json))
-                .await
-                .map_err(|error| error.to_string())
+            .await
         }
         "expired" | "cancelled" => state
             .db

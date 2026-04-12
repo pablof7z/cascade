@@ -452,7 +452,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Balance display exists in USD.
 - [ ] Add-funds flow exists.
 - [ ] Add-funds flow offers Stripe and Lightning.
-- [ ] Signet-only funding rails such as a faucet still land as edition-local proofs in the same portfolio model rather than in a separate "paper wallet" account system.
+- [ ] Signet funding uses the normal top-up rails and the same invoice lifecycle in the same edition-local proof model rather than introducing a separate "paper wallet" account system.
 - [ ] Add-funds pending, paid, and minted states exist.
 - [ ] Builder preserves pending market state after kind `982` publication when the creator still needs funding.
 - [ ] Public users do not see pending markets until the first mint-authored kind `983`.

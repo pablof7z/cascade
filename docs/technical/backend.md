@@ -169,7 +169,7 @@ Lightning is both a launch wallet-funding rail and the settlement rail between t
 
 This is backend plumbing, not normal product UX. The frontend should not force the user to think in sats or Lightning invoices.
 
-In signet, the product should preserve these same quote shapes but may auto-complete the quote immediately for paper trading rather than exposing a separate faucet rail.
+In signet, the product should preserve these same quote shapes and the same invoice lifecycle. The difference is the backing rail and value, not whether the mint skips invoice settlement.
 
 The current mint runtime uses the local `lncli` binary as the concrete LND adapter. Runtime config should therefore include TLS cert path, macaroon path, network, and either an explicit `lncli` path or a deployment environment where `lncli` is resolvable on `PATH`.
 

@@ -173,7 +173,7 @@ The exact naming can still change during implementation, but launch needs a high
 
 Lightning top-up status reads should be settlement-aware. `GET /api/wallet/topups/{topup_id}` and `GET /api/wallet/topups/lightning/{quote_id}` are allowed to reconcile the persisted quote against the underlying invoice state before responding, so a paid invoice can complete on a later status poll or wallet refresh without a separate bespoke callback from the client.
 
-In signet, the wallet mint should keep the same top-up quote API but auto-complete the quote as if the underlying payment had already arrived. That keeps signet close to normal Cashu mint behavior while still ending in edition-local proofs rather than a pubkey-keyed server wallet ledger.
+In signet, the wallet mint should keep the same top-up quote API and the same invoice lifecycle as mainnet. The difference is that the invoice and backing value live on signet or test infrastructure, not that the quote auto-completes without payment.
 
 Lightning top-up quote creation should accept an optional client-supplied `request_id`. The mint persists that request id before invoice creation so duplicate retries can replay the same top-up quote instead of creating a second invoice, and interrupted clients can recover through `GET /api/wallet/topups/requests/{request_id}` even if they never received the final `topup_id`.
 
@@ -313,7 +313,7 @@ Proofless pubkey-only trade execution is not part of the launch contract.
 
 - `POST /api/trades/buy` must require spendable USD proofs from the caller
 - `POST /api/trades/sell` must require spendable market proofs from the caller
-- signet top-up quotes may auto-complete more easily, but they still feed the same proof-native execution path as mainnet
+- signet top-up quotes use the same invoice-pending and settlement flow as mainnet, and they still feed the same proof-native execution path
 
 Canonical market-proof units are lowercase:
 

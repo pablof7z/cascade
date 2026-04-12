@@ -189,6 +189,8 @@ For launch cost basis and PnL:
 
 The launch `/portfolio` surface must also handle local proof movement directly in the browser:
 
+In signet, funding still starts from the normal top-up UI and API contract, and the quote remains pending until the invoice is actually paid. Paper trading comes from signet-value rails and test infrastructure, not from a separate faucet surface or instant quote completion.
+
 - export a locally held proof bucket as a standard Cashu token string
 - import a Cashu token string into the local browser store
 - keep import/export entirely local rather than introducing a server custody API

@@ -136,8 +136,31 @@ async fn create_signet_topup_and_get_proofs(
         .unwrap();
     assert_eq!(response.status(), 201);
     let payload: serde_json::Value = response.json().await.unwrap();
-    assert_eq!(payload["status"].as_str(), Some("complete"));
-    payload["issued_proofs"].clone()
+    assert_eq!(payload["status"].as_str(), Some("invoice_pending"));
+    let quote_id = payload["id"].as_str().unwrap();
+    wait_for_topup_completion(client, url, quote_id).await["issued_proofs"].clone()
+}
+
+async fn wait_for_topup_completion(
+    client: &reqwest::Client,
+    url: &str,
+    quote_id: &str,
+) -> serde_json::Value {
+    for _ in 0..20 {
+        let response = client
+            .get(format!("{url}/api/wallet/topups/{quote_id}"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        let payload: serde_json::Value = response.json().await.unwrap();
+        if payload["status"].as_str() == Some("complete") {
+            return payload;
+        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    }
+
+    panic!("topup quote {quote_id} did not complete in time");
 }
 
 /// Test that the health endpoint returns OK
@@ -852,7 +875,7 @@ async fn test_coordinator_trade_routes_and_status() {
 }
 
 #[tokio::test]
-async fn test_lightning_topup_quote_autosettles_in_signet() {
+async fn test_lightning_topup_quote_settles_after_status_poll() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();
     let pubkey = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
@@ -869,7 +892,7 @@ async fn test_lightning_topup_quote_autosettles_in_signet() {
     assert_eq!(quote_response.status(), 201);
     let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
     let quote_id = quote_payload["id"].as_str().unwrap().to_string();
-    assert_eq!(quote_payload["status"].as_str(), Some("complete"));
+    assert_eq!(quote_payload["status"].as_str(), Some("invoice_pending"));
     assert!(quote_payload["invoice"]
         .as_str()
         .unwrap()
@@ -877,7 +900,7 @@ async fn test_lightning_topup_quote_autosettles_in_signet() {
     assert!(quote_payload["amount_msat"].as_u64().unwrap() > 0);
     assert!(quote_payload["fx_quote_id"].as_str().is_some());
     assert!(quote_payload["observations"].as_array().is_some());
-    assert!(quote_payload["issued_proofs"].as_array().is_some());
+    assert!(quote_payload["issued_proofs"].is_null());
 
     let wallet_pending_response = client
         .get(format!("{url}/api/product/portfolio/{pubkey}"))
@@ -886,20 +909,13 @@ async fn test_lightning_topup_quote_autosettles_in_signet() {
         .unwrap();
     assert_eq!(wallet_pending_response.status(), 200);
     let wallet_pending_payload: serde_json::Value = wallet_pending_response.json().await.unwrap();
-    assert_eq!(
-        wallet_pending_payload["available_minor"].as_u64(),
-        Some(2500)
-    );
-    assert_eq!(wallet_pending_payload["pending_minor"].as_u64(), Some(0));
+    assert_eq!(wallet_pending_payload["available_minor"].as_u64(), Some(0));
+    assert_eq!(wallet_pending_payload["pending_minor"].as_u64(), Some(2500));
     assert_eq!(
         wallet_pending_payload["pending_topups"]
             .as_array()
             .map(|items| items.len()),
-        Some(0)
-    );
-    assert_eq!(
-        wallet_pending_payload["funding_events"][0]["rail"].as_str(),
-        Some("lightning")
+        Some(1)
     );
 
     let get_quote_response = client
@@ -910,20 +926,38 @@ async fn test_lightning_topup_quote_autosettles_in_signet() {
     assert_eq!(get_quote_response.status(), 200);
     let get_quote_payload: serde_json::Value = get_quote_response.json().await.unwrap();
     assert_eq!(get_quote_payload["id"].as_str(), Some(quote_id.as_str()));
-    assert_eq!(get_quote_payload["status"].as_str(), Some("complete"));
+    assert_eq!(
+        get_quote_payload["status"].as_str(),
+        Some("invoice_pending")
+    );
 
-    let generic_status_response = client
-        .get(format!("{url}/api/wallet/topups/{quote_id}"))
+    let completed_payload = wait_for_topup_completion(&client, &url, &quote_id).await;
+    assert_eq!(completed_payload["id"].as_str(), Some(quote_id.as_str()));
+    assert_eq!(completed_payload["status"].as_str(), Some("complete"));
+    assert!(completed_payload["issued_proofs"].as_array().is_some());
+
+    let wallet_complete_response = client
+        .get(format!("{url}/api/product/portfolio/{pubkey}"))
         .send()
         .await
         .unwrap();
-    assert_eq!(generic_status_response.status(), 200);
-    let generic_status_payload: serde_json::Value = generic_status_response.json().await.unwrap();
+    assert_eq!(wallet_complete_response.status(), 200);
+    let wallet_complete_payload: serde_json::Value = wallet_complete_response.json().await.unwrap();
     assert_eq!(
-        generic_status_payload["id"].as_str(),
-        Some(quote_id.as_str())
+        wallet_complete_payload["available_minor"].as_u64(),
+        Some(2500)
     );
-    assert_eq!(generic_status_payload["status"].as_str(), Some("complete"));
+    assert_eq!(wallet_complete_payload["pending_minor"].as_u64(), Some(0));
+    assert_eq!(
+        wallet_complete_payload["pending_topups"]
+            .as_array()
+            .map(|items| items.len()),
+        Some(0)
+    );
+    assert_eq!(
+        wallet_complete_payload["funding_events"][0]["rail"].as_str(),
+        Some("lightning")
+    );
 }
 
 #[tokio::test]
@@ -947,8 +981,8 @@ async fn test_lightning_topup_request_id_is_idempotent() {
     let first_payload: serde_json::Value = first_response.json().await.unwrap();
     let quote_id = first_payload["id"].as_str().unwrap().to_string();
     let invoice = first_payload["invoice"].as_str().unwrap().to_string();
-    assert_eq!(first_payload["status"].as_str(), Some("complete"));
-    assert!(first_payload["issued_proofs"].as_array().is_some());
+    assert_eq!(first_payload["status"].as_str(), Some("invoice_pending"));
+    assert!(first_payload["issued_proofs"].is_null());
 
     let second_response = client
         .post(format!("{url}/api/wallet/topups/lightning/quote"))
@@ -964,7 +998,7 @@ async fn test_lightning_topup_request_id_is_idempotent() {
     let second_payload: serde_json::Value = second_response.json().await.unwrap();
     assert_eq!(second_payload["id"].as_str(), Some(quote_id.as_str()));
     assert_eq!(second_payload["invoice"].as_str(), Some(invoice.as_str()));
-    assert_eq!(second_payload["status"].as_str(), Some("complete"));
+    assert_eq!(second_payload["status"].as_str(), Some("invoice_pending"));
 
     let request_status_response = client
         .get(format!("{url}/api/wallet/topups/requests/{request_id}"))
@@ -986,17 +1020,17 @@ async fn test_lightning_topup_request_id_is_idempotent() {
         .unwrap();
     assert_eq!(wallet_pending_response.status(), 200);
     let wallet_pending_payload: serde_json::Value = wallet_pending_response.json().await.unwrap();
-    assert_eq!(
-        wallet_pending_payload["available_minor"].as_u64(),
-        Some(2500)
-    );
-    assert_eq!(wallet_pending_payload["pending_minor"].as_u64(), Some(0));
+    assert_eq!(wallet_pending_payload["available_minor"].as_u64(), Some(0));
+    assert_eq!(wallet_pending_payload["pending_minor"].as_u64(), Some(2500));
     assert_eq!(
         wallet_pending_payload["pending_topups"]
             .as_array()
             .map(|items| items.len()),
-        Some(0)
+        Some(1)
     );
+
+    let completed_payload = wait_for_topup_completion(&client, &url, &quote_id).await;
+    assert_eq!(completed_payload["status"].as_str(), Some("complete"));
 }
 
 #[tokio::test]

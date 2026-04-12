@@ -500,7 +500,7 @@ pub async fn create_lightning_topup_quote(
                 fx_quote.amount_msat,
                 Some(format!("Cascade wallet top-up for {}", req.pubkey)),
                 Some(invoice_expiry_seconds),
-                false,
+                state.paper_mode,
             )
             .await
         {
@@ -535,13 +535,18 @@ pub async fn create_lightning_topup_quote(
         )
         .await
     {
-        Ok(quote) => match load_wallet_topup_response(&state, &quote).await {
-            Ok(response) => (StatusCode::CREATED, Json(json!(response))),
-            Err(error) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error })),
-            ),
-        },
+        Ok(quote) => {
+            if state.paper_mode {
+                schedule_signet_topup_payment(state.clone(), invoice.bolt11().to_string());
+            }
+            match load_wallet_topup_response(&state, &quote).await {
+                Ok(response) => (StatusCode::CREATED, Json(json!(response))),
+                Err(error) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": error })),
+                ),
+            }
+        }
         Err(error) => {
             let error_message = error.to_string();
             if let Some(request_id) = req.request_id.as_deref() {
@@ -2543,7 +2548,7 @@ async fn enforce_signet_topup_limits(
     let window_started_at = chrono::Utc::now().timestamp() - SIGNET_TOPUP_WINDOW_SECONDS;
     let funded_in_window = state
         .db
-        .sum_wallet_funding_amount_since(pubkey, "lightning", window_started_at)
+        .sum_wallet_topup_quote_amount_since(pubkey, "lightning", window_started_at)
         .await
         .map_err(|error| error.to_string())?;
 
@@ -3207,21 +3212,6 @@ async fn sync_wallet_topup_quote_best_effort(
         return Ok(quote.clone());
     }
 
-    if state.paper_mode {
-        return complete_wallet_topup_quote_with_proofs(
-            state,
-            quote,
-            Some("paper"),
-            "signet-topup-autosettle",
-            "signet_topup_autosettle",
-            json!({
-                "topup_quote_id": quote.id,
-                "simulated_payment": true
-            }),
-        )
-        .await;
-    }
-
     let Some(payment_hash) = quote.payment_hash.as_deref() else {
         return Ok(quote.clone());
     };
@@ -3257,6 +3247,14 @@ async fn sync_wallet_topup_quote_best_effort(
             .ok_or_else(|| "topup_quote_not_found".to_string()),
         _ => Ok(quote.clone()),
     }
+}
+
+fn schedule_signet_topup_payment(state: AppState, invoice: String) {
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+        let invoice_service = state.invoice_service.lock().await;
+        let _ = invoice_service.pay_invoice(&invoice).await;
+    });
 }
 
 fn product_market_summary(

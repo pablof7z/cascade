@@ -82,7 +82,7 @@ Launch should prefer a small number of deployable services with clear logical mo
 
 ### Optional Supporting Modules
 
-- `signet faucet funding path` for paper trading
+- `signet invoice-driven paper funding` on the same top-up lifecycle as mainnet
 - `USDC deposit module` later, as described in the addendum
 
 The preferred first implementation is one backend deployment with these modules, not separate network services for each concern.
@@ -230,21 +230,20 @@ The preferred first implementation is one backend deployment with these modules,
 
 - implement Stripe top-ups
 - implement Lightning top-ups
-- add signet paper-funding path
+- keep signet on the normal top-up paths and the same invoice lifecycle as mainnet
 
 ### Deliverables
 
 - Stripe top-up initiation and webhook completion
 - Lightning top-up quote and completion flow
-- signet faucet or equivalent paper-funding flow
-- signet faucet funding that ends in edition-local Cashu proofs, not a pubkey-keyed server wallet ledger
+- signet top-up settlement that ends in edition-local Cashu proofs, not a pubkey-keyed server wallet ledger
 
 ### Signet Recommendation
 
 Paper trading should not require real card rails. The signet edition should expose:
 
-- signet Lightning top-ups
-- a capped authenticated faucet top-up flow for humans and agents
+- signet top-up quotes on the same rails and API shapes as mainnet
+- signet quote settlement after actual payment on signet-value rails instead of a separate faucet concept
 
 Those signet-only rails should still feed the same wallet model as mainnet:
 

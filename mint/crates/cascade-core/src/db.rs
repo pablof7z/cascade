@@ -842,6 +842,33 @@ impl CascadeDatabase {
         Ok(amount_minor.max(0) as u64)
     }
 
+    pub async fn sum_wallet_topup_quote_amount_since(
+        &self,
+        pubkey: &str,
+        rail: &str,
+        since: i64,
+    ) -> Result<u64> {
+        let amount_minor = sqlx::query_scalar::<_, Option<i64>>(
+            r#"
+            SELECT SUM(amount_minor)
+            FROM wallet_topup_quotes
+            WHERE pubkey = ?
+              AND rail = ?
+              AND status IN ('invoice_pending', 'complete')
+              AND created_at >= ?
+            "#,
+        )
+        .bind(pubkey)
+        .bind(rail)
+        .bind(since)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?
+        .unwrap_or(0);
+
+        Ok(amount_minor.max(0) as u64)
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub async fn create_wallet_topup_quote(
         &self,

@@ -4,7 +4,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 test.describe.configure({ mode: 'serial' });
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4173';
-const PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR = 10_000;
+const SIGNET_TOPUP_SINGLE_LIMIT_MINOR = 10_000;
 
 function formatUsdMinor(amountMinor: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -82,11 +82,18 @@ async function fundPortfolio(page: Page, secretKey: string, amountMinor: number)
   let remainingMinor = amountMinor;
 
   while (remainingMinor > 0) {
-    const chunkMinor = Math.min(remainingMinor, PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR);
-    await page.getByRole('spinbutton', { name: 'Paper amount' }).fill(String(chunkMinor));
-    await page.getByRole('button', { name: 'Add funds' }).click();
+    const chunkMinor = Math.min(remainingMinor, SIGNET_TOPUP_SINGLE_LIMIT_MINOR);
+    await page.getByRole('spinbutton', { name: 'Lightning amount' }).fill(String(chunkMinor));
+    await page.getByRole('button', { name: 'Create Lightning invoice' }).click();
     await expect(
-      page.getByText(`Paper funding added ${formatUsdMinor(chunkMinor)} of browser-local proofs.`)
+      page.getByText(`Created a Lightning top-up for ${formatUsdMinor(chunkMinor)}.`)
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        new RegExp(
+          `(?:Recovered )?Lightning top-up added ${formatUsdMinor(chunkMinor).replace('$', '\\$')} of browser-local proofs\\.`
+        )
+      )
     ).toBeVisible();
     remainingMinor -= chunkMinor;
   }
@@ -209,10 +216,10 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   const tradePanel = page.locator('.trade-panel');
   await expect(tradePanel.getByText('Available')).toBeVisible();
 
-  await tradePanel.getByRole('button', { name: /^NO / }).click();
-  await expect(tradePanel.getByRole('button', { name: 'Buy NO' })).toBeVisible();
+  await tradePanel.getByRole('button', { name: /^SHORT / }).click();
+  await expect(tradePanel.getByRole('button', { name: 'Mint SHORT' })).toBeVisible();
   await tradePanel.locator('input[type="number"]').first().fill('2500');
-  await tradePanel.getByRole('button', { name: 'Buy NO' }).click();
+  await tradePanel.getByRole('button', { name: 'Mint SHORT' }).click();
   await expect(tradePanel.getByText(`Bought NO on ${market.slug}.`)).toBeVisible();
 
   const rewroteBuyReceipt = await page.evaluate(() => {
@@ -246,7 +253,7 @@ test('funded portfolio users can create a market, buy the other side, and withdr
     await expect(tradePanel.getByText('Available')).toBeVisible();
   }
 
-  await tradePanel.getByRole('button', { name: /NO/ }).click();
+  await tradePanel.getByRole('button', { name: /SHORT/ }).click();
   await tradePanel.locator('input[type="number"]').nth(1).fill('10');
   const withdrawButton = tradePanel.getByRole('button', { name: /^Withdraw / });
   await expect(withdrawButton).toBeEnabled();
@@ -393,32 +400,15 @@ test('signet portfolio can fund through the Lightning top-up flow', async ({ pag
   await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
   await page.getByRole('spinbutton', { name: 'Lightning amount' }).fill('2500');
   await page.getByRole('button', { name: 'Create Lightning invoice' }).click();
-  await expect(page.getByText(`Created a Lightning top-up for ${formatUsdMinor(2500)}.`)).toBeVisible();
-  await page.evaluate(() => {
-    const pendingKey = Object.keys(localStorage).find((key) => key.includes('cascade_pending_topups'));
-    if (!pendingKey) return;
-    const raw = localStorage.getItem(pendingKey);
-    if (!raw) return;
-
-    const records = JSON.parse(raw) as Array<Record<string, unknown>>;
-    const rewritten = records.map((record) => {
-      if (!record.requestId || !record.topupId) return record;
-      const nextRecord = { ...record };
-      delete nextRecord.topupId;
-      return nextRecord;
-    });
-
-    localStorage.setItem(pendingKey, JSON.stringify(rewritten));
-  });
-
-  await page.reload();
-  await ensureLoggedIn(page, secret);
   await expect(
-    page.getByText(`Recovered pending Lightning top-up for ${formatUsdMinor(2500)}.`)
+    page.getByText(`Created a Lightning top-up for ${formatUsdMinor(2500)}.`)
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Complete locally for signet' }).click();
   await expect(
-    page.getByText(`Lightning top-up added ${formatUsdMinor(2500)} of browser-local proofs.`)
+    page.getByText(
+      new RegExp(
+        `(?:Recovered )?Lightning top-up added ${formatUsdMinor(2500).replace('$', '\\$')} of browser-local proofs\\.`
+      )
+    )
   ).toBeVisible();
 
   await page.goto('/portfolio');
@@ -427,4 +417,5 @@ test('signet portfolio can fund through the Lightning top-up flow', async ({ pag
   await expect(walletPanels.first()).toContainText('Local Proofs');
   await expect(walletPanels.first()).toContainText('$25.00');
   await expect(page.locator('.history-row').filter({ hasText: 'lightning · complete' }).first()).toBeVisible();
+  await expect(page.getByText('No pending Lightning top-ups.')).toBeVisible();
 });

@@ -7,14 +7,11 @@
     fetchWalletTopupRequestStatus,
     fetchWalletTopupStatus,
     parseJson,
-    settleLightningTopupQuote,
     type ProductFundingEvent,
     type ProductMarketDetail,
     type ProductProof,
     type ProductWallet,
-    type ProductWalletFundingExecution,
     type ProductWalletTopup,
-    type ProductWalletTopupExecution,
     type ProductWalletTopupRequestStatus
   } from '$lib/cascade/api';
   import { getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
@@ -61,15 +58,14 @@
   const portfolioLabel = paperEdition ? 'signet portfolio' : 'portfolio';
 
   const proofUnit = 'usd';
-  const paperFaucetSingleLimitMinor = 10000;
-  const paperFaucetWindowLimitMinor = 25000;
+  const signetTopupSingleLimitMinor = 10000;
+  const signetTopupWindowLimitMinor = 25000;
 
   let wallet = $state<PaperWallet | null>(null);
   let loading = $state(false);
   let errorMessage = $state('');
   let status = $state('');
-  let faucetAmount = $state('10000');
-  let lightningAmount = $state('2500');
+  let lightningAmount = $state(paperEdition ? '10000' : '2500');
   let localBalanceMinor = $state(0);
   let localProofCount = $state(0);
   let localProofWallets = $state<StoredProofWallet[]>([]);
@@ -320,51 +316,16 @@
     }
   }
 
-  function formatPaperFaucetError(message: string): string {
-    if (message.startsWith('paper_faucet_single_topup_limit_exceeded')) {
-      return `Paper funding is capped at ${formatUsdMinor(paperFaucetSingleLimitMinor)} per top-up.`;
+  function formatSignetTopupError(message: string): string {
+    if (message.startsWith('signet_topup_single_limit_exceeded')) {
+      return `Signet funding is capped at ${formatUsdMinor(signetTopupSingleLimitMinor)} per top-up.`;
     }
 
-    if (message.startsWith('paper_faucet_window_limit_exceeded')) {
-      return `Paper funding is capped at ${formatUsdMinor(paperFaucetWindowLimitMinor)} per 24 hours.`;
+    if (message.startsWith('signet_topup_window_limit_exceeded')) {
+      return `Signet funding is capped at ${formatUsdMinor(signetTopupWindowLimitMinor)} per 24 hours.`;
     }
 
     return message;
-  }
-
-  async function addPaperFunds() {
-    if (!currentUser) {
-      errorMessage = `Sign in before funding your ${portfolioLabel}.`;
-      return;
-    }
-
-    const amountMinor = Number.parseInt(faucetAmount, 10) || 0;
-    if (amountMinor <= 0) {
-      errorMessage = 'Enter a funding amount greater than zero.';
-      return;
-    }
-
-    status = `Adding ${formatUsdMinor(amountMinor)} to your ${portfolioLabel}.`;
-    errorMessage = '';
-    const response = await fetch(`${getProductApiUrl()}/api/product/paper/faucet`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        pubkey: currentUser.pubkey,
-        amount_minor: amountMinor
-      })
-    });
-
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      errorMessage = formatPaperFaucetError(payload?.error || 'Paper funding failed.');
-      status = '';
-      return;
-    }
-
-    const payload = (await response.json()) as ProductWalletFundingExecution;
-    wallet = payload.wallet as PaperWallet;
-    applyIssuedProofs(payload.proofs, 'Paper funding');
   }
 
   async function createLightningTopup() {
@@ -398,38 +359,26 @@
       const topup = await parseJson<ProductWalletTopup>(response, 'Lightning top-up creation failed.');
 
       attachPendingTopupId(requestId, topup.id);
+      if (topup.status === 'complete') {
+        clearPendingTopup(requestId);
+      }
       await loadWallet();
-      status = `Created a Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
+      if (topup.status === 'complete') {
+        if (!applyIssuedProofs(topup.issued_proofs, 'Lightning top-up')) {
+          status = `Completed the Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
+        }
+      } else {
+        status = `Created a Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Lightning top-up creation failed.';
       if (message === 'wallet_topup_request_in_progress') {
         status = `Recovering the Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
       } else {
-        errorMessage = message;
+        errorMessage = formatSignetTopupError(message);
         status = '';
       }
-    }
-  }
-
-  async function settleLightningTopup(topupId: string, amountMinor: number) {
-    status = `Completing the signet Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
-    errorMessage = '';
-
-    try {
-      const response = await settleLightningTopupQuote(topupId);
-      const payload = await parseJson<ProductWalletTopupExecution>(
-        response,
-        'Lightning top-up settlement failed.'
-      );
-      wallet = payload.wallet as PaperWallet;
-      clearPendingTopup(trackedTopupIdForQuote(topupId));
-      if (!applyIssuedProofs(payload.topup.issued_proofs, 'Lightning top-up')) {
-        status = `Completed the signet Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
-      }
-    } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Lightning top-up settlement failed.';
-      status = '';
     }
   }
 
@@ -533,17 +482,10 @@
 
     const interval = window.setInterval(() => {
       void reconcilePendingTopups();
-    }, 5000);
+    }, 1000);
 
     return () => window.clearInterval(interval);
   });
-
-  function trackedTopupIdForQuote(quoteId: string): string {
-    const tracked = listPendingTopups(currentUser?.pubkey || '').find(
-      (entry) => entry.topupId === quoteId || (!entry.requestId && entry.id === quoteId)
-    );
-    return tracked?.id || quoteId;
-  }
 </script>
 
 <section class="wallet-page">
@@ -593,28 +535,6 @@
       </article>
     </section>
 
-    {#if paperEdition}
-      <section class="wallet-panel">
-        <div class="panel-header">
-          <div>
-            <h2>Add signet funds</h2>
-            <p class="muted">
-              Faucet top-ups are signet-only. Limit {formatUsdMinor(paperFaucetSingleLimitMinor)} per
-              top-up and {formatUsdMinor(paperFaucetWindowLimitMinor)} per 24 hours.
-            </p>
-          </div>
-        </div>
-
-        <div class="funding-row">
-          <label class="field">
-            <span>Paper amount</span>
-            <input aria-label="Paper amount" bind:value={faucetAmount} min="100" step="100" type="number" />
-          </label>
-          <button class="button-primary" onclick={addPaperFunds} type="button">Add funds</button>
-        </div>
-      </section>
-    {/if}
-
     <section class="wallet-panel">
       <div class="panel-header">
         <div>
@@ -622,7 +542,8 @@
           <p class="muted">
             Create a Lightning invoice to fund browser-local USD proofs.
             {#if paperEdition}
-              In signet, you can also complete the top-up locally for paper trading.
+              In signet, the quote completes immediately for paper trading. Limit {formatUsdMinor(signetTopupSingleLimitMinor)}
+              per top-up and {formatUsdMinor(signetTopupWindowLimitMinor)} per 24 hours.
             {/if}
           </p>
         </div>
@@ -655,19 +576,9 @@
                   <code>{topup.invoice}</code>
                 {/if}
               </div>
-              {#if paperEdition}
-                <button
-                  class="button-secondary"
-                  onclick={() => settleLightningTopup(topup.id, topup.amount_minor)}
-                  type="button"
-                >
-                  Complete locally for signet
-                </button>
-              {:else}
-                <button class="button-secondary" onclick={refreshPendingTopups} type="button">
-                  Refresh status
-                </button>
-              {/if}
+              <button class="button-secondary" onclick={refreshPendingTopups} type="button">
+                Refresh status
+              </button>
             </div>
           {/each}
         </div>

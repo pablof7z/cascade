@@ -306,6 +306,8 @@ It should show:
 - Position-level averages and current prices
 - Exited-position history
 
+In signet, the add-funds surface should stay on the normal top-up rails and API shapes. The difference is that signet uses valueless test infrastructure, not that the locked quote completes immediately without payment.
+
 Market exits return value to the portfolio balance as USD ecash. Off-platform bank payout is a later milestone, not a launch requirement.
 
 The user's bearer proofs live with the user or agent, not with Cascade. There is no canonical private `/api/wallet` endpoint that can tell a caller "your current balance" from server-held state.

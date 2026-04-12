@@ -683,8 +683,8 @@
 
                 <div class="builder-selected-controls">
                   <select bind:value={item.direction} onchange={(event) => updateLinkDirection(item.id, (event.currentTarget as HTMLSelectElement).value as 'yes' | 'no')}>
-                    <option value="yes">Supports YES</option>
-                    <option value="no">Supports NO</option>
+                    <option value="yes">Supports LONG</option>
+                    <option value="no">Supports SHORT</option>
                   </select>
                   <input
                     oninput={(event) => updateLinkNote(item.id, (event.currentTarget as HTMLInputElement).value)}
@@ -758,8 +758,8 @@
               <label class="builder-field">
                 <span>Opening side</span>
                 <select bind:value={seedSide}>
-                  <option value="yes">YES</option>
-                  <option value="no">NO</option>
+                  <option value="yes">LONG</option>
+                  <option value="no">SHORT</option>
                 </select>
               </label>
             </div>

@@ -94,16 +94,16 @@
   const tilt = $derived.by(() => {
     if (impliedProbability >= 0.65) {
       return {
-        label: 'Strong YES consensus',
-        detail: 'Most visible capital leans YES. New flow needs fresh evidence rather than repetition.',
+        label: 'Strong LONG consensus',
+        detail: 'Most visible capital leans LONG. New flow needs fresh evidence rather than repetition.',
         accentClass: 'positive'
       };
     }
 
     if (impliedProbability <= 0.35) {
       return {
-        label: 'Strong NO consensus',
-        detail: 'Most visible capital leans NO. A reversal needs a catalyst, not sentiment alone.',
+        label: 'Strong SHORT consensus',
+        detail: 'Most visible capital leans SHORT. A reversal needs a catalyst, not sentiment alone.',
         accentClass: 'negative'
       };
     }
@@ -118,24 +118,24 @@
   const tradeFrame = $derived.by(() => {
     if (impliedProbability >= 0.65) {
       return [
-        'YES is crowded. New buyers need information the market has not absorbed yet.',
-        'NO becomes more attractive if the current thesis is overstated.',
+        'LONG is crowded. New buyers need information the market has not absorbed yet.',
+        'SHORT becomes more attractive if the current thesis is overstated.',
         'Check the discussion for the strongest counter-argument before sizing up.'
       ];
     }
 
     if (impliedProbability <= 0.35) {
       return [
-        'NO is crowded. Further downside requires genuinely new evidence.',
-        'YES offers value only if the current skepticism is wrong.',
+        'SHORT is crowded. Further downside requires genuinely new evidence.',
+        'LONG offers value only if the current skepticism is wrong.',
         'Look for what would force traders to reprice quickly.'
       ];
     }
 
     return [
       'Neither side has taken control. Edge comes from the next material update.',
-      'YES works if the case is underpriced relative to current debate.',
-      'NO works if the visible enthusiasm is getting ahead of itself.'
+      'LONG works if the case is underpriced relative to current debate.',
+      'SHORT works if the visible enthusiasm is getting ahead of itself.'
     ];
   });
 
@@ -143,11 +143,11 @@
     return [
       {
         eyebrow: 'Crowding',
-        title: impliedProbability >= 0.5 ? `${priceCents(impliedProbability)} YES leaning` : `${priceCents(oppositeProbability)} NO leaning`,
+        title: impliedProbability >= 0.5 ? `${priceCents(impliedProbability)} LONG leaning` : `${priceCents(oppositeProbability)} SHORT leaning`,
         detail:
           impliedProbability >= 0.5
-            ? 'Visible pricing favors YES right now.'
-            : 'Visible pricing favors NO right now.'
+            ? 'Visible pricing favors LONG right now.'
+            : 'Visible pricing favors SHORT right now.'
       },
       {
         eyebrow: 'Flow',
@@ -196,7 +196,7 @@
     <div class="market-header-side">
       <div class="market-header-price">
         <span class="market-header-probability">{priceCents(impliedProbability)}</span>
-        <span class="market-header-side-label">YES</span>
+        <span class="market-header-side-label">LONG</span>
       </div>
 
       <div class="market-header-stats">
@@ -304,7 +304,7 @@
         <div>
           <div class="bar-label">
             <span>Implied probability</span>
-            <span>{formatProbability(impliedProbability)} YES</span>
+            <span>{formatProbability(impliedProbability)} LONG</span>
           </div>
           <div class="bar-track">
             <div class="bar-fill positive-fill" style:width={`${impliedProbability * 100}%`}></div>
@@ -313,8 +313,8 @@
 
         <div>
           <div class="bar-label">
-            <span>YES flow share</span>
-            <span>{formatProbability(flowYes)} YES</span>
+            <span>LONG flow share</span>
+            <span>{formatProbability(flowYes)} LONG</span>
           </div>
           <div class="bar-track">
             <div class="bar-fill positive-fill" style:width={`${flowYes * 100}%`}></div>
@@ -323,8 +323,8 @@
 
         <div>
           <div class="bar-label">
-            <span>NO flow share</span>
-            <span>{formatProbability(flowNo)} NO</span>
+            <span>SHORT flow share</span>
+            <span>{formatProbability(flowNo)} SHORT</span>
           </div>
           <div class="bar-track">
             <div class="bar-fill negative-fill" style:width={`${flowNo * 100}%`}></div>
@@ -497,11 +497,11 @@
 
       <dl class="summary-list">
         <div>
-          <dt>Current YES</dt>
+          <dt>Current LONG</dt>
           <dd>{priceCents(impliedProbability)}</dd>
         </div>
         <div>
-          <dt>Current NO</dt>
+          <dt>Current SHORT</dt>
           <dd>{priceCents(oppositeProbability)}</dd>
         </div>
         <div>

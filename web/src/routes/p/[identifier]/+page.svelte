@@ -60,11 +60,11 @@
     <strong>{positionList.length}</strong>
   </div>
   <div>
-    <span>YES positions</span>
+    <span>LONG positions</span>
     <strong>{longCount}</strong>
   </div>
   <div>
-    <span>NO positions</span>
+    <span>SHORT positions</span>
     <strong>{shortCount}</strong>
   </div>
 </section>

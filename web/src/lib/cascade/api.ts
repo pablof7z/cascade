@@ -274,6 +274,11 @@ export async function fetchTradeQuoteStatus(quoteId: string): Promise<Response> 
 }
 
 export async function fetchPortfolioMirror(pubkey: string): Promise<Response> {
+  const portfolioResponse = await fetch(`${getProductApiUrl()}/api/product/portfolio/${pubkey}`);
+  if (portfolioResponse.status !== 404) {
+    return portfolioResponse;
+  }
+
   return fetch(`${getProductApiUrl()}/api/product/wallet/${pubkey}`);
 }
 

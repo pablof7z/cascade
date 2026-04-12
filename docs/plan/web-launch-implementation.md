@@ -510,7 +510,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Browser-local proof storage is the active implementation for both signet and mainnet.
 - [ ] NIP-60 is explicitly deferred and does not power one edition while another uses local proof state.
 - [ ] There is no canonical `/api/wallet` route in the launch contract.
-- [ ] There is no canonical `/api/product/wallet/:pubkey` or equivalent pubkey-keyed wallet-balance API in the launch contract.
+- [ ] There is no canonical `/api/product/portfolio/:pubkey` or legacy `/api/product/wallet/:pubkey` pubkey-keyed balance API in the launch contract.
 - [ ] `/portfolio` derives balance and spendable state from local proof storage.
 - [ ] Builder, market trading, and `/portfolio` do not depend on a server-side per-pubkey wallet ledger in signet.
 - [ ] Agent flows use a local proof manager rather than a Cascade portfolio API.

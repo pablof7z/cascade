@@ -5,6 +5,7 @@
   import {
     buyMarketPosition,
     expectOk,
+    fetchPortfolioMirror,
     fetchTradeQuoteStatus,
     quoteBuyTrade,
     fetchTradeRequestStatus,
@@ -122,6 +123,7 @@
     return true;
   });
   const paperEdition = $derived(isPaperEdition());
+  const portfolioLabel = $derived(paperEdition ? 'signet portfolio' : 'portfolio');
   const parsedSeedAmount = $derived(Number.parseInt(seedAmount, 10) || 0);
 
   function slugify(value: string): string {
@@ -176,9 +178,9 @@
   }
 
   async function loadPortfolioMirror(pubkey: string): Promise<{ available_minor?: number }> {
-    const portfolio = await fetch(`${getProductApiUrl()}/api/product/wallet/${pubkey}`);
+    const portfolio = await fetchPortfolioMirror(pubkey);
     if (!portfolio.ok) {
-      throw new Error('Failed to load your signet portfolio.');
+      throw new Error('Failed to load your portfolio.');
     }
 
     return (await portfolio.json()) as { available_minor?: number };
@@ -212,8 +214,8 @@
       const availableMinor = walletPayload.available_minor ?? 0;
 
       if (availableMinor < parsedSeedAmount) {
-        builderStatus = 'Market is pending. Fund your signet portfolio, then seed it from here.';
-        errorMessage = `Your signet portfolio has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
+        builderStatus = `Market is pending. Fund your ${portfolioLabel}, then seed it from here.`;
+        errorMessage = `Your ${portfolioLabel} has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
         return;
       }
 
@@ -366,8 +368,8 @@
       const walletPayload = await loadPortfolioMirror(currentUser.pubkey);
       const availableMinor = walletPayload.available_minor ?? 0;
       if (availableMinor < parsedSeedAmount) {
-        builderStatus = 'Market is pending. Fund your signet portfolio, then seed the market from this page.';
-        errorMessage = `Your signet portfolio has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
+        builderStatus = `Market is pending. Fund your ${portfolioLabel}, then seed the market from this page.`;
+        errorMessage = `Your ${portfolioLabel} has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
         return;
       }
 

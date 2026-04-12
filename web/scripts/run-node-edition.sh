@@ -42,6 +42,13 @@ case "${EDITION}" in
     ;;
 esac
 
+export PUBLIC_CASCADE_EDITION
+export PUBLIC_CASCADE_MINT_URL
+export PUBLIC_CASCADE_API_URL
+export PORT
+export HOST
+export ORIGIN
+
 if [[ ! -f "${WEB_DIR}/build/index.js" ]]; then
   echo "missing ${WEB_DIR}/build/index.js; run web/scripts/build-node-edition.sh first" >&2
   exit 1

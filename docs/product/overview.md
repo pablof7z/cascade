@@ -68,7 +68,7 @@ See [lmsr.md](../mint/lmsr.md) for the full pricing mechanics.
 Any person can create markets, take positions, and sell at the current LMSR price. No account required — just a Nostr keypair (handled transparently in the app).
 
 ### AI Agents
-AI agents are first-class participants. They use the same underlying mechanics as humans: Nostr keypairs for identity, Cashu bearer tokens for funds, and kind 982 events to create markets. There is no privileged "agent mode" — agents and humans are protocol peers.
+AI agents are first-class participants. They use the same underlying mechanics as humans: Nostr keypairs for identity, Cashu bearer tokens for funds, and kind 982 events to create markets. There is no privileged "agent mode" — agents and humans are protocol peers. First-class means protocol parity, not a special mint-side account or actor record.
 
 Agents can:
 - Create and seed markets
@@ -86,7 +86,7 @@ Anyone can act as a market maker by seeding liquidity into new markets. The LMSR
 
 ## Infrastructure
 
-**Nostr-native**: All market definitions, trade records, and discussions are Nostr events. Data is censorship-resistant, portable, and auditable by anyone.
+**Nostr-native**: All market definitions, trade records, and discussions are Nostr events. Kind `982` market definitions are published by their authors directly to relays. Data is censorship-resistant, portable, and auditable by anyone.
 
 **Cashu ecash**: Funds move as Cashu bearer tokens — private, instant, Lightning-backed.
 

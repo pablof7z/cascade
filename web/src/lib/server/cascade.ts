@@ -113,10 +113,6 @@ export async function fetchMarketsByAuthor(pubkey: string, limit = 48): Promise<
 }
 
 export async function fetchRecentDiscussions(limit = 80): Promise<DiscussionRecord[]> {
-  if (isPaperEdition()) {
-    return [];
-  }
-
   const stale = Date.now() - discussionCacheUpdatedAt > DISCUSSION_CACHE_TTL_MS;
   const underfilled = discussionCache.length < limit;
 
@@ -131,10 +127,6 @@ export async function fetchRecentDiscussions(limit = 80): Promise<DiscussionReco
 }
 
 export async function fetchMarketDiscussions(marketId: string, limit = 200): Promise<DiscussionRecord[]> {
-  if (isPaperEdition()) {
-    return [];
-  }
-
   const ndk = await getServerNdk();
   const events = await ndk.fetchEvents(
     {
@@ -236,10 +228,6 @@ export async function fetchProfileContext(identifier: string) {
 }
 
 export async function fetchProfilesForPubkeys(pubkeys: readonly string[]) {
-  if (isPaperEdition()) {
-    return {};
-  }
-
   return fetchProfilesByPubkeys(pubkeys);
 }
 

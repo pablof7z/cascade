@@ -49,6 +49,17 @@ async fn create_product_test_server() -> String {
             },
         )
         .unwrap();
+    builder
+        .configure_unit(
+            CurrencyUnit::Usd,
+            UnitConfig {
+                amounts: vec![
+                    1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
+                ],
+                input_fee_ppk: 0,
+            },
+        )
+        .unwrap();
 
     let seed = [7_u8; 32];
     let mint = Arc::new(builder.build_with_seed(cdk_db, &seed).await.unwrap());
@@ -1136,95 +1147,5 @@ async fn test_paper_faucet_enforces_single_and_window_limits() {
     assert_eq!(
         capped_payload["error"].as_str(),
         Some("paper_faucet_window_limit_exceeded:window_minor=25000:remaining_minor=0")
-    );
-}
-
-#[tokio::test]
-async fn test_signet_agent_start_registers_agent_and_is_idempotent() {
-    let url = create_product_test_server().await;
-    let client = reqwest::Client::new();
-    let pubkey = "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd";
-
-    let first_response = client
-        .post(format!("{url}/api/product/agents/signet/start"))
-        .json(&serde_json::json!({
-            "pubkey": pubkey,
-            "name": "Macro Scout",
-            "role": "Research analyst",
-            "thesis": "Track second-order AI infrastructure bottlenecks.",
-            "owner_pubkey": "abababababababababababababababababababababababababababababababab",
-            "funding_amount_minor": 10000,
-            "metadata": {
-                "launcher": "skills/cascade/scripts/start-signet-agent.mjs"
-            }
-        }))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(first_response.status(), 201);
-    let first_payload: serde_json::Value = first_response.json().await.unwrap();
-    assert_eq!(first_payload["created"].as_bool(), Some(true));
-    assert_eq!(first_payload["funded"].as_bool(), Some(true));
-    assert_eq!(
-        first_payload["agent"]["thesis"].as_str(),
-        Some("Track second-order AI infrastructure bottlenecks.")
-    );
-    assert_eq!(
-        first_payload["agent"]["portfolio"]["available_minor"].as_u64(),
-        Some(10000)
-    );
-    assert_eq!(
-        first_payload["wallet"]["total_deposited_minor"].as_u64(),
-        Some(10000)
-    );
-
-    let list_response = client
-        .get(format!("{url}/api/product/agents"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(list_response.status(), 200);
-    let list_payload: serde_json::Value = list_response.json().await.unwrap();
-    assert_eq!(
-        list_payload["agents"].as_array().map(|items| items.len()),
-        Some(1)
-    );
-    assert_eq!(list_payload["agents"][0]["pubkey"].as_str(), Some(pubkey));
-
-    let detail_response = client
-        .get(format!("{url}/api/product/agents/{pubkey}"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(detail_response.status(), 200);
-    let detail_payload: serde_json::Value = detail_response.json().await.unwrap();
-    assert_eq!(
-        detail_payload["agent"]["name"].as_str(),
-        Some("Macro Scout")
-    );
-    assert_eq!(
-        detail_payload["wallet"]["available_minor"].as_u64(),
-        Some(10000)
-    );
-
-    let second_response = client
-        .post(format!("{url}/api/product/agents/signet/start"))
-        .json(&serde_json::json!({
-            "pubkey": pubkey,
-            "name": "Macro Scout",
-            "role": "Research analyst",
-            "thesis": "Track second-order AI infrastructure bottlenecks.",
-            "funding_amount_minor": 10000
-        }))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(second_response.status(), 200);
-    let second_payload: serde_json::Value = second_response.json().await.unwrap();
-    assert_eq!(second_payload["created"].as_bool(), Some(false));
-    assert_eq!(second_payload["funded"].as_bool(), Some(false));
-    assert_eq!(
-        second_payload["wallet"]["total_deposited_minor"].as_u64(),
-        Some(10000)
     );
 }

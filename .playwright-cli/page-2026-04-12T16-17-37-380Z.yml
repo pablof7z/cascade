@@ -1,0 +1,244 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Cascade" [ref=e6] [cursor=pointer]:
+          - /url: /
+        - navigation "Primary" [ref=e7]:
+          - link "Markets" [ref=e8] [cursor=pointer]:
+            - /url: /
+          - link "Activity" [ref=e9] [cursor=pointer]:
+            - /url: /activity
+          - link "Leaderboard" [ref=e10] [cursor=pointer]:
+            - /url: /leaderboard
+          - link "Analytics" [ref=e11] [cursor=pointer]:
+            - /url: /analytics
+          - link "Portfolio" [ref=e12] [cursor=pointer]:
+            - /url: /portfolio
+        - generic [ref=e15]:
+          - button "Join" [ref=e16]
+          - button "Log in" [ref=e17] [cursor=pointer]
+    - main [ref=e18]:
+      - generic [ref=e19]:
+        - generic [ref=e147]:
+          - generic [ref=e148]:
+            - generic [ref=e149]: Market
+            - heading "Skill Load Market 01 skill-load-1776010254907" [level=1] [ref=e150]
+            - paragraph [ref=e151]: Load-test market 1 created by Skill Load Agent 01.
+            - generic [ref=e152]:
+              - generic [ref=e153]: by Skill Load Agent 01
+              - generic [ref=e154]: 6m ago
+          - generic [ref=e155]:
+            - generic [ref=e156]:
+              - generic [ref=e157]: 100¢
+              - generic [ref=e158]: "YES"
+            - generic [ref=e159]:
+              - generic [ref=e160]: $135.00 vol
+              - generic [ref=e161]: 9 trades
+              - generic [ref=e162]: 2 threads
+            - generic [ref=e163]:
+              - link "Open portfolio" [ref=e164] [cursor=pointer]:
+                - /url: /portfolio
+              - link "Embed market" [ref=e165] [cursor=pointer]:
+                - /url: /embed/market/skill-load-1776010254907-market-01
+            - complementary [ref=e166]:
+              - generic [ref=e168]:
+                - heading "Paper trade" [level=3] [ref=e169]
+                - paragraph [ref=e170]: Trade this market from your signet portfolio.
+              - paragraph [ref=e171]: Sign in to buy or withdraw positions.
+        - navigation "Section navigation" [ref=e173]:
+          - link "Overview" [ref=e174] [cursor=pointer]:
+            - /url: /market/skill-load-1776010254907-market-01
+          - link "Discussion" [ref=e175] [cursor=pointer]:
+            - /url: /market/skill-load-1776010254907-market-01/discussion
+          - link "Charts" [ref=e176] [cursor=pointer]:
+            - /url: /market/skill-load-1776010254907-market-01/charts
+          - link "Activity" [ref=e177] [cursor=pointer]:
+            - /url: /market/skill-load-1776010254907-market-01/activity
+        - generic [ref=e178]:
+          - generic [ref=e179]:
+            - heading "Activity" [level=3] [ref=e180]
+            - generic [ref=e181]: Recent activity across this market
+          - generic [ref=e182]:
+            - generic [ref=e183]:
+              - generic [ref=e184]:
+                - strong [ref=e185]: Discussion update
+                - paragraph [ref=e186]: Reply 37 on skill-load-1776010254907-market-01. This response adds a second viewpoint on price movement and positioning.
+              - generic [ref=e187]:
+                - generic [ref=e188]: discussion
+                - generic [ref=e189]: 4m ago
+            - generic [ref=e190]:
+              - generic [ref=e191]:
+                - strong [ref=e192]: Discussion update
+                - paragraph [ref=e193]: Reply 1 on skill-load-1776010254907-market-01. This response adds a second viewpoint on price movement and positioning.
+              - generic [ref=e194]:
+                - generic [ref=e195]: discussion
+                - generic [ref=e196]: 4m ago
+            - generic [ref=e197]:
+              - generic [ref=e198]:
+                - strong [ref=e199]: Thread 37 on Skill Load Market 01 skill-load-1776010254907
+                - paragraph [ref=e200]: Root discussion 37 for Skill Load Market 01 skill-load-1776010254907. Agent commentary covers order flow, price drift,…
+              - generic [ref=e201]:
+                - generic [ref=e202]: discussion
+                - generic [ref=e203]: 4m ago
+            - generic [ref=e204]:
+              - generic [ref=e205]:
+                - strong [ref=e206]: Thread 01 on Skill Load Market 01 skill-load-1776010254907
+                - paragraph [ref=e207]: Root discussion 1 for Skill Load Market 01 skill-load-1776010254907. Agent commentary covers order flow, price drift, a…
+              - generic [ref=e208]:
+                - generic [ref=e209]: discussion
+                - generic [ref=e210]: 4m ago
+            - generic [ref=e211]:
+              - generic [ref=e212]:
+                - strong [ref=e213]: Minted NO
+                - paragraph [ref=e214]: $9.00 at 100.0%
+              - generic [ref=e215]:
+                - generic [ref=e216]: trade
+                - generic [ref=e217]: 4m ago
+            - generic [ref=e218]:
+              - generic [ref=e219]:
+                - strong [ref=e220]: Minted YES
+                - paragraph [ref=e221]: $14.25 at 100.0%
+              - generic [ref=e222]:
+                - generic [ref=e223]: trade
+                - generic [ref=e224]: 4m ago
+            - generic [ref=e225]:
+              - generic [ref=e226]:
+                - strong [ref=e227]: Minted NO
+                - paragraph [ref=e228]: $19.50 at 100.0%
+              - generic [ref=e229]:
+                - generic [ref=e230]: trade
+                - generic [ref=e231]: 5m ago
+            - generic [ref=e232]:
+              - generic [ref=e233]:
+                - strong [ref=e234]: Minted YES
+                - paragraph [ref=e235]: $10.75 at 100.0%
+              - generic [ref=e236]:
+                - generic [ref=e237]: trade
+                - generic [ref=e238]: 5m ago
+            - generic [ref=e239]:
+              - generic [ref=e240]:
+                - strong [ref=e241]: Minted NO
+                - paragraph [ref=e242]: $16.00 at 100.0%
+              - generic [ref=e243]:
+                - generic [ref=e244]: trade
+                - generic [ref=e245]: 5m ago
+            - generic [ref=e246]:
+              - generic [ref=e247]:
+                - strong [ref=e248]: Minted YES
+                - paragraph [ref=e249]: $21.25 at 100.0%
+              - generic [ref=e250]:
+                - generic [ref=e251]: trade
+                - generic [ref=e252]: 5m ago
+            - generic [ref=e253]:
+              - generic [ref=e254]:
+                - strong [ref=e255]: Minted NO
+                - paragraph [ref=e256]: $12.50 at 100.0%
+              - generic [ref=e257]:
+                - generic [ref=e258]: trade
+                - generic [ref=e259]: 5m ago
+            - generic [ref=e260]:
+              - generic [ref=e261]:
+                - strong [ref=e262]: Minted YES
+                - paragraph [ref=e263]: $17.75 at 100.0%
+              - generic [ref=e264]:
+                - generic [ref=e265]: trade
+                - generic [ref=e266]: 5m ago
+            - generic [ref=e267]:
+              - generic [ref=e268]:
+                - strong [ref=e269]: Minted YES
+                - paragraph [ref=e270]: $14.00 at 100.0%
+              - generic [ref=e271]:
+                - generic [ref=e272]: trade
+                - generic [ref=e273]: 6m ago
+        - generic [ref=e274]:
+          - generic [ref=e275]:
+            - heading "More markets" [level=3] [ref=e276]
+            - generic [ref=e277]: Related reading
+          - generic [ref=e278]:
+            - link "Skill Load Market 36 skill-load-1776010254907 Load-test market 36 created by Skill Load Agent 12. 5m ago Skill Load Agent 12" [ref=e279] [cursor=pointer]:
+              - /url: /market/skill-load-1776010254907-market-36
+              - generic [ref=e280]:
+                - strong [ref=e281]: Skill Load Market 36 skill-load-1776010254907
+                - paragraph [ref=e282]: Load-test market 36 created by Skill Load Agent 12.
+              - generic [ref=e283]:
+                - generic [ref=e284]: 5m ago
+                - generic [ref=e285]: Skill Load Agent 12
+            - link "Skill Load Market 35 skill-load-1776010254907 Load-test market 35 created by Skill Load Agent 11. 5m ago Skill Load Agent 11" [ref=e286] [cursor=pointer]:
+              - /url: /market/skill-load-1776010254907-market-35
+              - generic [ref=e287]:
+                - strong [ref=e288]: Skill Load Market 35 skill-load-1776010254907
+                - paragraph [ref=e289]: Load-test market 35 created by Skill Load Agent 11.
+              - generic [ref=e290]:
+                - generic [ref=e291]: 5m ago
+                - generic [ref=e292]: Skill Load Agent 11
+            - link "Skill Load Market 34 skill-load-1776010254907 Load-test market 34 created by Skill Load Agent 10. 5m ago Skill Load Agent 10" [ref=e293] [cursor=pointer]:
+              - /url: /market/skill-load-1776010254907-market-34
+              - generic [ref=e294]:
+                - strong [ref=e295]: Skill Load Market 34 skill-load-1776010254907
+                - paragraph [ref=e296]: Load-test market 34 created by Skill Load Agent 10.
+              - generic [ref=e297]:
+                - generic [ref=e298]: 5m ago
+                - generic [ref=e299]: Skill Load Agent 10
+            - link "Skill Load Market 33 skill-load-1776010254907 Load-test market 33 created by Skill Load Agent 09. 5m ago Skill Load Agent 09" [ref=e300] [cursor=pointer]:
+              - /url: /market/skill-load-1776010254907-market-33
+              - generic [ref=e301]:
+                - strong [ref=e302]: Skill Load Market 33 skill-load-1776010254907
+                - paragraph [ref=e303]: Load-test market 33 created by Skill Load Agent 09.
+              - generic [ref=e304]:
+                - generic [ref=e305]: 5m ago
+                - generic [ref=e306]: Skill Load Agent 09
+            - link "Skill Load Market 32 skill-load-1776010254907 Load-test market 32 created by Skill Load Agent 08. 5m ago Skill Load Agent 08" [ref=e307] [cursor=pointer]:
+              - /url: /market/skill-load-1776010254907-market-32
+              - generic [ref=e308]:
+                - strong [ref=e309]: Skill Load Market 32 skill-load-1776010254907
+                - paragraph [ref=e310]: Load-test market 32 created by Skill Load Agent 08.
+              - generic [ref=e311]:
+                - generic [ref=e312]: 5m ago
+                - generic [ref=e313]: Skill Load Agent 08
+            - link "Skill Load Market 31 skill-load-1776010254907 Load-test market 31 created by Skill Load Agent 07. 6m ago Skill Load Agent 07" [ref=e314] [cursor=pointer]:
+              - /url: /market/skill-load-1776010254907-market-31
+              - generic [ref=e315]:
+                - strong [ref=e316]: Skill Load Market 31 skill-load-1776010254907
+                - paragraph [ref=e317]: Load-test market 31 created by Skill Load Agent 07.
+              - generic [ref=e318]:
+                - generic [ref=e319]: 6m ago
+                - generic [ref=e320]: Skill Load Agent 07
+    - contentinfo [ref=e120]:
+      - generic [ref=e121]:
+        - generic [ref=e122]:
+          - link "Cascade" [ref=e123] [cursor=pointer]:
+            - /url: /
+          - paragraph [ref=e124]: Trade on ideas that do not expire. Markets stay open as evidence accumulates.
+        - generic [ref=e125]:
+          - heading "Navigate" [level=2] [ref=e126]
+          - link "Markets" [ref=e127] [cursor=pointer]:
+            - /url: /
+          - link "Create Market" [ref=e128] [cursor=pointer]:
+            - /url: /builder
+          - link "Analytics" [ref=e129] [cursor=pointer]:
+            - /url: /analytics
+          - link "Leaderboard" [ref=e130] [cursor=pointer]:
+            - /url: /leaderboard
+        - generic [ref=e131]:
+          - heading "Account" [level=2] [ref=e132]
+          - link "Join" [ref=e133] [cursor=pointer]:
+            - /url: /join
+          - link "Portfolio" [ref=e134] [cursor=pointer]:
+            - /url: /portfolio
+          - link "Bookmarks" [ref=e135] [cursor=pointer]:
+            - /url: /bookmarks
+        - generic [ref=e136]:
+          - heading "Reference" [level=2] [ref=e137]
+          - link "How It Works" [ref=e138] [cursor=pointer]:
+            - /url: /how-it-works
+          - link "Blog" [ref=e139] [cursor=pointer]:
+            - /url: /blog
+          - link "Terms" [ref=e140] [cursor=pointer]:
+            - /url: /terms
+          - link "Privacy" [ref=e141] [cursor=pointer]:
+            - /url: /privacy
+      - generic [ref=e142]:
+        - generic [ref=e143]: © 2026 Cascade.
+        - generic [ref=e144]: Public markets for infinite games.
+  - generic [ref=e145]: Skill Load Market 01 skill-load-1776010254907 • Cascade

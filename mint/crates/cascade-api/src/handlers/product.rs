@@ -14,8 +14,10 @@ use crate::types::{
 };
 use axum::{
     extract::{Json, Path, State},
-    http::StatusCode,
+    http::{header::AUTHORIZATION, HeaderMap, Method, StatusCode, Uri},
 };
+use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
+use bitcoin::secp256k1::{schnorr::Signature, Message, Secp256k1, XOnlyPublicKey};
 use cascade_core::{
     product::{
         FxQuoteSnapshot, MarketLaunchState, TradeExecutionRequest, TradeExecutionRequestStatus,
@@ -29,6 +31,8 @@ use cdk::dhke::construct_proofs;
 use cdk::nuts::{CurrencyUnit, PreMintSecrets};
 use cdk::Amount;
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
+use std::str::FromStr;
 
 const TRADE_FEE_BPS: u64 = 100;
 const TRADE_QUOTE_TTL_SECONDS: i64 = 30;
@@ -37,6 +41,23 @@ const FALLBACK_MINT_PUBKEY: &str =
 const PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR: u64 = 10_000;
 const PAPER_FAUCET_WINDOW_LIMIT_MINOR: u64 = 25_000;
 const PAPER_FAUCET_WINDOW_SECONDS: i64 = 24 * 60 * 60;
+const NIP98_AUTH_KIND: i64 = 27_235;
+const NIP98_AUTH_WINDOW_SECONDS: i64 = 120;
+
+struct RequestAuthContext {
+    signer_pubkey: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+struct Nip98AuthEvent {
+    id: String,
+    pubkey: String,
+    created_at: i64,
+    kind: i64,
+    tags: Vec<Vec<String>>,
+    content: String,
+    sig: String,
+}
 
 struct PreparedTradeQuote {
     response: ProductTradeQuoteResponse,
@@ -630,8 +651,25 @@ pub async fn paper_faucet(
 
 pub async fn create_market(
     State(state): State<AppState>,
+    headers: HeaderMap,
+    method: Method,
+    uri: Uri,
     Json(req): Json<ProductCreateMarketRequest>,
 ) -> (StatusCode, Json<Value>) {
+    let auth = match request_auth_context(&headers, &method, &uri) {
+        Ok(context) => context,
+        Err(error) => return (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
+    };
+
+    if let Some(signer_pubkey) = auth.signer_pubkey.as_deref() {
+        if signer_pubkey != req.creator_pubkey {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({ "error": "request_signer_must_match_creator_pubkey" })),
+            );
+        }
+    }
+
     if req.event_id.trim().is_empty()
         || req.slug.trim().is_empty()
         || req.title.trim().is_empty()
@@ -812,8 +850,25 @@ pub async fn quote_trade_sell(
 
 pub async fn buy_trade(
     State(state): State<AppState>,
+    headers: HeaderMap,
+    method: Method,
+    uri: Uri,
     Json(req): Json<ProductCoordinatorBuyRequest>,
 ) -> (StatusCode, Json<Value>) {
+    let auth = match request_auth_context(&headers, &method, &uri) {
+        Ok(context) => context,
+        Err(error) => return (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
+    };
+
+    if let Some(signer_pubkey) = auth.signer_pubkey.as_deref() {
+        if signer_pubkey != req.pubkey {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({ "error": "request_signer_must_match_pubkey" })),
+            );
+        }
+    }
+
     let buy_request = ProductBuyRequest {
         pubkey: req.pubkey,
         side: req.side,
@@ -821,13 +876,36 @@ pub async fn buy_trade(
         quote_id: req.quote_id,
         request_id: req.request_id,
     };
-    buy_trade_by_event(&state, &req.event_id, &buy_request).await
+    buy_trade_by_event(
+        &state,
+        &req.event_id,
+        &buy_request,
+        auth.signer_pubkey.as_deref(),
+    )
+    .await
 }
 
 pub async fn sell_trade(
     State(state): State<AppState>,
+    headers: HeaderMap,
+    method: Method,
+    uri: Uri,
     Json(req): Json<ProductCoordinatorSellRequest>,
 ) -> (StatusCode, Json<Value>) {
+    let auth = match request_auth_context(&headers, &method, &uri) {
+        Ok(context) => context,
+        Err(error) => return (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
+    };
+
+    if let Some(signer_pubkey) = auth.signer_pubkey.as_deref() {
+        if signer_pubkey != req.pubkey {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({ "error": "request_signer_must_match_pubkey" })),
+            );
+        }
+    }
+
     let sell_request = ProductSellRequest {
         pubkey: req.pubkey,
         side: req.side,
@@ -835,7 +913,13 @@ pub async fn sell_trade(
         quote_id: req.quote_id,
         request_id: req.request_id,
     };
-    sell_trade_by_event(&state, &req.event_id, &sell_request).await
+    sell_trade_by_event(
+        &state,
+        &req.event_id,
+        &sell_request,
+        auth.signer_pubkey.as_deref(),
+    )
+    .await
 }
 
 pub async fn trade_quote_status(
@@ -999,17 +1083,51 @@ pub async fn quote_market_trade(
 pub async fn buy_market_position(
     State(state): State<AppState>,
     Path(event_id): Path<String>,
+    headers: HeaderMap,
+    method: Method,
+    uri: Uri,
     Json(req): Json<ProductBuyRequest>,
 ) -> (StatusCode, Json<Value>) {
-    buy_trade_by_event(&state, &event_id, &req).await
+    let auth = match request_auth_context(&headers, &method, &uri) {
+        Ok(context) => context,
+        Err(error) => return (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
+    };
+
+    if let Some(signer_pubkey) = auth.signer_pubkey.as_deref() {
+        if signer_pubkey != req.pubkey {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({ "error": "request_signer_must_match_pubkey" })),
+            );
+        }
+    }
+
+    buy_trade_by_event(&state, &event_id, &req, auth.signer_pubkey.as_deref()).await
 }
 
 pub async fn sell_market_position(
     State(state): State<AppState>,
     Path(event_id): Path<String>,
+    headers: HeaderMap,
+    method: Method,
+    uri: Uri,
     Json(req): Json<ProductSellRequest>,
 ) -> (StatusCode, Json<Value>) {
-    sell_trade_by_event(&state, &event_id, &req).await
+    let auth = match request_auth_context(&headers, &method, &uri) {
+        Ok(context) => context,
+        Err(error) => return (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
+    };
+
+    if let Some(signer_pubkey) = auth.signer_pubkey.as_deref() {
+        if signer_pubkey != req.pubkey {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({ "error": "request_signer_must_match_pubkey" })),
+            );
+        }
+    }
+
+    sell_trade_by_event(&state, &event_id, &req, auth.signer_pubkey.as_deref()).await
 }
 
 enum TradeRequestGuard {
@@ -1208,6 +1326,7 @@ async fn buy_trade_by_event(
     state: &AppState,
     event_id: &str,
     req: &ProductBuyRequest,
+    request_signer_pubkey: Option<&str>,
 ) -> (StatusCode, Json<Value>) {
     match load_market_for_trading(state, event_id).await {
         Ok(market) => {
@@ -1328,6 +1447,7 @@ async fn buy_trade_by_event(
                 quote.quantity,
                 post_price_ppm,
                 created_at,
+                request_signer_pubkey,
             );
             let raw_event_json = match serde_json::to_string(&raw_event) {
                 Ok(raw) => raw,
@@ -1426,6 +1546,7 @@ async fn sell_trade_by_event(
     state: &AppState,
     event_id: &str,
     req: &ProductSellRequest,
+    request_signer_pubkey: Option<&str>,
 ) -> (StatusCode, Json<Value>) {
     match load_market_for_trading(state, event_id).await {
         Ok(market) => {
@@ -1571,6 +1692,7 @@ async fn sell_trade_by_event(
                 req.quantity,
                 post_price_ppm,
                 created_at,
+                request_signer_pubkey,
             );
             let raw_event_json = match serde_json::to_string(&raw_event) {
                 Ok(raw) => raw,
@@ -2796,7 +2918,22 @@ fn build_trade_event(
     quantity: f64,
     price_ppm: u64,
     created_at: i64,
+    request_signer_pubkey: Option<&str>,
 ) -> Value {
+    let mut tags = vec![
+        json!(["e", market_event_id]),
+        json!(["direction", direction]),
+        json!(["type", trade_type]),
+        json!(["amount", amount_minor.to_string()]),
+        json!(["quantity", format!("{quantity:.8}")]),
+        json!(["price", price_ppm.to_string()]),
+        json!(["unit", "usd"]),
+    ];
+
+    if let Some(pubkey) = request_signer_pubkey {
+        tags.push(json!(["p", pubkey]));
+    }
+
     json!({
         "id": trade_id,
         "pubkey": mint_pubkey,
@@ -2804,18 +2941,135 @@ fn build_trade_event(
         "kind": 983,
         "content": "",
         "sig": "",
-        "tags": [
-            ["e", market_event_id],
-            ["direction", direction],
-            ["type", trade_type],
-            ["amount", amount_minor.to_string()],
-            ["quantity", format!("{quantity:.8}")],
-            ["price", price_ppm.to_string()],
-            ["unit", "usd"]
-        ]
+        "tags": tags
     })
 }
 
 fn mint_pubkey_from_market(_event_id: &str, _side: &str) -> String {
     std::env::var("MINT_NOSTR_PUBKEY").unwrap_or_else(|_| FALLBACK_MINT_PUBKEY.to_string())
+}
+
+fn request_auth_context(
+    headers: &HeaderMap,
+    method: &Method,
+    uri: &Uri,
+) -> Result<RequestAuthContext, String> {
+    let Some(header_value) = headers.get(AUTHORIZATION) else {
+        return Ok(RequestAuthContext {
+            signer_pubkey: None,
+        });
+    };
+
+    let authorization = header_value
+        .to_str()
+        .map_err(|_| "invalid_authorization_header".to_string())?;
+    let encoded_event = authorization
+        .strip_prefix("Nostr ")
+        .or_else(|| authorization.strip_prefix("nostr "))
+        .ok_or_else(|| "unsupported_authorization_scheme".to_string())?;
+    let raw_event = BASE64_STANDARD
+        .decode(encoded_event)
+        .map_err(|_| "invalid_nip98_payload".to_string())?;
+    let auth_event: Nip98AuthEvent =
+        serde_json::from_slice(&raw_event).map_err(|_| "invalid_nip98_event".to_string())?;
+
+    verify_nip98_auth_event(&auth_event, headers, method, uri)?;
+
+    Ok(RequestAuthContext {
+        signer_pubkey: Some(auth_event.pubkey),
+    })
+}
+
+fn verify_nip98_auth_event(
+    event: &Nip98AuthEvent,
+    headers: &HeaderMap,
+    method: &Method,
+    uri: &Uri,
+) -> Result<(), String> {
+    if event.kind != NIP98_AUTH_KIND {
+        return Err("invalid_nip98_kind".to_string());
+    }
+
+    let now = chrono::Utc::now().timestamp();
+    if (now - event.created_at).abs() > NIP98_AUTH_WINDOW_SECONDS {
+        return Err("expired_nip98_event".to_string());
+    }
+
+    let expected_url = request_url(headers, uri)?;
+    let tagged_url = tag_value(&event.tags, "u").ok_or_else(|| "missing_nip98_url".to_string())?;
+    if tagged_url != expected_url {
+        return Err("nip98_url_mismatch".to_string());
+    }
+
+    let tagged_method =
+        tag_value(&event.tags, "method").ok_or_else(|| "missing_nip98_method".to_string())?;
+    if tagged_method != method.as_str() {
+        return Err("nip98_method_mismatch".to_string());
+    }
+
+    let expected_id = compute_event_id(event)?;
+    if event.id != expected_id {
+        return Err("invalid_nip98_event_id".to_string());
+    }
+
+    verify_event_signature(event, &expected_id)?;
+
+    Ok(())
+}
+
+fn request_url(headers: &HeaderMap, uri: &Uri) -> Result<String, String> {
+    let scheme = header_string(headers, "x-forwarded-proto")
+        .or_else(|| header_string(headers, "x-scheme"))
+        .unwrap_or_else(|| "http".to_string());
+    let host = header_string(headers, "x-forwarded-host")
+        .or_else(|| header_string(headers, "host"))
+        .ok_or_else(|| "missing_request_host".to_string())?;
+    let path = uri
+        .path_and_query()
+        .map(|value| value.as_str())
+        .unwrap_or_else(|| uri.path());
+
+    Ok(format!("{scheme}://{host}{path}"))
+}
+
+fn header_string(headers: &HeaderMap, name: &str) -> Option<String> {
+    headers
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_string)
+}
+
+fn tag_value<'a>(tags: &'a [Vec<String>], name: &str) -> Option<&'a str> {
+    tags.iter()
+        .find(|tag| tag.first().map(|value| value.as_str()) == Some(name))
+        .and_then(|tag| tag.get(1))
+        .map(String::as_str)
+}
+
+fn compute_event_id(event: &Nip98AuthEvent) -> Result<String, String> {
+    let serialized = serde_json::to_string(&json!([
+        0,
+        event.pubkey,
+        event.created_at,
+        event.kind,
+        event.tags,
+        event.content,
+    ]))
+    .map_err(|_| "failed_to_serialize_nip98_event".to_string())?;
+
+    Ok(hex::encode(Sha256::digest(serialized.as_bytes())))
+}
+
+fn verify_event_signature(event: &Nip98AuthEvent, event_id: &str) -> Result<(), String> {
+    let public_key =
+        XOnlyPublicKey::from_str(&event.pubkey).map_err(|_| "invalid_nip98_pubkey".to_string())?;
+    let signature =
+        Signature::from_str(&event.sig).map_err(|_| "invalid_nip98_signature".to_string())?;
+    let digest = hex::decode(event_id).map_err(|_| "invalid_nip98_event_id".to_string())?;
+    let message =
+        Message::from_digest_slice(&digest).map_err(|_| "invalid_nip98_event_id".to_string())?;
+
+    Secp256k1::verification_only()
+        .verify_schnorr(&signature, &message, &public_key)
+        .map_err(|_| "invalid_nip98_signature".to_string())
 }

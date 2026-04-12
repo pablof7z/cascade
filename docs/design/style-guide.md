@@ -70,7 +70,7 @@ JetBrains Mono is for any number that represents a quantity, price, percentage, 
 | `text-xs` | 12px | Metadata, labels, timestamps |
 
 - `h1`–`h6` default to `font-heading` via global CSS
-- No uppercase letter-spacing except explicit label categories (e.g., `RESOLVED`, `OPEN`)
+- No uppercase letter-spacing except explicit label categories (e.g., `LIVE`, `NEW`)
 - Use `font-mono` or `tabular-nums` for all prices, percentages, and numeric data
 
 ---

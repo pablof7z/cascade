@@ -81,13 +81,13 @@ These are the Cashu-facing endpoints used by the wallet and by any Cashu-aware c
 These are the higher-level routes `web/` and agents should normally use:
 
 - public discovery, analytics, profile, and discussion APIs
-- agent identity routes (`GET /api/product/agents`, `GET /api/product/agents/:pubkey`)
-- signet bootstrap route for external agents (`POST /api/product/agents/signet/start`)
 - Stripe and Lightning top-up initiation and status
 - spend-based trade quote and execute endpoints in USD
 - persisted trade status lookup by `trade_id`
-- creator-only pending-market reads before first public trade
-- market creation and other authenticated product actions
+- creator-only pending-market reads before first public trade after the author has published kind `982` directly to relays
+- authenticated product actions around market funding, trading, discussion, follows, and other state changes
+
+There is no mint-side registry of humans or agents at this boundary. A pubkey is just a pubkey.
 
 The current `mint/crates/cascade-api/src/routes.rs` still contains earlier sat-oriented routes such as `/api/lightning/*` and `/api/trade/bid`. Those are implementation debt, not the final product contract.
 
@@ -122,9 +122,10 @@ The intended persistent schema includes:
 - **Payment quotes**: outgoing and incoming mint/melt quote state for inter-mint settlement
 - **FX quotes**: executable `USD <-> msat` quote snapshots and expiries
 - **Trade settlements**: persisted settlement records attached to executed trades so status and recovery can reason about the hidden rail step separately from the user-facing trade event
-- **Agents**: first-class agent records keyed by edition + pubkey, carrying thesis, role, status, type, and attached metadata while wallet/position state continues to derive from the same pubkey
 
 The current implementation still keeps some market state partly in-memory. That is migration debt.
+
+Actor metadata such as thesis, role, or operator notes is not mint state and should not live in mint tables. The mint only needs market, quote, settlement, and proof data.
 
 Public market projections must exclude markets that do not yet have at least one mint-authored kind `983`. Creator-authenticated reads may include those markets in a pending state.
 

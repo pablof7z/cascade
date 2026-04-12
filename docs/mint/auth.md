@@ -34,6 +34,7 @@ Kind `983` stays mint-authored.
 - if the mint ever accepts a valid trade request without NIP-98 outside that launch surface, the event can omit `p`
 
 There is no extra `identity` tag and no extra `actor` tag. Request attribution uses the standard Nostr `p` tag only.
+There is also no separate mint-side actor registry implied by NIP-98. A pubkey is just a pubkey here.
 
 ## Meaning Of The `p` Tag
 

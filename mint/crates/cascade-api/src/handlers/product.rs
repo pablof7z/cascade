@@ -1530,6 +1530,13 @@ async fn buy_trade_by_event(
                 .map(str::trim)
                 .filter(|value| !value.is_empty());
 
+            if req.proofs.is_empty() {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": "input_proofs_required" })),
+                );
+            }
+
             match prepare_trade_request(
                 state,
                 request_id,
@@ -1653,189 +1660,102 @@ async fn buy_trade_by_event(
                 }
             };
 
-            if !req.proofs.is_empty() {
-                if let Err(error) = verify_input_proofs(state, &req.proofs).await {
-                    if let Some(request_id) = request_id {
-                        let _ = state
-                            .db
-                            .fail_trade_execution_request(request_id, &error)
-                            .await;
-                    }
-                    return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
-                }
-
-                let input_total_minor = proof_total_amount(&req.proofs);
-                if input_total_minor < quote.spend_minor {
-                    let error = "insufficient_input_proofs".to_string();
-                    if let Some(request_id) = request_id {
-                        let _ = state
-                            .db
-                            .fail_trade_execution_request(request_id, &error)
-                            .await;
-                    }
-                    return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
-                }
-
-                let issued_proofs =
-                    match issue_market_proofs(state, &market, side, quote.quantity).await {
-                        Ok(proofs) => proofs,
-                        Err(error) => {
-                            if let Some(request_id) = request_id {
-                                let _ = state
-                                    .db
-                                    .fail_trade_execution_request(request_id, &error)
-                                    .await;
-                            }
-                            return (
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                Json(json!({ "error": error })),
-                            );
-                        }
-                    };
-                let change_amount_minor = input_total_minor.saturating_sub(quote.spend_minor);
-                let change_proofs = if change_amount_minor > 0 {
-                    match issue_wallet_proofs(state, change_amount_minor).await {
-                        Ok(proofs) => proofs,
-                        Err(error) => {
-                            if let Some(request_id) = request_id {
-                                let _ = state
-                                    .db
-                                    .fail_trade_execution_request(request_id, &error)
-                                    .await;
-                            }
-                            return (
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                Json(json!({ "error": error })),
-                            );
-                        }
-                    }
-                } else {
-                    Vec::new()
-                };
-
-                let issued_unit = market_proof_unit(&market, side);
-                let issued_bundle = trade_proof_bundle(&issued_unit, issued_proofs.clone());
-                let change_bundle = trade_proof_bundle("usd", change_proofs.clone());
-                let settlement = build_trade_settlement_insert(
-                    state,
-                    &req.pubkey,
-                    &quote,
-                    issued_bundle.as_ref(),
-                    change_bundle.as_ref(),
-                );
-                let issued_inserts = issued_proofs
-                    .iter()
-                    .map(|proof| {
-                        portfolio_proof_insert_from_input(
-                            proof,
-                            &issued_unit,
-                            Some(&market.event_id),
-                            Some(direction),
-                            "trade_buy_issued",
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                let change_inserts = change_proofs
-                    .iter()
-                    .map(|proof| {
-                        portfolio_proof_insert_from_input(
-                            proof,
-                            "usd",
-                            None,
-                            None,
-                            "trade_buy_change",
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                let spent_proofs = req
-                    .proofs
-                    .iter()
-                    .map(portfolio_proof_spend_from_input)
-                    .collect::<Vec<_>>();
-
-                match state
-                    .db
-                    .apply_trade_execution_with_portfolio_proofs(
-                        &trade_id,
-                        created_at,
-                        req.quote_id.as_deref(),
-                        &req.pubkey,
-                        &market,
-                        direction,
-                        "buy",
-                        quote.spend_minor,
-                        quote.fee_minor,
-                        quote.quantity,
-                        quote.spend_minor as i64,
-                        -(quote.spend_minor as i64),
-                        post_price_ppm,
-                        &raw_event_json,
-                        next_q_long,
-                        next_q_short,
-                        next_reserve_minor,
-                        settlement.as_ref(),
-                        &spent_proofs,
-                        "usd",
-                        None,
-                        None,
-                        &issued_inserts,
-                        &change_inserts,
-                        Some(input_total_minor),
-                        None,
-                    )
-                    .await
-                {
-                    Ok(_) => {
-                        if let Some(request_id) = request_id {
-                            let _ = state
-                                .db
-                                .complete_trade_execution_request(request_id, &trade_id)
-                                .await;
-                        }
-
-                        state
-                            .market_manager
-                            .load_market(Market {
-                                q_long: next_q_long,
-                                q_short: next_q_short,
-                                reserve_sats: next_reserve_minor,
-                                ..market.clone()
-                            })
-                            .await;
-
-                        return trade_execution_response(
-                            state,
-                            &req.pubkey,
-                            &market,
-                            next_q_long,
-                            next_q_short,
-                            next_reserve_minor,
-                            raw_event,
-                        )
+            if let Err(error) = verify_input_proofs(state, &req.proofs).await {
+                if let Some(request_id) = request_id {
+                    let _ = state
+                        .db
+                        .fail_trade_execution_request(request_id, &error)
                         .await;
-                    }
+                }
+                return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
+            }
+
+            let input_total_minor = proof_total_amount(&req.proofs);
+            if input_total_minor < quote.spend_minor {
+                let error = "insufficient_input_proofs".to_string();
+                if let Some(request_id) = request_id {
+                    let _ = state
+                        .db
+                        .fail_trade_execution_request(request_id, &error)
+                        .await;
+                }
+                return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
+            }
+
+            let issued_proofs =
+                match issue_market_proofs(state, &market, side, quote.quantity).await {
+                    Ok(proofs) => proofs,
                     Err(error) => {
-                        let error_message = error.to_string();
                         if let Some(request_id) = request_id {
                             let _ = state
                                 .db
-                                .fail_trade_execution_request(request_id, &error_message)
+                                .fail_trade_execution_request(request_id, &error)
                                 .await;
                         }
-
                         return (
-                            StatusCode::BAD_REQUEST,
-                            Json(json!({ "error": error_message })),
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({ "error": error })),
+                        );
+                    }
+                };
+            let change_amount_minor = input_total_minor.saturating_sub(quote.spend_minor);
+            let change_proofs = if change_amount_minor > 0 {
+                match issue_wallet_proofs(state, change_amount_minor).await {
+                    Ok(proofs) => proofs,
+                    Err(error) => {
+                        if let Some(request_id) = request_id {
+                            let _ = state
+                                .db
+                                .fail_trade_execution_request(request_id, &error)
+                                .await;
+                        }
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({ "error": error })),
                         );
                     }
                 }
-            }
+            } else {
+                Vec::new()
+            };
 
-            let settlement = build_trade_settlement_insert(state, &req.pubkey, &quote, None, None);
+            let issued_unit = market_proof_unit(&market, side);
+            let issued_bundle = trade_proof_bundle(&issued_unit, issued_proofs.clone());
+            let change_bundle = trade_proof_bundle("usd", change_proofs.clone());
+            let settlement = build_trade_settlement_insert(
+                state,
+                &req.pubkey,
+                &quote,
+                issued_bundle.as_ref(),
+                change_bundle.as_ref(),
+            );
+            let issued_inserts = issued_proofs
+                .iter()
+                .map(|proof| {
+                    portfolio_proof_insert_from_input(
+                        proof,
+                        &issued_unit,
+                        Some(&market.event_id),
+                        Some(direction),
+                        "trade_buy_issued",
+                    )
+                })
+                .collect::<Vec<_>>();
+            let change_inserts = change_proofs
+                .iter()
+                .map(|proof| {
+                    portfolio_proof_insert_from_input(proof, "usd", None, None, "trade_buy_change")
+                })
+                .collect::<Vec<_>>();
+            let spent_proofs = req
+                .proofs
+                .iter()
+                .map(portfolio_proof_spend_from_input)
+                .collect::<Vec<_>>();
 
             match state
                 .db
-                .apply_trade_execution(
+                .apply_trade_execution_with_portfolio_proofs(
                     &trade_id,
                     created_at,
                     req.quote_id.as_deref(),
@@ -1854,6 +1774,14 @@ async fn buy_trade_by_event(
                     next_q_short,
                     next_reserve_minor,
                     settlement.as_ref(),
+                    &spent_proofs,
+                    "usd",
+                    None,
+                    None,
+                    &issued_inserts,
+                    &change_inserts,
+                    Some(input_total_minor),
+                    None,
                 )
                 .await
             {
@@ -1945,19 +1873,10 @@ async fn sell_trade_by_event(
             }
 
             if req.proofs.is_empty() {
-                let Some(position) = position.as_ref() else {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(json!({ "error": "position_not_found" })),
-                    );
-                };
-
-                if req.quantity - position.quantity > f64::EPSILON {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(json!({ "error": "invalid_sell_quantity" })),
-                    );
-                }
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": "input_proofs_required" })),
+                );
             }
 
             let request_id = req
@@ -2087,55 +2006,70 @@ async fn sell_trade_by_event(
                     );
                 }
             };
-            let released_cost_basis = if let Some(position) = position.as_ref() {
-                let proportion = (quote.quantity / position.quantity).clamp(0.0, 1.0);
-                ((position.cost_basis_minor as f64) * proportion).round() as i64
+            if let Err(error) = verify_input_proofs(state, &req.proofs).await {
+                if let Some(request_id) = request_id {
+                    let _ = state
+                        .db
+                        .fail_trade_execution_request(request_id, &error)
+                        .await;
+                }
+                return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
+            }
+
+            let input_quantity_minor = proof_total_amount(&req.proofs);
+            if input_quantity_minor < quote.quantity_minor {
+                let error = "insufficient_input_proofs".to_string();
+                if let Some(request_id) = request_id {
+                    let _ = state
+                        .db
+                        .fail_trade_execution_request(request_id, &error)
+                        .await;
+                }
+                return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
+            }
+
+            let selected_quantity = minor_to_quantity(input_quantity_minor);
+            let selected_cost_basis_minor = if let Some(position) = position.as_ref() {
+                let selected_proportion = (selected_quantity / position.quantity).clamp(0.0, 1.0);
+                ((position.cost_basis_minor as f64) * selected_proportion).round() as u64
             } else {
                 0
             };
+            let selected_snapshot = PortfolioPositionSnapshot {
+                quantity: selected_quantity,
+                cost_basis_minor: selected_cost_basis_minor,
+            };
+            let selected_release_proportion =
+                (quote.quantity / selected_snapshot.quantity).clamp(0.0, 1.0);
+            let released_selected_cost_basis = ((selected_snapshot.cost_basis_minor as f64)
+                * selected_release_proportion)
+                .round() as i64;
 
-            if !req.proofs.is_empty() {
-                if let Err(error) = verify_input_proofs(state, &req.proofs).await {
+            let issued_proofs = match issue_wallet_proofs(state, quote.net_minor).await {
+                Ok(proofs) => proofs,
+                Err(error) => {
                     if let Some(request_id) = request_id {
                         let _ = state
                             .db
                             .fail_trade_execution_request(request_id, &error)
                             .await;
                     }
-                    return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!({ "error": error })),
+                    );
                 }
-
-                let input_quantity_minor = proof_total_amount(&req.proofs);
-                if input_quantity_minor < quote.quantity_minor {
-                    let error = "insufficient_input_proofs".to_string();
-                    if let Some(request_id) = request_id {
-                        let _ = state
-                            .db
-                            .fail_trade_execution_request(request_id, &error)
-                            .await;
-                    }
-                    return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
-                }
-
-                let selected_quantity = minor_to_quantity(input_quantity_minor);
-                let selected_cost_basis_minor = if let Some(position) = position.as_ref() {
-                    let selected_proportion =
-                        (selected_quantity / position.quantity).clamp(0.0, 1.0);
-                    ((position.cost_basis_minor as f64) * selected_proportion).round() as u64
-                } else {
-                    0
-                };
-                let selected_snapshot = PortfolioPositionSnapshot {
-                    quantity: selected_quantity,
-                    cost_basis_minor: selected_cost_basis_minor,
-                };
-                let selected_release_proportion =
-                    (quote.quantity / selected_snapshot.quantity).clamp(0.0, 1.0);
-                let released_selected_cost_basis = ((selected_snapshot.cost_basis_minor as f64)
-                    * selected_release_proportion)
-                    .round() as i64;
-
-                let issued_proofs = match issue_wallet_proofs(state, quote.net_minor).await {
+            };
+            let change_quantity_minor = input_quantity_minor.saturating_sub(quote.quantity_minor);
+            let change_proofs = if change_quantity_minor > 0 {
+                match issue_market_proofs(
+                    state,
+                    &market,
+                    side,
+                    minor_to_quantity(change_quantity_minor),
+                )
+                .await
+                {
                     Ok(proofs) => proofs,
                     Err(error) => {
                         if let Some(request_id) = request_id {
@@ -2149,159 +2083,48 @@ async fn sell_trade_by_event(
                             Json(json!({ "error": error })),
                         );
                     }
-                };
-                let change_quantity_minor =
-                    input_quantity_minor.saturating_sub(quote.quantity_minor);
-                let change_proofs = if change_quantity_minor > 0 {
-                    match issue_market_proofs(
-                        state,
-                        &market,
-                        side,
-                        minor_to_quantity(change_quantity_minor),
-                    )
-                    .await
-                    {
-                        Ok(proofs) => proofs,
-                        Err(error) => {
-                            if let Some(request_id) = request_id {
-                                let _ = state
-                                    .db
-                                    .fail_trade_execution_request(request_id, &error)
-                                    .await;
-                            }
-                            return (
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                Json(json!({ "error": error })),
-                            );
-                        }
-                    }
-                } else {
-                    Vec::new()
-                };
+                }
+            } else {
+                Vec::new()
+            };
 
-                let market_unit = market_proof_unit(&market, side);
-                let issued_bundle = trade_proof_bundle("usd", issued_proofs.clone());
-                let change_bundle = trade_proof_bundle(&market_unit, change_proofs.clone());
-                let settlement = build_trade_settlement_insert(
-                    state,
-                    &req.pubkey,
-                    &quote,
-                    issued_bundle.as_ref(),
-                    change_bundle.as_ref(),
-                );
-                let issued_inserts = issued_proofs
-                    .iter()
-                    .map(|proof| {
-                        portfolio_proof_insert_from_input(
-                            proof,
-                            "usd",
-                            None,
-                            None,
-                            "trade_sell_issued",
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                let change_inserts = change_proofs
-                    .iter()
-                    .map(|proof| {
-                        portfolio_proof_insert_from_input(
-                            proof,
-                            &market_unit,
-                            Some(&market.event_id),
-                            Some(direction),
-                            "trade_sell_change",
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                let spent_proofs = req
-                    .proofs
-                    .iter()
-                    .map(portfolio_proof_spend_from_input)
-                    .collect::<Vec<_>>();
-
-                match state
-                    .db
-                    .apply_trade_execution_with_portfolio_proofs(
-                        &trade_id,
-                        created_at,
-                        req.quote_id.as_deref(),
-                        &req.pubkey,
-                        &market,
-                        direction,
-                        "sell",
-                        quote.net_minor,
-                        quote.fee_minor,
-                        -quote.quantity,
-                        -released_selected_cost_basis,
-                        quote.net_minor as i64,
-                        post_price_ppm,
-                        &raw_event_json,
-                        next_q_long,
-                        next_q_short,
-                        next_reserve_minor,
-                        settlement.as_ref(),
-                        &spent_proofs,
+            let market_unit = market_proof_unit(&market, side);
+            let issued_bundle = trade_proof_bundle("usd", issued_proofs.clone());
+            let change_bundle = trade_proof_bundle(&market_unit, change_proofs.clone());
+            let settlement = build_trade_settlement_insert(
+                state,
+                &req.pubkey,
+                &quote,
+                issued_bundle.as_ref(),
+                change_bundle.as_ref(),
+            );
+            let issued_inserts = issued_proofs
+                .iter()
+                .map(|proof| {
+                    portfolio_proof_insert_from_input(proof, "usd", None, None, "trade_sell_issued")
+                })
+                .collect::<Vec<_>>();
+            let change_inserts = change_proofs
+                .iter()
+                .map(|proof| {
+                    portfolio_proof_insert_from_input(
+                        proof,
                         &market_unit,
                         Some(&market.event_id),
                         Some(direction),
-                        &issued_inserts,
-                        &change_inserts,
-                        None,
-                        Some(&selected_snapshot),
+                        "trade_sell_change",
                     )
-                    .await
-                {
-                    Ok(_) => {
-                        if let Some(request_id) = request_id {
-                            let _ = state
-                                .db
-                                .complete_trade_execution_request(request_id, &trade_id)
-                                .await;
-                        }
-
-                        state
-                            .market_manager
-                            .load_market(Market {
-                                q_long: next_q_long,
-                                q_short: next_q_short,
-                                reserve_sats: next_reserve_minor,
-                                ..market.clone()
-                            })
-                            .await;
-
-                        return trade_execution_response(
-                            state,
-                            &req.pubkey,
-                            &market,
-                            next_q_long,
-                            next_q_short,
-                            next_reserve_minor,
-                            raw_event,
-                        )
-                        .await;
-                    }
-                    Err(error) => {
-                        let error_message = error.to_string();
-                        if let Some(request_id) = request_id {
-                            let _ = state
-                                .db
-                                .fail_trade_execution_request(request_id, &error_message)
-                                .await;
-                        }
-
-                        return (
-                            StatusCode::BAD_REQUEST,
-                            Json(json!({ "error": error_message })),
-                        );
-                    }
-                }
-            }
-
-            let settlement = build_trade_settlement_insert(state, &req.pubkey, &quote, None, None);
+                })
+                .collect::<Vec<_>>();
+            let spent_proofs = req
+                .proofs
+                .iter()
+                .map(portfolio_proof_spend_from_input)
+                .collect::<Vec<_>>();
 
             match state
                 .db
-                .apply_trade_execution(
+                .apply_trade_execution_with_portfolio_proofs(
                     &trade_id,
                     created_at,
                     req.quote_id.as_deref(),
@@ -2312,7 +2135,7 @@ async fn sell_trade_by_event(
                     quote.net_minor,
                     quote.fee_minor,
                     -quote.quantity,
-                    -released_cost_basis,
+                    -released_selected_cost_basis,
                     quote.net_minor as i64,
                     post_price_ppm,
                     &raw_event_json,
@@ -2320,6 +2143,14 @@ async fn sell_trade_by_event(
                     next_q_short,
                     next_reserve_minor,
                     settlement.as_ref(),
+                    &spent_proofs,
+                    &market_unit,
+                    Some(&market.event_id),
+                    Some(direction),
+                    &issued_inserts,
+                    &change_inserts,
+                    None,
+                    Some(&selected_snapshot),
                 )
                 .await
             {

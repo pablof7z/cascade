@@ -549,13 +549,16 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .await
         .unwrap();
     assert_eq!(faucet_response.status(), 201);
+    let faucet_payload: serde_json::Value = faucet_response.json().await.unwrap();
+    let faucet_proofs = faucet_payload["proofs"].clone();
 
     let buy_response = client
         .post(format!("{url}/api/product/markets/{event_id}/buy"))
         .json(&serde_json::json!({
             "pubkey": creator,
             "side": "yes",
-            "spend_minor": 8000
+            "spend_minor": 8000,
+            "proofs": faucet_proofs
         }))
         .send()
         .await
@@ -575,6 +578,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     let first_quantity = buy_payload["wallet"]["positions"][0]["quantity"]
         .as_f64()
         .unwrap();
+    let issued_market_proofs = buy_payload["issued"]["proofs"].clone();
     assert!(first_quantity > 0.0);
 
     let feed_response = client
@@ -597,7 +601,8 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .json(&serde_json::json!({
             "pubkey": creator,
             "side": "yes",
-            "quantity": first_quantity / 2.0
+            "quantity": first_quantity / 2.0,
+            "proofs": issued_market_proofs
         }))
         .send()
         .await
@@ -647,7 +652,7 @@ async fn test_coordinator_trade_routes_and_status() {
         .await
         .unwrap();
 
-    client
+    let faucet_response = client
         .post(format!("{url}/api/product/paper/faucet"))
         .json(&serde_json::json!({
             "pubkey": creator,
@@ -656,6 +661,9 @@ async fn test_coordinator_trade_routes_and_status() {
         .send()
         .await
         .unwrap();
+    assert_eq!(faucet_response.status(), 201);
+    let faucet_payload: serde_json::Value = faucet_response.json().await.unwrap();
+    let faucet_proofs = faucet_payload["proofs"].clone();
 
     let quote_response = client
         .post(format!("{url}/api/trades/quote"))
@@ -707,7 +715,8 @@ async fn test_coordinator_trade_routes_and_status() {
             "pubkey": creator,
             "side": "yes",
             "spend_minor": 4000,
-            "quote_id": buy_quote_id
+            "quote_id": buy_quote_id,
+            "proofs": faucet_proofs
         }))
         .send()
         .await
@@ -718,6 +727,7 @@ async fn test_coordinator_trade_routes_and_status() {
     let quantity = buy_payload["wallet"]["positions"][0]["quantity"]
         .as_f64()
         .unwrap();
+    let issued_market_proofs = buy_payload["issued"]["proofs"].clone();
     assert_eq!(buy_payload["market"]["visibility"].as_str(), Some("public"));
 
     let trade_status_response = client
@@ -792,7 +802,8 @@ async fn test_coordinator_trade_routes_and_status() {
             "pubkey": creator,
             "side": "yes",
             "quantity": quantity / 2.0,
-            "quote_id": sell_quote_id
+            "quote_id": sell_quote_id,
+            "proofs": issued_market_proofs
         }))
         .send()
         .await
@@ -969,6 +980,64 @@ async fn test_lightning_topup_request_id_is_idempotent() {
 }
 
 #[tokio::test]
+async fn test_trade_execution_requires_input_proofs() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+    let creator = "abababababababababababababababababababababababababababababababab";
+    let event_id = "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd";
+    let slug = "proof-required-market";
+
+    client
+        .post(format!("{url}/api/product/markets"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "title": "Proof Required Market",
+            "description": "Trade execution must require input proofs",
+            "slug": slug,
+            "body": "Proof-required body",
+            "creator_pubkey": creator,
+            "raw_event": sample_market_event(event_id, slug, creator),
+            "b": 10.0
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    let buy_response = client
+        .post(format!("{url}/api/trades/buy"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "yes",
+            "spend_minor": 4000
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(buy_response.status(), 400);
+    let buy_payload: serde_json::Value = buy_response.json().await.unwrap();
+    assert_eq!(buy_payload["error"].as_str(), Some("input_proofs_required"));
+
+    let sell_response = client
+        .post(format!("{url}/api/trades/sell"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "yes",
+            "quantity": 1.0
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(sell_response.status(), 400);
+    let sell_payload: serde_json::Value = sell_response.json().await.unwrap();
+    assert_eq!(
+        sell_payload["error"].as_str(),
+        Some("input_proofs_required")
+    );
+}
+
+#[tokio::test]
 async fn test_trade_request_id_is_idempotent() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();
@@ -993,7 +1062,7 @@ async fn test_trade_request_id_is_idempotent() {
         .await
         .unwrap();
 
-    client
+    let faucet_response = client
         .post(format!("{url}/api/product/paper/faucet"))
         .json(&serde_json::json!({
             "pubkey": creator,
@@ -1002,6 +1071,9 @@ async fn test_trade_request_id_is_idempotent() {
         .send()
         .await
         .unwrap();
+    assert_eq!(faucet_response.status(), 201);
+    let faucet_payload: serde_json::Value = faucet_response.json().await.unwrap();
+    let faucet_proofs = faucet_payload["proofs"].clone();
 
     let first_buy_response = client
         .post(format!("{url}/api/trades/buy"))
@@ -1010,7 +1082,8 @@ async fn test_trade_request_id_is_idempotent() {
             "pubkey": creator,
             "side": "yes",
             "spend_minor": 4000,
-            "request_id": request_id
+            "request_id": request_id,
+            "proofs": faucet_proofs.clone()
         }))
         .send()
         .await
@@ -1029,7 +1102,8 @@ async fn test_trade_request_id_is_idempotent() {
             "pubkey": creator,
             "side": "yes",
             "spend_minor": 4000,
-            "request_id": request_id
+            "request_id": request_id,
+            "proofs": faucet_proofs
         }))
         .send()
         .await

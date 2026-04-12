@@ -519,6 +519,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] There is no canonical `/api/product/portfolio/:pubkey` or legacy `/api/product/wallet/:pubkey` pubkey-keyed balance API in the launch contract.
 - [ ] `/portfolio` derives balance and spendable state from local proof storage.
 - [ ] Trade execution consumes locally stored proofs and writes returned issued/change proofs back into browser-local storage.
+- [ ] `POST /api/trades/buy` and `POST /api/trades/sell` reject proofless pubkey-only execution in both editions.
 - [ ] The older pubkey-keyed portfolio mirror is treated as legacy compatibility and recovery support only, not as the spendable source of truth.
 - [ ] Market-proof storage uses a fixed integer share-minor scale of `10_000` units per whole share in both signet and mainnet.
 - [ ] Market-proof bucket names are canonicalized to lowercase `long_<slug>` / `short_<slug>`.

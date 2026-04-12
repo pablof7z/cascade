@@ -154,6 +154,7 @@ The launch trade path is proof-native in both signet and mainnet:
 - the browser selects locally stored market proofs for withdrawals
 - the mint returns newly issued target-side proofs plus any source-side change proofs
 - the browser removes the consumed proofs from local storage and persists the returned proofs locally
+- the browser never relies on a proofless pubkey-only trade shortcut in either edition
 
 Canonical market-proof units are lowercase and slug-based:
 
@@ -163,6 +164,12 @@ Canonical market-proof units are lowercase and slug-based:
 If the browser encounters older uppercase market-proof buckets from earlier builds, it should migrate them into the lowercase canonical buckets during local storage reads rather than maintaining parallel holdings.
 
 The older pubkey-keyed portfolio mirror can still be used for recovery hints and non-canonical compatibility reads, but it is not the spendable source of truth for trading.
+
+Mirror data is informational only:
+
+- it can help with cost basis and recovery hints
+- it must not be treated as spend authority
+- if mirror data disagrees with local proofs, local proofs win for spendable state
 
 The `/portfolio` surface derives both spendable state and performance from:
 

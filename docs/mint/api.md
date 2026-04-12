@@ -308,6 +308,13 @@ Launch execution is proof-native, but intentionally narrower than a fully genera
 - the mint returns newly issued target-side proofs plus any source-side change proofs
 - the launch web client stores those returned proofs locally in the browser
 - the older pubkey-keyed portfolio mirror is legacy compatibility and recovery support only; it is not the spendable source of truth
+- buy and withdrawal execution must reject proofless requests in both signet and mainnet
+
+Proofless pubkey-only trade execution is not part of the launch contract.
+
+- `POST /api/trades/buy` must require spendable USD proofs from the caller
+- `POST /api/trades/sell` must require spendable market proofs from the caller
+- signet-only funding helpers may mint proofs more easily, but they still feed the same proof-native execution path as mainnet
 
 Canonical market-proof units are lowercase:
 

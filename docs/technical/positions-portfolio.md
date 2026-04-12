@@ -58,7 +58,25 @@ new_avg_price = (old_shares * old_avg_price + new_shares * new_price) / (old_sha
 unrealized_pnl_minor = current_position_value_minor - total_minor_committed
 ```
 
-Current LMSR price is fetched from the mint. If a client wants to derive price from public history, it must do so from a full trade/state reconstruction pipeline; canonical kind `983` events do not directly expose `qLong` and `qShort`.
+Portfolio valuation uses two different numbers on purpose:
+
+- **mark price** for the normal portfolio list
+- **exact exit value** when the user asks what a withdrawal would return right now
+
+Cash value is straightforward: sum the locally held USD proofs.
+
+Position mark value comes from local holdings plus current public market pricing:
+
+- the browser groups local market proofs by market and side
+- it reads the latest public YES/NO price for each market from the canonical market feed/detail surface
+- it computes a mark value in USD minor units for each locally held side
+
+Exact exit value comes from the mint:
+
+- the browser calls the sell-quote endpoint with the specific quantity it wants to withdraw
+- the mint returns the size-aware LMSR proceeds for that finite trade
+
+This distinction matters because LMSR is not a flat-price book. A full withdrawal can move price, so `quantity * current marginal price` is only a portfolio mark, not an executable guarantee.
 
 **Realized PnL** is locked in after a sale. It is the difference between the USD value received and the USD value paid for the shares that were sold.
 
@@ -76,6 +94,13 @@ Shows the current user's open positions across all markets:
 Only open positions are shown in the main list. Fully sold positions may appear in a history section.
 
 There is no canonical private `/api/portfolio` route backed by server-held proofs. Portfolio is derived from user-side proof state, user-published position records, and public market data.
+
+For launch, that means:
+
+- spendable cash comes from locally stored USD proofs
+- open-position quantities come from locally stored market proofs
+- current portfolio value comes from public market prices
+- exact withdrawal previews come from sell quotes
 
 ## Public Profile Surface
 

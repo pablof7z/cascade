@@ -209,7 +209,8 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   const tradePanel = page.locator('.trade-panel');
   await expect(tradePanel.getByText('Available')).toBeVisible();
 
-  await tradePanel.getByRole('button', { name: /NO/ }).click();
+  await tradePanel.getByRole('button', { name: /^NO / }).click();
+  await expect(tradePanel.getByRole('button', { name: 'Buy NO' })).toBeVisible();
   await tradePanel.locator('input[type="number"]').first().fill('2500');
   await tradePanel.getByRole('button', { name: 'Buy NO' }).click();
   await expect(tradePanel.getByText(`Bought NO on ${market.slug}.`)).toBeVisible();
@@ -256,6 +257,39 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   await ensureLoggedIn(page, creatorSecret);
   await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
   await expect(page.locator('.position-row').filter({ hasText: market.title }).first()).toBeVisible();
+
+  const injectedLocalPosition = await page.evaluate(({ slug }) => {
+    const usdKey = Object.keys(localStorage).find(
+      (key) => key.startsWith('cascade:proof-wallet:') && key.endsWith(':usd')
+    );
+    if (!usdKey) return false;
+
+    localStorage.setItem(
+      usdKey.replace(/:usd$/, `:LONG_${slug}`),
+      JSON.stringify({
+        version: 1,
+        mintUrl: usdKey.slice('cascade:proof-wallet:'.length, -':usd'.length),
+        unit: `LONG_${slug}`,
+        proofs: [
+          { id: 'local-test', amount: 6, secret: `proof-${slug}-1`, C: `c-${slug}-1` },
+          { id: 'local-test', amount: 4, secret: `proof-${slug}-2`, C: `c-${slug}-2` }
+        ],
+        updatedAt: Date.now()
+      })
+    );
+
+    return true;
+  }, { slug: market.slug });
+
+  expect(injectedLocalPosition).toBe(true);
+
+  await page.reload();
+  await ensureLoggedIn(page, creatorSecret);
+  await expect(
+    page.getByText('Derived from local market-proof holdings and current public market prices.')
+  ).toBeVisible();
+  const localPositionRow = page.locator('.position-row').filter({ hasText: market.title }).first();
+  await expect(localPositionRow).toContainText('YES · 10.00 shares');
 });
 
 test('signet portfolio can fund through the Lightning top-up flow', async ({ page }) => {

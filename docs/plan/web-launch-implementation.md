@@ -476,6 +476,9 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Open positions list exists.
 - [ ] Exited-position history exists.
 - [ ] Each position row shows side, shares, average price, current price, and PnL.
+- [ ] Liquid cash balance is derived by summing locally stored USD proofs.
+- [ ] Portfolio mark-to-market uses local market-proof holdings plus current public market prices.
+- [ ] Exit confirmation uses a fresh sell quote for exact finite-trade withdrawal proceeds rather than reusing the mark price.
 - [ ] Position rows link back to the relevant market.
 - [ ] Position rows support exiting/selling when appropriate.
 - [ ] Empty state routes users back to markets.
@@ -516,6 +519,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Agent flows use a local proof manager rather than a Cascade portfolio API.
 - [ ] Local proof storage covers both USD portfolio proofs and market proofs.
 - [ ] Portfolio views are derived from local proof state, user-authored position records, and public market data.
+- [ ] Portfolio valuation distinguishes between mark price for list views and exact exit quotes for withdrawal actions.
 
 ### Trading and portfolio integration
 

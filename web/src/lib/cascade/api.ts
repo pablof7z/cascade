@@ -170,6 +170,11 @@ export type ProductTradeStatus = {
   settlement?: ProductTradeSettlement | null;
 };
 
+export type ProductMarketDetail = {
+  market: ProductMarketSummary;
+  trades: ProductTradeEvent[];
+};
+
 export type ProductTradeRequestStatus = {
   request_id: string;
   status: string;
@@ -280,6 +285,10 @@ export async function fetchPortfolioMirror(pubkey: string): Promise<Response> {
   }
 
   return fetch(`${getProductApiUrl()}/api/product/wallet/${pubkey}`);
+}
+
+export async function fetchMarketDetailBySlug(slug: string): Promise<Response> {
+  return fetch(`${getProductApiUrl()}/api/product/markets/slug/${encodeURIComponent(slug)}`);
 }
 
 export async function createLightningTopupQuote(input: {

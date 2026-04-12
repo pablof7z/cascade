@@ -316,6 +316,13 @@ Portfolio surfaces must instead be derived from:
 - the user's own published position records where applicable
 - public market and price data
 
+In practice, the launch web client should compute portfolio value in two layers:
+
+- liquid USD cash by summing locally held USD proofs
+- mark-to-market position value from locally held market proofs plus current public market prices
+
+When the user is preparing a withdrawal, the client should call the sell-quote endpoint for the exact quantity it wants to exit. That quote is the executable USD value; the portfolio list view's mark-to-market number is only an approximation because LMSR pricing depends on trade size.
+
 Token import and export are local proof-management actions, not canonical server wallet routes.
 
 ## Discovery And Search

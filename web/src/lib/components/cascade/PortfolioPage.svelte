@@ -2,12 +2,14 @@
   import { browser } from '$app/environment';
   import {
     createLightningTopupQuote,
+    fetchMarketDetailBySlug,
     fetchPortfolioMirror,
     fetchWalletTopupRequestStatus,
     fetchWalletTopupStatus,
     parseJson,
     settleLightningTopupQuote,
     type ProductFundingEvent,
+    type ProductMarketDetail,
     type ProductProof,
     type ProductWallet,
     type ProductWalletFundingExecution,
@@ -26,10 +28,27 @@
   } from '$lib/cascade/recovery';
   import { ndk } from '$lib/ndk/client';
   import { formatProbability } from '$lib/ndk/cascade';
-  import { addLocalProofs, listLocalProofs, localProofBalance } from '$lib/wallet/localProofs';
+  import {
+    addLocalProofs,
+    listLocalProofs,
+    listLocalProofWallets,
+    localProofBalance
+  } from '$lib/wallet/localProofs';
 
   type PaperWallet = ProductWallet & {
     funding_events: ProductFundingEvent[];
+  };
+
+  type LocalPortfolioPosition = {
+    market_event_id: string;
+    market_slug: string;
+    market_title: string;
+    direction: 'yes' | 'no';
+    quantity: number;
+    current_price_ppm: number;
+    market_value_minor: number;
+    cost_basis_minor: number | null;
+    unrealized_pnl_minor: number | null;
   };
 
   const currentUser = $derived(ndk.$currentUser);
@@ -49,6 +68,8 @@
   let lightningAmount = $state('2500');
   let localBalanceMinor = $state(0);
   let localProofCount = $state(0);
+  let localPositions = $state<LocalPortfolioPosition[]>([]);
+  let localPositionValueMinor = $state(0);
 
   function proofMintUrl(): string {
     return getProductApiUrl().replace(/\/+$/, '');
@@ -60,6 +81,124 @@
     localProofCount = listLocalProofs(mintUrl, proofUnit).length;
   }
 
+  function parseMarketProofUnit(unit: string): { slug: string; direction: 'yes' | 'no' } | null {
+    if (unit.startsWith('LONG_')) {
+      return { slug: unit.slice('LONG_'.length), direction: 'yes' };
+    }
+
+    if (unit.startsWith('SHORT_')) {
+      return { slug: unit.slice('SHORT_'.length), direction: 'no' };
+    }
+
+    return null;
+  }
+
+  async function loadLocalPositionMarks() {
+    const mirrorByKey = new Map(
+      (wallet?.positions ?? []).map((position) => [
+        `${position.market_slug}:${position.direction.toLowerCase()}`,
+        position
+      ])
+    );
+    const proofWallets = listLocalProofWallets(proofMintUrl());
+    const marketWallets = proofWallets
+      .filter((walletEntry) => walletEntry.unit !== proofUnit)
+      .map((walletEntry) => {
+        const parsed = parseMarketProofUnit(walletEntry.unit);
+        if (!parsed) return null;
+
+        const quantity = walletEntry.proofs.reduce((sum, proof) => sum + proof.amount, 0);
+        if (quantity <= 0) return null;
+
+        return {
+          unit: walletEntry.unit,
+          slug: parsed.slug,
+          direction: parsed.direction,
+          quantity
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+    if (!marketWallets.length) {
+      localPositions = [];
+      localPositionValueMinor = 0;
+      return;
+    }
+
+    const positions: Array<LocalPortfolioPosition | null> = await Promise.all(
+      marketWallets.map(async (entry) => {
+        const mirrorKey = `${entry.slug}:${entry.direction}`;
+        const mirrorPosition = mirrorByKey.get(mirrorKey) ?? null;
+
+        try {
+          const response = await fetchMarketDetailBySlug(entry.slug);
+          if (!response.ok) {
+            throw new Error('market_detail_unavailable');
+          }
+
+          const payload = await parseJson<ProductMarketDetail>(
+            response,
+            'Failed to load current market pricing.'
+          );
+          const currentPricePpm =
+            entry.direction === 'yes'
+              ? payload.market.price_yes_ppm
+              : payload.market.price_no_ppm;
+          const marketValueMinor = Math.floor((entry.quantity * currentPricePpm) / 1_000_000);
+          const costBasisMinor = mirrorPosition?.cost_basis_minor ?? null;
+
+          return {
+            market_event_id: payload.market.event_id,
+            market_slug: payload.market.slug,
+            market_title: payload.market.title,
+            direction: entry.direction,
+            quantity: entry.quantity,
+            current_price_ppm: currentPricePpm,
+            market_value_minor: marketValueMinor,
+            cost_basis_minor: costBasisMinor,
+            unrealized_pnl_minor:
+              costBasisMinor === null ? null : marketValueMinor - costBasisMinor
+          } satisfies LocalPortfolioPosition;
+        } catch {
+          if (!mirrorPosition) return null;
+
+          return {
+            market_event_id: mirrorPosition.market_event_id,
+            market_slug: mirrorPosition.market_slug,
+            market_title: mirrorPosition.market_title,
+            direction: mirrorPosition.direction.toLowerCase() === 'no' ? 'no' : 'yes',
+            quantity: entry.quantity,
+            current_price_ppm: mirrorPosition.current_price_ppm,
+            market_value_minor: mirrorPosition.market_value_minor,
+            cost_basis_minor: mirrorPosition.cost_basis_minor,
+            unrealized_pnl_minor: mirrorPosition.unrealized_pnl_minor
+          } satisfies LocalPortfolioPosition;
+        }
+      })
+    );
+
+    const nextPositions = positions.filter(
+      (position): position is LocalPortfolioPosition => position !== null
+    );
+
+    localPositions = nextPositions.sort(
+      (left, right) => right.market_value_minor - left.market_value_minor
+    );
+    localPositionValueMinor = localPositions.reduce(
+      (sum, position) => sum + position.market_value_minor,
+      0
+    );
+  }
+
+  const mirrorPositionValueMinor = $derived.by(() =>
+    (wallet?.positions ?? []).reduce((sum, position) => sum + position.market_value_minor, 0)
+  );
+  const usingLocalPositionMarks = $derived(localPositions.length > 0);
+  const displayedPositionValueMinor = $derived(
+    usingLocalPositionMarks ? localPositionValueMinor : mirrorPositionValueMinor
+  );
+  const displayedTotalValueMinor = $derived(localBalanceMinor + displayedPositionValueMinor);
+
   async function loadWallet() {
     if (!currentUser) return;
     loading = true;
@@ -67,6 +206,7 @@
     try {
       const response = await fetchPortfolioMirror(currentUser.pubkey);
       wallet = await parseJson<PaperWallet>(response, 'Failed to load your market mirror.');
+      await loadLocalPositionMarks();
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : 'Failed to load your market mirror.';
     } finally {
@@ -79,6 +219,7 @@
     const snapshot = addLocalProofs(proofMintUrl(), proofUnit, proofs);
     localBalanceMinor = snapshot.proofs.reduce((sum, proof) => sum + proof.amount, 0);
     localProofCount = snapshot.proofs.length;
+    void loadLocalPositionMarks();
     status = `${sourceLabel} added ${formatUsdMinor(proofs.reduce((sum, proof) => sum + proof.amount, 0))} of browser-local proofs.`;
     return true;
   }
@@ -314,9 +455,9 @@
     <div class="eyebrow">{editionLabel} Portfolio</div>
     <h1>Browser-local proof portfolio</h1>
     <p>
-      Portfolio proofs are stored in this browser in both signet and mainnet. The market mirror
-      below stays in place temporarily while proof-based trading is migrated to consume proofs
-      directly.
+      Portfolio proofs are stored in this browser in both signet and mainnet. Liquid cash comes
+      from local USD proofs. Current position value is marked from public market prices, and exact
+      exits still come from fresh withdrawal quotes.
     </p>
   </header>
 
@@ -336,10 +477,22 @@
       </article>
 
       <article class="wallet-panel">
-        <span class="label">Market Mirror</span>
-        <strong>{formatUsdMinor(wallet?.available_minor ?? 0)}</strong>
+        <span class="label">Position Mark</span>
+        <strong>{formatUsdMinor(displayedPositionValueMinor)}</strong>
         <p class="muted">
-          Temporary mirror used by the current market coordinator while proof-based trading is wired in.
+          {#if usingLocalPositionMarks}
+            Derived from local market-proof holdings and current public market prices.
+          {:else}
+            No local market proofs found in this browser yet. Falling back to the temporary market mirror.
+          {/if}
+        </p>
+      </article>
+
+      <article class="wallet-panel">
+        <span class="label">Current Value</span>
+        <strong>{formatUsdMinor(displayedTotalValueMinor)}</strong>
+        <p class="muted">
+          Cash plus current position marks. Exact withdrawal proceeds can differ because LMSR pricing is size-dependent.
         </p>
       </article>
     </section>
@@ -431,14 +584,20 @@
       <div class="panel-header">
         <div>
           <h2>Open positions</h2>
-          <p class="muted">Current market value and unrealized PnL still come from the temporary market mirror.</p>
+          <p class="muted">
+            {#if usingLocalPositionMarks}
+              Position quantity comes from local proof holdings. Current USD value uses public market prices.
+            {:else}
+              No local market proofs found in this browser yet, so open positions still fall back to the temporary market mirror.
+            {/if}
+          </p>
         </div>
         <a class="button-secondary" href="/builder">Create market</a>
       </div>
 
-      {#if wallet?.positions?.length}
+      {#if usingLocalPositionMarks ? localPositions.length : wallet?.positions?.length}
         <div class="position-list">
-          {#each wallet.positions as position (position.market_event_id + position.direction)}
+          {#each (usingLocalPositionMarks ? localPositions : wallet?.positions ?? []) as position (position.market_slug + position.direction)}
             <a class="position-row" href={`/market/${position.market_slug}`}>
               <div class="position-copy">
                 <strong>{position.market_title}</strong>
@@ -446,9 +605,13 @@
               </div>
               <div class="position-metrics">
                 <span>{formatUsdMinor(position.market_value_minor)}</span>
-                <span class:positive={position.unrealized_pnl_minor >= 0} class:negative={position.unrealized_pnl_minor < 0}>
-                  {position.unrealized_pnl_minor >= 0 ? '+' : ''}{formatUsdMinor(Math.abs(position.unrealized_pnl_minor))}
-                </span>
+                {#if position.unrealized_pnl_minor === null || position.unrealized_pnl_minor === undefined}
+                  <span class="muted">Mark only</span>
+                {:else}
+                  <span class:positive={position.unrealized_pnl_minor >= 0} class:negative={position.unrealized_pnl_minor < 0}>
+                    {position.unrealized_pnl_minor >= 0 ? '+' : ''}{formatUsdMinor(Math.abs(position.unrealized_pnl_minor))}
+                  </span>
+                {/if}
               </div>
             </a>
           {/each}
@@ -514,7 +677,7 @@
 
   .wallet-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
     gap: 1rem;
   }
 

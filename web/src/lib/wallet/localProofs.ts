@@ -93,6 +93,20 @@ export function listLocalProofs(mintUrl: string, unit: string): ProductProof[] {
   return readLocalProofWallet(mintUrl, unit).proofs;
 }
 
+export function listLocalProofWallets(mintUrl: string): StoredProofWallet[] {
+  if (!browser) return [];
+
+  const normalizedMintUrl = normalizeMintUrl(mintUrl);
+  const keyPrefix = `cascade:proof-wallet:${normalizedMintUrl}:`;
+
+  return Object.keys(window.localStorage)
+    .filter((key) => key.startsWith(keyPrefix))
+    .map((key) => key.slice(keyPrefix.length))
+    .filter(Boolean)
+    .map((unit) => readLocalProofWallet(normalizedMintUrl, unit))
+    .filter((wallet) => wallet.proofs.length > 0);
+}
+
 export function localProofBalance(mintUrl: string, unit: string): number {
   return listLocalProofs(mintUrl, unit).reduce((sum, proof) => sum + proof.amount, 0);
 }

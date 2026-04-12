@@ -154,6 +154,14 @@ The `/portfolio` surface derives both spendable state and performance from:
 - user-published position records
 - public market data
 
+For valuation, the frontend should use a two-layer model:
+
+- liquid USD balance = sum of locally held USD proofs
+- mark-to-market position value = locally held market-proof quantity priced against current public market prices
+- exact exit value = a fresh sell quote from the mint for the full quantity the user wants to withdraw
+
+The fast portfolio view should use current public market prices for mark-to-market display. When the user is about to exit, the client should call the sell-quote endpoint because LMSR pricing is size-dependent and the executable withdrawal value may differ from the simple mark price.
+
 It is not a private custody dashboard backed by server-held proofs.
 
 ## Styling Rules

@@ -835,7 +835,7 @@ async fn test_lightning_topup_quote_and_settlement_flow() {
     assert!(quote_payload["observations"].as_array().is_some());
 
     let wallet_pending_response = client
-        .get(format!("{url}/api/product/wallet/{pubkey}"))
+        .get(format!("{url}/api/product/portfolio/{pubkey}"))
         .send()
         .await
         .unwrap();
@@ -942,7 +942,7 @@ async fn test_lightning_topup_request_id_is_idempotent() {
     );
 
     let wallet_pending_response = client
-        .get(format!("{url}/api/product/wallet/{pubkey}"))
+        .get(format!("{url}/api/product/portfolio/{pubkey}"))
         .send()
         .await
         .unwrap();
@@ -1044,7 +1044,7 @@ async fn test_trade_request_id_is_idempotent() {
     );
 
     let wallet_response = client
-        .get(format!("{url}/api/product/wallet/{creator}"))
+        .get(format!("{url}/api/product/portfolio/{creator}"))
         .send()
         .await
         .unwrap();

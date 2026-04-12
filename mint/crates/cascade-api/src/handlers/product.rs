@@ -241,7 +241,7 @@ pub async fn pending_market_detail(
     market_detail_response(&state, &market, &launch).await
 }
 
-pub async fn wallet(
+pub async fn portfolio(
     State(state): State<AppState>,
     Path(pubkey): Path<String>,
 ) -> (StatusCode, Json<Value>) {
@@ -399,6 +399,13 @@ pub async fn wallet_topup_request_status(
             Json(json!({ "error": error })),
         ),
     }
+}
+
+pub async fn wallet(
+    State(state): State<AppState>,
+    Path(pubkey): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    portfolio(State(state), Path(pubkey)).await
 }
 
 pub async fn get_lightning_topup_quote(

@@ -148,6 +148,7 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             "/api/product/markets/{event_id}/sell",
             post(product::sell_market_position),
         )
+        .route("/api/product/portfolio/{pubkey}", get(product::portfolio))
         .route("/api/product/wallet/{pubkey}", get(product::wallet))
         .route("/api/product/paper/faucet", post(product::paper_faucet))
         .route(

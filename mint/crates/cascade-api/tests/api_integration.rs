@@ -797,6 +797,111 @@ async fn test_lightning_topup_quote_and_settlement_flow() {
 }
 
 #[tokio::test]
+async fn test_trade_request_id_is_idempotent() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+    let creator = "5656565656565656565656565656565656565656565656565656565656565656";
+    let event_id = "7878787878787878787878787878787878787878787878787878787878787878";
+    let slug = "trade-request-idempotency-market";
+    let request_id = "req-buy-idempotent-1";
+
+    client
+        .post(format!("{url}/api/product/markets"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "title": "Trade Request Idempotency Market",
+            "description": "Ensure duplicate request ids do not double execute",
+            "slug": slug,
+            "body": "Trade request idempotency body",
+            "creator_pubkey": creator,
+            "raw_event": sample_market_event(event_id, slug, creator),
+            "b": 10.0
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    client
+        .post(format!("{url}/api/product/paper/faucet"))
+        .json(&serde_json::json!({
+            "pubkey": creator,
+            "amount_minor": 10000
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    let first_buy_response = client
+        .post(format!("{url}/api/trades/buy"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "yes",
+            "spend_minor": 4000,
+            "request_id": request_id
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(first_buy_response.status(), 201);
+    let first_buy_payload: serde_json::Value = first_buy_response.json().await.unwrap();
+    let trade_id = first_buy_payload["trade"]["id"].as_str().unwrap().to_string();
+
+    let second_buy_response = client
+        .post(format!("{url}/api/trades/buy"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "yes",
+            "spend_minor": 4000,
+            "request_id": request_id
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(second_buy_response.status(), 200);
+    let second_buy_payload: serde_json::Value = second_buy_response.json().await.unwrap();
+    assert_eq!(
+        second_buy_payload["trade"]["id"].as_str(),
+        Some(trade_id.as_str())
+    );
+
+    let request_status_response = client
+        .get(format!("{url}/api/trades/requests/{request_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(request_status_response.status(), 200);
+    let request_status_payload: serde_json::Value = request_status_response.json().await.unwrap();
+    assert_eq!(request_status_payload["status"].as_str(), Some("complete"));
+    assert_eq!(
+        request_status_payload["trade"]["id"].as_str(),
+        Some(trade_id.as_str())
+    );
+
+    let wallet_response = client
+        .get(format!("{url}/api/product/wallet/{creator}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(wallet_response.status(), 200);
+    let wallet_payload: serde_json::Value = wallet_response.json().await.unwrap();
+    assert_eq!(wallet_payload["available_minor"].as_u64(), Some(6000));
+
+    let detail_response = client
+        .get(format!("{url}/api/product/markets/slug/{slug}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(detail_response.status(), 200);
+    let detail_payload: serde_json::Value = detail_response.json().await.unwrap();
+    assert_eq!(
+        detail_payload["trades"].as_array().map(|items| items.len()),
+        Some(1)
+    );
+}
+
+#[tokio::test]
 async fn test_lightning_fx_quote_preview() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();

@@ -88,6 +88,14 @@ export type ProductTradeStatus = {
   trade: ProductTradeEvent;
 };
 
+export type ProductTradeRequestStatus = {
+  request_id: string;
+  status: string;
+  error?: string | null;
+  market?: ProductMarketSummary | null;
+  trade?: ProductTradeEvent | null;
+};
+
 export type ProductWalletTopupExecution = {
   topup: ProductWalletTopup;
   wallet: ProductWallet;
@@ -103,6 +111,7 @@ export async function buyMarketPosition(input: {
   pubkey: string;
   side: 'yes' | 'no';
   spendMinor: number;
+  requestId?: string;
 }): Promise<Response> {
   return fetch(`${getProductApiUrl()}/api/trades/buy`, {
     method: 'POST',
@@ -111,7 +120,8 @@ export async function buyMarketPosition(input: {
       event_id: input.eventId,
       pubkey: input.pubkey,
       side: input.side,
-      spend_minor: input.spendMinor
+      spend_minor: input.spendMinor,
+      request_id: input.requestId
     })
   });
 }
@@ -121,6 +131,7 @@ export async function sellMarketPosition(input: {
   pubkey: string;
   side: 'yes' | 'no';
   quantity: number;
+  requestId?: string;
 }): Promise<Response> {
   return fetch(`${getProductApiUrl()}/api/trades/sell`, {
     method: 'POST',
@@ -129,7 +140,8 @@ export async function sellMarketPosition(input: {
       event_id: input.eventId,
       pubkey: input.pubkey,
       side: input.side,
-      quantity: input.quantity
+      quantity: input.quantity,
+      request_id: input.requestId
     })
   });
 }
@@ -164,6 +176,10 @@ export async function settleLightningTopupQuote(topupId: string): Promise<Respon
 
 export async function fetchTradeStatus(tradeId: string): Promise<Response> {
   return fetch(`${getProductApiUrl()}/api/trades/${tradeId}`);
+}
+
+export async function fetchTradeRequestStatus(requestId: string): Promise<Response> {
+  return fetch(`${getProductApiUrl()}/api/trades/requests/${requestId}`);
 }
 
 export async function parseJson<T>(response: Response, fallback: string): Promise<T> {

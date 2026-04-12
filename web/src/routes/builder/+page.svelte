@@ -194,7 +194,11 @@
         eventId,
         pubkey: currentUser.pubkey,
         side: seedSide,
-        spendMinor: parsedSeedAmount
+        spendMinor: parsedSeedAmount,
+        requestId:
+          browser && typeof crypto?.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `${eventId}-${Date.now()}`
       });
       await expectOk(seed, 'Failed to seed the market.');
 

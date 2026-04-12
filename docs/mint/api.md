@@ -84,6 +84,7 @@ These routes exist today in `mint/crates/cascade-api/src/routes.rs`.
 - `GET /api/product/markets/slug/{slug}` — public market detail once visible
 - `GET /api/product/fx/lightning/{amount_minor}` — preview a locked `USD <-> msat` quote
 - `GET /api/trades/{trade_id}` — fetch persisted trade execution status
+- `GET /api/trades/requests/{request_id}` — fetch persisted trade request status for retry/recovery
 - `GET /api/wallet/topups/{topup_id}` — fetch persisted top-up status
 - `GET /v1/keys` — mint-global public keys
 - `GET /{event_id}/v1/keys` — market-scoped LONG and SHORT public keys by kind `982` event id
@@ -170,9 +171,12 @@ Lightning top-up status reads should be settlement-aware. `GET /api/wallet/topup
 
 - `POST /api/trades/quote`
 - `POST /api/trades/buy`
+- `GET /api/trades/requests/{request_id}`
 - `GET /api/trades/{trade_id}`
 - `POST /api/trades/sell/quote`
 - `POST /api/trades/sell`
+
+Trade execution routes should accept an optional client-supplied `request_id`. The mint persists that request id before execution so duplicate retries can replay the same completed trade instead of creating a second fill, and interrupted clients can recover through `GET /api/trades/requests/{request_id}` even if they never received the final `trade_id`.
 
 ### Public Read
 
@@ -249,6 +253,7 @@ Execution routes consume bearer proofs.
 
 - `POST /api/trades/buy` consumes USD proofs and completes the wallet-mint melt plus market-mint mint saga
 - `POST /api/trades/sell` consumes market proofs and completes the market-mint melt plus wallet-mint mint saga
+- `GET /api/trades/requests/{request_id}` exists so interrupted clients can recover a trade by idempotency key before they know the final `trade_id`
 - `GET /api/trades/{trade_id}` exists so interrupted clients can recover a pending execution
 
 ## Self-Custodied Wallet State

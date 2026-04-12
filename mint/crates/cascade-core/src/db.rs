@@ -4,7 +4,8 @@ use crate::error::Result;
 use crate::market::{Market, MarketStatus, Side, Trade, TradeDirection};
 use crate::product::{
     FxQuoteSnapshot, MarketLaunchState, MarketPosition, MarketTradeRecord, MarketVisibility,
-    WalletBalanceRecord, WalletFundingEvent, WalletTopupQuote, WalletTopupStatus,
+    TradeExecutionRequest, TradeExecutionRequestStatus, WalletBalanceRecord, WalletFundingEvent,
+    WalletTopupQuote, WalletTopupStatus,
 };
 use crate::trade::Payout;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
@@ -60,6 +61,11 @@ impl CascadeDatabase {
         .execute(&self.pool)
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        sqlx::query(include_str!("../../../migrations/005_trade_requests.sql"))
+            .execute(&self.pool)
+            .await
+            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         Ok(())
     }
@@ -1336,6 +1342,191 @@ impl CascadeDatabase {
         tx.commit().await?;
 
         Ok(event)
+    }
+
+    pub async fn create_trade_execution_request(
+        &self,
+        request_id: &str,
+        pubkey: &str,
+        market_event_id: &str,
+        trade_type: &str,
+        side: &str,
+        spend_minor: Option<u64>,
+        quantity: Option<f64>,
+    ) -> Result<TradeExecutionRequest> {
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            INSERT INTO trade_execution_requests (
+                request_id,
+                pubkey,
+                market_event_id,
+                trade_type,
+                side,
+                spend_minor,
+                quantity,
+                status,
+                created_at,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+            "#,
+        )
+        .bind(request_id)
+        .bind(pubkey)
+        .bind(market_event_id)
+        .bind(trade_type)
+        .bind(side)
+        .bind(spend_minor.map(|value| value as i64))
+        .bind(quantity)
+        .bind(now)
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_trade_execution_request(request_id)
+            .await?
+            .ok_or_else(|| {
+                crate::error::CascadeError::database(
+                    "trade execution request missing after insert".to_string(),
+                )
+            })
+    }
+
+    pub async fn get_trade_execution_request(
+        &self,
+        request_id: &str,
+    ) -> Result<Option<TradeExecutionRequest>> {
+        let row = sqlx::query_as::<
+            _,
+            (
+                String,
+                String,
+                String,
+                String,
+                String,
+                Option<i64>,
+                Option<f64>,
+                String,
+                Option<String>,
+                Option<String>,
+                i64,
+                i64,
+                Option<i64>,
+            ),
+        >(
+            r#"
+            SELECT
+                request_id,
+                pubkey,
+                market_event_id,
+                trade_type,
+                side,
+                spend_minor,
+                quantity,
+                status,
+                error_message,
+                trade_id,
+                created_at,
+                updated_at,
+                completed_at
+            FROM trade_execution_requests
+            WHERE request_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(request_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(row.map(
+            |(
+                request_id,
+                pubkey,
+                market_event_id,
+                trade_type,
+                side,
+                spend_minor,
+                quantity,
+                status,
+                error_message,
+                trade_id,
+                created_at,
+                updated_at,
+                completed_at,
+            )| TradeExecutionRequest {
+                request_id,
+                pubkey,
+                market_event_id,
+                trade_type,
+                side,
+                spend_minor: spend_minor.map(|value| value.max(0) as u64),
+                quantity,
+                status: status
+                    .parse()
+                    .unwrap_or(TradeExecutionRequestStatus::Pending),
+                error_message,
+                trade_id,
+                created_at,
+                updated_at,
+                completed_at,
+            },
+        ))
+    }
+
+    pub async fn complete_trade_execution_request(
+        &self,
+        request_id: &str,
+        trade_id: &str,
+    ) -> Result<Option<TradeExecutionRequest>> {
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            UPDATE trade_execution_requests
+            SET status = 'complete',
+                trade_id = ?,
+                error_message = NULL,
+                updated_at = ?,
+                completed_at = ?
+            WHERE request_id = ?
+            "#,
+        )
+        .bind(trade_id)
+        .bind(now)
+        .bind(now)
+        .bind(request_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_trade_execution_request(request_id).await
+    }
+
+    pub async fn fail_trade_execution_request(
+        &self,
+        request_id: &str,
+        error_message: &str,
+    ) -> Result<Option<TradeExecutionRequest>> {
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            UPDATE trade_execution_requests
+            SET status = 'failed',
+                error_message = ?,
+                updated_at = ?
+            WHERE request_id = ?
+            "#,
+        )
+        .bind(error_message)
+        .bind(now)
+        .bind(request_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_trade_execution_request(request_id).await
     }
 
     pub async fn list_positions(&self, pubkey: &str) -> Result<Vec<MarketPosition>> {

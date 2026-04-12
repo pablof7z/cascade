@@ -11,6 +11,7 @@ type PendingTopupRecord = {
 
 type TradeReceiptRecord = {
   id: string;
+  tradeId?: string;
   pubkey: string;
   eventId: string;
   marketSlug: string;
@@ -87,6 +88,14 @@ export function trackTradeReceipt(entry: Omit<TradeReceiptRecord, 'createdAt'>):
   });
 
   if (records.length > MAX_TRADE_RECEIPTS) records.splice(MAX_TRADE_RECEIPTS);
+  saveRecords(TRADE_RECEIPTS_KEY, records);
+}
+
+export function markTradeReceiptTradeId(id: string, tradeId: string): void {
+  const records = loadRecords<TradeReceiptRecord>(TRADE_RECEIPTS_KEY);
+  const index = records.findIndex((record) => record.id === id);
+  if (index === -1) return;
+  records[index] = { ...records[index], tradeId };
   saveRecords(TRADE_RECEIPTS_KEY, records);
 }
 

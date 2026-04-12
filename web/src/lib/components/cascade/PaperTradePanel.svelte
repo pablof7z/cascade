@@ -5,15 +5,22 @@
     buyMarketPosition,
     expectOk,
     fetchPaperWallet,
+    fetchTradeRequestStatus,
     fetchTradeStatus,
     parseJson,
     sellMarketPosition,
     type ProductTradeExecution,
+    type ProductTradeRequestStatus,
     type ProductTradeStatus,
     type ProductWallet
   } from '$lib/cascade/api';
   import { formatUsdMinor } from '$lib/cascade/format';
-  import { clearTradeReceipt, listTradeReceipts, trackTradeReceipt } from '$lib/cascade/recovery';
+  import {
+    clearTradeReceipt,
+    listTradeReceipts,
+    markTradeReceiptTradeId,
+    trackTradeReceipt
+  } from '$lib/cascade/recovery';
   import { ndk } from '$lib/ndk/client';
   import { formatProbability } from '$lib/ndk/cascade';
 
@@ -68,6 +75,14 @@
     }
   }
 
+  function createTradeRequestId(): string {
+    if (browser && typeof crypto?.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+
+    return `${marketId}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+  }
+
   async function loadWallet() {
     if (!currentUser) return;
     const response = await fetchPaperWallet(currentUser.pubkey);
@@ -86,14 +101,47 @@
 
     for (const receipt of receipts) {
       try {
-        const response = await fetchTradeStatus(receipt.id);
-        const payload = await parseJson<ProductTradeStatus>(
+        if (receipt.tradeId) {
+          const response = await fetchTradeStatus(receipt.tradeId);
+          const payload = await parseJson<ProductTradeStatus>(
+            response,
+            'Failed to recover the latest trade status.'
+          );
+          clearTradeReceipt(receipt.id);
+          recoveredSide = receipt.side;
+          status = `Recovered ${receipt.action} on ${payload.market.slug}.`;
+          continue;
+        }
+
+        const response = await fetchTradeRequestStatus(receipt.id);
+        const payload = await parseJson<ProductTradeRequestStatus>(
           response,
-          'Failed to recover the latest trade status.'
+          'Failed to recover the latest trade request.'
         );
-        clearTradeReceipt(receipt.id);
-        recoveredSide = receipt.side;
-        status = `Recovered ${receipt.action} on ${payload.market.slug}.`;
+
+        if (payload.status === 'pending') {
+          status = `Recovered pending ${receipt.action} on ${receipt.marketSlug}.`;
+          continue;
+        }
+
+        if (payload.status === 'failed') {
+          clearTradeReceipt(receipt.id);
+          status = payload.error || `Recovered failed ${receipt.action} on ${receipt.marketSlug}.`;
+          continue;
+        }
+
+        const tradeId = typeof payload.trade?.id === 'string' ? payload.trade.id : null;
+        if (tradeId) {
+          markTradeReceiptTradeId(receipt.id, tradeId);
+          const tradeResponse = await fetchTradeStatus(tradeId);
+          const tradePayload = await parseJson<ProductTradeStatus>(
+            tradeResponse,
+            'Failed to recover the completed trade status.'
+          );
+          clearTradeReceipt(receipt.id);
+          recoveredSide = receipt.side;
+          status = `Recovered ${receipt.action} on ${tradePayload.market.slug}.`;
+        }
       } catch {
         continue;
       }
@@ -130,24 +178,28 @@
     errorMessage = '';
 
     try {
+      const requestId = createTradeRequestId();
+      trackTradeReceipt({
+        id: requestId,
+        pubkey: currentUser.pubkey,
+        eventId: marketId,
+        marketSlug,
+        action: 'buy',
+        side: buySide
+      });
+
       const response = await buyMarketPosition({
         eventId: marketId,
         pubkey: currentUser.pubkey,
         side: buySide,
-        spendMinor
+        spendMinor,
+        requestId
       });
       await expectOk(response, 'Trade failed.');
       const payload = (await response.json()) as ProductTradeExecution;
       const tradeId = typeof payload.trade.id === 'string' ? payload.trade.id : null;
       if (tradeId) {
-        trackTradeReceipt({
-          id: tradeId,
-          pubkey: currentUser.pubkey,
-          eventId: marketId,
-          marketSlug,
-          action: 'buy',
-          side: buySide
-        });
+        markTradeReceiptTradeId(requestId, tradeId);
       }
 
       status = `Bought ${buySide.toUpperCase()} on ${marketSlug}.`;
@@ -176,24 +228,28 @@
     errorMessage = '';
 
     try {
+      const requestId = createTradeRequestId();
+      trackTradeReceipt({
+        id: requestId,
+        pubkey: currentUser.pubkey,
+        eventId: marketId,
+        marketSlug,
+        action: 'sell',
+        side: buySide
+      });
+
       const response = await sellMarketPosition({
         eventId: marketId,
         pubkey: currentUser.pubkey,
         side: buySide,
-        quantity
+        quantity,
+        requestId
       });
       await expectOk(response, 'Sell failed.');
       const payload = (await response.json()) as ProductTradeExecution;
       const tradeId = typeof payload.trade.id === 'string' ? payload.trade.id : null;
       if (tradeId) {
-        trackTradeReceipt({
-          id: tradeId,
-          pubkey: currentUser.pubkey,
-          eventId: marketId,
-          marketSlug,
-          action: 'sell',
-          side: buySide
-        });
+        markTradeReceiptTradeId(requestId, tradeId);
       }
 
       status = `Withdrew ${buySide.toUpperCase()} on ${marketSlug}.`;

@@ -7,15 +7,19 @@ use crate::types::{
     ProductLightningFxQuoteResponse, ProductLightningTopupQuoteRequest,
     ProductMarketDetailResponse, ProductMarketSummary, ProductPaperFaucetRequest,
     ProductSellRequest, ProductTradeExecutionResponse, ProductTradeQuoteRequest,
-    ProductTradeQuoteResponse, ProductTradeStatusResponse, ProductWalletPositionResponse,
-    ProductWalletResponse, ProductWalletTopupExecutionResponse, ProductWalletTopupResponse,
+    ProductTradeQuoteResponse, ProductTradeRequestStatusResponse, ProductTradeStatusResponse,
+    ProductWalletPositionResponse, ProductWalletResponse, ProductWalletTopupExecutionResponse,
+    ProductWalletTopupResponse,
 };
 use axum::{
     extract::{Json, Path, State},
     http::StatusCode,
 };
 use cascade_core::{
-    product::{FxQuoteSnapshot, MarketLaunchState, WalletTopupQuote},
+    product::{
+        FxQuoteSnapshot, MarketLaunchState, TradeExecutionRequest, TradeExecutionRequestStatus,
+        WalletTopupQuote,
+    },
     Market, Side, WalletBalanceRecord,
 };
 use serde_json::{json, Value};
@@ -607,6 +611,7 @@ pub async fn buy_trade(
         pubkey: req.pubkey,
         side: req.side,
         spend_minor: req.spend_minor,
+        request_id: req.request_id,
     };
     buy_trade_by_event(&state, &req.event_id, &buy_request).await
 }
@@ -619,90 +624,42 @@ pub async fn sell_trade(
         pubkey: req.pubkey,
         side: req.side,
         quantity: req.quantity,
+        request_id: req.request_id,
     };
     sell_trade_by_event(&state, &req.event_id, &sell_request).await
+}
+
+pub async fn trade_request_status(
+    State(state): State<AppState>,
+    Path(request_id): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    match load_trade_request_status_response(&state, &request_id).await {
+        Ok(Some(response)) => (StatusCode::OK, Json(json!(response))),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "trade_request_not_found" })),
+        ),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": error })),
+        ),
+    }
 }
 
 pub async fn trade_status(
     State(state): State<AppState>,
     Path(trade_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    let trade_record = match state.db.get_market_trade_event(&trade_id).await {
-        Ok(Some(trade)) => trade,
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "error": "trade_not_found" })),
-            )
+    match load_trade_status_response(&state, &trade_id).await {
+        Ok(response) => (StatusCode::OK, Json(json!(response))),
+        Err(error) if error == "trade_not_found" => {
+            (StatusCode::NOT_FOUND, Json(json!({ "error": error })))
         }
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    let market = match state.db.get_market(&trade_record.market_event_id).await {
-        Ok(Some(market)) => market,
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "error": "market_not_found" })),
-            )
-        }
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    let launch = match state
-        .db
-        .get_market_launch_state(&trade_record.market_event_id)
-        .await
-    {
-        Ok(Some(launch)) => launch,
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "error": "market_launch_state_not_found" })),
-            )
-        }
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    let Some(summary) = product_market_summary(&state, &market, &launch) else {
-        return (
+        Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": "failed_to_build_market_summary" })),
-        );
-    };
-
-    let trade = match serde_json::from_str::<Value>(&trade_record.raw_event_json) {
-        Ok(trade) => trade,
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("invalid_trade_event_json: {error}") })),
-            )
-        }
-    };
-
-    (
-        StatusCode::OK,
-        Json(json!(ProductTradeStatusResponse {
-            market: summary,
-            trade,
-        })),
-    )
+            Json(json!({ "error": error })),
+        ),
+    }
 }
 
 pub async fn quote_market_trade(
@@ -727,6 +684,171 @@ pub async fn sell_market_position(
     Json(req): Json<ProductSellRequest>,
 ) -> (StatusCode, Json<Value>) {
     sell_trade_by_event(&state, &event_id, &req).await
+}
+
+enum TradeRequestGuard {
+    New,
+    Complete(ProductTradeExecutionResponse),
+    Pending,
+    Failed(String),
+}
+
+async fn prepare_trade_request(
+    state: &AppState,
+    request_id: Option<&str>,
+    pubkey: &str,
+    market_event_id: &str,
+    trade_type: &str,
+    side: &str,
+    spend_minor: Option<u64>,
+    quantity: Option<f64>,
+) -> Result<TradeRequestGuard, String> {
+    let Some(request_id) = request_id.filter(|value| !value.trim().is_empty()) else {
+        return Ok(TradeRequestGuard::New);
+    };
+
+    if let Some(existing) = state
+        .db
+        .get_trade_execution_request(request_id)
+        .await
+        .map_err(|error| error.to_string())?
+    {
+        return handle_existing_trade_request(
+            state,
+            &existing,
+            pubkey,
+            market_event_id,
+            trade_type,
+            side,
+            spend_minor,
+            quantity,
+        )
+        .await;
+    }
+
+    match state
+        .db
+        .create_trade_execution_request(
+            request_id,
+            pubkey,
+            market_event_id,
+            trade_type,
+            side,
+            spend_minor,
+            quantity,
+        )
+        .await
+    {
+        Ok(_) => Ok(TradeRequestGuard::New),
+        Err(error) => {
+            let error_message = error.to_string();
+            if !error_message.contains("UNIQUE constraint failed") {
+                return Err(error_message);
+            }
+
+            let Some(existing) = state
+                .db
+                .get_trade_execution_request(request_id)
+                .await
+                .map_err(|db_error| db_error.to_string())?
+            else {
+                return Err(error_message);
+            };
+
+            handle_existing_trade_request(
+                state,
+                &existing,
+                pubkey,
+                market_event_id,
+                trade_type,
+                side,
+                spend_minor,
+                quantity,
+            )
+            .await
+        }
+    }
+}
+
+async fn handle_existing_trade_request(
+    state: &AppState,
+    existing: &TradeExecutionRequest,
+    pubkey: &str,
+    market_event_id: &str,
+    trade_type: &str,
+    side: &str,
+    spend_minor: Option<u64>,
+    quantity: Option<f64>,
+) -> Result<TradeRequestGuard, String> {
+    if !trade_request_matches(
+        existing,
+        pubkey,
+        market_event_id,
+        trade_type,
+        side,
+        spend_minor,
+        quantity,
+    ) {
+        return Err("trade_request_id_conflict".to_string());
+    }
+
+    match existing.status {
+        TradeExecutionRequestStatus::Complete => Ok(TradeRequestGuard::Complete(
+            load_trade_execution_response_for_request(state, existing).await?,
+        )),
+        TradeExecutionRequestStatus::Pending => Ok(TradeRequestGuard::Pending),
+        TradeExecutionRequestStatus::Failed => Ok(TradeRequestGuard::Failed(
+            existing
+                .error_message
+                .clone()
+                .unwrap_or_else(|| "trade_request_failed".to_string()),
+        )),
+    }
+}
+
+fn trade_request_matches(
+    existing: &TradeExecutionRequest,
+    pubkey: &str,
+    market_event_id: &str,
+    trade_type: &str,
+    side: &str,
+    spend_minor: Option<u64>,
+    quantity: Option<f64>,
+) -> bool {
+    if existing.pubkey != pubkey
+        || existing.market_event_id != market_event_id
+        || existing.trade_type != trade_type
+        || existing.side != side
+        || existing.spend_minor != spend_minor
+    {
+        return false;
+    }
+
+    match (existing.quantity, quantity) {
+        (Some(left), Some(right)) => (left - right).abs() <= f64::EPSILON,
+        (None, None) => true,
+        _ => false,
+    }
+}
+
+async fn load_trade_execution_response_for_request(
+    state: &AppState,
+    request: &TradeExecutionRequest,
+) -> Result<ProductTradeExecutionResponse, String> {
+    let trade_id = request
+        .trade_id
+        .as_deref()
+        .ok_or_else(|| "trade_request_missing_trade_id".to_string())?;
+    let trade_status = load_trade_status_response(state, trade_id).await?;
+    let wallet = wallet_response(state, &request.pubkey)
+        .await
+        .map_err(|error| error.to_string())?;
+
+    Ok(ProductTradeExecutionResponse {
+        wallet,
+        market: trade_status.market,
+        trade: trade_status.trade,
+    })
 }
 
 async fn quote_trade_by_event(
@@ -812,6 +934,41 @@ async fn buy_trade_by_event(
                     );
                 }
             };
+            let request_id = req
+                .request_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty());
+
+            match prepare_trade_request(
+                state,
+                request_id,
+                &req.pubkey,
+                &market.event_id,
+                "buy",
+                &req.side,
+                Some(req.spend_minor),
+                None,
+            )
+            .await
+            {
+                Ok(TradeRequestGuard::New) => {}
+                Ok(TradeRequestGuard::Complete(response)) => {
+                    return (StatusCode::OK, Json(json!(response)));
+                }
+                Ok(TradeRequestGuard::Pending) => {
+                    return (
+                        StatusCode::CONFLICT,
+                        Json(json!({ "error": "trade_request_in_progress" })),
+                    );
+                }
+                Ok(TradeRequestGuard::Failed(error)) => {
+                    return (StatusCode::CONFLICT, Json(json!({ "error": error })));
+                }
+                Err(error) => {
+                    return (StatusCode::CONFLICT, Json(json!({ "error": error })));
+                }
+            }
 
             match state
                 .db
@@ -836,6 +993,13 @@ async fn buy_trade_by_event(
                 .await
             {
                 Ok(_) => {
+                    if let Some(request_id) = request_id {
+                        let _ = state
+                            .db
+                            .complete_trade_execution_request(request_id, &trade_id)
+                            .await;
+                    }
+
                     state
                         .market_manager
                         .load_market(Market {
@@ -857,10 +1021,20 @@ async fn buy_trade_by_event(
                     )
                     .await
                 }
-                Err(error) => (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({ "error": error.to_string() })),
-                ),
+                Err(error) => {
+                    let error_message = error.to_string();
+                    if let Some(request_id) = request_id {
+                        let _ = state
+                            .db
+                            .fail_trade_execution_request(request_id, &error_message)
+                            .await;
+                    }
+
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(json!({ "error": error_message })),
+                    )
+                }
             }
         }
         Err(error) => (
@@ -960,6 +1134,41 @@ async fn sell_trade_by_event(
             let proportion = (req.quantity / position.quantity).clamp(0.0, 1.0);
             let released_cost_basis =
                 ((position.cost_basis_minor as f64) * proportion).round() as i64;
+            let request_id = req
+                .request_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty());
+
+            match prepare_trade_request(
+                state,
+                request_id,
+                &req.pubkey,
+                &market.event_id,
+                "sell",
+                &req.side,
+                None,
+                Some(req.quantity),
+            )
+            .await
+            {
+                Ok(TradeRequestGuard::New) => {}
+                Ok(TradeRequestGuard::Complete(response)) => {
+                    return (StatusCode::OK, Json(json!(response)));
+                }
+                Ok(TradeRequestGuard::Pending) => {
+                    return (
+                        StatusCode::CONFLICT,
+                        Json(json!({ "error": "trade_request_in_progress" })),
+                    );
+                }
+                Ok(TradeRequestGuard::Failed(error)) => {
+                    return (StatusCode::CONFLICT, Json(json!({ "error": error })));
+                }
+                Err(error) => {
+                    return (StatusCode::CONFLICT, Json(json!({ "error": error })));
+                }
+            }
 
             match state
                 .db
@@ -984,6 +1193,13 @@ async fn sell_trade_by_event(
                 .await
             {
                 Ok(_) => {
+                    if let Some(request_id) = request_id {
+                        let _ = state
+                            .db
+                            .complete_trade_execution_request(request_id, &trade_id)
+                            .await;
+                    }
+
                     state
                         .market_manager
                         .load_market(Market {
@@ -1005,10 +1221,20 @@ async fn sell_trade_by_event(
                     )
                     .await
                 }
-                Err(error) => (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({ "error": error.to_string() })),
-                ),
+                Err(error) => {
+                    let error_message = error.to_string();
+                    if let Some(request_id) = request_id {
+                        let _ = state
+                            .db
+                            .fail_trade_execution_request(request_id, &error_message)
+                            .await;
+                    }
+
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(json!({ "error": error_message })),
+                    )
+                }
             }
         }
         Err(error) => (
@@ -1016,6 +1242,98 @@ async fn sell_trade_by_event(
             Json(json!({ "error": error.to_string() })),
         ),
     }
+}
+
+async fn load_trade_status_response(
+    state: &AppState,
+    trade_id: &str,
+) -> Result<ProductTradeStatusResponse, String> {
+    let trade_record = state
+        .db
+        .get_market_trade_event(trade_id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "trade_not_found".to_string())?;
+
+    let market = state
+        .db
+        .get_market(&trade_record.market_event_id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "market_not_found".to_string())?;
+
+    let launch = state
+        .db
+        .get_market_launch_state(&trade_record.market_event_id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "market_launch_state_not_found".to_string())?;
+
+    let summary = product_market_summary(state, &market, &launch)
+        .ok_or_else(|| "failed_to_build_market_summary".to_string())?;
+
+    let trade = serde_json::from_str::<Value>(&trade_record.raw_event_json)
+        .map_err(|error| format!("invalid_trade_event_json: {error}"))?;
+
+    Ok(ProductTradeStatusResponse {
+        market: summary,
+        trade,
+    })
+}
+
+async fn load_market_summary_by_event_id(
+    state: &AppState,
+    event_id: &str,
+) -> Result<Option<ProductMarketSummary>, String> {
+    let Some(market) = state
+        .db
+        .get_market(event_id)
+        .await
+        .map_err(|error| error.to_string())?
+    else {
+        return Ok(None);
+    };
+
+    let Some(launch) = state
+        .db
+        .get_market_launch_state(event_id)
+        .await
+        .map_err(|error| error.to_string())?
+    else {
+        return Ok(None);
+    };
+
+    Ok(product_market_summary(state, &market, &launch))
+}
+
+async fn load_trade_request_status_response(
+    state: &AppState,
+    request_id: &str,
+) -> Result<Option<ProductTradeRequestStatusResponse>, String> {
+    let Some(request) = state
+        .db
+        .get_trade_execution_request(request_id)
+        .await
+        .map_err(|error| error.to_string())?
+    else {
+        return Ok(None);
+    };
+
+    let market = load_market_summary_by_event_id(state, &request.market_event_id).await?;
+
+    let trade = if let Some(trade_id) = request.trade_id.as_deref() {
+        Some(load_trade_status_response(state, trade_id).await?.trade)
+    } else {
+        None
+    };
+
+    Ok(Some(ProductTradeRequestStatusResponse {
+        request_id: request.request_id,
+        status: request.status.to_string(),
+        error: request.error_message,
+        market,
+        trade,
+    }))
 }
 
 async fn trade_execution_response(

@@ -127,6 +127,54 @@ pub struct WalletTopupQuote {
     pub completed_at: Option<i64>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TradeExecutionRequestStatus {
+    Pending,
+    Complete,
+    Failed,
+}
+
+impl std::fmt::Display for TradeExecutionRequestStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pending => write!(f, "pending"),
+            Self::Complete => write!(f, "complete"),
+            Self::Failed => write!(f, "failed"),
+        }
+    }
+}
+
+impl std::str::FromStr for TradeExecutionRequestStatus {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.to_lowercase().as_str() {
+            "pending" => Ok(Self::Pending),
+            "complete" => Ok(Self::Complete),
+            "failed" => Ok(Self::Failed),
+            _ => Err(format!("Invalid trade execution request status: {value}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TradeExecutionRequest {
+    pub request_id: String,
+    pub pubkey: String,
+    pub market_event_id: String,
+    pub trade_type: String,
+    pub side: String,
+    pub spend_minor: Option<u64>,
+    pub quantity: Option<f64>,
+    pub status: TradeExecutionRequestStatus,
+    pub error_message: Option<String>,
+    pub trade_id: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub completed_at: Option<i64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MarketTradeRecord {
     pub id: String,

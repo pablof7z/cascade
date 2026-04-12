@@ -221,6 +221,15 @@ pub struct ProductTradeStatusResponse {
     pub trade: Value,
 }
 
+#[derive(Debug, Serialize)]
+pub struct ProductTradeRequestStatusResponse {
+    pub request_id: String,
+    pub status: String,
+    pub error: Option<String>,
+    pub market: Option<ProductMarketSummary>,
+    pub trade: Option<Value>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ProductPaperFaucetRequest {
     pub pubkey: String,
@@ -344,6 +353,7 @@ pub struct ProductBuyRequest {
     pub pubkey: String,
     pub side: String,
     pub spend_minor: u64,
+    pub request_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -352,6 +362,7 @@ pub struct ProductCoordinatorBuyRequest {
     pub pubkey: String,
     pub side: String,
     pub spend_minor: u64,
+    pub request_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -359,6 +370,7 @@ pub struct ProductSellRequest {
     pub pubkey: String,
     pub side: String,
     pub quantity: f64,
+    pub request_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -367,6 +379,7 @@ pub struct ProductCoordinatorSellRequest {
     pub pubkey: String,
     pub side: String,
     pub quantity: f64,
+    pub request_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

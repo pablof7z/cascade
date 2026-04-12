@@ -147,6 +147,10 @@ pub fn build_cascade_routes(state: AppState) -> Router {
         .route("/api/trades/buy", post(product::buy_trade))
         .route("/api/trades/sell/quote", post(product::quote_trade_sell))
         .route("/api/trades/sell", post(product::sell_trade))
+        .route(
+            "/api/trades/requests/{request_id}",
+            get(product::trade_request_status),
+        )
         .route("/api/trades/{trade_id}", get(product::trade_status))
         .route(
             "/api/wallet/topups/{quote_id}",

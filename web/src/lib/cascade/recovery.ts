@@ -2,6 +2,8 @@ import { storageKey } from '$lib/cascade/config';
 
 type PendingTopupRecord = {
   id: string;
+  requestId?: string;
+  topupId?: string;
   pubkey: string;
   amountMinor: number;
   rail: 'lightning';
@@ -67,6 +69,14 @@ export function markPendingTopupNotified(id: string): void {
   const index = records.findIndex((record) => record.id === id);
   if (index === -1) return;
   records[index] = { ...records[index], pendingNotified: true };
+  saveRecords(PENDING_TOPUPS_KEY, records);
+}
+
+export function attachPendingTopupId(id: string, topupId: string): void {
+  const records = loadRecords<PendingTopupRecord>(PENDING_TOPUPS_KEY);
+  const index = records.findIndex((record) => record.id === id);
+  if (index === -1) return;
+  records[index] = { ...records[index], topupId };
   saveRecords(PENDING_TOPUPS_KEY, records);
 }
 

@@ -250,6 +250,7 @@ pub struct ProductFundingEventResponse {
 pub struct ProductLightningTopupQuoteRequest {
     pub pubkey: String,
     pub amount_minor: u64,
+    pub request_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -266,6 +267,16 @@ pub struct ProductWalletTopupResponse {
     pub spread_bps: u64,
     pub created_at: i64,
     pub expires_at: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProductWalletTopupRequestStatusResponse {
+    pub request_id: String,
+    pub rail: String,
+    pub amount_minor: u64,
+    pub status: String,
+    pub error: Option<String>,
+    pub topup: Option<ProductWalletTopupResponse>,
 }
 
 #[derive(Debug, Serialize)]

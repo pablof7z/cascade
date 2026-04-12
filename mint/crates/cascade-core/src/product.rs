@@ -129,6 +129,51 @@ pub struct WalletTopupQuote {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum WalletTopupRequestStatus {
+    Pending,
+    Complete,
+    Failed,
+}
+
+impl std::fmt::Display for WalletTopupRequestStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pending => write!(f, "pending"),
+            Self::Complete => write!(f, "complete"),
+            Self::Failed => write!(f, "failed"),
+        }
+    }
+}
+
+impl std::str::FromStr for WalletTopupRequestStatus {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.to_lowercase().as_str() {
+            "pending" => Ok(Self::Pending),
+            "complete" => Ok(Self::Complete),
+            "failed" => Ok(Self::Failed),
+            _ => Err(format!("Invalid wallet topup request status: {value}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WalletTopupRequest {
+    pub request_id: String,
+    pub pubkey: String,
+    pub rail: String,
+    pub amount_minor: u64,
+    pub status: WalletTopupRequestStatus,
+    pub error_message: Option<String>,
+    pub topup_quote_id: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub completed_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TradeExecutionRequestStatus {
     Pending,
     Complete,

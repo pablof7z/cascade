@@ -5,7 +5,7 @@ use crate::market::{Market, MarketStatus, Side, Trade, TradeDirection};
 use crate::product::{
     FxQuoteSnapshot, MarketLaunchState, MarketPosition, MarketTradeRecord, MarketVisibility,
     TradeExecutionRequest, TradeExecutionRequestStatus, WalletBalanceRecord, WalletFundingEvent,
-    WalletTopupQuote, WalletTopupStatus,
+    WalletTopupQuote, WalletTopupRequest, WalletTopupRequestStatus, WalletTopupStatus,
 };
 use crate::trade::Payout;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
@@ -66,6 +66,13 @@ impl CascadeDatabase {
             .execute(&self.pool)
             .await
             .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        sqlx::query(include_str!(
+            "../../../migrations/006_wallet_topup_requests.sql"
+        ))
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         Ok(())
     }
@@ -719,6 +726,7 @@ impl CascadeDatabase {
         amount_msat: u64,
         invoice: Option<&str>,
         payment_hash: Option<&str>,
+        request_id: Option<&str>,
         fx_quote: &FxQuoteSnapshot,
     ) -> Result<WalletTopupQuote> {
         let mut tx = self.pool.begin().await?;
@@ -812,6 +820,32 @@ impl CascadeDatabase {
         .bind(now)
         .execute(&mut *tx)
         .await?;
+
+        if let Some(request_id) = request_id.filter(|value| !value.trim().is_empty()) {
+            let result = sqlx::query(
+                r#"
+                UPDATE wallet_topup_requests
+                SET status = 'complete',
+                    topup_quote_id = ?,
+                    error_message = NULL,
+                    updated_at = ?,
+                    completed_at = ?
+                WHERE request_id = ?
+                "#,
+            )
+            .bind(&quote.id)
+            .bind(now)
+            .bind(now)
+            .bind(request_id)
+            .execute(&mut *tx)
+            .await?;
+
+            if result.rows_affected() != 1 {
+                return Err(crate::error::CascadeError::database(
+                    "wallet topup request missing during completion".to_string(),
+                ));
+            }
+        }
 
         tx.commit().await?;
 
@@ -1273,6 +1307,140 @@ impl CascadeDatabase {
         self.get_wallet_topup_quote(quote_id)
             .await?
             .ok_or_else(|| crate::error::CascadeError::invalid_input("topup quote not found"))
+    }
+
+    pub async fn create_wallet_topup_request(
+        &self,
+        request_id: &str,
+        pubkey: &str,
+        rail: &str,
+        amount_minor: u64,
+    ) -> Result<WalletTopupRequest> {
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            INSERT INTO wallet_topup_requests (
+                request_id,
+                pubkey,
+                rail,
+                amount_minor,
+                status,
+                created_at,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, 'pending', ?, ?)
+            "#,
+        )
+        .bind(request_id)
+        .bind(pubkey)
+        .bind(rail)
+        .bind(amount_minor as i64)
+        .bind(now)
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_wallet_topup_request(request_id)
+            .await?
+            .ok_or_else(|| {
+                crate::error::CascadeError::database(
+                    "wallet topup request missing after insert".to_string(),
+                )
+            })
+    }
+
+    pub async fn get_wallet_topup_request(
+        &self,
+        request_id: &str,
+    ) -> Result<Option<WalletTopupRequest>> {
+        let row = sqlx::query_as::<
+            _,
+            (
+                String,
+                String,
+                String,
+                i64,
+                String,
+                Option<String>,
+                Option<String>,
+                i64,
+                i64,
+                Option<i64>,
+            ),
+        >(
+            r#"
+            SELECT
+                request_id,
+                pubkey,
+                rail,
+                amount_minor,
+                status,
+                error_message,
+                topup_quote_id,
+                created_at,
+                updated_at,
+                completed_at
+            FROM wallet_topup_requests
+            WHERE request_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(request_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(row.map(
+            |(
+                request_id,
+                pubkey,
+                rail,
+                amount_minor,
+                status,
+                error_message,
+                topup_quote_id,
+                created_at,
+                updated_at,
+                completed_at,
+            )| WalletTopupRequest {
+                request_id,
+                pubkey,
+                rail,
+                amount_minor: amount_minor.max(0) as u64,
+                status: status.parse().unwrap_or(WalletTopupRequestStatus::Pending),
+                error_message,
+                topup_quote_id,
+                created_at,
+                updated_at,
+                completed_at,
+            },
+        ))
+    }
+
+    pub async fn fail_wallet_topup_request(
+        &self,
+        request_id: &str,
+        error_message: &str,
+    ) -> Result<Option<WalletTopupRequest>> {
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            UPDATE wallet_topup_requests
+            SET status = 'failed',
+                error_message = ?,
+                updated_at = ?
+            WHERE request_id = ?
+            "#,
+        )
+        .bind(error_message)
+        .bind(now)
+        .bind(request_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_wallet_topup_request(request_id).await
     }
 
     pub async fn credit_wallet(

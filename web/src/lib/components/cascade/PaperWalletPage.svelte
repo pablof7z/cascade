@@ -3,16 +3,19 @@
   import {
     createLightningTopupQuote,
     fetchPaperWallet,
+    fetchWalletTopupRequestStatus,
     fetchWalletTopupStatus,
     parseJson,
     settleLightningTopupQuote,
     type ProductWallet,
+    type ProductWalletTopupRequestStatus,
     type ProductWalletTopup,
     type ProductWalletTopupExecution
   } from '$lib/cascade/api';
   import { getProductApiUrl } from '$lib/cascade/config';
   import { formatUsdMinor } from '$lib/cascade/format';
   import {
+    attachPendingTopupId,
     clearPendingTopup,
     listPendingTopups,
     markPendingTopupNotified,
@@ -120,24 +123,34 @@
 
     status = `Creating a Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
     errorMessage = '';
+    const requestId = crypto.randomUUID();
+    trackPendingTopup({
+      id: requestId,
+      requestId,
+      pubkey: currentUser.pubkey,
+      amountMinor,
+      rail: 'lightning'
+    });
     try {
       const response = await createLightningTopupQuote({
         pubkey: currentUser.pubkey,
-        amountMinor
+        amountMinor,
+        requestId
       });
       const topup = await parseJson<ProductWalletTopup>(response, 'Lightning top-up creation failed.');
 
-      trackPendingTopup({
-        id: topup.id,
-        pubkey: currentUser.pubkey,
-        amountMinor: topup.amount_minor,
-        rail: 'lightning'
-      });
+      attachPendingTopupId(requestId, topup.id);
       await loadWallet();
       status = `Created a Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Lightning top-up creation failed.';
-      status = '';
+      const message =
+        error instanceof Error ? error.message : 'Lightning top-up creation failed.';
+      if (message === 'wallet_topup_request_in_progress') {
+        status = `Recovering the Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
+      } else {
+        errorMessage = message;
+        status = '';
+      }
     }
   }
 
@@ -152,7 +165,7 @@
         'Lightning top-up settlement failed.'
       );
       wallet = payload.wallet;
-      clearPendingTopup(topupId);
+      clearPendingTopup(trackedTopupIdForQuote(topupId));
       status = `Completed the signet Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : 'Lightning top-up settlement failed.';
@@ -170,21 +183,53 @@
 
     for (const trackedTopup of trackedTopups) {
       try {
-        const response = await fetchWalletTopupStatus(trackedTopup.id);
-        const topup = await parseJson<ProductWalletTopup>(
-          response,
-          'Failed to recover the Lightning top-up status.'
-        );
+        let topup: ProductWalletTopup | null = null;
+
+        if (trackedTopup.requestId && !trackedTopup.topupId) {
+          const requestResponse = await fetchWalletTopupRequestStatus(trackedTopup.requestId);
+          const requestStatus = await parseJson<ProductWalletTopupRequestStatus>(
+            requestResponse,
+            'Failed to recover the Lightning top-up status.'
+          );
+
+          if (requestStatus.status === 'pending') {
+            if (!trackedTopup.pendingNotified) {
+              status = `Recovered pending Lightning top-up for ${formatUsdMinor(trackedTopup.amountMinor)}.`;
+              markPendingTopupNotified(trackedTopup.id);
+            }
+            continue;
+          }
+
+          if (requestStatus.status === 'failed') {
+            clearPendingTopup(trackedTopup.id);
+            errorMessage = requestStatus.error || 'Lightning top-up creation failed.';
+            continue;
+          }
+
+          topup = requestStatus.topup || null;
+          if (topup?.id) {
+            attachPendingTopupId(trackedTopup.id, topup.id);
+          }
+        }
+
+        if (!topup) {
+          const topupId = trackedTopup.topupId ?? trackedTopup.id;
+          const response = await fetchWalletTopupStatus(topupId);
+          topup = await parseJson<ProductWalletTopup>(
+            response,
+            'Failed to recover the Lightning top-up status.'
+          );
+        }
 
         if (topup.status === 'invoice_pending') {
           if (!trackedTopup.pendingNotified) {
             status = `Recovered pending Lightning top-up for ${formatUsdMinor(topup.amount_minor)}.`;
-            markPendingTopupNotified(topup.id);
+            markPendingTopupNotified(trackedTopup.id);
           }
           continue;
         }
 
-        clearPendingTopup(topup.id);
+        clearPendingTopup(trackedTopup.id);
         walletNeedsRefresh = true;
 
         if (topup.status === 'complete') {
@@ -219,6 +264,13 @@
 
     return () => window.clearInterval(interval);
   });
+
+  function trackedTopupIdForQuote(quoteId: string): string {
+    const tracked = listPendingTopups(currentUser?.pubkey || '').find(
+      (entry) => entry.topupId === quoteId || (!entry.requestId && entry.id === quoteId)
+    );
+    return tracked?.id || quoteId;
+  }
 </script>
 
 <section class="wallet-page">

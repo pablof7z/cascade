@@ -238,6 +238,22 @@ test('signet wallet can fund through the Lightning top-up flow', async ({ page }
   await page.getByRole('spinbutton', { name: 'Lightning amount' }).fill('2500');
   await page.getByRole('button', { name: 'Create Lightning invoice' }).click();
   await expect(page.getByText(`Created a Lightning top-up for ${formatUsdMinor(2500)}.`)).toBeVisible();
+  await page.evaluate(() => {
+    const pendingKey = Object.keys(localStorage).find((key) => key.includes('cascade_pending_topups'));
+    if (!pendingKey) return;
+    const raw = localStorage.getItem(pendingKey);
+    if (!raw) return;
+
+    const records = JSON.parse(raw) as Array<Record<string, unknown>>;
+    const rewritten = records.map((record) => {
+      if (!record.requestId || !record.topupId) return record;
+      const nextRecord = { ...record };
+      delete nextRecord.topupId;
+      return nextRecord;
+    });
+
+    localStorage.setItem(pendingKey, JSON.stringify(rewritten));
+  });
 
   await page.reload();
   await ensureLoggedIn(page, secret);

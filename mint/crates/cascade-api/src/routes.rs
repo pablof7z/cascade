@@ -153,6 +153,10 @@ pub fn build_cascade_routes(state: AppState) -> Router {
         )
         .route("/api/trades/{trade_id}", get(product::trade_status))
         .route(
+            "/api/wallet/topups/requests/{request_id}",
+            get(product::wallet_topup_request_status),
+        )
+        .route(
             "/api/wallet/topups/{quote_id}",
             get(product::get_wallet_topup_status),
         )

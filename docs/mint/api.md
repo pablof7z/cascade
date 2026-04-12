@@ -160,12 +160,15 @@ The exact naming can still change during implementation, but launch needs a high
 
 - `GET /api/product/fx/lightning/{amount_minor}`
 - `POST /api/wallet/topups/stripe`
+- `GET /api/wallet/topups/requests/{request_id}`
 - `GET /api/wallet/topups/{topup_id}`
 - `POST /api/wallet/topups/lightning/quote`
 - `GET /api/wallet/topups/lightning/{quote_id}`
 - `POST /api/product/paper/faucet` for signet-only capped paper funding
 
 Lightning top-up status reads should be settlement-aware. `GET /api/wallet/topups/{topup_id}` and `GET /api/wallet/topups/lightning/{quote_id}` are allowed to reconcile the persisted quote against the underlying invoice state before responding, so a paid invoice can complete on a later status poll or wallet refresh without a separate bespoke callback from the client.
+
+Lightning top-up quote creation should accept an optional client-supplied `request_id`. The mint persists that request id before invoice creation so duplicate retries can replay the same top-up quote instead of creating a second invoice, and interrupted clients can recover through `GET /api/wallet/topups/requests/{request_id}` even if they never received the final `topup_id`.
 
 ### Trading
 

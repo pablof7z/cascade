@@ -9,7 +9,7 @@ use crate::types::{
     ProductSellRequest, ProductTradeExecutionResponse, ProductTradeQuoteRequest,
     ProductTradeQuoteResponse, ProductTradeRequestStatusResponse, ProductTradeStatusResponse,
     ProductWalletPositionResponse, ProductWalletResponse, ProductWalletTopupExecutionResponse,
-    ProductWalletTopupResponse,
+    ProductWalletTopupRequestStatusResponse, ProductWalletTopupResponse,
 };
 use axum::{
     extract::{Json, Path, State},
@@ -18,7 +18,7 @@ use axum::{
 use cascade_core::{
     product::{
         FxQuoteSnapshot, MarketLaunchState, TradeExecutionRequest, TradeExecutionRequestStatus,
-        WalletTopupQuote,
+        WalletTopupQuote, WalletTopupRequest, WalletTopupRequestStatus,
     },
     Market, Side, WalletBalanceRecord,
 };
@@ -174,6 +174,13 @@ pub async fn preview_lightning_fx_quote(
     }
 }
 
+enum WalletTopupRequestGuard {
+    New,
+    Complete(ProductWalletTopupResponse),
+    Pending,
+    Failed(String),
+}
+
 pub async fn create_lightning_topup_quote(
     State(state): State<AppState>,
     Json(req): Json<ProductLightningTopupQuoteRequest>,
@@ -185,9 +192,41 @@ pub async fn create_lightning_topup_quote(
         );
     }
 
+    match prepare_wallet_topup_request(
+        &state,
+        req.request_id.as_deref(),
+        &req.pubkey,
+        "lightning",
+        req.amount_minor,
+    )
+    .await
+    {
+        Ok(WalletTopupRequestGuard::Complete(response)) => {
+            return (StatusCode::OK, Json(json!(response)));
+        }
+        Ok(WalletTopupRequestGuard::Pending) => {
+            return (
+                StatusCode::CONFLICT,
+                Json(json!({ "error": "wallet_topup_request_in_progress" })),
+            );
+        }
+        Ok(WalletTopupRequestGuard::Failed(error)) => {
+            return (StatusCode::CONFLICT, Json(json!({ "error": error })));
+        }
+        Ok(WalletTopupRequestGuard::New) => {}
+        Err(error) => {
+            return (StatusCode::CONFLICT, Json(json!({ "error": error })));
+        }
+    }
+
     let fx_quote = match state.fx_service.quote_wallet_topup(req.amount_minor).await {
         Ok(quote) => quote.snapshot,
-        Err(error) => return (StatusCode::BAD_GATEWAY, Json(json!({ "error": error }))),
+        Err(error) => {
+            if let Some(request_id) = req.request_id.as_deref() {
+                let _ = state.db.fail_wallet_topup_request(request_id, &error).await;
+            }
+            return (StatusCode::BAD_GATEWAY, Json(json!({ "error": error })));
+        }
     };
     let invoice_expiry_seconds = (fx_quote.expires_at - fx_quote.created_at).max(60) as u64;
     let invoice = {
@@ -202,11 +241,16 @@ pub async fn create_lightning_topup_quote(
         {
             Ok(invoice) => invoice,
             Err(error) => {
+                let error_message = format!("failed_to_create_lightning_invoice: {error}");
+                if let Some(request_id) = req.request_id.as_deref() {
+                    let _ = state
+                        .db
+                        .fail_wallet_topup_request(request_id, &error_message)
+                        .await;
+                }
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(
-                        json!({ "error": format!("failed_to_create_lightning_invoice: {error}") }),
-                    ),
+                    Json(json!({ "error": error_message })),
                 );
             }
         }
@@ -221,6 +265,7 @@ pub async fn create_lightning_topup_quote(
             fx_quote.amount_msat,
             Some(invoice.bolt11()),
             Some(&invoice.payment_hash.to_hex()),
+            req.request_id.as_deref(),
             &fx_quote,
         )
         .await
@@ -229,9 +274,36 @@ pub async fn create_lightning_topup_quote(
             let response = wallet_topup_response(&quote, &fx_quote);
             (StatusCode::CREATED, Json(json!(response)))
         }
+        Err(error) => {
+            let error_message = error.to_string();
+            if let Some(request_id) = req.request_id.as_deref() {
+                let _ = state
+                    .db
+                    .fail_wallet_topup_request(request_id, &error_message)
+                    .await;
+            }
+
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error_message })),
+            )
+        }
+    }
+}
+
+pub async fn wallet_topup_request_status(
+    State(state): State<AppState>,
+    Path(request_id): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    match load_wallet_topup_request_status_response(&state, &request_id).await {
+        Ok(Some(response)) => (StatusCode::OK, Json(json!(response))),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "wallet_topup_request_not_found" })),
+        ),
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": error.to_string() })),
+            Json(json!({ "error": error })),
         ),
     }
 }
@@ -627,6 +699,106 @@ pub async fn sell_trade(
         request_id: req.request_id,
     };
     sell_trade_by_event(&state, &req.event_id, &sell_request).await
+}
+
+async fn prepare_wallet_topup_request(
+    state: &AppState,
+    request_id: Option<&str>,
+    pubkey: &str,
+    rail: &str,
+    amount_minor: u64,
+) -> Result<WalletTopupRequestGuard, String> {
+    let Some(request_id) = request_id.filter(|value| !value.trim().is_empty()) else {
+        return Ok(WalletTopupRequestGuard::New);
+    };
+
+    if let Some(existing) = state
+        .db
+        .get_wallet_topup_request(request_id)
+        .await
+        .map_err(|error| error.to_string())?
+    {
+        return handle_existing_wallet_topup_request(state, &existing, pubkey, rail, amount_minor)
+            .await;
+    }
+
+    match state
+        .db
+        .create_wallet_topup_request(request_id, pubkey, rail, amount_minor)
+        .await
+    {
+        Ok(_) => Ok(WalletTopupRequestGuard::New),
+        Err(error) => {
+            let error_message = error.to_string();
+            if !error_message.contains("UNIQUE constraint failed") {
+                return Err(error_message);
+            }
+
+            let Some(existing) = state
+                .db
+                .get_wallet_topup_request(request_id)
+                .await
+                .map_err(|db_error| db_error.to_string())?
+            else {
+                return Err(error_message);
+            };
+
+            handle_existing_wallet_topup_request(state, &existing, pubkey, rail, amount_minor).await
+        }
+    }
+}
+
+async fn handle_existing_wallet_topup_request(
+    state: &AppState,
+    existing: &WalletTopupRequest,
+    pubkey: &str,
+    rail: &str,
+    amount_minor: u64,
+) -> Result<WalletTopupRequestGuard, String> {
+    if !wallet_topup_request_matches(existing, pubkey, rail, amount_minor) {
+        return Err("wallet_topup_request_id_conflict".to_string());
+    }
+
+    match existing.status {
+        WalletTopupRequestStatus::Complete => Ok(WalletTopupRequestGuard::Complete(
+            load_wallet_topup_response_for_request(state, existing).await?,
+        )),
+        WalletTopupRequestStatus::Pending => Ok(WalletTopupRequestGuard::Pending),
+        WalletTopupRequestStatus::Failed => Ok(WalletTopupRequestGuard::Failed(
+            existing
+                .error_message
+                .clone()
+                .unwrap_or_else(|| "wallet_topup_request_failed".to_string()),
+        )),
+    }
+}
+
+fn wallet_topup_request_matches(
+    existing: &WalletTopupRequest,
+    pubkey: &str,
+    rail: &str,
+    amount_minor: u64,
+) -> bool {
+    existing.pubkey == pubkey && existing.rail == rail && existing.amount_minor == amount_minor
+}
+
+async fn load_wallet_topup_response_for_request(
+    state: &AppState,
+    request: &WalletTopupRequest,
+) -> Result<ProductWalletTopupResponse, String> {
+    let topup_quote_id = request
+        .topup_quote_id
+        .as_deref()
+        .ok_or_else(|| "wallet_topup_request_missing_quote".to_string())?;
+
+    let quote = state
+        .db
+        .get_wallet_topup_quote(topup_quote_id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "topup_quote_not_found".to_string())?;
+
+    load_wallet_topup_response(state, &quote).await
 }
 
 pub async fn trade_request_status(
@@ -1304,6 +1476,35 @@ async fn load_market_summary_by_event_id(
     };
 
     Ok(product_market_summary(state, &market, &launch))
+}
+
+async fn load_wallet_topup_request_status_response(
+    state: &AppState,
+    request_id: &str,
+) -> Result<Option<ProductWalletTopupRequestStatusResponse>, String> {
+    let Some(request) = state
+        .db
+        .get_wallet_topup_request(request_id)
+        .await
+        .map_err(|error| error.to_string())?
+    else {
+        return Ok(None);
+    };
+
+    let topup = if request.status == WalletTopupRequestStatus::Complete {
+        Some(load_wallet_topup_response_for_request(state, &request).await?)
+    } else {
+        None
+    };
+
+    Ok(Some(ProductWalletTopupRequestStatusResponse {
+        request_id: request.request_id,
+        rail: request.rail,
+        amount_minor: request.amount_minor,
+        status: request.status.to_string(),
+        error: request.error_message,
+        topup,
+    }))
 }
 
 async fn load_trade_request_status_response(

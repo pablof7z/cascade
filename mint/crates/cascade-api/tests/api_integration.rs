@@ -797,6 +797,72 @@ async fn test_lightning_topup_quote_and_settlement_flow() {
 }
 
 #[tokio::test]
+async fn test_lightning_topup_request_id_is_idempotent() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+    let pubkey = "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef";
+    let request_id = "topup-request-idempotent-1";
+
+    let first_response = client
+        .post(format!("{url}/api/wallet/topups/lightning/quote"))
+        .json(&serde_json::json!({
+            "pubkey": pubkey,
+            "amount_minor": 2500,
+            "request_id": request_id
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(first_response.status(), 201);
+    let first_payload: serde_json::Value = first_response.json().await.unwrap();
+    let quote_id = first_payload["id"].as_str().unwrap().to_string();
+    let invoice = first_payload["invoice"].as_str().unwrap().to_string();
+
+    let second_response = client
+        .post(format!("{url}/api/wallet/topups/lightning/quote"))
+        .json(&serde_json::json!({
+            "pubkey": pubkey,
+            "amount_minor": 2500,
+            "request_id": request_id
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(second_response.status(), 200);
+    let second_payload: serde_json::Value = second_response.json().await.unwrap();
+    assert_eq!(second_payload["id"].as_str(), Some(quote_id.as_str()));
+    assert_eq!(second_payload["invoice"].as_str(), Some(invoice.as_str()));
+
+    let request_status_response = client
+        .get(format!("{url}/api/wallet/topups/requests/{request_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(request_status_response.status(), 200);
+    let request_status_payload: serde_json::Value = request_status_response.json().await.unwrap();
+    assert_eq!(request_status_payload["status"].as_str(), Some("complete"));
+    assert_eq!(
+        request_status_payload["topup"]["id"].as_str(),
+        Some(quote_id.as_str())
+    );
+
+    let wallet_pending_response = client
+        .get(format!("{url}/api/product/wallet/{pubkey}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(wallet_pending_response.status(), 200);
+    let wallet_pending_payload: serde_json::Value = wallet_pending_response.json().await.unwrap();
+    assert_eq!(wallet_pending_payload["pending_minor"].as_u64(), Some(2500));
+    assert_eq!(
+        wallet_pending_payload["pending_topups"]
+            .as_array()
+            .map(|items| items.len()),
+        Some(1)
+    );
+}
+
+#[tokio::test]
 async fn test_trade_request_id_is_idempotent() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();
@@ -845,7 +911,10 @@ async fn test_trade_request_id_is_idempotent() {
         .unwrap();
     assert_eq!(first_buy_response.status(), 201);
     let first_buy_payload: serde_json::Value = first_buy_response.json().await.unwrap();
-    let trade_id = first_buy_payload["trade"]["id"].as_str().unwrap().to_string();
+    let trade_id = first_buy_payload["trade"]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let second_buy_response = client
         .post(format!("{url}/api/trades/buy"))

@@ -40,6 +40,15 @@ export type ProductWalletTopup = {
   expires_at: number;
 };
 
+export type ProductWalletTopupRequestStatus = {
+  request_id: string;
+  rail: string;
+  amount_minor: number;
+  status: string;
+  error?: string | null;
+  topup?: ProductWalletTopup | null;
+};
+
 export type ProductWallet = {
   pubkey: string;
   available_minor: number;
@@ -153,15 +162,21 @@ export async function fetchPaperWallet(pubkey: string): Promise<Response> {
 export async function createLightningTopupQuote(input: {
   pubkey: string;
   amountMinor: number;
+  requestId?: string;
 }): Promise<Response> {
   return fetch(`${getProductApiUrl()}/api/wallet/topups/lightning/quote`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       pubkey: input.pubkey,
-      amount_minor: input.amountMinor
+      amount_minor: input.amountMinor,
+      request_id: input.requestId
     })
   });
+}
+
+export async function fetchWalletTopupRequestStatus(requestId: string): Promise<Response> {
+  return fetch(`${getProductApiUrl()}/api/wallet/topups/requests/${requestId}`);
 }
 
 export async function fetchWalletTopupStatus(topupId: string): Promise<Response> {

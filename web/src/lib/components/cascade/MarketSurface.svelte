@@ -257,11 +257,11 @@
     <aside class="summary-rail">
       <div class="price-grid">
         <div>
-          <span>Yes</span>
+          <span>LONG</span>
           <strong class="positive">{priceCents(impliedProbability)}</strong>
         </div>
         <div>
-          <span>No</span>
+          <span>SHORT</span>
           <strong class="negative">{priceCents(oppositeProbability)}</strong>
         </div>
       </div>

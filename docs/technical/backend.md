@@ -154,11 +154,14 @@ The backend should ingest Stripe risk signals and map them into temporary purcha
 Lightning is both a launch wallet-funding rail and the settlement rail between the wallet mint and the market mint.
 
 - the wallet mint can create USD top-up invoices by locking `USD <-> msat` FX quotes
+- incoming top-up status polling reconciles persisted quote state against real invoice state, so a paid invoice can complete after restart or client interruption
 - the market mint can return a standard invoice-backed quote for a LONG or SHORT trade
 - the wallet mint can pay that quote by consuming USD proofs
 - the reverse path can return market exit value back into the wallet mint
 
 This is backend plumbing, not normal product UX. The frontend should not force the user to think in sats or Lightning invoices.
+
+The current mint runtime uses the local `lncli` binary as the concrete LND adapter. Runtime config should therefore include TLS cert path, macaroon path, network, and either an explicit `lncli` path or a deployment environment where `lncli` is resolvable on `PATH`.
 
 ## Nostr Publishing
 

@@ -67,6 +67,8 @@ pub struct LndSettings {
     pub port: u16,
     pub cert_path: String,
     pub macaroon_path: String,
+    #[serde(default)]
+    pub cli_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -158,6 +160,9 @@ impl MintConfig {
         if let Ok(macaroon_path) = std::env::var("LND_MACAROON_PATH") {
             config.lnd.macaroon_path = macaroon_path;
         }
+        if let Ok(cli_path) = std::env::var("LND_CLI_PATH") {
+            config.lnd.cli_path = Some(cli_path);
+        }
         if let Ok(network) = std::env::var("NETWORK") {
             config.network.network_type = network;
         }
@@ -222,6 +227,7 @@ impl Default for MintConfig {
                 port: 10009,
                 cert_path: "/path/to/tls.cert".to_string(),
                 macaroon_path: "/path/to/admin.macaroon".to_string(),
+                cli_path: None,
             },
             network: NetworkSettings {
                 network_type: "testnet".to_string(),

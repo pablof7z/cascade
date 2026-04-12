@@ -1059,6 +1059,55 @@ impl CascadeDatabase {
         Ok(expired_rows.len() as u64)
     }
 
+    pub async fn expire_wallet_topup_quote(
+        &self,
+        quote_id: &str,
+    ) -> Result<Option<WalletTopupQuote>> {
+        let mut tx = self.pool.begin().await?;
+        let Some(existing) = self.get_wallet_topup_quote(quote_id).await? else {
+            tx.commit().await?;
+            return Ok(None);
+        };
+
+        if existing.status != WalletTopupStatus::InvoicePending {
+            tx.commit().await?;
+            return Ok(Some(existing));
+        }
+
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            UPDATE wallet_topup_quotes
+            SET status = 'expired'
+            WHERE id = ? AND status = 'invoice_pending'
+            "#,
+        )
+        .bind(quote_id)
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            r#"
+            UPDATE wallet_balances
+            SET pending_minor = CASE
+                WHEN pending_minor >= ? THEN pending_minor - ?
+                ELSE 0
+            END,
+                updated_at = ?
+            WHERE pubkey = ?
+            "#,
+        )
+        .bind(existing.amount_minor as i64)
+        .bind(existing.amount_minor as i64)
+        .bind(now)
+        .bind(&existing.pubkey)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        self.get_wallet_topup_quote(quote_id).await
+    }
+
     pub async fn complete_wallet_topup_quote(
         &self,
         quote_id: &str,

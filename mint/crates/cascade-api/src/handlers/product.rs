@@ -171,10 +171,6 @@ pub async fn create_lightning_topup_quote(
     State(state): State<AppState>,
     Json(req): Json<ProductLightningTopupQuoteRequest>,
 ) -> (StatusCode, Json<Value>) {
-    if !state.paper_mode {
-        return signet_only_unavailable("wallet_lightning_topups");
-    }
-
     if req.pubkey.trim().is_empty() || req.amount_minor == 0 {
         return (
             StatusCode::BAD_REQUEST,
@@ -192,7 +188,7 @@ pub async fn create_lightning_topup_quote(
         match invoice_service
             .create_invoice(
                 fx_quote.amount_msat,
-                Some(format!("Cascade signet wallet top-up for {}", req.pubkey)),
+                Some(format!("Cascade wallet top-up for {}", req.pubkey)),
                 Some(invoice_expiry_seconds),
             )
             .await
@@ -237,10 +233,6 @@ pub async fn get_lightning_topup_quote(
     State(state): State<AppState>,
     Path(quote_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    if !state.paper_mode {
-        return signet_only_unavailable("wallet_lightning_topups");
-    }
-
     let now = chrono::Utc::now().timestamp();
     let existing = match state.db.get_wallet_topup_quote(&quote_id).await {
         Ok(Some(quote)) => quote,
@@ -279,6 +271,11 @@ pub async fn get_lightning_topup_quote(
                 Json(json!({ "error": error.to_string() })),
             )
         }
+    };
+
+    let quote = match sync_wallet_topup_quote_best_effort(&state, &quote).await {
+        Ok(quote) => quote,
+        Err(_) => quote,
     };
 
     match load_wallet_topup_response(&state, &quote).await {
@@ -1293,6 +1290,14 @@ async fn wallet_response(state: &AppState, pubkey: &str) -> Result<ProductWallet
         .ensure_wallet(pubkey)
         .await
         .map_err(|error| error.to_string())?;
+    let initial_pending_topups = state
+        .db
+        .list_pending_wallet_topup_quotes(pubkey, 8)
+        .await
+        .map_err(|error| error.to_string())?;
+    for quote in initial_pending_topups {
+        let _ = sync_wallet_topup_quote_best_effort(state, &quote).await;
+    }
     let balance = state
         .db
         .get_wallet_balance(pubkey)
@@ -1386,7 +1391,10 @@ async fn load_wallet_topup_response(
     state: &AppState,
     quote: &WalletTopupQuote,
 ) -> Result<ProductWalletTopupResponse, String> {
-    wallet_topup_response_for_state(state, quote).await
+    let quote = sync_wallet_topup_quote_best_effort(state, quote)
+        .await
+        .unwrap_or_else(|_| quote.clone());
+    wallet_topup_response_for_state(state, &quote).await
 }
 
 fn lightning_fx_quote_response(quote: &FxQuoteEnvelope) -> ProductLightningFxQuoteResponse {
@@ -1442,6 +1450,50 @@ async fn wallet_topup_response_for_state(
         .map_err(|error| error.to_string())?
         .ok_or_else(|| "fx_quote_not_found".to_string())?;
     Ok(wallet_topup_response(quote, &fx_quote))
+}
+
+async fn sync_wallet_topup_quote_best_effort(
+    state: &AppState,
+    quote: &WalletTopupQuote,
+) -> Result<WalletTopupQuote, String> {
+    if quote.status.to_string() != "invoice_pending" {
+        return Ok(quote.clone());
+    }
+
+    let Some(payment_hash) = quote.payment_hash.as_deref() else {
+        return Ok(quote.clone());
+    };
+
+    let invoice_status = {
+        let invoice_service = state.invoice_service.lock().await;
+        invoice_service
+            .get_invoice_status(payment_hash)
+            .await
+            .map_err(|error| error.to_string())?
+    };
+
+    match invoice_status.as_str() {
+        "settled" => {
+            let metadata_json = json!({
+                "source": "lightning",
+                "payment_hash": payment_hash,
+                "topup_quote_id": quote.id
+            })
+            .to_string();
+            state
+                .db
+                .complete_wallet_topup_quote(&quote.id, None, Some(&metadata_json))
+                .await
+                .map_err(|error| error.to_string())
+        }
+        "expired" | "cancelled" => state
+            .db
+            .expire_wallet_topup_quote(&quote.id)
+            .await
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "topup_quote_not_found".to_string()),
+        _ => Ok(quote.clone()),
+    }
 }
 
 fn product_market_summary(

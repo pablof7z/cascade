@@ -69,6 +69,8 @@ async fn create_product_test_server() -> String {
             cert_path: None,
             macaroon_path: None,
             tls_domain: None,
+            network: None,
+            cli_path: None,
         },
         mint,
         cascade_db,

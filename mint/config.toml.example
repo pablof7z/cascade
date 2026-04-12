@@ -16,6 +16,7 @@ host = "127.0.0.1"
 port = 10009
 cert_path = "/path/to/tls.cert"
 macaroon_path = "/path/to/admin.macaroon"
+cli_path = "/path/to/lncli"
 
 [network]
 network_type = "testnet"

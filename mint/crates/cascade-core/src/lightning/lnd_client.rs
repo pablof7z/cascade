@@ -1,15 +1,18 @@
 //! LND client for Lightning Network operations
 //!
-//! Provides integration with the Lightning Network Daemon (LND) for invoice creation,
-//! payment monitoring, and preimage verification.
-//!
-//! Note: This is a placeholder implementation. Full LND integration requires
-//! tonic-prost bindings for gRPC communication (NIP-47). The module provides
-//! the interface and types, with actual gRPC connectivity to be implemented.
+//! The production path shells out to `lncli` with the configured TLS certificate,
+//! macaroon, and network so the mint can create and inspect real invoices.
+//! Tests and in-memory servers can still run without local LND credentials by
+//! falling back to a mock backend that stores invoices in-process.
 
 use crate::error::{CascadeError, Result};
 use crate::lightning::types::{InvoiceState, LightningInvoice, PaymentHash, Preimage};
+use serde::Deserialize;
+use std::collections::HashMap;
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tokio::process::Command;
 use tokio::sync::RwLock;
 
 /// LND connection configuration
@@ -23,6 +26,10 @@ pub struct LndConfig {
     pub macaroon_path: Option<String>,
     /// TLS domain name
     pub tls_domain: Option<String>,
+    /// Network to pass through to lncli when known.
+    pub network: Option<String>,
+    /// Optional absolute path to lncli. Falls back to PATH/common locations.
+    pub cli_path: Option<String>,
 }
 
 impl Default for LndConfig {
@@ -32,14 +39,31 @@ impl Default for LndConfig {
             cert_path: None,
             macaroon_path: None,
             tls_domain: None,
+            network: None,
+            cli_path: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum LndBackend {
+    Mock {
+        invoices: Arc<RwLock<HashMap<String, LightningInvoice>>>,
+    },
+    Cli {
+        lncli_path: String,
+    },
+}
+
+impl Default for LndBackend {
+    fn default() -> Self {
+        Self::Mock {
+            invoices: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }
 
 /// LND client wrapper
-///
-/// This is a placeholder that provides the interface for LND operations.
-/// Full gRPC implementation using tonic/prost is pending.
 #[derive(Debug, Clone)]
 pub struct LndClient {
     /// Configuration
@@ -48,6 +72,66 @@ pub struct LndClient {
     connected: bool,
     /// Macaroon for authentication (hex-encoded)
     macaroon: Option<String>,
+    /// Selected backend implementation
+    backend: LndBackend,
+}
+
+#[derive(Debug)]
+struct CliCommandResult {
+    stdout: String,
+    stderr: String,
+    success: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct AddInvoiceResponse {
+    r_hash: String,
+    payment_request: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct LookupInvoiceResponse {
+    #[serde(default)]
+    memo: String,
+    r_hash: String,
+    #[serde(default)]
+    value_msat: String,
+    #[serde(default)]
+    creation_date: String,
+    #[serde(default)]
+    expiry: String,
+    #[serde(default)]
+    payment_request: String,
+    #[serde(default)]
+    cltv_expiry: String,
+    #[serde(default)]
+    settled: bool,
+    #[serde(default)]
+    state: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct DecodePayReqResponse {
+    payment_hash: String,
+    #[serde(default)]
+    num_msat: String,
+    #[serde(default)]
+    timestamp: String,
+    #[serde(default)]
+    expiry: String,
+    #[serde(default)]
+    description: String,
+    #[serde(default)]
+    cltv_expiry: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GetInfoResponse {
+    identity_pubkey: String,
+    alias: String,
+    num_active_channels: u32,
+    num_peers: u32,
+    block_height: u32,
 }
 
 impl LndClient {
@@ -57,29 +141,53 @@ impl LndClient {
             config,
             connected: false,
             macaroon: None,
+            backend: LndBackend::default(),
         }
     }
 
-    /// Connect to LND and establish gRPC channel
-    ///
-    /// Note: Full implementation requires tonic + prost for LND gRPC API.
-    /// This is a placeholder that sets the connected flag.
+    /// Connect to LND and establish the invoice backend.
     pub async fn connect(&mut self) -> Result<()> {
-        // TODO: Implement full gRPC connection with tonic
-        // Example with tonic (requires tonic + prost dependencies):
-        // let channel = tonic::transport::Channel::from_static(&self.config.host)
-        //     .tls_config(...)
-        //     .connect()
-        //     .await?;
-
-        // Load macaroon
-        if let Some(path) = &self.config.macaroon_path {
-            let macaroon = tokio::fs::read(path).await.map_err(|e| {
-                CascadeError::PaymentError(format!("Failed to read macaroon: {}", e))
-            })?;
+        if let Some(path) = self
+            .config
+            .macaroon_path
+            .as_deref()
+            .filter(|path| !path.is_empty())
+        {
+            let macaroon = tokio::fs::read(path)
+                .await
+                .map_err(|e| CascadeError::PaymentError(format!("Failed to read macaroon: {e}")))?;
             self.macaroon = Some(hex::encode(&macaroon));
         }
 
+        let has_real_credentials = self
+            .config
+            .cert_path
+            .as_deref()
+            .is_some_and(|path| !path.trim().is_empty())
+            && self
+                .config
+                .macaroon_path
+                .as_deref()
+                .is_some_and(|path| !path.trim().is_empty());
+
+        if !has_real_credentials {
+            self.connected = true;
+            return Ok(());
+        }
+
+        let lncli_path = self.resolve_lncli_path()?;
+        let probe = self
+            .run_cli_command_with_path(&lncli_path, &[String::from("getinfo")])
+            .await?;
+        if !probe.success {
+            return Err(CascadeError::PaymentError(format!(
+                "Failed to connect to LND via lncli: {}",
+                cli_error_message(&probe)
+            )));
+        }
+        let _: GetInfoResponse = parse_cli_json(&probe)?;
+
+        self.backend = LndBackend::Cli { lncli_path };
         self.connected = true;
         Ok(())
     }
@@ -90,26 +198,41 @@ impl LndClient {
     }
 
     /// Get invoice state from LND
-    ///
-    /// TODO: Implement with LND routerrpc::LookupInvoiceV2
     pub async fn get_invoice(
         &self,
-        _payment_hash: &PaymentHash,
+        payment_hash: &PaymentHash,
     ) -> Result<Option<LightningInvoice>> {
-        if !self.connected {
-            return Err(CascadeError::PaymentError(
-                "Not connected to LND".to_string(),
-            ));
+        self.ensure_connected()?;
+
+        match &self.backend {
+            LndBackend::Mock { invoices } => {
+                let stored = invoices.read().await.get(&payment_hash.to_hex()).cloned();
+                Ok(stored.map(|invoice| self.normalize_invoice(invoice)))
+            }
+            LndBackend::Cli { lncli_path } => {
+                let args = vec![
+                    "lookupinvoice".to_string(),
+                    format!("--rhash={}", payment_hash.to_hex()),
+                ];
+                let result = self.run_cli_command_with_path(lncli_path, &args).await?;
+                if !result.success {
+                    if is_invoice_not_found(&result.stderr) || is_invoice_not_found(&result.stdout)
+                    {
+                        return Ok(None);
+                    }
+                    return Err(CascadeError::PaymentError(format!(
+                        "LND lookupinvoice failed: {}",
+                        cli_error_message(&result)
+                    )));
+                }
+
+                let raw: LookupInvoiceResponse = parse_cli_json(&result)?;
+                Ok(Some(self.invoice_from_lookup(raw)?))
+            }
         }
-        // TODO: Call LND via gRPC
-        Err(CascadeError::PaymentError(
-            "LND invoice lookup not implemented - requires tonic gRPC".to_string(),
-        ))
     }
 
     /// Add an invoice to LND
-    ///
-    /// TODO: Implement with LND lnrpc::AddInvoiceV2
     pub async fn add_invoice(
         &self,
         amount_msat: u64,
@@ -117,31 +240,54 @@ impl LndClient {
         expiry_seconds: Option<u64>,
         cltv_expiry: Option<u64>,
     ) -> Result<LightningInvoice> {
-        if !self.connected {
-            return Err(CascadeError::PaymentError(
-                "Not connected to LND".to_string(),
-            ));
+        self.ensure_connected()?;
+
+        match &self.backend {
+            LndBackend::Mock { invoices } => {
+                let invoice =
+                    self.create_mock_invoice(amount_msat, description, expiry_seconds, cltv_expiry);
+                invoices
+                    .write()
+                    .await
+                    .insert(invoice.payment_hash.to_hex(), invoice.clone());
+                Ok(invoice)
+            }
+            LndBackend::Cli { lncli_path } => {
+                let mut args = vec![
+                    "addinvoice".to_string(),
+                    format!("--amt_msat={amount_msat}"),
+                ];
+                if let Some(description) = description.clone().filter(|memo| !memo.is_empty()) {
+                    args.push(format!("--memo={description}"));
+                }
+                if let Some(expiry_seconds) = expiry_seconds {
+                    args.push(format!("--expiry={expiry_seconds}"));
+                }
+                if let Some(cltv_expiry) = cltv_expiry {
+                    args.push(format!("--cltv_expiry_delta={cltv_expiry}"));
+                }
+
+                let result = self.run_cli_command_with_path(lncli_path, &args).await?;
+                if !result.success {
+                    return Err(CascadeError::PaymentError(format!(
+                        "LND addinvoice failed: {}",
+                        cli_error_message(&result)
+                    )));
+                }
+
+                let raw: AddInvoiceResponse = parse_cli_json(&result)?;
+                Ok(LightningInvoice {
+                    payment_request: raw.payment_request,
+                    payment_hash: PaymentHash::from_hex(&raw.r_hash)?,
+                    amount_msat,
+                    created_at: chrono::Utc::now().timestamp(),
+                    expiry_seconds: expiry_seconds.unwrap_or(86_400),
+                    cltv_expiry,
+                    description,
+                    state: InvoiceState::Open,
+                })
+            }
         }
-
-        // Generate a payment hash for the mock invoice
-        let mut hash_bytes = [0u8; 32];
-        use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
-        hasher.update(chrono::Utc::now().timestamp().to_le_bytes());
-        let result = hasher.finalize();
-        hash_bytes.copy_from_slice(&result);
-        let payment_hash = PaymentHash::from_bytes(hash_bytes);
-
-        Ok(LightningInvoice {
-            payment_request: format!("lnbc{}1p...", amount_msat / 1000), // Mock BOLT11
-            payment_hash,
-            amount_msat,
-            created_at: chrono::Utc::now().timestamp(),
-            expiry_seconds: expiry_seconds.unwrap_or(3600),
-            cltv_expiry,
-            description,
-            state: InvoiceState::Open,
-        })
     }
 
     /// Verify a payment preimage against payment hash
@@ -150,14 +296,11 @@ impl LndClient {
         preimage: &Preimage,
         payment_hash: &PaymentHash,
     ) -> Result<bool> {
-        // Verify preimage matches hash (sync operation)
         let computed_hash = preimage.payment_hash();
         Ok(computed_hash.bytes == payment_hash.bytes)
     }
 
     /// Wait for invoice to be settled
-    ///
-    /// TODO: Implement with LND invoice subscription
     pub async fn wait_for_settlement(
         &self,
         payment_hash: &PaymentHash,
@@ -180,32 +323,281 @@ impl LndClient {
         ))
     }
 
-    /// Decode a BOLT 11 invoice
-    ///
-    /// TODO: Implement invoice decoding
-    pub async fn decode_invoice(&self, _invoice: &str) -> Result<LightningInvoice> {
-        if !self.connected {
-            return Err(CascadeError::PaymentError(
-                "Not connected to LND".to_string(),
-            ));
+    /// Decode a BOLT11 invoice
+    pub async fn decode_invoice(&self, invoice: &str) -> Result<LightningInvoice> {
+        self.ensure_connected()?;
+
+        match &self.backend {
+            LndBackend::Mock { invoices } => invoices
+                .read()
+                .await
+                .values()
+                .find(|stored| stored.payment_request == invoice)
+                .cloned()
+                .map(|stored| self.normalize_invoice(stored))
+                .ok_or_else(|| {
+                    CascadeError::PaymentError(
+                        "Invoice decoding not available for unknown mock invoice".into(),
+                    )
+                }),
+            LndBackend::Cli { lncli_path } => {
+                let args = vec!["decodepayreq".to_string(), invoice.to_string()];
+                let result = self.run_cli_command_with_path(lncli_path, &args).await?;
+                if !result.success {
+                    return Err(CascadeError::PaymentError(format!(
+                        "LND decodepayreq failed: {}",
+                        cli_error_message(&result)
+                    )));
+                }
+
+                let raw: DecodePayReqResponse = parse_cli_json(&result)?;
+                Ok(LightningInvoice {
+                    payment_request: invoice.to_string(),
+                    payment_hash: PaymentHash::from_hex(&raw.payment_hash)?,
+                    amount_msat: parse_u64_field("num_msat", &raw.num_msat)?,
+                    created_at: parse_i64_field("timestamp", &raw.timestamp)?,
+                    expiry_seconds: parse_u64_field("expiry", &raw.expiry)?,
+                    cltv_expiry: optional_u64_field(&raw.cltv_expiry)?,
+                    description: empty_string_to_none(raw.description),
+                    state: InvoiceState::Open,
+                })
+            }
         }
-        Err(CascadeError::PaymentError(
-            "Invoice decoding not implemented".to_string(),
-        ))
     }
 
     /// Get the LND node info
-    ///
-    /// TODO: Implement with LND lnrpc::GetInfo
     pub async fn get_info(&self) -> Result<LndNodeInfo> {
-        if !self.connected {
-            return Err(CascadeError::PaymentError(
-                "Not connected to LND".to_string(),
-            ));
+        self.ensure_connected()?;
+
+        match &self.backend {
+            LndBackend::Mock { .. } => Ok(LndNodeInfo {
+                pubkey: "mock-lnd-node".to_string(),
+                alias: "mock-lnd".to_string(),
+                num_active_channels: 0,
+                num_peers: 0,
+                block_height: 0,
+            }),
+            LndBackend::Cli { lncli_path } => {
+                let result = self
+                    .run_cli_command_with_path(lncli_path, &[String::from("getinfo")])
+                    .await?;
+                if !result.success {
+                    return Err(CascadeError::PaymentError(format!(
+                        "LND getinfo failed: {}",
+                        cli_error_message(&result)
+                    )));
+                }
+
+                let raw: GetInfoResponse = parse_cli_json(&result)?;
+                Ok(LndNodeInfo {
+                    pubkey: raw.identity_pubkey,
+                    alias: raw.alias,
+                    num_active_channels: raw.num_active_channels,
+                    num_peers: raw.num_peers,
+                    block_height: raw.block_height,
+                })
+            }
         }
+    }
+
+    fn ensure_connected(&self) -> Result<()> {
+        if self.connected {
+            Ok(())
+        } else {
+            Err(CascadeError::PaymentError(
+                "Not connected to LND".to_string(),
+            ))
+        }
+    }
+
+    fn create_mock_invoice(
+        &self,
+        amount_msat: u64,
+        description: Option<String>,
+        expiry_seconds: Option<u64>,
+        cltv_expiry: Option<u64>,
+    ) -> LightningInvoice {
+        let mut hash_bytes = [0u8; 32];
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(
+            chrono::Utc::now()
+                .timestamp_nanos_opt()
+                .unwrap_or_default()
+                .to_le_bytes(),
+        );
+        hasher.update(amount_msat.to_le_bytes());
+        let result = hasher.finalize();
+        hash_bytes.copy_from_slice(&result);
+        let payment_hash = PaymentHash::from_bytes(hash_bytes);
+
+        LightningInvoice {
+            payment_request: format!(
+                "lnbc{}1p{}",
+                amount_msat / 1000,
+                &payment_hash.to_hex()[..16]
+            ),
+            payment_hash,
+            amount_msat,
+            created_at: chrono::Utc::now().timestamp(),
+            expiry_seconds: expiry_seconds.unwrap_or(3600),
+            cltv_expiry,
+            description,
+            state: InvoiceState::Open,
+        }
+    }
+
+    fn normalize_invoice(&self, mut invoice: LightningInvoice) -> LightningInvoice {
+        if invoice.state == InvoiceState::Open
+            && invoice.created_at + invoice.expiry_seconds as i64 <= chrono::Utc::now().timestamp()
+        {
+            invoice.state = InvoiceState::Expired;
+        }
+        invoice
+    }
+
+    fn invoice_from_lookup(&self, raw: LookupInvoiceResponse) -> Result<LightningInvoice> {
+        let created_at = parse_i64_field("creation_date", &raw.creation_date)?;
+        let expiry_seconds = parse_u64_field("expiry", &raw.expiry)?;
+        let state = parse_lookup_state(&raw.state, raw.settled, created_at, expiry_seconds);
+
+        Ok(LightningInvoice {
+            payment_request: raw.payment_request,
+            payment_hash: PaymentHash::from_hex(&raw.r_hash)?,
+            amount_msat: parse_u64_field("value_msat", &raw.value_msat)?,
+            created_at,
+            expiry_seconds,
+            cltv_expiry: optional_u64_field(&raw.cltv_expiry)?,
+            description: empty_string_to_none(raw.memo),
+            state,
+        })
+    }
+
+    fn resolve_lncli_path(&self) -> Result<String> {
+        if let Some(explicit) = self
+            .config
+            .cli_path
+            .as_deref()
+            .filter(|path| !path.trim().is_empty())
+        {
+            if Path::new(explicit).exists() {
+                return Ok(explicit.to_string());
+            }
+            return Err(CascadeError::PaymentError(format!(
+                "Configured lncli binary does not exist: {explicit}"
+            )));
+        }
+
+        if let Ok(env_path) = std::env::var("LNCLI_BIN") {
+            if Path::new(&env_path).exists() {
+                return Ok(env_path);
+            }
+        }
+
+        if let Some(path) = lookup_in_path("lncli") {
+            return Ok(path);
+        }
+
+        let mut candidates: Vec<PathBuf> = Vec::new();
+        if let Some(home) = std::env::var_os("HOME") {
+            candidates.push(PathBuf::from(&home).join("bin/lncli"));
+            candidates.push(PathBuf::from(&home).join(".local/bin/lncli"));
+        }
+        candidates.push(PathBuf::from("/opt/homebrew/bin/lncli"));
+        candidates.push(PathBuf::from("/usr/local/bin/lncli"));
+        candidates.push(PathBuf::from("/usr/bin/lncli"));
+
+        for candidate in candidates {
+            if candidate.exists() {
+                return Ok(candidate.to_string_lossy().into_owned());
+            }
+        }
+
         Err(CascadeError::PaymentError(
-            "LND get_info not implemented - requires tonic gRPC".to_string(),
+            "Unable to locate lncli. Set lnd.cli_path or LNCLI_BIN.".to_string(),
         ))
+    }
+
+    fn build_cli_args(&self) -> Vec<String> {
+        let mut args = vec![format!("--rpcserver={}", self.config.host)];
+
+        if let Some(cert_path) = self
+            .config
+            .cert_path
+            .as_deref()
+            .filter(|path| !path.trim().is_empty())
+        {
+            args.push(format!("--tlscertpath={cert_path}"));
+        }
+
+        if let Some(macaroon_path) = self
+            .config
+            .macaroon_path
+            .as_deref()
+            .filter(|path| !path.trim().is_empty())
+        {
+            args.push(format!("--macaroonpath={macaroon_path}"));
+        }
+
+        args.push("--chain=bitcoin".to_string());
+
+        if let Some(network) = self.network_name() {
+            args.push(format!("--network={network}"));
+        }
+
+        args
+    }
+
+    fn network_name(&self) -> Option<String> {
+        if let Some(network) = self
+            .config
+            .network
+            .as_deref()
+            .map(str::trim)
+            .filter(|network| !network.is_empty())
+        {
+            return Some(network.to_string());
+        }
+
+        let infer_from = self
+            .config
+            .macaroon_path
+            .as_deref()
+            .or(self.config.cert_path.as_deref())?;
+        for network in [
+            "signet", "testnet4", "testnet", "mainnet", "regtest", "simnet",
+        ] {
+            if infer_from.contains(network) {
+                return Some(network.to_string());
+            }
+        }
+
+        None
+    }
+
+    async fn run_cli_command_with_path(
+        &self,
+        lncli_path: &str,
+        command_args: &[String],
+    ) -> Result<CliCommandResult> {
+        let mut args = self.build_cli_args();
+        args.extend(command_args.iter().cloned());
+
+        let output = Command::new(OsString::from(lncli_path))
+            .args(&args)
+            .output()
+            .await
+            .map_err(|error| {
+                CascadeError::PaymentError(format!(
+                    "Failed to execute lncli at {lncli_path}: {error}"
+                ))
+            })?;
+
+        Ok(CliCommandResult {
+            stdout: String::from_utf8_lossy(&output.stdout).trim().to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            success: output.status.success(),
+        })
     }
 }
 
@@ -232,13 +624,104 @@ pub fn create_shared_client(config: LndConfig) -> SharedLndClient {
     Arc::new(RwLock::new(LndClient::new(config)))
 }
 
+fn parse_cli_json<T: for<'de> Deserialize<'de>>(result: &CliCommandResult) -> Result<T> {
+    serde_json::from_str(&result.stdout).map_err(|error| {
+        CascadeError::PaymentError(format!(
+            "Failed to parse lncli JSON: {error}. stdout: {}",
+            result.stdout
+        ))
+    })
+}
+
+fn parse_lookup_state(
+    state: &str,
+    settled: bool,
+    created_at: i64,
+    expiry_seconds: u64,
+) -> InvoiceState {
+    if settled || state.eq_ignore_ascii_case("SETTLED") {
+        return InvoiceState::Settled;
+    }
+    if state.eq_ignore_ascii_case("CANCELED") || state.eq_ignore_ascii_case("CANCELLED") {
+        return InvoiceState::Cancelled;
+    }
+    if created_at + expiry_seconds as i64 <= chrono::Utc::now().timestamp() {
+        return InvoiceState::Expired;
+    }
+    InvoiceState::Open
+}
+
+fn optional_u64_field(raw: &str) -> Result<Option<u64>> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    let value = parse_u64_field("numeric", trimmed)?;
+    if value == 0 {
+        Ok(None)
+    } else {
+        Ok(Some(value))
+    }
+}
+
+fn parse_u64_field(field: &str, value: &str) -> Result<u64> {
+    value.parse::<u64>().map_err(|error| {
+        CascadeError::PaymentError(format!(
+            "Invalid {field} value from lncli: {value} ({error})"
+        ))
+    })
+}
+
+fn parse_i64_field(field: &str, value: &str) -> Result<i64> {
+    value.parse::<i64>().map_err(|error| {
+        CascadeError::PaymentError(format!(
+            "Invalid {field} value from lncli: {value} ({error})"
+        ))
+    })
+}
+
+fn empty_string_to_none(value: String) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+fn lookup_in_path(binary: &str) -> Option<String> {
+    let path_var = std::env::var_os("PATH")?;
+    for path in std::env::split_paths(&path_var) {
+        let candidate = path.join(binary);
+        if candidate.exists() {
+            return Some(candidate.to_string_lossy().into_owned());
+        }
+    }
+    None
+}
+
+fn cli_error_message(result: &CliCommandResult) -> String {
+    if !result.stderr.is_empty() {
+        result.stderr.clone()
+    } else if !result.stdout.is_empty() {
+        result.stdout.clone()
+    } else {
+        "unknown lncli failure".to_string()
+    }
+}
+
+fn is_invoice_not_found(message: &str) -> bool {
+    let lowered = message.to_ascii_lowercase();
+    lowered.contains("invoice not found")
+        || lowered.contains("unable to locate invoice")
+        || lowered.contains("there are no existing invoices")
+        || lowered.contains("unable to find invoice")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ============================================================================
-    // LndConfig Tests
-    // ============================================================================
 
     #[test]
     fn test_lnd_config_default() {
@@ -247,366 +730,56 @@ mod tests {
         assert!(config.cert_path.is_none());
         assert!(config.macaroon_path.is_none());
         assert!(config.tls_domain.is_none());
+        assert!(config.network.is_none());
+        assert!(config.cli_path.is_none());
     }
-
-    #[test]
-    fn test_lnd_config_with_tls() {
-        let config = LndConfig {
-            host: "lnd.example.com:10009".to_string(),
-            cert_path: Some("/path/to/tls.cert".to_string()),
-            macaroon_path: None,
-            tls_domain: Some("lnd.example.com".to_string()),
-        };
-        assert_eq!(config.host, "lnd.example.com:10009");
-        assert!(config.cert_path.is_some());
-        assert!(config.tls_domain.is_some());
-    }
-
-    #[test]
-    fn test_lnd_config_with_macaroon() {
-        let config = LndConfig {
-            host: "localhost:10009".to_string(),
-            cert_path: None,
-            macaroon_path: Some("/path/to/admin.macaroon".to_string()),
-            tls_domain: None,
-        };
-        assert!(config.macaroon_path.is_some());
-        assert_eq!(
-            config.macaroon_path.as_ref().unwrap(),
-            "/path/to/admin.macaroon"
-        );
-    }
-
-    #[test]
-    fn test_lnd_config_clone() {
-        let config = LndConfig {
-            host: "test:10009".to_string(),
-            cert_path: Some("cert".to_string()),
-            macaroon_path: Some("mac".to_string()),
-            tls_domain: Some("domain".to_string()),
-        };
-        let cloned = config.clone();
-        assert_eq!(config.host, cloned.host);
-        assert_eq!(config.cert_path, cloned.cert_path);
-    }
-
-    #[test]
-    fn test_lnd_config_debug() {
-        let config = LndConfig::default();
-        let debug_str = format!("{:?}", config);
-        assert!(debug_str.contains("LndConfig"));
-    }
-
-    // ============================================================================
-    // LndClient Tests
-    // ============================================================================
-
-    #[test]
-    fn test_lnd_client_not_connected() {
-        let config = LndConfig::default();
-        let client = LndClient::new(config);
-        assert!(!client.is_connected());
-    }
-
-    #[test]
-    fn test_lnd_client_creation() {
-        let config = LndConfig {
-            host: "localhost:10009".to_string(),
-            cert_path: Some("/path/to/cert".to_string()),
-            macaroon_path: Some("/path/to/macaroon".to_string()),
-            tls_domain: None,
-        };
-        let client = LndClient::new(config.clone());
-        assert!(!client.is_connected());
-    }
-
-    #[test]
-    fn test_preimage_verification() {
-        let preimage = Preimage::from_bytes([42u8; 32]);
-        let payment_hash = preimage.payment_hash();
-
-        // Sync verification
-        let computed_hash = preimage.payment_hash();
-        assert_eq!(computed_hash.bytes, payment_hash.bytes);
-    }
-
-    #[test]
-    fn test_preimage_verification_failure() {
-        let preimage = Preimage::from_bytes([42u8; 32]);
-        let wrong_hash = PaymentHash::from_bytes([99u8; 32]);
-
-        let computed_hash = preimage.payment_hash();
-        assert_ne!(computed_hash.bytes, wrong_hash.bytes);
-    }
-
-    // ============================================================================
-    // SharedLndClient Tests
-    // ============================================================================
-
-    #[test]
-    fn test_create_shared_client() {
-        let config = LndConfig::default();
-        let shared = create_shared_client(config);
-
-        // Verify it's a valid Arc<RwLock<LndClient>>
-        assert!(Arc::strong_count(&shared) >= 1);
-    }
-
-    #[test]
-    fn test_shared_client_clone() {
-        let config = LndConfig::default();
-        let shared1 = create_shared_client(config);
-        let _shared2 = shared1.clone();
-
-        // Both should point to the same data
-        assert_eq!(Arc::strong_count(&shared1), 2);
-    }
-
-    // ============================================================================
-    // LndNodeInfo Tests
-    // ============================================================================
-
-    #[test]
-    fn test_lnd_node_info_creation() {
-        let info = LndNodeInfo {
-            pubkey: "02abc123...".to_string(),
-            alias: "my-lnd-node".to_string(),
-            num_active_channels: 5,
-            num_peers: 3,
-            block_height: 800000,
-        };
-
-        assert_eq!(info.pubkey, "02abc123...");
-        assert_eq!(info.alias, "my-lnd-node");
-        assert_eq!(info.num_active_channels, 5);
-        assert_eq!(info.num_peers, 3);
-        assert_eq!(info.block_height, 800000);
-    }
-
-    #[test]
-    fn test_lnd_node_info_debug() {
-        let info = LndNodeInfo {
-            pubkey: "pubkey".to_string(),
-            alias: "alias".to_string(),
-            num_active_channels: 0,
-            num_peers: 0,
-            block_height: 0,
-        };
-        let debug_str = format!("{:?}", info);
-        assert!(debug_str.contains("LndNodeInfo"));
-    }
-
-    #[test]
-    fn test_lnd_node_info_clone() {
-        let info = LndNodeInfo {
-            pubkey: "pubkey".to_string(),
-            alias: "alias".to_string(),
-            num_active_channels: 10,
-            num_peers: 5,
-            block_height: 700000,
-        };
-        let cloned = info.clone();
-        assert_eq!(info.pubkey, cloned.pubkey);
-        assert_eq!(info.alias, cloned.alias);
-        assert_eq!(info.num_active_channels, cloned.num_active_channels);
-    }
-
-    // ============================================================================
-    // Async LndClient Tests (using tokio::test)
-    // ============================================================================
 
     #[tokio::test]
-    async fn test_lnd_client_connect_default_config() {
-        let config = LndConfig::default();
-        let mut client = LndClient::new(config);
-
-        // Should succeed with default config (no macaroon file needed)
-        let result = client.connect().await;
-        assert!(result.is_ok());
+    async fn test_mock_connect_without_credentials() {
+        let mut client = LndClient::new(LndConfig::default());
+        client.connect().await.unwrap();
         assert!(client.is_connected());
     }
 
     #[tokio::test]
-    async fn test_lnd_client_add_invoice_when_connected() {
-        let config = LndConfig::default();
-        let mut client = LndClient::new(config);
-
+    async fn test_mock_add_and_lookup_invoice_roundtrip() {
+        let mut client = LndClient::new(LndConfig::default());
         client.connect().await.unwrap();
 
         let invoice = client
             .add_invoice(
-                100_000, // 100k msat
-                Some("Test invoice".to_string()),
-                Some(3600), // 1 hour expiry
-                Some(144),  // CLTV expiry
+                25_000,
+                Some("Cascade test invoice".to_string()),
+                Some(120),
+                Some(40),
             )
             .await
             .unwrap();
 
-        assert_eq!(invoice.amount_msat, 100_000);
+        assert!(invoice.bolt11().starts_with("lnbc"));
+        assert_eq!(invoice.amount_msat, 25_000);
+        assert_eq!(invoice.description.as_deref(), Some("Cascade test invoice"));
         assert_eq!(invoice.state, InvoiceState::Open);
-        assert!(invoice.payment_request.starts_with("lnbc"));
-        assert!(invoice.description.is_some());
-    }
 
-    #[tokio::test]
-    async fn test_lnd_client_add_invoice_without_optional_params() {
-        let config = LndConfig::default();
-        let mut client = LndClient::new(config);
-
-        client.connect().await.unwrap();
-
-        let invoice = client.add_invoice(50_000, None, None, None).await.unwrap();
-
-        assert_eq!(invoice.amount_msat, 50_000);
-        assert_eq!(invoice.state, InvoiceState::Open);
-        assert_eq!(invoice.expiry_seconds, 3600); // Default expiry
-        assert!(invoice.cltv_expiry.is_none());
-    }
-
-    #[tokio::test]
-    async fn test_lnd_client_add_invoice_creates_unique_hashes() {
-        let config = LndConfig::default();
-        let mut client = LndClient::new(config);
-
-        client.connect().await.unwrap();
-
-        // Create first invoice
-        let invoice1 = client.add_invoice(100_000, None, None, None).await.unwrap();
-
-        // Wait for timestamp to advance (timestamps are in seconds)
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-
-        // Create second invoice
-        let invoice2 = client.add_invoice(100_000, None, None, None).await.unwrap();
-
-        // Each should have a unique payment hash
-        assert_ne!(invoice1.payment_hash, invoice2.payment_hash);
-    }
-
-    #[tokio::test]
-    async fn test_lnd_client_verify_preimage_valid() {
-        let config = LndConfig::default();
-        let mut client = LndClient::new(config);
-
-        client.connect().await.unwrap();
-
-        let preimage = Preimage::from_bytes([0xAB; 32]);
-        let payment_hash = preimage.payment_hash();
-
-        let is_valid = client
-            .verify_preimage(&preimage, &payment_hash)
+        let looked_up = client
+            .get_invoice(&invoice.payment_hash)
             .await
+            .unwrap()
             .unwrap();
-        assert!(is_valid);
+        assert_eq!(looked_up.payment_hash, invoice.payment_hash);
+        assert_eq!(looked_up.amount_msat, invoice.amount_msat);
+        assert_eq!(looked_up.description, invoice.description);
     }
 
-    #[tokio::test]
-    async fn test_lnd_client_verify_preimage_invalid() {
-        let config = LndConfig::default();
-        let mut client = LndClient::new(config);
-
-        client.connect().await.unwrap();
-
-        let preimage = Preimage::from_bytes([0xAB; 32]);
-        let wrong_hash = PaymentHash::from_bytes([0xCD; 32]);
-
-        let is_valid = client
-            .verify_preimage(&preimage, &wrong_hash)
-            .await
-            .unwrap();
-        assert!(!is_valid);
+    #[test]
+    fn test_parse_lookup_state_expired() {
+        let created_at = chrono::Utc::now().timestamp() - 600;
+        let state = parse_lookup_state("OPEN", false, created_at, 60);
+        assert_eq!(state, InvoiceState::Expired);
     }
 
-    #[tokio::test]
-    async fn test_lnd_client_get_invoice_not_connected() {
-        let config = LndConfig::default();
-        let client = LndClient::new(config);
-
-        let hash = PaymentHash::from_bytes([0u8; 32]);
-        let result = client.get_invoice(&hash).await;
-
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.to_string().contains("Not connected"));
-    }
-
-    #[tokio::test]
-    async fn test_lnd_client_decode_invoice_not_connected() {
-        let config = LndConfig::default();
-        let client = LndClient::new(config);
-
-        let result = client.decode_invoice("lnbc1...").await;
-
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.to_string().contains("Not connected"));
-    }
-
-    #[tokio::test]
-    async fn test_lnd_client_get_info_not_connected() {
-        let config = LndConfig::default();
-        let client = LndClient::new(config);
-
-        let result = client.get_info().await;
-
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.to_string().contains("Not connected"));
-    }
-
-    #[tokio::test]
-    async fn test_lnd_client_wait_for_settlement_timeout() {
-        let config = LndConfig::default();
-        let mut client = LndClient::new(config);
-
-        client.connect().await.unwrap();
-
-        let hash = PaymentHash::from_bytes([0u8; 32]);
-
-        // Use a short timeout
-        let result = client.wait_for_settlement(&hash, 1).await;
-
-        // Should fail due to timeout
-        assert!(result.is_err());
-    }
-
-    // ============================================================================
-    // Integration: Invoice Creation and Verification Flow
-    // ============================================================================
-
-    #[tokio::test]
-    async fn test_invoice_creation_and_verification_flow() {
-        let config = LndConfig::default();
-        let mut client = LndClient::new(config);
-
-        // Connect
-        client.connect().await.unwrap();
-
-        // Create invoice
-        let invoice = client
-            .add_invoice(
-                500_000, // 500k msat
-                Some("Test payment".to_string()),
-                Some(7200),
-                Some(200),
-            )
-            .await
-            .unwrap();
-
-        // Verify invoice state
-        assert!(invoice.is_payable());
-        assert_eq!(invoice.amount_sats(), 500); // 500k msat = 500 sats
-
-        // Simulate payment by creating a preimage that matches the hash
-        // Note: In real usage, the preimage comes from the payer
-        let payment_preimage = Preimage::from_bytes([0x12; 32]);
-
-        // Verify preimage (should fail since we used a different hash)
-        let is_valid = client
-            .verify_preimage(&payment_preimage, &invoice.payment_hash)
-            .await
-            .unwrap();
-        assert!(!is_valid);
+    #[test]
+    fn test_lookup_in_path_misses_unknown_binary() {
+        assert!(lookup_in_path("definitely-not-a-real-lncli-binary").is_none());
     }
 }

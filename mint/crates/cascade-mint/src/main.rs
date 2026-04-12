@@ -178,6 +178,8 @@ async fn main() -> Result<()> {
         cert_path: Some(config.lnd.cert_path.clone()),
         macaroon_path: Some(config.lnd.macaroon_path.clone()),
         tls_domain: None,
+        network: Some(config.network.network_type.clone()),
+        cli_path: config.lnd.cli_path.clone(),
     };
 
     // 13. Build HTTP server (CDK standard + Cascade custom routes)

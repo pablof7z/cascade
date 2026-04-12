@@ -194,6 +194,16 @@
       await reconcilePendingTopups();
     })();
   });
+
+  $effect(() => {
+    if (!browser || !currentUser) return;
+
+    const interval = window.setInterval(() => {
+      void reconcilePendingTopups();
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  });
 </script>
 
 <section class="wallet-page">
@@ -244,7 +254,7 @@
       <div class="panel-header">
         <div>
           <h2>Lightning top-up</h2>
-          <p class="muted">Create a signet Lightning invoice and complete it locally for testing.</p>
+          <p class="muted">Create a Lightning invoice. Pay it externally or complete it locally for signet testing.</p>
         </div>
       </div>
 
@@ -270,7 +280,7 @@
             <div class="history-row history-row-stack">
               <div class="history-copy">
                 <strong>{formatUsdMinor(topup.amount_minor)}</strong>
-                <p class="muted">{topup.rail} · {topup.status} · {topup.amount_msat.toLocaleString()} msat</p>
+                <p class="muted">{topup.rail} · {topup.status} · fx {topup.fx_source}</p>
                 {#if topup.invoice}
                   <code>{topup.invoice}</code>
                 {/if}
@@ -280,7 +290,7 @@
                 onclick={() => settleLightningTopup(topup.id, topup.amount_minor)}
                 type="button"
               >
-                Complete signet Lightning top-up
+                Complete locally for signet
               </button>
             </div>
           {/each}

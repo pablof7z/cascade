@@ -185,6 +185,7 @@ Typical private dependencies:
 
 - SQLite file path on local disk
 - Lightning backend on local or private network
+- local `lncli` binary plus TLS cert and admin macaroon for the configured edition
 - Stripe webhook ingress
 
 ## Smoke Checks

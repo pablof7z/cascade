@@ -236,7 +236,7 @@ test('signet wallet can fund through the Lightning top-up flow', async ({ page }
   await expect(
     page.getByText(`Recovered pending Lightning top-up for ${formatUsdMinor(2500)}.`)
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Complete signet Lightning top-up' }).click();
+  await page.getByRole('button', { name: 'Complete locally for signet' }).click();
   await expect(
     page.getByText(`Completed the signet Lightning top-up for ${formatUsdMinor(2500)}.`)
   ).toBeVisible();

@@ -163,6 +163,8 @@ The exact naming can still change during implementation, but launch needs a high
 - `POST /api/wallet/topups/lightning/quote`
 - `GET /api/wallet/topups/lightning/{quote_id}`
 
+Lightning top-up status reads should be settlement-aware. `GET /api/wallet/topups/{topup_id}` and `GET /api/wallet/topups/lightning/{quote_id}` are allowed to reconcile the persisted quote against the underlying invoice state before responding, so a paid invoice can complete on a later status poll or wallet refresh without a separate bespoke callback from the client.
+
 ### Trading
 
 - `POST /api/trades/quote`

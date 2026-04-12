@@ -9,15 +9,15 @@
 
 ## Overview
 
-This document specifies kind `983`, a non-replaceable Nostr event that records a single trade on a prediction market. Trade events are published exclusively by the prediction market mint using its own keypair. They are anonymous by design — no trader pubkey is included.
+This document specifies kind `983`, a non-replaceable Nostr event that records a single trade on a prediction market. Trade events are published exclusively by the prediction market mint using its own keypair. They may optionally include a `p` tag when the trade request was authenticated with NIP-98.
 
 ---
 
 ## Motivation
 
-Prediction markets built on Cashu ecash mints face a structural design challenge: the mint can prove that a trade occurred (it issued or redeemed tokens) without revealing who held those tokens. This property is valuable. It enables a public, auditable trade history — useful for market activity feeds, volume metrics, and price discovery — while preserving the privacy guarantees of the underlying Cashu protocol.
+Prediction markets built on Cashu ecash mints face a structural design challenge: the mint can prove that a trade occurred without revealing who held those tokens. This property is valuable. It enables a public, auditable trade history — useful for market activity feeds, volume metrics, and price discovery — while preserving the privacy guarantees of the underlying Cashu protocol.
 
-Traditional prediction market designs leak trader identity at the protocol layer. By having the **mint** publish trade events signed with its own keypair, and deliberately omitting any trader pubkey, kind 983 makes trader anonymity a first-class protocol property rather than an afterthought.
+Traditional prediction market designs leak trader identity at the protocol layer. By having the **mint** publish trade events signed with its own keypair, and treating public user attribution as optional request-level metadata, kind 983 keeps mint authority separate from optional identity disclosure.
 
 Clients and relays can verify that a trade event is authentic by checking the `pubkey` against a known mint identity. Fake trade events from third parties are trivially detectable and can be ignored.
 
@@ -33,10 +33,11 @@ pubkey: <mint's pubkey, hex>
 content: ""
 tags:
   ["e",         "<kind-982-market-event-id>",  "<relay-url-optional>"]
-  ["amount",    "<integer — quantity of tokens in base units>"]
-  ["unit",      "<currency unit — e.g. 'sat'>"]
+  ["p",         "<nostr-pubkey-optional>"]
+  ["amount",    "<integer — product-facing trade notional in base units>"]
+  ["unit",      "<currency unit — e.g. 'usd'>"]
   ["direction", "yes" | "no"]
-  ["type",      "issue" | "redeem"]
+  ["type",      "buy" | "sell"]
   ["price",     "<integer — average price in millionths (ppm)>"]
 ```
 
@@ -50,11 +51,12 @@ References the kind `982` event that defines the market this trade belongs to.
 - A relay URL MAY be included as the second element
 - Exactly one `e` tag MUST be present
 
-#### `amount` — Token Quantity
+#### `amount` — Product-Facing Trade Notional
 
-The number of outcome tokens involved in this trade, expressed as a positive integer in the smallest indivisible unit of the market's currency (base units).
+The product-facing notional value involved in this trade, expressed as a positive integer in the smallest indivisible unit of the declared currency.
 
-- For satoshi-denominated markets: amount is in satoshis
+- For Cascade launch, `unit=usd` and the amount is stored in USD minor units
+- This is the user-facing notional amount, not the raw Lightning settlement amount
 - MUST be a positive integer greater than zero
 - MUST NOT be zero or negative
 
@@ -63,6 +65,7 @@ The number of outcome tokens involved in this trade, expressed as a positive int
 The currency denomination of `amount`. Follows Cashu unit conventions.
 
 - Common values: `sat`, `msat`, `usd`
+- For launch, Cascade emits `usd` for the product-facing notional amount
 - Clients SHOULD reject events with unknown units unless they can infer meaning from context
 
 #### `direction` — Side of the Market
@@ -78,8 +81,8 @@ Which outcome the tokens represent.
 
 Whether this trade expanded or contracted the market's outstanding token supply.
 
-- `issue`: tokens were minted (trader bought into a position; market cap expands)
-- `redeem`: tokens were burned (trader exited a position; market cap contracts)
+- `buy`: tokens were minted (trader bought into a position; market cap expands)
+- `sell`: tokens were burned (trader exited a position; market cap contracts)
 
 #### `price` — Average Price
 
@@ -96,20 +99,21 @@ Prediction market probabilities range from 0 to 1. Representing this as basis po
 | 0.1%        | 10          | 1,000           |
 | 99.9%       | 9,990       | 999,000         |
 
-A price of `500000` means 0.5 sat per token at a 50% implied probability on a sat-denominated market.
+A price of `500000` means a 50% implied probability.
 
 - MUST be a positive integer in range `[1, 999999]`
 - Represents the **average** price across the trade (relevant for large trades that walk the LMSR curve)
-- Does NOT include fees
+- Captures price only
 
-### No Trader Identity
+### Optional Request-Signer Attribution
 
-Kind 983 events intentionally contain **no `p` tag**. The trader's Nostr pubkey is never included. This is a deliberate protocol choice:
+Kind 983 events are always authored by the mint. They MAY additionally contain an optional `p` tag when the trade request was authenticated with NIP-98.
 
-- Cashu ecash is bearer-instrument anonymous — the mint does not know who holds which tokens
-- Publishing a `p` tag would require the trader to identify themselves to the mint, eliminating the privacy benefit
-- Clients and analytics MUST NOT attempt to correlate trade events with user identities through out-of-band means
-- Future NIPs MAY define opt-in mechanisms for traders to voluntarily self-attribute trades
+- If present, `p` is the Nostr pubkey that signed the HTTP request which executed the trade
+- If absent, the trade is intentionally anonymous
+- `p` does not claim permanent ownership of the proofs involved in the trade
+- `p` does not survive later bearer-proof swaps
+- Clients MUST NOT interpret `p` as a proof-level ownership lock
 
 ### Mint Authentication
 
@@ -129,10 +133,11 @@ Events purporting to be kind 983 from unknown pubkeys SHOULD be ignored or clear
   "kind": 983,
   "tags": [
     ["e", "5c83da77af1dec6d7289834998ad7aafbd9e2191396d75ec3cc27f5a77226f36"],
+    ["p", "63fe6318dc58583cfe16810f86dd09e18bfd76aabc24a0081ce2856f330504ed"],
     ["amount", "1000"],
-    ["unit", "sat"],
+    ["unit", "usd"],
     ["direction", "yes"],
-    ["type", "issue"],
+    ["type", "buy"],
     ["price", "623000"]
   ],
   "content": "",
@@ -140,7 +145,7 @@ Events purporting to be kind 983 from unknown pubkeys SHOULD be ignored or clear
 }
 ```
 
-**Reading this event:** The Cascade mint (`9d2b4e...`) records that 1,000 satoshis of `yes` tokens were **issued** on market `5c83da...` at an average price of 623,000 ppm (≈ 62.3% implied probability).
+**Reading this event:** The Cascade mint (`9d2b4e...`) records that `$10.00` notional of `yes` exposure was **bought** on market `5c83da...` at an average price of 623,000 ppm (≈ 62.3% implied probability). The optional `p` tag says which Nostr pubkey authenticated the HTTP request for this trade.
 
 ---
 
@@ -191,7 +196,7 @@ The `direction` tag is indexed (single-letter tags are indexed by relays per NIP
 
 ### Volume computation
 
-Clients wishing to compute total traded volume SHOULD subscribe to all kind 983 events for a market, accumulate `amount` values, and distinguish `issue` vs `redeem` to compute net open interest separately from gross volume.
+Clients wishing to compute total traded volume SHOULD subscribe to all kind 983 events for a market, accumulate `amount` values, and distinguish `buy` vs `sell` to compute net open interest separately from gross volume.
 
 ---
 
@@ -208,14 +213,14 @@ A Cashu prediction market mint issues tokens using different keysets per outcome
 ### Auditability
 
 Because kind 983 events are non-replaceable and signed by the mint's keypair, they form a tamper-evident public audit log of all market activity. Anyone can verify:
-- Total tokens issued per outcome (sum of `amount` where `type=issue` and `direction=yes/no`)
-- Net outstanding supply (issued minus redeemed)
+- Total tokens bought per outcome (sum of `amount` where `type=buy` and `direction=yes/no`)
+- Net outstanding supply (bought minus sold)
 - Price history over time
 - That the mint is not creating unbacked tokens (if token supply is cross-referenced against Lightning invoices)
 
 ### Fees
 
-The `price` field reflects the **pre-fee** marginal cost from the LMSR pricing function. Fee structures are mint-specific and out of scope for this specification. Mints MAY add a separate `fee` tag in future revisions; for now, `price` is the base market price only.
+The `price` field reflects the marginal cost from the LMSR pricing function. Pricing policy details are out of scope for this specification.
 
 ### Multi-outcome markets
 

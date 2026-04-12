@@ -36,6 +36,14 @@ Deploy to Vercel at `cascade.f7z.io`. Auto-deploys on push to main. If it's not 
 - Production must be public — no auth required to view.
 - Repo: `git@github.com:pablof7z/cascade.git`
 
+### Separate Signet And Mainnet Editions
+
+Cascade needs a paper-trading edition and a real-money edition.
+
+- Mainnet and signet must run as separate app + mint deployments.
+- Proofs, reserves, databases, Nostr publishing identities, relay projections, and payment rails must not mix between editions.
+- The paper-trading edition exists so humans, agents, and the owner can exercise the full flow without mainnet funds.
+
 ### Svelte — React Is Gone
 
 Complete migration from React to Svelte 5 + SvelteKit. No React in new code. No exceptions.
@@ -80,9 +88,79 @@ NUT-05 melt for withdrawals. Users provide their own BOLT11 invoice.
 
 1% flat fee on every trade (buy and sell). Fee stays in the mint as liquidity and treasury.
 
+### USD Base Unit, Not Sats
+
+The user-facing wallet and trading unit is USD.
+
+- The wallet mint issues USD-denominated ecash.
+- Application and product APIs represent USD in integer minor units.
+- Normal product UX does not expose sats or msats.
+
+> "the base unit of the mint should be usd"
+> "i don't want to tell users about 'sats' -- the target audience is not bitcoiners"
+
+### Launch Wallet Funding Rails
+
+Launch wallet funding happens at the USD wallet-mint boundary.
+
+- Stripe is the canonical card rail.
+- Lightning is also a launch funding rail.
+- A successful Stripe payment or Lightning payment credits the user with USD ecash.
+- Off-platform bank payout is not required for launch.
+
+> "let's use a stripe gateway"
+
+### Market Visibility Requires Funding
+
+The signed kind `982` event is not enough for public market discovery on its own.
+
+- The creator can publish kind `982` immediately.
+- The creator can see that market in a pending state before funding succeeds.
+- Other users should not see that market in normal discovery surfaces until the mint has published at least one kind `983` that `e`-tags the market.
+- The first mint-authored kind `983` is the public visibility threshold.
+
+### Lightning Is The Rail, Not The UX
+
+Cross-mint settlement uses Lightning as hidden infrastructure, but users should experience the product as dollar-denominated wallet funding and dollar-denominated trading.
+
+- The wallet mint can melt USD value into Lightning invoices.
+- The market mint can mint LONG or SHORT tokens when those invoices are paid.
+- The normal product contract is "spend dollars on YES/NO", not "pay a Lightning invoice".
+
+### Dual Quote Model
+
+The canonical launch architecture uses two executable quote layers.
+
+- `USD <-> msat` comes from the wallet-mint FX boundary.
+- `LONG/SHORT <-> msat` comes from the market mint's LMSR engine for a specific trade size.
+- The product layer composes those quotes and hides the choreography from the user.
+- We do not introduce a bespoke public cross-unit swap primitive for launch.
+
+### FX Policy
+
+The `USD <-> msat` quote layer should be modular and source data from multiple major providers.
+
+- The implementation should support multiple provider adapters behind one quote-source interface.
+- Launch can use an obvious weighted or averaged policy across large providers.
+- Executable quote snapshots must persist the contributing provider data, the final rate, the spread, and expiry.
+
+The product should execute against locked quotes, not loose spot tickers.
+
+### Stripe Risk Controls
+
+Freshly card-funded USD value needs temporary restrictions.
+
+- Stripe risk signals should feed a wallet-risk policy layer.
+- Higher-risk top-ups should have tighter temporary limits on what can be purchased or exported.
+- Low-risk top-ups can graduate to normal behavior faster.
+- The precise scoring model can evolve, but launch must have an explicit temporary-limits policy.
+
 ### Mint URL Routing
 
 The mint uses URL path segmentation for market identification. Not Nostr relay routing.
+
+- Market-scoped key discovery uses the kind `982` event id in the path.
+- Canonical example: `GET /{event_id}/v1/keys`
 
 ---
 
@@ -94,6 +172,14 @@ Market creator must provide initial liquidity. Cannot launch a $0 market. Initia
 
 > "the person that creates the market must seed the initial funding (that's their initial position, right?)"
 > "you shouldn't be able to launch it since otherwise it would start with a market cap of $0"
+
+### Seed Amount Means Total Spend
+
+When the builder asks for an initial seed amount in USD, that number should mean total user spend for the launch action.
+
+- The creator enters one dollar amount.
+- Fees are included inside that amount, not added afterward as a surprise.
+- Quote and execution flows should preserve this semantics for both normal buys and create-and-seed flows.
 
 ### No Mock Data
 
@@ -117,7 +203,7 @@ Data streams in via Nostr subscriptions as events arrive. Render what you have. 
 
 > "Loading spinners on nostr applications should never exist. Nostr is event based! Show the data as it streams in: not a fucking spinner. No loading states!!!"
 
-**Legacy note:** `src/lib/components/ui/Skeleton.svelte` exists in the codebase as legacy code. Any existing usage of skeleton loaders is tech debt that should be eliminated — do not add new usages.
+**Legacy note:** Skeleton-loader code may still exist in legacy frontend files. Any existing usage is tech debt that should be eliminated — do not add new usages.
 
 ### No Blue Tint — Neutral Colors Only
 
@@ -139,6 +225,14 @@ No npub, nsec, relay URLs, or "Nostr" on any user-facing surface. nsec is stored
 
 **Legacy note:** Some Nostr terminology may still appear in current UI code as legacy. Remove it when encountered — do not treat existing occurrences as precedent.
 
+### No Sats In Normal Product UI
+
+The normal human product surface is dollar-denominated.
+
+- Show balances, trade sizes, fills, and PnL in USD.
+- Do not make the user think about sats, msats, or Lightning invoices.
+- If Lightning is used internally, it stays behind the product boundary.
+
 ### No Gradients, No Rounded Pills, No Emojis in UI Chrome
 
 All three are explicitly forbidden.
@@ -151,11 +245,11 @@ No pill tabs, no background-fill tabs. Underline only.
 
 ## 5. Data & Events
 
-### Kind 984 — NOT APPLICABLE
+### Markets Never Close
 
-Kind 984 "resolution events" are not part of Cascade's model. Markets have no oracle, no resolution authority, and no close mechanism. There is no winner declaration, no losing-side payout, and no formal settlement. Withdrawal value is continuous and determined solely by the LMSR price at time of withdrawal.
+Cascade markets never close. There is no resolution event, oracle, or admin-driven settlement. Exit value is continuous and determined solely by the LMSR price at time of exit.
 
-> **Do not implement kind 984. Do not design features that assume markets close or resolve.**
+> **Do not design features that assume markets close.**
 
 ### No Expiry Tags
 

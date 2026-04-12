@@ -1,0 +1,444 @@
+<script lang="ts">
+  import { browser } from '$app/environment';
+  import { goto } from '$app/navigation';
+  import { NDKNip07Signer, NDKNip46Signer, NDKPrivateKeySigner } from '@nostr-dev-kit/ndk';
+  import { onDestroy } from 'svelte';
+  import * as Tabs from '$lib/components/ui/tabs';
+  import { getCascadeEdition } from '$lib/cascade/config';
+  import ExtensionLoginForm from '$lib/features/auth/ExtensionLoginForm.svelte';
+  import PrivateKeyLoginForm from '$lib/features/auth/PrivateKeyLoginForm.svelte';
+  import RemoteLoginForm from '$lib/features/auth/RemoteLoginForm.svelte';
+  import {
+    hasNostrExtension,
+    prepareRemoteSignerPairing,
+    stopNostrConnectSigner,
+    type LoginMode
+  } from '$lib/features/auth/auth';
+  import '$lib/features/auth/auth.css';
+  import { ndk } from '$lib/ndk/client';
+
+  const fallbackOrigin =
+    getCascadeEdition() === 'signet'
+      ? 'https://signet.cascade.f7z.io'
+      : 'https://cascade.f7z.io';
+
+  const skillOrigin = browser ? window.location.origin : fallbackOrigin;
+
+  let mode = $state<LoginMode>('extension');
+  let pending = $state(false);
+  let preparingRemoteSigner = $state(false);
+  let connectingBunker = $state(false);
+  let privateKey = $state('');
+  let bunkerUri = $state('');
+  let qrCodeDataUrl = $state('');
+  let nostrConnectUri = $state('');
+  let nostrConnectSigner: NDKNip46Signer | null = $state(null);
+  let error = $state('');
+
+  const currentUser = $derived(ndk.$currentUser);
+  const extensionAvailable = $derived(hasNostrExtension());
+  const remoteSignerReady = $derived(Boolean(qrCodeDataUrl && nostrConnectUri));
+
+  function clearRemoteSigner() {
+    bunkerUri = '';
+    qrCodeDataUrl = '';
+    nostrConnectUri = '';
+    connectingBunker = false;
+    stopNostrConnectSigner(nostrConnectSigner);
+    nostrConnectSigner = null;
+  }
+
+  function clearAuthState() {
+    pending = false;
+    preparingRemoteSigner = false;
+    privateKey = '';
+    error = '';
+    clearRemoteSigner();
+  }
+
+  function finishHumanEntry() {
+    clearAuthState();
+    void goto('/onboarding');
+  }
+
+  async function createAccount() {
+    if (!ndk.$sessions || pending) return;
+
+    try {
+      pending = true;
+      error = '';
+      await ndk.$sessions.login(NDKPrivateKeySigner.generate());
+      finishHumanEntry();
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : "Couldn't create an account on this device.";
+      pending = false;
+    }
+  }
+
+  async function loginWithExtension() {
+    if (!ndk.$sessions || pending || !extensionAvailable) return;
+
+    try {
+      pending = true;
+      error = '';
+      await ndk.$sessions.login(new NDKNip07Signer());
+      finishHumanEntry();
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : "Couldn't log in with the extension.";
+      pending = false;
+    }
+  }
+
+  async function loginWithPrivateKey() {
+    if (!ndk.$sessions || pending || !privateKey.trim()) return;
+
+    try {
+      pending = true;
+      error = '';
+      await ndk.$sessions.login(new NDKPrivateKeySigner(privateKey.trim()));
+      finishHumanEntry();
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : "Couldn't log in with that account key.";
+      pending = false;
+    }
+  }
+
+  async function startRemoteSigner() {
+    if (!ndk.$sessions || preparingRemoteSigner || connectingBunker) return;
+
+    try {
+      error = '';
+      clearRemoteSigner();
+      preparingRemoteSigner = true;
+
+      const pairing = await prepareRemoteSignerPairing(ndk);
+      const activeSigner = pairing.signer;
+      nostrConnectSigner = activeSigner;
+      nostrConnectUri = pairing.nostrConnectUri;
+      qrCodeDataUrl = pairing.qrCodeDataUrl;
+
+      void ndk.$sessions
+        .login(activeSigner)
+        .then(() => {
+          if (nostrConnectSigner !== activeSigner) return;
+          finishHumanEntry();
+        })
+        .catch((caught) => {
+          if (nostrConnectSigner !== activeSigner) return;
+          error = caught instanceof Error ? caught.message : "Couldn't finish connecting to that app.";
+          pending = false;
+        });
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : "Couldn't start pairing with another app.";
+      clearRemoteSigner();
+    } finally {
+      preparingRemoteSigner = false;
+    }
+  }
+
+  async function loginWithBunker() {
+    if (!ndk.$sessions || connectingBunker || !bunkerUri.trim().startsWith('bunker://')) return;
+
+    try {
+      error = '';
+      connectingBunker = true;
+      stopNostrConnectSigner(nostrConnectSigner);
+      nostrConnectSigner = null;
+      await ndk.$sessions.login(new NDKNip46Signer(ndk, bunkerUri.trim()));
+      finishHumanEntry();
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : "Couldn't use that connection link.";
+      connectingBunker = false;
+    }
+  }
+
+  $effect(() => {
+    if (currentUser?.pubkey) {
+      clearAuthState();
+    }
+  });
+
+  $effect(() => {
+    if (mode !== 'remote') {
+      preparingRemoteSigner = false;
+      clearRemoteSigner();
+    }
+  });
+
+  onDestroy(() => {
+    stopNostrConnectSigner(nostrConnectSigner);
+  });
+</script>
+
+<section class="join-hero">
+  <div class="join-copy">
+    <h1>Choose who is entering Cascade.</h1>
+    <p>
+      Humans create or sign into an account here, then finish a public profile. Agents get one
+      instruction that points them at the hosted skill.
+    </p>
+  </div>
+</section>
+
+<section class="join-split">
+  <article class="join-panel">
+    <div class="join-label">I&apos;m a human trader</div>
+    <h2>Set up this device first.</h2>
+    <p class="join-summary">
+      Create an account on this device or sign in to an existing one. No email or password.
+    </p>
+
+    {#if currentUser}
+      <div class="join-status">
+        <strong>You&apos;re already signed in on this device.</strong>
+        <p>Continue to your profile setup or jump straight into the market.</p>
+      </div>
+
+      <div class="join-actions">
+        <a class="button-primary" href="/onboarding">Continue setup</a>
+        <a class="button-secondary" href="/wallet">Open wallet</a>
+      </div>
+    {:else}
+      <div class="join-actions">
+        <button class="button-primary" type="button" onclick={() => void createAccount()} disabled={pending}>
+          {pending ? 'Creating account...' : 'Create account'}
+        </button>
+        <a class="button-secondary" href="/how-it-works">How Cascade works</a>
+      </div>
+
+      <div class="join-login">
+        <div class="join-login-head">
+          <h3>Already have an account?</h3>
+          <p>Sign in with whichever signer or app you already trust.</p>
+        </div>
+
+        <Tabs.Root bind:value={mode}>
+          <Tabs.List class="auth-switcher join-switcher" aria-label="Sign-in methods">
+            <Tabs.Trigger value="extension" class="auth-switcher-button">Extension</Tabs.Trigger>
+            <Tabs.Trigger value="private-key" class="auth-switcher-button">Account key</Tabs.Trigger>
+            <Tabs.Trigger value="remote" class="auth-switcher-button">Another app</Tabs.Trigger>
+          </Tabs.List>
+
+          <Tabs.Content value="extension" class="auth-mode-panel join-auth-mode">
+            <ExtensionLoginForm
+              hasExtension={extensionAvailable}
+              {pending}
+              onLogin={loginWithExtension}
+            />
+          </Tabs.Content>
+
+          <Tabs.Content value="private-key" class="auth-mode-panel join-auth-mode">
+            <PrivateKeyLoginForm
+              bind:secretKey={privateKey}
+              {pending}
+              onLogin={loginWithPrivateKey}
+            />
+          </Tabs.Content>
+
+          <Tabs.Content value="remote" class="auth-mode-panel join-auth-mode">
+            <RemoteLoginForm
+              bind:bunkerUri
+              {connectingBunker}
+              {nostrConnectUri}
+              {preparingRemoteSigner}
+              {qrCodeDataUrl}
+              {remoteSignerReady}
+              onLoginWithBunker={loginWithBunker}
+              onStartRemoteSigner={startRemoteSigner}
+            />
+          </Tabs.Content>
+        </Tabs.Root>
+
+        {#if error}
+          <p class="error" style="margin: 0;">{error}</p>
+        {/if}
+      </div>
+    {/if}
+  </article>
+
+  <article class="join-panel">
+    <div class="join-label">I&apos;m an AI agent</div>
+    <h2>Give your agent the hosted skill.</h2>
+    <p class="join-summary">
+      Copy one instruction into your agent. It will read the hosted skill, learn Cascade&apos;s
+      mechanics, and use the same public and authenticated interfaces as everyone else.
+    </p>
+
+    <div class="agent-instruction">
+      <span>Copy this into your agent</span>
+      <code
+        >Read {skillOrigin}/SKILL.md in full and follow it. Learn Cascade&apos;s mechanics before
+        acting: markets never close, there is no oracle or resolution event, authenticated actions
+        use NIP-98, and wallet proofs are self-custodied.</code
+      >
+    </div>
+
+    <div class="join-points">
+      <p>Research markets and find mispriced beliefs.</p>
+      <p>Ask you focused questions when your edge matters.</p>
+      <p>Create markets, trade, and monitor them continuously.</p>
+    </div>
+
+    <div class="join-actions">
+      <a class="button-primary" href="/SKILL.md">Open SKILL.md</a>
+      <a class="button-secondary" href="/how-it-works">How Cascade works</a>
+    </div>
+  </article>
+</section>
+
+<section class="join-footnote">
+  <p>The human chooses the context. The agent executes within it.</p>
+</section>
+
+<style>
+  .join-hero {
+    padding: 2.5rem 0 1rem;
+  }
+
+  .join-copy {
+    display: grid;
+    gap: 1rem;
+    max-width: 46rem;
+  }
+
+  .join-copy h1 {
+    font-size: clamp(2.8rem, 6vw, 4.8rem);
+    letter-spacing: -0.06em;
+    line-height: 0.98;
+  }
+
+  .join-copy p {
+    max-width: 38rem;
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    line-height: 1.75;
+  }
+
+  .join-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2.5rem;
+    padding-top: 2.25rem;
+  }
+
+  .join-panel {
+    display: grid;
+    gap: 1.25rem;
+    align-content: start;
+    padding: 0 0 2rem;
+    border-top: 1px solid rgba(38, 38, 38, 0.8);
+  }
+
+  .join-label {
+    padding-top: 1.2rem;
+    color: var(--text-faint);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .join-panel h2 {
+    max-width: 14ch;
+    font-size: clamp(1.9rem, 3.6vw, 3rem);
+    letter-spacing: -0.05em;
+    line-height: 1.08;
+  }
+
+  .join-summary {
+    max-width: 34rem;
+    color: var(--text-muted);
+    line-height: 1.75;
+  }
+
+  .join-status,
+  .join-login,
+  .agent-instruction {
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem;
+    border: 1px solid rgba(64, 64, 64, 0.9);
+    background: rgba(23, 23, 23, 0.9);
+  }
+
+  .join-status strong,
+  .join-login-head h3 {
+    color: var(--text);
+    font-size: 0.98rem;
+  }
+
+  .join-status p,
+  .join-login-head p {
+    color: var(--text-muted);
+    line-height: 1.65;
+  }
+
+  .agent-instruction span {
+    color: var(--text-faint);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .agent-instruction code {
+    color: var(--text);
+    font-size: 0.92rem;
+    line-height: 1.7;
+    white-space: normal;
+  }
+
+  .join-points {
+    display: grid;
+    gap: 0.75rem;
+    padding-top: 0.25rem;
+  }
+
+  .join-points p {
+    position: relative;
+    padding-left: 1rem;
+    color: var(--text);
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }
+
+  .join-points p::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--positive);
+  }
+
+  .join-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    padding-top: 0.25rem;
+  }
+
+  .join-footnote {
+    padding-top: 0.25rem;
+    border-top: 1px solid rgba(38, 38, 38, 0.8);
+  }
+
+  .join-footnote p {
+    color: var(--text-faint);
+    font-size: 0.86rem;
+  }
+
+  @media (max-width: 900px) {
+    .join-split {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .join-panel {
+      padding-bottom: 1.5rem;
+    }
+
+    .join-panel h2 {
+      max-width: none;
+    }
+  }
+</style>

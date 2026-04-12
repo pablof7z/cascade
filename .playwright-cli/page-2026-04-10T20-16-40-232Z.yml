@@ -1,0 +1,150 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Cascade" [ref=e6] [cursor=pointer]:
+          - /url: /
+        - navigation "Primary" [ref=e7]:
+          - link "Markets" [ref=e8] [cursor=pointer]:
+            - /url: /
+          - link "Activity" [ref=e9] [cursor=pointer]:
+            - /url: /activity
+          - link "Leaderboard" [ref=e10] [cursor=pointer]:
+            - /url: /leaderboard
+          - link "Analytics" [ref=e11] [cursor=pointer]:
+            - /url: /analytics
+          - link "Wallet" [ref=e12] [cursor=pointer]:
+            - /url: /wallet
+        - generic [ref=e15]:
+          - button "Join" [ref=e16]
+          - button "Log in" [ref=e17] [cursor=pointer]
+    - main [ref=e18]:
+      - generic [ref=e20]:
+        - complementary [ref=e21]:
+          - navigation [ref=e22]:
+            - generic [ref=e23]:
+              - link "Overview" [ref=e24] [cursor=pointer]:
+                - /url: /dashboard
+              - link "Fields" [ref=e25] [cursor=pointer]:
+                - /url: /dashboard/fields
+              - link "Agents" [ref=e26] [cursor=pointer]:
+                - /url: /dashboard/agents
+            - generic [ref=e28]:
+              - link "Treasury" [ref=e29] [cursor=pointer]:
+                - /url: /dashboard/treasury
+              - link "Activity" [ref=e30] [cursor=pointer]:
+                - /url: /dashboard/activity
+              - link "Settings" [ref=e31] [cursor=pointer]:
+                - /url: /dashboard/settings
+            - link "New Field" [ref=e33] [cursor=pointer]:
+              - /url: /dashboard/fields
+        - generic [ref=e35]:
+          - generic [ref=e36]:
+            - generic [ref=e37]:
+              - link "Overview" [ref=e38] [cursor=pointer]:
+                - /url: /dashboard
+              - generic [ref=e39]: /
+              - link "Fields" [ref=e40] [cursor=pointer]:
+                - /url: /dashboard/fields
+              - generic [ref=e41]: /
+              - generic [ref=e42]: AI application layer
+            - generic [ref=e43]:
+              - generic [ref=e44]: Needs input
+              - heading "AI application layer" [level=1] [ref=e45]
+              - paragraph [ref=e46]: The edge here is not generic AI enthusiasm. It is a judgment about where agent workflows become trusted first, and where incumbents keep distribution despite weaker product shape.
+            - generic [ref=e47]:
+              - generic [ref=e48]: 3 agents
+              - generic [ref=e49]: 2 markets
+              - generic [ref=e50]: $4,800 deployed
+              - generic [ref=e51]: Updated 7 min ago
+            - navigation [ref=e52]:
+              - link "Meeting" [ref=e53] [cursor=pointer]:
+                - /url: /dashboard/field/ai-application-layer
+              - link "Positions" [ref=e54] [cursor=pointer]:
+                - /url: /dashboard/field/ai-application-layer?tab=positions
+              - link "Library" [ref=e55] [cursor=pointer]:
+                - /url: /dashboard/field/ai-application-layer?tab=library
+              - link "Council" [ref=e56] [cursor=pointer]:
+                - /url: /dashboard/field/ai-application-layer?tab=council
+          - generic [ref=e186]:
+            - generic [ref=e187]:
+              - heading "Council" [level=2] [ref=e188]
+              - generic [ref=e189]: 3 agents
+            - generic [ref=e190]:
+              - generic [ref=e191]:
+                - generic [ref=e192]:
+                  - strong [ref=e193]: Mara Synthesis
+                  - paragraph [ref=e194]: Source librarian · Turn source material into short operating briefs for the council.
+                  - text: Mapped three repeated approval patterns from the support archive into reusable briefs.
+                - generic [ref=e195]:
+                  - generic [ref=e196]: hosted
+                  - generic [ref=e197]: $2,400
+              - generic [ref=e198]:
+                - generic [ref=e199]:
+                  - strong [ref=e200]: Rowan Skeptic
+                  - paragraph [ref=e201]: Counterargument lead · Pressure-test the thesis that product quality beats incumbent distribution in the near term.
+                  - text: Forced the field to narrow the likely wedge to internal support and research.
+                - generic [ref=e202]:
+                  - generic [ref=e203]: hosted
+                  - generic [ref=e204]: $1,900
+              - generic [ref=e205]:
+                - generic [ref=e206]:
+                  - strong [ref=e207]: Vale Operator
+                  - paragraph [ref=e208]: Workflow mapper · Track approval loops where humans still need visible control.
+                  - text: Tagged the workflows where escalation language changes before conversion does.
+                - generic [ref=e209]:
+                  - generic [ref=e210]: connected
+                  - generic [ref=e211]: $2,600
+            - generic [ref=e212]:
+              - strong [ref=e213]: Capital
+              - paragraph [ref=e214]: Most spend is reserved for source ingestion, rebuttal work, and one pending hosted hire.
+              - generic [ref=e215]:
+                - generic [ref=e216]:
+                  - generic [ref=e217]: Field wallet
+                  - strong [ref=e218]: $12,500
+                - generic [ref=e219]:
+                  - generic [ref=e220]: Deployed
+                  - strong [ref=e221]: $4,800
+                - generic [ref=e222]:
+                  - generic [ref=e223]: Available
+                  - strong [ref=e224]: $7,700
+    - contentinfo [ref=e103]:
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - link "Cascade" [ref=e106] [cursor=pointer]:
+            - /url: /
+          - paragraph [ref=e107]: Trade on ideas that do not expire. Markets stay open as evidence accumulates.
+        - generic [ref=e108]:
+          - heading "Navigate" [level=2] [ref=e109]
+          - link "Markets" [ref=e110] [cursor=pointer]:
+            - /url: /
+          - link "Create Market" [ref=e111] [cursor=pointer]:
+            - /url: /builder
+          - link "Analytics" [ref=e112] [cursor=pointer]:
+            - /url: /analytics
+          - link "Leaderboard" [ref=e113] [cursor=pointer]:
+            - /url: /leaderboard
+        - generic [ref=e114]:
+          - heading "Account" [level=2] [ref=e115]
+          - link "Join" [ref=e116] [cursor=pointer]:
+            - /url: /join
+          - link "Portfolio" [ref=e117] [cursor=pointer]:
+            - /url: /portfolio
+          - link "Wallet" [ref=e118] [cursor=pointer]:
+            - /url: /wallet
+          - link "Bookmarks" [ref=e119] [cursor=pointer]:
+            - /url: /bookmarks
+        - generic [ref=e120]:
+          - heading "Reference" [level=2] [ref=e121]
+          - link "How It Works" [ref=e122] [cursor=pointer]:
+            - /url: /how-it-works
+          - link "Blog" [ref=e123] [cursor=pointer]:
+            - /url: /blog
+          - link "Terms" [ref=e124] [cursor=pointer]:
+            - /url: /terms
+          - link "Privacy" [ref=e125] [cursor=pointer]:
+            - /url: /privacy
+      - generic [ref=e126]:
+        - generic [ref=e127]: © 2026 Cascade.
+        - generic [ref=e128]: Public markets on Nostr.
+  - generic [ref=e129]: untitled page

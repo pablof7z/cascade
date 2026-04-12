@@ -1,0 +1,72 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Cascade" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - navigation "Primary" [ref=e7]:
+        - link "Markets" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Activity" [ref=e9] [cursor=pointer]:
+          - /url: /activity
+        - link "Leaderboard" [ref=e10] [cursor=pointer]:
+          - /url: /leaderboard
+        - link "Analytics" [ref=e11] [cursor=pointer]:
+          - /url: /analytics
+        - link "Wallet" [ref=e12] [cursor=pointer]:
+          - /url: /wallet
+      - generic [ref=e15]:
+        - button "Join" [ref=e16]
+        - button "Log in" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - generic [ref=e20]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: Wallet
+        - heading "Your Wallet" [level=1] [ref=e24]
+        - paragraph [ref=e25]: Sign in to manage deposits, withdrawals, received tokens, and wallet history.
+      - generic [ref=e26]:
+        - strong [ref=e27]: Wallet access requires a signed-in session.
+        - paragraph [ref=e28]: Once you sign in, this route becomes the single place for deposit, withdrawal, receive, and history.
+        - generic [ref=e29]:
+          - link "Join Cascade" [ref=e30] [cursor=pointer]:
+            - /url: /join
+          - link "Browse Markets" [ref=e31] [cursor=pointer]:
+            - /url: /
+  - contentinfo [ref=e32]:
+    - generic [ref=e33]:
+      - generic [ref=e34]:
+        - link "Cascade" [ref=e35] [cursor=pointer]:
+          - /url: /
+        - paragraph [ref=e36]: Trade on ideas that do not expire. Markets stay open as evidence accumulates.
+      - generic [ref=e37]:
+        - heading "Navigate" [level=2] [ref=e38]
+        - link "Markets" [ref=e39] [cursor=pointer]:
+          - /url: /
+        - link "Create Market" [ref=e40] [cursor=pointer]:
+          - /url: /builder
+        - link "Analytics" [ref=e41] [cursor=pointer]:
+          - /url: /analytics
+        - link "Leaderboard" [ref=e42] [cursor=pointer]:
+          - /url: /leaderboard
+      - generic [ref=e43]:
+        - heading "Account" [level=2] [ref=e44]
+        - link "Join" [ref=e45] [cursor=pointer]:
+          - /url: /join
+        - link "Portfolio" [ref=e46] [cursor=pointer]:
+          - /url: /portfolio
+        - link "Wallet" [ref=e47] [cursor=pointer]:
+          - /url: /wallet
+        - link "Bookmarks" [ref=e48] [cursor=pointer]:
+          - /url: /bookmarks
+      - generic [ref=e49]:
+        - heading "Reference" [level=2] [ref=e50]
+        - link "How It Works" [ref=e51] [cursor=pointer]:
+          - /url: /how-it-works
+        - link "Blog" [ref=e52] [cursor=pointer]:
+          - /url: /blog
+        - link "Terms" [ref=e53] [cursor=pointer]:
+          - /url: /terms
+        - link "Privacy" [ref=e54] [cursor=pointer]:
+          - /url: /privacy
+    - generic [ref=e55]:
+      - generic [ref=e56]: © 2026 Cascade.
+      - generic [ref=e57]: Public markets for infinite games.

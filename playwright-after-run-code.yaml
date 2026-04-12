@@ -1,0 +1,96 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Cascade" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - navigation "Primary" [ref=e7]:
+        - link "Markets" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Activity" [ref=e9] [cursor=pointer]:
+          - /url: /activity
+        - link "Leaderboard" [ref=e10] [cursor=pointer]:
+          - /url: /leaderboard
+        - link "Analytics" [ref=e11] [cursor=pointer]:
+          - /url: /analytics
+        - link "Wallet" [ref=e12] [cursor=pointer]:
+          - /url: /wallet
+      - button "Open account menu" [ref=e55] [cursor=pointer]:
+        - generic [ref=e57]: T
+        - generic [ref=e58]:
+          - generic [ref=e59]: Test
+          - generic [ref=e60]: npub1fu6...gy4eg9
+        - img [ref=e61]
+  - main [ref=e18]:
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: Paper Wallet
+        - heading "Paper wallet" [level=1] [ref=e23]
+        - paragraph [ref=e24]: Signet mode uses a paper wallet backed by the mint API. Funding here is for testing the full market flow.
+      - generic [ref=e63]:
+        - article [ref=e64]:
+          - generic [ref=e65]: Available
+          - strong [ref=e66]: $0.00
+          - paragraph [ref=e67]: "Pending: $0.00"
+        - article [ref=e68]:
+          - generic [ref=e69]: Deposited
+          - strong [ref=e70]: $0.00
+          - paragraph [ref=e71]: Use this balance to seed and trade public markets.
+      - generic [ref=e72]:
+        - generic [ref=e74]:
+          - heading "Add paper funds" [level=2] [ref=e75]
+          - paragraph [ref=e76]: This faucet exists only for signet testing.
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e79]: Amount
+            - spinbutton "Amount" [ref=e80]: "10000"
+          - button "Add funds" [ref=e81] [cursor=pointer]
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - generic [ref=e84]:
+            - heading "Open positions" [level=2] [ref=e85]
+            - paragraph [ref=e86]: Current market value and unrealized PnL update from the mint.
+          - link "Create market" [ref=e87] [cursor=pointer]:
+            - /url: /builder
+        - paragraph [ref=e88]: No open positions yet.
+      - generic [ref=e89]:
+        - heading "Funding history" [level=2] [ref=e92]
+        - paragraph [ref=e93]: No paper funding events yet.
+  - contentinfo [ref=e28]:
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - link "Cascade" [ref=e31] [cursor=pointer]:
+          - /url: /
+        - paragraph [ref=e32]: Trade on ideas that do not expire. Markets stay open as evidence accumulates.
+      - generic [ref=e33]:
+        - heading "Navigate" [level=2] [ref=e34]
+        - link "Markets" [ref=e35] [cursor=pointer]:
+          - /url: /
+        - link "Create Market" [ref=e36] [cursor=pointer]:
+          - /url: /builder
+        - link "Analytics" [ref=e37] [cursor=pointer]:
+          - /url: /analytics
+        - link "Leaderboard" [ref=e38] [cursor=pointer]:
+          - /url: /leaderboard
+      - generic [ref=e39]:
+        - heading "Account" [level=2] [ref=e40]
+        - link "Join" [ref=e41] [cursor=pointer]:
+          - /url: /join
+        - link "Portfolio" [ref=e42] [cursor=pointer]:
+          - /url: /portfolio
+        - link "Wallet" [ref=e43] [cursor=pointer]:
+          - /url: /wallet
+        - link "Bookmarks" [ref=e44] [cursor=pointer]:
+          - /url: /bookmarks
+      - generic [ref=e45]:
+        - heading "Reference" [level=2] [ref=e46]
+        - link "How It Works" [ref=e47] [cursor=pointer]:
+          - /url: /how-it-works
+        - link "Blog" [ref=e48] [cursor=pointer]:
+          - /url: /blog
+        - link "Terms" [ref=e49] [cursor=pointer]:
+          - /url: /terms
+        - link "Privacy" [ref=e50] [cursor=pointer]:
+          - /url: /privacy
+    - generic [ref=e51]:
+      - generic [ref=e52]: © 2026 Cascade.
+      - generic [ref=e53]: Public markets for infinite games.

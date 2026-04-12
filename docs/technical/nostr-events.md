@@ -8,11 +8,9 @@ Complete reference for all Nostr event kinds used by Cascade.
 |------|-------------|--------------|-----------|--------|
 | 982 | Market definition | No | User | Implemented |
 | 983 | Trade record | No | Mint | **Planned / in-progress** |
-| 984 | Market resolution | No | Creator / Oracle | **NOT APPLICABLE** |
 | 1111 | Comments / discussions (NIP-22) | No | User | Implemented |
 | 10003 | Bookmarks (NIP-51) | Yes | User | Implemented |
 | 30078 | Positions (NIP-78) | Yes | User | Implemented |
-| 30079 | Withdrawal records | Yes | User | Implemented |
 
 ---
 
@@ -62,30 +60,27 @@ pubkey: <mint's pubkey>
 content: ""
 tags:
   ["e", "<kind-982-market-event-id>"]
-  ["amount", "<sats>"]
-  ["unit", "sat"]
+  ["p", "<nostr-pubkey>"]      # optional; only when trade request used NIP-98
+  ["amount", "<base units>"]
+  ["unit", "<currency unit, launch uses 'usd'>"]
   ["direction", "yes" | "no"]
-  ["type", "issue" | "redeem"]
+  ["type", "buy" | "sell"]
   ["price", "<ppm>"]
 ```
 
 **Field notes:**
 
 - **`pubkey`**: The mint's own Nostr pubkey — not the trader's pubkey
-- **No trader pubkey**: Cashu is a bearer token system. The mint doesn't know who holds the tokens. Trades are anonymous by design.
+- **`p`**: Optional request-signer pubkey. Only present when the mint validated NIP-98 on the trade request.
 - **`direction`**: `"yes"` = LONG side, `"no"` = SHORT side
-- **`type`**: `"issue"` = tokens minted (user bought shares, market cap grew). `"redeem"` = tokens burned (user sold shares).
+- **`type`**: `"buy"` = tokens minted (user bought shares, market cap grew). `"sell"` = tokens burned (user sold shares, market cap contracts).
 - **`price`**: Parts per million (ppm), where 0 = 0% and 1000000 = 100%. Example: `500000` = 50%, `720000` = 72%.
-- **`amount`**: The sat amount of the trade
+- **`amount`**: The product-facing trade notional in the unit's base units. For launch, `unit=usd` means the amount is stored in USD minor units even though execution settles behind the scenes through Lightning.
+
+If `p` is absent, the trade is intentionally anonymous. If `p` is present, it means the Nostr pubkey that signed the HTTP request, not a permanent proof owner across future swaps. See `docs/mint/auth.md`.
 
 **Purpose:**
 Kind 983 events let anyone reconstruct the trading history of any market. They're the audit log — the source of truth is the mint's database, but kind 983 provides public verifiability.
-
----
-
-## Kind 984 — NOT APPLICABLE
-
-> **This event kind does not apply to Cascade's model.** Cascade markets have no oracle, no resolution authority, and no close mechanism. Kind 984 "market resolution" events are not used and will not be implemented. Markets reach equilibrium through trading and withdrawal alone — all at the continuous LMSR price. There is no declared outcome, no winner, and no loser.
 
 ---
 
@@ -166,19 +161,3 @@ tags:
 Positions may eventually be derived from kind 983 trade events rather than stored as kind 30078. The Cashu bearer model means the mint doesn't know who holds what — kind 30078 is a user-side record. If users start trading on multiple devices or via agents, kind 30078 becomes the authoritative position record.
 
 ---
-
-## Kind 30079 — Withdrawal Records
-
-Published by the user after a successful withdrawal. Parameterized replaceable per (pubkey, d-tag) pair.
-
-```
-kind: 30079
-pubkey: <user's pubkey>
-content: <JSON-stringified withdrawal details>
-tags:
-  ["d", "cascade:payout:<marketSlug>:<positionId>"]
-```
-
-**Purpose:** Records completed withdrawals for portfolio history. One event per (market, position) pair — replaces itself if the user withdraws from the same position again.
-
-See `src/services/nostrService.ts` (`PAYOUT_EVENT_KIND = 30079`) and `src/services/withdrawalService.ts` for the authoritative implementation.

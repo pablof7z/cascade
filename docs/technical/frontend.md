@@ -1,5 +1,11 @@
 # Frontend Architecture
 
+## Status
+
+The active frontend implementation lives in `web/`.
+
+`webapp/` is a failed earlier Svelte migration. It may still contain useful reference code or copy, but it is not the active app and should not be treated as the canonical frontend subtree.
+
 ## Stack
 
 | Layer | Technology |
@@ -7,135 +13,170 @@
 | Framework | SvelteKit + Svelte 5 |
 | Styling | Tailwind CSS |
 | Nostr client | NDK (Nostr Dev Kit) |
-| Deployment | Vercel at `cascade.f7z.io` |
+| Deployment | Vercel at `cascade.f7z.io`, plus a local node-runtime path for supervised signet/mainnet editions |
 | Repository | `git@github.com:pablof7z/cascade.git` |
 
-**React is gone.** The codebase was fully migrated from React to Svelte 5. No React dependencies remain. No new React code will be added.
-
----
+**React is gone.** The active frontend direction is Svelte 5 + SvelteKit in `web/`.
 
 ## Deployment
 
-Auto-deploys on push to `main`. If it's not deployed, it doesn't exist — always commit AND push.
+Auto-deploys on push to `main`. If it's not deployed, it doesn't exist.
 
 Production URL: `https://cascade.f7z.io`
 
 No auth required to view the production site.
 
----
+For local supervised editions on this machine, `web/` also supports `@sveltejs/adapter-node` builds via:
 
-## Routes
+```bash
+cd web
+./scripts/build-node-edition.sh
+./scripts/run-node-edition.sh signet
+```
+
+The local edition env templates live in:
+
+- `web/.env.signet.example`
+- `web/.env.mainnet.example`
+
+## Current `web/` Routes
 
 | Route | Description |
 |-------|-------------|
-| `/` | Landing page + market list |
-| `/market/[marketId]` | Market detail page |
-| `/mkt/[slugAndPrefix]` | Alternate market route by slug |
-| `/thread/[marketId]` | Market trading view with discussions |
-| `/discuss` | Discussion feed |
-| `/thesis/new` | Create new thesis market |
-| `/activity` | Real-time activity feed |
-| `/profile/[pubkey]` | User profile + positions |
-| `/profile/[pubkey]/portfolio` | User portfolio detail |
-| `/portfolio` | Current user's positions and PnL |
-| `/wallet` | Cashu wallet UI |
-| `/settings` | Profile settings + relay configuration |
-| `/welcome` | Onboarding flow |
-| `/join` | Account creation (human or agent) |
-| `/analytics` | Market analytics |
-| `/blog` | Blog / editorial content |
+| `/` | Homepage |
+| `/about` | About page |
+| `/activity` | Activity feed |
+| `/analytics` | Public analytics |
+| `/blog` | Editorial content |
 | `/bookmarks` | Bookmarked markets |
-| `/help` | Help and documentation |
-| `/legal/terms` | Terms of service |
-| `/legal/privacy` | Privacy policy |
+| `/builder` | Market builder |
+| `/dashboard` | Private workspace shell |
+| `/embed` | Embed surface |
+| `/highlights` | Highlighted content |
+| `/join` | Account creation (human or agent) |
+| `/leaderboard` | Rankings |
+| `/onboarding` | Post-join onboarding |
+| `/portfolio` | Current user's positions and PnL |
+| `/privacy` | Privacy policy |
+| `/profile` | Current-user profile surface |
+| `/relays` | Relay configuration / diagnostics |
+| `/terms` | Terms of service |
+| `/wallet` | USD wallet UI |
 
----
+The full target product route model is defined in [../product/spec.md](../product/spec.md). The `web/` app is still being built toward that target.
+
+The app should ship in separate signet and mainnet editions. Proof storage, environment labels, and discovery sources must be edition-aware.
 
 ## Nostr Integration
 
-**NDK** (Nostr Dev Kit) handles all Nostr operations:
-- Real-time subscriptions to relays
-- Event publishing (signed by user's key)
-- Metadata fetching (profiles, bookmarks, positions)
+**NDK** handles all Nostr operations:
 
-No polling. Everything is subscription-based. When an event arrives, it renders. When no events have arrived, nothing renders — no placeholder, no spinner.
+- real-time subscriptions to relays
+- event publishing signed by the user's key
+- metadata fetching for profiles, bookmarks, and positions
 
-**Key subscriptions:**
-- `kinds: [982]` — all markets (live feed on homepage and activity page)
+No polling. Data streams in as events arrive.
+
+Key subscriptions include:
+
+- `kinds: [982]` — all markets
 - `kinds: [983]` filtered by market event ID — trade history for a specific market
-- `kinds: [984]` — NOT USED (kind 984 resolution events are not part of Cascade's model)
 - `kinds: [1111]` filtered by market event ID — discussions
-- `kinds: [30078]` filtered by user pubkey — user's positions
+- `kinds: [30078]` filtered by user pubkey — user position records
 
----
+Public market discovery should not blindly render every raw kind `982` event. The app should only surface a market publicly after at least one mint-authored kind `983` exists for it. The creator can still see their own pending market between kind `982` publication and the first trade.
 
 ## No Loading Spinners
 
-This is a hard directive from the project owner. No spinner components. No `isLoading` state. No "Loading..." text.
+This is a hard directive from the project owner.
 
-Data streams in via Nostr subscriptions. Render what you have. Add items to lists as events arrive. If nothing has arrived yet for a view, show an empty state — not a loading indicator.
+- no spinner components
+- no skeleton-loader product logic
+- no fake "loading complete" states
 
-Why: Nostr is event-based. There is no defined "loading complete" moment. A spinner would either spin forever or be cut off arbitrarily. Neither is acceptable.
-
-**Note:** `src/lib/components/ui/Skeleton.svelte` exists as legacy code and should be eliminated. Some pages may still use skeleton loading states — these are tech debt to be removed, not patterns to follow.
-
----
+If nothing has arrived yet for a view, show an empty state, not a spinner.
 
 ## Auth
 
 Users authenticate with Nostr keypairs.
 
-- nsec (private key) is generated client-side and stored in localStorage
-- Never sent to any server
-- Not shown during onboarding
-- Retrievable only from the Settings page (`/settings`) — the user must explicitly navigate there
+- private key is generated client-side and stored locally
+- it is never sent to the backend
+- the user should not see protocol jargon during onboarding
+- authenticated API actions use NIP-98
 
-NIP-07 browser extension signing is supported (e.g., Alby, nos2x). NIP-46 remote signing is planned but not yet implemented.
+The cryptography stays behind the product boundary.
 
-**No Nostr jargon in UI.** Users never see:
-- "nsec" or "npub"
-- "relay"
-- "Nostr event"
-- "pubkey"
+## Dollar-Denominated Product UX
 
-They see: "account", "profile key" (in Settings only), "activity".
+The normal product surface is dollar-denominated.
 
----
+- balances are shown in USD
+- trade size inputs are shown in USD
+- fill previews and PnL are shown in USD
+- sats, msats, and Lightning invoices are not part of the normal human UI
+
+If Lightning is used to settle between mints, that stays behind the product boundary. The exception is an explicit Lightning add-funds flow on `/wallet`, where the user still starts from a USD amount and receives an invoice only as the funding mechanism.
+
+## Wallet
+
+The `/wallet` route is a self-custodied Cashu wallet surface for USD ecash.
+
+It should allow users to:
+
+- view their USD balance
+- add funds through the Stripe gateway
+- add funds through a Lightning top-up flow for a chosen USD amount
+- receive or import ecash tokens
+- send or export ecash tokens
+- review transaction history
+
+The wallet stores proofs locally. The mint is the issuer; the user's device is the wallet.
+
+There is no canonical server wallet API for current balance because the proofs are self-custodied.
+
+## Trading And Portfolio State
+
+The frontend needs local state for at least two proof classes:
+
+- USD wallet proofs
+- market proofs for LONG/SHORT positions
+
+Trading surfaces should let the user spend dollars on YES or NO and then persist the resulting market proofs locally.
+
+The `/portfolio` surface derives performance from:
+
+- local proof state
+- user-published position records
+- public market data
+
+It is not a private custody dashboard backed by server-held proofs.
 
 ## Styling Rules
 
-- Tailwind CSS with `neutral-*` colors only (never `gray-*`)
-- Page background: `neutral-950`
-- Accents: `emerald-*` (YES/bullish), `rose-*` (NO/bearish) — no other accents
-- Numbers and prices: `font-mono` (JetBrains Mono)
-- Text and UI: `font-sans` (Inter)
-- No rounded pills, no gradients, no emojis in UI chrome
-- No cards everywhere — use spacing and dividers
+- Tailwind CSS with `neutral-*` colors only
+- page background `neutral-950`
+- accents only `emerald-*` and `rose-*`
+- numbers and money use `font-mono`
+- text and UI use `font-sans`
+- no rounded pills, no gradients, no emojis in UI chrome
+- no gratuitous cards
 
 See [style-guide.md](../design/style-guide.md) for the full reference.
 
----
+## Local State And Offline Support
 
-## Cashu Wallet
+The frontend may use localStorage for categories of state such as:
 
-The `/wallet` route provides a Cashu ecash wallet UI. Users can:
-- View their ecash balance (aggregated across all tokens)
-- Deposit via Lightning (NUT-04 mint)
-- Withdraw via Lightning (NUT-05 melt, user provides BOLT11 invoice)
-- See breakdown by market (LONG/SHORT shares)
+- USD proofs
+- market proofs
+- position records
+- offline action queues
 
-The Cashu wallet state is held client-side (tokens stored in localStorage or similar). The mint is the issuer; the user's device is the wallet.
+Every local-storage key involved in wallet or portfolio state should be namespaced by edition and mint URL.
 
----
-
-## Local State and Offline Support
-
-The app uses localStorage for several categories of state — Cashu tokens, position records, and offline action queues. `src/storage.ts` handles token persistence; `src/positionStore.ts` maintains position state with localStorage fallback and hybrid merge logic (merging local state with Nostr-fetched events).
-
-This is not purely event-driven. Some state is authoritative client-side and synced to Nostr opportunistically.
-
----
+The failed `webapp/` migration remains legacy implementation reference only, not the active architecture.
 
 ## No Mock Data
 
-Every market displayed must come from a real kind 982 Nostr event. No hardcoded, placeholder, or fake markets. If no events have arrived, the list is empty.
+Every market displayed must come from a real kind `982` Nostr event or a real API projection over real events. No hardcoded, placeholder, or fake markets.

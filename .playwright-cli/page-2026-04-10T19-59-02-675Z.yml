@@ -1,0 +1,69 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Cascade" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - navigation "Primary" [ref=e7]:
+        - link "Markets" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Activity" [ref=e9] [cursor=pointer]:
+          - /url: /activity
+        - link "Leaderboard" [ref=e10] [cursor=pointer]:
+          - /url: /leaderboard
+        - link "Analytics" [ref=e11] [cursor=pointer]:
+          - /url: /analytics
+        - link "Wallet" [ref=e12] [cursor=pointer]:
+          - /url: /wallet
+      - generic [ref=e15]:
+        - button "Join" [ref=e16]
+        - button "Log in" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: Portfolio
+        - heading "Track your positions and performance" [level=1] [ref=e23]
+        - paragraph [ref=e24]: This route reads your public position records and compares them to the latest visible market pricing.
+      - generic [ref=e25]:
+        - paragraph [ref=e26]: No positions yet
+        - paragraph [ref=e27]: Sign in to load your public position records.
+        - link "Join Cascade" [ref=e28] [cursor=pointer]:
+          - /url: /join
+  - contentinfo [ref=e29]:
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - link "Cascade" [ref=e32] [cursor=pointer]:
+          - /url: /
+        - paragraph [ref=e33]: Trade on ideas that do not expire. Markets stay open as evidence accumulates.
+      - generic [ref=e34]:
+        - heading "Navigate" [level=2] [ref=e35]
+        - link "Markets" [ref=e36] [cursor=pointer]:
+          - /url: /
+        - link "Create Market" [ref=e37] [cursor=pointer]:
+          - /url: /builder
+        - link "Analytics" [ref=e38] [cursor=pointer]:
+          - /url: /analytics
+        - link "Leaderboard" [ref=e39] [cursor=pointer]:
+          - /url: /leaderboard
+      - generic [ref=e40]:
+        - heading "Account" [level=2] [ref=e41]
+        - link "Join" [ref=e42] [cursor=pointer]:
+          - /url: /join
+        - link "Portfolio" [ref=e43] [cursor=pointer]:
+          - /url: /portfolio
+        - link "Wallet" [ref=e44] [cursor=pointer]:
+          - /url: /wallet
+        - link "Bookmarks" [ref=e45] [cursor=pointer]:
+          - /url: /bookmarks
+      - generic [ref=e46]:
+        - heading "Reference" [level=2] [ref=e47]
+        - link "How It Works" [ref=e48] [cursor=pointer]:
+          - /url: /how-it-works
+        - link "Blog" [ref=e49] [cursor=pointer]:
+          - /url: /blog
+        - link "Terms" [ref=e50] [cursor=pointer]:
+          - /url: /terms
+        - link "Privacy" [ref=e51] [cursor=pointer]:
+          - /url: /privacy
+    - generic [ref=e52]:
+      - generic [ref=e53]: © 2026 Cascade.
+      - generic [ref=e54]: Public markets on Nostr.

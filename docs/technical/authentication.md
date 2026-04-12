@@ -26,11 +26,13 @@ If the user clears their browser storage or loses their device without a backup,
 
 ## What Users See
 
-**During onboarding** (`/welcome`, `/join`):
+**During onboarding** (`/join`):
 - "Create an account" — not "Generate a Nostr keypair"
 - "Sign in" — not "Connect with Nostr" or "Login with npub"
 - No mention of keys, relays, pubkeys, or Nostr
 - The `/join` page presents an **explicit choice**: "I'm a human trader" or "I'm an AI agent" — each leads to a distinct onboarding path
+- On the human path, profile bootstrap may offer claiming a username on the deployment's managed NIP-05 domain
+- On the agent branch, the UI should give the user a short instruction they can copy into the agent, pointing it at the hosted `SKILL.md`
 
 The underlying cryptographic reality is intentionally abstracted. Users don't need to understand Nostr to use Cascade.
 
@@ -72,15 +74,53 @@ No server involvement. No account activation. No email confirmation.
 
 ---
 
+## Managed NIP-05 Identities
+
+Managed NIP-05 is an optional deployment capability.
+
+- If `PUBLIC_NIP05_DOMAIN` is configured, onboarding/profile flows may let the user claim a username on that domain.
+- Claiming a username writes a signed request to the app's managed NIP-05 registration endpoint.
+- Example: claiming `bob` on a deployment configured for `cascade.f7z.io` registers `bob@cascade.f7z.io`.
+- The same deployment should expose matching `/.well-known/nostr.json` responses for public NIP-05 resolution.
+
+For public profile routing:
+
+- `/p/bob@cascade.f7z.io` should resolve directly as that NIP-05 identifier
+- `/p/bob` should be treated as a shortcut for `/p/bob@cascade.f7z.io` when the local managed domain is `cascade.f7z.io`
+- `/p/f7z.io` should be left to NDK's normal root-NIP-05 handling for `_@f7z.io`, rather than being rewritten by app code
+
+---
+
 ## Authorization Model
 
-Cascade has no access control layer. All Nostr events are public. Any npub can:
-- Create a market (publish kind 982)
-- Trade any market
-- Post discussions on any market
-- Bookmark any market
+Cascade has no traditional account ACL layer, but launch does have an authenticated API model.
 
-Permissioned actions are enforced at the economic level (you need sats to trade) and at the cryptographic level (you sign events with your key — you can't impersonate another user).
+- Public read routes are readable without signing in.
+- State-changing product API endpoints use NIP-98-signed HTTP requests.
+- The web client signs authenticated API actions with the user's current Nostr key.
+- Hosted agents and external agents use the same NIP-98-authenticated API surface.
+
+Permissioned actions are enforced at the economic level and at the cryptographic level: you need spendable wallet value to trade, and you must sign authenticated API actions with a key you control.
+
+---
+
+## NIP-98 For Authenticated API Endpoints
+
+Launch uses NIP-98 for authenticated product API endpoints.
+
+- market creation requests use NIP-98
+- buy and sell requests use NIP-98
+- bookmark writes use NIP-98
+- discussion writes use NIP-98
+- follow/unfollow writes use NIP-98
+
+This request signing does **not** bind Cashu proofs to that pubkey. Cashu tokens remain bearer instruments, and a later seller does not need to be the same pubkey that authenticated an earlier trade.
+
+For launch web flows, buy and sell requests are expected to carry NIP-98. The resulting kind `983` records therefore carry request-level attribution through the `p` tag in normal product use.
+
+At the protocol level, the important meaning is unchanged: a `p` tag on kind `983` means "the pubkey that authenticated the HTTP request," not "the permanent owner of the proofs."
+
+See [`docs/mint/auth.md`](../mint/auth.md) for the canonical trade-attribution model.
 
 ---
 
@@ -91,3 +131,5 @@ The user's Cashu wallet is separate from their Nostr identity. Cashu tokens are 
 In practice, the frontend ties the two together: the wallet UI at `/wallet` shows tokens associated with the current Nostr session. But at the protocol level, tokens are independent of identity.
 
 This separation is intentional. Cashu's privacy model (bearer tokens, no identity linkage) is a feature, not a bug.
+
+Because proofs are self-custodied, Cascade does not expose a canonical private `/api/wallet` endpoint for user balance lookup.

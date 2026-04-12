@@ -43,12 +43,12 @@ interface DebatePost {
 
 ### 2. Profile Data Aggregation (Client-Side, localStorage)
 
-When user navigates to `/profile/:npub`:
+When user navigates to `/p/:identifier`:
 
 1. **Identity Section**: Display avatar, displayName, bio, npub, NIP-05 verification status
-2. **Markets Created**: Query all markets where `creatorPubkey === npub`, display with volume & performance
-3. **Trading Activity**: Query all ParticipantBooks for entries where `pubkey` exists, aggregate positions & P&L
-4. **Discussion Contributions**: Filter all DebatePosts where `authorPubkey === npub`, show recent posts & reaction counts
+2. **Markets Created**: Query all markets where `creatorPubkey === resolvedPubkey`, display with volume & performance
+3. **Trading Activity**: Query all ParticipantBooks for entries where `pubkey === resolvedPubkey`, aggregate positions & P&L
+4. **Discussion Contributions**: Filter all DebatePosts where `authorPubkey === resolvedPubkey`, show recent posts & reaction counts
 5. **Reputation Score**: Placeholder initially — computed as win/loss ratio across markets where user participated (can be enhanced later)
 6. **Wallet**: Display balance (already functional via NIP-60 integration)
 7. **Social**: Placeholder followers/following with mock data for demo purposes
@@ -57,7 +57,7 @@ When user navigates to `/profile/:npub`:
 
 ### 3. Avatar Linking Strategy
 
-Create a shared `UserLink` component that wraps any avatar/user display and links to `/profile/:npub`.
+Create a shared `UserLink` component that wraps any avatar/user display and links to `/p/:identifier`.
 
 **Affected Components**:
 - Discussion post author names and avatars
@@ -69,9 +69,15 @@ All should become clickable links to the user's profile.
 
 ### 4. Implementation Phasing
 
+**Canonical route shape**
+
+- Preferred public route: `/p/:nip05`
+- Fallback public route: `/p/:npub`
+- If older routes such as `/profile/:npub` or `/u/:pubkey` still exist, they should redirect to the canonical `/p/...` form
+
 **Phase 1 (This Task)**
 - Extend data models with creatorPubkey, authorPubkey fields
-- Implement `/profile/:npub` page with 7 sections
+- Implement `/p/:identifier` page with 7 sections
 - Create UserLink component and wire it everywhere users are displayed
 - Store profile data in localStorage/client state
 - Use mock/computed values for reputation and social data
@@ -102,11 +108,11 @@ All should become clickable links to the user's profile.
 
 ## Success Criteria
 
-1. ✓ Profile page renders all 7 sections for any queried npub
+1. ✓ Profile page renders all 7 sections for any queried identifier
 2. ✓ Markets Created section shows correct markets filtered by creatorPubkey
 3. ✓ Trading Activity aggregates positions across all markets where user participated
 4. ✓ Discussion Contributions show posts authored by that user
-5. ✓ Every avatar/user display in app links to `/profile/:npub`
+5. ✓ Every avatar/user display in app links to `/p/:identifier`
 6. ✓ No console errors; clean build
 7. ✓ Code passes clean-code-nazi review before merge
 

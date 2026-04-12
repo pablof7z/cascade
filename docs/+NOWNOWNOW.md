@@ -1,75 +1,49 @@
 # NowNowNow
 
-*Last updated: 2026-04-09 16:00 UTC — Gap sprint complete. 13 major features shipped. Analytics charts in progress.*
+*Last updated: 2026-04-10 02:05 UTC - Polish sprint 4: market 2-col layout shipped, landing overlap fixed.*
 
 ---
 
-## 📌 Pending Follow-Ups
+## Pending Follow-Ups
 
 | When | What | Details |
 |------|------|---------|
 | When Pablo sends | 10 DMs from X account for growth campaign | DM file: `$AGENT_HOME/research/dm-campaign-10-users.md` |
 | When Pablo publishes | Substack article | Article ready, published to Nostr |
+| Deferred | Market search | No search on /discuss or homepage |
+| Pablo decides | `buyer_pubkey` schema decision | `trades` table has `buyer_pubkey TEXT NOT NULL` but `market::Trade` struct uses empty string placeholder. Options: make nullable / add to struct / remove column. Not blocking testnet. |
 
 ---
 
-## 🔄 In Flight
+## In Flight
 
-| Item | Conv | Notes |
-|------|------|-------|
-| **Analytics charts** | `fda65b22e3` | Adding lightweight-charts to /analytics (market activity + discussion activity over time) |
+*Nothing - workspace is clean.*
 
 ---
 
-## ✅ Shipped (2026-04-09) — Gap sprint
+## Shipped (2026-04-10)
 
 | Item | Commit | Status |
 |------|--------|--------|
-| **LMSR price snapshot recording after trades** | `a7b90f4` | ✅ `insert_lmsr_snapshot` wired into buy/sell handlers. PriceChart gets real data. |
-| **Key import flow on /welcome** | `7a1c073` | ✅ nsec + hex import, toggle UI, "Private key" label, redirects to /discuss |
-| **Sparkline mini-charts on market cards** | `63b1976` | ✅ Sparkline.svelte + MarketCard integration |
-| **Settings: relay config + notifications + npub display** | `433a1d9` | ✅ Relay list with status dots, 5 notification toggles, npub copy |
-| **Profile: Nostr fetch, positions tab, edit profile** | `8b2b035` | ✅ kind:0 fetch, edit modal, positions from kind:30078 |
-| **Market detail: tilt copy, recent fills, positions** | `db748b3` | ✅ Bull/bear narrative, receipt log, positioned accounts |
-| **PriceChart + Charts tab on market detail** | `e83c401` | ✅ lightweight-charts, real LMSR price history |
-| **Portfolio: payout history** | `c61eb09` | ✅ Nostr kind:30078 payout events |
-| **Leaderboard page** | `ab58c8b` | ✅ 3 tabs: Top Traders / Top Creators / Most Active |
-| **Discussion sorting + post type classification** | `01ddaf6` | ✅ hot/new/top/controversial + argument/evidence/rebuttal filters |
-| **Activity tab on market detail + activity feed filters** | `65624be` | ✅ Trade log, filter by All/Trades/Markets |
-| **Homepage: New This Week + Latest Discussions sections** | `35a2113` | ✅ Both sections live |
+| **Market detail: 2-col layout with sticky trade box** | `d25fab9` | Desktop: sticky right sidebar (`w-80`) with probability (`text-4xl`) + full trade box always visible. Mobile: trade box above tabs. Left column: probability display, tabs, content. Widened from `max-w-4xl` to `max-w-6xl`. |
+| **Landing: Low Volume excludes Trending markets** | `bd3431e` | Markets no longer appear in both Trending and Low Volume sections simultaneously. |
 
-## ✅ Shipped (2026-04-09) — Testnet mint (main branch merge)
+## Shipped (2026-04-09)
 
 | Item | Commit | Status |
 |------|--------|--------|
-| **Phase 8 testnet mint integration** | `11a91eb` | ✅ CDK Rust mint, PostgreSQL, LND, real Cashu tokens |
+| **Market nav links: slug--pubkeyPrefix format** | `ce18559` | Portfolio + activity pages now build proper `/mkt/slug--pubkeyPrefix` links. |
+| **Landing: Chg column -> Traders** | `f2b5052` | Replaced broken `--` placeholder column with real `Traders` count. |
+| **Discuss: loading state text** | `f2b5052` | "Loading discussions..." instead of blank state. |
+| **Trade box: estimated shares + price impact** | `1c1fa40` | Shows approximate shares, average price, and start-to-end price impact with live LMSR math. |
+| **Landing: thesis chain visualization** | `62d7f7e` | IF/THEN cascade structure shows Cascade's core concept. |
 
 ---
 
-## ⏸️ Blocked on Pablo
+## Architecture Reference
 
-| Item | Blocker |
-|------|---------| 
-| Growth DM Campaign | Pablo sends 10 DMs from X (content ready) |
-| Substack Distribution | Article published to Nostr; needs Substack cross-post |
-
----
-
-## 🏗️ Architecture State
-
-- **Markets:** kind 982 (immutable) ✅
-- **Positions:** kind 30078 NIP-78 ✅
-- **Discussions:** kind 1111 NIP-22 ✅
-- **Cashu Mint:** Per-market keysets, 2% rake, CDK Rust ✅
-- **React:** Abandoned 🗑️ Svelte 5 only.
-- **Wallet:** Unified Svelte 5 $state store ✅
-- **Svelte gap coverage:** ~90% of React features now ported (was 55-60%)
-
-## Phase 8 Plan — Key Decisions
-
-| Decision | Resolution |
-|----------|-------------|
-| Third-party vs self-hosted mint | **Self-hosted** (CDK Rust + PostgreSQL) |
-| Lightning provider | **Self-run LND node** |
-| KYC for MVP | **No KYC** |
-| Pablo sign-off | **Given** ✅ |
+- Markets: kind 982 (non-replaceable), `E` tags only
+- Modules are informational only - do not add probability coupling
+- Terminology: mint/withdraw, never resolve/payout/winner
+- All positions tracked via Nostr (kind 30078 NIP-78)
+- Cashu wallet: NIP-60 (testnet mint active)

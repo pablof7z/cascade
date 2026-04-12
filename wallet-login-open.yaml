@@ -1,0 +1,132 @@
+- generic:
+  - generic:
+    - generic:
+      - banner:
+        - generic:
+          - link "Cascade":
+            - /url: /
+          - navigation "Primary":
+            - link "Markets":
+              - /url: /
+            - link "Activity":
+              - /url: /activity
+            - link "Leaderboard":
+              - /url: /leaderboard
+            - link "Analytics":
+              - /url: /analytics
+            - link "Wallet":
+              - /url: /wallet
+          - generic:
+            - generic:
+              - generic:
+                - button "Join"
+                - button "Log in" [expanded]
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - heading "Wallet" [level=1]
+              - paragraph: Manage your sats and tokens.
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Balance
+                  - strong: 0 sats
+                - button "Refresh"
+              - generic:
+                - generic:
+                  - generic: Mint connected
+                - generic: mint.f7z.io
+            - navigation "Wallet sections":
+              - button "Deposit"
+              - button "Send"
+              - button "Receive"
+              - button "History"
+            - generic:
+              - generic:
+                - heading "Deposit sats" [level=2]
+                - paragraph: Create a Lightning invoice to deposit sats into your wallet.
+              - generic:
+                - generic: Amount (sats)
+                - spinbutton "Amount (sats) Min 1,000 · Max 1,000,000 sats"
+                - generic: Min 1,000 · Max 1,000,000 sats
+              - generic:
+                - button "1k"
+                - button "5k"
+                - button "10k"
+                - button "50k"
+                - button "100k"
+              - button "Create invoice" [disabled]
+      - contentinfo:
+        - generic:
+          - generic:
+            - link "Cascade":
+              - /url: /
+            - paragraph: Trade on ideas that do not expire. Markets stay open as evidence accumulates.
+          - generic:
+            - heading "Navigate" [level=2]
+            - link "Markets":
+              - /url: /
+            - link "Create Market":
+              - /url: /builder
+            - link "Analytics":
+              - /url: /analytics
+            - link "Leaderboard":
+              - /url: /leaderboard
+          - generic:
+            - heading "Account" [level=2]
+            - link "Join":
+              - /url: /join
+            - link "Portfolio":
+              - /url: /portfolio
+            - link "Wallet":
+              - /url: /wallet
+            - link "Bookmarks":
+              - /url: /bookmarks
+          - generic:
+            - heading "Reference" [level=2]
+            - link "How It Works":
+              - /url: /how-it-works
+            - link "Blog":
+              - /url: /blog
+            - link "Terms":
+              - /url: /terms
+            - link "Privacy":
+              - /url: /privacy
+        - generic:
+          - generic: © 2026 Cascade.
+          - generic: Public markets for infinite games.
+  - dialog "Log in" [ref=e82]:
+    - generic [ref=e83]:
+      - generic [ref=e84]:
+        - heading "Log in" [level=2] [ref=e85]
+        - generic [ref=e86]: Choose how you want to log in. Your session stays on this device.
+      - button "Close login" [active] [ref=e87]
+    - generic [ref=e90]:
+      - tablist "Login methods" [ref=e91]:
+        - tab "Extension" [selected] [ref=e92]
+        - tab "Secret key" [ref=e93]
+        - tab "Another app" [ref=e94]
+      - tabpanel "Extension" [ref=e95]:
+        - generic [ref=e96]:
+          - paragraph [ref=e97]: Use a browser extension you already trust.
+          - button "Continue with extension" [disabled] [ref=e98]
+      - tabpanel "Secret key" [ref=e99]:
+        - generic [ref=e100]:
+          - generic [ref=e101]:
+            - generic [ref=e102]: Secret key
+            - textbox "Secret key" [ref=e103]:
+              - /placeholder: Paste your secret key
+          - button "Continue with key" [disabled] [ref=e104]
+      - tabpanel "Another app" [ref=e105]:
+        - generic [ref=e106]:
+          - paragraph [ref=e107]: Pair with another app. Show a QR code to approve this session, or paste a connection link.
+          - generic [ref=e108]:
+            - button "Show QR code" [ref=e109]
+            - paragraph [ref=e110]: This starts a one-time pairing request and waits for approval.
+          - generic [ref=e112]: Or paste a link
+          - generic [ref=e113]:
+            - generic [ref=e114]: Connection link
+            - textbox "Connection link" [ref=e115]:
+              - /placeholder: Paste a connection link
+          - button "Continue with link" [disabled] [ref=e116]

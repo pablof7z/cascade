@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>io.f7z.cascade-web-signet</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/customer/Work/cascade-8f3k2m/web/scripts/run-node-edition.sh</string>
+        <string>signet</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/customer/Work/cascade-8f3k2m/web</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PUBLIC_CASCADE_EDITION</key>
+        <string>signet</string>
+        <key>PUBLIC_CASCADE_MINT_URL</key>
+        <string>http://127.0.0.1:3342</string>
+        <key>PUBLIC_CASCADE_API_URL</key>
+        <string>http://127.0.0.1:3342</string>
+        <key>PATH</key>
+        <string>/Users/customer/.nvm/versions/node/v23.11.1/bin:/Users/customer/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>NODE_BIN</key>
+        <string>/Users/customer/.nvm/versions/node/v23.11.1/bin/node</string>
+        <key>HOST</key>
+        <string>127.0.0.1</string>
+        <key>PORT</key>
+        <string>4173</string>
+        <key>ORIGIN</key>
+        <string>http://127.0.0.1:4173</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/customer/Library/Logs/cascade-web-signet.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/customer/Library/Logs/cascade-web-signet-error.log</string>
+</dict>
+</plist>

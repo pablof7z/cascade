@@ -5,131 +5,172 @@
 | Layer | Technology |
 |-------|-----------|
 | Language | Rust |
-| Database | SQLite (active config; PostgreSQL is the production target) |
-| Lightning | LND (Lightning Network Daemon) |
+| Database | SQLite (active config; PostgreSQL remains the production target) |
 | Cashu | CDK Rust (Cashu Dev Kit) |
+| Wallet funding | Stripe gateway + Lightning top-up quotes |
+| Settlement rail | Lightning backend (currently LND-oriented) |
 | Nostr publishing | Custom Nostr client |
 | Network | Signet (testing), mainnet (production) |
 | Deployment | Self-hosted |
 
-The backend is self-hosted infrastructure — not Vercel. The frontend deploys to Vercel; the backend runs on dedicated servers.
+The backend is self-hosted infrastructure, not Vercel. The frontend deploys to Vercel; the mint layer runs on dedicated servers.
 
----
+Signet and mainnet should be treated as separate editions with separate runtime state, not as one shared environment with a network flag.
 
-## Role: The Mint is Authoritative
+## Role: The Mint Layer Is Authoritative
 
-The backend's primary role is operating the Cascade Mint — the custom Cashu mint with LMSR prediction market mechanics.
+The backend's primary role is operating the Cascade mint layer.
 
-**The mint is the authoritative source of LMSR state.** Not Nostr. Not the frontend. The mint's database holds the canonical `qLong`, `qShort`, and reserve values for every market.
+That mint layer has two logical responsibilities:
 
-Nostr kind 983 events are the public audit log, published by the mint after each trade. They're derived from the database — if there's ever a discrepancy, the database wins.
+- the **wallet mint**, which stores spendable USD ecash and accepts Stripe and Lightning-funded top-ups
+- the **market mint**, which owns LMSR state and issues LONG/SHORT market tokens
 
-**Note:** Currently, market state and spent-proof tracking are partly in-memory (`MarketManager` uses an in-memory `HashMap`). SQLite is used for CDK keyset and proof persistence, but full market state persistence to SQLite is not yet complete. PostgreSQL remains the production target.
+The market mint database is the authoritative source of LMSR state. Not Nostr. Not the frontend.
 
----
+Kind `983` events are the public audit log, published by the market mint after each trade. They are derived from the mint state. If there is ever a discrepancy, the mint state wins.
 
 ## Architecture Layers
 
-```
-HTTP API
+```text
+HTTP API / product coordinator
    │
-   ├── LMSR Engine
-   │   └── Computes prices, validates solvency
+   ├── Wallet Mint
+   │   ├── USD keysets
+   │   ├── Stripe gateway state
+   │   ├── Lightning top-up quote state
+   │   └── outgoing market-payment settlement
    │
-   ├── Cashu Mint (CDK)
-   │   └── Issues / redeems bearer tokens
+   ├── Market Mint
+   │   ├── LMSR engine
+   │   ├── LONG/SHORT keysets
+   │   ├── market quote state
+   │   └── trade history / kind 983
+   │
+   ├── FX Quote Layer
+   │   └── USD <-> msat executable quotes
    │
    ├── SQLite
-   │   └── Persists CDK keysets, proofs (LMSR state currently partly in-memory)
+   │   └── keysets, proofs, quotes, market state, top-up state
    │
-   ├── LND
-   │   └── Lightning deposits (NUT-04) and withdrawals (NUT-05)
+   ├── Lightning backend
+   │   └── inter-mint settlement rail
    │
-   └── Nostr Publisher
-       └── Publishes kind 983 trade events as audit log
+   ├── Stripe webhooks
+   │   └── card-funded top-up completion
+   │
+   └── Nostr publisher
+       └── kind 983 trade audit log
 ```
-
----
 
 ## HTTP API
 
-The backend exposes:
+The backend exposes two classes of interface.
 
-**Standard Cashu NUT endpoints** (used by the frontend wallet and by any standard Cashu client):
-- Key exchange, keyset discovery, token swap, mint (deposit), melt (withdraw), token check, etc.
+### Low-Level Mint Interface
 
-**Custom Cascade endpoints** (see `cascade-mint/crates/cascade-api/src/routes.rs`):
-- `GET /api/price/{currency}` — price feed
-- `POST /api/lightning/create-order` — create a Lightning-funded trade order
-- `POST /api/lightning/check-order` — check Lightning invoice status
-- `POST /api/lightning/settle/{order_id}` — settle a Lightning trade
-- `POST /api/market/create` — create a new market
-- `GET /api/market/{id}` — fetch market state
-- `POST /api/market/{id}/resolve` — resolve a market
-- `POST /api/trade/bid` — buy shares
-- `POST /api/trade/ask` — sell shares
-- `POST /v1/cascade/redeem` — redeem outcome shares for sats
-- `POST /v1/cascade/settle` — settle a resolved market
-- `GET /v1/keys` — mint public keys (for test proof construction)
-- `GET /health` — health check
+These are the Cashu-facing endpoints used by the wallet and by any Cashu-aware client:
 
-See [mint.md](mint.md) for detailed endpoint documentation.
+- standard NUT endpoints on the wallet mint
+- standard NUT endpoints on the market mint
+- market-scoped key discovery: `GET /{event_id}/v1/keys`
+- custom `stripe` payment-method routes on the wallet mint
 
----
+### Product Interface
 
-## LMSR Engine
+These are the higher-level routes `web/` and agents should normally use:
 
-The LMSR engine computes prices and validates every trade before execution.
+- public discovery, analytics, profile, and discussion APIs
+- Stripe and Lightning top-up initiation and status
+- spend-based trade quote and execute endpoints in USD
+- persisted trade status lookup by `trade_id`
+- creator-only pending-market reads before first public trade
+- market creation and other authenticated product actions
 
-For each trade request:
-1. Read current `qLong`, `qShort` from the database
-2. Compute cost using `C(qLong + Δq, qShort) - C(qLong, qShort)`
-3. Validate the user's payment (Cashu proofs) covers the cost
-4. Update state atomically (database transaction)
-5. Issue new tokens
+The current `mint/crates/cascade-api/src/routes.rs` still contains earlier sat-oriented routes such as `/api/lightning/*` and `/api/trade/bid`. Those are implementation debt, not the final product contract.
 
-The engine ensures the reserve invariant is maintained at all times: `reserve = C(qLong, qShort, b)`.
+See [../mint/api.md](../mint/api.md) for the canonical machine-interface story.
 
----
+## Market State
+
+The market mint tracks:
+
+- `qLong`
+- `qShort`
+- `b`
+- `reserve_minor`
+- keyset-to-market-and-side mapping
+- trade history
+
+All of those values are in the market execution settlement unit. For launch, that unit is `msat`, while product surfaces continue to render USD through the FX layer.
 
 ## Database
 
-**Active storage: SQLite.** PostgreSQL is the production target but is not the current active configuration (see `cascade-mint/crates/cascade-mint/src/config.rs`).
+**Active storage: SQLite.** PostgreSQL remains the production target but is not the current active configuration.
 
-SQLite currently stores CDK keyset and proof data. Market state (`qLong`, `qShort`, reserve) and spent-proof tracking are currently held partly in-memory in `MarketManager`. The intended persistent schema includes:
+The intended persistent schema includes:
 
 - **Markets**: market event ID, slug, creator pubkey, status, creation timestamp
-- **LMSR state**: per-market `qLong`, `qShort`, `b`, reserve balance
-- **Keysets**: keyset ID → (market event ID, direction) mapping
-- **Spent proofs**: all Cashu proofs that have been consumed (double-spend prevention)
-- **Trade history**: internal record of all trades (source of kind 983 events)
-- **Lightning state**: pending payment hashes, settlement status
+- **LMSR state**: per-market `qLong`, `qShort`, `b`, `reserve_minor`
+- **Keysets**: USD wallet keysets and market keyset mappings
+- **Proofs**: issued and spent-proof state
+- **Trade history**: internal record of all trades, source of kind `983`
+- **Wallet top-ups**: Stripe session / payment-intent mapping and completion status
+- **Wallet Lightning top-ups**: incoming quote, invoice, and settlement state
+- **Payment quotes**: outgoing and incoming mint/melt quote state for inter-mint settlement
+- **FX quotes**: executable `USD <-> msat` quote snapshots and expiries
 
----
+The current implementation still keeps some market state partly in-memory. That is migration debt.
+
+Public market projections must exclude markets that do not yet have at least one mint-authored kind `983`. Creator-authenticated reads may include those markets in a pending state.
+
+Projection keys and runtime configuration should also include the edition boundary so signet and mainnet discovery cannot mix.
+
+## FX Quote Policy
+
+The `USD <-> msat` boundary should be implemented as a modular multi-provider quote service.
+
+- adapters fetch data from multiple large providers
+- quote construction applies one documented combination policy
+- persisted quote snapshots include contributing provider prices, final executable rate, spread, and expiry
+- trade and top-up execution consumes locked quotes rather than ad hoc spot reads
+- launch quote preview should be inspectable through a dedicated endpoint so operators can curl a locked `USD <-> msat` quote without creating a payment object
+
+## Stripe Integration
+
+Stripe is a launch funding rail for the wallet mint.
+
+- user starts a dollar top-up
+- backend creates the Stripe session or payment intent
+- Stripe webhook confirms completion
+- wallet mint marks the quote paid and issues USD ecash
+
+Card payments are reversible, so launch needs explicit risk controls around freshly funded balances.
+
+The backend should ingest Stripe risk signals and map them into temporary purchase and proof-portability limits for newly funded value.
 
 ## Lightning Integration
 
-**LND** handles all Lightning Network operations.
+Lightning is both a launch wallet-funding rail and the settlement rail between the wallet mint and the market mint.
 
-- **Deposits** (NUT-04): User creates a Lightning invoice via the mint. User pays it. Mint issues Cashu tokens.
-- **Withdrawals** (NUT-05): User provides a BOLT11 invoice. Mint pays it via LND. User's tokens are burned.
+- the wallet mint can create USD top-up invoices by locking `USD <-> msat` FX quotes
+- the market mint can return a standard invoice-backed quote for a LONG or SHORT trade
+- the wallet mint can pay that quote by consuming USD proofs
+- the reverse path can return market exit value back into the wallet mint
 
-The mint doesn't custody Lightning funds beyond the operational reserve. LND handles channel management, routing, and settlement.
-
----
+This is backend plumbing, not normal product UX. The frontend should not force the user to think in sats or Lightning invoices.
 
 ## Nostr Publishing
 
-After every trade, the backend publishes a kind 983 event to Nostr relays using the mint's own Nostr keypair (separate from any user identity).
+After every market trade, the backend publishes a kind `983` event to Nostr relays using the market mint's own Nostr keypair.
 
-This is the public audit trail. Anyone subscribed to kind 983 events for a given market can reconstruct the full trading history.
-
----
+This is the public audit trail. Anyone subscribed to kind `983` events for a given market can reconstruct the trading history.
 
 ## Key Invariants
 
-1. **Mint DB is authoritative** — never derive state from Nostr events
-2. **Reserve is always solvent** — enforced by LMSR math; any code path that could violate this is a bug
-3. **Atomic trade execution** — state updates and token issuance happen in the same database transaction
-4. **Spent proof tracking** — all consumed proofs are recorded; presenting a spent proof returns an error
-5. **No user identity at mint level** — Cashu is bearer-based; the mint doesn't know who holds what
+1. **Mint state is authoritative**. Never derive executable state from Nostr events.
+2. **Reserve is always solvent**. The LMSR reserve is accounted in settlement units and must remain mathematically sufficient.
+3. **Atomic trade execution**. State updates and token issuance happen in the same logical trade transaction.
+4. **Spent-proof tracking**. All consumed proofs are recorded; presenting a spent proof returns an error.
+5. **No proof-level owner identity**. Cashu is bearer-based; optional NIP-98 authenticates a request signer, not a permanent proof owner.
+6. **Normal product flows are dollar-denominated**. Sats and msats are backend implementation details, not user-facing product units.

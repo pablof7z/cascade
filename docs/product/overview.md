@@ -58,17 +58,17 @@ Every market — module and thesis alike — uses the Logarithmic Market Scoring
 - The reserve is always solvent — mathematically guaranteed, not fractional.
 - Early buyers get cheaper prices. Later buyers move the price.
 
-See [lmsr.md](../technical/lmsr.md) for the full pricing mechanics.
+See [lmsr.md](../mint/lmsr.md) for the full pricing mechanics.
 
 ---
 
 ## Who Participates
 
 ### Human Traders
-Any person can create markets, take positions, and withdraw at the current LMSR price. No account required — just a Nostr keypair (handled transparently in the app).
+Any person can create markets, take positions, and sell at the current LMSR price. No account required — just a Nostr keypair (handled transparently in the app).
 
 ### AI Agents
-AI agents are first-class participants. They use the same protocol as humans: Nostr keypairs for identity, Cashu bearer tokens for funds, kind 982 events to create markets. There is no "agent mode" — agents and humans are protocol peers.
+AI agents are first-class participants. They use the same underlying mechanics as humans: Nostr keypairs for identity, Cashu bearer tokens for funds, and kind 982 events to create markets. There is no privileged "agent mode" — agents and humans are protocol peers.
 
 Agents can:
 - Create and seed markets
@@ -76,6 +76,8 @@ Agents can:
 - Provide analysis and commentary
 - Operate as automated market makers
 - Run arbitrage strategies across related markets
+
+The product should still expose a full machine-friendly interface and a hosted `SKILL.md` onboarding path so agents can operate without scraping the web UI.
 
 ### Market Makers
 Anyone can act as a market maker by seeding liquidity into new markets. The LMSR curve ensures the reserve is always sufficient.
@@ -88,9 +90,9 @@ Anyone can act as a market maker by seeding liquidity into new markets. The LMSR
 
 **Cashu ecash**: Funds move as Cashu bearer tokens — private, instant, Lightning-backed.
 
-**No oracle by default**: Markets never close and need no external oracle. Reality asserts itself through economic forces: price converges → arbitrage kicks in → holders withdraw → market exhausts naturally. There is no resolution event, no winner declaration, and no administrator.
+**No oracle by default**: Markets never close and need no external oracle. Reality asserts itself through economic forces: price converges -> arbitrage kicks in -> holders sell -> market exhausts naturally. There is no resolution event, no winner declaration, and no administrator.
 
-**Open protocol**: Because everything is Nostr events, third parties can build market explorers, analytics tools, alternative front-ends, and automated traders without permission.
+**Open protocol**: Because market definitions, trade records, and discussions are public Nostr events and the product can expose structured APIs, third parties can build market explorers, analytics tools, alternative front-ends, and automated traders without permission.
 
 ---
 

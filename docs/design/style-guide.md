@@ -96,7 +96,8 @@ Active:    -mb-px border-b-2 border-white text-white
 Inactive:  text-neutral-500 hover:text-neutral-300
 ```
 
-Reference: `MarketTabsShell.tsx`
+Reference: `webapp/src/lib/components/ui/MarketTabsShell.svelte`
+Reference note: the old `webapp/` path is legacy only. Recreate this tab pattern in `web/` rather than treating `webapp/` as the active source tree.
 
 ### Buttons
 
@@ -139,7 +140,8 @@ If a card is genuinely necessary:
 
 - Always `font-mono`
 - Percentages: `72%` not `72.0%` unless precision is meaningful
-- Prices: display in sats, formatted with `font-mono`
+- Monetary values: display in USD in the normal product UI, formatted with `font-mono`
+- Never expose sats or msats in the normal product UI
 - YES side color: `emerald-*`
 - NO side color: `rose-*`
 
@@ -151,7 +153,7 @@ If a card is genuinely necessary:
 
 If a user has never seen a market before and no events have arrived yet, render an empty state — not a spinner.
 
-**Legacy note:** `src/lib/components/ui/Skeleton.svelte` exists in the codebase. Any existing skeleton loader usage is tech debt — do not add new usages, and remove existing ones when touching that code.
+**Legacy note:** Skeleton-loader code may still exist in legacy frontend files. Any such usage is tech debt — do not add new usages, and remove it when touching the relevant area.
 
 ---
 

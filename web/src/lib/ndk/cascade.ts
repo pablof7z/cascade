@@ -1,0 +1,422 @@
+import { NDKEvent, type NostrEvent } from '@nostr-dev-kit/ndk';
+import { isPaperEdition } from '$lib/cascade/config';
+import { formatProductAmount } from '$lib/cascade/format';
+
+export const CASCADE_MARKET_KIND = 982;
+export const CASCADE_TRADE_KIND = 983;
+export const CASCADE_DISCUSSION_KIND = 1111;
+export const CASCADE_BOOKMARK_KIND = 10003;
+export const CASCADE_POSITION_KIND = 30078;
+
+export type MarketRecord = {
+  id: string;
+  pubkey: string;
+  slug: string;
+  title: string;
+  description: string;
+  body: string;
+  categories: string[];
+  topics: string[];
+  mintUrl?: string;
+  mintPubkey?: string;
+  status: string;
+  createdAt: number;
+  rawEvent: NostrEvent;
+};
+
+export type TradeRecord = {
+  id: string;
+  pubkey: string;
+  marketId: string;
+  amount: number;
+  unit: string;
+  direction: 'yes' | 'no';
+  type: 'buy' | 'sell';
+  pricePpm: number;
+  probability: number;
+  createdAt: number;
+  rawEvent: NostrEvent;
+};
+
+export type MarketTradeSummary = {
+  tradeCount: number;
+  grossVolume: number;
+  buyVolume: number;
+  sellVolume: number;
+  yesVolume: number;
+  noVolume: number;
+  latestTradeAt: number | null;
+  latestPricePpm: number | null;
+  latestDirection: 'yes' | 'no' | null;
+  latestType: 'buy' | 'sell' | null;
+};
+
+export type DiscussionRecord = {
+  id: string;
+  pubkey: string;
+  marketId: string;
+  rootId: string;
+  replyTo?: string;
+  subject?: string;
+  content: string;
+  createdAt: number;
+  rawEvent: NostrEvent;
+};
+
+export type DiscussionThread = {
+  post: DiscussionRecord;
+  replies: DiscussionThread[];
+  replyCount: number;
+};
+
+export type PositionRecord = {
+  id: string;
+  pubkey: string;
+  marketId: string;
+  marketTitle?: string;
+  direction: 'yes' | 'no';
+  quantity: number;
+  stakeSats: number;
+  entryPrice: number;
+  createdAt: number;
+  rawEvent: NostrEvent;
+};
+
+export function rawEventOf(event: NDKEvent | NostrEvent): NostrEvent {
+  return event instanceof NDKEvent ? (event.rawEvent() as NostrEvent) : event;
+}
+
+export function parseMarketEvent(event: NDKEvent | NostrEvent): MarketRecord | null {
+  const raw = rawEventOf(event);
+  if (raw.kind !== CASCADE_MARKET_KIND || !raw.id) return null;
+
+  const slug = firstTagValue(raw.tags, 'd');
+  if (!slug) return null;
+
+  return {
+    id: raw.id,
+    pubkey: raw.pubkey,
+    slug,
+    title: firstTagValue(raw.tags, 'title') || slug,
+    description: firstTagValue(raw.tags, 'description') || '',
+    body: raw.content || '',
+    categories: tagValues(raw.tags, 'c'),
+    topics: tagValues(raw.tags, 't'),
+    mintUrl: firstTagValue(raw.tags, 'mint') || undefined,
+    mintPubkey:
+      firstTagValue(raw.tags, 'mint-pubkey') ||
+      firstTagValue(raw.tags, 'mint_pubkey') ||
+      undefined,
+    status: firstTagValue(raw.tags, 'status') || 'open',
+    createdAt: raw.created_at || 0,
+    rawEvent: raw
+  };
+}
+
+export function parseTradeEvent(event: NDKEvent | NostrEvent): TradeRecord | null {
+  const raw = rawEventOf(event);
+  if (raw.kind !== CASCADE_TRADE_KIND || !raw.id) return null;
+
+  const marketId = firstTagValue(raw.tags, 'e');
+  const direction = firstTagValue(raw.tags, 'direction');
+  const type = firstTagValue(raw.tags, 'type');
+  const amount = integerTag(raw.tags, 'amount');
+  const pricePpm = integerTag(raw.tags, 'price');
+
+  if (!marketId) return null;
+  if (direction !== 'yes' && direction !== 'no') return null;
+  if (type !== 'buy' && type !== 'sell') return null;
+  if (!amount || !pricePpm) return null;
+
+  return {
+    id: raw.id,
+    pubkey: raw.pubkey,
+    marketId,
+    amount,
+    unit: firstTagValue(raw.tags, 'unit') || 'sat',
+    direction,
+    type,
+    pricePpm,
+    probability: pricePpm / 1_000_000,
+    createdAt: raw.created_at || 0,
+    rawEvent: raw
+  };
+}
+
+export function parseDiscussionEvent(event: NDKEvent | NostrEvent): DiscussionRecord | null {
+  const raw = rawEventOf(event);
+  if (raw.kind !== CASCADE_DISCUSSION_KIND || !raw.id) return null;
+
+  let rootId: string | undefined;
+  let replyTo: string | undefined;
+
+  for (const tag of raw.tags) {
+    if (tag[0] !== 'e' || !tag[1]) continue;
+    if (tag[3] === 'root') {
+      rootId = tag[1];
+    } else if (tag[3] === 'reply') {
+      replyTo = tag[1];
+    } else if (!replyTo) {
+      replyTo = tag[1];
+    }
+  }
+
+  const referencedKind = firstTagValue(raw.tags, 'k');
+  const marketId =
+    referencedKind === '982'
+      ? rootId
+      : rootId && rootId !== raw.id
+        ? rootId
+        : undefined;
+
+  if (!marketId || !rootId) return null;
+
+  return {
+    id: raw.id,
+    pubkey: raw.pubkey,
+    marketId,
+    rootId,
+    replyTo,
+    subject: firstTagValue(raw.tags, 'subject') || undefined,
+    content: raw.content || '',
+    createdAt: raw.created_at || 0,
+    rawEvent: raw
+  };
+}
+
+export function parsePositionEvent(event: NDKEvent | NostrEvent): PositionRecord | null {
+  const raw = rawEventOf(event);
+  if (raw.kind !== CASCADE_POSITION_KIND || !raw.id) return null;
+
+  const dTag = firstTagValue(raw.tags, 'd');
+  const dTagParts = dTag?.startsWith('cascade:position:') ? dTag.split(':') : null;
+
+  let payload: Record<string, unknown> = {};
+  if (raw.content) {
+    try {
+      payload = JSON.parse(raw.content) as Record<string, unknown>;
+    } catch {
+      payload = {};
+    }
+  }
+
+  const marketId =
+    readString(payload.marketId) ||
+    readString(tagRecord(raw.tags).market) ||
+    (dTagParts && dTagParts.length >= 4 ? dTagParts.slice(2, -1).join(':') : undefined);
+  const direction =
+    readDirection(payload.direction) ||
+    readDirection(tagRecord(raw.tags).direction) ||
+    readDirection(dTagParts ? dTagParts[dTagParts.length - 1] : undefined);
+
+  if (!marketId || !direction) return null;
+
+  return {
+    id: readString(payload.id) || raw.id,
+    pubkey: raw.pubkey,
+    marketId,
+    marketTitle: readString(payload.marketTitle),
+    direction,
+    quantity: readNumber(payload.quantity) ?? readNumber(payload.shares) ?? 0,
+    stakeSats:
+      readNumber(payload.costBasis) ??
+      readNumber(payload.amountSats) ??
+      readNumber(tagRecord(raw.tags).amount) ??
+      0,
+    entryPrice:
+      readNumber(payload.entryPrice) ??
+      readNumber(payload.avgPrice) ??
+      readNumber(tagRecord(raw.tags).avg_price) ??
+      0,
+    createdAt:
+      readNumber(payload.timestamp) ??
+      (raw.created_at ? raw.created_at * 1000 : 0),
+    rawEvent: raw
+  };
+}
+
+export function buildTradeSummary(trades: TradeRecord[]): MarketTradeSummary {
+  if (trades.length === 0) {
+    return {
+      tradeCount: 0,
+      grossVolume: 0,
+      buyVolume: 0,
+      sellVolume: 0,
+      yesVolume: 0,
+      noVolume: 0,
+      latestTradeAt: null,
+      latestPricePpm: null,
+      latestDirection: null,
+      latestType: null
+    };
+  }
+
+  const ordered = [...trades].sort((left, right) => right.createdAt - left.createdAt);
+  const latest = ordered[0];
+
+  return {
+    tradeCount: trades.length,
+    grossVolume: trades.reduce((sum, trade) => sum + trade.amount, 0),
+    buyVolume: trades.filter((trade) => trade.type === 'buy').reduce((sum, trade) => sum + trade.amount, 0),
+    sellVolume: trades.filter((trade) => trade.type === 'sell').reduce((sum, trade) => sum + trade.amount, 0),
+    yesVolume: trades.filter((trade) => trade.direction === 'yes').reduce((sum, trade) => sum + trade.amount, 0),
+    noVolume: trades.filter((trade) => trade.direction === 'no').reduce((sum, trade) => sum + trade.amount, 0),
+    latestTradeAt: latest.createdAt,
+    latestPricePpm: latest.pricePpm,
+    latestDirection: latest.direction,
+    latestType: latest.type
+  };
+}
+
+export function buildDiscussionThreads(records: DiscussionRecord[], marketId: string): DiscussionThread[] {
+  const relevant = records
+    .filter((record) => record.marketId === marketId)
+    .sort((left, right) => left.createdAt - right.createdAt);
+
+  const nodeMap = new Map<string, DiscussionThread>();
+  for (const record of relevant) {
+    nodeMap.set(record.id, { post: record, replies: [], replyCount: 0 });
+  }
+
+  const roots: DiscussionThread[] = [];
+  for (const record of relevant) {
+    const node = nodeMap.get(record.id);
+    if (!node) continue;
+
+    const isRootPost =
+      record.replyTo === undefined ||
+      record.replyTo === record.marketId ||
+      record.replyTo === record.rootId;
+
+    if (isRootPost) {
+      roots.push(node);
+      continue;
+    }
+
+    const parent = record.replyTo ? nodeMap.get(record.replyTo) : undefined;
+    if (parent) {
+      parent.replies.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  for (const root of roots) {
+    annotateReplyCount(root);
+  }
+
+  return roots.sort((left, right) => right.post.createdAt - left.post.createdAt);
+}
+
+export function marketUrl(slug: string): string {
+  return `/market/${encodeURIComponent(slug)}`;
+}
+
+export function marketDiscussionUrl(slug: string): string {
+  return `${marketUrl(slug)}/discussion`;
+}
+
+export function marketChartsUrl(slug: string): string {
+  return `${marketUrl(slug)}/charts`;
+}
+
+export function marketActivityUrl(slug: string): string {
+  return `${marketUrl(slug)}/activity`;
+}
+
+export function threadUrl(slug: string, threadId: string): string {
+  return `${marketDiscussionUrl(slug)}/${encodeURIComponent(threadId)}`;
+}
+
+export function formatSats(value: number | null | undefined): string {
+  if (isPaperEdition()) {
+    return formatProductAmount(value, 'usd');
+  }
+  if (!value || Number.isNaN(value)) return '0';
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value);
+}
+
+export function formatProbability(probability: number | null | undefined): string {
+  if (probability === null || probability === undefined || Number.isNaN(probability)) return '—';
+  return `${(probability * 100).toFixed(1)}%`;
+}
+
+export function formatRelativeTime(timestampSeconds: number | null | undefined): string {
+  if (!timestampSeconds) return 'Unknown';
+  const seconds = Math.max(1, Math.floor(Date.now() / 1000 - timestampSeconds));
+  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86_400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 604_800) return `${Math.floor(seconds / 86_400)}d ago`;
+  return `${Math.floor(seconds / 604_800)}w ago`;
+}
+
+export function truncateText(value: string, maxLength = 160): string {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+export function sanitizeMarketCopy(value: string): string {
+  return value
+    .replace(/resolution criteria/gi, 'market criteria')
+    .replace(/\bresolves based on whether\b/gi, 'tracks whether')
+    .replace(/\bresolves based on\b/gi, 'tracks')
+    .replace(/\bresolves if\b/gi, 'tracks if')
+    .replace(/\bresolves when\b/gi, 'tracks when')
+    .replace(/\bresolves on\b/gi, 'tracks on')
+    .replace(/\bresolves to\b/gi, 'tracks to')
+    .replace(/\bresolves\b/gi, 'tracks')
+    .replace(/\bresolved\b/gi, 'priced')
+    .replace(/\bresolution\b/gi, 'market state');
+}
+
+function annotateReplyCount(node: DiscussionThread): number {
+  let count = 0;
+  for (const reply of node.replies) {
+    count += 1 + annotateReplyCount(reply);
+  }
+  node.replyCount = count;
+  node.replies.sort((left, right) => left.post.createdAt - right.post.createdAt);
+  return count;
+}
+
+function firstTagValue(tags: string[][], name: string): string | undefined {
+  return tags.find((tag) => tag[0] === name)?.[1];
+}
+
+function tagValues(tags: string[][], name: string): string[] {
+  return tags.filter((tag) => tag[0] === name && tag[1]).map((tag) => tag[1]);
+}
+
+function integerTag(tags: string[][], name: string): number | undefined {
+  const value = firstTagValue(tags, name);
+  if (!value) return undefined;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function tagRecord(tags: string[][]): Record<string, string> {
+  return Object.fromEntries(tags.filter((tag) => tag[0] && tag[1]).map((tag) => [tag[0], tag[1]]));
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function readDirection(value: unknown): 'yes' | 'no' | undefined {
+  if (value === 'yes' || value === 'no') return value;
+  if (value === 'YES') return 'yes';
+  if (value === 'NO') return 'no';
+  if (value === 'LONG' || value === 'long') return 'yes';
+  if (value === 'SHORT' || value === 'short') return 'no';
+  return undefined;
+}

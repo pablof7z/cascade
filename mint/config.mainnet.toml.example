@@ -1,0 +1,26 @@
+[mint]
+url = "https://mint.f7z.io"
+name = "Cascade Mainnet Mint"
+description = "Mainnet mint for Cascade"
+
+[database]
+path = "./data/mainnet/cascade_mint.db"
+
+[seed]
+path = "./data/mainnet/mint_seed.key"
+
+[lnd]
+host = "127.0.0.1"
+port = 10009
+cert_path = "/Users/customer/.lnd/tls.cert"
+macaroon_path = "/Users/customer/.lnd/data/chain/bitcoin/mainnet/admin.macaroon"
+
+[network]
+network_type = "mainnet"
+
+[server]
+host = "127.0.0.1"
+port = 3338
+
+[fees]
+trade_fee_percent = 1

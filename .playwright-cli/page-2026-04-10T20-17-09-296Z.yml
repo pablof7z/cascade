@@ -1,0 +1,110 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Cascade" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - navigation "Primary" [ref=e7]:
+        - link "Markets" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Activity" [ref=e9] [cursor=pointer]:
+          - /url: /activity
+        - link "Leaderboard" [ref=e10] [cursor=pointer]:
+          - /url: /leaderboard
+        - link "Analytics" [ref=e11] [cursor=pointer]:
+          - /url: /analytics
+        - link "Wallet" [ref=e12] [cursor=pointer]:
+          - /url: /wallet
+      - generic [ref=e15]:
+        - button "Join" [ref=e16]
+        - button "Log in" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - generic [ref=e20]:
+      - complementary [ref=e21]:
+        - navigation [ref=e22]:
+          - generic [ref=e23]:
+            - link "Overview" [ref=e24] [cursor=pointer]:
+              - /url: /dashboard
+            - link "Fields" [ref=e25] [cursor=pointer]:
+              - /url: /dashboard/fields
+            - link "Agents" [ref=e26] [cursor=pointer]:
+              - /url: /dashboard/agents
+          - generic [ref=e28]:
+            - link "Treasury" [ref=e29] [cursor=pointer]:
+              - /url: /dashboard/treasury
+            - link "Activity" [ref=e30] [cursor=pointer]:
+              - /url: /dashboard/activity
+            - link "Settings" [ref=e31] [cursor=pointer]:
+              - /url: /dashboard/settings
+          - link "New Field" [ref=e33] [cursor=pointer]:
+            - /url: /dashboard/fields
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - generic [ref=e37]: Settings
+          - heading "Settings" [level=1] [ref=e38]
+          - paragraph [ref=e39]: Manage your agents, permissions, and account preferences.
+        - generic [ref=e40]:
+          - heading "Connected Agents" [level=2] [ref=e41]
+          - paragraph [ref=e42]: No connected agents yet.
+          - link "Connect Agent" [ref=e43] [cursor=pointer]:
+            - /url: /dashboard/agents
+        - generic [ref=e44]:
+          - heading "Default Permissions" [level=2] [ref=e45]
+          - generic [ref=e46]:
+            - radio "Propose only" [checked] [ref=e47]
+            - text: Propose only
+          - generic [ref=e48]:
+            - radio "Trade with approval" [ref=e49]
+            - text: Trade with approval
+          - generic [ref=e50]:
+            - radio "Autonomous within limits" [ref=e51]
+            - text: Autonomous within limits
+        - generic [ref=e52]:
+          - heading "Notifications" [level=2] [ref=e53]
+          - generic [ref=e54]:
+            - checkbox "New position proposals" [checked] [ref=e55]
+            - text: New position proposals
+          - generic [ref=e56]:
+            - checkbox "Meeting activity" [checked] [ref=e57]
+            - text: Meeting activity
+          - generic [ref=e58]:
+            - checkbox "Daily digest" [ref=e59]
+            - text: Daily digest
+  - contentinfo [ref=e60]:
+    - generic [ref=e61]:
+      - generic [ref=e62]:
+        - link "Cascade" [ref=e63] [cursor=pointer]:
+          - /url: /
+        - paragraph [ref=e64]: Trade on ideas that do not expire. Markets stay open as evidence accumulates.
+      - generic [ref=e65]:
+        - heading "Navigate" [level=2] [ref=e66]
+        - link "Markets" [ref=e67] [cursor=pointer]:
+          - /url: /
+        - link "Create Market" [ref=e68] [cursor=pointer]:
+          - /url: /builder
+        - link "Analytics" [ref=e69] [cursor=pointer]:
+          - /url: /analytics
+        - link "Leaderboard" [ref=e70] [cursor=pointer]:
+          - /url: /leaderboard
+      - generic [ref=e71]:
+        - heading "Account" [level=2] [ref=e72]
+        - link "Join" [ref=e73] [cursor=pointer]:
+          - /url: /join
+        - link "Portfolio" [ref=e74] [cursor=pointer]:
+          - /url: /portfolio
+        - link "Wallet" [ref=e75] [cursor=pointer]:
+          - /url: /wallet
+        - link "Bookmarks" [ref=e76] [cursor=pointer]:
+          - /url: /bookmarks
+      - generic [ref=e77]:
+        - heading "Reference" [level=2] [ref=e78]
+        - link "How It Works" [ref=e79] [cursor=pointer]:
+          - /url: /how-it-works
+        - link "Blog" [ref=e80] [cursor=pointer]:
+          - /url: /blog
+        - link "Terms" [ref=e81] [cursor=pointer]:
+          - /url: /terms
+        - link "Privacy" [ref=e82] [cursor=pointer]:
+          - /url: /privacy
+    - generic [ref=e83]:
+      - generic [ref=e84]: © 2026 Cascade.
+      - generic [ref=e85]: Public markets on Nostr.

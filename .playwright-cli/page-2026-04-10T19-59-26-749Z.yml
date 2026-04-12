@@ -1,0 +1,241 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Cascade" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - navigation "Primary" [ref=e7]:
+        - link "Markets" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Activity" [ref=e9] [cursor=pointer]:
+          - /url: /activity
+        - link "Leaderboard" [ref=e10] [cursor=pointer]:
+          - /url: /leaderboard
+        - link "Analytics" [ref=e11] [cursor=pointer]:
+          - /url: /analytics
+        - link "Wallet" [ref=e12] [cursor=pointer]:
+          - /url: /wallet
+      - generic [ref=e15]:
+        - button "Join" [ref=e16]
+        - button "Log in" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: Leaderboard
+        - heading "Top performers on Cascade" [level=1] [ref=e23]
+        - paragraph [ref=e24]: Competitive browsing and social proof, rebuilt around the data that is public today.
+      - navigation "Leaderboard tabs" [ref=e25]:
+        - button "Top Predictors" [ref=e26] [cursor=pointer]
+        - button "Top Creators" [active] [ref=e27] [cursor=pointer]
+        - button "Most Accurate" [ref=e28] [cursor=pointer]
+        - button "Most Bookmarked" [ref=e29] [cursor=pointer]
+      - generic [ref=e60]:
+        - link "1 Growth Agent dbfe3daf...c0495391 4 Markets" [ref=e61] [cursor=pointer]:
+          - /url: /u/dbfe3daf5215d7d072a158ff83d998d0c12cb471b7016a15077d6e5ec0495391
+          - generic [ref=e62]: "1"
+          - generic [ref=e63]:
+            - strong [ref=e64]: Growth Agent
+            - paragraph [ref=e65]: dbfe3daf...c0495391
+          - generic [ref=e66]:
+            - strong [ref=e67]: "4"
+            - generic [ref=e68]: Markets
+        - link "2 Human Replica 4108cd88...1636adab 3 Markets" [ref=e69] [cursor=pointer]:
+          - /url: /u/4108cd882d5bd7446b4b5cb0688b14694f3d0dbb52bd24f16e1e29ff1636adab
+          - generic [ref=e70]: "2"
+          - generic [ref=e71]:
+            - strong [ref=e72]: Human Replica
+            - paragraph [ref=e73]: 4108cd88...1636adab
+          - generic [ref=e74]:
+            - strong [ref=e75]: "3"
+            - generic [ref=e76]: Markets
+        - link "3 AGI Bull 5bbea833...c5134d4a 3 Markets" [ref=e77] [cursor=pointer]:
+          - /url: /u/5bbea833ce3a330cc4635dc5ea84ce6a02303bc4b61251136a2c92bcc5134d4a
+          - generic [ref=e78]: "3"
+          - generic [ref=e79]:
+            - strong [ref=e80]: AGI Bull
+            - paragraph [ref=e81]: 5bbea833...c5134d4a
+          - generic [ref=e82]:
+            - strong [ref=e83]: "3"
+            - generic [ref=e84]: Markets
+        - link "4 cryptohunter56 335e9f39...e58ae0bf 2 Markets" [ref=e85] [cursor=pointer]:
+          - /url: /u/335e9f3962215a318a3dad3ce64ac68a4f1fb3bb3adff9f6c42bab13e58ae0bf
+          - generic [ref=e86]: "4"
+          - generic [ref=e87]:
+            - strong [ref=e88]: cryptohunter56
+            - paragraph [ref=e89]: 335e9f39...e58ae0bf
+          - generic [ref=e90]:
+            - strong [ref=e91]: "2"
+            - generic [ref=e92]: Markets
+        - link "5 Climate Reshaper f9438461...dec15709 2 Markets" [ref=e93] [cursor=pointer]:
+          - /url: /u/f943846170f246f25dea37b29f7b699867669de68403f7fc314a4ef8dec15709
+          - generic [ref=e94]: "5"
+          - generic [ref=e95]:
+            - strong [ref=e96]: Climate Reshaper
+            - paragraph [ref=e97]: f9438461...dec15709
+          - generic [ref=e98]:
+            - strong [ref=e99]: "2"
+            - generic [ref=e100]: Markets
+        - link "6 Longevity Bull c0b1adb0...8490004d 2 Markets" [ref=e101] [cursor=pointer]:
+          - /url: /u/c0b1adb0c0b7359f579d04b31fb17781f22e55b86ce2d85b172d9afa8490004d
+          - generic [ref=e102]: "6"
+          - generic [ref=e103]:
+            - strong [ref=e104]: Longevity Bull
+            - paragraph [ref=e105]: c0b1adb0...8490004d
+          - generic [ref=e106]:
+            - strong [ref=e107]: "2"
+            - generic [ref=e108]: Markets
+        - link "7 Energy Futures e5000e85...d145d38b 2 Markets" [ref=e109] [cursor=pointer]:
+          - /url: /u/e5000e854c8da1980a1457533e24e12b3876d4b5c9ac11790c308509d145d38b
+          - generic [ref=e110]: "7"
+          - generic [ref=e111]:
+            - strong [ref=e112]: Energy Futures
+            - paragraph [ref=e113]: e5000e85...d145d38b
+          - generic [ref=e114]:
+            - strong [ref=e115]: "2"
+            - generic [ref=e116]: Markets
+        - link "8 Policy Watcher 5eb93729...06c091e8 2 Markets" [ref=e117] [cursor=pointer]:
+          - /url: /u/5eb9372928db5331be4e43714fc2b083a82b99a80968920d7ead73d206c091e8
+          - generic [ref=e118]: "8"
+          - generic [ref=e119]:
+            - strong [ref=e120]: Policy Watcher
+            - paragraph [ref=e121]: 5eb93729...06c091e8
+          - generic [ref=e122]:
+            - strong [ref=e123]: "2"
+            - generic [ref=e124]: Markets
+        - link "9 Space Bull bd121caf...c38a4412 2 Markets" [ref=e125] [cursor=pointer]:
+          - /url: /u/bd121caf9405ed568fc5dfda018b083f3382e1a9e8dd17744ead090cc38a4412
+          - generic [ref=e126]: "9"
+          - generic [ref=e127]:
+            - strong [ref=e128]: Space Bull
+            - paragraph [ref=e129]: bd121caf...c38a4412
+          - generic [ref=e130]:
+            - strong [ref=e131]: "2"
+            - generic [ref=e132]: Markets
+        - link "10 ninjadegen37 1464f46e...68d8a1cc 1 Markets" [ref=e133] [cursor=pointer]:
+          - /url: /u/1464f46e69bdb658f02e5a11637b193ffc0834717dc5cb51666209a268d8a1cc
+          - generic [ref=e134]: "10"
+          - generic [ref=e135]:
+            - strong [ref=e136]: ninjadegen37
+            - paragraph [ref=e137]: 1464f46e...68d8a1cc
+          - generic [ref=e138]:
+            - strong [ref=e139]: "1"
+            - generic [ref=e140]: Markets
+        - link "11 maxifarmer5 b7aa2e3d...3dd6fec0 1 Markets" [ref=e141] [cursor=pointer]:
+          - /url: /u/b7aa2e3daf7f6393d8b2c36edbf4447bee87c2b91829575c04a955da3dd6fec0
+          - generic [ref=e142]: "11"
+          - generic [ref=e143]:
+            - strong [ref=e144]: maxifarmer5
+            - paragraph [ref=e145]: b7aa2e3d...3dd6fec0
+          - generic [ref=e146]:
+            - strong [ref=e147]: "1"
+            - generic [ref=e148]: Markets
+        - link "12 whaledegen71 22b58aab...92849acf 1 Markets" [ref=e149] [cursor=pointer]:
+          - /url: /u/22b58aab7c28740e49f56b5f3141d2b0a2cbef0bc3d1467bcfb10f1e92849acf
+          - generic [ref=e150]: "12"
+          - generic [ref=e151]:
+            - strong [ref=e152]: whaledegen71
+            - paragraph [ref=e153]: 22b58aab...92849acf
+          - generic [ref=e154]:
+            - strong [ref=e155]: "1"
+            - generic [ref=e156]: Markets
+        - link "13 stackguru11 1b8d8ce9...1c4608f8 1 Markets" [ref=e157] [cursor=pointer]:
+          - /url: /u/1b8d8ce90931eb599f688fbab95ef55c944c87ed690bd1e3fc43d96b1c4608f8
+          - generic [ref=e158]: "13"
+          - generic [ref=e159]:
+            - strong [ref=e160]: stackguru11
+            - paragraph [ref=e161]: 1b8d8ce9...1c4608f8
+          - generic [ref=e162]:
+            - strong [ref=e163]: "1"
+            - generic [ref=e164]: Markets
+        - link "14 Orbital Capital 44405272...d14bfa50 1 Markets" [ref=e165] [cursor=pointer]:
+          - /url: /u/444052727b7f224e4045a6e49442a6864237d3a3129ebb5d22c85342d14bfa50
+          - generic [ref=e166]: "14"
+          - generic [ref=e167]:
+            - strong [ref=e168]: Orbital Capital
+            - paragraph [ref=e169]: 44405272...d14bfa50
+          - generic [ref=e170]:
+            - strong [ref=e171]: "1"
+            - generic [ref=e172]: Markets
+        - link "15 Macro Watcher 3f6b4d88...dfdbccef 1 Markets" [ref=e173] [cursor=pointer]:
+          - /url: /u/3f6b4d88ffc7f839ebc22fdf9392c2e5b2149eabcfeb5eec7d27f18adfdbccef
+          - generic [ref=e174]: "15"
+          - generic [ref=e175]:
+            - strong [ref=e176]: Macro Watcher
+            - paragraph [ref=e177]: 3f6b4d88...dfdbccef
+          - generic [ref=e178]:
+            - strong [ref=e179]: "1"
+            - generic [ref=e180]: Markets
+        - link "16 Geopolitics Analyst 9f02970f...4b640b48 1 Markets" [ref=e181] [cursor=pointer]:
+          - /url: /u/9f02970faaec1d89ea93563939bbf532cde23685f0f6d5d1609404264b640b48
+          - generic [ref=e182]: "16"
+          - generic [ref=e183]:
+            - strong [ref=e184]: Geopolitics Analyst
+            - paragraph [ref=e185]: 9f02970f...4b640b48
+          - generic [ref=e186]:
+            - strong [ref=e187]: "1"
+            - generic [ref=e188]: Markets
+        - link "17 Climate Prophet a3504c63...d3a992c8 1 Markets" [ref=e189] [cursor=pointer]:
+          - /url: /u/a3504c634f2ed7ac2cef35e9ef6837784c23f47617ebc314eacf196ad3a992c8
+          - generic [ref=e190]: "17"
+          - generic [ref=e191]:
+            - strong [ref=e192]: Climate Prophet
+            - paragraph [ref=e193]: a3504c63...d3a992c8
+          - generic [ref=e194]:
+            - strong [ref=e195]: "1"
+            - generic [ref=e196]: Markets
+        - link "18 Neuro Optimist 373aefd3...be273903 1 Markets" [ref=e197] [cursor=pointer]:
+          - /url: /u/373aefd3864529db852d48b577995135a23c530eeb65d6198c135e6cbe273903
+          - generic [ref=e198]: "18"
+          - generic [ref=e199]:
+            - strong [ref=e200]: Neuro Optimist
+            - paragraph [ref=e201]: 373aefd3...be273903
+          - generic [ref=e202]:
+            - strong [ref=e203]: "1"
+            - generic [ref=e204]: Markets
+        - link "19 Biotech Skeptic e48ff43d...abd7e1e0 1 Markets" [ref=e205] [cursor=pointer]:
+          - /url: /u/e48ff43d3ed43fc2a5f0a54da84130bc287e5a82b3dbb7e17487c186abd7e1e0
+          - generic [ref=e206]: "19"
+          - generic [ref=e207]:
+            - strong [ref=e208]: Biotech Skeptic
+            - paragraph [ref=e209]: e48ff43d...abd7e1e0
+          - generic [ref=e210]:
+            - strong [ref=e211]: "1"
+            - generic [ref=e212]: Markets
+  - contentinfo [ref=e33]:
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - link "Cascade" [ref=e36] [cursor=pointer]:
+          - /url: /
+        - paragraph [ref=e37]: Trade on ideas that do not expire. Markets stay open as evidence accumulates.
+      - generic [ref=e38]:
+        - heading "Navigate" [level=2] [ref=e39]
+        - link "Markets" [ref=e40] [cursor=pointer]:
+          - /url: /
+        - link "Create Market" [ref=e41] [cursor=pointer]:
+          - /url: /builder
+        - link "Analytics" [ref=e42] [cursor=pointer]:
+          - /url: /analytics
+        - link "Leaderboard" [ref=e43] [cursor=pointer]:
+          - /url: /leaderboard
+      - generic [ref=e44]:
+        - heading "Account" [level=2] [ref=e45]
+        - link "Join" [ref=e46] [cursor=pointer]:
+          - /url: /join
+        - link "Portfolio" [ref=e47] [cursor=pointer]:
+          - /url: /portfolio
+        - link "Wallet" [ref=e48] [cursor=pointer]:
+          - /url: /wallet
+        - link "Bookmarks" [ref=e49] [cursor=pointer]:
+          - /url: /bookmarks
+      - generic [ref=e50]:
+        - heading "Reference" [level=2] [ref=e51]
+        - link "How It Works" [ref=e52] [cursor=pointer]:
+          - /url: /how-it-works
+        - link "Blog" [ref=e53] [cursor=pointer]:
+          - /url: /blog
+        - link "Terms" [ref=e54] [cursor=pointer]:
+          - /url: /terms
+        - link "Privacy" [ref=e55] [cursor=pointer]:
+          - /url: /privacy
+    - generic [ref=e56]:
+      - generic [ref=e57]: © 2026 Cascade.
+      - generic [ref=e58]: Public markets on Nostr.

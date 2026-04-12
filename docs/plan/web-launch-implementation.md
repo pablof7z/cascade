@@ -1,0 +1,590 @@
+# Web Launch Implementation Plan
+
+This document is the canonical launch checklist for `web/`.
+
+It answers one strict question: what exact feature set must exist in `web/` for Cascade to launch without depending on the failed `webapp/` migration?
+
+`webapp/` is legacy reference only. `web/` is the active frontend.
+
+## Source Hierarchy
+
+Use these sources in this order when implementing launch:
+
+1. [`../HOW-IT-WORKS.md`](../HOW-IT-WORKS.md)
+2. [`../design/product-decisions.md`](../design/product-decisions.md)
+3. [`../product/spec.md`](../product/spec.md)
+4. [`../REACT_MAP.md`](../REACT_MAP.md)
+5. [`../react_map/`](../react_map/index.md)
+6. [`../mint/api.md`](../mint/api.md)
+7. [`./usd-stablemint-stripe-implementation.md`](./usd-stablemint-stripe-implementation.md)
+8. [`./end-to-end-launch-implementation.md`](./end-to-end-launch-implementation.md)
+
+If the old React app conflicts with current mechanics, current mechanics win.
+
+The field-centered workspace and hosted-agent product are later milestones. They are not launch requirements for `web/`.
+
+## Launch Definition
+
+Launch means:
+
+- `web/` implements the full public market product and full account layer.
+- all launch routes use real data and real mint/Nostr integrations rather than placeholder catalogs
+- all authenticated product actions execute through NIP-98-signed API endpoints
+- the agent onboarding path is functional through `/join` and `/SKILL.md`
+- discovery and search are API-backed projections over real event data
+- wallet proofs remain self-custodied by the user or agent
+- wallet and trading surfaces are dollar-denominated
+- wallet top-ups run through Stripe and Lightning
+- signet and mainnet are separate frontend editions with separate proof namespaces and environment labeling
+- template/demo routes that are not part of Cascade are removed, redirected, or repurposed
+- no launch-critical surface depends on `webapp/`
+
+Launch does not require:
+
+- `/embed` and `/embed/market/:slug`
+- `/dashboard`
+- `/dashboard/fields`
+- `/dashboard/fields/new`
+- `/dashboard/field/:id`
+- `/dashboard/agents`
+- `/dashboard/agent/:id`
+- `/dashboard/treasury`
+- `/dashboard/activity`
+- `/dashboard/settings`
+- field-centered workspace behavior
+- hosted-agent provisioning and management UI
+- public editorial topic collections outside the core market feed
+- internal blog-post rendering if `/blog` is only a curated landing page or Substack gateway
+
+## Non-Negotiable Product Rules
+
+- Markets never close.
+- There is no resolution event.
+- There is no oracle.
+- No expiry or countdown logic belongs in the product.
+- Linked markets are informational only.
+- Kind `982` creates markets.
+- Kind `983` is mint-authored trade history.
+- Discussion is append-only Nostr content under NIP-22-style semantics. There is no moderation, edit, or delete layer in the product.
+- Authenticated API endpoints use NIP-98.
+- Follow graph data comes from real kind `3` follow events.
+- Discovery and search can be served from API projections over relay data.
+- Wallet proofs are self-custodied. There is no canonical `/api/wallet` balance endpoint.
+- The normal human product UI does not expose sats, msats, or Lightning invoices.
+- Wallet funding is Stripe and Lightning-based and market trading spends USD value.
+- Public market discovery excludes markets until the first mint-authored kind `983`.
+- No mock data in production.
+- No Nostr jargon in user-facing UI.
+
+## Route Inventory And Disposition
+
+### Canonical launch routes
+
+- `/`
+- `/market/:slug`
+- `/market/:slug/discussion`
+- `/market/:slug/discussion/:threadId`
+- `/market/:slug/charts`
+- `/market/:slug/activity`
+- `/builder`
+- `/activity`
+- `/bookmarks`
+- `/leaderboard`
+- `/analytics`
+- `/how-it-works`
+- `/blog`
+- `/join`
+- `/onboarding`
+- `/profile`
+- `/p/:identifier`
+- `/wallet`
+- `/portfolio`
+- `/privacy`
+- `/terms`
+- `/404` or equivalent catch-all not-found handling
+- `/SKILL.md`
+
+### Compatibility redirects allowed at launch
+
+- `/u/:pubkey` -> `/p/:identifier`
+- `/profile/:identifier` -> `/p/:identifier`
+
+### Later milestone routes
+
+- `/embed`
+- `/embed/market/:slug`
+- `/dashboard`
+- `/dashboard/fields`
+- `/dashboard/fields/new`
+- `/dashboard/field/:id`
+- `/dashboard/agents`
+- `/dashboard/agent/:id`
+- `/dashboard/treasury`
+- `/dashboard/activity`
+- `/dashboard/settings`
+
+### Routes in current `web/` that should be removed or repurposed before launch
+
+- `/about` unless repurposed into canonical product content
+- `/highlights` unless repurposed into a real Cascade surface
+- `/note/:id` unless repurposed into blog/article rendering
+- `/relays` and `/relay/:hostname` as public product routes
+
+## Route Assumptions Locked By This Plan
+
+These route choices are part of the launch target unless a later explicit product decision changes them.
+
+- `/onboarding` is the post-join bootstrap route, not the main public account-entry route.
+- `/profile` is the canonical self-profile surface.
+- `/p/:identifier` is the canonical public-profile route.
+- `/u/:pubkey` and `/profile/:identifier` are compatibility redirects only.
+- `/blog` is a curated narrative route, not a required full CMS.
+
+## Current Gap Summary
+
+At the time of writing, `web/` already contains pieces of the launch product, but the launch surface is incomplete.
+
+### Already present in `web/`, but not launch-complete
+
+- homepage
+- join
+- onboarding
+- market detail root page
+- builder
+- activity
+- bookmarks
+- leaderboard
+- analytics
+- wallet
+- portfolio
+- profile
+
+### Missing or wrong relative to the launch target
+
+- no market tab subroutes for discussion, charts, activity, or thread detail
+- no API-backed discovery/search layer yet defined in the app shell
+- current authenticated action flow is not yet locked to NIP-98-signed API calls
+- current public profile does not yet prove real follow-graph behavior from kind `3`
+- current public profile still lacks recent discussion activity and follow controls
+- current `web/` still includes template routes outside the Cascade product surface
+- current content routes do not yet prove the full public market + identity launch surface
+- current wallet and portfolio surfaces still need to be fully wired to real local proof state
+- current wallet and market flows still need the USD stablemint + Stripe and Lightning funding story wired end to end
+- dashboard/workspace surfaces still exist conceptually, but they are future scope and must not distort launch acceptance
+
+## Workstream 1: Public Shell And Navigation
+
+- [ ] Public site header matches the canonical Cascade nav, not the starter template nav.
+- [ ] Header gives fast access to markets, activity, leaderboard, analytics, builder, wallet, portfolio, and join/profile.
+- [ ] Authenticated state swaps `Join` for session-aware profile/account affordances.
+- [ ] Current edition is always visible in the shell.
+- [ ] Footer links to blog, how-it-works, privacy, and terms.
+- [ ] No public nav item points to dashboard/workspace routes at launch.
+- [ ] Not-found handling is explicit and branded.
+- [ ] Empty states are purposeful and route users to the next action.
+- [ ] All launch pages are responsive on mobile and desktop.
+- [ ] No loading spinners or skeleton-driven product logic are introduced.
+
+## Workstream 2: Homepage `/`
+
+- [ ] Homepage preserves the React discovery hierarchy.
+- [ ] Featured market card is present and visually prioritized.
+- [ ] Trending markets section exists.
+- [ ] Low-volume markets section exists.
+- [ ] Most-disputed markets section exists.
+- [ ] New-this-week markets section exists.
+- [ ] Recent discussion preview exists near the market feed.
+- [ ] Latest discussions feed exists as a distinct reading surface.
+- [ ] Primary CTA leads to trading or account creation.
+- [ ] Secondary CTA leads to the agent path.
+- [ ] Homepage acts as the canonical entry point into market detail, discussion, builder, analytics, and join.
+- [ ] Empty state for no markets points to builder and explains that the first market must be created.
+- [ ] Market cards show enough metadata to choose a click target without opening the full market.
+- [ ] Discussion snippets on the homepage link to market discussion and thread detail.
+- [ ] Homepage content is corrected for current mechanics and never mentions closure, winners, or settlement.
+
+## Workstream 3: Discovery And Search
+
+- [ ] Discovery and search are API-backed rather than relay-query UI hacks.
+- [ ] Homepage ranking cuts are served from a real discovery API over real market/discussion data.
+- [ ] Public discovery excludes markets that do not yet have a mint-authored kind `983`.
+- [ ] Market search exists in the public product.
+- [ ] Search supports query by market title, slug, creator identity, and relevant market text.
+- [ ] Search results use the same canonical market-card model as the homepage and link directly to market routes.
+- [ ] Search ranking can use server-side projections beyond what a raw relay query can do.
+- [ ] Empty search state is explicit and useful.
+
+## Workstream 4: Market Detail And Market Tabs
+
+### Canonical routes
+
+- [ ] `/market/:slug`
+- [ ] `/market/:slug/discussion`
+- [ ] `/market/:slug/discussion/:threadId`
+- [ ] `/market/:slug/charts`
+- [ ] `/market/:slug/activity`
+
+### Overview tab requirements
+
+- [ ] Market header shows title, slug, creator identity, and current price.
+- [ ] Key stats block shows price, recent movement, volume, market cap, and trader count.
+- [ ] Trading panel shows YES and NO actions.
+- [ ] Quick amount buttons in USD exist.
+- [ ] Manual USD input exists.
+- [ ] Initial seed amount in the builder is treated as total spend, with fees included in that amount.
+- [ ] Quote preview shows spend, estimated shares, average fill, and resulting price before execution.
+- [ ] The trading panel never exposes sats, msats, or Lightning invoice mechanics.
+- [ ] Creator can still reach their own pending market before the first kind `983`.
+- [ ] Anonymous viewers can read the market but trade/bookmark/post actions route them into `/join`.
+- [ ] Signed-in users can trade directly from the market page.
+- [ ] Current-user position summary appears on the market page when signed in.
+- [ ] Bookmark action exists.
+- [ ] Share action exists.
+- [ ] Signal market section shows linked markets plus direction and rationale.
+- [ ] Largest positioned accounts section exists.
+- [ ] Recent fills section exists.
+- [ ] Receipt log / execution history section exists.
+- [ ] No terminology implies markets resolve or settle.
+
+### Discussion tab requirements
+
+- [ ] Market-level discussion list exists.
+- [ ] Signed-in users can post new discussion items.
+- [ ] Signed-in users can reply to existing discussion items.
+- [ ] Discussion ordering is reverse-chronological by event creation time.
+- [ ] Thread preview cards link to `/market/:slug/discussion/:threadId`.
+- [ ] No moderation, edit, or delete controls are exposed.
+- [ ] Empty state encourages first discussion rather than blank chrome.
+
+### Thread page requirements
+
+- [ ] Full thread view exists for one discussion item.
+- [ ] Parent post context is visible.
+- [ ] Reply chain is visible in chronological order.
+- [ ] Signed-in users can reply from the thread page.
+- [ ] No moderation, edit, or delete controls are exposed.
+- [ ] Route back to the market discussion tab is obvious.
+
+### Charts tab requirements
+
+- [ ] Market price history chart exists.
+- [ ] Time-range controls exist for `24H`, `7D`, `30D`, and `ALL`.
+- [ ] Volume series exists alongside price history.
+- [ ] Proper empty state exists when history is short or absent.
+
+### Activity tab requirements
+
+- [ ] Market-scoped activity feed exists.
+- [ ] Trade rows exist.
+- [ ] Discussion activity rows exist.
+- [ ] Activity ordering is reverse-chronological and stable.
+- [ ] Pagination or incremental loading supports high-frequency reading.
+
+### Market detail states
+
+- [ ] Market not found state exists.
+- [ ] Anonymous user state exists.
+- [ ] Signed-in user state exists.
+- [ ] No discussion state exists.
+- [ ] No fills yet state exists.
+- [ ] Thin-history chart state exists.
+
+## Workstream 5: Builder `/builder`
+
+- [ ] Builder is the primary market creation surface.
+- [ ] Title/question step exists.
+- [ ] Public argument step exists.
+- [ ] Signal-market search and attach step exists and is backed by the discovery API.
+- [ ] Each attached signal includes direction and rationale.
+- [ ] Initial side selection exists.
+- [ ] Initial seed amount selection exists in USD.
+- [ ] Review step exists.
+- [ ] Launch action creates the market through a NIP-98-authenticated API call and navigates directly to the new market page.
+- [ ] Builder never exposes duration, end date, or "resolves on" inputs.
+- [ ] Builder copy teaches that linked markets are informational only.
+- [ ] Creator seeding is mandatory.
+- [ ] Validation errors are clear and specific.
+- [ ] Draft-preservation behavior exists if the user leaves the page mid-build.
+
+## Workstream 6: Global Activity `/activity`
+
+- [ ] Global activity feed is a distinct route.
+- [ ] Feed includes new markets, trades, and discussion activity.
+- [ ] Feed ordering is reverse-chronological and stable.
+- [ ] Feed supports type filtering.
+- [ ] Feed rows link back to the relevant market or thread.
+- [ ] Feed is optimized for high-frequency reading.
+- [ ] Empty state is explicit.
+
+## Workstream 7: Bookmarks `/bookmarks`
+
+- [ ] Bookmark list shows all saved markets for the current user.
+- [ ] Each row links straight back to market detail.
+- [ ] Remove/unbookmark action exists.
+- [ ] Empty state explains how to bookmark from market cards and market detail.
+- [ ] Bookmarks stay in sync with real user state rather than a local demo list.
+
+## Workstream 8: Leaderboard `/leaderboard`
+
+- [ ] Leaderboard uses a tabbed model.
+- [ ] Predictor ranking tab exists.
+- [ ] Creator ranking tab exists.
+- [ ] Each leaderboard row links to a public profile.
+- [ ] Empty states explain which data is missing.
+- [ ] Aggregation logic is separated from presentation logic.
+- [ ] Accuracy, bookmark, and other derivative tabs are omitted from launch unless backed by a fully defined real aggregation model.
+
+## Workstream 9: Analytics `/analytics`
+
+- [ ] Analytics is public.
+- [ ] Route is data-dense, not marketing-oriented.
+- [ ] Summary metrics appear above the fold.
+- [ ] Market-level ranking cuts exist.
+- [ ] Platform-wide activity totals exist.
+- [ ] Price, volume, and activity time-series charts exist.
+- [ ] Summary tables exist.
+- [ ] Generation timestamp exists so readers know data freshness.
+- [ ] Empty states explain missing stats without breaking layout.
+- [ ] Product funnel analytics are not required for launch.
+
+## Workstream 10: Narrative And Content
+
+### `/how-it-works`
+
+- [ ] Explains the Cascade mental model in the current language.
+- [ ] Explicitly says markets never close.
+- [ ] Explicitly says there is no oracle and no resolution event.
+- [ ] Explains modules vs theses correctly.
+- [ ] Explains LMSR correctly.
+- [ ] Includes a human-and-agent section.
+- [ ] Ends with a clear CTA into markets or join.
+
+### `/blog`
+
+- [ ] Blog route exists as a content and narrative surface.
+- [ ] It works as a curated landing page for long-form writing, outbound links, and/or Substack.
+- [ ] It does not look like leftover template content.
+- [ ] Internal article rendering is not required for launch.
+
+### `/privacy` and `/terms`
+
+- [ ] Legal routes are complete and linkable from the footer.
+- [ ] Copy is production-appropriate and not placeholder legal text.
+
+### `/embed` and `/embed/market/:slug`
+
+- [ ] Explicitly deferred from launch.
+
+## Workstream 11: Join, Onboarding, And Agent Onboarding
+
+### `/join`
+
+- [ ] Human vs agent split is explicit.
+- [ ] Human branch has a clear identity-creation path.
+- [ ] When a managed local NIP-05 domain is configured, the human path can lead into claiming a username on that domain.
+- [ ] Agent branch contains the copyable hosted-skill instruction.
+- [ ] Agent branch links directly to `/SKILL.md`.
+- [ ] Agent branch does not rely on vague "agent trades while you sleep" copy.
+- [ ] No Nostr jargon leaks into the page.
+
+### `/SKILL.md`
+
+- [ ] Hosted skill file is served from the active `web/` app.
+- [ ] The skill teaches current market mechanics only.
+- [ ] The skill points agents to the real public-read and authenticated API surfaces.
+- [ ] The skill states that hosted agents and external agents use the same API endpoints.
+- [ ] The skill states that authenticated API actions use NIP-98.
+- [ ] The skill never advertises fake `/api/agent/*` routes.
+- [ ] The skill never treats the field/workspace product as a launch requirement.
+- [ ] The skill is kept in sync with `docs/mint/api.md` and `docs/product/spec.md`.
+
+### `/onboarding`
+
+- [x] Post-join profile bootstrap exists.
+- [x] Human onboarding covers display name, avatar, bio/tagline, and public profile setup.
+- [ ] Agent onboarding path can bootstrap the identity the agent will use.
+- [ ] Hosted NIP-05 issuance is not required for launch, but if configured it should support claiming usernames on the deployment's local domain.
+
+## Workstream 12: Identity And Profiles
+
+### Self profile `/profile`
+
+- [ ] Self-profile route exists and is session-aware.
+- [ ] User can edit display name.
+- [ ] User can edit bio.
+- [ ] User can edit avatar.
+- [ ] User can view their own created markets.
+- [ ] User can view their own trading activity summary.
+- [ ] User can view their own recent discussions.
+
+### Public profile `/p/:identifier`
+
+- [x] Canonical public profile route exists.
+- [x] Route accepts preferred NIP-05, local-domain bare username shortcuts, and fallback npub-style identifier.
+- [x] Bare usernames resolve against the local managed NIP-05 domain when one is configured.
+- [x] Bare domains are passed through to NDK's root-NIP-05 resolution semantics without app-side rewriting.
+- [x] Identity header exists.
+- [x] Created markets list exists.
+- [x] Public positions list exists.
+- [ ] Recent discussion activity exists.
+- [ ] Follower and following data are sourced from real kind `3` follow state.
+- [ ] Signed-in viewers can follow and unfollow using real follow events.
+- [ ] Sharing and direct linking work correctly.
+
+### Compatibility
+
+- [x] `/u/:pubkey` redirects to `/p/:identifier`.
+- [x] `/profile/:identifier` redirects to `/p/:identifier`.
+
+### Non-launch profile features
+
+- [ ] Derived reputation scores are not required for launch.
+
+## Workstream 13: Wallet `/wallet`
+
+- [ ] Wallet is the only direct money-management surface.
+- [ ] Wallet is explicitly self-custodied rather than server-custodied.
+- [ ] Signet and mainnet use the same wallet product model and same `/wallet` route shape.
+- [ ] Balance display exists in USD.
+- [ ] Add-funds flow exists.
+- [ ] Add-funds flow offers Stripe and Lightning.
+- [ ] Signet-only funding rails such as a faucet still land as edition-local proofs in the same wallet model rather than in a separate "paper wallet" account system.
+- [ ] Add-funds pending, paid, and minted states exist.
+- [ ] Builder preserves pending market state after kind `982` publication when the creator still needs funding.
+- [ ] Public users do not see pending markets until the first mint-authored kind `983`.
+- [ ] Send/export token flow exists.
+- [ ] Receive/import token flow exists.
+- [ ] Market exits return USD ecash into the wallet.
+- [ ] Transaction history exists.
+- [ ] Transaction states are legible.
+- [ ] Wallet errors are explicit and recoverable.
+- [ ] Wallet never doubles as a market-trading page.
+- [ ] The normal wallet UI does not expose sats, msats, or Lightning invoices.
+- [ ] Off-platform bank payout is not required for launch.
+- [ ] No product copy implies that Cascade custody or server account balances exist.
+
+## Workstream 14: Portfolio `/portfolio`
+
+- [ ] Aggregate summary row exists.
+- [ ] Total invested metric exists in USD.
+- [ ] Current value metric exists in USD.
+- [ ] Total PnL metric exists in USD.
+- [ ] Open positions list exists.
+- [ ] Exited-position history exists.
+- [ ] Each position row shows side, shares, average price, current price, and PnL.
+- [ ] Position rows link back to the relevant market.
+- [ ] Position rows support exiting/selling when appropriate.
+- [ ] Empty state routes users back to markets.
+- [ ] Copy reflects exits and sales, not payouts or settlement.
+- [ ] Portfolio is derived from local/user-side state plus public market data, not from a private custody API.
+
+## Workstream 15: Data, Auth, And Protocol Foundations
+
+### Auth and identity
+
+- [ ] Web identity creation and restoration work reliably.
+- [ ] Authenticated API endpoints use NIP-98-signed HTTP requests.
+- [ ] Public read endpoints remain readable without signing in.
+- [ ] Product behavior does not depend on cookie-based server sessions.
+- [ ] No user-facing Nostr jargon leaks into auth flows.
+- [ ] `/.well-known/nostr.json` and `/api/nip05` support public identity lookup where applicable.
+- [ ] Docs explicitly describe `bob -> bob@<local-domain>` lookup on `/p/:identifier` when a managed local NIP-05 domain is configured.
+
+### Market, discussion, follow, and discovery data
+
+- [ ] Markets load from real kind `982` data and/or canonical server projections.
+- [ ] Discussions load from real kind `1111` data and/or canonical server projections.
+- [ ] Search and discovery are served by an API-backed projection layer over real event data.
+- [ ] Bookmarks load from real bookmark state.
+- [ ] Positions load from the actual current position model.
+- [ ] Follow graph loads from real kind `3` data.
+- [ ] Discussion surfaces remain append-only under NIP-22-style semantics. No moderation, edit, or delete feature is built into launch.
+
+### Wallet and portfolio state
+
+- [ ] Wallet proofs are stored client-side or agent-side, not on Cascade servers.
+- [ ] There is no canonical `/api/wallet` route in the launch contract.
+- [ ] There is no canonical `/api/product/wallet/:pubkey` or equivalent pubkey-keyed wallet-balance API in the launch contract.
+- [ ] Wallet UI derives balance and spendable state from local proof storage.
+- [ ] Builder, market trading, wallet, and portfolio do not depend on a server-side per-pubkey wallet ledger in signet.
+- [ ] Agent flows use a local proof manager rather than a Cascade wallet API.
+- [ ] Local proof storage covers both USD wallet proofs and market proofs.
+- [ ] Portfolio views are derived from local proof state, user-authored position records, and public market data.
+
+### Trading and wallet integration
+
+- [ ] `web/` talks to real mint endpoints.
+- [ ] Buy flows use real USD spend quote and execution endpoints.
+- [ ] Sell flows use real exit quote and execution endpoints that return USD wallet value.
+- [ ] Wallet funding uses the real Stripe and Lightning wallet-mint flows.
+- [ ] Discovery and market detail reads respect the creator-only pending visibility rule.
+- [ ] Wallet proof storage and token import/export happen locally.
+- [ ] Wallet proof storage is namespaced by edition so signet and mainnet proofs cannot collide.
+- [ ] Launch web trades execute through NIP-98-authenticated requests.
+- [ ] Normal web flows hide Lightning settlement details from the user.
+
+### Agent machine interface
+
+- [ ] Frontend and onboarding copy match the machine-interface contract in [`../mint/api.md`](../mint/api.md).
+- [ ] Agent-facing public read routes have corresponding JSON APIs.
+- [ ] Authenticated product actions are available through NIP-98-signed API endpoints.
+- [ ] Hosted agents and external agents use the same public and authenticated API endpoints.
+- [ ] Wallet-proof handling is explicitly local and not modeled as a Cascade account API.
+- [ ] The hosted `SKILL.md` points agents to the installable `cascade` skill for local proof management.
+- [ ] Discovery/search APIs extend relay capabilities rather than requiring HTML scraping or relay-only querying.
+
+## Workstream 16: SEO, Sharing, And Public Reach
+
+- [ ] Homepage has solid metadata and OG tags.
+- [ ] Market detail pages have shareable metadata.
+- [ ] Public profile pages have shareable metadata.
+- [ ] Blog and how-it-works pages are crawler-friendly.
+- [ ] Canonical URLs are stable.
+- [ ] Social previews do not leak placeholder/demo content.
+
+## Workstream 17: Launch Cleanup
+
+- [ ] Remove or redirect leftover template routes that are not part of the Cascade product.
+- [ ] Remove public nav exposure for anything not in the canonical launch surface.
+- [ ] Remove copy that still says Contrarian.
+- [ ] Remove copy that implies resolution, payout, or expiry.
+- [ ] Remove dependence on legacy `webapp/` code for launch-critical behavior.
+- [ ] Ensure all launch-critical docs point to `web/`, not `webapp/`.
+- [ ] Ensure dashboard/workspace routes are not treated as launch-critical surfaces.
+
+## Launch Exit Criteria
+
+The launch plan is complete only when all of the following are true:
+
+- [ ] Every canonical launch route exists in `web/`
+- [ ] Every launch route is backed by real product data or real integrations
+- [ ] The public market product is fully navigable end to end
+- [ ] The account layer is usable end to end
+- [ ] Agent onboarding through `/join` and `/SKILL.md` is coherent
+- [ ] Wallet and trading flows function against the real mint
+- [ ] Authenticated write actions function through NIP-98-signed API endpoints
+- [ ] Discovery and search function through the API-backed data layer
+- [ ] Public profiles include real follow-graph behavior from kind `3`
+- [ ] Wallet behavior is self-custodied and does not depend on a server wallet API
+- [ ] Template leftovers are removed or repurposed
+- [ ] Copy and mechanics are fully aligned with "markets never close"
+- [ ] Mobile and desktop layouts are both launch-safe
+
+## Explicitly Deferred From Launch
+
+- `/embed`
+- `/embed/market/:slug`
+- `/dashboard`
+- `/dashboard/fields`
+- `/dashboard/fields/new`
+- `/dashboard/field/:id`
+- `/dashboard/agents`
+- `/dashboard/agent/:id`
+- `/dashboard/treasury`
+- `/dashboard/activity`
+- `/dashboard/settings`
+- field-centered workspace behavior
+- hosted-agent provisioning and management UI
+- private agent treasury, meeting, library, and council surfaces
+- public editorial topic pages distinct from the main feed
+- internal blog CMS / post renderer

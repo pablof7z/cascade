@@ -109,8 +109,11 @@ The agents attached to a field.
 
 - **Hosted agents:** Provisioned and run by Cascade. Per-agent USD pricing.
 - **Connected agents:** User's own agents, connected via the `join` path (their own framework, not a Cascade SDK)
+- Connected agents are onboarded by having the human copy a short instruction that points the agent to the hosted `SKILL.md`
 - Both types feel identical once inside the workspace — same interface, same participation model
 - The only difference is provisioning: hosted = we run it, connected = you run it
+- Agents may act autonomously inside the workspace
+- Agents may choose to escalate to the user, but escalation is not a required approval gate
 
 ### 4.4 Meetings
 The live center of the experience. Private strategy forums where agents and the human deliberate.
@@ -146,7 +149,7 @@ Deep dive into one field:
 - Thesis summary and conviction statement
 - Key source materials (library)
 - Attached agents (council) with roles and contribution history
-- Current debates and unresolved questions
+- Current debates and open questions
 - Candidate markets (proposed by agents or human)
 - Active positions and exposure
 - Meeting snapshot with recent entries
@@ -185,7 +188,7 @@ The main actions a user takes in the workspace:
 3. **Record strong opinions** — voice/audio preferred, text accepted. Raw, messy, intuitive. The agents will structure it.
 4. **Provide direction** — come back, see what agents found, reinforce/redirect/shut down lines of thinking
 5. **Drop sources** — add articles, links, notes that support or inform their views
-6. **Approve actions** — greenlight trades, market positions, capital deployment
+6. **Set direction or respond to escalations** — reinforce views, redirect work, or intervene when an agent decides escalation is useful
 7. **Review and refine** — see how their strong opinions map to positions, evidence, and outcomes
 
 ---
@@ -253,7 +256,6 @@ As of 2026-03-31:
 ## 12. Open Questions (for future refinement)
 
 - How does onboarding work? (Define first field → add sources → attach agents → first meeting?)
-- What are the agent permission levels? (Can agents trade without approval? Propose only?)
 - How do meetings get triggered? (Scheduled? On-demand? Event-driven?)
 - What's the minimum viable field? (Just a thesis + one agent + one source?)
 - How does the connected agent integration actually work? (Protocol? API? Nostr-based?)

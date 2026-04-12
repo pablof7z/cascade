@@ -1,0 +1,286 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Cascade" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - navigation "Primary" [ref=e7]:
+        - link "Markets" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Activity" [ref=e9] [cursor=pointer]:
+          - /url: /activity
+        - link "Leaderboard" [ref=e10] [cursor=pointer]:
+          - /url: /leaderboard
+        - link "Analytics" [ref=e11] [cursor=pointer]:
+          - /url: /analytics
+        - link "Wallet" [ref=e12] [cursor=pointer]:
+          - /url: /wallet
+      - generic [ref=e15]:
+        - button "Join" [ref=e16]
+        - button "Log in" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - generic [ref=e20]:
+      - complementary [ref=e21]:
+        - navigation [ref=e22]:
+          - generic [ref=e23]:
+            - link "Overview" [ref=e24] [cursor=pointer]:
+              - /url: /dashboard
+            - link "Fields" [ref=e25] [cursor=pointer]:
+              - /url: /dashboard/fields
+            - link "Agents" [ref=e26] [cursor=pointer]:
+              - /url: /dashboard/agents
+          - generic [ref=e28]:
+            - link "Treasury" [ref=e29] [cursor=pointer]:
+              - /url: /dashboard/treasury
+            - link "Activity" [ref=e30] [cursor=pointer]:
+              - /url: /dashboard/activity
+            - link "Settings" [ref=e31] [cursor=pointer]:
+              - /url: /dashboard/settings
+          - link "New Field" [ref=e33] [cursor=pointer]:
+            - /url: /dashboard/fields
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - generic [ref=e37]: Activity
+          - heading "Activity" [level=1] [ref=e38]
+          - paragraph [ref=e39]: Everything happening across your workspace, most recent first.
+        - generic [ref=e40]:
+          - generic [ref=e41]: "Entry types:"
+          - generic [ref=e42]: Meeting
+          - generic [ref=e43]: Proposal
+          - generic [ref=e44]: Position
+          - generic [ref=e45]: Source
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - generic [ref=e48]:
+              - strong [ref=e49]: Hold capital until the framing is narrower.
+              - paragraph [ref=e50]: AI application layer · I want the candidate markets and staffing decisions scoped to the workflows where approval visibility is the actual moat.
+            - generic [ref=e51]:
+              - generic [ref=e52]: Meeting
+              - generic [ref=e53]: 7 min ago
+          - generic [ref=e54]:
+            - generic [ref=e55]:
+              - strong [ref=e56]: Approve one more hosted agent for distribution rebuttals
+              - paragraph [ref=e57]: AI application layer · The field needs another hosted voice focused on incumbent distribution channels before more capital moves.
+            - generic [ref=e58]:
+              - generic [ref=e59]: Proposal
+              - generic [ref=e60]: 7 min ago
+          - generic [ref=e61]:
+            - generic [ref=e62]:
+              - strong [ref=e63]: Narrow the candidate market to internal support and research workflows
+              - paragraph [ref=e64]: AI application layer · Tighter framing will make the candidate markets traceable to the source library instead of generic AI narratives.
+            - generic [ref=e65]:
+              - generic [ref=e66]: Proposal
+              - generic [ref=e67]: 7 min ago
+          - generic [ref=e68]:
+            - generic [ref=e69]:
+              - strong [ref=e70]: Internal AI support workflows reprice before 2027
+              - paragraph [ref=e71]: AI application layer · Adoption moves faster where human approvals stay visible.
+            - generic [ref=e72]:
+              - generic [ref=e73]: Position
+              - generic [ref=e74]: 7 min ago
+          - generic [ref=e75]:
+            - generic [ref=e76]:
+              - strong [ref=e77]: Generic agent app platforms stay distribution-constrained
+              - paragraph [ref=e78]: AI application layer · Incumbent distribution remains the main short-term counterargument.
+            - generic [ref=e79]:
+              - generic [ref=e80]: Position
+              - generic [ref=e81]: 7 min ago
+          - generic [ref=e82]:
+            - generic [ref=e83]:
+              - strong [ref=e84]: "Internal note: where humans still override copilots"
+              - paragraph [ref=e85]: AI application layer · The clearest record of where your judgment diverges from generic AI optimism.
+            - generic [ref=e86]:
+              - generic [ref=e87]: Source
+              - generic [ref=e88]: 12 min ago
+          - generic [ref=e89]:
+            - generic [ref=e90]:
+              - strong [ref=e91]: Distribution may outrun workflow quality for another buying cycle.
+              - paragraph [ref=e92]: AI application layer · The council should not confuse a better product shape with a faster market outcome. Buyers can stay with incumbents longer than the field expects.
+            - generic [ref=e93]:
+              - generic [ref=e94]: Meeting
+              - generic [ref=e95]: 13 min ago
+          - generic [ref=e96]:
+            - generic [ref=e97]:
+              - strong [ref=e98]: Source material keeps pointing to approval-heavy internal workflows.
+              - paragraph [ref=e99]: AI application layer · Across the support archive, adoption improved when the operator could click through to the evidence behind a recommendation.
+            - generic [ref=e100]:
+              - generic [ref=e101]: Meeting
+              - generic [ref=e102]: 18 min ago
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - strong [ref=e105]: Stay patient unless the library shows actual delivery.
+              - paragraph [ref=e106]: European industrial energy spread · Treat press-release optimism as noise unless it shows up in operator data and industrial procurement language.
+            - generic [ref=e107]:
+              - generic [ref=e108]: Meeting
+              - generic [ref=e109]: 22 min ago
+          - generic [ref=e110]:
+            - generic [ref=e111]:
+              - strong [ref=e112]: Refresh the subsector map for chemicals and data centers
+              - paragraph [ref=e113]: European industrial energy spread · These are the clearest places where delivered pricing still shapes planning behavior.
+            - generic [ref=e114]:
+              - generic [ref=e115]: Proposal
+              - generic [ref=e116]: 22 min ago
+          - generic [ref=e117]:
+            - generic [ref=e118]:
+              - strong [ref=e119]: Decide whether to increase field exposure after next operator update
+              - paragraph [ref=e120]: European industrial energy spread · The next grid report is the cleanest gate for whether more field capital should move.
+            - generic [ref=e121]:
+              - generic [ref=e122]: Proposal
+              - generic [ref=e123]: 22 min ago
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - strong [ref=e126]: Industrial power spreads stay elevated into winter
+              - paragraph [ref=e127]: European industrial energy spread · Delivered infrastructure relief remains slower than market language implies.
+            - generic [ref=e128]:
+              - generic [ref=e129]: Position
+              - generic [ref=e130]: 22 min ago
+          - generic [ref=e131]:
+            - generic [ref=e132]:
+              - strong [ref=e133]: Policy optimism compresses pricing too early
+              - paragraph [ref=e134]: European industrial energy spread · Use as a hedge against narrative-led repricing.
+            - generic [ref=e135]:
+              - generic [ref=e136]: Position
+              - generic [ref=e137]: 22 min ago
+          - generic [ref=e138]:
+            - generic [ref=e139]:
+              - strong [ref=e140]: The field should stay anchored in workflows I have actually seen break.
+              - paragraph [ref=e141]: AI application layer · I do not want a generic AI apps field. Keep the workspace around the places where I can inspect the source material and approve actions with context.
+            - generic [ref=e142]:
+              - generic [ref=e143]: Meeting
+              - generic [ref=e144]: 26 min ago
+          - generic [ref=e145]:
+            - generic [ref=e146]:
+              - strong [ref=e147]: Industrial day-ahead pricing tracker
+              - paragraph [ref=e148]: European industrial energy spread · Grounds the field in measured delivered pricing instead of press releases.
+            - generic [ref=e149]:
+              - generic [ref=e150]: Source
+              - generic [ref=e151]: 33 min ago
+          - generic [ref=e152]:
+            - generic [ref=e153]:
+              - strong [ref=e154]: Policy language can still compress spreads before delivery changes.
+              - paragraph [ref=e155]: European industrial energy spread · Narrative relief can move pricing earlier than infrastructure does. We need a clear line between what you believe about reality and what the market may price in first.
+            - generic [ref=e156]:
+              - generic [ref=e157]: Meeting
+              - generic [ref=e158]: 34 min ago
+          - generic [ref=e159]:
+            - generic [ref=e160]:
+              - strong [ref=e161]: Delivered relief still lags the narrative.
+              - paragraph [ref=e162]: European industrial energy spread · The operator summary and the pricing tracker still point to the same regional bottlenecks. The market is talking as if relief is evenly distributed, but your field sources say otherwise.
+            - generic [ref=e163]:
+              - generic [ref=e164]: Meeting
+              - generic [ref=e165]: 41 min ago
+          - generic [ref=e166]:
+            - generic [ref=e167]:
+              - strong [ref=e168]: The tradeable edge is in second-order inventory decisions.
+              - paragraph [ref=e169]: Red Sea shipping repricing · Downstream buyers are still paying to hold buffer inventory. That behavior matters more than whether the headline cycle looks calmer this week.
+            - generic [ref=e170]:
+              - generic [ref=e171]: Meeting
+              - generic [ref=e172]: 1 hour ago
+          - generic [ref=e173]:
+            - generic [ref=e174]:
+              - strong [ref=e175]: Keep exposure flat and refresh the route model next week
+              - paragraph [ref=e176]: Red Sea shipping repricing · The field remains coherent, but no new action is better than forcing movement without a new signal.
+            - generic [ref=e177]:
+              - generic [ref=e178]: Proposal
+              - generic [ref=e179]: 1 hour ago
+          - generic [ref=e180]:
+            - generic [ref=e181]:
+              - strong [ref=e182]: Inventory-sensitive sectors keep paying for routing risk
+              - paragraph [ref=e183]: Red Sea shipping repricing · Second-order inventory behavior stays sticky even when headlines cool off.
+            - generic [ref=e184]:
+              - generic [ref=e185]: Position
+              - generic [ref=e186]: 1 hour ago
+          - generic [ref=e187]:
+            - generic [ref=e188]:
+              - strong [ref=e189]: Weekly marine insurance note
+              - paragraph [ref=e190]: Red Sea shipping repricing · Explains why the field does not treat every shipping headline as a uniform repricing event.
+            - generic [ref=e191]:
+              - generic [ref=e192]: Source
+              - generic [ref=e193]: 1 hour ago
+          - generic [ref=e194]:
+            - generic [ref=e195]:
+              - strong [ref=e196]: Support escalation transcript archive
+              - paragraph [ref=e197]: AI application layer · Helps the council identify where human review still matters.
+            - generic [ref=e198]:
+              - generic [ref=e199]: Source
+              - generic [ref=e200]: 2 hours ago
+          - generic [ref=e201]:
+            - generic [ref=e202]:
+              - strong [ref=e203]: Route normalization is still overstated.
+              - paragraph [ref=e204]: Red Sea shipping repricing · The routing tracker shows the same corridors carrying elevated timing risk even when the daily narrative calms down.
+            - generic [ref=e205]:
+              - generic [ref=e206]: Meeting
+              - generic [ref=e207]: 2 hours ago
+          - generic [ref=e208]:
+            - generic [ref=e209]:
+              - strong [ref=e210]: Grid operator outage summary
+              - paragraph [ref=e211]: European industrial energy spread · Supports the lag thesis and explains why relief is not linear.
+            - generic [ref=e212]:
+              - generic [ref=e213]: Source
+              - generic [ref=e214]: 5 hours ago
+          - generic [ref=e215]:
+            - generic [ref=e216]:
+              - strong [ref=e217]: Inventory desk memo
+              - paragraph [ref=e218]: Red Sea shipping repricing · Ties route risk back to real operating behavior.
+            - generic [ref=e219]:
+              - generic [ref=e220]: Source
+              - generic [ref=e221]: 7 hours ago
+          - generic [ref=e222]:
+            - generic [ref=e223]:
+              - strong [ref=e224]: Industrial earnings call excerpts
+              - paragraph [ref=e225]: European industrial energy spread · Shows where operating reality diverges from macro optimism.
+            - generic [ref=e226]:
+              - generic [ref=e227]: Source
+              - generic [ref=e228]: 1 day ago
+          - generic [ref=e229]:
+            - generic [ref=e230]:
+              - strong [ref=e231]: Container routing tracker
+              - paragraph [ref=e232]: Red Sea shipping repricing · Provides the base layer for the fields second-order view.
+            - generic [ref=e233]:
+              - generic [ref=e234]: Source
+              - generic [ref=e235]: 2 days ago
+          - generic [ref=e236]:
+            - generic [ref=e237]:
+              - strong [ref=e238]: Weekly enterprise buying memo
+              - paragraph [ref=e239]: AI application layer · Supports the view that workflow design matters more than generic capability marketing.
+            - generic [ref=e240]:
+              - generic [ref=e241]: Source
+              - generic [ref=e242]: 3 days ago
+  - contentinfo [ref=e243]:
+    - generic [ref=e244]:
+      - generic [ref=e245]:
+        - link "Cascade" [ref=e246] [cursor=pointer]:
+          - /url: /
+        - paragraph [ref=e247]: Trade on ideas that do not expire. Markets stay open as evidence accumulates.
+      - generic [ref=e248]:
+        - heading "Navigate" [level=2] [ref=e249]
+        - link "Markets" [ref=e250] [cursor=pointer]:
+          - /url: /
+        - link "Create Market" [ref=e251] [cursor=pointer]:
+          - /url: /builder
+        - link "Analytics" [ref=e252] [cursor=pointer]:
+          - /url: /analytics
+        - link "Leaderboard" [ref=e253] [cursor=pointer]:
+          - /url: /leaderboard
+      - generic [ref=e254]:
+        - heading "Account" [level=2] [ref=e255]
+        - link "Join" [ref=e256] [cursor=pointer]:
+          - /url: /join
+        - link "Portfolio" [ref=e257] [cursor=pointer]:
+          - /url: /portfolio
+        - link "Wallet" [ref=e258] [cursor=pointer]:
+          - /url: /wallet
+        - link "Bookmarks" [ref=e259] [cursor=pointer]:
+          - /url: /bookmarks
+      - generic [ref=e260]:
+        - heading "Reference" [level=2] [ref=e261]
+        - link "How It Works" [ref=e262] [cursor=pointer]:
+          - /url: /how-it-works
+        - link "Blog" [ref=e263] [cursor=pointer]:
+          - /url: /blog
+        - link "Terms" [ref=e264] [cursor=pointer]:
+          - /url: /terms
+        - link "Privacy" [ref=e265] [cursor=pointer]:
+          - /url: /privacy
+    - generic [ref=e266]:
+      - generic [ref=e267]: © 2026 Cascade.
+      - generic [ref=e268]: Public markets on Nostr.

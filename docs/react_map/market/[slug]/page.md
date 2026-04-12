@@ -1,0 +1,95 @@
+---
+route: "/market/:slug"
+kind: page
+component: MarketDetail
+source: src/MarketDetail.tsx
+related_routes:
+  - "/market/:slug/discussion"
+  - "/market/:slug/charts"
+  - "/market/:slug/activity"
+  - "/market/:slug/discussion/:threadId"
+  - /portfolio
+rebuild_notes:
+  - "Treat the slug route as canonical after the kind-982 migration."
+  - "Preserve tab state and tab-specific URLs."
+  - "This route anchors trading and should be the primary target from homepage cards, profile links, bookmarks, and activity entries."
+role: |-
+  Canonical market detail page. It is the hub for trade entry, market stats, position context, and route-level navigation into discussion, charts, and activity tabs.
+---
+
+## Verbatim Microcopy
+
+- Live
+- Embed
+- Mint:
+- ⚠ Does not support Cascade trades
+- ⚠ Mint unavailable
+- Move since open
+- Active risk
+- accounts
+- Average size
+- Discussion
+- threads /
+- replies
+- Yes
+- ¢
+- No
+- Reserve
+- Executed volume
+- Last trade
+- Shares leaning YES
+- Price and positioning
+- Implied probability
+- Committed capital
+- Outstanding shares
+- Trading considerations
+- Market signals
+- Connected signals
+- Signal markets linked to this thesis.
+- Live YES
+- Expect
+- Largest positioned accounts
+- tracked
+- cash available
+- Long
+- Short
+- Gross
+- Recent fills
+- Full activity
+- Notional
+- Tokens
+- Reserve after
+- No receipt history yet. Trading activity will populate this log.
+- Price curve
+- Latest execution
+- Trade
+- Size
+- Start price
+- End price
+- No fills yet.
+- No receipt history yet.
+- Events
+- No events yet.
+- Receipt log
+- ·
+- tokens
+- No receipts yet.
+- Positioning
+- cash
+- This market has been resolved. Trading is closed.
+- Trades execute instantly via LMSR pricing.
+- Buy YES
+- Buy NO
+- Size (sats)
+- Quick sizes
+- Cost
+- Average fill
+- Demo market. Trades execute immediately against the LMSR reserve.
+- Resolve Market
+- Resolve this market
+- Select the outcome:
+- Cancel
+- Your Positions
+- shares @
+- (
+- %)

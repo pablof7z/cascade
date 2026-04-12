@@ -1,23 +1,24 @@
 # Positions & Portfolio
 
-## What a Position Is
+## What A Position Is
 
-A position is a record that a user holds shares in a prediction market outcome. It captures:
-- Which market
-- Which side (YES / NO)
-- How many shares held
-- How much was paid (in sats) to acquire them
-- The average purchase price
+A position is a record that a user holds shares in a market outcome. It captures:
 
----
+- which market
+- which side (`YES` / `NO`)
+- how many shares are held
+- how much was paid in USD minor units to acquire them
+- the average purchase price
+
+UI renders those monetary values as dollars. Storage should stay in integer minor units.
 
 ## Current Implementation: Kind 30078 (NIP-78)
 
-Positions are stored as NIP-78 application-specific data events (kind 30078). The user signs and publishes these events themselves.
+Positions are stored as NIP-78 application-specific data events (kind `30078`). The user signs and publishes these events themselves.
 
-```
+```text
 kind: 30078
-pubkey: <user's pubkey>
+pubkey: <user pubkey>
 content: <JSON-stringified position object>
 tags:
   ["d", "cascade:position:<marketId>:<direction>"]
@@ -29,95 +30,85 @@ tags:
 
 Example: `cascade:position:abc123def456:yes`
 
-**Notes on the actual event shape:**
-- `content` is a JSON-stringified position object (not an empty string)
-- `direction` in the d-tag is lowercase: `"yes"` (LONG) or `"no"` (SHORT)
-- Tags use the `d/c/v` pattern: `d` = identity, `c` = app namespace (`"cascade"`), `v` = version (`"1"`)
-- The position fields (shares, amount, avg_price, etc.) are inside the JSON content, not in tags
+## Replaceability
 
-### Replaceability
+Kind `30078` is replaceable for a given pubkey + d-tag combination. Last-write-wins.
 
-Kind 30078 is a replaceable event (NIP-78 / parameterized replaceable). For a given pubkey + d-tag combination, only the most recent event counts. Last-write-wins.
-
-There's no concurrency concern because each user writes only their own positions, and each position (market + direction) has a unique d-tag. No two devices can conflict on the same position without the user being the author of both.
-
----
+That is acceptable because each user writes only their own position record for a given market + direction pair.
 
 ## Updating Positions
 
-After each trade, the frontend publishes an updated kind 30078 event reflecting the new position state:
+After each trade, the frontend publishes an updated kind `30078` event reflecting the new position state.
 
-- After **buying** YES shares: increment `shares`, update `amount` (add sats spent), recalculate `avg_price`
-- After **selling** YES shares: decrement `shares`, update `amount` proportionally
-- After **full withdrawal**: either delete the event or set `shares` to `"0"`
+- after **buying** YES shares: increment `shares`, update `amount_minor`, recalculate `avg_price_minor`
+- after **selling** YES shares: decrement `shares`, update `amount_minor` proportionally
+- after **full exit**: either delete the event or set `shares` to `"0"`
 
-The average price is recalculated on each buy:
-```
+Average price is recalculated on each buy:
+
+```text
 new_avg_price = (old_shares * old_avg_price + new_shares * new_price) / (old_shares + new_shares)
 ```
 
----
-
 ## PnL Calculation
 
-**Unrealized PnL**: The position's current mark-to-market value minus the amount paid.
+**Unrealized PnL** is current mark-to-market value minus the amount paid.
+
+```text
+unrealized_pnl_minor = current_position_value_minor - total_minor_committed
 ```
-unrealized_pnl = (current_lmsr_price * shares_held * 1 sat) - total_sats_committed
-```
 
-Current LMSR price is fetched from the mint (authoritative) or computed from the market's `qLong`/`qShort` values visible in kind 983 trade events.
+Current LMSR price is fetched from the mint. If a client wants to derive price from public history, it must do so from a full trade/state reconstruction pipeline; canonical kind `983` events do not directly expose `qLong` and `qShort`.
 
-**Realized PnL**: Locked in after a withdrawal. The difference between the sats received and the sats paid for the withdrawn shares.
-
----
+**Realized PnL** is locked in after a sale. It is the difference between the USD value received and the USD value paid for the shares that were sold.
 
 ## Portfolio Page (`/portfolio`)
 
 Shows the current user's open positions across all markets:
-- Market title and link
-- Direction (YES / NO)
-- Shares held
-- Average purchase price
-- Current price
-- Unrealized PnL (absolute and percentage)
 
-Only open (non-zero) positions are shown. Withdrawn positions may appear in a trade history section.
+- market title and link
+- direction (`YES` / `NO`)
+- shares held
+- average purchase price
+- current price
+- unrealized PnL in dollars and percentage
 
----
+Only open positions are shown in the main list. Fully sold positions may appear in a history section.
 
-## Profile Page (`/profile/[pubkey]`)
+There is no canonical private `/api/portfolio` route backed by server-held proofs. Portfolio is derived from user-side proof state, user-published position records, and public market data.
 
-Shows another user's positions. Kind 30078 events are published publicly to Nostr — anyone can see them.
+## Public Profile Surface
 
-The profile page displays:
-- Active positions with current values
-- A performance summary (win rate, total PnL if visible)
-- Recent market activity
+Public profiles may show a user's published positions because kind `30078` events are public Nostr events.
 
----
+The profile surface can display:
 
-## Kind 30079 — Withdrawal Records
+- active positions with current values
+- performance summary where appropriate
+- recent market activity
 
-After a successful withdrawal, the app publishes a kind 30079 event recording the completed withdrawal proceeds. This is a parameterized replaceable event (one per position per market).
+## Local State
 
-See `src/services/withdrawalService.ts` and `src/services/nostrService.ts` (`PAYOUT_EVENT_KIND = 30079`) for the implementation.
+The active frontend should treat local proof state as the wallet source of truth.
 
----
+That includes:
 
-## Local Storage
+- USD proofs in the wallet
+- market proofs for open positions
+- NIP-78 position records used for public profile and cross-device hints
 
-`src/positionStore.ts` maintains position state with a localStorage fallback. Positions are loaded from Nostr (kind 30078) and merged with any locally-held state. This hybrid approach handles offline scenarios and multi-device edge cases.
+## Future: Deriving Positions From Kind 983
 
----
+The current kind `30078` approach has a limitation: it is user-maintained. If a user trades on multiple devices, or uses an agent on their behalf, it can become stale.
 
-## Future: Deriving Positions from Kind 983
+A more robust future approach is to partially derive positions from kind `983` trade events published by the mint.
 
-The current kind 30078 approach has a limitation: it's a user-maintained record. If a user trades on multiple devices, or uses an agent on their behalf, kind 30078 can become stale.
+The challenge is unchanged: Cashu is a bearer system. Kind `983` may include an optional `p` tag when the trade request used NIP-98, but that tag only identifies the request signer for that specific trade. It does not identify the long-term bearer owner across future swaps, and it may be absent entirely for anonymous trades.
 
-A more robust approach: derive positions from kind 983 trade events published by the mint.
+That means linking kind `983` events back to user positions still requires at least one of:
 
-The challenge is that Cashu is a bearer system — kind 983 events don't carry the trader's pubkey. The mint doesn't know who holds what. Linking kind 983 events back to user positions requires either:
-1. The user publishing their own signed trade attribution events
-2. A deterministic derivation from the user's Cashu tokens
+1. the trade included optional NIP-98 attribution and the user wants to be publicly attributable for that execution
+2. the user maintains their own position record
+3. the user or wallet reconstructs holdings from local proof state
 
-This is a known limitation. Kind 30078 is the current solution. Kind 983-based derivation is a future improvement. If/when the derivation approach is implemented, kind 30078 may be deprecated.
+Kind `30078` is still the current user-facing position record. Kind `983`-based derivation is a future improvement, but it cannot fully replace user-side state unless Cascade deliberately accepts weaker privacy guarantees.

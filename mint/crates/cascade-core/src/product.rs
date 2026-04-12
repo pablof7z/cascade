@@ -1,0 +1,155 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MarketVisibility {
+    Pending,
+    Public,
+}
+
+impl std::fmt::Display for MarketVisibility {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MarketVisibility::Pending => write!(f, "pending"),
+            MarketVisibility::Public => write!(f, "public"),
+        }
+    }
+}
+
+impl std::str::FromStr for MarketVisibility {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.to_lowercase().as_str() {
+            "pending" => Ok(Self::Pending),
+            "public" => Ok(Self::Public),
+            _ => Err(format!("Invalid market visibility: {value}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MarketLaunchState {
+    pub event_id: String,
+    pub raw_event_json: String,
+    pub visibility: MarketVisibility,
+    pub first_trade_at: Option<i64>,
+    pub public_visible_at: Option<i64>,
+    pub volume_minor: u64,
+    pub trade_count: u64,
+    pub last_price_yes_ppm: u64,
+    pub last_price_no_ppm: u64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WalletBalanceRecord {
+    pub pubkey: String,
+    pub available_minor: u64,
+    pub pending_minor: u64,
+    pub total_deposited_minor: u64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WalletFundingEvent {
+    pub id: String,
+    pub pubkey: String,
+    pub rail: String,
+    pub amount_minor: u64,
+    pub status: String,
+    pub risk_level: Option<String>,
+    pub metadata_json: Option<String>,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WalletTopupStatus {
+    InvoicePending,
+    Complete,
+    Expired,
+    Cancelled,
+}
+
+impl std::fmt::Display for WalletTopupStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvoicePending => write!(f, "invoice_pending"),
+            Self::Complete => write!(f, "complete"),
+            Self::Expired => write!(f, "expired"),
+            Self::Cancelled => write!(f, "cancelled"),
+        }
+    }
+}
+
+impl std::str::FromStr for WalletTopupStatus {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.to_lowercase().as_str() {
+            "invoice_pending" => Ok(Self::InvoicePending),
+            "complete" => Ok(Self::Complete),
+            "expired" => Ok(Self::Expired),
+            "cancelled" => Ok(Self::Cancelled),
+            _ => Err(format!("Invalid wallet topup status: {value}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FxQuoteSnapshot {
+    pub id: String,
+    pub amount_minor: u64,
+    pub amount_msat: u64,
+    pub btc_usd_price: f64,
+    pub source: String,
+    pub spread_bps: u64,
+    pub created_at: i64,
+    pub expires_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WalletTopupQuote {
+    pub id: String,
+    pub pubkey: String,
+    pub rail: String,
+    pub amount_minor: u64,
+    pub amount_msat: u64,
+    pub status: WalletTopupStatus,
+    pub invoice: Option<String>,
+    pub payment_hash: Option<String>,
+    pub fx_quote_id: String,
+    pub funding_event_id: Option<String>,
+    pub created_at: i64,
+    pub expires_at: i64,
+    pub settled_at: Option<i64>,
+    pub completed_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MarketTradeRecord {
+    pub id: String,
+    pub market_event_id: String,
+    pub market_slug: String,
+    pub pubkey: String,
+    pub direction: String,
+    pub trade_type: String,
+    pub amount_minor: u64,
+    pub fee_minor: u64,
+    pub quantity: f64,
+    pub price_ppm: u64,
+    pub created_at: i64,
+    pub raw_event_json: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MarketPosition {
+    pub pubkey: String,
+    pub market_event_id: String,
+    pub market_slug: String,
+    pub direction: String,
+    pub quantity: f64,
+    pub cost_basis_minor: u64,
+    pub updated_at: i64,
+}

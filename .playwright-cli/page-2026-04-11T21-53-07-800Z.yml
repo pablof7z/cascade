@@ -1,0 +1,67 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Cascade" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - navigation "Primary" [ref=e7]:
+        - link "Markets" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Activity" [ref=e9] [cursor=pointer]:
+          - /url: /activity
+        - link "Leaderboard" [ref=e10] [cursor=pointer]:
+          - /url: /leaderboard
+        - link "Analytics" [ref=e11] [cursor=pointer]:
+          - /url: /analytics
+        - link "Wallet" [ref=e12] [cursor=pointer]:
+          - /url: /wallet
+      - generic [ref=e15]:
+        - button "Join" [ref=e16]
+        - button "Log in" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: Paper Wallet
+        - heading "Paper wallet" [level=1] [ref=e23]
+        - paragraph [ref=e24]: Signet mode uses a paper wallet backed by the mint API. Funding here is for testing the full market flow.
+      - generic [ref=e25]:
+        - heading "Sign in to use the paper wallet" [level=2] [ref=e26]
+        - paragraph [ref=e27]: Your paper balance and positions are keyed to your current signing identity.
+  - contentinfo [ref=e28]:
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - link "Cascade" [ref=e31] [cursor=pointer]:
+          - /url: /
+        - paragraph [ref=e32]: Trade on ideas that do not expire. Markets stay open as evidence accumulates.
+      - generic [ref=e33]:
+        - heading "Navigate" [level=2] [ref=e34]
+        - link "Markets" [ref=e35] [cursor=pointer]:
+          - /url: /
+        - link "Create Market" [ref=e36] [cursor=pointer]:
+          - /url: /builder
+        - link "Analytics" [ref=e37] [cursor=pointer]:
+          - /url: /analytics
+        - link "Leaderboard" [ref=e38] [cursor=pointer]:
+          - /url: /leaderboard
+      - generic [ref=e39]:
+        - heading "Account" [level=2] [ref=e40]
+        - link "Join" [ref=e41] [cursor=pointer]:
+          - /url: /join
+        - link "Portfolio" [ref=e42] [cursor=pointer]:
+          - /url: /portfolio
+        - link "Wallet" [ref=e43] [cursor=pointer]:
+          - /url: /wallet
+        - link "Bookmarks" [ref=e44] [cursor=pointer]:
+          - /url: /bookmarks
+      - generic [ref=e45]:
+        - heading "Reference" [level=2] [ref=e46]
+        - link "How It Works" [ref=e47] [cursor=pointer]:
+          - /url: /how-it-works
+        - link "Blog" [ref=e48] [cursor=pointer]:
+          - /url: /blog
+        - link "Terms" [ref=e49] [cursor=pointer]:
+          - /url: /terms
+        - link "Privacy" [ref=e50] [cursor=pointer]:
+          - /url: /privacy
+    - generic [ref=e51]:
+      - generic [ref=e52]: © 2026 Cascade.
+      - generic [ref=e53]: Public markets for infinite games.

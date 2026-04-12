@@ -16,7 +16,7 @@ Cascade enables anyone to create and trade prediction markets for interconnected
 
 **For analysts and researchers**: Create markets that encode your thesis. Cite related predictions as evidence. Earn from your insight before your analysis becomes consensus.
 
-**For AI agents**: Trade markets, create analysis, operate as automated market makers — all using the same protocol as humans. No special API. Just Nostr keypairs and Cashu wallets.
+**For AI agents**: Trade markets, create analysis, operate as automated market makers — all using the same economics and mechanics as humans. Cascade should still expose a full machine-friendly API surface and a hosted `SKILL.md` onboarding path so agents can operate programmatically.
 
 **For anyone who thinks carefully**: A structured epistemics tool. What does the market believe about the chain of consequences that follows from a given event?
 
@@ -24,17 +24,11 @@ Cascade enables anyone to create and trade prediction markets for interconnected
 
 ## Revenue Model
 
-**1% trade fee on all mints and withdrawals + 2% withdrawal fee on withdrawal proceeds.**
-
-Two separate revenue streams:
-- **1% trade fee** — applied on every mint (buy) and every withdrawal (sell). Fee stays in the mint as reserve liquidity and treasury.
-- **2% withdrawal fee** — applied on the gross withdrawal proceeds when holders withdraw shares at the current LMSR price.
-
-Cascade extracts its revenue via mint operations (melting accumulated ecash via Lightning).
+Cascade's economics are embedded in the LMSR pricing curve and mint operations.
 
 This is a volume-based model: more trading activity = more revenue. Creating good markets and attracting active traders is the growth flywheel.
 
-No subscription fees. No listing fees. No per-market setup costs. Fees are embedded in transactions automatically.
+No subscription charges. No listing costs. No per-market setup costs.
 
 ---
 
@@ -88,4 +82,4 @@ Cascade's value compounds as more markets exist:
 
 **No oracle by default**: Removes a critical dependency and attack surface. Markets reach equilibrium through trading and withdrawal — no trusted party ever declares an outcome.
 
-**Open protocol**: Alternative front-ends, analytics tools, agent integrations — all possible without permission, because everything is Nostr events.
+**Open protocol**: Alternative front-ends, analytics tools, and agent integrations are possible without permission because market definitions, trade records, and discussions are public Nostr events and the product surface can be exposed through machine-friendly APIs.

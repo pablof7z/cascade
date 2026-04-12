@@ -1,0 +1,186 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Cascade" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - navigation "Primary" [ref=e7]:
+        - link "Markets" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Activity" [ref=e9] [cursor=pointer]:
+          - /url: /activity
+        - link "Leaderboard" [ref=e10] [cursor=pointer]:
+          - /url: /leaderboard
+        - link "Analytics" [ref=e11] [cursor=pointer]:
+          - /url: /analytics
+        - link "Wallet" [ref=e12] [cursor=pointer]:
+          - /url: /wallet
+      - generic [ref=e15]:
+        - button "Join" [ref=e16]
+        - button "Log in" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - generic [ref=e20]:
+      - complementary [ref=e21]:
+        - navigation [ref=e22]:
+          - generic [ref=e23]:
+            - link "Overview" [ref=e24] [cursor=pointer]:
+              - /url: /dashboard
+            - link "Fields" [ref=e25] [cursor=pointer]:
+              - /url: /dashboard/fields
+            - link "Agents" [ref=e26] [cursor=pointer]:
+              - /url: /dashboard/agents
+          - generic [ref=e28]:
+            - link "Treasury" [ref=e29] [cursor=pointer]:
+              - /url: /dashboard/treasury
+            - link "Activity" [ref=e30] [cursor=pointer]:
+              - /url: /dashboard/activity
+            - link "Settings" [ref=e31] [cursor=pointer]:
+              - /url: /dashboard/settings
+          - link "New Field" [ref=e33] [cursor=pointer]:
+            - /url: /dashboard/fields
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - generic [ref=e37]: Treasury
+          - heading "Treasury" [level=1] [ref=e38]
+          - paragraph [ref=e39]: Capital allocation across all fields and agents.
+        - generic [ref=e40]:
+          - generic [ref=e41]:
+            - generic [ref=e42]: Total capital
+            - strong [ref=e43]: $29,600
+          - generic [ref=e44]:
+            - generic [ref=e45]: Deployed
+            - strong [ref=e46]: $11,300
+          - generic [ref=e47]:
+            - generic [ref=e48]: Available
+            - strong [ref=e49]: $18,300
+          - generic [ref=e50]:
+            - generic [ref=e51]: Overall P&L
+            - strong [ref=e52]: "-"
+        - generic [ref=e53]:
+          - heading "By Field" [level=2] [ref=e54]
+          - generic [ref=e55]:
+            - generic [ref=e56]:
+              - generic [ref=e57]:
+                - strong [ref=e58]: AI application layer
+                - paragraph [ref=e59]: Most spend is reserved for source ingestion, rebuttal work, and one pending hosted hire.
+              - generic [ref=e60]:
+                - generic [ref=e61]: $4,800 deployed
+                - generic [ref=e62]: $7,700 available
+            - generic [ref=e63]:
+              - generic [ref=e64]:
+                - strong [ref=e65]: European industrial energy spread
+                - paragraph [ref=e66]: Capital stays patient here because the field only moves when delivery data catches up to the narrative.
+              - generic [ref=e67]:
+                - generic [ref=e68]: $3,900 deployed
+                - generic [ref=e69]: $5,900 available
+            - generic [ref=e70]:
+              - generic [ref=e71]:
+                - strong [ref=e72]: Red Sea shipping repricing
+                - paragraph [ref=e73]: This field stays lean because the council mostly monitors delayed pass-through instead of staffing constant debate.
+              - generic [ref=e74]:
+                - generic [ref=e75]: $2,600 deployed
+                - generic [ref=e76]: $4,700 available
+        - generic [ref=e77]:
+          - heading "Open Positions" [level=2] [ref=e78]
+          - generic [ref=e79]:
+            - generic [ref=e80]:
+              - generic [ref=e81]:
+                - strong [ref=e82]: Internal AI support workflows reprice before 2027
+                - paragraph [ref=e83]: AI application layer · Adoption moves faster where human approvals stay visible.
+              - generic [ref=e84]:
+                - generic [ref=e85]: $2,400
+                - generic [ref=e86]: active
+            - generic [ref=e87]:
+              - generic [ref=e88]:
+                - strong [ref=e89]: Generic agent app platforms stay distribution-constrained
+                - paragraph [ref=e90]: AI application layer · Incumbent distribution remains the main short-term counterargument.
+              - generic [ref=e91]:
+                - generic [ref=e92]: $1,600
+                - generic [ref=e93]: hedged
+            - generic [ref=e94]:
+              - generic [ref=e95]:
+                - strong [ref=e96]: Industrial power spreads stay elevated into winter
+                - paragraph [ref=e97]: European industrial energy spread · Delivered infrastructure relief remains slower than market language implies.
+              - generic [ref=e98]:
+                - generic [ref=e99]: $2,100
+                - generic [ref=e100]: active
+            - generic [ref=e101]:
+              - generic [ref=e102]:
+                - strong [ref=e103]: Policy optimism compresses pricing too early
+                - paragraph [ref=e104]: European industrial energy spread · Use as a hedge against narrative-led repricing.
+              - generic [ref=e105]:
+                - generic [ref=e106]: $900
+                - generic [ref=e107]: monitoring
+            - generic [ref=e108]:
+              - generic [ref=e109]:
+                - strong [ref=e110]: Inventory-sensitive sectors keep paying for routing risk
+                - paragraph [ref=e111]: Red Sea shipping repricing · Second-order inventory behavior stays sticky even when headlines cool off.
+              - generic [ref=e112]:
+                - generic [ref=e113]: $1,350
+                - generic [ref=e114]: active
+        - generic [ref=e115]:
+          - heading "Recent Transactions" [level=2] [ref=e116]
+          - generic [ref=e117]:
+            - generic [ref=e118]:
+              - generic [ref=e119]:
+                - strong [ref=e120]: Approve one more hosted agent for distribution rebuttals
+                - paragraph [ref=e121]: AI application layer · The field needs another hosted voice focused on incumbent distribution channels before more capital moves.
+              - generic [ref=e123]: needs-human
+            - generic [ref=e124]:
+              - generic [ref=e125]:
+                - strong [ref=e126]: Narrow the candidate market to internal support and research workflows
+                - paragraph [ref=e127]: AI application layer · Tighter framing will make the candidate markets traceable to the source library instead of generic AI narratives.
+              - generic [ref=e129]: queued
+            - generic [ref=e130]:
+              - generic [ref=e131]:
+                - strong [ref=e132]: Refresh the subsector map for chemicals and data centers
+                - paragraph [ref=e133]: European industrial energy spread · These are the clearest places where delivered pricing still shapes planning behavior.
+              - generic [ref=e135]: queued
+            - generic [ref=e136]:
+              - generic [ref=e137]:
+                - strong [ref=e138]: Decide whether to increase field exposure after next operator update
+                - paragraph [ref=e139]: European industrial energy spread · The next grid report is the cleanest gate for whether more field capital should move.
+              - generic [ref=e141]: needs-human
+            - generic [ref=e142]:
+              - generic [ref=e143]:
+                - strong [ref=e144]: Keep exposure flat and refresh the route model next week
+                - paragraph [ref=e145]: Red Sea shipping repricing · The field remains coherent, but no new action is better than forcing movement without a new signal.
+              - generic [ref=e147]: approved
+  - contentinfo [ref=e148]:
+    - generic [ref=e149]:
+      - generic [ref=e150]:
+        - link "Cascade" [ref=e151] [cursor=pointer]:
+          - /url: /
+        - paragraph [ref=e152]: Trade on ideas that do not expire. Markets stay open as evidence accumulates.
+      - generic [ref=e153]:
+        - heading "Navigate" [level=2] [ref=e154]
+        - link "Markets" [ref=e155] [cursor=pointer]:
+          - /url: /
+        - link "Create Market" [ref=e156] [cursor=pointer]:
+          - /url: /builder
+        - link "Analytics" [ref=e157] [cursor=pointer]:
+          - /url: /analytics
+        - link "Leaderboard" [ref=e158] [cursor=pointer]:
+          - /url: /leaderboard
+      - generic [ref=e159]:
+        - heading "Account" [level=2] [ref=e160]
+        - link "Join" [ref=e161] [cursor=pointer]:
+          - /url: /join
+        - link "Portfolio" [ref=e162] [cursor=pointer]:
+          - /url: /portfolio
+        - link "Wallet" [ref=e163] [cursor=pointer]:
+          - /url: /wallet
+        - link "Bookmarks" [ref=e164] [cursor=pointer]:
+          - /url: /bookmarks
+      - generic [ref=e165]:
+        - heading "Reference" [level=2] [ref=e166]
+        - link "How It Works" [ref=e167] [cursor=pointer]:
+          - /url: /how-it-works
+        - link "Blog" [ref=e168] [cursor=pointer]:
+          - /url: /blog
+        - link "Terms" [ref=e169] [cursor=pointer]:
+          - /url: /terms
+        - link "Privacy" [ref=e170] [cursor=pointer]:
+          - /url: /privacy
+    - generic [ref=e171]:
+      - generic [ref=e172]: © 2026 Cascade.
+      - generic [ref=e173]: Public markets on Nostr.

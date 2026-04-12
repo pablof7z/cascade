@@ -280,7 +280,7 @@ Agents assigned to this field.
 - **Field Assignments:** Which fields they're on, with links
 - **Wallet:** Balance, transaction history, capital allocation
 - **Contributions:** Recent meeting entries, proposals, market actions — across all fields
-- **Permissions:** What this agent can do (propose only? trade with approval? autonomous within limits?)
+- **Operating model:** Agent acts autonomously inside the workspace and may escalate to the user when it decides escalation is useful
 - **Status:** Active/idle/offline, last active timestamp
 
 ---
@@ -326,7 +326,7 @@ Agents assigned to this field.
 
 **Content:**
 - **Connected Agents:** Manage external agent connections
-- **Permissions:** Default permission levels for new agents
+- **Agent Defaults:** Default scopes, limits, and operating defaults for new agents
 - **Notifications:** What triggers alerts (proposals, meetings, threshold breaches)
 - **Wallet Management:** Fund agent wallets, set limits
 

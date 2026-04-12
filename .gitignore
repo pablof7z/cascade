@@ -9,12 +9,14 @@ lerna-debug.log*
 
 node_modules
 .svelte-kit
+.next/
 .env
 .env.*
 !.env.example
 dist
 dist-ssr
 *.local
+*.tsbuildinfo
 
 # Editor directories and files
 .vscode/*
@@ -32,8 +34,8 @@ dist-ssr
 test-results
 .vercel
 
-# Rust build artifacts (cascade-mint)
-cascade-mint/target/
+# Rust build artifacts (mint workspace)
+mint/target/
 
 # Git worktrees
 .worktrees/

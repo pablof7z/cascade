@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>io.f7z.cascade-web-mainnet</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/customer/Work/cascade-8f3k2m/web/scripts/run-node-edition.sh</string>
+        <string>mainnet</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/customer/Work/cascade-8f3k2m/web</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PUBLIC_CASCADE_EDITION</key>
+        <string>mainnet</string>
+        <key>PUBLIC_CASCADE_MINT_URL</key>
+        <string>https://mint.f7z.io</string>
+        <key>PUBLIC_CASCADE_API_URL</key>
+        <string>https://mint.f7z.io</string>
+        <key>PATH</key>
+        <string>/Users/customer/.nvm/versions/node/v23.11.1/bin:/Users/customer/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>NODE_BIN</key>
+        <string>/Users/customer/.nvm/versions/node/v23.11.1/bin/node</string>
+        <key>HOST</key>
+        <string>127.0.0.1</string>
+        <key>PORT</key>
+        <string>4174</string>
+        <key>ORIGIN</key>
+        <string>https://cascade.f7z.io</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/customer/Library/Logs/cascade-web-mainnet.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/customer/Library/Logs/cascade-web-mainnet-error.log</string>
+</dict>
+</plist>

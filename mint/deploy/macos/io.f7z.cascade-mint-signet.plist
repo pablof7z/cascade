@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>io.f7z.cascade-mint-signet</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/customer/Work/cascade-8f3k2m/mint/scripts/run-edition.sh</string>
+        <string>signet</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/customer/Work/cascade-8f3k2m/mint</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>RUST_LOG</key>
+        <string>info</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/customer/Library/Logs/cascade-mint-signet.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/customer/Library/Logs/cascade-mint-signet-error.log</string>
+</dict>
+</plist>

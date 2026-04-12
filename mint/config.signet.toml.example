@@ -1,0 +1,26 @@
+[mint]
+url = "http://127.0.0.1:3342"
+name = "Cascade Signet Mint"
+description = "Paper trading mint for Cascade signet"
+
+[database]
+path = "./data/signet/cascade_mint.db"
+
+[seed]
+path = "./data/signet/mint_seed.key"
+
+[lnd]
+host = "127.0.0.1"
+port = 10009
+cert_path = "/Users/customer/.lnd/tls.cert"
+macaroon_path = "/Users/customer/.lnd/data/chain/bitcoin/signet/admin.macaroon"
+
+[network]
+network_type = "signet"
+
+[server]
+host = "127.0.0.1"
+port = 3342
+
+[fees]
+trade_fee_percent = 1

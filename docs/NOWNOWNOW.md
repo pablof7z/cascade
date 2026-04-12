@@ -8,7 +8,7 @@
 
 | When | What | Details |
 |------|------|---------|
-| When Pablo initiates | Start Phase 8 Phase 1 (testnet mint) | Plan: `.tenex/plans/phase-8-real-money-integration-revised.md` |
+| When Pablo initiates | Start Phase 8 Phase 1 (testnet mint) | Plan reference was archived during the tenex docs migration. |
 | When Pablo wakes | Send 10 DMs from X account for growth campaign | DM file: `$AGENT_HOME/research/dm-campaign-10-users.md` |
 | When Pablo approves | Publish Substack article | Article ready, published to Nostr |
 

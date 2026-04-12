@@ -97,7 +97,6 @@ Launch does not require:
 - `/onboarding`
 - `/profile`
 - `/p/:identifier`
-- `/wallet`
 - `/portfolio`
 - `/privacy`
 - `/terms`
@@ -108,6 +107,7 @@ Launch does not require:
 
 - `/u/:pubkey` -> `/p/:identifier`
 - `/profile/:identifier` -> `/p/:identifier`
+- `/wallet` -> `/portfolio`
 
 ### Later milestone routes
 
@@ -137,6 +137,8 @@ These route choices are part of the launch target unless a later explicit produc
 - `/onboarding` is the post-join bootstrap route, not the main public account-entry route.
 - `/profile` is the canonical self-profile surface.
 - `/p/:identifier` is the canonical public-profile route.
+- `/portfolio` is the canonical self-custodied capital and positions surface.
+- `/wallet` is a compatibility redirect only, not a separate launch product route.
 - `/u/:pubkey` and `/profile/:identifier` are compatibility redirects only.
 - `/blog` is a curated narrative route, not a required full CMS.
 
@@ -440,30 +442,30 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 
 - [ ] Derived reputation scores are not required for launch.
 
-## Workstream 13: Wallet `/wallet`
+## Workstream 13: Portfolio `/portfolio`
 
-- [ ] Wallet is the only direct money-management surface.
-- [ ] Wallet is explicitly self-custodied rather than server-custodied.
-- [ ] Signet and mainnet use the same wallet product model and same `/wallet` route shape.
+- [ ] Portfolio is the only direct money-management surface.
+- [ ] Portfolio is explicitly self-custodied rather than server-custodied.
+- [ ] Signet and mainnet use the same portfolio product model and same `/portfolio` route shape.
 - [ ] Balance display exists in USD.
 - [ ] Add-funds flow exists.
 - [ ] Add-funds flow offers Stripe and Lightning.
-- [ ] Signet-only funding rails such as a faucet still land as edition-local proofs in the same wallet model rather than in a separate "paper wallet" account system.
+- [ ] Signet-only funding rails such as a faucet still land as edition-local proofs in the same portfolio model rather than in a separate "paper wallet" account system.
 - [ ] Add-funds pending, paid, and minted states exist.
 - [ ] Builder preserves pending market state after kind `982` publication when the creator still needs funding.
 - [ ] Public users do not see pending markets until the first mint-authored kind `983`.
 - [ ] Send/export token flow exists.
 - [ ] Receive/import token flow exists.
-- [ ] Market exits return USD ecash into the wallet.
+- [ ] Market exits return USD ecash into the portfolio balance.
 - [ ] Transaction history exists.
 - [ ] Transaction states are legible.
-- [ ] Wallet errors are explicit and recoverable.
-- [ ] Wallet never doubles as a market-trading page.
-- [ ] The normal wallet UI does not expose sats, msats, or Lightning invoices.
+- [ ] Portfolio errors are explicit and recoverable.
+- [ ] Portfolio never doubles as a market-trading page.
+- [ ] The normal portfolio UI does not expose sats, msats, or Lightning invoices.
 - [ ] Off-platform bank payout is not required for launch.
 - [ ] No product copy implies that Cascade custody or server account balances exist.
 
-## Workstream 14: Portfolio `/portfolio`
+## Workstream 14: Positions And PnL
 
 - [ ] Aggregate summary row exists.
 - [ ] Total invested metric exists in USD.
@@ -505,8 +507,8 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Wallet proofs are stored client-side or agent-side, not on Cascade servers.
 - [ ] There is no canonical `/api/wallet` route in the launch contract.
 - [ ] There is no canonical `/api/product/wallet/:pubkey` or equivalent pubkey-keyed wallet-balance API in the launch contract.
-- [ ] Wallet UI derives balance and spendable state from local proof storage.
-- [ ] Builder, market trading, wallet, and portfolio do not depend on a server-side per-pubkey wallet ledger in signet.
+- [ ] `/portfolio` derives balance and spendable state from local proof storage.
+- [ ] Builder, market trading, and `/portfolio` do not depend on a server-side per-pubkey wallet ledger in signet.
 - [ ] Agent flows use a local proof manager rather than a Cascade wallet API.
 - [ ] Local proof storage covers both USD wallet proofs and market proofs.
 - [ ] Portfolio views are derived from local proof state, user-authored position records, and public market data.

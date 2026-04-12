@@ -378,11 +378,12 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 
 ### Deliverables
 
-- wallet top-ups in the active app
+- portfolio top-ups in the active app
 - buy/sell flows in USD
 - creator builder flow with pending visibility and resume
 - portfolio and activity views wired to real data
 - environment banner or switcher
+- `/portfolio` is the canonical self-custodied account route and `/wallet` redirects there
 
 ### Success Gates
 
@@ -412,7 +413,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 1. User starts with `$0`
 2. User creates a market
 3. User sees it as creator-only pending
-4. User paper-funds the wallet
+4. User paper-funds the portfolio balance
 5. User seeds the market
 6. First mint-authored `983` makes it public in the signet app
 7. A second user or agent buys and sells against it
@@ -439,10 +440,11 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 ### Required Scenario
 
 1. User funds wallet through Stripe or Lightning
-2. User creates and seeds a market
-3. Market becomes public only after first `983`
-4. Another user buys and sells successfully
-5. Wallet, market, activity, and portfolio remain coherent
+2. User sees funds and positions through `/portfolio`
+3. User creates and seeds a market
+4. Market becomes public only after first `983`
+5. Another user buys and sells successfully
+6. Portfolio, market, activity, and funding flows remain coherent
 
 ### Success Gates
 

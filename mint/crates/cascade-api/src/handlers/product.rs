@@ -24,6 +24,16 @@ const TRADE_FEE_BPS: u64 = 100;
 const FALLBACK_MINT_PUBKEY: &str =
     "1111111111111111111111111111111111111111111111111111111111111111";
 
+fn signet_only_unavailable(feature: &str) -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::NOT_IMPLEMENTED,
+        Json(json!({
+            "error": "signet_only_endpoint",
+            "feature": feature
+        })),
+    )
+}
+
 pub async fn feed(State(state): State<AppState>) -> (StatusCode, Json<ProductFeedResponse>) {
     let markets = state.db.list_public_markets().await.unwrap_or_default();
     let trades = state
@@ -161,6 +171,10 @@ pub async fn create_lightning_topup_quote(
     State(state): State<AppState>,
     Json(req): Json<ProductLightningTopupQuoteRequest>,
 ) -> (StatusCode, Json<Value>) {
+    if !state.paper_mode {
+        return signet_only_unavailable("wallet_lightning_topups");
+    }
+
     if req.pubkey.trim().is_empty() || req.amount_minor == 0 {
         return (
             StatusCode::BAD_REQUEST,
@@ -223,6 +237,10 @@ pub async fn get_lightning_topup_quote(
     State(state): State<AppState>,
     Path(quote_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
+    if !state.paper_mode {
+        return signet_only_unavailable("wallet_lightning_topups");
+    }
+
     let now = chrono::Utc::now().timestamp();
     let existing = match state.db.get_wallet_topup_quote(&quote_id).await {
         Ok(Some(quote)) => quote,
@@ -283,6 +301,10 @@ pub async fn settle_lightning_topup_quote(
     State(state): State<AppState>,
     Path(quote_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
+    if !state.paper_mode {
+        return signet_only_unavailable("wallet_lightning_topup_settlement");
+    }
+
     let metadata_json = json!({
         "source": "signet-lightning-topup",
         "topup_quote_id": quote_id
@@ -321,6 +343,10 @@ pub async fn paper_faucet(
     State(state): State<AppState>,
     Json(req): Json<ProductPaperFaucetRequest>,
 ) -> (StatusCode, Json<Value>) {
+    if !state.paper_mode {
+        return signet_only_unavailable("paper_wallet_faucet");
+    }
+
     if req.pubkey.trim().is_empty() || req.amount_minor == 0 {
         return (
             StatusCode::BAD_REQUEST,

@@ -1,4 +1,4 @@
-import { getProductApiUrl } from '$lib/cascade/config';
+import { getCascadeEdition, getProductApiUrl } from '$lib/cascade/config';
 
 type ApiErrorPayload = {
   error?: string;
@@ -83,6 +83,23 @@ export type ProductWallet = {
   positions: ProductWalletPosition[];
   pending_topups: ProductWalletTopup[];
   funding_events: ProductFundingEvent[];
+};
+
+export type ProductRuntimeRail = {
+  available: boolean;
+  reason?: string | null;
+};
+
+export type ProductRuntime = {
+  edition: 'mainnet' | 'signet' | string;
+  network: string;
+  mint_url: string;
+  proof_custody: string;
+  request_edition_header: string;
+  funding: {
+    lightning: ProductRuntimeRail;
+    stripe: ProductRuntimeRail;
+  };
 };
 
 export type ProductMarketSummary = {
@@ -200,6 +217,23 @@ async function parseApiError(response: Response, fallback: string): Promise<stri
   return payload?.error || fallback;
 }
 
+function productUrl(path: string): string {
+  return `${getProductApiUrl()}${path}`;
+}
+
+function cascadeHeaders(headers?: HeadersInit): Headers {
+  const merged = new Headers(headers);
+  merged.set('x-cascade-edition', getCascadeEdition());
+  return merged;
+}
+
+function productFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(productUrl(path), {
+    ...init,
+    headers: cascadeHeaders(init?.headers)
+  });
+}
+
 export async function buyMarketPosition(input: {
   eventId: string;
   pubkey: string;
@@ -209,7 +243,7 @@ export async function buyMarketPosition(input: {
   quoteId?: string;
   requestId?: string;
 }): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/trades/buy`, {
+  return productFetch('/api/trades/buy', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -233,7 +267,7 @@ export async function sellMarketPosition(input: {
   quoteId?: string;
   requestId?: string;
 }): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/trades/sell`, {
+  return productFetch('/api/trades/sell', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -253,7 +287,7 @@ export async function quoteBuyTrade(input: {
   side: 'yes' | 'no';
   spendMinor: number;
 }): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/trades/quote`, {
+  return productFetch('/api/trades/quote', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -269,7 +303,7 @@ export async function quoteSellTrade(input: {
   side: 'yes' | 'no';
   quantity: number;
 }): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/trades/sell/quote`, {
+  return productFetch('/api/trades/sell/quote', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -281,20 +315,24 @@ export async function quoteSellTrade(input: {
 }
 
 export async function fetchTradeQuoteStatus(quoteId: string): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/trades/quotes/${quoteId}`);
+  return productFetch(`/api/trades/quotes/${quoteId}`);
+}
+
+export async function fetchProductRuntime(): Promise<Response> {
+  return productFetch('/api/product/runtime');
 }
 
 export async function fetchPortfolioMirror(pubkey: string): Promise<Response> {
-  const portfolioResponse = await fetch(`${getProductApiUrl()}/api/product/portfolio/${pubkey}`);
+  const portfolioResponse = await productFetch(`/api/product/portfolio/${pubkey}`);
   if (portfolioResponse.status !== 404) {
     return portfolioResponse;
   }
 
-  return fetch(`${getProductApiUrl()}/api/product/wallet/${pubkey}`);
+  return productFetch(`/api/product/wallet/${pubkey}`);
 }
 
 export async function fetchMarketDetailBySlug(slug: string): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/product/markets/slug/${encodeURIComponent(slug)}`);
+  return productFetch(`/api/product/markets/slug/${encodeURIComponent(slug)}`);
 }
 
 export async function createLightningTopupQuote(input: {
@@ -302,7 +340,7 @@ export async function createLightningTopupQuote(input: {
   amountMinor: number;
   requestId?: string;
 }): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/wallet/topups/lightning/quote`, {
+  return productFetch('/api/wallet/topups/lightning/quote', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -318,7 +356,7 @@ export async function createStripeTopup(input: {
   amountMinor: number;
   requestId?: string;
 }): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/wallet/topups/stripe`, {
+  return productFetch('/api/wallet/topups/stripe', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -330,19 +368,19 @@ export async function createStripeTopup(input: {
 }
 
 export async function fetchWalletTopupRequestStatus(requestId: string): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/wallet/topups/requests/${requestId}`);
+  return productFetch(`/api/wallet/topups/requests/${requestId}`);
 }
 
 export async function fetchWalletTopupStatus(topupId: string): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/wallet/topups/${topupId}`);
+  return productFetch(`/api/wallet/topups/${topupId}`);
 }
 
 export async function fetchTradeStatus(tradeId: string): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/trades/${tradeId}`);
+  return productFetch(`/api/trades/${tradeId}`);
 }
 
 export async function fetchTradeRequestStatus(requestId: string): Promise<Response> {
-  return fetch(`${getProductApiUrl()}/api/trades/requests/${requestId}`);
+  return productFetch(`/api/trades/requests/${requestId}`);
 }
 
 export function hasCompletedTradeSettlement(

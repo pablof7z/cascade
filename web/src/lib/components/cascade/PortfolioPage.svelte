@@ -5,12 +5,14 @@
     createLightningTopupQuote,
     fetchMarketDetailBySlug,
     fetchPortfolioMirror,
+    fetchProductRuntime,
     fetchWalletTopupRequestStatus,
     fetchWalletTopupStatus,
     parseJson,
     type ProductFundingEvent,
     type ProductMarketDetail,
     type ProductProof,
+    type ProductRuntime,
     type ProductWallet,
     type ProductWalletTopup,
     type ProductWalletTopupRequestStatus
@@ -64,8 +66,10 @@
   const signetTopupWindowLimitMinor = 25000;
 
   let wallet = $state<PaperWallet | null>(null);
+  let runtime = $state<ProductRuntime | null>(null);
   let loading = $state(false);
   let errorMessage = $state('');
+  let runtimeNotice = $state('');
   let status = $state('');
   let fundingAmount = $state(paperEdition ? '10000' : '2500');
   let localBalanceMinor = $state(0);
@@ -240,12 +244,75 @@
   const usingLocalPositionMarks = $derived(localPositions.length > 0);
   const displayedPositionValueMinor = $derived(localPositionValueMinor);
   const displayedTotalValueMinor = $derived(localBalanceMinor + displayedPositionValueMinor);
+  const expectedEdition = paperEdition ? 'signet' : 'mainnet';
+  const runtimeEditionMismatch = $derived(
+    runtime !== null && runtime.edition !== expectedEdition
+  );
+  const lightningTopupAvailable = $derived(
+    runtime !== null && !runtimeEditionMismatch && runtime.funding.lightning.available
+  );
+  const stripeTopupAvailable = $derived(
+    stripeTopupEnabled &&
+      runtime !== null &&
+      !runtimeEditionMismatch &&
+      runtime.funding.stripe.available
+  );
+
+  function runtimeMismatchMessage(actualEdition: string): string {
+    return `This ${portfolioLabel} is pointed at a ${actualEdition} mint. Funding and trading stay disabled until the API target is corrected.`;
+  }
+
+  function railUnavailableMessage(rail: 'lightning' | 'stripe'): string {
+    if (!runtime) {
+      return 'Funding is unavailable until the portfolio can verify the mint runtime.';
+    }
+
+    if (runtimeEditionMismatch) {
+      return runtimeMismatchMessage(runtime.edition);
+    }
+
+    const configuredReason =
+      rail === 'stripe' ? runtime.funding.stripe.reason : runtime.funding.lightning.reason;
+    if (configuredReason === 'stripe_topups_unavailable') {
+      return 'Stripe top-ups are not configured for this edition yet.';
+    }
+    if (configuredReason === 'lightning_topups_unavailable') {
+      return 'Lightning top-ups are not configured for this edition yet.';
+    }
+
+    return rail === 'stripe'
+      ? 'Stripe top-ups are unavailable for this edition right now.'
+      : 'Lightning top-ups are unavailable for this edition right now.';
+  }
+
+  async function loadRuntime() {
+    runtimeNotice = '';
+
+    try {
+      const response = await fetchProductRuntime();
+      const nextRuntime = await parseJson<ProductRuntime>(response, 'Failed to load portfolio runtime.');
+      runtime = nextRuntime;
+      if (nextRuntime.edition !== expectedEdition) {
+        runtimeNotice = runtimeMismatchMessage(nextRuntime.edition);
+      }
+    } catch (error) {
+      runtime = null;
+      runtimeNotice =
+        error instanceof Error
+          ? error.message
+          : 'Failed to load the portfolio runtime manifest.';
+    }
+  }
 
   async function loadWallet() {
     if (!currentUser) return;
     loading = true;
     errorMessage = '';
     try {
+      if (!runtime || runtimeEditionMismatch) {
+        wallet = null;
+        return;
+      }
       const response = await fetchPortfolioMirror(currentUser.pubkey);
       wallet = await parseJson<PaperWallet>(response, 'Failed to load portfolio funding activity.');
     } catch (error) {
@@ -364,6 +431,11 @@
       return;
     }
 
+    if (!lightningTopupAvailable) {
+      errorMessage = railUnavailableMessage('lightning');
+      return;
+    }
+
     const amountMinor = Number.parseInt(fundingAmount, 10) || 0;
     if (amountMinor <= 0) {
       errorMessage = 'Enter a Lightning top-up amount greater than zero.';
@@ -416,6 +488,11 @@
   async function createStripeCheckout() {
     if (!currentUser) {
       errorMessage = `Sign in before starting a top-up for your ${portfolioLabel}.`;
+      return;
+    }
+
+    if (!stripeTopupAvailable) {
+      errorMessage = railUnavailableMessage('stripe');
       return;
     }
 
@@ -476,6 +553,11 @@
   }
 
   async function refreshPendingTopups() {
+    if (!runtime || runtimeEditionMismatch) {
+      errorMessage = railUnavailableMessage('lightning');
+      return;
+    }
+
     status = 'Refreshing pending top-ups.';
     errorMessage = '';
     await loadWallet();
@@ -483,7 +565,7 @@
   }
 
   async function reconcilePendingTopups() {
-    if (!currentUser) return;
+    if (!currentUser || !runtime || runtimeEditionMismatch) return;
 
     const trackedTopups = listPendingTopups(currentUser.pubkey);
     if (!trackedTopups.length) return;
@@ -563,10 +645,11 @@
   $effect(() => {
     if (!browser) return;
     refreshLocalProofSummary();
+    void loadRuntime();
   });
 
   $effect(() => {
-    if (!browser || !currentUser) return;
+    if (!browser || !currentUser || !runtime) return;
     void (async () => {
       refreshLocalProofSummary();
       await loadWallet();
@@ -575,7 +658,7 @@
   });
 
   $effect(() => {
-    if (!browser || !currentUser) return;
+    if (!browser || !currentUser || !runtime || runtimeEditionMismatch) return;
 
     const interval = window.setInterval(() => {
       void reconcilePendingTopups();
@@ -594,6 +677,9 @@
       from local USD proofs. Current position value is marked from public market prices, and exact
       exits still come from fresh withdrawal quotes.
     </p>
+    {#if runtimeNotice}
+      <p class="muted">{runtimeNotice}</p>
+    {/if}
   </header>
 
   {#if !currentUser}
@@ -643,6 +729,11 @@
               per top-up and {formatUsdMinor(signetTopupWindowLimitMinor)} per 24 hours.
             {/if}
           </p>
+          {#if !runtimeNotice && runtime && !runtime.funding.lightning.available}
+            <p class="muted">{railUnavailableMessage('lightning')}</p>
+          {:else if stripeTopupEnabled && runtime && !runtime.funding.stripe.available}
+            <p class="muted">{railUnavailableMessage('stripe')}</p>
+          {/if}
         </div>
       </div>
 
@@ -658,11 +749,21 @@
           />
         </label>
         {#if stripeTopupEnabled}
-          <button class="button-primary" onclick={createStripeCheckout} type="button">
+          <button
+            class="button-primary"
+            disabled={!stripeTopupAvailable}
+            onclick={createStripeCheckout}
+            type="button"
+          >
             Checkout with card
           </button>
         {/if}
-        <button class="button-secondary" onclick={createLightningTopup} type="button">
+        <button
+          class="button-secondary"
+          disabled={!lightningTopupAvailable}
+          onclick={createLightningTopup}
+          type="button"
+        >
           Create Lightning invoice
         </button>
       </div>

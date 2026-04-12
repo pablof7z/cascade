@@ -81,6 +81,7 @@ These routes exist today in `mint/crates/cascade-api/src/routes.rs`.
 
 ### Public Read
 
+- `GET /api/product/runtime` — runtime manifest with actual backend edition, mint URL, proof custody mode, and funding-rail availability
 - `GET /api/price/{currency}` — price feed
 - `GET /api/market/{id}` — fetch current market state by kind `982` event id
 - `GET /api/market/{id}/price-history` — fetch market price history by kind `982` event id
@@ -164,6 +165,7 @@ The exact naming can still change during implementation, but launch needs a high
 
 ### Wallet Funding
 
+- `GET /api/product/runtime`
 - `GET /api/product/fx/lightning/{amount_minor}`
 - `POST /api/wallet/topups/stripe`
 - `POST /api/wallet/topups/stripe/webhook`
@@ -173,6 +175,14 @@ The exact naming can still change during implementation, but launch needs a high
 - `GET /api/wallet/topups/lightning/{quote_id}`
 
 Wallet top-ups are one persisted saga with rail-specific payment metadata.
+
+Before any state-changing portfolio or trade request, the client should load `GET /api/product/runtime` and compare:
+
+- the browser edition
+- the backend-reported edition
+- the availability of the requested funding rail
+
+If the runtime manifest does not match the current browser edition, the client must treat the backend as unavailable for funding and trading rather than attempting to continue.
 
 - Lightning top-ups carry invoice metadata and reconcile against the underlying invoice state.
 - Stripe top-ups carry hosted Checkout metadata and complete from a verified Stripe webhook only after Stripe risk checks pass.
@@ -184,6 +194,12 @@ Lightning top-up status reads should be settlement-aware. `GET /api/wallet/topup
 In signet, the wallet mint should keep the same top-up quote API and the same invoice lifecycle as mainnet. The difference is that the invoice and backing value live on signet or test infrastructure, not that the quote auto-completes without payment.
 
 Top-up creation should accept an optional client-supplied `request_id`. The mint persists that request id before payment-object creation so duplicate retries can replay the same top-up quote instead of creating a second invoice or Checkout session, and interrupted clients can recover through `GET /api/wallet/topups/requests/{request_id}` even if they never received the final `topup_id`.
+
+State-changing product routes should also accept the client's expected edition through `X-Cascade-Edition: mainnet|signet`.
+
+- When the header matches the runtime edition, the request proceeds normally.
+- When the header does not match, the mint should reject the request with `edition_mismatch` instead of creating a quote, invoice, checkout session, or trade state on the wrong backend.
+- For backward compatibility, legacy clients that omit the header may still be served, but launch web and agent clients should send it on every state-changing product request.
 
 Persisted wallet top-up responses should carry rail-specific metadata in one shared shape:
 

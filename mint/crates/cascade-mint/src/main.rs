@@ -216,6 +216,7 @@ async fn main() -> Result<()> {
         _mint.clone(),
         cascade_db,
         &config.network.network_type,
+        &config.mint.url,
     )
     .await
     .map_err(|e| anyhow::anyhow!("Failed to build HTTP server: {}", e))?;

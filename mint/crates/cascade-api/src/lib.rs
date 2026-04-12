@@ -22,6 +22,7 @@ pub async fn build_server(
     mint: Arc<cdk::mint::Mint>,
     db: Arc<CascadeDatabase>,
     network_type: &str,
+    mint_url: &str,
 ) -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
     // Create InvoiceService with LND client
     let mut lnd_client = LndClient::new(lnd_config);
@@ -57,6 +58,8 @@ pub async fn build_server(
         mint.clone(),
         db,
         network_type == "signet",
+        network_type.to_string(),
+        mint_url.to_string(),
     );
 
     // Build cascade-specific routes

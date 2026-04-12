@@ -63,6 +63,12 @@ Recommended practice:
 
 Do not let proofs, reserves, or public discovery projections mix across editions.
 
+Mainnet safety rule:
+
+- `mint.f7z.io` must never serve a signet-configured runtime
+- `signet-mint.cascade.f7z.io` must never serve a mainnet-configured runtime
+- if the frontend and backend editions do not match, funding and trading requests must fail explicitly with `edition_mismatch`
+
 ## Prerequisites
 
 ### Required
@@ -201,6 +207,13 @@ For the local signet edition on this machine:
 
 ```bash
 ./scripts/smoke-edition.sh signet
+./scripts/check-edition-lightning-readiness.sh signet
+```
+
+For the local mainnet edition once credentials and config exist:
+
+```bash
+./scripts/check-edition-lightning-readiness.sh mainnet
 ```
 
 For market-scoped key discovery, verify:
@@ -218,6 +231,15 @@ As the wallet mint lands, also verify:
 - sell flow from market tokens back into USD wallet value
 - signet paper-funding path
 - edition boundaries between signet and mainnet
+
+For edition-boundary safety, verify:
+
+```bash
+curl -sS https://mint.f7z.io/api/product/runtime
+curl -sS https://signet-mint.cascade.f7z.io/api/product/runtime
+```
+
+The returned runtime manifest should report the actual backend edition and funding-rail availability. The mainnet surface must not advertise `signet` here, and the signet surface must not advertise `mainnet`.
 
 ## Operational Notes
 

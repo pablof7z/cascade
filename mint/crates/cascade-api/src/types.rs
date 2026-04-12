@@ -205,6 +205,28 @@ pub struct ProductFeedResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct ProductRuntimeRailResponse {
+    pub available: bool,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ProductRuntimeFundingResponse {
+    pub lightning: ProductRuntimeRailResponse,
+    pub stripe: ProductRuntimeRailResponse,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ProductRuntimeResponse {
+    pub edition: String,
+    pub network: String,
+    pub mint_url: String,
+    pub proof_custody: String,
+    pub request_edition_header: String,
+    pub funding: ProductRuntimeFundingResponse,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CreatorMarketsResponse {
     pub markets: Vec<ProductMarketSummary>,
 }

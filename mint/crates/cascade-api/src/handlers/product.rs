@@ -6,7 +6,8 @@ use crate::types::{
     ProductCoordinatorSellRequest, ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest,
     ProductFeedResponse, ProductFundingEventResponse, ProductFxObservationResponse,
     ProductLightningFxQuoteResponse, ProductLightningTopupQuoteRequest,
-    ProductMarketDetailResponse, ProductMarketSummary, ProductSellRequest,
+    ProductMarketDetailResponse, ProductMarketSummary, ProductRuntimeFundingResponse,
+    ProductRuntimeRailResponse, ProductRuntimeResponse, ProductSellRequest,
     ProductStripeTopupRequest, ProductTradeExecutionResponse, ProductTradeProofBundleResponse,
     ProductTradeQuoteRequest, ProductTradeQuoteResponse, ProductTradeRequestStatusResponse,
     ProductTradeSettlementResponse, ProductTradeStatusResponse, ProductWalletPositionResponse,
@@ -48,6 +49,7 @@ const NIP98_AUTH_KIND: i64 = 27_235;
 const NIP98_AUTH_WINDOW_SECONDS: i64 = 120;
 const SHARE_MINOR_SCALE: u64 = 10_000;
 const MAX_MARKET_DENOMINATION_POWER: u32 = 32;
+const CLIENT_EDITION_HEADER: &str = "x-cascade-edition";
 
 struct RequestAuthContext {
     signer_pubkey: Option<String>,
@@ -67,6 +69,62 @@ struct Nip98AuthEvent {
 struct PreparedTradeQuote {
     response: ProductTradeQuoteResponse,
     fx_quote: FxQuoteSnapshot,
+}
+
+fn normalize_client_edition(value: &str) -> Option<&'static str> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "paper" | "signet" => Some("signet"),
+        "mainnet" => Some("mainnet"),
+        _ => None,
+    }
+}
+
+fn edition_mismatch_error(expected: &str, actual: &str) -> String {
+    format!("edition_mismatch:expected={expected}:actual={actual}")
+}
+
+fn require_client_edition(
+    headers: &HeaderMap,
+    state: &AppState,
+) -> Option<(StatusCode, Json<Value>)> {
+    let expected = headers
+        .get(CLIENT_EDITION_HEADER)
+        .and_then(|value| value.to_str().ok())
+        .and_then(normalize_client_edition)?;
+
+    let actual = state.edition();
+    if expected == actual {
+        return None;
+    }
+
+    Some((
+        StatusCode::CONFLICT,
+        Json(json!({ "error": edition_mismatch_error(expected, actual) })),
+    ))
+}
+
+fn runtime_response(state: &AppState) -> ProductRuntimeResponse {
+    ProductRuntimeResponse {
+        edition: state.edition().to_string(),
+        network: state.network_type.clone(),
+        mint_url: state.mint_url.clone(),
+        proof_custody: "browser_local".to_string(),
+        request_edition_header: CLIENT_EDITION_HEADER.to_string(),
+        funding: ProductRuntimeFundingResponse {
+            lightning: ProductRuntimeRailResponse {
+                available: true,
+                reason: None,
+            },
+            stripe: ProductRuntimeRailResponse {
+                available: state.stripe_gateway.is_some(),
+                reason: state
+                    .stripe_gateway
+                    .as_ref()
+                    .map(|_| None)
+                    .unwrap_or_else(|| Some("stripe_topups_unavailable".to_string())),
+            },
+        },
+    }
 }
 
 fn proof_input_from_cdk_proof(proof: &cdk::nuts::Proof) -> Result<ProofInput, serde_json::Error> {
@@ -377,6 +435,10 @@ pub async fn feed(State(state): State<AppState>) -> (StatusCode, Json<ProductFee
     )
 }
 
+pub async fn runtime(State(state): State<AppState>) -> (StatusCode, Json<ProductRuntimeResponse>) {
+    (StatusCode::OK, Json(runtime_response(&state)))
+}
+
 pub async fn creator_markets(
     State(state): State<AppState>,
     Path(pubkey): Path<String>,
@@ -496,6 +558,7 @@ enum WalletTopupRequestGuard {
 
 pub async fn create_lightning_topup_quote(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(req): Json<ProductLightningTopupQuoteRequest>,
 ) -> (StatusCode, Json<Value>) {
     if req.pubkey.trim().is_empty() || req.amount_minor == 0 {
@@ -503,6 +566,10 @@ pub async fn create_lightning_topup_quote(
             StatusCode::BAD_REQUEST,
             Json(json!({ "error": "pubkey_and_amount_minor_are_required" })),
         );
+    }
+
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
     }
 
     match prepare_wallet_topup_request(
@@ -627,6 +694,7 @@ pub async fn create_lightning_topup_quote(
 
 pub async fn create_stripe_topup(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(req): Json<ProductStripeTopupRequest>,
 ) -> (StatusCode, Json<Value>) {
     if req.pubkey.trim().is_empty() || req.amount_minor == 0 {
@@ -634,6 +702,10 @@ pub async fn create_stripe_topup(
             StatusCode::BAD_REQUEST,
             Json(json!({ "error": "pubkey_and_amount_minor_are_required" })),
         );
+    }
+
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
     }
 
     match prepare_wallet_topup_request(
@@ -1081,6 +1153,10 @@ pub async fn create_market(
         }
     }
 
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
     if req.event_id.trim().is_empty()
         || req.slug.trim().is_empty()
         || req.title.trim().is_empty()
@@ -1233,8 +1309,13 @@ pub async fn create_market(
 
 pub async fn quote_trade(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(req): Json<ProductCoordinatorTradeQuoteRequest>,
 ) -> (StatusCode, Json<Value>) {
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
     let quote_request = ProductTradeQuoteRequest {
         trade_type: "buy".to_string(),
         side: req.side,
@@ -1246,8 +1327,13 @@ pub async fn quote_trade(
 
 pub async fn quote_trade_sell(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(req): Json<ProductCoordinatorTradeQuoteRequest>,
 ) -> (StatusCode, Json<Value>) {
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
     let quote_request = ProductTradeQuoteRequest {
         trade_type: "sell".to_string(),
         side: req.side,
@@ -1276,6 +1362,10 @@ pub async fn buy_trade(
                 Json(json!({ "error": "request_signer_must_match_pubkey" })),
             );
         }
+    }
+
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
     }
 
     let buy_request = ProductBuyRequest {
@@ -1314,6 +1404,10 @@ pub async fn sell_trade(
                 Json(json!({ "error": "request_signer_must_match_pubkey" })),
             );
         }
+    }
+
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
     }
 
     let sell_request = ProductSellRequest {
@@ -1486,8 +1580,13 @@ pub async fn trade_status(
 pub async fn quote_market_trade(
     State(state): State<AppState>,
     Path(event_id): Path<String>,
+    headers: HeaderMap,
     Json(req): Json<ProductTradeQuoteRequest>,
 ) -> (StatusCode, Json<Value>) {
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
     quote_trade_by_event(&state, &event_id, &req).await
 }
 
@@ -1513,6 +1612,10 @@ pub async fn buy_market_position(
         }
     }
 
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
     buy_trade_by_event(&state, &event_id, &req, auth.signer_pubkey.as_deref()).await
 }
 
@@ -1536,6 +1639,10 @@ pub async fn sell_market_position(
                 Json(json!({ "error": "request_signer_must_match_pubkey" })),
             );
         }
+    }
+
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
     }
 
     sell_trade_by_event(&state, &event_id, &req, auth.signer_pubkey.as_deref()).await

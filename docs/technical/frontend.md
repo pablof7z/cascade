@@ -139,6 +139,19 @@ There is no canonical server wallet API for current balance because the proofs a
 
 `/portfolio` is the canonical proof-custody route. `/wallet` exists only as a compatibility redirect and should not diverge into a separate product surface.
 
+Before enabling funding or trading actions, the browser should load a runtime manifest from the configured product API:
+
+- `GET /api/product/runtime`
+
+That manifest is the browser's source of truth for:
+
+- actual backend edition
+- proof-custody mode
+- funding-rail availability
+- whether the configured API matches the current frontend edition
+
+If the frontend is in `mainnet` mode and the backend reports `signet`, the browser must disable funding and trading actions and explain the mismatch instead of attempting to continue.
+
 ## Trading And Portfolio State
 
 The frontend needs local state for at least two proof classes:
@@ -200,6 +213,12 @@ Portfolio funding uses one recovery model across both launch rails:
 - Stripe top-ups remain pending until the verified webhook completes them
 - after completion, the browser polls the same top-up status route and imports the issued proofs into local storage
 - if a Stripe payment is captured but not accepted by the configured issuance policy, the browser should show `review_required` and must not assume funded proofs exist
+
+Every state-changing funding or trade request from the browser should send:
+
+- `X-Cascade-Edition: mainnet|signet`
+
+This lets the mint reject a miswired edition boundary before it creates invoices, top-up records, or trades.
 
 For Stripe specifically:
 

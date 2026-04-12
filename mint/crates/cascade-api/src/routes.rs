@@ -35,6 +35,10 @@ pub struct AppState {
     pub test_mode: bool,
     /// Whether signet-only product shortcuts are enabled
     pub paper_mode: bool,
+    /// Actual backend network for this runtime.
+    pub network_type: String,
+    /// Canonical public mint URL for this runtime.
+    pub mint_url: String,
 }
 
 impl AppState {
@@ -46,6 +50,8 @@ impl AppState {
         mint: Arc<cdk::mint::Mint>,
         db: Arc<CascadeDatabase>,
         paper_mode: bool,
+        network_type: String,
+        mint_url: String,
     ) -> Self {
         Self {
             market_manager,
@@ -57,6 +63,8 @@ impl AppState {
             db,
             test_mode: false,
             paper_mode,
+            network_type,
+            mint_url,
         }
     }
 
@@ -78,6 +86,16 @@ impl AppState {
             db,
             test_mode: true,
             paper_mode: true,
+            network_type: "signet".to_string(),
+            mint_url: "http://127.0.0.1:0".to_string(),
+        }
+    }
+
+    pub fn edition(&self) -> &str {
+        if self.paper_mode {
+            "signet"
+        } else {
+            "mainnet"
         }
     }
 
@@ -119,6 +137,7 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             get(market::get_price_history),
         )
         .route("/api/product/feed", get(product::feed))
+        .route("/api/product/runtime", get(product::runtime))
         .route(
             "/api/product/markets/creator/{pubkey}",
             get(product::creator_markets),

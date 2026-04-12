@@ -97,6 +97,7 @@ async fn create_product_test_server_with_stripe(
         mint,
         cascade_db,
         "signet",
+        "http://127.0.0.1:0",
     )
     .await
     .unwrap();
@@ -1020,6 +1021,56 @@ async fn test_lightning_topup_quote_settles_after_status_poll() {
     assert_eq!(
         wallet_complete_payload["funding_events"][0]["rail"].as_str(),
         Some("lightning")
+    );
+}
+
+#[tokio::test]
+async fn test_runtime_reports_actual_edition_and_funding_rails() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get(format!("{url}/api/product/runtime"))
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    let payload: serde_json::Value = response.json().await.unwrap();
+    assert_eq!(payload["edition"].as_str(), Some("signet"));
+    assert_eq!(payload["network"].as_str(), Some("signet"));
+    assert_eq!(payload["proof_custody"].as_str(), Some("browser_local"));
+    assert_eq!(
+        payload["funding"]["lightning"]["available"].as_bool(),
+        Some(true)
+    );
+    assert_eq!(
+        payload["funding"]["stripe"]["available"].as_bool(),
+        Some(false)
+    );
+}
+
+#[tokio::test]
+async fn test_lightning_topup_rejects_client_edition_mismatch() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+
+    let response = client
+        .post(format!("{url}/api/wallet/topups/lightning/quote"))
+        .header("x-cascade-edition", "mainnet")
+        .json(&serde_json::json!({
+            "pubkey": "edition-mismatch-user",
+            "amount_minor": 2500
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 409);
+    let payload: serde_json::Value = response.json().await.unwrap();
+    assert_eq!(
+        payload["error"].as_str(),
+        Some("edition_mismatch:expected=mainnet:actual=signet")
     );
 }
 

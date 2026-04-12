@@ -87,7 +87,7 @@ export function buildAboutSeo(url: URL): SeoMetadata {
   return {
     title: `About ${SITE_NAME}`,
     description:
-      'Learn how Highlighter keeps long-form writing readable, shareable, and easy to revisit.',
+      'Cascade is a perpetual prediction market. Markets never close — mint LONG or SHORT tokens and exit at any time.',
     canonical: canonicalUrl(url),
     type: 'website',
     image: defaultImage(url, `${SITE_NAME} preview`)
@@ -98,7 +98,7 @@ export function buildOnboardingSeo(url: URL): SeoMetadata {
   return {
     title: `Set up your profile • ${SITE_NAME}`,
     description:
-      'Create your writer profile, choose your interests, and upload an avatar for Highlighter.',
+      'Create your Cascade profile and start trading predictions on any topic.',
     canonical: canonicalUrl(url),
     type: 'website',
     image: defaultImage(url, `${SITE_NAME} onboarding preview`)

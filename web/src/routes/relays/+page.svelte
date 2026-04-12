@@ -83,7 +83,7 @@
 </script>
 
 <svelte:head>
-  <title>Relays — Highlighter</title>
+  <title>Relays — Cascade</title>
 </svelte:head>
 
 <div class="bookmarks-layout">

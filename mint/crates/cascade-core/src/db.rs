@@ -3,11 +3,11 @@
 use crate::error::Result;
 use crate::market::{Market, MarketStatus, Side, Trade, TradeDirection};
 use crate::product::{
-    AgentRecord, AgentRecordInsert, AgentStatus, AgentType, FxQuoteObservation, FxQuoteSnapshot,
-    MarketLaunchState, MarketPosition, MarketTradeRecord, MarketVisibility, TradeExecutionRequest,
-    TradeExecutionRequestStatus, TradeQuoteSnapshot, TradeSettlementInsert, TradeSettlementRecord,
-    TradeSettlementStatus, WalletBalanceRecord, WalletFundingEvent, WalletTopupQuote,
-    WalletTopupRequest, WalletTopupRequestStatus, WalletTopupStatus,
+    FxQuoteObservation, FxQuoteSnapshot, MarketLaunchState, MarketPosition, MarketTradeRecord,
+    MarketVisibility, TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot,
+    TradeSettlementInsert, TradeSettlementRecord, TradeSettlementStatus, WalletBalanceRecord,
+    WalletFundingEvent, WalletTopupQuote, WalletTopupRequest, WalletTopupRequestStatus,
+    WalletTopupStatus,
 };
 use crate::trade::Payout;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
@@ -93,6 +93,7 @@ impl CascadeDatabase {
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         self.ensure_fx_quote_observations_column().await?;
+        self.ensure_wallet_topup_quote_metadata_column().await?;
         self.ensure_trade_quote_settlement_columns().await?;
 
         sqlx::query(include_str!(
@@ -101,11 +102,6 @@ impl CascadeDatabase {
         .execute(&self.pool)
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        sqlx::query(include_str!("../../../migrations/010_agent_records.sql"))
-            .execute(&self.pool)
-            .await
-            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         Ok(())
     }
@@ -130,6 +126,22 @@ impl CascadeDatabase {
             sqlx::query(
                 "ALTER TABLE fx_quote_snapshots ADD COLUMN observations_json TEXT NOT NULL DEFAULT '[]'",
             )
+            .execute(&self.pool)
+            .await
+            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+        }
+
+        Ok(())
+    }
+
+    async fn ensure_wallet_topup_quote_metadata_column(&self) -> Result<()> {
+        if !self
+            .column_exists("wallet_topup_quotes", "metadata_json")
+            .await?
+        {
+            sqlx::query(include_str!(
+                "../../../migrations/011_wallet_topup_quote_metadata.sql"
+            ))
             .execute(&self.pool)
             .await
             .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
@@ -696,121 +708,6 @@ impl CascadeDatabase {
         Ok(row.map(|row| map_market_and_launch_state_row(&row)))
     }
 
-    pub async fn upsert_agent(&self, agent: &AgentRecordInsert) -> Result<AgentRecord> {
-        let now = chrono::Utc::now().timestamp();
-        sqlx::query(
-            r#"
-            INSERT INTO agents (
-                edition,
-                pubkey,
-                name,
-                role,
-                thesis,
-                owner_pubkey,
-                agent_type,
-                status,
-                metadata_json,
-                created_at,
-                updated_at,
-                last_active_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(edition, pubkey) DO UPDATE SET
-                name = excluded.name,
-                role = excluded.role,
-                thesis = excluded.thesis,
-                owner_pubkey = excluded.owner_pubkey,
-                agent_type = excluded.agent_type,
-                status = excluded.status,
-                metadata_json = excluded.metadata_json,
-                updated_at = excluded.updated_at,
-                last_active_at = excluded.last_active_at
-            "#,
-        )
-        .bind(&agent.edition)
-        .bind(&agent.pubkey)
-        .bind(&agent.name)
-        .bind(agent.role.as_deref())
-        .bind(&agent.thesis)
-        .bind(agent.owner_pubkey.as_deref())
-        .bind(agent.agent_type.to_string())
-        .bind(agent.status.to_string())
-        .bind(agent.metadata_json.as_deref())
-        .bind(now)
-        .bind(now)
-        .bind(agent.last_active_at)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        self.get_agent(&agent.edition, &agent.pubkey)
-            .await?
-            .ok_or_else(|| {
-                crate::error::CascadeError::database("agent missing after upsert".to_string())
-            })
-    }
-
-    pub async fn get_agent(&self, edition: &str, pubkey: &str) -> Result<Option<AgentRecord>> {
-        let row = sqlx::query(
-            r#"
-            SELECT
-                edition,
-                pubkey,
-                name,
-                role,
-                thesis,
-                owner_pubkey,
-                agent_type,
-                status,
-                metadata_json,
-                created_at,
-                updated_at,
-                last_active_at
-            FROM agents
-            WHERE edition = ? AND pubkey = ?
-            LIMIT 1
-            "#,
-        )
-        .bind(edition)
-        .bind(pubkey)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(row.map(|row| map_agent_row(&row)))
-    }
-
-    pub async fn list_agents(&self, edition: &str, limit: i64) -> Result<Vec<AgentRecord>> {
-        let rows = sqlx::query(
-            r#"
-            SELECT
-                edition,
-                pubkey,
-                name,
-                role,
-                thesis,
-                owner_pubkey,
-                agent_type,
-                status,
-                metadata_json,
-                created_at,
-                updated_at,
-                last_active_at
-            FROM agents
-            WHERE edition = ?
-            ORDER BY updated_at DESC, created_at DESC
-            LIMIT ?
-            "#,
-        )
-        .bind(edition)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(rows.into_iter().map(|row| map_agent_row(&row)).collect())
-    }
-
     pub async fn ensure_wallet(&self, pubkey: &str) -> Result<()> {
         sqlx::query(
             r#"
@@ -966,6 +863,7 @@ impl CascadeDatabase {
             payment_hash: payment_hash.map(str::to_string),
             fx_quote_id: fx_quote.id.clone(),
             funding_event_id: None,
+            metadata_json: None,
             created_at: now,
             expires_at: fx_quote.expires_at,
             settled_at: None,
@@ -1092,6 +990,7 @@ impl CascadeDatabase {
                 Option<String>,
                 String,
                 Option<String>,
+                Option<String>,
                 i64,
                 i64,
                 Option<i64>,
@@ -1110,6 +1009,7 @@ impl CascadeDatabase {
                 payment_hash,
                 fx_quote_id,
                 funding_event_id,
+                metadata_json,
                 created_at,
                 expires_at,
                 settled_at,
@@ -1136,6 +1036,7 @@ impl CascadeDatabase {
                 payment_hash,
                 fx_quote_id,
                 funding_event_id,
+                metadata_json,
                 created_at,
                 expires_at,
                 settled_at,
@@ -1151,6 +1052,7 @@ impl CascadeDatabase {
                 payment_hash,
                 fx_quote_id,
                 funding_event_id,
+                metadata_json,
                 created_at,
                 expires_at,
                 settled_at,
@@ -1225,6 +1127,7 @@ impl CascadeDatabase {
                 Option<String>,
                 String,
                 Option<String>,
+                Option<String>,
                 i64,
                 i64,
                 Option<i64>,
@@ -1243,6 +1146,7 @@ impl CascadeDatabase {
                 payment_hash,
                 fx_quote_id,
                 funding_event_id,
+                metadata_json,
                 created_at,
                 expires_at,
                 settled_at,
@@ -1273,6 +1177,7 @@ impl CascadeDatabase {
                     payment_hash,
                     fx_quote_id,
                     funding_event_id,
+                    metadata_json,
                     created_at,
                     expires_at,
                     settled_at,
@@ -1288,6 +1193,7 @@ impl CascadeDatabase {
                     payment_hash,
                     fx_quote_id,
                     funding_event_id,
+                    metadata_json,
                     created_at,
                     expires_at,
                     settled_at,
@@ -1497,12 +1403,14 @@ impl CascadeDatabase {
             UPDATE wallet_topup_quotes
             SET status = 'complete',
                 funding_event_id = ?,
+                metadata_json = ?,
                 settled_at = ?,
                 completed_at = ?
             WHERE id = ? AND status = 'invoice_pending'
             "#,
         )
         .bind(&funding_event_id)
+        .bind(metadata_json)
         .bind(now)
         .bind(now)
         .bind(quote_id)
@@ -1670,6 +1578,59 @@ impl CascadeDatabase {
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         self.get_wallet_topup_request(request_id).await
+    }
+
+    pub async fn get_wallet_funding_event(
+        &self,
+        event_id: &str,
+    ) -> Result<Option<WalletFundingEvent>> {
+        let row = sqlx::query_as::<
+            _,
+            (
+                String,
+                String,
+                String,
+                i64,
+                String,
+                Option<String>,
+                Option<String>,
+                i64,
+            ),
+        >(
+            r#"
+            SELECT
+                id,
+                pubkey,
+                rail,
+                amount_minor,
+                status,
+                risk_level,
+                metadata_json,
+                created_at
+            FROM wallet_funding_events
+            WHERE id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(event_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(row.map(
+            |(id, pubkey, rail, amount_minor, status, risk_level, metadata_json, created_at)| {
+                WalletFundingEvent {
+                    id,
+                    pubkey,
+                    rail,
+                    amount_minor: amount_minor.max(0) as u64,
+                    status,
+                    risk_level,
+                    metadata_json,
+                    created_at,
+                }
+            },
+        ))
     }
 
     pub async fn credit_wallet(
@@ -2824,29 +2785,6 @@ impl CascadeDatabase {
             created_at: now,
             raw_event_json: raw_event_json.to_string(),
         })
-    }
-}
-
-fn map_agent_row(row: &sqlx::sqlite::SqliteRow) -> AgentRecord {
-    AgentRecord {
-        edition: row.get("edition"),
-        pubkey: row.get("pubkey"),
-        name: row.get("name"),
-        role: row.get("role"),
-        thesis: row.get("thesis"),
-        owner_pubkey: row.get("owner_pubkey"),
-        agent_type: row
-            .get::<String, _>("agent_type")
-            .parse()
-            .unwrap_or(AgentType::Connected),
-        status: row
-            .get::<String, _>("status")
-            .parse()
-            .unwrap_or(AgentStatus::Idle),
-        metadata_json: row.get("metadata_json"),
-        created_at: row.get("created_at"),
-        updated_at: row.get("updated_at"),
-        last_active_at: row.get("last_active_at"),
     }
 }
 

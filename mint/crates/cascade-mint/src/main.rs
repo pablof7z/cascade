@@ -147,6 +147,16 @@ async fn main() -> Result<()> {
         },
     )?;
 
+    // Configure USD minor units (1 = $0.01) for the wallet side of the product.
+    let usd_amounts: Vec<u64> = (0..20).map(|i| 2_u64.pow(i)).collect();
+    builder.configure_unit(
+        CurrencyUnit::Usd,
+        UnitConfig {
+            amounts: usd_amounts,
+            input_fee_ppk: 0,
+        },
+    )?;
+
     // Build with seed — this creates the signatory internally via DbSignatory
     // keystore = Arc<dyn MintKeysDatabase> — MintSqliteDatabase implements this
     let mint = builder

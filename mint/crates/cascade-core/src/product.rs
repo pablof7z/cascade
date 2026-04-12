@@ -65,98 +65,6 @@ pub struct WalletFundingEvent {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum AgentType {
-    Hosted,
-    Connected,
-}
-
-impl std::fmt::Display for AgentType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Hosted => write!(f, "hosted"),
-            Self::Connected => write!(f, "connected"),
-        }
-    }
-}
-
-impl std::str::FromStr for AgentType {
-    type Err = String;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value.to_lowercase().as_str() {
-            "hosted" => Ok(Self::Hosted),
-            "connected" => Ok(Self::Connected),
-            _ => Err(format!("Invalid agent type: {value}")),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AgentStatus {
-    Provisioning,
-    Active,
-    Idle,
-    Offline,
-}
-
-impl std::fmt::Display for AgentStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Provisioning => write!(f, "provisioning"),
-            Self::Active => write!(f, "active"),
-            Self::Idle => write!(f, "idle"),
-            Self::Offline => write!(f, "offline"),
-        }
-    }
-}
-
-impl std::str::FromStr for AgentStatus {
-    type Err = String;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value.to_lowercase().as_str() {
-            "provisioning" => Ok(Self::Provisioning),
-            "active" => Ok(Self::Active),
-            "idle" => Ok(Self::Idle),
-            "offline" => Ok(Self::Offline),
-            _ => Err(format!("Invalid agent status: {value}")),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AgentRecord {
-    pub edition: String,
-    pub pubkey: String,
-    pub name: String,
-    pub role: Option<String>,
-    pub thesis: String,
-    pub owner_pubkey: Option<String>,
-    pub agent_type: AgentType,
-    pub status: AgentStatus,
-    pub metadata_json: Option<String>,
-    pub created_at: i64,
-    pub updated_at: i64,
-    pub last_active_at: Option<i64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AgentRecordInsert {
-    pub edition: String,
-    pub pubkey: String,
-    pub name: String,
-    pub role: Option<String>,
-    pub thesis: String,
-    pub owner_pubkey: Option<String>,
-    pub agent_type: AgentType,
-    pub status: AgentStatus,
-    pub metadata_json: Option<String>,
-    pub last_active_at: Option<i64>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
 pub enum WalletTopupStatus {
     InvoicePending,
     Complete,
@@ -221,6 +129,7 @@ pub struct WalletTopupQuote {
     pub payment_hash: Option<String>,
     pub fx_quote_id: String,
     pub funding_event_id: Option<String>,
+    pub metadata_json: Option<String>,
     pub created_at: i64,
     pub expires_at: i64,
     pub settled_at: Option<i64>,

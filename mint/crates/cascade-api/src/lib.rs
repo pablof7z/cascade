@@ -36,6 +36,10 @@ pub async fn build_server(
             .map_err(|e| format!("Failed to initialize FX quote service: {e}"))?,
     );
 
+    mint.start()
+        .await
+        .map_err(|e| format!("Failed to start mint services: {e}"))?;
+
     // Create AppState
     let state = routes::AppState::new(
         market_manager,
@@ -44,7 +48,6 @@ pub async fn build_server(
         mint.clone(),
         db,
         network_type == "signet",
-        network_type,
     );
 
     // Build cascade-specific routes

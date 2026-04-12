@@ -7,10 +7,13 @@
     fetchWalletTopupStatus,
     parseJson,
     settleLightningTopupQuote,
+    type ProductFundingEvent,
+    type ProductProof,
     type ProductWallet,
-    type ProductWalletTopupRequestStatus,
+    type ProductWalletFundingExecution,
     type ProductWalletTopup,
-    type ProductWalletTopupExecution
+    type ProductWalletTopupExecution,
+    type ProductWalletTopupRequestStatus
   } from '$lib/cascade/api';
   import { getProductApiUrl } from '$lib/cascade/config';
   import { formatUsdMinor } from '$lib/cascade/format';
@@ -23,21 +26,17 @@
   } from '$lib/cascade/recovery';
   import { ndk } from '$lib/ndk/client';
   import { formatProbability } from '$lib/ndk/cascade';
-
-  type FundingEvent = {
-    id: string;
-    rail: string;
-    amount_minor: number;
-    status: string;
-    risk_level?: string | null;
-    created_at: number;
-  };
+  import { addLocalProofs, listLocalProofs, localProofBalance } from '$lib/wallet/localProofs';
 
   type PaperWallet = ProductWallet & {
-    funding_events: FundingEvent[];
+    funding_events: ProductFundingEvent[];
   };
 
   const currentUser = $derived(ndk.$currentUser);
+
+  const proofUnit = 'usd';
+  const paperFaucetSingleLimitMinor = 10000;
+  const paperFaucetWindowLimitMinor = 25000;
 
   let wallet = $state<PaperWallet | null>(null);
   let loading = $state(false);
@@ -45,9 +44,18 @@
   let status = $state('');
   let faucetAmount = $state('10000');
   let lightningAmount = $state('2500');
+  let localBalanceMinor = $state(0);
+  let localProofCount = $state(0);
 
-  const paperFaucetSingleLimitMinor = 10000;
-  const paperFaucetWindowLimitMinor = 25000;
+  function proofMintUrl(): string {
+    return getProductApiUrl().replace(/\/+$/, '');
+  }
+
+  function refreshLocalProofSummary() {
+    const mintUrl = proofMintUrl();
+    localBalanceMinor = localProofBalance(mintUrl, proofUnit);
+    localProofCount = listLocalProofs(mintUrl, proofUnit).length;
+  }
 
   async function loadWallet() {
     if (!currentUser) return;
@@ -55,12 +63,21 @@
     errorMessage = '';
     try {
       const response = await fetchPaperWallet(currentUser.pubkey);
-      wallet = await parseJson<PaperWallet>(response, 'Failed to load your paper wallet.');
+      wallet = await parseJson<PaperWallet>(response, 'Failed to load your market mirror.');
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Failed to load your paper wallet.';
+      errorMessage = error instanceof Error ? error.message : 'Failed to load your market mirror.';
     } finally {
       loading = false;
     }
+  }
+
+  function applyIssuedProofs(proofs: ProductProof[] | null | undefined, sourceLabel: string): boolean {
+    if (!proofs?.length) return false;
+    const snapshot = addLocalProofs(proofMintUrl(), proofUnit, proofs);
+    localBalanceMinor = snapshot.proofs.reduce((sum, proof) => sum + proof.amount, 0);
+    localProofCount = snapshot.proofs.length;
+    status = `${sourceLabel} added ${formatUsdMinor(proofs.reduce((sum, proof) => sum + proof.amount, 0))} of browser-local proofs.`;
+    return true;
   }
 
   function formatPaperFaucetError(message: string): string {
@@ -77,17 +94,17 @@
 
   async function addPaperFunds() {
     if (!currentUser) {
-      errorMessage = 'Sign in before funding your paper wallet.';
+      errorMessage = 'Sign in before funding your signet wallet.';
       return;
     }
 
     const amountMinor = Number.parseInt(faucetAmount, 10) || 0;
     if (amountMinor <= 0) {
-      errorMessage = 'Enter a paper funding amount greater than zero.';
+      errorMessage = 'Enter a funding amount greater than zero.';
       return;
     }
 
-    status = `Adding ${formatUsdMinor(amountMinor)} to your paper wallet.`;
+    status = `Adding ${formatUsdMinor(amountMinor)} to your signet wallet.`;
     errorMessage = '';
     const response = await fetch(`${getProductApiUrl()}/api/product/paper/faucet`, {
       method: 'POST',
@@ -105,8 +122,9 @@
       return;
     }
 
-    wallet = (await response.json()) as PaperWallet;
-    status = `Added ${formatUsdMinor(amountMinor)} to your paper wallet.`;
+    const payload = (await response.json()) as ProductWalletFundingExecution;
+    wallet = payload.wallet as PaperWallet;
+    applyIssuedProofs(payload.proofs, 'Paper funding');
   }
 
   async function createLightningTopup() {
@@ -164,9 +182,11 @@
         response,
         'Lightning top-up settlement failed.'
       );
-      wallet = payload.wallet;
+      wallet = payload.wallet as PaperWallet;
       clearPendingTopup(trackedTopupIdForQuote(topupId));
-      status = `Completed the signet Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
+      if (!applyIssuedProofs(payload.topup.issued_proofs, 'Lightning top-up')) {
+        status = `Completed the signet Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
+      }
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : 'Lightning top-up settlement failed.';
       status = '';
@@ -233,7 +253,7 @@
         walletNeedsRefresh = true;
 
         if (topup.status === 'complete') {
-          status = `Recovered completed Lightning top-up for ${formatUsdMinor(topup.amount_minor)}.`;
+          applyIssuedProofs(topup.issued_proofs, 'Recovered Lightning top-up');
         } else {
           status = `Recovered ${topup.status.replace(/_/g, ' ')} Lightning top-up for ${formatUsdMinor(topup.amount_minor)}.`;
         }
@@ -248,8 +268,14 @@
   }
 
   $effect(() => {
+    if (!browser) return;
+    refreshLocalProofSummary();
+  });
+
+  $effect(() => {
     if (!browser || !currentUser) return;
     void (async () => {
+      refreshLocalProofSummary();
       await loadWallet();
       await reconcilePendingTopups();
     })();
@@ -275,38 +301,45 @@
 
 <section class="wallet-page">
   <header class="wallet-header">
-    <div class="eyebrow">Paper Wallet</div>
-    <h1>Paper wallet</h1>
-    <p>Signet mode uses a paper wallet backed by the mint API. Funding here is for testing the full market flow.</p>
+    <div class="eyebrow">Signet Wallet</div>
+    <h1>Browser-local proof wallet</h1>
+    <p>
+      Signet funding now issues browser-local USD proofs. The market mirror below stays in place
+      temporarily while trade execution is migrated to consume proofs directly.
+    </p>
   </header>
 
   {#if !currentUser}
     <section class="wallet-panel">
-      <h2>Sign in to use the paper wallet</h2>
-      <p class="muted">Your paper balance and positions are keyed to your current signing identity.</p>
+      <h2>Sign in to use the signet wallet</h2>
+      <p class="muted">
+        Funding limits are keyed to your current signing identity. Issued proofs stay in this browser.
+      </p>
     </section>
   {:else}
     <section class="wallet-grid">
       <article class="wallet-panel">
-        <span class="label">Available</span>
-        <strong>{formatUsdMinor(wallet?.available_minor ?? 0)}</strong>
-        <p class="muted">Pending: {formatUsdMinor(wallet?.pending_minor ?? 0)}</p>
+        <span class="label">Local Proofs</span>
+        <strong>{formatUsdMinor(localBalanceMinor)}</strong>
+        <p class="muted">{localProofCount} proofs stored in this browser.</p>
       </article>
 
       <article class="wallet-panel">
-        <span class="label">Deposited</span>
-        <strong>{formatUsdMinor(wallet?.total_deposited_minor ?? 0)}</strong>
-        <p class="muted">Use this balance to seed and trade public markets.</p>
+        <span class="label">Market Mirror</span>
+        <strong>{formatUsdMinor(wallet?.available_minor ?? 0)}</strong>
+        <p class="muted">
+          Temporary mirror used by the current market coordinator while proof-based trading is wired in.
+        </p>
       </article>
     </section>
 
     <section class="wallet-panel">
       <div class="panel-header">
         <div>
-          <h2>Add paper funds</h2>
+          <h2>Add signet funds</h2>
           <p class="muted">
-            This faucet exists only for signet testing. Limit {formatUsdMinor(paperFaucetSingleLimitMinor)}
-            per top-up and {formatUsdMinor(paperFaucetWindowLimitMinor)} per 24 hours.
+            Faucet top-ups are signet-only. Limit {formatUsdMinor(paperFaucetSingleLimitMinor)} per
+            top-up and {formatUsdMinor(paperFaucetWindowLimitMinor)} per 24 hours.
           </p>
         </div>
       </div>
@@ -324,7 +357,9 @@
       <div class="panel-header">
         <div>
           <h2>Lightning top-up</h2>
-          <p class="muted">Create a Lightning invoice. Pay it externally or complete it locally for signet testing.</p>
+          <p class="muted">
+            Create a Lightning invoice. In signet, completing the top-up locally also mints browser-local USD proofs.
+          </p>
         </div>
       </div>
 
@@ -374,7 +409,7 @@
       <div class="panel-header">
         <div>
           <h2>Open positions</h2>
-          <p class="muted">Current market value and unrealized PnL update from the mint.</p>
+          <p class="muted">Current market value and unrealized PnL still come from the temporary market mirror.</p>
         </div>
         <a class="button-secondary" href="/builder">Create market</a>
       </div>
@@ -423,7 +458,7 @@
           {/each}
         </div>
       {:else}
-        <p class="muted">No paper funding events yet.</p>
+        <p class="muted">No signet funding events yet.</p>
       {/if}
     </section>
   {/if}
@@ -522,61 +557,76 @@
 
   .position-row,
   .history-row {
-    padding: 1rem 0;
+    padding: 0.85rem 0;
     border-bottom: 1px solid var(--border-subtle);
-  }
-
-  .position-copy,
-  .position-metrics,
-  .history-copy {
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  .position-metrics {
-    text-align: right;
-    font-family: var(--font-mono);
-  }
-
-  .positive {
-    color: var(--positive);
-  }
-
-  .negative,
-  .wallet-error {
-    color: var(--negative);
-  }
-
-  .wallet-status {
-    color: var(--text-muted);
+    text-decoration: none;
+    color: inherit;
   }
 
   .history-row-stack {
     align-items: flex-start;
   }
 
-  code {
-    display: block;
-    max-width: 100%;
-    overflow-x: auto;
-    color: var(--text-muted);
-    font-size: 0.75rem;
+  .history-copy {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .history-copy code {
+    overflow-wrap: anywhere;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-faint);
+  }
+
+  .position-copy,
+  .position-metrics {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .position-metrics {
+    justify-items: end;
     font-family: var(--font-mono);
   }
 
-  @media (max-width: 900px) {
-    .wallet-grid,
+  .positive {
+    color: var(--text-success);
+  }
+
+  .negative {
+    color: var(--text-danger);
+  }
+
+  .wallet-status,
+  .wallet-error {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .wallet-status {
+    color: var(--text-muted);
+  }
+
+  .wallet-error {
+    color: var(--text-danger);
+  }
+
+  @media (max-width: 720px) {
+    .wallet-grid {
+      grid-template-columns: 1fr;
+    }
+
     .panel-header,
     .position-row,
     .history-row,
     .funding-row {
-      grid-template-columns: 1fr;
       flex-direction: column;
       align-items: flex-start;
     }
 
     .position-metrics {
-      text-align: left;
+      justify-items: start;
     }
   }
 </style>

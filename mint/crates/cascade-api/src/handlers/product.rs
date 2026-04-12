@@ -1,17 +1,16 @@
 use crate::fx::FxQuoteEnvelope;
 use crate::routes::AppState;
 use crate::types::{
-    CreatorMarketsResponse, ProductAgentDetailResponse, ProductAgentPortfolioSummary,
-    ProductAgentSummary, ProductAgentsResponse, ProductBuyRequest, ProductCoordinatorBuyRequest,
+    CreatorMarketsResponse, ProductBuyRequest, ProductCoordinatorBuyRequest,
     ProductCoordinatorSellRequest, ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest,
     ProductFeedResponse, ProductFundingEventResponse, ProductFxObservationResponse,
     ProductLightningFxQuoteResponse, ProductLightningTopupQuoteRequest,
     ProductMarketDetailResponse, ProductMarketSummary, ProductPaperFaucetRequest,
-    ProductSellRequest, ProductStartSignetAgentRequest, ProductStartSignetAgentResponse,
-    ProductTradeExecutionResponse, ProductTradeQuoteRequest, ProductTradeQuoteResponse,
-    ProductTradeRequestStatusResponse, ProductTradeSettlementResponse, ProductTradeStatusResponse,
+    ProductSellRequest, ProductTradeExecutionResponse, ProductTradeQuoteRequest,
+    ProductTradeQuoteResponse, ProductTradeRequestStatusResponse, ProductTradeSettlementResponse,
+    ProductTradeStatusResponse, ProductWalletFundingExecutionResponse,
     ProductWalletPositionResponse, ProductWalletResponse, ProductWalletTopupExecutionResponse,
-    ProductWalletTopupRequestStatusResponse, ProductWalletTopupResponse,
+    ProductWalletTopupRequestStatusResponse, ProductWalletTopupResponse, ProofInput,
 };
 use axum::{
     extract::{Json, Path, State},
@@ -19,13 +18,16 @@ use axum::{
 };
 use cascade_core::{
     product::{
-        AgentRecord, AgentRecordInsert, AgentStatus, AgentType, FxQuoteSnapshot, MarketLaunchState,
-        TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot,
-        TradeSettlementInsert, TradeSettlementRecord, WalletTopupQuote, WalletTopupRequest,
-        WalletTopupRequestStatus,
+        FxQuoteSnapshot, MarketLaunchState, TradeExecutionRequest, TradeExecutionRequestStatus,
+        TradeQuoteSnapshot, TradeSettlementInsert, TradeSettlementRecord, WalletTopupQuote,
+        WalletTopupRequest, WalletTopupRequestStatus,
     },
     Market, Side, WalletBalanceRecord,
 };
+use cdk::amount::SplitTarget;
+use cdk::dhke::construct_proofs;
+use cdk::nuts::{CurrencyUnit, PreMintSecrets};
+use cdk::Amount;
 use serde_json::{json, Value};
 
 const TRADE_FEE_BPS: u64 = 100;
@@ -49,6 +51,87 @@ fn signet_only_unavailable(feature: &str) -> (StatusCode, Json<Value>) {
             "feature": feature
         })),
     )
+}
+
+fn proof_input_from_cdk_proof(proof: &cdk::nuts::Proof) -> Result<ProofInput, serde_json::Error> {
+    let value = serde_json::to_value(proof)?;
+    serde_json::from_value(value)
+}
+
+fn wallet_proofs_metadata_json(
+    source: &str,
+    proofs: &[ProofInput],
+    extra: Value,
+) -> Result<String, serde_json::Error> {
+    let mut payload = json!({
+        "source": source,
+        "issued_proofs": proofs,
+        "unit": "usd"
+    });
+
+    if let Some(object) = payload.as_object_mut() {
+        if let Some(extra_object) = extra.as_object() {
+            for (key, value) in extra_object {
+                object.insert(key.clone(), value.clone());
+            }
+        }
+    }
+
+    serde_json::to_string(&payload)
+}
+
+async fn issue_wallet_proofs(
+    state: &AppState,
+    amount_minor: u64,
+) -> Result<Vec<ProofInput>, String> {
+    let active_keyset = state
+        .mint
+        .keysets()
+        .keysets
+        .into_iter()
+        .find(|keyset| keyset.active && keyset.unit == CurrencyUnit::Usd)
+        .ok_or_else(|| "wallet_usd_keyset_not_configured".to_string())?;
+    let keyset_response = state.mint.pubkeys();
+    let keyset = keyset_response
+        .keysets
+        .into_iter()
+        .find(|keyset| keyset.id == active_keyset.id)
+        .ok_or_else(|| "wallet_usd_keyset_missing_pubkeys".to_string())?;
+
+    let supported_amounts = keyset
+        .keys
+        .iter()
+        .map(|(amount, _)| amount.to_u64())
+        .collect::<Vec<_>>();
+    let fee_and_amounts = (0, supported_amounts).into();
+    let pre_mint = PreMintSecrets::random(
+        active_keyset.id,
+        Amount::from(amount_minor),
+        &SplitTarget::None,
+        &fee_and_amounts,
+    )
+    .map_err(|error| error.to_string())?;
+
+    let signatures = state
+        .mint
+        .blind_sign(pre_mint.blinded_messages().to_vec())
+        .await
+        .map_err(|error| error.to_string())?;
+
+    let proofs = construct_proofs(signatures, pre_mint.rs(), pre_mint.secrets(), &keyset.keys)
+        .map_err(|error| error.to_string())?;
+
+    proofs
+        .iter()
+        .map(proof_input_from_cdk_proof)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())
+}
+
+fn issued_proofs_from_metadata(value: Option<&str>) -> Option<Vec<ProofInput>> {
+    let metadata = parse_metadata_json(value)?;
+    let proofs = metadata.get("issued_proofs")?.clone();
+    serde_json::from_value(proofs).ok()
 }
 
 pub async fn feed(State(state): State<AppState>) -> (StatusCode, Json<ProductFeedResponse>) {
@@ -93,200 +176,6 @@ pub async fn creator_markets(
                 .collect(),
         }),
     )
-}
-
-pub async fn agents(State(state): State<AppState>) -> (StatusCode, Json<Value>) {
-    match state.db.list_agents(&state.network_type, 240).await {
-        Ok(records) => {
-            let mut agents = Vec::with_capacity(records.len());
-            for record in records {
-                match agent_summary_response(&state, &record).await {
-                    Ok(agent) => agents.push(agent),
-                    Err(error) => {
-                        return (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            Json(json!({ "error": error })),
-                        )
-                    }
-                }
-            }
-
-            (
-                StatusCode::OK,
-                Json(json!(ProductAgentsResponse { agents })),
-            )
-        }
-        Err(error) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": error.to_string() })),
-        ),
-    }
-}
-
-pub async fn agent_detail(
-    State(state): State<AppState>,
-    Path(pubkey): Path<String>,
-) -> (StatusCode, Json<Value>) {
-    match load_agent_detail_response(&state, &pubkey).await {
-        Ok(Some(response)) => (StatusCode::OK, Json(json!(response))),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": "agent_not_found" })),
-        ),
-        Err(error) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": error })),
-        ),
-    }
-}
-
-pub async fn start_signet_agent(
-    State(state): State<AppState>,
-    Json(req): Json<ProductStartSignetAgentRequest>,
-) -> (StatusCode, Json<Value>) {
-    if !state.paper_mode {
-        return signet_only_unavailable("signet_agent_start");
-    }
-
-    if req.pubkey.trim().is_empty() || req.name.trim().is_empty() || req.thesis.trim().is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "pubkey_name_and_thesis_are_required" })),
-        );
-    }
-
-    let existing_agent = match state.db.get_agent(&state.network_type, &req.pubkey).await {
-        Ok(agent) => agent,
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    let created = existing_agent.is_none();
-    let agent_type = match parse_agent_type(req.agent_type.as_deref()) {
-        Ok(agent_type) => agent_type,
-        Err(error) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": error }))),
-    };
-
-    let funding_amount_minor = req.funding_amount_minor.unwrap_or(0);
-    let existing_balance = match state.db.get_wallet_balance(&req.pubkey).await {
-        Ok(balance) => balance,
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-    let should_fund = funding_amount_minor > 0
-        && existing_balance
-            .as_ref()
-            .map(|balance| balance.total_deposited_minor == 0)
-            .unwrap_or(true);
-
-    if should_fund {
-        if let Err(response) =
-            enforce_paper_funding_limits(&state, &req.pubkey, funding_amount_minor).await
-        {
-            return response;
-        }
-    }
-
-    let metadata_json = match req.metadata.as_ref() {
-        Some(metadata) => match serde_json::to_string(metadata) {
-            Ok(value) => Some(value),
-            Err(error) => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({ "error": format!("invalid_metadata: {error}") })),
-                )
-            }
-        },
-        None => None,
-    };
-
-    let now = chrono::Utc::now().timestamp();
-    let agent = match state
-        .db
-        .upsert_agent(&AgentRecordInsert {
-            edition: state.network_type.clone(),
-            pubkey: req.pubkey.clone(),
-            name: req.name.trim().to_string(),
-            role: req.role.as_ref().map(|value| value.trim().to_string()),
-            thesis: req.thesis.trim().to_string(),
-            owner_pubkey: req
-                .owner_pubkey
-                .as_ref()
-                .map(|value| value.trim().to_string()),
-            agent_type,
-            status: AgentStatus::Active,
-            metadata_json,
-            last_active_at: Some(now),
-        })
-        .await
-    {
-        Ok(agent) => agent,
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    if should_fund {
-        let metadata_json = json!({
-            "source": "signet-agent-start",
-            "agent_name": agent.name,
-            "agent_type": agent.agent_type.to_string(),
-            "owner_pubkey": agent.owner_pubkey,
-        })
-        .to_string();
-
-        if let Err(error) = state
-            .db
-            .credit_wallet(
-                &req.pubkey,
-                funding_amount_minor,
-                "paper",
-                Some("paper"),
-                Some(&metadata_json),
-            )
-            .await
-        {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            );
-        }
-    }
-
-    match load_agent_detail_response(&state, &req.pubkey).await {
-        Ok(Some(detail)) => (
-            if created {
-                StatusCode::CREATED
-            } else {
-                StatusCode::OK
-            },
-            Json(json!(ProductStartSignetAgentResponse {
-                created,
-                funded: should_fund,
-                agent: detail.agent,
-                wallet: detail.wallet,
-            })),
-        ),
-        Ok(None) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": "agent_missing_after_start" })),
-        ),
-        Err(error) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": error })),
-        ),
-    }
 }
 
 pub async fn market_detail(
@@ -475,7 +364,7 @@ pub async fn create_lightning_topup_quote(
         .await
     {
         Ok(quote) => {
-            let response = wallet_topup_response(&quote, &fx_quote);
+            let response = wallet_topup_response(&quote, &fx_quote, None);
             (StatusCode::CREATED, Json(json!(response)))
         }
         Err(error) => {
@@ -585,11 +474,49 @@ pub async fn settle_lightning_topup_quote(
         return signet_only_unavailable("wallet_lightning_topup_settlement");
     }
 
-    let metadata_json = json!({
-        "source": "signet-lightning-topup",
-        "topup_quote_id": quote_id
-    })
-    .to_string();
+    let existing_quote = match state.db.get_wallet_topup_quote(&quote_id).await {
+        Ok(Some(quote)) => quote,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "topup_quote_not_found" })),
+            )
+        }
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error.to_string() })),
+            )
+        }
+    };
+
+    let proofs = if existing_quote.status.to_string() == "complete" {
+        issued_proofs_from_metadata(existing_quote.metadata_json.as_deref()).unwrap_or_default()
+    } else {
+        match issue_wallet_proofs(&state, existing_quote.amount_minor).await {
+            Ok(proofs) => proofs,
+            Err(error) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": error })),
+                )
+            }
+        }
+    };
+
+    let metadata_json = match wallet_proofs_metadata_json(
+        "signet-lightning-topup",
+        &proofs,
+        json!({ "topup_quote_id": quote_id }),
+    ) {
+        Ok(metadata) => metadata,
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error.to_string() })),
+            )
+        }
+    };
 
     match state
         .db
@@ -639,6 +566,30 @@ pub async fn paper_faucet(
         return response;
     }
 
+    let proofs = match issue_wallet_proofs(&state, req.amount_minor).await {
+        Ok(proofs) => proofs,
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error })),
+            )
+        }
+    };
+
+    let metadata_json = match wallet_proofs_metadata_json(
+        "signet-paper-faucet",
+        &proofs,
+        json!({ "pubkey": req.pubkey }),
+    ) {
+        Ok(metadata) => metadata,
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error.to_string() })),
+            )
+        }
+    };
+
     match state
         .db
         .credit_wallet(
@@ -646,12 +597,18 @@ pub async fn paper_faucet(
             req.amount_minor,
             "paper",
             Some("paper"),
-            Some(r#"{"source":"signet-paper-faucet"}"#),
+            Some(&metadata_json),
         )
         .await
     {
         Ok(_) => match wallet_response(&state, &req.pubkey).await {
-            Ok(wallet) => (StatusCode::CREATED, Json(json!(wallet))),
+            Ok(wallet) => (
+                StatusCode::CREATED,
+                Json(json!(ProductWalletFundingExecutionResponse {
+                    wallet,
+                    proofs
+                })),
+            ),
             Err(error) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": error.to_string() })),
@@ -2149,40 +2106,6 @@ async fn market_detail_response(
     }
 }
 
-async fn load_agent_detail_response(
-    state: &AppState,
-    pubkey: &str,
-) -> Result<Option<ProductAgentDetailResponse>, String> {
-    let Some(agent) = state
-        .db
-        .get_agent(&state.network_type, pubkey)
-        .await
-        .map_err(|error| error.to_string())?
-    else {
-        return Ok(None);
-    };
-
-    let wallet = wallet_response(state, pubkey)
-        .await
-        .map_err(|error| error.to_string())?;
-    let summary = product_agent_summary(&agent, &wallet);
-
-    Ok(Some(ProductAgentDetailResponse {
-        agent: summary,
-        wallet,
-    }))
-}
-
-async fn agent_summary_response(
-    state: &AppState,
-    record: &AgentRecord,
-) -> Result<ProductAgentSummary, String> {
-    let wallet = wallet_response(state, &record.pubkey)
-        .await
-        .map_err(|error| error.to_string())?;
-    Ok(product_agent_summary(record, &wallet))
-}
-
 async fn enforce_paper_funding_limits(
     state: &AppState,
     pubkey: &str,
@@ -2704,51 +2627,6 @@ async fn wallet_response(state: &AppState, pubkey: &str) -> Result<ProductWallet
     })
 }
 
-fn product_agent_summary(
-    record: &AgentRecord,
-    wallet: &ProductWalletResponse,
-) -> ProductAgentSummary {
-    ProductAgentSummary {
-        edition: record.edition.clone(),
-        pubkey: record.pubkey.clone(),
-        name: record.name.clone(),
-        role: record.role.clone(),
-        thesis: record.thesis.clone(),
-        owner_pubkey: record.owner_pubkey.clone(),
-        agent_type: record.agent_type.to_string(),
-        status: record.status.to_string(),
-        metadata: parse_metadata_json(record.metadata_json.as_deref()),
-        created_at: record.created_at,
-        updated_at: record.updated_at,
-        last_active_at: record.last_active_at,
-        portfolio: agent_portfolio_summary(wallet),
-    }
-}
-
-fn agent_portfolio_summary(wallet: &ProductWalletResponse) -> ProductAgentPortfolioSummary {
-    ProductAgentPortfolioSummary {
-        available_minor: wallet.available_minor,
-        pending_minor: wallet.pending_minor,
-        total_deposited_minor: wallet.total_deposited_minor,
-        position_count: wallet.positions.len() as u64,
-        invested_minor: wallet
-            .positions
-            .iter()
-            .map(|position| position.cost_basis_minor)
-            .sum(),
-        market_value_minor: wallet
-            .positions
-            .iter()
-            .map(|position| position.market_value_minor)
-            .sum(),
-        unrealized_pnl_minor: wallet
-            .positions
-            .iter()
-            .map(|position| position.unrealized_pnl_minor)
-            .sum(),
-    }
-}
-
 async fn load_wallet_topup_response(
     state: &AppState,
     quote: &WalletTopupQuote,
@@ -2781,6 +2659,7 @@ fn lightning_fx_quote_response(quote: &FxQuoteEnvelope) -> ProductLightningFxQuo
 fn wallet_topup_response(
     quote: &WalletTopupQuote,
     fx_quote: &FxQuoteSnapshot,
+    issued_proofs: Option<Vec<ProofInput>>,
 ) -> ProductWalletTopupResponse {
     ProductWalletTopupResponse {
         id: quote.id.clone(),
@@ -2799,6 +2678,7 @@ fn wallet_topup_response(
             .iter()
             .map(product_fx_observation_response)
             .collect(),
+        issued_proofs,
         created_at: quote.created_at,
         expires_at: quote.expires_at,
     }
@@ -2814,7 +2694,16 @@ async fn wallet_topup_response_for_state(
         .await
         .map_err(|error| error.to_string())?
         .ok_or_else(|| "fx_quote_not_found".to_string())?;
-    Ok(wallet_topup_response(quote, &fx_quote))
+    let issued_proofs = match quote.funding_event_id.as_deref() {
+        Some(funding_event_id) => state
+            .db
+            .get_wallet_funding_event(funding_event_id)
+            .await
+            .map_err(|error| error.to_string())?
+            .and_then(|event| issued_proofs_from_metadata(event.metadata_json.as_deref())),
+        None => issued_proofs_from_metadata(quote.metadata_json.as_deref()),
+    };
+    Ok(wallet_topup_response(quote, &fx_quote, issued_proofs))
 }
 
 async fn sync_wallet_topup_quote_best_effort(
@@ -2884,13 +2773,6 @@ fn product_market_summary(
         reserve_minor: market.reserve_sats,
         raw_event,
     })
-}
-
-fn parse_agent_type(value: Option<&str>) -> Result<AgentType, String> {
-    match value.map(str::trim).filter(|value| !value.is_empty()) {
-        Some(value) => value.parse(),
-        None => Ok(AgentType::Connected),
-    }
 }
 
 fn parse_metadata_json(value: Option<&str>) -> Option<Value> {

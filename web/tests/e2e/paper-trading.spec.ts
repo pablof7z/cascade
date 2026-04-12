@@ -77,7 +77,7 @@ async function loginWithPrivateKey(page: Page, secretKey: string) {
 async function fundPaperWallet(page: Page, secretKey: string, amountMinor: number) {
   await page.goto('/wallet');
   await ensureLoggedIn(page, secretKey);
-  await expect(page.getByRole('heading', { name: 'Paper wallet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Browser-local proof wallet' })).toBeVisible();
 
   let remainingMinor = amountMinor;
 
@@ -85,7 +85,9 @@ async function fundPaperWallet(page: Page, secretKey: string, amountMinor: numbe
     const chunkMinor = Math.min(remainingMinor, PAPER_FAUCET_SINGLE_TOPUP_LIMIT_MINOR);
     await page.getByRole('spinbutton', { name: 'Paper amount' }).fill(String(chunkMinor));
     await page.getByRole('button', { name: 'Add funds' }).click();
-    await expect(page.getByText(`Added ${formatUsdMinor(chunkMinor)} to your paper wallet.`)).toBeVisible();
+    await expect(
+      page.getByText(`Paper funding added ${formatUsdMinor(chunkMinor)} of browser-local proofs.`)
+    ).toBeVisible();
     remainingMinor -= chunkMinor;
   }
 }
@@ -141,9 +143,7 @@ test('pending markets stay private until the first mint trade, then become publi
   await page.getByRole('button', { name: 'Create Market' }).click();
 
   await expect(page).toHaveURL(/\/builder$/);
-  await expect(
-    page.getByText('Market is pending. Fund your paper wallet, then seed the market from this page.')
-  ).toBeVisible();
+  await expect(page.getByText(/Market is pending\. Fund your signet wallet/)).toBeVisible();
   await expect(pendingMarketRow(page, market.title)).toContainText('Pending');
 
   const privateMarketResponse = await fetch(`${BASE_URL}/market/${market.slug}`);
@@ -254,7 +254,7 @@ test('funded users can create a market, buy the other side, and withdraw part of
 
   await page.goto('/wallet');
   await ensureLoggedIn(page, creatorSecret);
-  await expect(page.getByRole('heading', { name: 'Paper wallet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Browser-local proof wallet' })).toBeVisible();
   await expect(page.locator('.position-row').filter({ hasText: market.title }).first()).toBeVisible();
 });
 
@@ -264,7 +264,7 @@ test('signet wallet can fund through the Lightning top-up flow', async ({ page }
   await loginWithPrivateKey(page, secret);
   await page.goto('/wallet');
   await ensureLoggedIn(page, secret);
-  await expect(page.getByRole('heading', { name: 'Paper wallet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Browser-local proof wallet' })).toBeVisible();
   await page.getByRole('spinbutton', { name: 'Lightning amount' }).fill('2500');
   await page.getByRole('button', { name: 'Create Lightning invoice' }).click();
   await expect(page.getByText(`Created a Lightning top-up for ${formatUsdMinor(2500)}.`)).toBeVisible();
@@ -292,13 +292,13 @@ test('signet wallet can fund through the Lightning top-up flow', async ({ page }
   ).toBeVisible();
   await page.getByRole('button', { name: 'Complete locally for signet' }).click();
   await expect(
-    page.getByText(`Completed the signet Lightning top-up for ${formatUsdMinor(2500)}.`)
+    page.getByText(`Lightning top-up added ${formatUsdMinor(2500)} of browser-local proofs.`)
   ).toBeVisible();
 
   await page.goto('/wallet');
   await ensureLoggedIn(page, secret);
   const walletPanels = page.locator('.wallet-grid .wallet-panel');
-  await expect(walletPanels.first()).toContainText('Available');
+  await expect(walletPanels.first()).toContainText('Local Proofs');
   await expect(walletPanels.first()).toContainText('$25.00');
   await expect(page.locator('.history-row').filter({ hasText: 'lightning · complete' }).first()).toBeVisible();
 });

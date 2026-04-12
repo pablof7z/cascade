@@ -178,7 +178,7 @@
   async function loadPaperWallet(pubkey: string): Promise<{ available_minor?: number }> {
     const wallet = await fetch(`${getProductApiUrl()}/api/product/wallet/${pubkey}`);
     if (!wallet.ok) {
-      throw new Error('Failed to load your paper wallet.');
+      throw new Error('Failed to load your signet wallet.');
     }
 
     return (await wallet.json()) as { available_minor?: number };
@@ -212,8 +212,8 @@
       const availableMinor = walletPayload.available_minor ?? 0;
 
       if (availableMinor < parsedSeedAmount) {
-        builderStatus = 'Market is pending. Fund your paper wallet, then seed it from here.';
-        errorMessage = `Your paper wallet has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
+        builderStatus = 'Market is pending. Fund your signet wallet, then seed it from here.';
+        errorMessage = `Your signet wallet has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
         return;
       }
 
@@ -366,8 +366,8 @@
       const walletPayload = await loadPaperWallet(currentUser.pubkey);
       const availableMinor = walletPayload.available_minor ?? 0;
       if (availableMinor < parsedSeedAmount) {
-        builderStatus = 'Market is pending. Fund your paper wallet, then seed the market from this page.';
-        errorMessage = `Your paper wallet has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
+        builderStatus = 'Market is pending. Fund your signet wallet, then seed the market from this page.';
+        errorMessage = `Your signet wallet has ${formatUsdMinor(availableMinor)}. Add at least ${formatUsdMinor(parsedSeedAmount)} to launch this market publicly.`;
         return;
       }
 

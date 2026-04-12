@@ -16,6 +16,19 @@ export type ProductWalletPosition = {
   unrealized_pnl_minor: number;
 };
 
+export type ProductProof = {
+  id: string;
+  amount: number;
+  secret: string;
+  C: string;
+  witness?: string | null;
+  dleq?: {
+    e: string;
+    s: string;
+    r: string;
+  } | null;
+};
+
 export type ProductFundingEvent = {
   id: string;
   rail: string;
@@ -44,6 +57,7 @@ export type ProductWalletTopup = {
   spread_bps: number;
   fx_quote_id: string;
   observations: ProductFxObservation[];
+  issued_proofs?: ProductProof[] | null;
   created_at: number;
   expires_at: number;
 };
@@ -167,6 +181,11 @@ export type ProductTradeRequestStatus = {
 export type ProductWalletTopupExecution = {
   topup: ProductWalletTopup;
   wallet: ProductWallet;
+};
+
+export type ProductWalletFundingExecution = {
+  wallet: ProductWallet;
+  proofs: ProductProof[];
 };
 
 async function parseApiError(response: Response, fallback: string): Promise<string> {

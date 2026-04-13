@@ -159,11 +159,6 @@ pub struct ProductRuntimeResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct CreatorMarketsResponse {
-    pub markets: Vec<ProductMarketSummary>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductMarketDetailResponse {
     pub market: ProductMarketSummary,
     pub trades: Vec<Value>,

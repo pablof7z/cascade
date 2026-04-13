@@ -336,10 +336,6 @@ export async function fetchMarketDetailBySlug(slug: string): Promise<Response> {
   return productFetch(`/api/product/markets/slug/${encodeURIComponent(slug)}`);
 }
 
-export async function fetchCreatorMarkets(pubkey: string): Promise<Response> {
-  return productFetch(`/api/product/markets/creator/${encodeURIComponent(pubkey)}`);
-}
-
 export async function fetchProductFeed(input?: {
   marketLimit?: number;
   marketOffset?: number;

@@ -6,7 +6,6 @@
     buyMarketPosition,
     createProductMarket,
     extractTradeBlindSignatureBundles,
-    fetchCreatorMarkets,
     fetchProductFeed,
     fetchTradeQuoteStatus,
     quoteBuyTrade,
@@ -14,6 +13,7 @@
     fetchTradeStatus,
     hasCompletedTradeSettlement,
     parseJson,
+    type ProductMarketSummary,
     type ProductTradeQuote,
     type ProductTradeExecution,
     type ProductTradeRequestStatus,
@@ -23,12 +23,21 @@
   import { formatUsdMinor } from '$lib/cascade/format';
   import { getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
   import {
+    clearPendingCreatorMarket,
     attachTradeReceiptQuoteId,
     clearTradeReceipt,
+    listPendingCreatorMarkets,
     listTradeReceipts,
     markTradeReceiptTradeId,
-    trackTradeReceipt
+    trackPendingCreatorMarket,
+    trackTradeReceipt,
+    type PendingCreatorMarketRecord
   } from '$lib/cascade/recovery';
+  import {
+    mergeCreatorMarkets,
+    prunePendingCreatorMarkets,
+    type AuthoredCreatorMarket
+  } from '$lib/cascade/builderMarkets';
   import { ndk } from '$lib/ndk/client';
   import { parseMarketEvent, type MarketRecord } from '$lib/ndk/cascade';
   import {
@@ -53,14 +62,6 @@
   };
 
   type Step = 0 | 1 | 2 | 3;
-  type CreatorMarket = {
-    event_id: string;
-    slug: string;
-    title: string;
-    visibility: string;
-    volume_minor: number;
-    trade_count: number;
-  };
 
   const examples = [
     'Will AGI emerge before 2030?',
@@ -85,7 +86,7 @@
   let builderStatus = $state('');
   let seedAmount = $state('10000');
   let seedSide = $state<'yes' | 'no'>('yes');
-  let creatorMarkets = $state<CreatorMarket[]>([]);
+  let pendingCreatorMarkets = $state<PendingCreatorMarketRecord[]>([]);
   let publicReferenceMarkets = $state<MarketRecord[]>([]);
 
   const steps = [
@@ -123,6 +124,35 @@
   const paperEdition = $derived(isPaperEdition());
   const portfolioLabel = $derived(paperEdition ? 'signet portfolio' : 'portfolio');
   const parsedSeedAmount = $derived(Number.parseInt(seedAmount, 10) || 0);
+
+  const creatorMarketFeed = ndk.$subscribe(() => {
+    if (!browser || !paperEdition || !currentUser) return undefined;
+    return { filters: [{ kinds: [982], authors: [currentUser.pubkey], limit: 200 }] };
+  });
+
+  const publicCreatorMarketIds = $derived.by(() => {
+    if (!currentUser) return new Set<string>();
+    return new Set(
+      publicReferenceMarkets
+        .filter((market) => market.pubkey === currentUser.pubkey)
+        .map((market) => market.id)
+    );
+  });
+
+  const creatorMarkets = $derived.by(() => {
+    const publicMarkets = creatorMarketFeed.events
+      .map((event) => parseMarketEvent(event.rawEvent()))
+      .filter((market): market is MarketRecord => Boolean(market))
+      .filter((market) => publicCreatorMarketIds.has(market.id))
+      .map<AuthoredCreatorMarket>((market) => ({
+        eventId: market.id,
+        slug: market.slug,
+        title: market.title,
+        createdAt: market.createdAt
+      }));
+
+    return mergeCreatorMarkets(publicMarkets, pendingCreatorMarkets);
+  });
 
   function proofMintUrl(): string {
     return getProductApiUrl().replace(/\/+$/, '');
@@ -181,6 +211,10 @@
 
   function availableLocalUsdMinor(): number {
     return localProofBalance(proofMintUrl(), 'usd');
+  }
+
+  function refreshPendingCreatorMarkets() {
+    pendingCreatorMarkets = currentUser ? listPendingCreatorMarkets(currentUser.pubkey) : [];
   }
 
   function marketUnitForSide(marketSlug: string, side: 'yes' | 'no'): string {
@@ -341,11 +375,12 @@
 
       if (hasCompletedTradeSettlement(payload)) {
         clearTradeReceipt(requestId);
+        clearPendingCreatorMarket(eventId, currentUser.pubkey);
+        refreshPendingCreatorMarkets();
         builderStatus = 'Market seeded and now public.';
       } else {
         builderStatus = 'Market seed submitted. Waiting for settlement.';
       }
-      await loadCreatorMarkets();
       await navigateToMarket(slug);
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : 'Failed to seed the market.';
@@ -426,16 +461,28 @@
         b: 10
       });
 
-      if (!created.ok && created.status !== 409) {
+      let createdMarket: ProductMarketSummary | null = null;
+      if (created.ok) {
+        createdMarket = (await created.json()) as ProductMarketSummary;
+      } else if (created.status !== 409) {
         const payload = (await created.json().catch(() => null)) as { error?: string } | null;
         throw new Error(payload?.error || 'Failed to register market with the mint.');
+      }
+
+      if (createdMarket && createdMarket.visibility !== 'public') {
+        trackPendingCreatorMarket({
+          eventId: createdMarket.event_id,
+          pubkey: currentUser.pubkey,
+          slug: createdMarket.slug,
+          title: createdMarket.title,
+          createdAt: createdMarket.created_at
+        });
+        refreshPendingCreatorMarkets();
       }
 
       void marketEvent.publish().catch((error) => {
         console.warn('Best-effort market publish failed in signet mode', error);
       });
-
-      await loadCreatorMarkets();
 
       const availableMinor = availableLocalUsdMinor();
       if (availableMinor < parsedSeedAmount) {
@@ -452,14 +499,6 @@
         saving = false;
       }
     }
-  }
-
-  async function loadCreatorMarkets() {
-    if (!browser || !paperEdition || !currentUser) return;
-    const response = await fetchCreatorMarkets(currentUser.pubkey);
-    if (!response.ok) return;
-    const payload = (await response.json()) as { markets?: CreatorMarket[] };
-    creatorMarkets = payload.markets ?? [];
   }
 
   async function loadPublicReferenceMarkets() {
@@ -493,7 +532,8 @@
           await applyRecoveredSeedProofs(receipt, payload);
           clearTradeReceipt(receipt.id);
           builderStatus = 'Recovered seeded market and now public.';
-          await loadCreatorMarkets();
+          clearPendingCreatorMarket(receipt.eventId, currentUser.pubkey);
+          refreshPendingCreatorMarkets();
           await navigateToMarket(payload.market.slug);
           return;
         }
@@ -530,7 +570,8 @@
             await applyRecoveredSeedProofs(receipt, tradePayload);
             clearTradeReceipt(receipt.id);
             builderStatus = 'Recovered seeded market and now public.';
-            await loadCreatorMarkets();
+            clearPendingCreatorMarket(receipt.eventId, currentUser.pubkey);
+            refreshPendingCreatorMarkets();
             await navigateToMarket(tradePayload.market.slug);
             return;
           }
@@ -574,7 +615,8 @@
           await applyRecoveredSeedProofs(receipt, tradePayload);
           clearTradeReceipt(receipt.id);
           builderStatus = 'Recovered seeded market and now public.';
-          await loadCreatorMarkets();
+          clearPendingCreatorMarket(receipt.eventId, currentUser.pubkey);
+          refreshPendingCreatorMarkets();
           await navigateToMarket(tradePayload.market.slug);
           return;
         }
@@ -585,11 +627,28 @@
   }
 
   $effect(() => {
-    if (!browser || !paperEdition || !currentUser) return;
-    void (async () => {
-      await loadCreatorMarkets();
-      await reconcileSeedRequests();
-    })();
+    if (!browser || !paperEdition || !currentUser) {
+      pendingCreatorMarkets = [];
+      return;
+    }
+
+    refreshPendingCreatorMarkets();
+    void reconcileSeedRequests();
+  });
+
+  $effect(() => {
+    if (!browser || !paperEdition || !currentUser || pendingCreatorMarkets.length === 0) return;
+
+    const { remaining, removed } = prunePendingCreatorMarkets(
+      pendingCreatorMarkets,
+      publicCreatorMarketIds
+    );
+    if (removed.length === 0) return;
+
+    for (const eventId of removed) {
+      clearPendingCreatorMarket(eventId, currentUser.pubkey);
+    }
+    pendingCreatorMarkets = remaining;
   });
 
   $effect(() => {
@@ -811,7 +870,7 @@
             <div class="builder-selected-row">
               <div class="builder-selected-copy">
                 <strong>{market.title}</strong>
-                <p>{market.visibility === 'public' ? 'Public' : 'Pending'} · {formatUsdMinor(market.volume_minor)} volume · {market.trade_count} trades</p>
+                <p>{market.visibility === 'public' ? 'Public' : 'Pending'}</p>
               </div>
               <div class="builder-selected-controls">
                 <input readonly type="text" value={market.slug} />

@@ -1126,20 +1126,6 @@ async fn test_pending_market_stays_private_until_first_trade() {
         Some("pending")
     );
 
-    let creator_response = client
-        .get(format!("{url}/api/product/markets/creator/{creator}"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(creator_response.status(), 200);
-    let creator_payload: serde_json::Value = creator_response.json().await.unwrap();
-    assert_eq!(
-        creator_payload["markets"]
-            .as_array()
-            .map(|items| items.len()),
-        Some(1)
-    );
-
     let feed_response = client
         .get(format!("{url}/api/product/feed"))
         .send()
@@ -1386,7 +1372,6 @@ async fn test_product_read_endpoints_reject_cross_edition_headers() {
         "/api/product/feed".to_string(),
         "/api/product/activity".to_string(),
         "/api/product/markets/search?q=boundary".to_string(),
-        format!("/api/product/markets/creator/{creator}"),
         format!("/api/product/markets/slug/{slug}"),
     ];
 

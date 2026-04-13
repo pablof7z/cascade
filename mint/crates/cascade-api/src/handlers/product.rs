@@ -5,8 +5,8 @@ use crate::stripe::{
     funding_metadata_checkout_fields, funding_metadata_merge, stripe_event_metadata,
 };
 use crate::types::{
-    BlindedMessageInput, CreatorMarketsResponse, MintBolt11Request, MintBolt11Response,
-    MintQuoteBolt11Request, MintQuoteBolt11Response, ProductActivityItem, ProductActivityResponse,
+    BlindedMessageInput, MintBolt11Request, MintBolt11Response, MintQuoteBolt11Request,
+    MintQuoteBolt11Response, ProductActivityItem, ProductActivityResponse,
     ProductBuyRequest, ProductCoordinatorBuyRequest, ProductCoordinatorSellRequest,
     ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest, ProductFeedResponse,
     ProductFxMetadataResponse, ProductFxObservationResponse, ProductLightningFxQuoteResponse,
@@ -1325,32 +1325,6 @@ pub async fn feed(
 
 pub async fn runtime(State(state): State<AppState>) -> (StatusCode, Json<ProductRuntimeResponse>) {
     (StatusCode::OK, Json(runtime_response(&state)))
-}
-
-pub async fn creator_markets(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    Path(pubkey): Path<String>,
-) -> (StatusCode, Json<Value>) {
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
-    }
-
-    let markets = state
-        .db
-        .list_creator_markets(&pubkey)
-        .await
-        .unwrap_or_default();
-
-    (
-        StatusCode::OK,
-        Json(json!(CreatorMarketsResponse {
-            markets: markets
-                .into_iter()
-                .filter_map(|(market, launch)| product_market_summary(&state, &market, &launch))
-                .collect(),
-        })),
-    )
 }
 
 pub async fn market_detail(

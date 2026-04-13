@@ -52,14 +52,24 @@ export async function fetchMarketBySlug(slug: string): Promise<MarketRecord | nu
 }
 
 export async function fetchMarketsByAuthor(pubkey: string, limit = 48): Promise<MarketRecord[]> {
-  const payload = await fetchProductJson<{ markets?: Array<{ raw_event?: NostrEvent }> }>(
-    `/api/product/markets/creator/${encodeURIComponent(pubkey)}`
+  const ndk = await getServerNdk();
+  const events = await withRelayEventTimeout(
+    ndk.fetchEvents(
+      {
+        kinds: [982 as NDKKind],
+        authors: [pubkey],
+        limit
+      } satisfies NDKFilter,
+      { closeOnEose: true }
+    ),
+    `fetchMarketsByAuthor(${pubkey})`
   );
-  return (payload?.markets ?? [])
-    .map((market) => market.raw_event)
-    .filter((event): event is NostrEvent => Boolean(event))
-    .map(parseMarketEvent)
+
+  return Array.from(events)
+    .map((event) => parseMarketEvent(event.rawEvent()))
     .filter((market): market is MarketRecord => Boolean(market))
+    .filter((market) => market.pubkey === pubkey)
+    .sort((left, right) => right.createdAt - left.createdAt)
     .slice(0, limit);
 }
 

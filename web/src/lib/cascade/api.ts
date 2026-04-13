@@ -67,6 +67,7 @@ export type ProductRuntime = {
   funding: {
     lightning: ProductRuntimeRail;
     stripe: ProductRuntimeRail;
+    usdc?: ProductRuntimeRail;
   };
 };
 
@@ -181,6 +182,27 @@ export type ProductTradeStatus = {
 export type ProductMarketDetail = {
   market: ProductMarketSummary;
   trades: ProductTradeEvent[];
+};
+
+export type ProductFeed = {
+  markets: Array<{
+    raw_event?: ProductTradeEvent;
+  } | ProductTradeEvent>;
+  trades: ProductTradeEvent[];
+  next_market_offset?: number | null;
+  next_trade_offset?: number | null;
+};
+
+export type ProductActivityItem = {
+  kind: 'market' | 'trade' | string;
+  created_at: number;
+  market: ProductMarketSummary;
+  trade?: ProductTradeEvent | null;
+};
+
+export type ProductActivity = {
+  items: ProductActivityItem[];
+  next_offset?: number | null;
 };
 
 export type ProductTradeRequestStatus = {
@@ -312,6 +334,52 @@ export async function fetchProductRuntime(): Promise<Response> {
 
 export async function fetchMarketDetailBySlug(slug: string): Promise<Response> {
   return productFetch(`/api/product/markets/slug/${encodeURIComponent(slug)}`);
+}
+
+export async function fetchCreatorMarkets(pubkey: string): Promise<Response> {
+  return productFetch(`/api/product/markets/creator/${encodeURIComponent(pubkey)}`);
+}
+
+export async function fetchProductFeed(input?: {
+  marketLimit?: number;
+  marketOffset?: number;
+  tradeLimit?: number;
+  tradeOffset?: number;
+}): Promise<Response> {
+  const search = new URLSearchParams();
+  if (typeof input?.marketLimit === 'number') search.set('market_limit', String(input.marketLimit));
+  if (typeof input?.marketOffset === 'number') search.set('market_offset', String(input.marketOffset));
+  if (typeof input?.tradeLimit === 'number') search.set('trade_limit', String(input.tradeLimit));
+  if (typeof input?.tradeOffset === 'number') search.set('trade_offset', String(input.tradeOffset));
+
+  const suffix = search.size ? `?${search.toString()}` : '';
+  return productFetch(`/api/product/feed${suffix}`);
+}
+
+export async function createProductMarket(input: {
+  eventId: string;
+  title: string;
+  description: string;
+  slug: string;
+  body: string;
+  creatorPubkey: string;
+  rawEvent: unknown;
+  b?: number;
+}): Promise<Response> {
+  return productFetch('/api/product/markets', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      event_id: input.eventId,
+      title: input.title,
+      description: input.description,
+      slug: input.slug,
+      body: input.body,
+      creator_pubkey: input.creatorPubkey,
+      raw_event: input.rawEvent,
+      b: input.b ?? 10
+    })
+  });
 }
 
 export async function createStripeFunding(input: {

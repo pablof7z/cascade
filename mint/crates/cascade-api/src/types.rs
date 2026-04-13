@@ -129,6 +129,10 @@ pub struct ProductMarketSummary {
 pub struct ProductFeedResponse {
     pub markets: Vec<Value>,
     pub trades: Vec<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_market_offset: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_trade_offset: Option<u64>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -163,6 +167,30 @@ pub struct CreatorMarketsResponse {
 pub struct ProductMarketDetailResponse {
     pub market: ProductMarketSummary,
     pub trades: Vec<Value>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ProductMarketSearchResponse {
+    pub query: String,
+    pub markets: Vec<ProductMarketSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_offset: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ProductActivityItem {
+    pub kind: String,
+    pub created_at: i64,
+    pub market: ProductMarketSummary,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trade: Option<Value>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ProductActivityResponse {
+    pub items: Vec<ProductActivityItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_offset: Option<u64>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

@@ -1,5 +1,5 @@
 import type { NDKFilter, NDKKind, NostrEvent } from '@nostr-dev-kit/ndk';
-import { getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
+import { getCascadeEdition, getProductApiUrl } from '$lib/cascade/config';
 import { fetchProfilesByPubkeys, fetchUserWithProfile, getServerNdk } from '$lib/server/nostr';
 import {
   buildTradeSummary,
@@ -30,25 +30,11 @@ let discussionCacheUpdatedAt = 0;
 let discussionRefresh: Promise<void> | undefined;
 
 export async function fetchRecentMarkets(limit = 80): Promise<MarketRecord[]> {
-  if (isPaperEdition()) {
-    const stale = Date.now() - marketCacheUpdatedAt > MARKET_CACHE_TTL_MS;
-    const underfilled = marketCache.length < limit;
-
-    if (stale || underfilled) {
-      const refresh = refreshPaperFeed(Math.max(limit, 80));
-      if (marketCache.length === 0 || underfilled) {
-        await refresh;
-      }
-    }
-
-    return marketCache.slice(0, limit);
-  }
-
   const stale = Date.now() - marketCacheUpdatedAt > MARKET_CACHE_TTL_MS;
   const underfilled = marketCache.length < limit;
 
   if (stale || underfilled) {
-    const refresh = refreshRecentMarkets(Math.max(limit, 80));
+    const refresh = refreshProductFeed(Math.max(limit, 80));
     if (marketCache.length === 0 || underfilled) {
       await refresh;
     }
@@ -58,59 +44,23 @@ export async function fetchRecentMarkets(limit = 80): Promise<MarketRecord[]> {
 }
 
 export async function fetchMarketBySlug(slug: string): Promise<MarketRecord | null> {
-  if (isPaperEdition()) {
-    const payload = await fetchProductJson<{ market?: { raw_event?: NostrEvent } }>(
-      `/api/product/markets/slug/${encodeURIComponent(slug)}`
-    );
-    const rawMarket = payload?.market?.raw_event;
-    return rawMarket ? parseMarketEvent(rawMarket) : null;
-  }
-
-  const ndk = await getServerNdk();
-  const events = await ndk.fetchEvents(
-    {
-      kinds: [982 as NDKKind],
-      '#d': [slug],
-      limit: 12
-    } satisfies NDKFilter,
-    { closeOnEose: true }
+  const payload = await fetchProductJson<{ market?: { raw_event?: NostrEvent } }>(
+    `/api/product/markets/slug/${encodeURIComponent(slug)}`
   );
-
-  const markets = Array.from(events)
-    .map(parseMarketEvent)
-    .filter((market): market is MarketRecord => Boolean(market))
-    .sort((left, right) => right.createdAt - left.createdAt);
-
-  return markets[0] ?? null;
+  const rawMarket = payload?.market?.raw_event;
+  return rawMarket ? parseMarketEvent(rawMarket) : null;
 }
 
 export async function fetchMarketsByAuthor(pubkey: string, limit = 48): Promise<MarketRecord[]> {
-  if (isPaperEdition()) {
-    const payload = await fetchProductJson<{ markets?: Array<{ raw_event?: NostrEvent }> }>(
-      `/api/product/markets/creator/${encodeURIComponent(pubkey)}`
-    );
-    return (payload?.markets ?? [])
-      .map((market) => market.raw_event)
-      .filter((event): event is NostrEvent => Boolean(event))
-      .map(parseMarketEvent)
-      .filter((market): market is MarketRecord => Boolean(market))
-      .slice(0, limit);
-  }
-
-  const ndk = await getServerNdk();
-  const events = await ndk.fetchEvents(
-    {
-      kinds: [982 as NDKKind],
-      authors: [pubkey],
-      limit
-    } satisfies NDKFilter,
-    { closeOnEose: true }
+  const payload = await fetchProductJson<{ markets?: Array<{ raw_event?: NostrEvent }> }>(
+    `/api/product/markets/creator/${encodeURIComponent(pubkey)}`
   );
-
-  return Array.from(events)
+  return (payload?.markets ?? [])
+    .map((market) => market.raw_event)
+    .filter((event): event is NostrEvent => Boolean(event))
     .map(parseMarketEvent)
     .filter((market): market is MarketRecord => Boolean(market))
-    .sort((left, right) => right.createdAt - left.createdAt);
+    .slice(0, limit);
 }
 
 export async function fetchRecentDiscussions(limit = 80): Promise<DiscussionRecord[]> {
@@ -149,65 +99,27 @@ export async function fetchMarketDiscussions(marketId: string, limit = 200): Pro
 }
 
 export async function fetchRecentTrades(limit = 200): Promise<TradeRecord[]> {
-  if (isPaperEdition()) {
-    const stale = Date.now() - tradeCacheUpdatedAt > MARKET_CACHE_TTL_MS;
-    const underfilled = tradeCache.length < limit;
+  const stale = Date.now() - tradeCacheUpdatedAt > MARKET_CACHE_TTL_MS;
+  const underfilled = tradeCache.length < limit;
 
-    if (stale || underfilled) {
-      const refresh = refreshPaperFeed(Math.max(limit, 240));
-      if (tradeCache.length === 0 || underfilled) {
-        await refresh;
-      }
+  if (stale || underfilled) {
+    const refresh = refreshProductFeed(Math.max(Math.ceil(limit / 4), 80));
+    if (tradeCache.length === 0 || underfilled) {
+      await refresh;
     }
-
-    return tradeCache.slice(0, limit);
   }
 
-  const ndk = await getServerNdk();
-  const events = await ndk.fetchEvents(
-    {
-      kinds: [983 as NDKKind],
-      limit
-    } satisfies NDKFilter,
-    { closeOnEose: true }
-  );
-
-  return Array.from(events)
-    .map(parseTradeEvent)
-    .filter((trade): trade is TradeRecord => Boolean(trade))
-    .sort((left, right) => right.createdAt - left.createdAt);
+  return tradeCache.slice(0, limit);
 }
 
 export async function fetchMarketTrades(market: MarketRecord, limit = 200): Promise<TradeRecord[]> {
-  if (isPaperEdition()) {
-    const payload = await fetchProductJson<{ trades?: NostrEvent[] }>(
-      `/api/product/markets/slug/${encodeURIComponent(market.slug)}`
-    );
-
-    return (payload?.trades ?? [])
-      .map(parseTradeEvent)
-      .filter((trade): trade is TradeRecord => Boolean(trade))
-      .slice(0, limit);
-  }
-
-  const ndk = await getServerNdk();
-  const events = await ndk.fetchEvents(
-    {
-      kinds: [983 as NDKKind],
-      '#e': [market.id],
-      limit
-    } satisfies NDKFilter,
-    { closeOnEose: true }
+  const payload = await fetchProductJson<{ trades?: NostrEvent[] }>(
+    `/api/product/markets/slug/${encodeURIComponent(market.slug)}`
   );
-
-  return Array.from(events)
+  return (payload?.trades ?? [])
     .map(parseTradeEvent)
-    .filter((trade): trade is TradeRecord => {
-      if (!trade || trade.marketId !== market.id) return false;
-      if (!market.mintPubkey) return true;
-      return trade.pubkey === market.mintPubkey;
-    })
-    .sort((left, right) => right.createdAt - left.createdAt);
+    .filter((trade): trade is TradeRecord => Boolean(trade))
+    .slice(0, limit);
 }
 
 export async function fetchPositionsByPubkey(pubkey: string, limit = 120): Promise<PositionRecord[]> {
@@ -264,42 +176,13 @@ export function summarizeTradesByMarket(trades: TradeRecord[]): Map<string, Mark
   return summaries;
 }
 
-async function refreshRecentMarkets(limit: number): Promise<void> {
-  if (marketRefresh) return marketRefresh;
-
-  marketRefresh = (async () => {
-    const ndk = await getServerNdk();
-    const events = await ndk.fetchEvents(
-      {
-        kinds: [982 as NDKKind],
-        limit
-      } satisfies NDKFilter,
-      { closeOnEose: true }
-    );
-
-    const next = Array.from(events)
-      .map(parseMarketEvent)
-      .filter((market): market is MarketRecord => Boolean(market))
-      .sort((left, right) => right.createdAt - left.createdAt);
-
-    if (next.length > 0 || marketCache.length === 0) {
-      marketCache = next;
-      marketCacheUpdatedAt = Date.now();
-    }
-  })().finally(() => {
-    marketRefresh = undefined;
-  });
-
-  return marketRefresh;
-}
-
-async function refreshPaperFeed(limit: number): Promise<void> {
+async function refreshProductFeed(limit: number): Promise<void> {
   if (marketRefresh || tradeRefresh) return Promise.all([marketRefresh, tradeRefresh].filter(Boolean) as Promise<void>[])
       .then(() => undefined);
 
   const refresh = (async () => {
     const payload = await fetchProductJson<{ markets?: NostrEvent[]; trades?: NostrEvent[] }>(
-      '/api/product/feed'
+      `/api/product/feed?market_limit=${Math.max(limit, 80)}&trade_limit=${Math.max(limit * 4, 240)}`
     );
 
     const nextMarkets = (payload?.markets ?? [])
@@ -363,7 +246,11 @@ async function refreshRecentDiscussions(limit: number): Promise<void> {
 }
 
 async function fetchProductJson<T>(path: string): Promise<T | null> {
-  const response = await fetch(`${getProductApiUrl()}${path}`);
+  const response = await fetch(`${getProductApiUrl()}${path}`, {
+    headers: {
+      'x-cascade-edition': getCascadeEdition()
+    }
+  });
   if (!response.ok) return null;
   return (await response.json()) as T;
 }

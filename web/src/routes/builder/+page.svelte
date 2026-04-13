@@ -4,7 +4,10 @@
   import { goto } from '$app/navigation';
   import {
     buyMarketPosition,
+    createProductMarket,
     extractTradeBlindSignatureBundles,
+    fetchCreatorMarkets,
+    fetchProductFeed,
     fetchTradeQuoteStatus,
     quoteBuyTrade,
     fetchTradeRequestStatus,
@@ -66,10 +69,6 @@
   ];
 
   const currentUser = $derived(ndk.$currentUser);
-  const marketFeed = ndk.$subscribe(() => {
-    if (!browser) return undefined;
-    return { filters: [{ kinds: [982], limit: 200 }] };
-  });
 
   let step = $state<Step>(0);
   let title = $state('');
@@ -97,19 +96,7 @@
   ];
 
   const availableMarkets = $derived.by(() => {
-    if (paperEdition) {
-      return publicReferenceMarkets;
-    }
-
-    const items: MarketRecord[] = [];
-    const seen = new Set<string>();
-    for (const event of marketFeed.events) {
-      const market = parseMarketEvent(event.rawEvent());
-      if (!market || seen.has(market.id)) continue;
-      seen.add(market.id);
-      items.push(market);
-    }
-    return items;
+    return publicReferenceMarkets;
   });
 
   const filteredMarkets = $derived.by(() => {
@@ -428,19 +415,15 @@
       }
 
       builderStatus = 'Market published. Registering it with the mint.';
-      const created = await fetch(`${getProductApiUrl()}/api/product/markets`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          event_id: eventId,
-          title: title.trim(),
-          description: description.trim(),
-          slug,
-          body: body.trim(),
-          creator_pubkey: currentUser.pubkey,
-          raw_event: rawEvent,
-          b: 10.0
-        })
+      const created = await createProductMarket({
+        eventId,
+        title: title.trim(),
+        description: description.trim(),
+        slug,
+        body: body.trim(),
+        creatorPubkey: currentUser.pubkey,
+        rawEvent,
+        b: 10
       });
 
       if (!created.ok && created.status !== 409) {
@@ -473,15 +456,15 @@
 
   async function loadCreatorMarkets() {
     if (!browser || !paperEdition || !currentUser) return;
-    const response = await fetch(`${getProductApiUrl()}/api/product/markets/creator/${currentUser.pubkey}`);
+    const response = await fetchCreatorMarkets(currentUser.pubkey);
     if (!response.ok) return;
     const payload = (await response.json()) as { markets?: CreatorMarket[] };
     creatorMarkets = payload.markets ?? [];
   }
 
   async function loadPublicReferenceMarkets() {
-    if (!browser || !paperEdition) return;
-    const response = await fetch(`${getProductApiUrl()}/api/product/feed`);
+    if (!browser) return;
+    const response = await fetchProductFeed({ marketLimit: 200, tradeLimit: 0 });
     if (!response.ok) return;
     const payload = (await response.json()) as { markets?: NostrEvent[] };
     publicReferenceMarkets = (payload.markets ?? [])

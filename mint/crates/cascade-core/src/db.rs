@@ -403,9 +403,7 @@ impl CascadeDatabase {
     }
 
     async fn ensure_trade_execution_request_response_column(&self) -> Result<()> {
-        if self
-            .table_exists("trade_execution_requests")
-            .await?
+        if self.table_exists("trade_execution_requests").await?
             && !self
                 .column_exists("trade_execution_requests", "response_json")
                 .await?

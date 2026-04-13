@@ -1,6 +1,5 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { isPaperEdition } from '$lib/cascade/config';
   import type { NDKEvent, NDKUserProfile, NostrEvent } from '@nostr-dev-kit/ndk';
   import { ndk } from '$lib/ndk/client';
   import {
@@ -23,27 +22,16 @@
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
-  const paperEdition = isPaperEdition();
-
-  const marketFeed = ndk.$subscribe(() => {
-    if (!browser || paperEdition) return undefined;
-    return { filters: [{ kinds: [982], limit: 60 }] };
-  });
 
   const discussionFeed = ndk.$subscribe(() => {
     if (!browser) return undefined;
     return { filters: [{ kinds: [1111], limit: 80 }] };
   });
 
-  const tradeFeed = ndk.$subscribe(() => {
-    if (!browser || paperEdition) return undefined;
-    return { filters: [{ kinds: [983], limit: 240 }] };
-  });
-
   const profiles = $derived(data.profiles as Record<string, NDKUserProfile>);
 
   const markets = $derived.by(() => {
-    return mergeRawEvents(data.markets, marketFeed.events)
+    return data.markets
       .map(parseMarketEvent)
       .filter((market): market is MarketRecord => Boolean(market))
       .sort((left, right) => right.createdAt - left.createdAt);
@@ -57,7 +45,7 @@
   });
 
   const trades = $derived.by(() => {
-    return mergeRawEvents(data.trades, tradeFeed.events)
+    return data.trades
       .map(parseTradeEvent)
       .filter((trade): trade is TradeRecord => Boolean(trade))
       .sort((left, right) => right.createdAt - left.createdAt);

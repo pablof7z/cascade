@@ -6,11 +6,11 @@ use crate::stripe::{
 };
 use crate::types::{
     BlindedMessageInput, CreatorMarketsResponse, MintBolt11Request, MintBolt11Response,
-    MintQuoteBolt11Request, MintQuoteBolt11Response, ProductBuyRequest,
-    ProductCoordinatorBuyRequest, ProductCoordinatorSellRequest,
+    MintQuoteBolt11Request, MintQuoteBolt11Response, ProductActivityItem, ProductActivityResponse,
+    ProductBuyRequest, ProductCoordinatorBuyRequest, ProductCoordinatorSellRequest,
     ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest, ProductFeedResponse,
     ProductFxMetadataResponse, ProductFxObservationResponse, ProductLightningFxQuoteResponse,
-    ProductMarketDetailResponse, ProductMarketSummary,
+    ProductMarketDetailResponse, ProductMarketSearchResponse, ProductMarketSummary,
     ProductPortfolioFundingRequestStatusResponse, ProductPortfolioFundingResponse,
     ProductRuntimeFundingResponse, ProductRuntimeRailResponse, ProductRuntimeResponse,
     ProductSellRequest, ProductStripeFundingRequest, ProductTradeBlindSignatureBundleResponse,
@@ -21,7 +21,7 @@ use crate::types::{
 };
 use axum::{
     body::Bytes,
-    extract::{Json, Path, State},
+    extract::{Json, Path, Query, State},
     http::{header::AUTHORIZATION, HeaderMap, Method, StatusCode, Uri},
 };
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
@@ -63,6 +63,14 @@ const NIP98_AUTH_WINDOW_SECONDS: i64 = 120;
 const SHARE_MINOR_SCALE: u64 = 10_000;
 const MAX_MARKET_DENOMINATION_POWER: u32 = 32;
 const CLIENT_EDITION_HEADER: &str = "x-cascade-edition";
+const DEFAULT_FEED_MARKET_LIMIT: usize = 60;
+const DEFAULT_FEED_TRADE_LIMIT: usize = 240;
+const MAX_FEED_MARKET_LIMIT: usize = 240;
+const MAX_FEED_TRADE_LIMIT: usize = 480;
+const DEFAULT_DISCOVERY_LIMIT: usize = 20;
+const MAX_DISCOVERY_LIMIT: usize = 100;
+const DEFAULT_ACTIVITY_LIMIT: usize = 40;
+const MAX_ACTIVITY_LIMIT: usize = 200;
 
 struct RequestAuthContext {
     signer_pubkey: Option<String>,
@@ -82,6 +90,27 @@ struct Nip98AuthEvent {
 struct PreparedTradeQuote {
     response: ProductTradeQuoteResponse,
     fx_quote: FxQuoteSnapshot,
+}
+
+#[derive(Default, serde::Deserialize)]
+pub struct ProductFeedQuery {
+    market_limit: Option<usize>,
+    market_offset: Option<usize>,
+    trade_limit: Option<usize>,
+    trade_offset: Option<usize>,
+}
+
+#[derive(Default, serde::Deserialize)]
+pub struct ProductPaginationQuery {
+    limit: Option<usize>,
+    offset: Option<usize>,
+}
+
+#[derive(Default, serde::Deserialize)]
+pub struct ProductSearchQuery {
+    q: Option<String>,
+    limit: Option<usize>,
+    offset: Option<usize>,
 }
 
 fn normalize_client_edition(value: &str) -> Option<&'static str> {
@@ -150,6 +179,93 @@ fn runtime_response(state: &AppState) -> ProductRuntimeResponse {
             },
         },
     }
+}
+
+fn bounded_limit(limit: Option<usize>, default: usize, max: usize) -> usize {
+    limit.unwrap_or(default).min(max)
+}
+
+fn bounded_offset(offset: Option<usize>) -> usize {
+    offset.unwrap_or(0)
+}
+
+fn next_offset(total: usize, offset: usize, page_len: usize) -> Option<u64> {
+    if page_len == 0 {
+        return None;
+    }
+
+    let next = offset.saturating_add(page_len);
+    (next < total).then_some(next as u64)
+}
+
+fn paginate_owned<T: Clone>(items: &[T], offset: usize, limit: usize) -> (Vec<T>, Option<u64>) {
+    if limit == 0 {
+        return (Vec::new(), None);
+    }
+
+    let page = items
+        .iter()
+        .skip(offset)
+        .take(limit)
+        .cloned()
+        .collect::<Vec<_>>();
+    let next = next_offset(items.len(), offset, page.len());
+    (page, next)
+}
+
+fn event_tag_values(raw_event: &Value) -> Vec<String> {
+    raw_event
+        .get("tags")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_array)
+        .flat_map(|tag| tag.iter().skip(1))
+        .filter_map(Value::as_str)
+        .map(|value| value.to_ascii_lowercase())
+        .collect()
+}
+
+fn market_search_score(query: &str, market: &Market, raw_event: &Value) -> Option<i64> {
+    let normalized_query = query.trim().to_ascii_lowercase();
+    if normalized_query.is_empty() {
+        return None;
+    }
+
+    let terms = normalized_query
+        .split_whitespace()
+        .filter(|term| !term.is_empty())
+        .collect::<Vec<_>>();
+    if terms.is_empty() {
+        return None;
+    }
+
+    let title = market.title.to_ascii_lowercase();
+    let slug = market.slug.to_ascii_lowercase();
+    let description = market.description.to_ascii_lowercase();
+    let creator = market.creator_pubkey.to_ascii_lowercase();
+    let tag_values = event_tag_values(raw_event);
+
+    let mut score = 0_i64;
+    for term in terms {
+        if title.contains(term) {
+            score += 100;
+        }
+        if slug.contains(term) {
+            score += 80;
+        }
+        if description.contains(term) {
+            score += 50;
+        }
+        if creator.contains(term) {
+            score += 30;
+        }
+        if tag_values.iter().any(|value| value.contains(term)) {
+            score += 70;
+        }
+    }
+
+    (score > 0).then_some(score)
 }
 
 fn funding_metadata_json(source: &str, extra: Value) -> Result<String, serde_json::Error> {
@@ -1154,26 +1270,56 @@ fn market_proof_unit(market: &Market, side: Side) -> String {
     }
 }
 
-pub async fn feed(State(state): State<AppState>) -> (StatusCode, Json<ProductFeedResponse>) {
+pub async fn feed(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<ProductFeedQuery>,
+) -> (StatusCode, Json<Value>) {
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
     let markets = state.db.list_public_markets().await.unwrap_or_default();
     let trades = state
         .db
-        .list_recent_public_trade_events(240)
+        .list_recent_public_trade_events(MAX_FEED_TRADE_LIMIT as i64)
         .await
         .unwrap_or_default();
 
+    let market_limit = bounded_limit(
+        query.market_limit,
+        DEFAULT_FEED_MARKET_LIMIT,
+        MAX_FEED_MARKET_LIMIT,
+    );
+    let trade_limit = bounded_limit(
+        query.trade_limit,
+        DEFAULT_FEED_TRADE_LIMIT,
+        MAX_FEED_TRADE_LIMIT,
+    );
+    let market_offset = bounded_offset(query.market_offset);
+    let trade_offset = bounded_offset(query.trade_offset);
+
+    let market_events = markets
+        .into_iter()
+        .filter_map(|(_, launch)| serde_json::from_str(&launch.raw_event_json).ok())
+        .collect::<Vec<Value>>();
+    let trade_events = trades
+        .into_iter()
+        .filter_map(|trade| serde_json::from_str(&trade.raw_event_json).ok())
+        .collect::<Vec<Value>>();
+
+    let (market_page, next_market_offset) =
+        paginate_owned(&market_events, market_offset, market_limit);
+    let (trade_page, next_trade_offset) = paginate_owned(&trade_events, trade_offset, trade_limit);
+
     (
         StatusCode::OK,
-        Json(ProductFeedResponse {
-            markets: markets
-                .into_iter()
-                .filter_map(|(_, launch)| serde_json::from_str(&launch.raw_event_json).ok())
-                .collect(),
-            trades: trades
-                .into_iter()
-                .filter_map(|trade| serde_json::from_str(&trade.raw_event_json).ok())
-                .collect(),
-        }),
+        Json(json!(ProductFeedResponse {
+            markets: market_page,
+            trades: trade_page,
+            next_market_offset,
+            next_trade_offset,
+        })),
     )
 }
 
@@ -1183,8 +1329,13 @@ pub async fn runtime(State(state): State<AppState>) -> (StatusCode, Json<Product
 
 pub async fn creator_markets(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(pubkey): Path<String>,
-) -> (StatusCode, Json<CreatorMarketsResponse>) {
+) -> (StatusCode, Json<Value>) {
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
     let markets = state
         .db
         .list_creator_markets(&pubkey)
@@ -1193,19 +1344,24 @@ pub async fn creator_markets(
 
     (
         StatusCode::OK,
-        Json(CreatorMarketsResponse {
+        Json(json!(CreatorMarketsResponse {
             markets: markets
                 .into_iter()
                 .filter_map(|(market, launch)| product_market_summary(&state, &market, &launch))
                 .collect(),
-        }),
+        })),
     )
 }
 
 pub async fn market_detail(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(slug): Path<String>,
 ) -> (StatusCode, Json<Value>) {
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
     match state.db.get_public_market_by_slug(&slug).await {
         Ok(Some((market, launch))) => market_detail_response(&state, &market, &launch).await,
         Ok(None) => (
@@ -1221,8 +1377,26 @@ pub async fn market_detail(
 
 pub async fn pending_market_detail(
     State(state): State<AppState>,
+    method: Method,
+    uri: Uri,
+    headers: HeaderMap,
     Path((event_id, creator_pubkey)): Path<(String, String)>,
 ) -> (StatusCode, Json<Value>) {
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
+    let auth = match request_auth_context(&headers, &method, &uri) {
+        Ok(auth) => auth,
+        Err(error) => return (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
+    };
+    let Some(signer_pubkey) = auth.signer_pubkey.as_deref() else {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "creator_auth_required" })),
+        );
+    };
+
     let market = match state.db.get_market(&event_id).await {
         Ok(Some(market)) => market,
         Ok(None) => {
@@ -1239,10 +1413,10 @@ pub async fn pending_market_detail(
         }
     };
 
-    if market.creator_pubkey != creator_pubkey {
+    if market.creator_pubkey != creator_pubkey || signer_pubkey != creator_pubkey {
         return (
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": "market_not_found" })),
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "creator_auth_required" })),
         );
     }
 
@@ -1263,6 +1437,129 @@ pub async fn pending_market_detail(
     };
 
     market_detail_response(&state, &market, &launch).await
+}
+
+pub async fn search_markets(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<ProductSearchQuery>,
+) -> (StatusCode, Json<Value>) {
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
+    let search_query = query.q.unwrap_or_default();
+    let limit = bounded_limit(query.limit, DEFAULT_DISCOVERY_LIMIT, MAX_DISCOVERY_LIMIT);
+    let offset = bounded_offset(query.offset);
+    let normalized_query = search_query.trim().to_ascii_lowercase();
+
+    let mut markets = state
+        .db
+        .list_public_markets()
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|(market, launch)| {
+            let raw_event = serde_json::from_str::<Value>(&launch.raw_event_json).ok()?;
+            let score = market_search_score(&normalized_query, &market, &raw_event)?;
+            let summary = product_market_summary(&state, &market, &launch)?;
+            Some((score, launch.volume_minor, market.created_at, summary))
+        })
+        .collect::<Vec<_>>();
+
+    markets.sort_by(|left, right| {
+        right
+            .0
+            .cmp(&left.0)
+            .then_with(|| right.1.cmp(&left.1))
+            .then_with(|| right.2.cmp(&left.2))
+    });
+
+    let summaries = markets
+        .into_iter()
+        .map(|(_, _, _, summary)| summary)
+        .collect::<Vec<_>>();
+    let (page, next_offset) = paginate_owned(&summaries, offset, limit);
+
+    (
+        StatusCode::OK,
+        Json(json!(ProductMarketSearchResponse {
+            query: normalized_query,
+            markets: page,
+            next_offset,
+        })),
+    )
+}
+
+pub async fn activity_feed(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<ProductPaginationQuery>,
+) -> (StatusCode, Json<Value>) {
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
+    let limit = bounded_limit(query.limit, DEFAULT_ACTIVITY_LIMIT, MAX_ACTIVITY_LIMIT);
+    let offset = bounded_offset(query.offset);
+
+    let public_markets = state.db.list_public_markets().await.unwrap_or_default();
+    let trade_fetch_limit = (offset
+        .saturating_add(limit)
+        .saturating_add(public_markets.len()))
+    .max(DEFAULT_FEED_TRADE_LIMIT);
+    let recent_trades = state
+        .db
+        .list_recent_public_trade_events(trade_fetch_limit as i64)
+        .await
+        .unwrap_or_default();
+
+    let mut items = Vec::new();
+    for (market, launch) in public_markets {
+        let Some(summary) = product_market_summary(&state, &market, &launch) else {
+            continue;
+        };
+        items.push(ProductActivityItem {
+            kind: "market".to_string(),
+            created_at: launch
+                .public_visible_at
+                .or(launch.first_trade_at)
+                .unwrap_or(market.created_at),
+            market: summary,
+            trade: None,
+        });
+    }
+
+    let market_summaries = items
+        .iter()
+        .map(|item| (item.market.event_id.clone(), item.market.clone()))
+        .collect::<HashMap<_, _>>();
+
+    for trade in recent_trades {
+        let Some(summary) = market_summaries.get(&trade.market_event_id).cloned() else {
+            continue;
+        };
+        let Some(raw_trade) = serde_json::from_str::<Value>(&trade.raw_event_json).ok() else {
+            continue;
+        };
+        items.push(ProductActivityItem {
+            kind: "trade".to_string(),
+            created_at: trade.created_at,
+            market: summary,
+            trade: Some(raw_trade),
+        });
+    }
+
+    items.sort_by(|left, right| right.created_at.cmp(&left.created_at));
+    let (page, next_offset) = paginate_owned(&items, offset, limit);
+
+    (
+        StatusCode::OK,
+        Json(json!(ProductActivityResponse {
+            items: page,
+            next_offset,
+        })),
+    )
 }
 
 pub async fn preview_lightning_fx_quote(

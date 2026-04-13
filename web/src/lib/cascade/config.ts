@@ -26,6 +26,28 @@ export function getProductApiUrl(): string {
   return normalizeMintUrl(env.PUBLIC_CASCADE_API_URL || getMintUrl());
 }
 
+export function getCascadeEditionLabel(): string {
+  return getCascadeEdition() === 'signet' ? 'Signet paper trading' : 'Mainnet live trading';
+}
+
+export function getCascadeEditionDescription(): string {
+  return getCascadeEdition() === 'signet'
+    ? 'This edition uses paper funds. Browser-local proofs stay separate from mainnet.'
+    : 'This edition uses live funds. Browser-local proofs stay separate from signet.';
+}
+
+export function getAlternateEditionUrl(): string | null {
+  const edition = getCascadeEdition();
+  const alternate =
+    edition === 'signet' ? env.PUBLIC_CASCADE_MAINNET_URL : env.PUBLIC_CASCADE_SIGNET_URL;
+
+  if (!alternate) return null;
+  const normalized = normalizeMintUrl(alternate);
+  const currentBase = normalizeMintUrl(env.PUBLIC_CASCADE_SITE_URL || '');
+  if (currentBase && currentBase === normalized) return null;
+  return normalized;
+}
+
 export function isStripeFundingEnabled(): boolean {
   return (
     env.PUBLIC_CASCADE_ENABLE_STRIPE_FUNDING === 'true' ||

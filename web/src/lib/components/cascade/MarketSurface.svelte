@@ -45,7 +45,7 @@
   const tradeSummary = $derived(buildTradeSummary(trades));
   const currentUser = $derived(ndk.$currentUser);
   const paperEdition = isPaperEdition();
-  const valueUnitLabel = paperEdition ? 'USD' : 'tokens';
+  const valueUnitLabel = 'USD';
   const discussionThreads = $derived(buildDiscussionThreads(discussions, market.id));
   const author = $derived(displayName(profiles[market.pubkey], shortPubkey(market.pubkey)));
   const tabs = $derived([
@@ -238,7 +238,7 @@
       </div>
 
       <div class="market-header-stats">
-        <span>{formatProductAmount(tradeSummary.grossVolume, paperEdition ? 'usd' : 'sat')} vol</span>
+        <span>{formatProductAmount(tradeSummary.grossVolume, 'usd')} vol</span>
         <span>{tradeSummary.tradeCount} trades</span>
         <span>{discussionThreads.length} threads</span>
       </div>
@@ -288,15 +288,15 @@
       <dl class="summary-list">
         <div>
           <dt>Visible volume</dt>
-          <dd>{formatProductAmount(tradeSummary.grossVolume, paperEdition ? 'usd' : 'sat')} {valueUnitLabel}</dd>
+          <dd>{formatProductAmount(tradeSummary.grossVolume, 'usd')} {valueUnitLabel}</dd>
         </div>
         <div>
           <dt>Buy flow</dt>
-          <dd>{formatProductAmount(tradeSummary.buyVolume, paperEdition ? 'usd' : 'sat')} {valueUnitLabel}</dd>
+          <dd>{formatProductAmount(tradeSummary.buyVolume, 'usd')} {valueUnitLabel}</dd>
         </div>
         <div>
           <dt>Withdraw flow</dt>
-          <dd>{formatProductAmount(tradeSummary.sellVolume, paperEdition ? 'usd' : 'sat')} {valueUnitLabel}</dd>
+          <dd>{formatProductAmount(tradeSummary.sellVolume, 'usd')} {valueUnitLabel}</dd>
         </div>
         <div>
           <dt>Latest fill</dt>
@@ -330,7 +330,7 @@
         </div>
         <div>
           <span>Average size</span>
-          <strong>{formatProductAmount(Math.round(averageTradeSize), paperEdition ? 'usd' : 'sat')} {valueUnitLabel}</strong>
+          <strong>{formatProductAmount(Math.round(averageTradeSize), 'usd')} {valueUnitLabel}</strong>
         </div>
         <div>
           <span>Discussion</span>

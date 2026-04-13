@@ -247,7 +247,7 @@
         {#if currentUser}
           <a class="button-primary" href="/portfolio">Portfolio</a>
         {:else}
-          <a class="button-primary" href="/join?from=/market/{market.slug}">Trade this market</a>
+          <a class="button-primary" href="/join?from=/market/{market.slug}">Take a position</a>
         {/if}
       </div>
 

@@ -22,3 +22,12 @@ test('market detail keeps trading units in Cashu token terms', async ({ page }) 
   await expect(page.getByText(/sats/i)).toHaveCount(0);
   await expect(page.getByText(/tokens/i).first()).toBeVisible();
 });
+
+test('portfolio signed-out state uses friendly connection copy', async ({ page }) => {
+  await page.goto('/portfolio');
+
+  const mainText = await page.locator('main').innerText();
+  expect(mainText).toContain('Connect to view your portfolio');
+  expect(mainText).not.toContain('Debug:');
+  expect(mainText).not.toMatch(/[0-9a-f]{32,}/i);
+});

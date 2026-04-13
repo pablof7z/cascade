@@ -332,6 +332,7 @@ Launch should fail this gate if:
 - a standard CDK mint or melt primitive is still hidden behind an unnecessary custom Cascade endpoint
 - a custom route exists without a written justification
 - the web depends on a custom route where the standard Cashu flow is available
+- forbidden product drift such as `resolve`/market-closure routes still exists in the live mint surface
 
 ### Best Practices
 

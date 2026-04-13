@@ -110,6 +110,10 @@ They are not all equally canonical. The route surface should be read in three bu
 - `POST /api/lightning/check-order`
 - `POST /api/lightning/settle/{order_id}`
 - `POST /api/market/create`
+- `POST /api/product/markets`
+- `POST /api/product/markets/{event_id}/quote`
+- `POST /api/product/markets/{event_id}/buy`
+- `POST /api/product/markets/{event_id}/sell`
 - `POST /api/trades/quote`
 - `POST /api/trades/buy`
 - `POST /api/trades/sell/quote`
@@ -177,9 +181,13 @@ These routes should not be treated as canonical long-term interfaces:
 - `POST /api/lightning/settle/{order_id}`
 - `POST /api/trade/bid`
 - `POST /api/trade/ask`
+- `POST /api/product/markets/{event_id}/quote`
+- `POST /api/product/markets/{event_id}/buy`
+- `POST /api/product/markets/{event_id}/sell`
 - `POST /v1/cascade/redeem`
 - `POST /v1/cascade/settle`
 - `POST /api/market/create`
+- `POST /api/market/{id}/resolve`
 
 If one of these still exists in the codebase, it should be understood as migration debt, a temporary compatibility alias, or an implementation seam to remove. New clients should not depend on them unless the route is re-justified explicitly.
 

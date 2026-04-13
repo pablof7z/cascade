@@ -25,13 +25,18 @@
 
   const discussionFeed = ndk.$subscribe(() => {
     if (!browser) return undefined;
-    return { filters: [{ kinds: [1111], limit: 80 }] };
+    return { filters: [{ kinds: [1111], '#K': ['982'], limit: 80 }] };
+  });
+
+  const marketFeed = ndk.$subscribe(() => {
+    if (!browser) return undefined;
+    return { filters: [{ kinds: [982], limit: 60 }] };
   });
 
   const profiles = $derived(data.profiles as Record<string, NDKUserProfile>);
 
   const markets = $derived.by(() => {
-    return data.markets
+    return mergeRawEvents(data.markets, marketFeed.events)
       .map(parseMarketEvent)
       .filter((market): market is MarketRecord => Boolean(market))
       .sort((left, right) => right.createdAt - left.createdAt);

@@ -560,6 +560,7 @@ Required tests before closing M3, M4, or M5:
 
 ### 2026-04-13 Round 3
 
-- Review finding 1 is now closed in the mint surface: sell-created wallet quotes remain readable on the standard `bolt11` quote routes, `POST /v1/mint/bolt11` replays issued signatures for the same quote id, and trade request replay can recover completed buy and sell responses without resubmitting proofs.
+- Review finding 1 is now closed in the public recovery contract: sell-created wallet quotes are mirrored into wallet funding state, `GET /v1/mint/quote/wallet/{quote_id}` exposes the same quote id after a sell exit, `POST /v1/mint/wallet` replays the issued signatures for that quote when needed, and trade request replay/status now recover completed buy and sell `issued` plus `change` bundles without re-executing the trade.
 - Review finding 2 is now closed for launch paths: the signet-only auto-payment shortcut was removed from portfolio Lightning funding, and the FX service now hard-fails when live provider observations are missing or stale instead of silently quoting against a static signet fallback.
 - Review finding 3 is now closed in the product contract: outbound trade and market payloads use `long` and `short`, while `yes` and `no` remain inbound-only parsing aliases for compatibility.
+- Milestone 6 recovery scope also moved forward in this round: spend-capped buy quote replay now matches the persisted quote snapshot deterministically, and coordinator request-status reads return the same proof bundles needed to recover a lost success response.

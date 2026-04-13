@@ -5268,8 +5268,8 @@ async fn execute_sell_trade_settlement(
                     "wallet_mint_quote_id": wallet_mint_quote.quote.to_string(),
                     "wallet_mint_quote_state": cdk_mint_quote_state_label(checked_quote.state),
                     "wallet_mint_quote_expiry": wallet_mint_quote.expiry,
-                    "wallet_mint_quote_redeem_route": format!("/v1/mint/quote/bolt11/{}", wallet_mint_quote.quote),
-                    "wallet_mint_issue_route": "/v1/mint/bolt11",
+                    "wallet_mint_quote_redeem_route": format!("/v1/mint/quote/wallet/{}", wallet_mint_quote.quote),
+                    "wallet_mint_issue_route": "/v1/mint/wallet",
                     "invoice_created_at": quote.created_at,
                     "invoice_expiry_seconds": wallet_mint_quote
                         .expiry

@@ -414,16 +414,17 @@ fn proof_amount_total(proofs: &[Proof]) -> u64 {
     proofs.iter().map(|proof| proof.amount.to_u64()).sum()
 }
 
-async fn wait_for_mint_quote_state(
+async fn wait_for_mint_quote_state_for_method(
     client: &reqwest::Client,
     url: &str,
+    method: &str,
     quote_id: &str,
     expected_states: &[&str],
 ) -> serde_json::Value {
     let mut last_payload = serde_json::Value::Null;
     for _ in 0..50 {
         let response = client
-            .get(format!("{url}/v1/mint/quote/bolt11/{quote_id}"))
+            .get(format!("{url}/v1/mint/quote/{method}/{quote_id}"))
             .send()
             .await
             .unwrap();
@@ -439,6 +440,15 @@ async fn wait_for_mint_quote_state(
     panic!(
         "mint quote {quote_id} did not reach expected state in time; last payload: {last_payload}"
     );
+}
+
+async fn wait_for_mint_quote_state(
+    client: &reqwest::Client,
+    url: &str,
+    quote_id: &str,
+    expected_states: &[&str],
+) -> serde_json::Value {
+    wait_for_mint_quote_state_for_method(client, url, "bolt11", quote_id, expected_states).await
 }
 
 async fn wait_for_melt_quote_state(
@@ -468,9 +478,10 @@ async fn wait_for_melt_quote_state(
     );
 }
 
-async fn mint_funding_quote_and_get_proofs(
+async fn mint_funding_quote_and_get_proofs_for_method(
     client: &reqwest::Client,
     url: &str,
+    method: &str,
     quote_payload: &serde_json::Value,
     amount_minor: u64,
 ) -> serde_json::Value {
@@ -485,7 +496,7 @@ async fn mint_funding_quote_and_get_proofs(
 
     let outputs = serde_json::to_value(pre_mint.blinded_messages()).unwrap();
     let mint_response = client
-        .post(format!("{url}/v1/mint/bolt11"))
+        .post(format!("{url}/v1/mint/{method}"))
         .json(&serde_json::json!({
             "quote": quote_payload["quote"].as_str().unwrap(),
             "outputs": outputs
@@ -493,13 +504,24 @@ async fn mint_funding_quote_and_get_proofs(
         .send()
         .await
         .unwrap();
-    assert_eq!(mint_response.status(), 200);
+    let mint_status = mint_response.status();
     let mint_payload: serde_json::Value = mint_response.json().await.unwrap();
+    assert_eq!(mint_status, 200, "mint payload: {mint_payload}");
     let signatures: Vec<BlindSignature> =
         serde_json::from_value(mint_payload["signatures"].clone()).unwrap();
     let proofs =
         construct_proofs(signatures, pre_mint.rs(), pre_mint.secrets(), &keyset.keys).unwrap();
     serde_json::to_value(proofs).unwrap()
+}
+
+async fn mint_funding_quote_and_get_proofs(
+    client: &reqwest::Client,
+    url: &str,
+    quote_payload: &serde_json::Value,
+    amount_minor: u64,
+) -> serde_json::Value {
+    mint_funding_quote_and_get_proofs_for_method(client, url, "bolt11", quote_payload, amount_minor)
+        .await
 }
 
 /// Test that the health endpoint returns OK
@@ -996,6 +1018,9 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         buy_payload["settlement"]["metadata"]["invoice_state"].as_str(),
         Some("settled")
     );
+    assert!(buy_payload["settlement"]["metadata"]["melt_quote_id"]
+        .as_str()
+        .is_some());
     let first_quantity = buy_quote_payload["quantity"].as_f64().unwrap();
     let issued_market_proofs = proofs_from_signatures(
         &buy_payload["issued"]["signatures"],
@@ -1097,6 +1122,19 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     assert_eq!(
         sell_payload["settlement"]["metadata"]["invoice_state"].as_str(),
         Some("settled")
+    );
+    assert!(
+        sell_payload["settlement"]["metadata"]["wallet_mint_quote_id"]
+            .as_str()
+            .is_some()
+    );
+    assert_eq!(
+        sell_payload["settlement"]["metadata"]["wallet_mint_quote_state"].as_str(),
+        Some("ISSUED")
+    );
+    assert_eq!(
+        sell_payload["settlement"]["metadata"]["payment_execution"].as_str(),
+        Some("market_reserve_invoice_service")
     );
 
     let detail_response = client
@@ -1290,6 +1328,11 @@ async fn test_coordinator_trade_routes_and_status() {
         trade_status_payload["settlement"]["metadata"]["invoice_state"].as_str(),
         Some("settled")
     );
+    assert!(
+        trade_status_payload["settlement"]["metadata"]["melt_quote_id"]
+            .as_str()
+            .is_some()
+    );
     assert_eq!(
         trade_status_payload["market"]["event_id"].as_str(),
         Some(event_id)
@@ -1374,6 +1417,19 @@ async fn test_coordinator_trade_routes_and_status() {
         &sell_change_pre_mint,
         &market_keyset,
     );
+    assert_eq!(
+        sell_payload["settlement"]["mode"].as_str(),
+        Some("bolt11_market_to_wallet")
+    );
+    assert!(
+        sell_payload["settlement"]["metadata"]["wallet_mint_quote_id"]
+            .as_str()
+            .is_some()
+    );
+    assert_eq!(
+        sell_payload["settlement"]["metadata"]["wallet_mint_quote_state"].as_str(),
+        Some("ISSUED")
+    );
 
     let executed_sell_quote_status_response = client
         .get(format!(
@@ -1436,6 +1492,15 @@ async fn test_lightning_funding_quote_settles_after_status_poll() {
 
     let issued_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["ISSUED"]).await;
     assert_eq!(issued_quote["state"].as_str(), Some("ISSUED"));
+
+    let funding_status_response = client
+        .get(format!("{url}/api/portfolio/funding/{quote_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(funding_status_response.status(), 200);
+    let funding_status_payload: serde_json::Value = funding_status_response.json().await.unwrap();
+    assert_eq!(funding_status_payload["status"].as_str(), Some("complete"));
 }
 
 #[tokio::test]
@@ -1780,6 +1845,38 @@ async fn test_stripe_funding_completes_from_webhook() {
         Some("normal")
     );
     assert!(funding_status_payload.get("issued_proofs").is_none());
+
+    let paid_quote =
+        wait_for_mint_quote_state_for_method(&client, &url, "stripe", &funding_id, &["PAID"]).await;
+    assert_eq!(paid_quote["quote"].as_str(), Some(funding_id.as_str()));
+    assert_eq!(paid_quote["state"].as_str(), Some("PAID"));
+    assert_eq!(
+        paid_quote["checkout_session_id"].as_str(),
+        Some("cs_test_cascade")
+    );
+
+    let minted_proofs =
+        mint_funding_quote_and_get_proofs_for_method(&client, &url, "stripe", &paid_quote, 4200)
+            .await;
+    assert!(minted_proofs.as_array().is_some());
+
+    let issued_quote =
+        wait_for_mint_quote_state_for_method(&client, &url, "stripe", &funding_id, &["ISSUED"])
+            .await;
+    assert_eq!(issued_quote["state"].as_str(), Some("ISSUED"));
+
+    let completed_funding_status_response = client
+        .get(format!("{url}/api/portfolio/funding/{funding_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(completed_funding_status_response.status(), 200);
+    let completed_funding_status_payload: serde_json::Value =
+        completed_funding_status_response.json().await.unwrap();
+    assert_eq!(
+        completed_funding_status_payload["status"].as_str(),
+        Some("complete")
+    );
 }
 
 #[tokio::test]

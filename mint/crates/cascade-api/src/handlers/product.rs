@@ -1,4 +1,5 @@
 use crate::fx::FxQuoteEnvelope;
+use crate::payment::store_locked_outgoing_bolt11_payment;
 use crate::routes::AppState;
 use crate::stripe::{
     funding_metadata_checkout_fields, funding_metadata_merge, stripe_event_metadata,
@@ -35,13 +36,14 @@ use cascade_core::{
 use cdk::mint::MintInput;
 use cdk::mint::QuoteId;
 use cdk::nuts::{
-    BlindSignature, BlindedMessage, CurrencyUnit, MintQuoteState, MintRequest, State as ProofState,
+    BlindSignature, BlindedMessage, CurrencyUnit, MeltQuoteState, MeltRequest, MintQuoteState,
+    MintRequest, State as ProofState,
 };
 use cdk::Amount;
 use cdk_common::mint::{MintQuote as StoredMintQuote, Operation};
 use cdk_common::nut00::KnownMethod;
 use cdk_common::payment::PaymentIdentifier;
-use cdk_common::PaymentMethod;
+use cdk_common::{Bolt11Invoice, MeltQuoteBolt11Request, MeltQuoteRequest, PaymentMethod};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -188,27 +190,116 @@ fn wallet_funding_amount(quote: &WalletFundingQuote) -> Amount<CurrencyUnit> {
     Amount::new(quote.amount_minor, CurrencyUnit::Usd)
 }
 
+fn wallet_funding_synthetic_payment_hash(quote: &WalletFundingQuote) -> String {
+    let (_, checkout_session_id, _, _) =
+        funding_metadata_checkout_fields(quote.metadata_json.as_deref());
+    let seed = checkout_session_id.unwrap_or_else(|| quote.id.clone());
+    format!(
+        "{:x}",
+        Sha256::digest(format!("wallet_funding:{}:{seed}", quote.rail).as_bytes())
+    )
+}
+
+fn wallet_funding_payment_method(quote: &WalletFundingQuote) -> Result<PaymentMethod, String> {
+    match quote.rail.as_str() {
+        "lightning" | "stripe" => Ok(PaymentMethod::Known(KnownMethod::Bolt11)),
+        rail => Err(format!("unsupported_wallet_funding_rail:{rail}")),
+    }
+}
+
+fn wallet_funding_request_lookup_id(
+    quote: &WalletFundingQuote,
+) -> Result<PaymentIdentifier, String> {
+    match quote.rail.as_str() {
+        "lightning" => {
+            let payment_hash = quote
+                .payment_hash
+                .as_deref()
+                .ok_or_else(|| "funding_quote_missing_payment_hash".to_string())?;
+            PaymentIdentifier::new("payment_hash", payment_hash).map_err(|error| error.to_string())
+        }
+        "stripe" => PaymentIdentifier::new(
+            "payment_hash",
+            &wallet_funding_synthetic_payment_hash(quote),
+        )
+        .map_err(|error| error.to_string()),
+        rail => Err(format!("unsupported_wallet_funding_rail:{rail}")),
+    }
+}
+
+fn wallet_funding_request_string(quote: &WalletFundingQuote) -> Result<String, String> {
+    match quote.rail.as_str() {
+        "lightning" => quote
+            .invoice
+            .clone()
+            .ok_or_else(|| "funding_quote_missing_invoice".to_string()),
+        "stripe" => {
+            let (checkout_url, checkout_session_id, _, _) =
+                funding_metadata_checkout_fields(quote.metadata_json.as_deref());
+            Ok(checkout_url
+                .or_else(|| {
+                    checkout_session_id
+                        .as_ref()
+                        .map(|session_id| format!("stripe_checkout_session:{session_id}"))
+                })
+                .unwrap_or_else(|| format!("stripe_funding:{}", quote.id)))
+        }
+        rail => Err(format!("unsupported_wallet_funding_rail:{rail}")),
+    }
+}
+
+fn wallet_funding_payment_id(quote: &WalletFundingQuote) -> Result<String, String> {
+    match quote.rail.as_str() {
+        "lightning" => quote
+            .payment_hash
+            .clone()
+            .ok_or_else(|| "funding_quote_missing_payment_hash".to_string()),
+        "stripe" => Ok(wallet_funding_synthetic_payment_hash(quote)),
+        rail => Err(format!("unsupported_wallet_funding_rail:{rail}")),
+    }
+}
+
+fn wallet_funding_quote_extra_json(quote: &WalletFundingQuote) -> serde_json::Value {
+    let (checkout_url, checkout_session_id, checkout_expires_at, risk_level) =
+        funding_metadata_checkout_fields(quote.metadata_json.as_deref());
+    let mut payload = json!({
+        "source": "cascade_wallet_funding",
+        "rail": quote.rail,
+        "fx_quote_id": quote.fx_quote_id,
+    });
+
+    if let Some(object) = payload.as_object_mut() {
+        if let Some(checkout_url) = checkout_url {
+            object.insert("checkout_url".to_string(), Value::String(checkout_url));
+        }
+        if let Some(checkout_session_id) = checkout_session_id {
+            object.insert(
+                "checkout_session_id".to_string(),
+                Value::String(checkout_session_id),
+            );
+        }
+        if let Some(checkout_expires_at) = checkout_expires_at {
+            object.insert(
+                "checkout_expires_at".to_string(),
+                Value::Number(checkout_expires_at.into()),
+            );
+        }
+        if let Some(risk_level) = risk_level {
+            object.insert("risk_level".to_string(), Value::String(risk_level));
+        }
+    }
+
+    payload
+}
+
 fn build_cdk_mint_quote_for_wallet_funding(
     quote: &WalletFundingQuote,
 ) -> Result<StoredMintQuote, String> {
     let quote_id = QuoteId::from_str(&quote.id).map_err(|error| error.to_string())?;
-    let request = quote
-        .invoice
-        .clone()
-        .ok_or_else(|| "funding_quote_missing_invoice".to_string())?;
-    let payment_hash = quote
-        .payment_hash
-        .clone()
-        .ok_or_else(|| "funding_quote_missing_payment_hash".to_string())?;
-    let request_lookup_id =
-        PaymentIdentifier::new("payment_hash", &payment_hash).map_err(|error| error.to_string())?;
+    let request = wallet_funding_request_string(quote)?;
+    let request_lookup_id = wallet_funding_request_lookup_id(quote)?;
     let amount = wallet_funding_amount(quote);
     let zero = Amount::new(0, CurrencyUnit::Usd);
-    let extra_json = Some(json!({
-        "source": "cascade_wallet_funding",
-        "rail": quote.rail,
-        "fx_quote_id": quote.fx_quote_id,
-    }));
 
     Ok(StoredMintQuote::new(
         Some(quote_id),
@@ -220,11 +311,11 @@ fn build_cdk_mint_quote_for_wallet_funding(
         None,
         zero.clone(),
         zero,
-        PaymentMethod::Known(KnownMethod::Bolt11),
+        wallet_funding_payment_method(quote)?,
         quote.created_at.max(0) as u64,
         Vec::new(),
         Vec::new(),
-        extra_json,
+        Some(wallet_funding_quote_extra_json(quote)),
     ))
 }
 
@@ -233,21 +324,17 @@ fn reconcile_cdk_mint_quote_with_wallet_funding(
     quote: &WalletFundingQuote,
 ) -> Result<(), String> {
     let amount = wallet_funding_amount(quote);
-    let payment_hash = quote
-        .payment_hash
-        .as_deref()
-        .ok_or_else(|| "funding_quote_missing_payment_hash".to_string())?;
-    let payment_hash = payment_hash.to_string();
+    let payment_id = wallet_funding_payment_id(quote)?;
 
     if matches!(
         quote.status,
         WalletFundingStatus::Paid | WalletFundingStatus::Complete
-    ) && !mint_quote.payment_ids().contains(&&payment_hash)
+    ) && !mint_quote.payment_ids().contains(&&payment_id)
     {
         mint_quote
             .add_payment(
                 amount.clone(),
-                payment_hash.clone(),
+                payment_id,
                 quote.settled_at.map(|timestamp| timestamp.max(0) as u64),
             )
             .map_err(|error| error.to_string())?;
@@ -270,10 +357,6 @@ async fn ensure_cdk_mint_quote_for_wallet_funding(
     state: &AppState,
     quote: &WalletFundingQuote,
 ) -> Result<StoredMintQuote, String> {
-    if quote.rail != "lightning" {
-        return Err("wallet_funding_quote_not_lightning".to_string());
-    }
-
     let quote_id = QuoteId::from_str(&quote.id).map_err(|error| error.to_string())?;
     let localstore = state.mint.localstore();
     let mut tx = localstore
@@ -302,7 +385,7 @@ async fn ensure_cdk_mint_quote_for_wallet_funding(
     Ok(mint_quote.inner())
 }
 
-async fn sync_lightning_funding_quote_state(
+async fn sync_wallet_funding_quote_state(
     state: &AppState,
     quote: &WalletFundingQuote,
 ) -> Result<(WalletFundingQuote, StoredMintQuote), String> {
@@ -312,14 +395,34 @@ async fn sync_lightning_funding_quote_state(
     if mint_quote.state() == MintQuoteState::Issued
         && synced_quote.status != WalletFundingStatus::Complete
     {
-        let metadata_json = funding_metadata_json(
-            "bolt11",
-            json!({
-                "payment_hash": synced_quote.payment_hash,
-                "funding_quote_id": synced_quote.id,
-                "reconciled_via": "mint_quote_state"
-            }),
-        )
+        let metadata_json = match synced_quote.rail.as_str() {
+            "lightning" => funding_metadata_json(
+                "bolt11",
+                json!({
+                    "payment_hash": synced_quote.payment_hash,
+                    "funding_quote_id": synced_quote.id,
+                    "reconciled_via": "mint_quote_state"
+                }),
+            ),
+            "stripe" => {
+                let (checkout_url, checkout_session_id, checkout_expires_at, risk_level) =
+                    funding_metadata_checkout_fields(synced_quote.metadata_json.as_deref());
+                funding_metadata_json(
+                    "stripe",
+                    json!({
+                        "funding_quote_id": synced_quote.id,
+                        "checkout_url": checkout_url,
+                        "checkout_session_id": checkout_session_id,
+                        "checkout_expires_at": checkout_expires_at,
+                        "risk_level": risk_level,
+                        "reconciled_via": "mint_quote_state"
+                    }),
+                )
+            }
+            rail => Err(serde_json::Error::io(std::io::Error::other(format!(
+                "unsupported_wallet_funding_rail:{rail}"
+            )))),
+        }
         .map_err(|error| error.to_string())?;
 
         let completed_quote = state
@@ -510,7 +613,66 @@ fn validate_output_amounts(
         .collect::<Result<Vec<_>, _>>()
 }
 
-async fn spend_input_proofs_and_store_outputs(
+async fn sign_outputs_and_store(
+    state: &AppState,
+    outputs: &[BlindedMessageInput],
+    payment_method: PaymentMethod,
+) -> Result<Vec<TokenOutput>, String> {
+    let blinded_messages = outputs
+        .iter()
+        .map(cdk_blinded_message_from_input)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if blinded_messages.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    state
+        .mint
+        .verify_outputs(&blinded_messages)
+        .map_err(|error| error.to_string())?;
+
+    let signatures = state
+        .mint
+        .blind_sign(blinded_messages.clone())
+        .await
+        .map_err(|error| error.to_string())?;
+
+    let blinded_secrets = blinded_messages
+        .iter()
+        .map(|message| message.blinded_secret)
+        .collect::<Vec<_>>();
+    let operation = Operation::new_mint(
+        Amount::from(blinded_messages.iter().fold(0_u64, |sum, message| {
+            sum.saturating_add(message.amount.to_u64())
+        })),
+        payment_method,
+    );
+
+    let mut tx = state
+        .mint
+        .localstore()
+        .begin_transaction()
+        .await
+        .map_err(|error| error.to_string())?;
+    tx.add_blinded_messages(None, &blinded_messages, &operation)
+        .await
+        .map_err(|error| error.to_string())?;
+    tx.add_blind_signatures(&blinded_secrets, &signatures, None)
+        .await
+        .map_err(|error| error.to_string())?;
+    tx.add_completed_operation(&operation, &HashMap::new())
+        .await
+        .map_err(|error| error.to_string())?;
+    tx.commit().await.map_err(|error| error.to_string())?;
+
+    Ok(signatures
+        .into_iter()
+        .map(token_output_from_signature)
+        .collect())
+}
+
+async fn swap_input_proofs_and_sign_outputs(
     state: &AppState,
     input_proofs: &[ProofInput],
     issued_outputs: &[BlindedMessageInput],
@@ -917,7 +1079,7 @@ pub async fn create_mint_quote_bolt11(
                 }
             };
 
-            let mint_quote = match sync_lightning_funding_quote_state(&state, &quote).await {
+            let mint_quote = match sync_wallet_funding_quote_state(&state, &quote).await {
                 Ok((_, mint_quote)) => mint_quote,
                 Err(error) => {
                     return (
@@ -1141,13 +1303,28 @@ pub async fn create_stripe_funding(
         )
         .await
     {
-        Ok(quote) => match load_wallet_funding_response(&state, &quote).await {
-            Ok(response) => (StatusCode::CREATED, Json(json!(response))),
-            Err(error) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error })),
-            ),
-        },
+        Ok(quote) => {
+            if let Err(error) = ensure_cdk_mint_quote_for_wallet_funding(&state, &quote).await {
+                if let Some(request_id) = req.request_id.as_deref() {
+                    let _ = state
+                        .db
+                        .fail_wallet_funding_request(request_id, &error)
+                        .await;
+                }
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": error })),
+                );
+            }
+
+            match load_wallet_funding_response(&state, &quote).await {
+                Ok(response) => (StatusCode::CREATED, Json(json!(response))),
+                Err(error) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": error })),
+                ),
+            }
+        }
         Err(error) => {
             let error_message = error.to_string();
             if let Some(request_id) = req.request_id.as_deref() {
@@ -1411,16 +1588,12 @@ async fn load_wallet_funding_status(
         }
     };
 
-    let quote = if quote.rail == "lightning" {
-        match sync_lightning_funding_quote_state(&state, &quote).await {
-            Ok((quote, _)) => quote,
-            Err(_) => quote,
-        }
-    } else {
-        match sync_wallet_funding_quote_best_effort(&state, &quote).await {
+    let quote = match sync_wallet_funding_quote_state(&state, &quote).await {
+        Ok((quote, _)) => quote,
+        Err(_) => match sync_wallet_funding_quote_best_effort(&state, &quote).await {
             Ok(quote) => quote,
             Err(_) => quote,
-        }
+        },
     };
 
     match load_wallet_funding_response(&state, &quote).await {
@@ -1432,127 +1605,135 @@ async fn load_wallet_funding_status(
     }
 }
 
-pub async fn get_mint_quote_bolt11(
-    State(state): State<AppState>,
-    Path(quote_id): Path<String>,
-) -> (StatusCode, Json<Value>) {
+fn mint_quote_stripe_response_from_cdk(quote: &StoredMintQuote) -> Result<Value, String> {
+    let amount = quote
+        .amount
+        .clone()
+        .ok_or_else(|| "mint_quote_amount_missing".to_string())?;
+    let mut response = json!({
+        "quote": quote.id.to_string(),
+        "request": quote.request.clone(),
+        "amount": amount.value(),
+        "unit": quote.unit.to_string().to_ascii_lowercase(),
+        "state": cdk_mint_quote_state_label(quote.state()),
+        "expiry": i64::try_from(quote.expiry).unwrap_or(i64::MAX),
+    });
+
+    if let (Some(response_object), Some(extra_object)) = (
+        response.as_object_mut(),
+        quote.extra_json.as_ref().and_then(Value::as_object),
+    ) {
+        for (key, value) in extra_object {
+            response_object.insert(key.clone(), value.clone());
+        }
+    }
+
+    Ok(response)
+}
+
+fn wallet_funding_completion_metadata(
+    quote: &WalletFundingQuote,
+    minted_via: &str,
+) -> Result<String, String> {
+    match quote.rail.as_str() {
+        "lightning" => funding_metadata_json(
+            "bolt11",
+            json!({
+                "payment_hash": quote.payment_hash,
+                "funding_quote_id": quote.id,
+                "minted_via": minted_via
+            }),
+        )
+        .map_err(|error| error.to_string()),
+        "stripe" => {
+            let (checkout_url, checkout_session_id, checkout_expires_at, risk_level) =
+                funding_metadata_checkout_fields(quote.metadata_json.as_deref());
+            funding_metadata_json(
+                "stripe",
+                json!({
+                    "funding_quote_id": quote.id,
+                    "checkout_url": checkout_url,
+                    "checkout_session_id": checkout_session_id,
+                    "checkout_expires_at": checkout_expires_at,
+                    "risk_level": risk_level,
+                    "minted_via": minted_via
+                }),
+            )
+            .map_err(|error| error.to_string())
+        }
+        rail => Err(format!("unsupported_wallet_funding_rail:{rail}")),
+    }
+}
+
+async fn load_wallet_funding_quote_for_mint_method(
+    state: &AppState,
+    quote_id: &str,
+    expected_rail: &str,
+) -> Result<(WalletFundingQuote, StoredMintQuote), (StatusCode, String)> {
     let now = chrono::Utc::now().timestamp();
-    let existing = match state.db.get_wallet_funding_quote(&quote_id).await {
-        Ok(Some(quote)) => quote,
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "detail": "Quote not found" })),
-            )
-        }
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "detail": error.to_string() })),
-            )
-        }
-    };
+    let existing = state
+        .db
+        .get_wallet_funding_quote(quote_id)
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "Quote not found".to_string()))?;
+
+    if existing.rail != expected_rail {
+        return Err((StatusCode::NOT_FOUND, "Quote not found".to_string()));
+    }
 
     if existing.expires_at <= now && existing.status == WalletFundingStatus::InvoicePending {
         let _ = state.db.expire_wallet_funding_quote(&existing.id).await;
     }
 
-    let quote = match state.db.get_wallet_funding_quote(&quote_id).await {
-        Ok(Some(quote)) => quote,
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "detail": "Quote not found" })),
-            )
-        }
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "detail": error.to_string() })),
-            )
-        }
-    };
+    let quote = state
+        .db
+        .get_wallet_funding_quote(quote_id)
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "Quote not found".to_string()))?;
 
-    let (quote, mint_quote) = match sync_lightning_funding_quote_state(&state, &quote).await {
-        Ok(result) => result,
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "detail": error })),
-            )
-        }
-    };
-
-    let _ = quote;
-
-    match mint_quote_bolt11_response_from_cdk(&mint_quote) {
-        Ok(response) => (StatusCode::OK, Json(json!(response))),
-        Err(error) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "detail": error })),
-        ),
+    if quote.rail != expected_rail {
+        return Err((StatusCode::NOT_FOUND, "Quote not found".to_string()));
     }
+
+    sync_wallet_funding_quote_state(state, &quote)
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error))
 }
 
-pub async fn mint_bolt11(
-    State(state): State<AppState>,
-    Json(req): Json<MintBolt11Request>,
-) -> (StatusCode, Json<Value>) {
+async fn issue_wallet_funding_quote(
+    state: &AppState,
+    req: &MintBolt11Request,
+    expected_rail: &str,
+    minted_via: &str,
+) -> Result<MintBolt11Response, (StatusCode, String)> {
     if req.quote.trim().is_empty() || req.outputs.is_empty() {
-        return (
+        return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({ "detail": "quote_and_outputs_are_required" })),
-        );
+            "quote_and_outputs_are_required".to_string(),
+        ));
     }
 
-    let quote = match state.db.get_wallet_funding_quote(&req.quote).await {
-        Ok(Some(quote)) => quote,
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "detail": "Quote not found" })),
-            )
-        }
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "detail": error.to_string() })),
-            )
-        }
-    };
-
-    let (quote, mint_quote) = match sync_lightning_funding_quote_state(&state, &quote).await {
-        Ok(result) => result,
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "detail": error })),
-            )
-        }
-    };
+    let (quote, mint_quote) =
+        load_wallet_funding_quote_for_mint_method(state, &req.quote, expected_rail).await?;
 
     if mint_quote.state() == MintQuoteState::Issued || quote.status == WalletFundingStatus::Complete
     {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "detail": "Quote already issued" })),
-        );
+        return Err((StatusCode::BAD_REQUEST, "Quote already issued".to_string()));
     }
 
     if mint_quote.state() != MintQuoteState::Paid {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "detail": "Quote not paid" })),
-        );
+        return Err((StatusCode::BAD_REQUEST, "Quote not paid".to_string()));
     }
 
     {
         let mut processing = state.processing_fundings.lock().await;
         if !processing.insert(req.quote.clone()) {
-            return (
+            return Err((
                 StatusCode::CONFLICT,
-                Json(json!({ "detail": "Quote issuance already in progress" })),
-            );
+                "Quote issuance already in progress".to_string(),
+            ));
         }
     }
 
@@ -1562,10 +1743,10 @@ pub async fn mint_bolt11(
             .iter()
             .map(cdk_blinded_message_from_input)
             .collect::<Result<Vec<_>, String>>()
-            .map_err(|error| ("bad_request".to_string(), error))?;
+            .map_err(|error| (StatusCode::BAD_REQUEST, error))?;
 
         let quote_id = QuoteId::from_str(&quote.id)
-            .map_err(|error| ("bad_request".to_string(), error.to_string()))?;
+            .map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()))?;
         let mint_request = MintRequest {
             quote: quote_id,
             outputs: blinded_messages,
@@ -1578,35 +1759,28 @@ pub async fn mint_bolt11(
             .await
             .map_err(|error| {
                 let detail = error.to_string();
-                let kind = if detail.contains("unpaid")
+                let status = if detail.contains("unpaid")
                     || detail.contains("issued")
                     || detail.contains("amount")
                     || detail.contains("keyset")
                     || detail.contains("duplicate")
                     || detail.contains("output")
                 {
-                    "bad_request"
+                    StatusCode::BAD_REQUEST
                 } else {
-                    "internal"
+                    StatusCode::INTERNAL_SERVER_ERROR
                 };
-                (kind.to_string(), detail)
+                (status, detail)
             })?;
 
-        let metadata_json = funding_metadata_json(
-            "bolt11",
-            json!({
-                "payment_hash": quote.payment_hash,
-                "funding_quote_id": quote.id,
-                "minted_via": "v1/mint/bolt11"
-            }),
-        )
-        .map_err(|error| ("internal".to_string(), error.to_string()))?;
+        let metadata_json = wallet_funding_completion_metadata(&quote, minted_via)
+            .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error))?;
 
         state
             .db
             .complete_wallet_funding_quote(&quote.id, None, Some(&metadata_json))
             .await
-            .map_err(|error| ("internal".to_string(), error.to_string()))?;
+            .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
 
         Ok(MintBolt11Response {
             signatures: mint_response
@@ -1623,15 +1797,58 @@ pub async fn mint_bolt11(
         processing.remove(&req.quote);
     }
 
-    match issue_result {
+    issue_result
+}
+
+pub async fn get_mint_quote_bolt11(
+    State(state): State<AppState>,
+    Path(quote_id): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    match load_wallet_funding_quote_for_mint_method(&state, &quote_id, "lightning").await {
+        Ok((_, mint_quote)) => match mint_quote_bolt11_response_from_cdk(&mint_quote) {
+            Ok(response) => (StatusCode::OK, Json(json!(response))),
+            Err(error) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "detail": error })),
+            ),
+        },
+        Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
+    }
+}
+
+pub async fn get_mint_quote_stripe(
+    State(state): State<AppState>,
+    Path(quote_id): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    match load_wallet_funding_quote_for_mint_method(&state, &quote_id, "stripe").await {
+        Ok((_, mint_quote)) => match mint_quote_stripe_response_from_cdk(&mint_quote) {
+            Ok(response) => (StatusCode::OK, Json(response)),
+            Err(error) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "detail": error })),
+            ),
+        },
+        Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
+    }
+}
+
+pub async fn mint_bolt11(
+    State(state): State<AppState>,
+    Json(req): Json<MintBolt11Request>,
+) -> (StatusCode, Json<Value>) {
+    match issue_wallet_funding_quote(&state, &req, "lightning", "v1/mint/bolt11").await {
         Ok(response) => (StatusCode::OK, Json(json!(response))),
-        Err((kind, detail)) if kind == "bad_request" => {
-            (StatusCode::BAD_REQUEST, Json(json!({ "detail": detail })))
-        }
-        Err((_, detail)) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "detail": detail })),
-        ),
+        Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
+    }
+}
+
+pub async fn mint_stripe(
+    State(state): State<AppState>,
+    Json(req): Json<MintBolt11Request>,
+) -> (StatusCode, Json<Value>) {
+    match issue_wallet_funding_quote(&state, &req, "stripe", "v1/mint/stripe").await {
+        Ok(response) => (StatusCode::OK, Json(json!(response))),
+        Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
     }
 }
 
@@ -2538,8 +2755,16 @@ async fn buy_trade_by_event(
                 return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
             }
 
-            let settlement = match build_trade_settlement_insert(state, &req.pubkey, &quote).await {
-                Ok(settlement) => settlement,
+            let (settlement, change_signatures) = match execute_trade_settlement(
+                state,
+                &req.pubkey,
+                &quote,
+                &req.proofs,
+                &req.change_outputs,
+            )
+            .await
+            {
+                Ok(result) => result,
                 Err(error) => {
                     if let Some(request_id) = request_id {
                         let _ = state
@@ -2550,11 +2775,10 @@ async fn buy_trade_by_event(
                     return (StatusCode::BAD_GATEWAY, Json(json!({ "error": error })));
                 }
             };
-            let (issued_signatures, change_signatures) = match spend_input_proofs_and_store_outputs(
+            let issued_signatures = match sign_outputs_and_store(
                 state,
-                &req.proofs,
                 &req.issued_outputs,
-                &req.change_outputs,
+                PaymentMethod::Known(KnownMethod::Bolt11),
             )
             .await
             {
@@ -2902,8 +3126,16 @@ async fn sell_trade_by_event(
                 return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
             }
 
-            let settlement = match build_trade_settlement_insert(state, &req.pubkey, &quote).await {
-                Ok(settlement) => settlement,
+            let (mut settlement, _) = match execute_trade_settlement(
+                state,
+                &req.pubkey,
+                &quote,
+                &req.proofs,
+                &req.change_outputs,
+            )
+            .await
+            {
+                Ok(result) => result,
                 Err(error) => {
                     if let Some(request_id) = request_id {
                         let _ = state
@@ -2914,7 +3146,7 @@ async fn sell_trade_by_event(
                     return (StatusCode::BAD_GATEWAY, Json(json!({ "error": error })));
                 }
             };
-            let (issued_signatures, change_signatures) = match spend_input_proofs_and_store_outputs(
+            let (issued_signatures, change_signatures) = match swap_input_proofs_and_sign_outputs(
                 state,
                 &req.proofs,
                 &req.issued_outputs,
@@ -2933,6 +3165,35 @@ async fn sell_trade_by_event(
                     return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
                 }
             };
+
+            if let Some(settlement_record) = settlement.as_mut() {
+                let wallet_mint_quote_id = settlement_record
+                    .metadata_json
+                    .as_deref()
+                    .and_then(|payload| serde_json::from_str::<Value>(payload).ok())
+                    .and_then(|payload| {
+                        payload
+                            .get("wallet_mint_quote_id")
+                            .and_then(Value::as_str)
+                            .map(str::to_string)
+                    });
+
+                if let Some(wallet_mint_quote_id) = wallet_mint_quote_id {
+                    if let Ok(wallet_mint_quote_state) =
+                        record_full_mint_quote_issuance(state, &wallet_mint_quote_id).await
+                    {
+                        if let Ok(metadata_json) = merge_metadata_json(
+                            settlement_record.metadata_json.as_deref(),
+                            json!({
+                                "wallet_mint_quote_state": wallet_mint_quote_state,
+                                "wallet_mint_quote_issued_via": "sell_trade_execution"
+                            }),
+                        ) {
+                            settlement_record.metadata_json = Some(metadata_json);
+                        }
+                    }
+                }
+            }
 
             match state
                 .db
@@ -3840,11 +4101,10 @@ fn current_prices_ppm(state: &AppState, market: &Market) -> (u64, u64) {
     }
 }
 
-async fn build_trade_settlement_insert(
+async fn create_trade_settlement_invoice(
     state: &AppState,
-    pubkey: &str,
     quote: &ProductTradeQuoteResponse,
-) -> Result<Option<TradeSettlementInsert>, String> {
+) -> Result<cascade_core::lightning::types::LightningInvoice, String> {
     if quote.settlement_msat == 0 {
         return Err("trade_settlement_msat_must_be_positive".to_string());
     }
@@ -3855,15 +4115,9 @@ async fn build_trade_settlement_insert(
         .map(|expires_at| (expires_at - now).max(60) as u64)
         .unwrap_or(300);
 
-    let (mode, payer_role, receiver_role) = match quote.trade_type.as_str() {
-        "buy" => ("bolt11_wallet_to_market", "wallet_mint", "market_mint"),
-        "sell" => ("bolt11_market_to_wallet", "market_mint", "wallet_mint"),
-        _ => return Err("unsupported_trade_type_for_settlement".to_string()),
-    };
-
-    let (invoice, preimage, invoice_state) = {
+    let invoice = {
         let mut invoice_service = state.invoice_service.lock().await;
-        let invoice = invoice_service
+        invoice_service
             .create_invoice(
                 quote.settlement_msat,
                 Some(format!(
@@ -3874,13 +4128,283 @@ async fn build_trade_settlement_insert(
                 true,
             )
             .await
-            .map_err(|error| format!("failed_to_create_trade_settlement_invoice: {error}"))?;
+            .map_err(|error| format!("failed_to_create_trade_settlement_invoice: {error}"))?
+    };
+
+    Ok(invoice)
+}
+
+async fn create_trade_settlement_wallet_mint_quote(
+    state: &AppState,
+    quote: &ProductTradeQuoteResponse,
+) -> Result<cdk_common::MintQuoteBolt11Response<QuoteId>, String> {
+    let mint_quote_response = state
+        .mint
+        .get_mint_quote(cdk::mint::MintQuoteRequest::Bolt11(
+            cdk_common::MintQuoteBolt11Request {
+                amount: Amount::new(quote.settlement_minor, CurrencyUnit::Usd).into(),
+                unit: CurrencyUnit::Usd,
+                description: Some(format!(
+                    "Cascade {} withdrawal for {} {}",
+                    quote.trade_type, quote.market_event_id, quote.side
+                )),
+                pubkey: None,
+            },
+        ))
+        .await
+        .map_err(|error| format!("failed_to_create_trade_settlement_wallet_quote: {error}"))?;
+
+    cdk_common::MintQuoteBolt11Response::<QuoteId>::try_from(mint_quote_response)
+        .map_err(|error| format!("invalid_trade_settlement_wallet_quote: {error}"))
+}
+
+async fn record_full_mint_quote_issuance(
+    state: &AppState,
+    quote_id: &str,
+) -> Result<String, String> {
+    let quote_id = QuoteId::from_str(quote_id).map_err(|error| error.to_string())?;
+    let localstore = state.mint.localstore();
+    let mut tx = localstore
+        .begin_transaction()
+        .await
+        .map_err(|error| error.to_string())?;
+    let mut mint_quote = tx
+        .get_mint_quote(&quote_id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "trade_settlement_wallet_quote_not_found".to_string())?;
+
+    let remaining = mint_quote.amount_mintable();
+    if remaining.value() > 0 {
+        mint_quote
+            .add_issuance(remaining)
+            .map_err(|error| error.to_string())?;
+        tx.update_mint_quote(&mut mint_quote)
+            .await
+            .map_err(|error| error.to_string())?;
+    }
+
+    tx.commit().await.map_err(|error| error.to_string())?;
+    Ok(cdk_mint_quote_state_label(mint_quote.state()).to_string())
+}
+
+fn merge_metadata_json(existing: Option<&str>, extra: Value) -> Result<String, String> {
+    let mut payload = existing
+        .and_then(|json| serde_json::from_str::<Value>(json).ok())
+        .unwrap_or_else(|| json!({}));
+
+    if let (Some(payload_object), Some(extra_object)) = (payload.as_object_mut(), extra.as_object())
+    {
+        for (key, value) in extra_object {
+            payload_object.insert(key.clone(), value.clone());
+        }
+    }
+
+    serde_json::to_string(&payload).map_err(|error| error.to_string())
+}
+
+async fn execute_buy_trade_settlement(
+    state: &AppState,
+    pubkey: &str,
+    quote: &ProductTradeQuoteResponse,
+    input_proofs: &[ProofInput],
+    change_outputs: &[BlindedMessageInput],
+) -> Result<(Option<TradeSettlementInsert>, Vec<TokenOutput>), String> {
+    let invoice = create_trade_settlement_invoice(state, quote).await?;
+    let parsed_invoice = Bolt11Invoice::from_str(invoice.bolt11())
+        .map_err(|error| format!("invalid_trade_settlement_invoice: {error}"))?;
+
+    store_locked_outgoing_bolt11_payment(
+        state.mint.localstore(),
+        &parsed_invoice,
+        quote.settlement_minor,
+        quote.settlement_msat,
+        0,
+        quote
+            .fx_metadata
+            .as_ref()
+            .map(|metadata| metadata.reference_btc_usd_price)
+            .unwrap_or_default(),
+        quote
+            .fx_source
+            .as_deref()
+            .unwrap_or("trade_quote_locked_fx"),
+        quote.spread_bps.unwrap_or(0),
+        &quote
+            .fx_metadata
+            .as_ref()
+            .map(|metadata| cascade_core::product::FxQuoteSourceMetadata {
+                combination_policy: metadata.combination_policy.clone(),
+                quote_direction: metadata.quote_direction.parse().unwrap_or_default(),
+                provider_count: metadata.provider_count,
+                minimum_provider_count: metadata.minimum_provider_count,
+                execution_spread_bps: metadata.execution_spread_bps,
+                max_observation_age_seconds: metadata.max_observation_age_seconds,
+                fallback_used: metadata.fallback_used,
+            })
+            .unwrap_or_default(),
+        quote
+            .created_at
+            .unwrap_or_else(|| chrono::Utc::now().timestamp()),
+        quote.expires_at.map(|value| value.max(0) as u64),
+    )
+    .await
+    .map_err(|error| format!("failed_to_store_trade_settlement_payment_quote: {error}"))?;
+
+    let melt_quote = state
+        .mint
+        .get_melt_quote(MeltQuoteRequest::Bolt11(MeltQuoteBolt11Request {
+            request: parsed_invoice.clone(),
+            unit: CurrencyUnit::Usd,
+            options: None,
+        }))
+        .await
+        .map_err(|error| format!("failed_to_create_trade_melt_quote: {error}"))?;
+
+    let cdk_input_proofs = input_proofs
+        .iter()
+        .map(cdk_proof_from_input)
+        .collect::<Result<Vec<_>, _>>()?;
+    let change_messages = change_outputs
+        .iter()
+        .map(cdk_blinded_message_from_input)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if !change_messages.is_empty() {
+        state
+            .mint
+            .verify_outputs(&change_messages)
+            .map_err(|error| error.to_string())?;
+    }
+
+    let melt_request = MeltRequest::new(
+        melt_quote.quote.clone(),
+        cdk_input_proofs,
+        (!change_messages.is_empty()).then_some(change_messages),
+    );
+    let melt_response = state
+        .mint
+        .melt(&melt_request)
+        .await
+        .map_err(|error| format!("failed_to_start_trade_melt: {error}"))?
+        .await
+        .map_err(|error| format!("failed_to_complete_trade_melt: {error}"))?;
+
+    if melt_response.state != MeltQuoteState::Paid {
+        return Err(format!("trade_melt_not_paid:state={}", melt_response.state));
+    }
+
+    let invoice_state = {
+        let invoice_service = state.invoice_service.lock().await;
+        invoice_service
+            .check_invoice_status(&invoice.payment_hash)
+            .await
+            .map_err(|error| format!("failed_to_verify_trade_settlement_invoice: {error}"))?
+    };
+    if invoice_state != cascade_core::lightning::types::InvoiceState::Settled {
+        return Err(format!(
+            "trade_settlement_invoice_not_settled:state={invoice_state:?}"
+        ));
+    }
+
+    let change_signatures = melt_response
+        .change
+        .unwrap_or_default()
+        .into_iter()
+        .map(token_output_from_signature)
+        .collect::<Vec<_>>();
+
+    Ok((
+        Some(TradeSettlementInsert {
+            quote_id: quote.quote_id.clone(),
+            pubkey: pubkey.to_string(),
+            market_event_id: quote.market_event_id.clone(),
+            trade_type: quote.trade_type.clone(),
+            side: quote.side.clone(),
+            rail: "lightning".to_string(),
+            mode: "bolt11_wallet_to_market".to_string(),
+            settlement_minor: quote.settlement_minor,
+            settlement_msat: quote.settlement_msat,
+            settlement_fee_msat: quote.settlement_fee_msat,
+            fx_quote_id: quote.fx_quote_id.clone(),
+            invoice: Some(invoice.bolt11().to_string()),
+            payment_hash: Some(invoice.payment_hash.to_hex()),
+            metadata_json: Some(
+                json!({
+                    "payer_role": "wallet_mint",
+                    "receiver_role": "market_mint",
+                    "invoice_state": "settled",
+                    "invoice_created_at": invoice.created_at,
+                    "invoice_expiry_seconds": invoice.expiry_seconds,
+                    "melt_quote_id": melt_quote.quote.to_string(),
+                    "fx_source": quote.fx_source,
+                    "btc_usd_price": quote.btc_usd_price,
+                    "spread_bps": quote.spread_bps,
+                    "fx_observations": quote.fx_observations,
+                    "payment_preimage": melt_response.payment_preimage,
+                })
+                .to_string(),
+            ),
+        }),
+        change_signatures,
+    ))
+}
+
+async fn execute_sell_trade_settlement(
+    state: &AppState,
+    pubkey: &str,
+    quote: &ProductTradeQuoteResponse,
+) -> Result<Option<TradeSettlementInsert>, String> {
+    let wallet_mint_quote = create_trade_settlement_wallet_mint_quote(state, quote).await?;
+    let wallet_invoice = Bolt11Invoice::from_str(&wallet_mint_quote.request)
+        .map_err(|error| format!("invalid_trade_settlement_wallet_invoice: {error}"))?;
+
+    store_locked_outgoing_bolt11_payment(
+        state.mint.localstore(),
+        &wallet_invoice,
+        quote.settlement_minor,
+        quote.settlement_msat,
+        0,
+        quote
+            .fx_metadata
+            .as_ref()
+            .map(|metadata| metadata.reference_btc_usd_price)
+            .unwrap_or_default(),
+        quote
+            .fx_source
+            .as_deref()
+            .unwrap_or("trade_quote_locked_fx"),
+        quote.spread_bps.unwrap_or(0),
+        &quote
+            .fx_metadata
+            .as_ref()
+            .map(|metadata| cascade_core::product::FxQuoteSourceMetadata {
+                combination_policy: metadata.combination_policy.clone(),
+                quote_direction: metadata.quote_direction.parse().unwrap_or_default(),
+                provider_count: metadata.provider_count,
+                minimum_provider_count: metadata.minimum_provider_count,
+                execution_spread_bps: metadata.execution_spread_bps,
+                max_observation_age_seconds: metadata.max_observation_age_seconds,
+                fallback_used: metadata.fallback_used,
+            })
+            .unwrap_or_default(),
+        quote
+            .created_at
+            .unwrap_or_else(|| chrono::Utc::now().timestamp()),
+        wallet_mint_quote.expiry,
+    )
+    .await
+    .map_err(|error| format!("failed_to_store_trade_settlement_payment_quote: {error}"))?;
+
+    let payment_hash = wallet_invoice.payment_hash().to_string();
+    let (preimage, invoice_state) = {
+        let invoice_service = state.invoice_service.lock().await;
         let preimage = invoice_service
-            .pay_invoice(invoice.bolt11())
+            .pay_invoice(&wallet_mint_quote.request)
             .await
             .map_err(|error| format!("failed_to_pay_trade_settlement_invoice: {error}"))?;
         let invoice_state = invoice_service
-            .get_invoice_status(&invoice.payment_hash.to_hex())
+            .get_invoice_status(&payment_hash)
             .await
             .map_err(|error| format!("failed_to_verify_trade_settlement_invoice: {error}"))?;
         if invoice_state != "settled" {
@@ -3888,8 +4412,16 @@ async fn build_trade_settlement_insert(
                 "trade_settlement_invoice_not_settled:state={invoice_state}"
             ));
         }
-        (invoice, preimage, invoice_state)
+        (preimage, invoice_state)
     };
+    let checked_quote = state
+        .mint
+        .check_mint_quote(&wallet_mint_quote.quote)
+        .await
+        .map_err(|error| format!("failed_to_check_trade_settlement_wallet_quote: {error}"))?;
+    let checked_quote = cdk_common::MintQuoteBolt11Response::<QuoteId>::try_from(checked_quote)
+        .map_err(|error| format!("invalid_trade_settlement_wallet_quote_status: {error}"))?;
+    let wallet_mint_quote_state = checked_quote.state.to_string();
 
     Ok(Some(TradeSettlementInsert {
         quote_id: quote.quote_id.clone(),
@@ -3898,29 +4430,54 @@ async fn build_trade_settlement_insert(
         trade_type: quote.trade_type.clone(),
         side: quote.side.clone(),
         rail: "lightning".to_string(),
-        mode: mode.to_string(),
+        mode: "bolt11_market_to_wallet".to_string(),
         settlement_minor: quote.settlement_minor,
         settlement_msat: quote.settlement_msat,
         settlement_fee_msat: quote.settlement_fee_msat,
         fx_quote_id: quote.fx_quote_id.clone(),
-        invoice: Some(invoice.bolt11().to_string()),
-        payment_hash: Some(invoice.payment_hash.to_hex()),
+        invoice: Some(wallet_mint_quote.request.clone()),
+        payment_hash: Some(wallet_invoice.payment_hash().to_string()),
         metadata_json: Some(
             json!({
-                "payer_role": payer_role,
-                "receiver_role": receiver_role,
+                "payer_role": "market_mint",
+                "receiver_role": "wallet_mint",
                 "invoice_state": invoice_state,
-                "invoice_created_at": invoice.created_at,
-                "invoice_expiry_seconds": invoice.expiry_seconds,
+                "wallet_mint_quote_id": wallet_mint_quote.quote.to_string(),
+                "wallet_mint_quote_state": wallet_mint_quote_state,
+                "wallet_mint_quote_expiry": wallet_mint_quote.expiry,
+                "invoice_created_at": quote.created_at,
+                "invoice_expiry_seconds": wallet_mint_quote
+                    .expiry
+                    .map(|expiry| expiry.saturating_sub(chrono::Utc::now().timestamp().max(0) as u64)),
                 "fx_source": quote.fx_source,
                 "btc_usd_price": quote.btc_usd_price,
                 "spread_bps": quote.spread_bps,
                 "fx_observations": quote.fx_observations,
                 "payment_preimage": preimage.to_hex(),
+                "payment_execution": "market_reserve_invoice_service"
             })
             .to_string(),
         ),
     }))
+}
+
+async fn execute_trade_settlement(
+    state: &AppState,
+    pubkey: &str,
+    quote: &ProductTradeQuoteResponse,
+    input_proofs: &[ProofInput],
+    change_outputs: &[BlindedMessageInput],
+) -> Result<(Option<TradeSettlementInsert>, Vec<TokenOutput>), String> {
+    match quote.trade_type.as_str() {
+        "buy" => {
+            execute_buy_trade_settlement(state, pubkey, quote, input_proofs, change_outputs).await
+        }
+        "sell" => Ok((
+            execute_sell_trade_settlement(state, pubkey, quote).await?,
+            Vec::new(),
+        )),
+        _ => Err("unsupported_trade_type_for_settlement".to_string()),
+    }
 }
 
 fn post_trade_price_ppm(
@@ -3969,9 +4526,12 @@ async fn load_wallet_funding_response(
     state: &AppState,
     quote: &WalletFundingQuote,
 ) -> Result<ProductPortfolioFundingResponse, String> {
-    let quote = sync_wallet_funding_quote_best_effort(state, quote)
-        .await
-        .unwrap_or_else(|_| quote.clone());
+    let quote = match sync_wallet_funding_quote_state(state, quote).await {
+        Ok((quote, _)) => quote,
+        Err(_) => sync_wallet_funding_quote_best_effort(state, quote)
+            .await
+            .unwrap_or_else(|_| quote.clone()),
+    };
     wallet_funding_response_for_state(state, &quote).await
 }
 

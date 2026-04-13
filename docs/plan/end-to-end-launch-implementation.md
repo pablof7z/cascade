@@ -307,6 +307,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 - standard `GET /v1/melt/quote/bolt11/{quote_id}`
 - standard `POST /v1/melt/bolt11`
 - product orchestration backed by standard mint/melt quote ids rather than parallel bespoke settlement endpoints
+- buy-side proof spending implemented through the same in-process CDK melt flow that powers the public standard melt routes
 
 ### Success Gates
 
@@ -539,3 +540,5 @@ Launch should fail this gate if:
 - Locked FX snapshots are now persisted with expiry, executable and reference BTC/USD rates, spread, provider observations, and source metadata so funding and melt paths can reuse the same auditable quote record.
 - Funding and melt flows now reject expired FX snapshots instead of silently reusing stale prices.
 - Scope note: schema history now includes `mint/migrations/017_fx_quote_source_metadata.sql`, while runtime upgrade safety currently comes from `ensure_fx_quote_source_metadata_columns()` because `ADD COLUMN IF NOT EXISTS` was not reliable across the current SQLite test matrix.
+- Milestone 4 funding recovery is now rail-aware instead of Lightning-only: Stripe funding rows are mirrored into CDK mint-quote state at creation time, verified webhook completion moves them into redeemable `PAID` state, `/v1/mint/stripe` issues proofs through the same blind-output flow as Lightning, and persisted funding-status reads now reconcile `ISSUED -> complete` for both rails without returning bearer proofs.
+- Milestone 5 sell execution now creates a real incoming wallet mint quote before the hidden BOLT11 payment step, then persists the underlying wallet quote id and quote-state metadata on the resulting trade settlement record so wallet-side exit recovery and audit no longer depend on a bespoke raw invoice alone.

@@ -231,7 +231,12 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             "/v1/mint/quote/bolt11/{quote_id}",
             get(product::get_mint_quote_bolt11),
         )
+        .route(
+            "/v1/mint/quote/stripe/{quote_id}",
+            get(product::get_mint_quote_stripe),
+        )
         .route("/v1/mint/bolt11", post(product::mint_bolt11))
+        .route("/v1/mint/stripe", post(product::mint_stripe))
         // Health check
         .route("/health", get(health_check))
         .with_state(state)

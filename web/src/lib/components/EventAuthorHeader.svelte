@@ -59,7 +59,7 @@
   .event-author-name {
     font-size: 0.88rem;
     font-weight: 700;
-    color: var(--text-strong);
+    color: white;
     text-decoration: none;
   }
 
@@ -69,6 +69,6 @@
 
   .event-author-date {
     font-size: 0.78rem;
-    color: var(--muted);
+    color: var(--color-neutral-content);
   }
 </style>

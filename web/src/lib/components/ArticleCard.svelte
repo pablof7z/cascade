@@ -64,13 +64,13 @@
     gap: 1.5rem;
     align-items: start;
     padding: 1.5rem 0;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 72%, white 10%);
     color: inherit;
     text-decoration: none;
   }
 
   .article-feed-item:first-child {
-    border-top: 1px solid var(--border-light);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 72%, white 10%);
   }
 
   .article-feed-copy {
@@ -83,7 +83,7 @@
     font-family: var(--font-serif);
     font-size: 1.35rem;
     font-weight: 700;
-    color: var(--text-strong);
+    color: white;
     line-height: 1.2;
     letter-spacing: -0.01em;
     transition: color 160ms ease;
@@ -95,7 +95,7 @@
 
   .article-feed-summary {
     margin: 0;
-    color: var(--muted);
+    color: var(--color-neutral-content);
     font-size: 0.95rem;
     line-height: 1.5;
     max-width: 48ch;

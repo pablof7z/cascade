@@ -8,10 +8,10 @@
   > = $props();
 </script>
 
-<NavigationMenuPrimitive.Indicator {...restProps} class={cn('nav-menu-indicator', className)}>
+<NavigationMenuPrimitive.Indicator {...restProps} class={cn('flex justify-center py-1', className)}>
   {#if children}
     {@render children()}
   {:else}
-    <div class="nav-menu-indicator-tip"></div>
+    <div class="size-2 rotate-45 border border-neutral-800 bg-base-200"></div>
   {/if}
 </NavigationMenuPrimitive.Indicator>

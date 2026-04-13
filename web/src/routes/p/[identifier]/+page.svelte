@@ -140,7 +140,7 @@
 
   .profile-kicker,
   .section-kicker {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.16em;
@@ -154,7 +154,7 @@
   }
 
   .profile-copy p {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.75;
   }
 
@@ -162,7 +162,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.85rem 1rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.82rem;
   }
 
@@ -187,14 +187,14 @@
   }
 
   .profile-stats span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.76rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
 
   .profile-stats strong {
-    color: var(--text-strong);
+    color: white;
     font-family: var(--font-mono);
     font-size: 1rem;
   }
@@ -231,27 +231,27 @@
   }
 
   .profile-row strong {
-    color: var(--text-strong);
+    color: white;
     font-size: 1rem;
     line-height: 1.45;
   }
 
   .profile-row p {
     margin-top: 0.25rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.86rem;
     line-height: 1.65;
   }
 
   .profile-row span {
     flex: 0 0 auto;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.78rem;
   }
 
   .profile-empty {
     padding: 1rem 0;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   @media (max-width: 900px) {

@@ -99,29 +99,29 @@
 
   .workspace-activity p {
     margin-top: 0.4rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .activity-legend {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     padding-bottom: 1rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.78rem;
   }
 
   .activity-legend small {
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
     padding: 0.2rem 0.4rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: 0.76rem;
   }
 
   .activity-list {
     display: grid;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .activity-row {
@@ -130,12 +130,12 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 1rem 0;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .activity-copy strong {
     display: block;
-    color: var(--text-strong);
+    color: white;
     font-size: 0.94rem;
   }
 
@@ -148,7 +148,7 @@
   .activity-meta {
     display: grid;
     gap: 0.25rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-family: var(--font-mono);
     font-size: 0.76rem;
     text-align: right;

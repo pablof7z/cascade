@@ -95,13 +95,13 @@
 
   .agents-header p {
     margin-top: 0.4rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .agents-button {
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
     padding: 0.7rem 0.95rem;
-    color: var(--text-strong);
+    color: white;
     font-size: 0.92rem;
     font-weight: 500;
   }
@@ -110,36 +110,36 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1px;
-    background: var(--border-subtle);
+    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .agents-summary div {
     display: grid;
     gap: 0.35rem;
-    background: var(--bg);
+    background: var(--color-base-100);
     padding: 1rem;
   }
 
   .agents-summary span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.74rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
   .agents-summary strong {
-    color: var(--text-strong);
+    color: white;
     font-family: var(--font-mono);
     font-size: 1rem;
   }
 
   .agents-summary strong.positive {
-    color: var(--positive);
+    color: var(--color-success);
   }
 
   .agents-list {
     display: grid;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .agent-row {
@@ -148,7 +148,7 @@
     gap: 1rem;
     align-items: center;
     padding: 1rem 0;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .agent-avatar {
@@ -157,23 +157,23 @@
     width: 2.2rem;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
+    border: 1px solid var(--color-neutral);
+    background: var(--color-base-200);
+    color: var(--color-base-content);
     font-size: 0.78rem;
     font-weight: 600;
   }
 
   .agent-copy strong {
     display: block;
-    color: var(--text-strong);
+    color: white;
     font-size: 0.94rem;
   }
 
   .agent-copy p,
   .agent-copy small,
   .agent-meta span {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .agent-copy p {
@@ -201,7 +201,7 @@
   }
 
   .agent-meta strong {
-    color: var(--text-strong);
+    color: white;
     font-family: var(--font-mono);
     font-size: 0.82rem;
   }

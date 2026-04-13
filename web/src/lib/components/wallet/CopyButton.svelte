@@ -25,12 +25,12 @@
   .wallet-copy-button {
     border: 0;
     background: transparent;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.76rem;
     cursor: pointer;
   }
 
   .wallet-copy-button:hover {
-    color: var(--text);
+    color: var(--color-base-content);
   }
 </style>

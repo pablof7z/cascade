@@ -7,12 +7,4 @@
     $props();
 </script>
 
-<AvatarPrimitive.Image {...restProps} class={cn('avatar-image', className)} />
-
-<style>
-  :global(.avatar-image) {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-</style>
+<AvatarPrimitive.Image {...restProps} class={cn('size-full object-cover', className)} />

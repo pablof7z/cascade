@@ -8,18 +8,9 @@
   > = $props();
 </script>
 
-<AvatarPrimitive.Fallback {...restProps} class={cn('avatar-fallback', className)}>
+<AvatarPrimitive.Fallback
+  {...restProps}
+  class={cn('flex size-full items-center justify-center font-semibold leading-none', className)}
+>
   {@render children?.()}
 </AvatarPrimitive.Fallback>
-
-<style>
-  :global(.avatar-fallback) {
-    display: inline-flex;
-    width: 100%;
-    height: 100%;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    line-height: 1;
-  }
-</style>

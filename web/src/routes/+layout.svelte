@@ -33,7 +33,7 @@
 
       <SiteNavigation />
 
-      <div class="auth-panel-shell">
+      <div class="flex min-w-0 items-center justify-end">
         <AuthPanel />
       </div>
     </div>
@@ -47,13 +47,3 @@
 
   <Footer />
 </div>
-
-<style>
-  .auth-panel-shell {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    min-width: 0;
-  }
-
-</style>

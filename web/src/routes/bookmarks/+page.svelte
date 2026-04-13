@@ -164,7 +164,7 @@
   .bookmarks-header p,
   .bookmark-link p,
   .bookmark-empty p {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .bookmarks-grid {
@@ -190,13 +190,13 @@
   }
 
   .bookmarks-panel-header a {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.84rem;
   }
 
   .bookmarks-list {
     display: grid;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .bookmark-row {
@@ -205,11 +205,11 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 1rem 0;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .bookmark-row-link:hover strong {
-    color: var(--text);
+    color: var(--color-base-content);
   }
 
   .bookmark-link {
@@ -220,7 +220,7 @@
 
   .bookmark-link strong,
   .bookmark-empty strong {
-    color: var(--text-strong);
+    color: white;
     font-size: 0.98rem;
   }
 
@@ -230,7 +230,7 @@
   }
 
   .bookmark-count {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-family: var(--font-mono);
     font-size: 0.8rem;
     white-space: nowrap;
@@ -240,7 +240,7 @@
     display: grid;
     gap: 0.65rem;
     padding: 1.5rem 0;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   @media (max-width: 900px) {

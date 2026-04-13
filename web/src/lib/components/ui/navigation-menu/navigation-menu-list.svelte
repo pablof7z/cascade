@@ -10,8 +10,8 @@
 
 <NavigationMenuPrimitive.List {...restProps}>
   {#snippet child({ props, wrapperProps })}
-    <div {...wrapperProps} class="nav-menu-list-wrap">
-      <ul {...props} class={cn('nav-menu-list', className)}>
+    <div {...wrapperProps} class="w-full">
+      <ul {...props} class={cn('menu menu-horizontal min-h-0 gap-1 bg-transparent p-0', className)}>
         {@render children?.()}
       </ul>
     </div>

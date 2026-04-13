@@ -88,16 +88,16 @@
 
 <style>
   .pp-card {
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
     border-radius: var(--radius-md);
     overflow: hidden;
-    background: var(--surface);
+    background: var(--color-base-200);
   }
 
   .pp-banner {
     aspect-ratio: 3 / 1;
     overflow: hidden;
-    background: var(--surface-soft);
+    background: var(--color-base-300);
   }
 
   .pp-banner img {
@@ -107,7 +107,7 @@
   }
 
   .pp-banner-empty {
-    background: linear-gradient(135deg, var(--surface-soft) 0%, var(--border-light) 100%);
+    background: linear-gradient(135deg, var(--color-base-300) 0%, color-mix(in srgb, var(--color-neutral) 72%, white 10%) 100%);
   }
 
   .pp-body {
@@ -126,16 +126,16 @@
     width: 4rem;
     height: 4rem;
     border-radius: 9999px;
-    border: 3px solid var(--surface);
+    border: 3px solid var(--color-base-200);
     object-fit: cover;
-    background: var(--surface-soft);
+    background: var(--color-base-300);
   }
 
   .pp-avatar-placeholder {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--muted);
+    color: var(--color-neutral-content);
   }
 
   .pp-avatar-placeholder svg {
@@ -170,7 +170,7 @@
 
   .pp-custom-fields {
     width: 100%;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--color-neutral);
     margin-top: 0.5rem;
     padding-top: 0.5rem;
   }

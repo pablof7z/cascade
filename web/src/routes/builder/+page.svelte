@@ -924,14 +924,14 @@
   .builder-header p {
     max-width: 48rem;
     margin-top: 0.7rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .builder-steps {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1px;
-    background: var(--border-subtle);
+    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .builder-steps div {
@@ -939,12 +939,12 @@
     align-items: center;
     gap: 0.7rem;
     padding: 0.9rem 1rem;
-    background: var(--bg);
-    color: var(--text-faint);
+    background: var(--color-base-100);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
   }
 
   .builder-steps div.active {
-    color: var(--text-strong);
+    color: white;
   }
 
   .builder-steps span {
@@ -976,9 +976,9 @@
   .builder-selected-controls select {
     width: 100%;
     box-sizing: border-box;
-    border: 1px solid var(--border-subtle);
-    background: var(--bg);
-    color: var(--text-strong);
+    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
+    background: var(--color-base-100);
+    color: white;
     padding: 0.85rem 0.95rem;
   }
 
@@ -1009,7 +1009,7 @@
   .builder-empty,
   .review-block span,
   .review-block p {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .builder-copy h2 {
@@ -1023,20 +1023,20 @@
   }
 
   .builder-chip {
-    border: 1px solid var(--border-subtle);
+    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     background: transparent;
-    color: var(--text);
+    color: var(--color-base-content);
     padding: 0.5rem 0.8rem;
   }
 
   .builder-chip:hover,
   .builder-result:hover {
-    border-color: var(--border);
-    color: var(--text-strong);
+    border-color: var(--color-neutral);
+    color: white;
   }
 
   .builder-note {
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     padding-top: 1rem;
     font-size: 0.88rem;
   }
@@ -1044,7 +1044,7 @@
   .builder-link-results,
   .builder-selected {
     display: grid;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .builder-result,
@@ -1052,7 +1052,7 @@
     display: grid;
     gap: 0.4rem;
     padding: 1rem 0;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .builder-result {
@@ -1103,16 +1103,16 @@
     display: grid;
     gap: 0.35rem;
     padding: 1rem 0;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .review-block strong {
-    color: var(--text-strong);
+    color: white;
     font-size: 1rem;
   }
 
   .builder-status {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .builder-actions {

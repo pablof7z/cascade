@@ -36,18 +36,18 @@
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.76rem;
   }
 
   .wallet-expiry strong {
-    color: var(--text);
+    color: var(--color-base-content);
     font-family: var(--font-mono);
     font-weight: 500;
   }
 
   .wallet-expiry-expired {
-    color: var(--negative);
+    color: var(--color-error);
     font-size: 0.76rem;
   }
 </style>

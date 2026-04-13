@@ -168,7 +168,7 @@
   }
 
   .leaderboard-kicker {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.16em;
@@ -182,7 +182,7 @@
   }
 
   .leaderboard-copy p {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.75;
   }
 
@@ -200,15 +200,15 @@
     border: none;
     border-bottom: 2px solid transparent;
     background: transparent;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.88rem;
     font-weight: 500;
     cursor: pointer;
   }
 
   .leaderboard-tabs button.active {
-    border-bottom-color: var(--text-strong);
-    color: var(--text-strong);
+    border-bottom-color: white;
+    color: white;
   }
 
   .leaderboard-list {
@@ -226,19 +226,19 @@
   }
 
   .rank {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-family: var(--font-mono);
     font-size: 0.86rem;
   }
 
   .leaderboard-main strong {
-    color: var(--text-strong);
+    color: white;
     font-size: 1rem;
   }
 
   .leaderboard-main p {
     margin-top: 0.25rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.82rem;
     line-height: 1.55;
   }
@@ -249,13 +249,13 @@
   }
 
   .leaderboard-metric strong {
-    color: var(--text-strong);
+    color: white;
     font-family: var(--font-mono);
     font-size: 0.92rem;
   }
 
   .leaderboard-metric span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -264,11 +264,11 @@
   .leaderboard-empty,
   .leaderboard-empty-inline {
     padding: 2rem 0;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .leaderboard-empty p:first-child {
-    color: var(--text-strong);
+    color: white;
     font-size: 1rem;
     font-weight: 600;
   }

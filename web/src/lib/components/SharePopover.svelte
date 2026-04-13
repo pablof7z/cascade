@@ -117,10 +117,10 @@
     width: 2.5rem;
     height: 2.5rem;
     padding: 0;
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
     border-radius: 9999px;
-    background: var(--surface);
-    color: var(--muted);
+    background: var(--color-base-200);
+    color: var(--color-neutral-content);
     cursor: pointer;
     flex-shrink: 0;
     transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 160ms ease;
@@ -128,8 +128,8 @@
 
   .share-btn:hover,
   .share-btn.active {
-    color: var(--text);
-    border-color: var(--text);
+    color: var(--color-base-content);
+    border-color: var(--color-base-content);
   }
 
   .share-btn:active {
@@ -141,8 +141,8 @@
     top: calc(100% + 8px);
     right: 0;
     z-index: 100;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--color-base-200);
+    border: 1px solid var(--color-neutral);
     border-radius: var(--radius-md);
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
     min-width: 160px;
@@ -172,7 +172,7 @@
     border-radius: var(--radius-sm);
     font-size: 0.85rem;
     font-weight: 500;
-    color: var(--text);
+    color: var(--color-base-content);
     text-decoration: none;
     cursor: pointer;
     transition: background 100ms ease;
@@ -185,16 +185,16 @@
   }
 
   .share-popover-item:hover {
-    background: var(--surface-hover, rgba(0, 0, 0, 0.05));
+    background: var(--color-base-300, rgba(0, 0, 0, 0.05));
   }
 
   .share-copy-btn.share-popover-item {
-    color: var(--text);
+    color: var(--color-base-content);
   }
 
   .share-popover-divider {
     height: 1px;
-    background: var(--border-light, var(--border));
+    background: var(--color-neutral, var(--color-neutral));
     margin: 0.25rem 0;
   }
 </style>

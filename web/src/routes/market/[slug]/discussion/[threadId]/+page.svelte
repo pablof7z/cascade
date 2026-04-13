@@ -69,7 +69,7 @@
     <p class="page-subtitle">{truncateText(node.post.content, 400)}</p>
 
     {#if node.replies.length > 0}
-      <div class="section" style="margin-top: 1rem; padding-left: 1rem; border-left: 1px solid var(--border-subtle);">
+      <div class="section" style="margin-top: 1rem; padding-left: 1rem; border-left: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);">
         {#each node.replies as reply (reply.post.id)}
           {@render renderThread(reply)}
         {/each}
@@ -113,10 +113,10 @@
 
   .reply-body {
     width: 100%;
-    border: 1px solid var(--border-subtle);
+    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     border-radius: 2px;
-    background: var(--surface);
-    color: var(--text);
+    background: var(--color-base-200);
+    color: var(--color-base-content);
     font-family: inherit;
     font-size: 0.9rem;
     padding: 0.4rem 0.6rem;
@@ -126,7 +126,7 @@
 
   .reply-body:focus {
     outline: none;
-    border-color: var(--text-muted);
+    border-color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .reply-actions {
@@ -135,13 +135,13 @@
   }
 
   .reply-error {
-    color: var(--negative);
+    color: var(--color-error);
     font-size: 0.85rem;
     margin: 0;
   }
 
   .reply-signin {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: 0.875rem;
   }
 </style>

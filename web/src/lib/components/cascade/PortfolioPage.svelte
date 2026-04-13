@@ -1183,18 +1183,18 @@
     display: grid;
     gap: 1rem;
     padding: 1rem 0;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .wallet-panel strong {
     font-size: 1.5rem;
-    color: var(--text-strong);
+    color: white;
     font-family: var(--font-mono);
   }
 
   .label,
   .field span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.76rem;
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -1202,7 +1202,7 @@
   }
 
   .muted {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .panel-header,
@@ -1225,9 +1225,9 @@
   .field input {
     width: 100%;
     box-sizing: border-box;
-    border: 1px solid var(--border-subtle);
-    background: var(--bg);
-    color: var(--text-strong);
+    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
+    background: var(--color-base-100);
+    color: white;
     padding: 0.85rem 0.95rem;
   }
 
@@ -1235,9 +1235,9 @@
   .field textarea {
     width: 100%;
     box-sizing: border-box;
-    border: 1px solid var(--border-subtle);
-    background: var(--bg);
-    color: var(--text-strong);
+    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
+    background: var(--color-base-100);
+    color: white;
     padding: 0.85rem 0.95rem;
   }
 
@@ -1276,13 +1276,13 @@
   .history-list {
     display: grid;
     gap: 0;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .position-row,
   .history-row {
     padding: 0.85rem 0;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     text-decoration: none;
     color: inherit;
   }
@@ -1300,7 +1300,7 @@
     overflow-wrap: anywhere;
     font-family: var(--font-mono);
     font-size: 0.78rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
   }
 
   .position-copy,
@@ -1315,11 +1315,11 @@
   }
 
   .positive {
-    color: var(--text-success);
+    color: var(--color-base-content-success);
   }
 
   .negative {
-    color: var(--text-danger);
+    color: var(--color-base-content-danger);
   }
 
   .wallet-status,
@@ -1329,11 +1329,11 @@
   }
 
   .wallet-status {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .wallet-error {
-    color: var(--text-danger);
+    color: var(--color-base-content-danger);
   }
 
   @media (max-width: 720px) {

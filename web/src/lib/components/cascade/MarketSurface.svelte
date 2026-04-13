@@ -665,7 +665,7 @@
   }
 
   .market-kicker {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.16em;
@@ -680,7 +680,7 @@
 
   .market-copy > p {
     max-width: 38rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: 1.02rem;
     line-height: 1.75;
   }
@@ -689,7 +689,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.85rem 1rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.82rem;
   }
 
@@ -707,7 +707,7 @@
   }
 
   .market-header-probability {
-    color: var(--positive);
+    color: var(--color-success);
     font-family: var(--font-mono);
     font-size: clamp(2.8rem, 4.8vw, 4rem);
     font-weight: 700;
@@ -724,7 +724,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.9rem 1rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.82rem;
   }
 
@@ -772,14 +772,14 @@
   .overview-metrics span,
   .detail-header span,
   .signal-list span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.78rem;
   }
 
   .overview-metrics strong,
   .summary-list dd,
   .price-grid strong {
-    color: var(--text-strong);
+    color: white;
     font-family: var(--font-mono);
     font-size: 1rem;
   }
@@ -797,7 +797,7 @@
   }
 
   .price-grid span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.16em;
@@ -826,7 +826,7 @@
   }
 
   .summary-list dt {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.84rem;
   }
 
@@ -857,7 +857,7 @@
 
   .trade-focus-copy {
     margin: 0;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.75;
   }
 
@@ -867,14 +867,14 @@
   }
 
   .detail-header a {
-    color: var(--text);
+    color: var(--color-base-content);
     font-size: 0.84rem;
     font-weight: 500;
   }
 
   .detail-header a:hover,
   .detail-header a:focus-visible {
-    color: var(--text-strong);
+    color: white;
     outline: none;
   }
 
@@ -893,26 +893,26 @@
     justify-content: space-between;
     gap: 1rem;
     margin-bottom: 0.45rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.82rem;
   }
 
   .bar-track {
     height: 0.4rem;
-    background: var(--surface);
+    background: var(--color-base-200);
   }
 
   .bar-fill {
     height: 100%;
-    background: var(--positive);
+    background: var(--color-success);
   }
 
   .positive-fill {
-    background: var(--positive);
+    background: var(--color-success);
   }
 
   .negative-fill {
-    background: var(--negative);
+    background: var(--color-error);
   }
 
   .case-copy {
@@ -924,7 +924,7 @@
   .signal-list p,
   .dense-row p {
     margin: 0;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: 0.9rem;
     line-height: 1.7;
   }
@@ -950,7 +950,7 @@
 
   .signal-list strong,
   .dense-row strong {
-    color: var(--text-strong);
+    color: white;
     font-size: 0.98rem;
     font-weight: 600;
   }
@@ -965,7 +965,7 @@
 
   .dense-row-link:hover,
   .dense-row-link:focus-visible {
-    color: var(--text-strong);
+    color: white;
     outline: none;
   }
 
@@ -974,7 +974,7 @@
     justify-items: end;
     gap: 0.3rem;
     flex: 0 0 auto;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.78rem;
     text-align: right;
   }
@@ -996,7 +996,7 @@
   }
 
   .chart-step span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.78rem;
   }
 
@@ -1014,36 +1014,36 @@
   .chart-dot {
     width: 0.5rem;
     height: 0.5rem;
-    background: var(--positive);
+    background: var(--color-success);
     border-radius: 999px;
   }
 
   .negative-dot {
-    background: var(--negative);
+    background: var(--color-error);
   }
 
   .chart-bar {
     flex: 1;
     height: 0.35rem;
-    background: var(--surface);
+    background: var(--color-base-200);
   }
 
   .chart-fill {
     height: 100%;
-    background: var(--positive);
+    background: var(--color-success);
   }
 
   .negative {
-    color: var(--negative);
+    color: var(--color-error);
   }
 
   .positive {
-    color: var(--positive);
+    color: var(--color-success);
   }
 
   .panel-empty {
     padding: 1rem 0;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   @media (max-width: 1024px) {
@@ -1084,7 +1084,7 @@
   }
 
   .compose-area {
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     padding-top: 1rem;
     margin-top: 0.5rem;
     display: flex;
@@ -1095,10 +1095,10 @@
   .compose-subject,
   .compose-body {
     width: 100%;
-    border: 1px solid var(--border-subtle);
+    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     border-radius: 2px;
-    background: var(--surface);
-    color: var(--text);
+    background: var(--color-base-200);
+    color: var(--color-base-content);
     font-family: inherit;
     font-size: 0.9rem;
     padding: 0.4rem 0.6rem;
@@ -1109,7 +1109,7 @@
   .compose-subject:focus,
   .compose-body:focus {
     outline: none;
-    border-color: var(--text-muted);
+    border-color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .compose-actions {
@@ -1118,16 +1118,16 @@
   }
 
   .compose-error {
-    color: var(--negative);
+    color: var(--color-error);
     font-size: 0.85rem;
     margin: 0;
   }
 
   .compose-signin {
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     padding-top: 1rem;
     margin-top: 0.5rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: 0.875rem;
   }
 </style>

@@ -10,6 +10,6 @@
   let { value = $bindable(), class: className = '', children, ...restProps }: Props = $props();
 </script>
 
-<TabsPrimitive.Root {...restProps} bind:value class={cn('tabs-root', className)}>
+<TabsPrimitive.Root {...restProps} bind:value class={cn('w-full', className)}>
   {@render children?.()}
 </TabsPrimitive.Root>

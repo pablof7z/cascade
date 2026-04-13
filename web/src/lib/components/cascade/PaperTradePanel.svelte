@@ -585,7 +585,7 @@
     display: grid;
     gap: 1rem;
     padding: 1rem 0;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .trade-panel-head,
@@ -598,12 +598,12 @@
   .trade-panel h3,
   .trade-balance strong,
   .trade-field strong {
-    color: var(--text-strong);
+    color: white;
   }
 
   .trade-panel p,
   .trade-panel span {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .trade-side-row {
@@ -616,21 +616,21 @@
   .trade-field input {
     width: 100%;
     box-sizing: border-box;
-    border: 1px solid var(--border-subtle);
+    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     background: transparent;
-    color: var(--text-strong);
+    color: white;
     padding: 0.85rem 0.95rem;
   }
 
   .trade-side-row button.active {
-    border-color: var(--text-strong);
+    border-color: white;
   }
 
   .trade-error {
-    color: var(--negative);
+    color: var(--color-error);
   }
 
   .trade-muted {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 </style>

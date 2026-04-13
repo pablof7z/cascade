@@ -8,19 +8,9 @@
   > = $props();
 </script>
 
-<AvatarPrimitive.Root {...restProps} class={cn('avatar-root', className)}>
+<AvatarPrimitive.Root
+  {...restProps}
+  class={cn('avatar inline-flex shrink-0 overflow-hidden rounded-md bg-base-300 text-white', className)}
+>
   {@render children?.()}
 </AvatarPrimitive.Root>
-
-<style>
-  :global(.avatar-root) {
-    position: relative;
-    display: inline-flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    border-radius: 9999px;
-    background: rgba(17, 17, 17, 0.06);
-  }
-</style>

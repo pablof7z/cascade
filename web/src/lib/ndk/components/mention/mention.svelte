@@ -67,7 +67,7 @@
   .mention {
     display: inline-flex;
     align-items: center;
-    color: var(--text-strong);
+    color: white;
     text-decoration: underline;
     text-decoration-color: rgba(17, 17, 17, 0.25);
     text-underline-offset: 0.16em;

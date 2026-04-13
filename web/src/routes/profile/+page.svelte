@@ -41,7 +41,7 @@
   }
 
   .profile-kicker {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.16em;
@@ -55,7 +55,7 @@
   }
 
   .profile-gate p {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.75;
   }
 

@@ -107,32 +107,32 @@
 
   .treasury-page p {
     margin-top: 0.4rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .treasury-summary {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1px;
-    background: var(--border-subtle);
+    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .treasury-summary div {
     display: grid;
     gap: 0.35rem;
-    background: var(--bg);
+    background: var(--color-base-100);
     padding: 1rem;
   }
 
   .treasury-summary span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.74rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
   .treasury-summary strong {
-    color: var(--text-strong);
+    color: white;
     font-family: var(--font-mono);
     font-size: 1rem;
   }
@@ -148,7 +148,7 @@
 
   .treasury-list {
     display: grid;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .treasury-row {
@@ -157,12 +157,12 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 1rem 0;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .treasury-row strong {
     display: block;
-    color: var(--text-strong);
+    color: white;
     font-size: 0.94rem;
   }
 
@@ -175,7 +175,7 @@
   .treasury-aside {
     display: grid;
     gap: 0.25rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-family: var(--font-mono);
     font-size: 0.8rem;
     text-align: right;

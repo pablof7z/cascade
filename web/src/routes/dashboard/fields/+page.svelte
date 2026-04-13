@@ -82,13 +82,13 @@
 
   .fields-header p {
     margin-top: 0.4rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .fields-button {
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
     padding: 0.7rem 0.95rem;
-    color: var(--text-strong);
+    color: white;
     font-size: 0.92rem;
     font-weight: 500;
   }
@@ -102,14 +102,14 @@
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.76rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
   .field-table {
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .field-head,
@@ -122,7 +122,7 @@
 
   .field-head {
     padding: 0.7rem 0;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.74rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -130,7 +130,7 @@
 
   .field-row {
     padding: 1rem 0;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .field-row:hover {
@@ -139,19 +139,19 @@
 
   .field-row strong {
     display: block;
-    color: var(--text-strong);
+    color: white;
     font-size: 0.95rem;
   }
 
   .field-row p {
     margin-top: 0.35rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: 0.86rem;
     line-height: 1.6;
   }
 
   .field-row span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-family: var(--font-mono);
     font-size: 0.8rem;
     white-space: nowrap;

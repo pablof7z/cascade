@@ -171,7 +171,7 @@
           </Dialog.Description>
         </Dialog.Header>
 
-        <Dialog.Close class="dialog-close" aria-label="Close login">
+        <Dialog.Close class="btn btn-ghost btn-sm rounded-md px-0 text-neutral-400 hover:bg-base-300 hover:text-white" aria-label="Close login">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>

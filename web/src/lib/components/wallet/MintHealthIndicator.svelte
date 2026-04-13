@@ -60,19 +60,19 @@
     width: 0.45rem;
     height: 0.45rem;
     border-radius: 999px;
-    background: var(--text-faint);
+    background: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
   }
 
   .wallet-health span.connected {
-    background: var(--positive);
+    background: var(--color-success);
   }
 
   .wallet-health span.offline {
-    background: var(--negative);
+    background: var(--color-error);
   }
 
   .wallet-health small {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.76rem;
   }
 </style>

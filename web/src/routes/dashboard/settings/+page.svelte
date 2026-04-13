@@ -55,14 +55,14 @@
 
   .settings-page p {
     margin-top: 0.4rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .settings-section {
     display: grid;
     gap: 0.9rem;
     padding-top: 1.5rem;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .settings-section h2 {
@@ -73,15 +73,15 @@
     display: flex;
     align-items: center;
     gap: 0.7rem;
-    color: var(--text);
+    color: var(--color-base-content);
     font-size: 0.92rem;
   }
 
   .settings-button {
     width: fit-content;
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
     padding: 0.7rem 0.95rem;
-    color: var(--text-strong);
+    color: white;
     font-size: 0.92rem;
     font-weight: 500;
   }
@@ -93,15 +93,15 @@
   }
 
   .settings-inline span {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: 0.86rem;
   }
 
   .settings-inline input {
     width: 8rem;
-    border: 1px solid var(--border-subtle);
-    background: var(--bg);
-    color: var(--text-strong);
+    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
+    background: var(--color-base-100);
+    color: white;
     padding: 0.55rem 0.7rem;
   }
 </style>

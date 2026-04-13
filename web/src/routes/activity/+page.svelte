@@ -161,7 +161,7 @@
   }
 
   .activity-kicker {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.16em;
@@ -175,7 +175,7 @@
   }
 
   .activity-copy p {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.75;
   }
 
@@ -194,14 +194,14 @@
   }
 
   .activity-stats span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.76rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
 
   .activity-stats strong {
-    color: var(--text-strong);
+    color: white;
     font-family: var(--font-mono);
     font-size: 1rem;
   }
@@ -220,15 +220,15 @@
     border: none;
     border-bottom: 2px solid transparent;
     background: transparent;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.88rem;
     font-weight: 500;
     cursor: pointer;
   }
 
   .activity-tabs button.active {
-    border-bottom-color: var(--text-strong);
-    color: var(--text-strong);
+    border-bottom-color: white;
+    color: white;
   }
 
   .activity-list {
@@ -251,7 +251,7 @@
   }
 
   .row-label {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.12em;
@@ -259,13 +259,13 @@
   }
 
   .row-main strong {
-    color: var(--text-strong);
+    color: white;
     font-size: 1rem;
   }
 
   .row-main p,
   .row-time {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.82rem;
     line-height: 1.6;
   }
@@ -277,7 +277,7 @@
 
   .activity-empty {
     padding: 1rem 0;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   @media (max-width: 900px) {

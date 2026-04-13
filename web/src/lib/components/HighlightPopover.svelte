@@ -177,7 +177,7 @@
     position: fixed;
     transform: translate(-50%, -100%);
     z-index: 1000;
-    background: var(--text-strong);
+    background: white;
     color: white;
     border-radius: var(--radius-md);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);

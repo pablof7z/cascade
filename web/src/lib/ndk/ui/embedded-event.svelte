@@ -84,10 +84,10 @@
     align-items: center;
     min-height: 1.8rem;
     padding: 0 0.6rem;
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
     border-radius: 9999px;
-    background: var(--surface-soft);
-    color: var(--muted);
+    background: var(--color-base-300);
+    color: var(--color-neutral-content);
     font-size: 0.8rem;
   }
 

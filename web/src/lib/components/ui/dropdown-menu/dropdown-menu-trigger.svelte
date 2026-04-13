@@ -8,23 +8,9 @@
   > = $props();
 </script>
 
-<DropdownMenuPrimitive.Trigger {...restProps} class={cn('dropdown-menu-trigger', className)}>
+<DropdownMenuPrimitive.Trigger
+  {...restProps}
+  class={cn('appearance-none border-0 bg-transparent focus-visible:outline-none data-[state=open]:translate-y-px', className)}
+>
   {@render children?.()}
 </DropdownMenuPrimitive.Trigger>
-
-<style>
-  :global(.dropdown-menu-trigger) {
-    appearance: none;
-    border: 0;
-    cursor: pointer;
-  }
-
-  :global(.dropdown-menu-trigger:focus-visible) {
-    outline: 2px solid rgba(17, 17, 17, 0.18);
-    outline-offset: 3px;
-  }
-
-  :global(.dropdown-menu-trigger[data-state='open']) {
-    transform: translateY(-1px);
-  }
-</style>

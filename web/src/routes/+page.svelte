@@ -489,7 +489,7 @@
   .hero-copy p {
     max-width: 30rem;
     margin-top: 1.5rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: clamp(1.15rem, 2vw, 1.55rem);
     line-height: 1.55;
   }
@@ -510,14 +510,14 @@
   }
 
   .hero-secondary {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.86rem;
     font-weight: 500;
   }
 
   .hero-secondary:hover,
   .hero-secondary:focus-visible {
-    color: var(--text);
+    color: var(--color-base-content);
     outline: none;
   }
 
@@ -529,7 +529,7 @@
 
   .hero-kicker,
   .section-kicker {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.18em;
@@ -550,7 +550,7 @@
 
   .featured-market:hover h2,
   .featured-market:focus-visible h2 {
-    color: var(--positive);
+    color: var(--color-success);
     outline: none;
   }
 
@@ -562,7 +562,7 @@
   }
 
   .featured-price {
-    color: var(--positive);
+    color: var(--color-success);
     font-family: var(--font-mono);
     font-size: clamp(3rem, 5vw, 4.5rem);
     font-weight: 700;
@@ -581,14 +581,14 @@
     display: flex;
     flex-wrap: wrap;
     gap: 1.2rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.84rem;
   }
 
   .featured-market p,
   .trending-lead p {
     max-width: 34rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.7;
   }
 
@@ -610,7 +610,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.55rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.12em;
@@ -620,7 +620,7 @@
   .live-dot {
     width: 0.45rem;
     height: 0.45rem;
-    background: var(--positive);
+    background: var(--color-success);
     border-radius: 999px;
     box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5);
     animation: pulse 1.9s infinite;
@@ -643,24 +643,24 @@
     display: inline-flex;
     align-items: center;
     gap: 0.65rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: 0.86rem;
     white-space: nowrap;
   }
 
   .ticker-category {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.7rem;
     font-family: var(--font-mono);
     text-transform: uppercase;
   }
 
   .ticker-title {
-    color: var(--text);
+    color: var(--color-base-content);
   }
 
   .ticker-empty {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.86rem;
   }
 
@@ -687,7 +687,7 @@
   .home-section-header p,
   .why-copy p {
     margin-top: 0.25rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.86rem;
   }
 
@@ -713,7 +713,7 @@
   }
 
   .lead-price {
-    color: var(--positive);
+    color: var(--color-success);
     font-family: var(--font-mono);
     font-size: clamp(2.8rem, 4vw, 4rem);
     font-weight: 700;
@@ -735,7 +735,7 @@
 
   .rank-head {
     padding: 1rem 0 0.85rem 2rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.7rem;
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -751,7 +751,7 @@
   .rank-row:focus-visible,
   .stack-row:hover,
   .stack-row:focus-visible {
-    color: var(--text-strong);
+    color: white;
     outline: none;
   }
 
@@ -763,7 +763,7 @@
   }
 
   .rank-number {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-family: var(--font-mono);
     font-size: 0.82rem;
     line-height: 1.6;
@@ -776,7 +776,7 @@
 
   .rank-title {
     overflow: hidden;
-    color: var(--text-strong);
+    color: white;
     font-size: 1rem;
     font-weight: 600;
     line-height: 1.4;
@@ -785,7 +785,7 @@
   }
 
   .rank-subtitle {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.8rem;
   }
 
@@ -820,7 +820,7 @@
 
   .stack-row p {
     margin-top: 0.25rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.83rem;
     line-height: 1.55;
   }
@@ -830,18 +830,18 @@
     justify-items: end;
     gap: 0.25rem;
     flex: 0 0 auto;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.8rem;
     text-align: right;
   }
 
   .discussion-author {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .panel-empty {
     padding: 1.1rem 0;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .why-section {
@@ -865,7 +865,7 @@
   }
 
   .why-grid article span {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: 1.2rem;
   }
 
@@ -874,7 +874,7 @@
   }
 
   .why-grid article p {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.88rem;
     line-height: 1.7;
   }

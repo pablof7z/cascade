@@ -7,12 +7,7 @@
     $props();
 </script>
 
-<DropdownMenuPrimitive.Separator {...restProps} class={cn('dropdown-menu-separator', className)} />
-
-<style>
-  :global(.dropdown-menu-separator) {
-    height: 1px;
-    margin: 0.35rem 0.75rem;
-    background: rgba(17, 17, 17, 0.08);
-  }
-</style>
+<DropdownMenuPrimitive.Separator
+  {...restProps}
+  class={cn('my-1 h-px bg-neutral-800', className)}
+/>

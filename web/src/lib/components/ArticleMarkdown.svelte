@@ -138,7 +138,7 @@
   }
 
   .article-markdown :global(.article-markdown__content) {
-    color: var(--text);
+    color: var(--color-base-content);
   }
 
   .article-markdown :global(.article-markdown__content > :first-child) {
@@ -150,7 +150,7 @@
   .article-markdown :global(.article-markdown__content h3),
   .article-markdown :global(.article-markdown__content h4) {
     margin: 2.2rem 0 1rem;
-    color: var(--text-strong);
+    color: white;
     font-family: var(--font-serif);
     font-weight: 700;
     letter-spacing: -0.02em;
@@ -189,24 +189,24 @@
   .article-markdown :global(.article-markdown__content blockquote) {
     margin: 2rem 0;
     padding-left: 1.2rem;
-    border-left: 3px solid var(--border);
-    color: var(--muted);
+    border-left: 3px solid var(--color-neutral);
+    color: var(--color-neutral-content);
     font-style: italic;
   }
 
   .article-markdown :global(.article-markdown__content pre) {
     margin: 1.5rem 0;
     padding: 1rem;
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
     border-radius: var(--radius-sm);
-    background: var(--surface-soft);
+    background: var(--color-base-300);
     overflow-x: auto;
   }
 
   .article-markdown :global(.article-markdown__content code) {
     padding: 0.12rem 0.32rem;
     border-radius: 4px;
-    background: var(--surface-soft);
+    background: var(--color-base-300);
     font-size: 0.88rem;
     font-family: var(--font-mono);
   }
@@ -217,7 +217,7 @@
   }
 
   .article-markdown :global(.article-markdown__content a) {
-    color: var(--text-strong);
+    color: white;
     text-decoration: underline;
     text-decoration-color: rgba(17, 17, 17, 0.28);
     text-underline-offset: 0.18em;
@@ -228,13 +228,13 @@
     height: auto;
     margin: 1.75rem 0;
     border-radius: var(--radius-md);
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
   }
 
   .article-markdown :global(.article-markdown__content hr) {
     margin: 2rem 0;
     border: 0;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--color-neutral);
   }
 
   .article-markdown :global(.article-markdown__content table) {
@@ -247,7 +247,7 @@
   .article-markdown :global(.article-markdown__content th),
   .article-markdown :global(.article-markdown__content td) {
     padding: 0.65rem 0.75rem;
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
     text-align: left;
   }
 

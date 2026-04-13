@@ -8,18 +8,9 @@
   > = $props();
 </script>
 
-<TabsPrimitive.List {...restProps} class={cn('tabs-list', className)}>
+<TabsPrimitive.List
+  {...restProps}
+  class={cn('tabs tabs-bordered w-full justify-start gap-4 border-b border-neutral-800 bg-transparent p-0', className)}
+>
   {@render children?.()}
 </TabsPrimitive.List>
-
-<style>
-  :global(.tabs-list) {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.15rem;
-    border-radius: 0.6rem;
-    background: var(--surface-hover);
-    border: 1px solid var(--border-subtle);
-    padding: 0.2rem;
-  }
-</style>

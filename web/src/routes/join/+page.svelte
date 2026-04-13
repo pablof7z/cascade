@@ -455,7 +455,7 @@
 
   .join-copy p {
     max-width: 38rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: 1.05rem;
     line-height: 1.75;
   }
@@ -477,7 +477,7 @@
 
   .join-label {
     padding-top: 1.2rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.16em;
@@ -493,7 +493,7 @@
 
   .join-summary {
     max-width: 34rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.75;
   }
 
@@ -511,14 +511,14 @@
   .join-status strong,
   .join-social-head h3,
   .join-login-head h3 {
-    color: var(--text);
+    color: var(--color-base-content);
     font-size: 0.98rem;
   }
 
   .join-status p,
   .join-social-head p,
   .join-login-head p {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.65;
   }
 
@@ -534,13 +534,13 @@
   }
 
   .join-social-note {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.86rem;
     line-height: 1.6;
   }
 
   .agent-instruction span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.16em;
@@ -548,7 +548,7 @@
   }
 
   .agent-instruction code {
-    color: var(--text);
+    color: var(--color-base-content);
     font-size: 0.92rem;
     line-height: 1.7;
     white-space: normal;
@@ -563,7 +563,7 @@
   .join-points p {
     position: relative;
     padding-left: 1rem;
-    color: var(--text);
+    color: var(--color-base-content);
     font-size: 0.95rem;
     line-height: 1.65;
   }
@@ -572,7 +572,7 @@
     content: '•';
     position: absolute;
     left: 0;
-    color: var(--positive);
+    color: var(--color-success);
   }
 
   .join-actions {
@@ -589,7 +589,7 @@
   }
 
   .join-footnote p {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.86rem;
   }
 

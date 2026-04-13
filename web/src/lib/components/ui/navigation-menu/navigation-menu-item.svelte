@@ -8,6 +8,6 @@
   > = $props();
 </script>
 
-<NavigationMenuPrimitive.Item {...restProps} class={cn('nav-menu-item', className)}>
+<NavigationMenuPrimitive.Item {...restProps} class={cn('list-none', className)}>
   {@render children?.()}
 </NavigationMenuPrimitive.Item>

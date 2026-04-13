@@ -139,7 +139,7 @@
   .how-hero p,
   .how-section p,
   .how-section li {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .how-hero p {
@@ -152,7 +152,7 @@
     display: grid;
     gap: 1.5rem;
     padding-top: 2rem;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .how-split {
@@ -179,26 +179,26 @@
   .how-discussion {
     display: grid;
     gap: 1px;
-    background: var(--border-subtle);
+    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .how-stack article,
   .how-discussion article {
     display: grid;
     gap: 0.4rem;
-    background: var(--surface);
+    background: var(--color-base-200);
     padding: 1rem 1.1rem;
   }
 
   .how-stack strong,
   .how-discussion strong,
   .how-network-main {
-    color: var(--text-strong);
+    color: white;
   }
 
   .how-stack span,
   .how-network-links span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-family: var(--font-mono);
     font-size: 0.82rem;
   }
@@ -206,13 +206,13 @@
   .how-network {
     display: grid;
     gap: 1rem;
-    border: 1px solid var(--border-subtle);
+    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     padding: 1.1rem;
   }
 
   .how-network-main {
     padding-bottom: 0.9rem;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     font-size: 1.05rem;
   }
 
@@ -223,13 +223,13 @@
 
   .how-network-links span {
     padding-left: 1rem;
-    border-left: 1px solid var(--border-subtle);
+    border-left: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .how-curve {
     display: grid;
     gap: 1px;
-    background: var(--border-subtle);
+    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .how-curve div {
@@ -237,12 +237,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    background: var(--surface);
+    background: var(--color-base-200);
     padding: 1rem 1.1rem;
   }
 
   .how-curve span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-family: var(--font-mono);
   }
 

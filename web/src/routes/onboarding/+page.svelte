@@ -817,7 +817,7 @@
   }
 
   .ob-prefill-note p {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.6;
   }
 

@@ -15,46 +15,22 @@
   }
 </script>
 
-<nav class="cascade-nav" aria-label="Primary">
-  {#each items as item}
-    <a class:active={isActive(item.href)} href={item.href}>{item.label}</a>
-  {/each}
+<nav
+  class="order-3 w-full overflow-x-auto border-t border-neutral-800 pt-3 md:order-none md:w-auto md:border-t-0 md:pt-0"
+  aria-label="Primary"
+>
+  <ul class="menu menu-horizontal min-h-0 flex-nowrap gap-4 bg-transparent p-0 text-sm font-medium">
+    {#each items as item}
+      <li>
+        <a
+          class={isActive(item.href)
+            ? '-mb-px rounded-none border-b-2 border-white px-0 pb-2 pt-1 text-white hover:bg-transparent'
+            : '-mb-px rounded-none border-b-2 border-transparent px-0 pb-2 pt-1 text-neutral-500 hover:bg-transparent hover:text-neutral-300'}
+          href={item.href}
+        >
+          {item.label}
+        </a>
+      </li>
+    {/each}
+  </ul>
 </nav>
-
-<style>
-  .cascade-nav {
-    display: flex;
-    align-items: center;
-    gap: 1.2rem;
-    overflow-x: auto;
-  }
-
-  .cascade-nav a {
-    flex: 0 0 auto;
-    padding: 0.35rem 0;
-    border-bottom: 2px solid transparent;
-    color: var(--text-muted);
-    font-size: 0.84rem;
-    font-weight: 500;
-    letter-spacing: 0.01em;
-    transition: color 140ms ease, border-color 140ms ease;
-  }
-
-  .cascade-nav a:hover,
-  .cascade-nav a:focus-visible,
-  .cascade-nav a.active {
-    color: var(--text-strong);
-    border-color: var(--text-strong);
-    outline: none;
-  }
-
-  @media (max-width: 900px) {
-    .cascade-nav {
-      order: 3;
-      width: 100%;
-      padding-top: 0.75rem;
-      border-top: 1px solid var(--border-subtle);
-      gap: 1rem;
-    }
-  }
-</style>

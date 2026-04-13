@@ -10,17 +10,6 @@
   let { children, class: className = '' }: Props = $props();
 </script>
 
-<div class={cn('dialog-footer', className)}>
+<div class={cn('flex justify-end gap-2 border-t border-neutral-800 px-5 py-4', className)}>
   {@render children?.()}
 </div>
-
-<style>
-  :global(.dialog-footer) {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    padding: 1rem 1.2rem;
-    border-top: 1px solid var(--border-subtle);
-  }
-</style>

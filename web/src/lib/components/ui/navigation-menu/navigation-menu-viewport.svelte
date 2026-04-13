@@ -8,6 +8,9 @@
   > = $props();
 </script>
 
-<NavigationMenuPrimitive.Viewport {...restProps} class={cn('nav-menu-viewport', className)}>
+<NavigationMenuPrimitive.Viewport
+  {...restProps}
+  class={cn('rounded-md border border-neutral-800 bg-base-200 shadow-none', className)}
+>
   {@render children?.()}
 </NavigationMenuPrimitive.Viewport>

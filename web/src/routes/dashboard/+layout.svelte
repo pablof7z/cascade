@@ -58,7 +58,7 @@
   .dash-sidebar {
     width: 13.5rem;
     flex-shrink: 0;
-    border-right: 1px solid var(--border-subtle);
+    border-right: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .dash-nav {
@@ -77,20 +77,20 @@
 
   .dash-group a {
     padding: 0.55rem 0.8rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: 0.92rem;
     font-weight: 500;
   }
 
   .dash-group a:hover,
   .dash-group a.active {
-    background: var(--surface-hover);
-    color: var(--text-strong);
+    background: var(--color-base-300);
+    color: white;
   }
 
   .dash-divider {
     margin: 0.8rem 0;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .dash-spacer {
@@ -98,17 +98,17 @@
   }
 
   .dash-create {
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
     padding: 0.7rem 0.8rem;
-    color: var(--text);
+    color: var(--color-base-content);
     font-size: 0.92rem;
     font-weight: 500;
     text-align: center;
   }
 
   .dash-create:hover {
-    border-color: var(--text-muted);
-    color: var(--text-strong);
+    border-color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
+    color: white;
   }
 
   .dash-main {
@@ -124,7 +124,7 @@
     .dash-sidebar {
       width: auto;
       border-right: 0;
-      border-bottom: 1px solid var(--border-subtle);
+      border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     }
 
     .dash-nav {

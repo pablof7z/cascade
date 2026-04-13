@@ -228,7 +228,7 @@
   }
 
   .field-header {
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     padding: 1.5rem 1.75rem 0;
   }
 
@@ -236,7 +236,7 @@
     display: flex;
     align-items: center;
     gap: 0.45rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.78rem;
   }
 
@@ -252,7 +252,7 @@
   .field-title-block p {
     max-width: 54rem;
     margin-top: 0.45rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.6;
   }
 
@@ -261,7 +261,7 @@
     flex-wrap: wrap;
     gap: 1rem;
     margin: 1rem 0;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-family: var(--font-mono);
     font-size: 0.76rem;
   }
@@ -269,21 +269,21 @@
   .field-tabs {
     display: flex;
     gap: 0.75rem;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
     margin-bottom: -1px;
   }
 
   .field-tabs a {
     padding: 0.8rem 0.1rem;
     border-bottom: 2px solid transparent;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.92rem;
     font-weight: 500;
   }
 
   .field-tabs a.active {
-    border-bottom-color: var(--text-strong);
-    color: var(--text-strong);
+    border-bottom-color: white;
+    color: white;
   }
 
   .field-content {
@@ -314,7 +314,7 @@
   .capital-box p,
   .capital-box span,
   .field-missing p {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .field-panel-heading-spaced {
@@ -325,14 +325,14 @@
   .meeting-list,
   .simple-list {
     display: grid;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .action-card,
   .meeting-row,
   .simple-row {
     padding: 1rem 0;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .action-card-head,
@@ -347,7 +347,7 @@
   .meeting-meta strong,
   .simple-row strong,
   .capital-box strong {
-    color: var(--text-strong);
+    color: white;
   }
 
   .action-card p,
@@ -355,7 +355,7 @@
   .simple-row p,
   .simple-row small {
     margin-top: 0.35rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.6;
   }
 
@@ -379,20 +379,20 @@
     display: grid;
     gap: 0.75rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .capital-box-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1px;
-    background: var(--border-subtle);
+    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .capital-box-grid div {
     display: grid;
     gap: 0.35rem;
-    background: var(--surface);
+    background: var(--color-base-200);
     padding: 0.9rem 1rem;
   }
 
@@ -403,21 +403,21 @@
   .badge {
     display: inline-flex;
     align-items: center;
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
     padding: 0.2rem 0.5rem;
     font-size: 0.75rem;
   }
 
   .badge-steady {
-    color: var(--positive);
+    color: var(--color-success);
   }
 
   .badge-review {
-    color: var(--negative);
+    color: var(--color-error);
   }
 
   .badge-watch {
-    color: var(--text);
+    color: var(--color-base-content);
   }
 
   .field-missing {
@@ -428,9 +428,9 @@
 
   .field-missing a {
     width: fit-content;
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-neutral);
     padding: 0.7rem 0.95rem;
-    color: var(--text-strong);
+    color: white;
     font-size: 0.92rem;
   }
 

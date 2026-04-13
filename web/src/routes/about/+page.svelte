@@ -68,20 +68,20 @@
     max-width: 46rem;
     margin-top: 0.8rem;
     font-size: 1.05rem;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   .about-section {
     display: grid;
     gap: 1.5rem;
     padding-top: 2rem;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .about-principles {
     display: grid;
     gap: 1px;
-    background: var(--border-subtle);
+    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .principle-row {
@@ -89,19 +89,19 @@
     grid-template-columns: 10rem 1fr;
     gap: 2rem;
     align-items: start;
-    background: var(--surface);
+    background: var(--color-base-200);
     padding: 1.1rem;
   }
 
   .principle-row span {
-    color: var(--text-strong);
+    color: white;
     font-weight: 600;
     font-size: 0.9rem;
     padding-top: 0.15rem;
   }
 
   .principle-row p {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     margin: 0;
     line-height: 1.6;
   }
@@ -110,7 +110,7 @@
     display: grid;
     gap: 1rem;
     padding-top: 2rem;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
   }
 
   .about-cta h2 {
@@ -119,7 +119,7 @@
   }
 
   .about-cta p {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     margin: 0;
   }
 

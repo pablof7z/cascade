@@ -221,7 +221,7 @@
 
   .analytics-kicker,
   .event-kind {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.16em;
@@ -235,7 +235,7 @@
   }
 
   .analytics-copy p {
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.75;
   }
 
@@ -254,14 +254,14 @@
   }
 
   .analytics-stats span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.76rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
 
   .analytics-stats strong {
-    color: var(--text-strong);
+    color: white;
     font-family: var(--font-mono);
     font-size: 1rem;
   }
@@ -295,7 +295,7 @@
   }
 
   .panel-header span {
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.78rem;
   }
 
@@ -314,7 +314,7 @@
 
   .analytics-head {
     padding: 0.9rem 0;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -329,20 +329,20 @@
 
   .market-cell strong,
   .stack-row strong {
-    color: var(--text-strong);
+    color: white;
     font-size: 1rem;
   }
 
   .market-cell p,
   .stack-row p {
     margin-top: 0.25rem;
-    color: var(--text-faint);
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.82rem;
     line-height: 1.6;
   }
 
   .mono-cell {
-    color: var(--text-strong);
+    color: white;
     font-family: var(--font-mono);
     font-size: 0.84rem;
   }
@@ -356,7 +356,7 @@
 
   .analytics-empty {
     padding: 1rem 0;
-    color: var(--text-muted);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
   }
 
   @media (max-width: 1100px) {

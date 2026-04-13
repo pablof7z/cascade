@@ -12,42 +12,11 @@
 
 <DropdownMenuPrimitive.Item
   {...restProps}
-  class={cn('dropdown-menu-item', inset && 'dropdown-menu-item-inset', className)}
+  class={cn(
+    'menu-item flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-neutral-300 outline-none transition hover:bg-base-300 hover:text-white data-[highlighted]:bg-base-300 data-[highlighted]:text-white data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40',
+    inset && 'pl-10',
+    className
+  )}
 >
   {@render children?.()}
 </DropdownMenuPrimitive.Item>
-
-<style>
-  :global(.dropdown-menu-item) {
-    display: flex;
-    width: calc(100% - 0.7rem);
-    margin: 0.1rem 0.35rem;
-    align-items: center;
-    gap: 0.65rem;
-    border-radius: 0.7rem;
-    padding: 0.6rem 0.8rem;
-    color: var(--text);
-    font-size: 0.9rem;
-    cursor: pointer;
-    user-select: none;
-    transition:
-      background-color 160ms ease,
-      color 160ms ease;
-  }
-
-  :global(.dropdown-menu-item-inset) {
-    padding-left: 2.5rem;
-  }
-
-  :global(.dropdown-menu-item[data-highlighted]) {
-    background: rgba(17, 17, 17, 0.05);
-    color: var(--text-strong);
-    outline: none;
-  }
-
-  :global(.dropdown-menu-item[data-disabled]) {
-    opacity: 0.45;
-    cursor: not-allowed;
-    transform: none;
-  }
-</style>

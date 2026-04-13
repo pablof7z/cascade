@@ -10,14 +10,6 @@
   let { children, class: className = '' }: Props = $props();
 </script>
 
-<div class={cn('dialog-header', className)}>
+<div class={cn('flex flex-col gap-1', className)}>
   {@render children?.()}
 </div>
-
-<style>
-  :global(.dialog-header) {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-</style>

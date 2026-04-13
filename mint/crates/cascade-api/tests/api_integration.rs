@@ -1256,6 +1256,14 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .as_str()
         .unwrap()
         .to_string();
+    assert_eq!(
+        sell_payload["settlement"]["metadata"]["wallet_mint_quote_redeem_route"].as_str(),
+        Some(format!("/v1/mint/quote/wallet/{wallet_mint_quote_id}").as_str())
+    );
+    assert_eq!(
+        sell_payload["settlement"]["metadata"]["wallet_mint_issue_route"].as_str(),
+        Some("/v1/mint/wallet")
+    );
 
     let wallet_quote_response = client
         .get(format!("{url}/v1/mint/quote/wallet/{wallet_mint_quote_id}"))

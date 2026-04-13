@@ -1,3 +1,39 @@
+/* ── Utility classes used within auth UI ────────────────────────── */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stack.tight {
+  gap: 0.4rem;
+}
+
+.caption {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.7rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.status-blue {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+/* ── Auth panel layout ──────────────────────────────────────────── */
+
 .auth-panel {
   display: grid;
   justify-items: end;

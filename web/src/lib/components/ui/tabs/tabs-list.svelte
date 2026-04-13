@@ -18,7 +18,7 @@
     align-items: center;
     gap: 0.15rem;
     border-radius: 0.6rem;
-    background: var(--surface);
+    background: var(--surface-hover);
     border: 1px solid var(--border-subtle);
     padding: 0.2rem;
   }

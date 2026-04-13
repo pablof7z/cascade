@@ -4,13 +4,18 @@
   color-scheme: dark;
   --bg: #0a0a0a;
   --surface: #171717;
+  --surface-soft: #1c1c1c;
   --surface-hover: #262626;
   --border: #404040;
   --border-subtle: #262626;
+  --border-light: #333333;
   --text-strong: #ffffff;
   --text: #d4d4d4;
   --text-muted: #a3a3a3;
   --text-faint: #737373;
+  /* aliases kept for backwards-compat with components using old names */
+  --muted: #a3a3a3;
+  --pale-yellow: #fef9e7;
   --positive: #34d399;
   --negative: #fb7185;
   --page-width: 1280px;
@@ -257,6 +262,7 @@ p {
   flex-wrap: wrap;
 }
 
+.button,
 .button-primary,
 .button-secondary,
 .button-ghost {
@@ -272,9 +278,25 @@ p {
   cursor: pointer;
 }
 
+.button:disabled,
+.button-primary:disabled,
+.button-secondary:disabled,
+.button-ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* .button (default) = primary: white background, dark text */
+.button,
 .button-primary {
   background: var(--text-strong);
   color: var(--bg);
+}
+
+.button:hover,
+.button:focus-visible {
+  background: #e5e5e5;
+  outline: none;
 }
 
 .button-primary:hover,
@@ -388,6 +410,11 @@ p {
 
 .negative {
   color: var(--negative);
+}
+
+.error {
+  color: var(--negative);
+  font-size: 0.88rem;
 }
 
 .table-list {

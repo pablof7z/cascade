@@ -36,9 +36,11 @@
   }
 
   :global(.tabs-trigger[data-state='active']) {
-    background: var(--surface-hover);
+    background: var(--surface);
     color: var(--text-strong);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.06);
   }
 
   :global(.tabs-trigger:focus-visible) {

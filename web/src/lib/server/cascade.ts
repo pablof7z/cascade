@@ -1,6 +1,4 @@
 import type { NDKFilter, NDKKind, NostrEvent } from '@nostr-dev-kit/ndk';
-import { getProductApiUrl } from '$lib/cascade/config';
-import { fetchProfilesByPubkeys, fetchUserWithProfile, getServerNdk } from '$lib/server/nostr';
 import {
   buildTradeSummary,
   parseDiscussionEvent,
@@ -12,7 +10,7 @@ import {
   type MarketTradeSummary,
   type PositionRecord,
   type TradeRecord
-} from '$lib/ndk/cascade';
+} from '../ndk/cascade.ts';
 
 const MARKET_CACHE_TTL_MS = 60_000;
 const DISCUSSION_CACHE_TTL_MS = 30_000;
@@ -29,6 +27,13 @@ let discussionCache: DiscussionRecord[] = [];
 let discussionCacheUpdatedAt = 0;
 let discussionRefresh: Promise<void> | undefined;
 
+type MarketDetailPayload = { market?: { raw_event?: NostrEvent } };
+
+type FetchMarketBySlugDeps = {
+  fetchProductJson?: typeof fetchProductJson;
+  fetchRelayMarketBySlug?: typeof fetchRelayMarketBySlug;
+};
+
 export async function fetchRecentMarkets(limit = 80): Promise<MarketRecord[]> {
   const stale = Date.now() - marketCacheUpdatedAt > MARKET_CACHE_TTL_MS;
   const underfilled = marketCache.length < limit;
@@ -43,16 +48,23 @@ export async function fetchRecentMarkets(limit = 80): Promise<MarketRecord[]> {
   return marketCache.slice(0, limit);
 }
 
-export async function fetchMarketBySlug(slug: string): Promise<MarketRecord | null> {
-  const payload = await fetchProductJson<{ market?: { raw_event?: NostrEvent } }>(
+export async function fetchMarketBySlug(
+  slug: string,
+  deps: FetchMarketBySlugDeps = {}
+): Promise<MarketRecord | null> {
+  const payload = await (deps.fetchProductJson ?? fetchProductJson)<MarketDetailPayload>(
     `/api/product/markets/slug/${encodeURIComponent(slug)}`
   );
-  const rawMarket = payload?.market?.raw_event;
-  return rawMarket ? parseMarketEvent(rawMarket) : null;
+  const marketFromDetail = payload?.market?.raw_event ? parseMarketEvent(payload.market.raw_event) : null;
+  if (marketFromDetail) return marketFromDetail;
+
+  const rawMarket = await (deps.fetchRelayMarketBySlug ?? fetchRelayMarketBySlug)(slug);
+  const marketFromRelay = rawMarket ? parseMarketEvent(rawMarket) : null;
+  return marketFromRelay?.slug === slug ? marketFromRelay : null;
 }
 
 export async function fetchMarketsByAuthor(pubkey: string, limit = 48): Promise<MarketRecord[]> {
-  const ndk = await getServerNdk();
+  const ndk = await getServerNdkClient();
   const events = await withRelayEventTimeout(
     ndk.fetchEvents(
       {
@@ -88,7 +100,7 @@ export async function fetchRecentDiscussions(limit = 80): Promise<DiscussionReco
 }
 
 export async function fetchMarketDiscussions(marketId: string, limit = 200): Promise<DiscussionRecord[]> {
-  const ndk = await getServerNdk();
+  const ndk = await getServerNdkClient();
   const events = await withRelayEventTimeout(
     ndk.fetchEvents(
       {
@@ -133,7 +145,7 @@ export async function fetchMarketTrades(market: MarketRecord, limit = 200): Prom
 }
 
 export async function fetchPositionsByPubkey(pubkey: string, limit = 120): Promise<PositionRecord[]> {
-  const ndk = await getServerNdk();
+  const ndk = await getServerNdkClient();
   const events = await ndk.fetchEvents(
     {
       kinds: [30078 as NDKKind],
@@ -150,12 +162,12 @@ export async function fetchPositionsByPubkey(pubkey: string, limit = 120): Promi
 }
 
 export async function fetchProfileContext(identifier: string) {
-  return fetchUserWithProfile(identifier);
+  return (await import('./nostr.ts')).fetchUserWithProfile(identifier);
 }
 
 export async function fetchProfilesForPubkeys(pubkeys: readonly string[]) {
   try {
-    return await fetchProfilesByPubkeys(pubkeys);
+    return await (await import('./nostr.ts')).fetchProfilesByPubkeys(pubkeys);
   } catch (error) {
     console.warn('fetchProfilesForPubkeys failed', error);
     return {};
@@ -227,7 +239,7 @@ async function refreshRecentDiscussions(limit: number): Promise<void> {
   if (discussionRefresh) return discussionRefresh;
 
   discussionRefresh = (async () => {
-    const ndk = await getServerNdk();
+    const ndk = await getServerNdkClient();
     const events = await withRelayEventTimeout(
       ndk.fetchEvents(
         {
@@ -255,10 +267,55 @@ async function refreshRecentDiscussions(limit: number): Promise<void> {
   return discussionRefresh;
 }
 
+async function fetchRelayMarketBySlug(slug: string): Promise<NostrEvent | null> {
+  const ndk = await getServerNdkClient();
+  const directMatch = await withRelayEventTimeout(
+    ndk.fetchEvents(
+      {
+        kinds: [982 as NDKKind],
+        '#d': [slug],
+        limit: 12
+      } satisfies NDKFilter,
+      { closeOnEose: true }
+    ),
+    `fetchRelayMarketBySlug:direct(${slug})`
+  );
+
+  const matchedDirectEvent = Array.from(directMatch)
+    .map((event) => event.rawEvent() as NostrEvent)
+    .find((event) => parseMarketEvent(event)?.slug === slug);
+  if (matchedDirectEvent) return matchedDirectEvent;
+
+  const recentEvents = await withRelayEventTimeout(
+    ndk.fetchEvents(
+      {
+        kinds: [982 as NDKKind],
+        limit: 120
+      } satisfies NDKFilter,
+      { closeOnEose: true }
+    ),
+    `fetchRelayMarketBySlug:recent(${slug})`
+  );
+
+  return (
+    Array.from(recentEvents)
+      .map((event) => event.rawEvent() as NostrEvent)
+      .find((event) => parseMarketEvent(event)?.slug === slug) ?? null
+  );
+}
+
 async function fetchProductJson<T>(path: string): Promise<T | null> {
-  const response = await fetch(`${getProductApiUrl()}${path}`);
+  const response = await fetch(`${await getProductApiBaseUrl()}${path}`);
   if (!response.ok) return null;
   return (await response.json()) as T;
+}
+
+async function getProductApiBaseUrl(): Promise<string> {
+  return (await import('../cascade/config.ts')).getProductApiUrl();
+}
+
+async function getServerNdkClient() {
+  return (await import('./nostr.ts')).getServerNdk();
 }
 
 function withRelayEventTimeout<T>(

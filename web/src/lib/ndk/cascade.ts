@@ -1,11 +1,17 @@
 import { NDKEvent, type NostrEvent } from '@nostr-dev-kit/ndk';
-import { formatProductAmount } from '$lib/cascade/format';
 
 export const CASCADE_MARKET_KIND = 982;
 export const CASCADE_TRADE_KIND = 983;
 export const CASCADE_DISCUSSION_KIND = 1111;
 export const CASCADE_BOOKMARK_KIND = 10003;
 export const CASCADE_POSITION_KIND = 30078;
+
+const USD_FORMATTER = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
 
 export type MarketRecord = {
   id: string;
@@ -328,7 +334,8 @@ export function threadUrl(slug: string, threadId: string): string {
 }
 
 export function formatSats(value: number | null | undefined): string {
-  return formatProductAmount(value, 'usd');
+  const amount = Math.max(0, value ?? 0);
+  return USD_FORMATTER.format(amount / 100);
 }
 
 export function formatProbability(probability: number | null | undefined): string {

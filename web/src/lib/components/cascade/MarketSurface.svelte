@@ -243,22 +243,6 @@
         <span>{discussionThreads.length} threads</span>
       </div>
 
-      <div class="market-header-actions">
-        {#if currentUser}
-          <a class="button-primary" href="/portfolio">Portfolio</a>
-        {:else}
-          <a class="button-primary" href="/join?from=/market/{market.slug}">Take a position</a>
-        {/if}
-      </div>
-
-      {#if paperEdition}
-        <PaperTradePanel
-          marketId={market.id}
-          marketSlug={market.slug}
-          yesProbability={impliedProbability}
-          noProbability={oppositeProbability}
-        />
-      {/if}
     </div>
   </div>
 </section>
@@ -268,34 +252,28 @@
 </section>
 
 {#if tab === 'overview'}
-  <section class="overview-top">
-    <article class="tilt-panel">
-      <h2 class={tilt.accentClass}>{tilt.label}</h2>
-      <p>{tilt.detail}</p>
-
-      <div class="overview-metrics">
-        <div>
-          <span>Move since first visible fill</span>
-          <strong class:positive={impliedProbability - openingProbability >= 0} class:negative={impliedProbability - openingProbability < 0}>
-            {impliedProbability - openingProbability >= 0 ? '+' : ''}{((impliedProbability - openingProbability) * 100).toFixed(1)}¢
-          </strong>
-        </div>
-        <div>
-          <span>Visible accounts</span>
-          <strong>{visibleAccounts}</strong>
-        </div>
-        <div>
-          <span>Average size</span>
-          <strong>{formatProductAmount(Math.round(averageTradeSize), paperEdition ? 'usd' : 'sat')} {valueUnitLabel}</strong>
-        </div>
-        <div>
-          <span>Discussion</span>
-          <strong>{discussionThreads.length} threads</strong>
-        </div>
+  <section class="trade-focus">
+    <article class="detail-section trade-focus-panel">
+      <div class="detail-header">
+        <h2>Take a position</h2>
+        <span>Lead with price, flow, and current access</span>
       </div>
-    </article>
 
-    <aside class="summary-rail">
+      <div class="trade-focus-actions">
+        {#if paperEdition}
+          <PaperTradePanel
+            marketId={market.id}
+            marketSlug={market.slug}
+            yesProbability={impliedProbability}
+            noProbability={oppositeProbability}
+          />
+        {:else if currentUser}
+          <a class="button-primary" href="/portfolio">Open portfolio</a>
+        {:else}
+          <a class="button-primary" href="/join?from=/market/{market.slug}">Take a position</a>
+        {/if}
+      </div>
+
       <div class="price-grid">
         <div>
           <span>LONG</span>
@@ -331,7 +309,35 @@
           </dd>
         </div>
       </dl>
-    </aside>
+    </article>
+    <article class="detail-section trade-read-panel">
+      <div class="detail-header">
+        <h2 class={tilt.accentClass}>{tilt.label}</h2>
+        <span>Market read</span>
+      </div>
+      <p class="trade-focus-copy">{tilt.detail}</p>
+
+      <div class="overview-metrics">
+        <div>
+          <span>Move since first visible fill</span>
+          <strong class:positive={impliedProbability - openingProbability >= 0} class:negative={impliedProbability - openingProbability < 0}>
+            {impliedProbability - openingProbability >= 0 ? '+' : ''}{((impliedProbability - openingProbability) * 100).toFixed(1)}¢
+          </strong>
+        </div>
+        <div>
+          <span>Visible accounts</span>
+          <strong>{visibleAccounts}</strong>
+        </div>
+        <div>
+          <span>Average size</span>
+          <strong>{formatProductAmount(Math.round(averageTradeSize), paperEdition ? 'usd' : 'sat')} {valueUnitLabel}</strong>
+        </div>
+        <div>
+          <span>Discussion</span>
+          <strong>{discussionThreads.length} threads</strong>
+        </div>
+      </div>
+    </article>
   </section>
 
   <section class="overview-grid">
@@ -733,7 +739,7 @@
     padding-top: 1rem;
   }
 
-  .overview-top,
+  .trade-focus,
   .overview-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
@@ -741,22 +747,14 @@
     padding-top: 2rem;
   }
 
-  .tilt-panel,
-  .detail-section,
-  .summary-rail {
+  .detail-section {
     display: grid;
     gap: 1.35rem;
   }
 
-  .tilt-panel h2 {
-    font-size: clamp(1.85rem, 3vw, 2.7rem);
-    letter-spacing: -0.05em;
-  }
-
-  .tilt-panel p {
-    max-width: 42rem;
-    color: var(--text-muted);
-    line-height: 1.75;
+  .trade-focus-panel,
+  .trade-read-panel {
+    padding-bottom: 0.25rem;
   }
 
   .overview-metrics {
@@ -850,6 +848,22 @@
   .detail-header h3 {
     font-size: 1.1rem;
     letter-spacing: -0.03em;
+  }
+
+  .trade-focus .detail-header h2 {
+    font-size: clamp(1.35rem, 2vw, 1.7rem);
+    letter-spacing: -0.03em;
+  }
+
+  .trade-focus-copy {
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.75;
+  }
+
+  .trade-focus-actions {
+    display: grid;
+    gap: 1rem;
   }
 
   .detail-header a {
@@ -1034,7 +1048,7 @@
 
   @media (max-width: 1024px) {
     .market-header,
-    .overview-top,
+    .trade-focus,
     .overview-grid,
     .overview-grid-reverse {
       grid-template-columns: 1fr;

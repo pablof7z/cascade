@@ -31,3 +31,17 @@ test('portfolio signed-out state uses friendly connection copy', async ({ page }
   expect(mainText).not.toContain('Debug:');
   expect(mainText).not.toMatch(/[0-9a-f]{32,}/i);
 });
+
+test('market detail leads with a trading section before the editorial case', async ({ page }) => {
+  await gotoFirstMarket(page);
+
+  const headings = await page.locator('main h2, main h3').evaluateAll((nodes) =>
+    nodes.map((node) => node.textContent?.trim() ?? '')
+  );
+  const tradeIndex = headings.indexOf('Take a position');
+  const caseIndex = headings.indexOf('Market case');
+
+  expect(tradeIndex).toBeGreaterThan(-1);
+  expect(caseIndex).toBeGreaterThan(-1);
+  expect(tradeIndex).toBeLessThan(caseIndex);
+});

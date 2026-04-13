@@ -26,8 +26,10 @@ pub use lmsr::LmsrEngine;
 pub use market::{Market, MarketStatus, Side};
 pub use market_manager::MarketManager;
 pub use product::{
-    FxQuoteSnapshot, MarketLaunchState, MarketTradeRecord, MarketVisibility, TradeQuoteSnapshot,
-    WalletFundingEvent, WalletFundingQuote, WalletFundingStatus,
+    FxQuoteDirection, FxQuoteSnapshot, FxQuoteSourceMetadata, MarketLaunchState, MarketTradeRecord,
+    MarketVisibility, TradeQuoteSnapshot, UsdcDepositIntent, UsdcDepositIntentStatus,
+    UsdcWithdrawal, UsdcWithdrawalStatus, WalletFundingEvent, WalletFundingQuote,
+    WalletFundingStatus,
 };
 pub use trade::TradeExecutor;
 

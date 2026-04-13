@@ -529,3 +529,13 @@ Launch should fail this gate if:
 - Spark as the canonical user wallet
 - mixed signet/mainnet discovery
 - making USDC a prerequisite for launch
+
+## Progress Notes
+
+### 2026-04-13
+
+- Milestone 3 now has a shared `QuoteSource` abstraction with Coinbase, Kraken, and Bitstamp adapters behind one executable `USD <-> msat` quote service.
+- Quote formation is now documented in code as: reject stale provider observations, require a minimum fresh-provider count, take the median BTC/USD reference rate, reject excessive provider disagreement, then apply a directional execution spread for `usd_to_msat` and `msat_to_usd`.
+- Locked FX snapshots are now persisted with expiry, executable and reference BTC/USD rates, spread, provider observations, and source metadata so funding and melt paths can reuse the same auditable quote record.
+- Funding and melt flows now reject expired FX snapshots instead of silently reusing stale prices.
+- Scope note: schema history now includes `mint/migrations/017_fx_quote_source_metadata.sql`, while runtime upgrade safety currently comes from `ensure_fx_quote_source_metadata_columns()` because `ADD COLUMN IF NOT EXISTS` was not reliable across the current SQLite test matrix.

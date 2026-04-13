@@ -3,14 +3,16 @@
 use crate::error::Result;
 use crate::market::{Market, MarketStatus, Side, Trade, TradeDirection};
 use crate::product::{
-    FxQuoteObservation, FxQuoteSnapshot, MarketLaunchState, MarketTradeRecord, MarketVisibility,
-    TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot, TradeSettlementInsert,
-    TradeSettlementRecord, TradeSettlementStatus, WalletFundingEvent, WalletFundingQuote,
-    WalletFundingRequest, WalletFundingRequestStatus, WalletFundingStatus,
+    FxQuoteObservation, FxQuoteSnapshot, FxQuoteSourceMetadata, MarketLaunchState,
+    MarketTradeRecord, MarketVisibility, TradeExecutionRequest, TradeExecutionRequestStatus,
+    TradeQuoteSnapshot, TradeSettlementInsert, TradeSettlementRecord, TradeSettlementStatus,
+    UsdcDepositIntent, UsdcDepositIntentStatus, UsdcWithdrawal, UsdcWithdrawalStatus,
+    WalletFundingEvent, WalletFundingQuote, WalletFundingRequest, WalletFundingRequestStatus,
+    WalletFundingStatus,
 };
 use crate::trade::Payout;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
-use sqlx::Row;
+use sqlx::{Row, Sqlite};
 use std::str::FromStr;
 
 /// Database connection pool
@@ -25,6 +27,41 @@ fn serialize_fx_observations(observations: &[FxQuoteObservation]) -> Result<Stri
 
 fn deserialize_fx_observations(observations_json: &str) -> Vec<FxQuoteObservation> {
     serde_json::from_str::<Vec<FxQuoteObservation>>(observations_json).unwrap_or_default()
+}
+
+fn serialize_fx_source_metadata(metadata: &FxQuoteSourceMetadata) -> Result<String> {
+    serde_json::to_string(metadata).map_err(|e| crate::error::CascadeError::database(e.to_string()))
+}
+
+fn deserialize_fx_source_metadata(metadata_json: &str) -> FxQuoteSourceMetadata {
+    serde_json::from_str::<FxQuoteSourceMetadata>(metadata_json).unwrap_or_default()
+}
+
+fn usdc_withdrawal_from_row(row: sqlx::sqlite::SqliteRow) -> UsdcWithdrawal {
+    UsdcWithdrawal {
+        id: row.get::<String, _>("id"),
+        request_id: row.get::<Option<String>, _>("request_id"),
+        pubkey: row.get::<String, _>("pubkey"),
+        provider: row.get::<Option<String>, _>("provider"),
+        provider_payout_id: row.get::<Option<String>, _>("provider_payout_id"),
+        network: row.get::<String, _>("network"),
+        asset: row.get::<String, _>("asset"),
+        destination_address: row.get::<String, _>("destination_address"),
+        wallet_amount_minor: row.get::<i64, _>("wallet_amount_minor").max(0) as u64,
+        asset_units: row.get::<i64, _>("asset_units").max(0) as u64,
+        onchain_tx_id: row.get::<Option<String>, _>("onchain_tx_id"),
+        status: row
+            .get::<String, _>("status")
+            .parse()
+            .unwrap_or(UsdcWithdrawalStatus::Pending),
+        error_message: row.get::<Option<String>, _>("error_message"),
+        change_signatures_json: row.get::<Option<String>, _>("change_signatures_json"),
+        metadata_json: row.get::<Option<String>, _>("metadata_json"),
+        created_at: row.get::<i64, _>("created_at"),
+        submitted_at: row.get::<Option<i64>, _>("submitted_at"),
+        completed_at: row.get::<Option<i64>, _>("completed_at"),
+        failed_at: row.get::<Option<i64>, _>("failed_at"),
+    }
 }
 
 impl CascadeDatabase {
@@ -95,6 +132,7 @@ impl CascadeDatabase {
         self.ensure_fx_quote_observations_column().await?;
         self.ensure_wallet_funding_quote_metadata_column().await?;
         self.ensure_trade_quote_settlement_columns().await?;
+        self.ensure_fx_quote_source_metadata_columns().await?;
 
         sqlx::query(include_str!(
             "../../../migrations/009_trade_settlements.sql"
@@ -116,6 +154,18 @@ impl CascadeDatabase {
         .execute(&self.pool)
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        sqlx::query(include_str!(
+            "../../../migrations/015_usdc_deposit_intents.sql"
+        ))
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        sqlx::query(include_str!("../../../migrations/016_usdc_withdrawals.sql"))
+            .execute(&self.pool)
+            .await
+            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         Ok(())
     }
@@ -311,6 +361,94 @@ impl CascadeDatabase {
         .execute(&self.pool)
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn ensure_fx_quote_source_metadata_columns(&self) -> Result<()> {
+        if !self
+            .column_exists("fx_quote_snapshots", "reference_btc_usd_price")
+            .await?
+        {
+            sqlx::query(
+                "ALTER TABLE fx_quote_snapshots ADD COLUMN reference_btc_usd_price REAL NOT NULL DEFAULT 0",
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+        }
+
+        if !self
+            .column_exists("fx_quote_snapshots", "metadata_json")
+            .await?
+        {
+            sqlx::query(
+                "ALTER TABLE fx_quote_snapshots ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}'",
+            )
+            .execute(&self.pool)
+            .await
+            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+        }
+
+        sqlx::query(
+            "UPDATE fx_quote_snapshots SET reference_btc_usd_price = btc_usd_price WHERE reference_btc_usd_price <= 0",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn store_fx_quote_snapshot_tx(
+        tx: &mut sqlx::Transaction<'_, Sqlite>,
+        fx_quote: &FxQuoteSnapshot,
+    ) -> Result<()> {
+        let observations_json = serialize_fx_observations(&fx_quote.observations)?;
+        let source_metadata_json = serialize_fx_source_metadata(&fx_quote.source_metadata)?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO fx_quote_snapshots (
+                id,
+                amount_minor,
+                amount_msat,
+                btc_usd_price,
+                reference_btc_usd_price,
+                source,
+                spread_bps,
+                observations_json,
+                metadata_json,
+                created_at,
+                expires_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                amount_minor = excluded.amount_minor,
+                amount_msat = excluded.amount_msat,
+                btc_usd_price = excluded.btc_usd_price,
+                reference_btc_usd_price = excluded.reference_btc_usd_price,
+                source = excluded.source,
+                spread_bps = excluded.spread_bps,
+                observations_json = excluded.observations_json,
+                metadata_json = excluded.metadata_json,
+                created_at = excluded.created_at,
+                expires_at = excluded.expires_at
+            "#,
+        )
+        .bind(&fx_quote.id)
+        .bind(fx_quote.amount_minor as i64)
+        .bind(fx_quote.amount_msat as i64)
+        .bind(fx_quote.btc_usd_price)
+        .bind(fx_quote.reference_btc_usd_price)
+        .bind(&fx_quote.source)
+        .bind(fx_quote.spread_bps as i64)
+        .bind(&observations_json)
+        .bind(&source_metadata_json)
+        .bind(fx_quote.created_at)
+        .bind(fx_quote.expires_at)
+        .execute(&mut **tx)
+        .await?;
 
         Ok(())
     }
@@ -893,7 +1031,6 @@ impl CascadeDatabase {
     ) -> Result<WalletFundingQuote> {
         let mut tx = self.pool.begin().await?;
         let now = chrono::Utc::now().timestamp();
-        let observations_json = serialize_fx_observations(&fx_quote.observations)?;
         let quote_id = quote_id
             .map(str::to_string)
             .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
@@ -915,33 +1052,7 @@ impl CascadeDatabase {
             completed_at: None,
         };
 
-        sqlx::query(
-            r#"
-            INSERT INTO fx_quote_snapshots (
-                id,
-                amount_minor,
-                amount_msat,
-                btc_usd_price,
-                source,
-                spread_bps,
-                observations_json,
-                created_at,
-                expires_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#,
-        )
-        .bind(&fx_quote.id)
-        .bind(fx_quote.amount_minor as i64)
-        .bind(fx_quote.amount_msat as i64)
-        .bind(fx_quote.btc_usd_price)
-        .bind(&fx_quote.source)
-        .bind(fx_quote.spread_bps as i64)
-        .bind(&observations_json)
-        .bind(fx_quote.created_at)
-        .bind(fx_quote.expires_at)
-        .execute(&mut *tx)
-        .await?;
+        Self::store_fx_quote_snapshot_tx(&mut tx, fx_quote).await?;
 
         sqlx::query(
             r#"
@@ -1099,16 +1210,33 @@ impl CascadeDatabase {
     }
 
     pub async fn get_fx_quote_snapshot(&self, quote_id: &str) -> Result<Option<FxQuoteSnapshot>> {
-        let row = sqlx::query_as::<_, (String, i64, i64, f64, String, i64, String, i64, i64)>(
+        let row = sqlx::query_as::<
+            _,
+            (
+                String,
+                i64,
+                i64,
+                f64,
+                f64,
+                String,
+                i64,
+                String,
+                String,
+                i64,
+                i64,
+            ),
+        >(
             r#"
             SELECT
                 id,
                 amount_minor,
                 amount_msat,
                 btc_usd_price,
+                reference_btc_usd_price,
                 source,
                 spread_bps,
                 observations_json,
+                metadata_json,
                 created_at,
                 expires_at
             FROM fx_quote_snapshots
@@ -1127,9 +1255,11 @@ impl CascadeDatabase {
                 amount_minor,
                 amount_msat,
                 btc_usd_price,
+                reference_btc_usd_price,
                 source,
                 spread_bps,
                 observations_json,
+                metadata_json,
                 created_at,
                 expires_at,
             )| FxQuoteSnapshot {
@@ -1137,9 +1267,15 @@ impl CascadeDatabase {
                 amount_minor: amount_minor.max(0) as u64,
                 amount_msat: amount_msat.max(0) as u64,
                 btc_usd_price,
+                reference_btc_usd_price: if reference_btc_usd_price > 0.0 {
+                    reference_btc_usd_price
+                } else {
+                    btc_usd_price
+                },
                 source,
                 spread_bps: spread_bps.max(0) as u64,
                 observations: deserialize_fx_observations(&observations_json),
+                source_metadata: deserialize_fx_source_metadata(&metadata_json),
                 created_at,
                 expires_at,
             },
@@ -1706,6 +1842,556 @@ impl CascadeDatabase {
         self.get_wallet_funding_request(request_id).await
     }
 
+    pub async fn create_usdc_deposit_intent(
+        &self,
+        pubkey: &str,
+        provider: Option<&str>,
+        network: &str,
+        asset: &str,
+        destination_address: &str,
+        requested_wallet_amount_minor: Option<u64>,
+        expires_at: Option<i64>,
+        metadata_json: Option<&str>,
+    ) -> Result<UsdcDepositIntent> {
+        let id = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().timestamp();
+
+        sqlx::query(
+            r#"
+            INSERT INTO usdc_deposit_intents (
+                id,
+                pubkey,
+                provider,
+                network,
+                asset,
+                destination_address,
+                requested_wallet_amount_minor,
+                status,
+                metadata_json,
+                created_at,
+                expires_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+            "#,
+        )
+        .bind(&id)
+        .bind(pubkey)
+        .bind(provider)
+        .bind(network)
+        .bind(asset)
+        .bind(destination_address)
+        .bind(requested_wallet_amount_minor.map(|value| value as i64))
+        .bind(metadata_json)
+        .bind(now)
+        .bind(expires_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_usdc_deposit_intent(&id).await?.ok_or_else(|| {
+            crate::error::CascadeError::database(
+                "USDC deposit intent missing after insert".to_string(),
+            )
+        })
+    }
+
+    pub async fn get_usdc_deposit_intent(
+        &self,
+        intent_id: &str,
+    ) -> Result<Option<UsdcDepositIntent>> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                id,
+                pubkey,
+                provider,
+                provider_session_id,
+                provider_redirect_url,
+                network,
+                asset,
+                destination_address,
+                requested_wallet_amount_minor,
+                received_asset_units,
+                onchain_tx_id,
+                status,
+                metadata_json,
+                created_at,
+                expires_at,
+                confirmed_at,
+                credited_at
+            FROM usdc_deposit_intents
+            WHERE id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(intent_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(row.map(|row| UsdcDepositIntent {
+            id: row.get::<String, _>("id"),
+            pubkey: row.get::<String, _>("pubkey"),
+            provider: row.get::<Option<String>, _>("provider"),
+            provider_session_id: row.get::<Option<String>, _>("provider_session_id"),
+            provider_redirect_url: row.get::<Option<String>, _>("provider_redirect_url"),
+            network: row.get::<String, _>("network"),
+            asset: row.get::<String, _>("asset"),
+            destination_address: row.get::<String, _>("destination_address"),
+            requested_wallet_amount_minor: row
+                .get::<Option<i64>, _>("requested_wallet_amount_minor")
+                .map(|value| value.max(0) as u64),
+            received_asset_units: row
+                .get::<Option<i64>, _>("received_asset_units")
+                .map(|value| value.max(0) as u64),
+            onchain_tx_id: row.get::<Option<String>, _>("onchain_tx_id"),
+            status: row
+                .get::<String, _>("status")
+                .parse()
+                .unwrap_or(UsdcDepositIntentStatus::Pending),
+            metadata_json: row.get::<Option<String>, _>("metadata_json"),
+            created_at: row.get::<i64, _>("created_at"),
+            expires_at: row.get::<Option<i64>, _>("expires_at"),
+            confirmed_at: row.get::<Option<i64>, _>("confirmed_at"),
+            credited_at: row.get::<Option<i64>, _>("credited_at"),
+        }))
+    }
+
+    pub async fn set_usdc_deposit_intent_provider_session(
+        &self,
+        intent_id: &str,
+        provider: Option<&str>,
+        provider_session_id: Option<&str>,
+        provider_redirect_url: Option<&str>,
+        metadata_json: Option<&str>,
+    ) -> Result<Option<UsdcDepositIntent>> {
+        let Some(existing) = self.get_usdc_deposit_intent(intent_id).await? else {
+            return Ok(None);
+        };
+        if existing.status != UsdcDepositIntentStatus::Pending {
+            return Ok(Some(existing));
+        }
+
+        sqlx::query(
+            r#"
+            UPDATE usdc_deposit_intents
+            SET provider = COALESCE(?, provider),
+                provider_session_id = COALESCE(?, provider_session_id),
+                provider_redirect_url = COALESCE(?, provider_redirect_url),
+                metadata_json = COALESCE(?, metadata_json)
+            WHERE id = ? AND status = 'pending'
+            "#,
+        )
+        .bind(provider)
+        .bind(provider_session_id)
+        .bind(provider_redirect_url)
+        .bind(metadata_json)
+        .bind(intent_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_usdc_deposit_intent(intent_id).await
+    }
+
+    pub async fn confirm_usdc_deposit_intent(
+        &self,
+        intent_id: &str,
+        onchain_tx_id: &str,
+        received_asset_units: u64,
+        metadata_json: Option<&str>,
+    ) -> Result<Option<UsdcDepositIntent>> {
+        let Some(existing) = self.get_usdc_deposit_intent(intent_id).await? else {
+            return Ok(None);
+        };
+        if matches!(
+            existing.status,
+            UsdcDepositIntentStatus::Confirmed | UsdcDepositIntentStatus::Credited
+        ) {
+            return Ok(Some(existing));
+        }
+        if existing.status != UsdcDepositIntentStatus::Pending {
+            return Ok(Some(existing));
+        }
+
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            UPDATE usdc_deposit_intents
+            SET onchain_tx_id = ?,
+                received_asset_units = ?,
+                status = 'confirmed',
+                metadata_json = COALESCE(?, metadata_json),
+                confirmed_at = ?
+            WHERE id = ? AND status = 'pending'
+            "#,
+        )
+        .bind(onchain_tx_id)
+        .bind(received_asset_units as i64)
+        .bind(metadata_json)
+        .bind(now)
+        .bind(intent_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_usdc_deposit_intent(intent_id).await
+    }
+
+    pub async fn credit_usdc_deposit_intent(
+        &self,
+        intent_id: &str,
+        metadata_json: Option<&str>,
+    ) -> Result<Option<UsdcDepositIntent>> {
+        let Some(existing) = self.get_usdc_deposit_intent(intent_id).await? else {
+            return Ok(None);
+        };
+        if existing.status == UsdcDepositIntentStatus::Credited {
+            return Ok(Some(existing));
+        }
+        if existing.status != UsdcDepositIntentStatus::Confirmed {
+            return Ok(Some(existing));
+        }
+
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            UPDATE usdc_deposit_intents
+            SET status = 'credited',
+                metadata_json = COALESCE(?, metadata_json),
+                credited_at = ?
+            WHERE id = ? AND status = 'confirmed'
+            "#,
+        )
+        .bind(metadata_json)
+        .bind(now)
+        .bind(intent_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_usdc_deposit_intent(intent_id).await
+    }
+
+    pub async fn expire_usdc_deposit_intent(
+        &self,
+        intent_id: &str,
+    ) -> Result<Option<UsdcDepositIntent>> {
+        let Some(existing) = self.get_usdc_deposit_intent(intent_id).await? else {
+            return Ok(None);
+        };
+        if existing.status != UsdcDepositIntentStatus::Pending {
+            return Ok(Some(existing));
+        }
+
+        sqlx::query(
+            r#"
+            UPDATE usdc_deposit_intents
+            SET status = 'expired'
+            WHERE id = ? AND status = 'pending'
+            "#,
+        )
+        .bind(intent_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_usdc_deposit_intent(intent_id).await
+    }
+
+    pub async fn create_usdc_withdrawal(
+        &self,
+        request_id: Option<&str>,
+        pubkey: &str,
+        provider: Option<&str>,
+        network: &str,
+        asset: &str,
+        destination_address: &str,
+        wallet_amount_minor: u64,
+        asset_units: u64,
+        metadata_json: Option<&str>,
+    ) -> Result<UsdcWithdrawal> {
+        let id = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().timestamp();
+
+        sqlx::query(
+            r#"
+            INSERT INTO usdc_withdrawals (
+                id,
+                request_id,
+                pubkey,
+                provider,
+                network,
+                asset,
+                destination_address,
+                wallet_amount_minor,
+                asset_units,
+                status,
+                metadata_json,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+            "#,
+        )
+        .bind(&id)
+        .bind(request_id)
+        .bind(pubkey)
+        .bind(provider)
+        .bind(network)
+        .bind(asset)
+        .bind(destination_address)
+        .bind(wallet_amount_minor as i64)
+        .bind(asset_units as i64)
+        .bind(metadata_json)
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_usdc_withdrawal(&id).await?.ok_or_else(|| {
+            crate::error::CascadeError::database("USDC withdrawal missing after insert".to_string())
+        })
+    }
+
+    pub async fn get_usdc_withdrawal(&self, withdrawal_id: &str) -> Result<Option<UsdcWithdrawal>> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                id,
+                request_id,
+                pubkey,
+                provider,
+                provider_payout_id,
+                network,
+                asset,
+                destination_address,
+                wallet_amount_minor,
+                asset_units,
+                onchain_tx_id,
+                status,
+                error_message,
+                change_signatures_json,
+                metadata_json,
+                created_at,
+                submitted_at,
+                completed_at,
+                failed_at
+            FROM usdc_withdrawals
+            WHERE id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(withdrawal_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(row.map(usdc_withdrawal_from_row))
+    }
+
+    pub async fn get_usdc_withdrawal_by_request_id(
+        &self,
+        request_id: &str,
+    ) -> Result<Option<UsdcWithdrawal>> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                id,
+                request_id,
+                pubkey,
+                provider,
+                provider_payout_id,
+                network,
+                asset,
+                destination_address,
+                wallet_amount_minor,
+                asset_units,
+                onchain_tx_id,
+                status,
+                error_message,
+                change_signatures_json,
+                metadata_json,
+                created_at,
+                submitted_at,
+                completed_at,
+                failed_at
+            FROM usdc_withdrawals
+            WHERE request_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(request_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(row.map(usdc_withdrawal_from_row))
+    }
+
+    pub async fn set_usdc_withdrawal_change_signatures(
+        &self,
+        withdrawal_id: &str,
+        change_signatures_json: Option<&str>,
+        metadata_json: Option<&str>,
+    ) -> Result<Option<UsdcWithdrawal>> {
+        let Some(existing) = self.get_usdc_withdrawal(withdrawal_id).await? else {
+            return Ok(None);
+        };
+
+        if matches!(
+            existing.status,
+            UsdcWithdrawalStatus::Completed | UsdcWithdrawalStatus::Cancelled
+        ) {
+            return Ok(Some(existing));
+        }
+
+        sqlx::query(
+            r#"
+            UPDATE usdc_withdrawals
+            SET change_signatures_json = COALESCE(?, change_signatures_json),
+                metadata_json = COALESCE(?, metadata_json)
+            WHERE id = ?
+            "#,
+        )
+        .bind(change_signatures_json)
+        .bind(metadata_json)
+        .bind(withdrawal_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_usdc_withdrawal(withdrawal_id).await
+    }
+
+    pub async fn submit_usdc_withdrawal(
+        &self,
+        withdrawal_id: &str,
+        provider: Option<&str>,
+        provider_payout_id: Option<&str>,
+        onchain_tx_id: Option<&str>,
+        metadata_json: Option<&str>,
+    ) -> Result<Option<UsdcWithdrawal>> {
+        let Some(existing) = self.get_usdc_withdrawal(withdrawal_id).await? else {
+            return Ok(None);
+        };
+        if matches!(
+            existing.status,
+            UsdcWithdrawalStatus::Submitted | UsdcWithdrawalStatus::Completed
+        ) {
+            return Ok(Some(existing));
+        }
+        if existing.status != UsdcWithdrawalStatus::Pending {
+            return Ok(Some(existing));
+        }
+
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            UPDATE usdc_withdrawals
+            SET provider = COALESCE(?, provider),
+                provider_payout_id = COALESCE(?, provider_payout_id),
+                onchain_tx_id = COALESCE(?, onchain_tx_id),
+                status = 'submitted',
+                metadata_json = COALESCE(?, metadata_json),
+                submitted_at = ?
+            WHERE id = ? AND status = 'pending'
+            "#,
+        )
+        .bind(provider)
+        .bind(provider_payout_id)
+        .bind(onchain_tx_id)
+        .bind(metadata_json)
+        .bind(now)
+        .bind(withdrawal_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_usdc_withdrawal(withdrawal_id).await
+    }
+
+    pub async fn complete_usdc_withdrawal(
+        &self,
+        withdrawal_id: &str,
+        onchain_tx_id: Option<&str>,
+        metadata_json: Option<&str>,
+    ) -> Result<Option<UsdcWithdrawal>> {
+        let Some(existing) = self.get_usdc_withdrawal(withdrawal_id).await? else {
+            return Ok(None);
+        };
+        if existing.status == UsdcWithdrawalStatus::Completed {
+            return Ok(Some(existing));
+        }
+        if !matches!(
+            existing.status,
+            UsdcWithdrawalStatus::Pending | UsdcWithdrawalStatus::Submitted
+        ) {
+            return Ok(Some(existing));
+        }
+
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            UPDATE usdc_withdrawals
+            SET onchain_tx_id = COALESCE(?, onchain_tx_id),
+                status = 'completed',
+                metadata_json = COALESCE(?, metadata_json),
+                completed_at = ?
+            WHERE id = ? AND status IN ('pending', 'submitted')
+            "#,
+        )
+        .bind(onchain_tx_id)
+        .bind(metadata_json)
+        .bind(now)
+        .bind(withdrawal_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_usdc_withdrawal(withdrawal_id).await
+    }
+
+    pub async fn fail_usdc_withdrawal(
+        &self,
+        withdrawal_id: &str,
+        error_message: &str,
+        metadata_json: Option<&str>,
+    ) -> Result<Option<UsdcWithdrawal>> {
+        let Some(existing) = self.get_usdc_withdrawal(withdrawal_id).await? else {
+            return Ok(None);
+        };
+        if matches!(
+            existing.status,
+            UsdcWithdrawalStatus::Completed | UsdcWithdrawalStatus::Cancelled
+        ) {
+            return Ok(Some(existing));
+        }
+        if existing.status == UsdcWithdrawalStatus::Failed {
+            return Ok(Some(existing));
+        }
+
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            UPDATE usdc_withdrawals
+            SET status = 'failed',
+                error_message = ?,
+                metadata_json = COALESCE(?, metadata_json),
+                failed_at = ?
+            WHERE id = ? AND status IN ('pending', 'submitted')
+            "#,
+        )
+        .bind(error_message)
+        .bind(metadata_json)
+        .bind(now)
+        .bind(withdrawal_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        self.get_usdc_withdrawal(withdrawal_id).await
+    }
+
     pub async fn get_wallet_funding_event(
         &self,
         event_id: &str,
@@ -1970,7 +2656,6 @@ impl CascadeDatabase {
     ) -> Result<TradeQuoteSnapshot> {
         let mut tx = self.pool.begin().await?;
         let now = chrono::Utc::now().timestamp();
-        let observations_json = serialize_fx_observations(&fx_quote.observations)?;
         let quote = TradeQuoteSnapshot {
             id: uuid::Uuid::new_v4().to_string(),
             market_event_id: market_event_id.to_string(),
@@ -1998,33 +2683,7 @@ impl CascadeDatabase {
             executed_at: None,
         };
 
-        sqlx::query(
-            r#"
-            INSERT INTO fx_quote_snapshots (
-                id,
-                amount_minor,
-                amount_msat,
-                btc_usd_price,
-                source,
-                spread_bps,
-                observations_json,
-                created_at,
-                expires_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#,
-        )
-        .bind(&fx_quote.id)
-        .bind(fx_quote.amount_minor as i64)
-        .bind(fx_quote.amount_msat as i64)
-        .bind(fx_quote.btc_usd_price)
-        .bind(&fx_quote.source)
-        .bind(fx_quote.spread_bps as i64)
-        .bind(&observations_json)
-        .bind(fx_quote.created_at)
-        .bind(fx_quote.expires_at)
-        .execute(&mut *tx)
-        .await?;
+        Self::store_fx_quote_snapshot_tx(&mut tx, fx_quote).await?;
 
         sqlx::query(
             r#"
@@ -2864,6 +3523,198 @@ mod tests {
             .map_err(|e| crate::error::CascadeError::database(e.to_string()));
 
         assert!(result.is_ok());
+    }
+
+    fn test_fx_quote_snapshot(id: &str) -> FxQuoteSnapshot {
+        let now = chrono::Utc::now().timestamp();
+        FxQuoteSnapshot {
+            id: id.to_string(),
+            amount_minor: 2_500,
+            amount_msat: 50_505_051,
+            btc_usd_price: 49_500.0,
+            reference_btc_usd_price: 50_000.0,
+            source: "coinbase,kraken,bitstamp".to_string(),
+            spread_bps: 400,
+            observations: vec![
+                FxQuoteObservation {
+                    source: "coinbase".to_string(),
+                    btc_usd_price: 49_900.0,
+                    observed_at: now,
+                },
+                FxQuoteObservation {
+                    source: "kraken".to_string(),
+                    btc_usd_price: 50_000.0,
+                    observed_at: now,
+                },
+                FxQuoteObservation {
+                    source: "bitstamp".to_string(),
+                    btc_usd_price: 50_100.0,
+                    observed_at: now,
+                },
+            ],
+            source_metadata: FxQuoteSourceMetadata {
+                combination_policy: "median_non_stale_major_providers_v1".to_string(),
+                quote_direction: crate::product::FxQuoteDirection::UsdToMsat,
+                provider_count: 3,
+                minimum_provider_count: 2,
+                execution_spread_bps: 100,
+                max_observation_age_seconds: 60,
+                fallback_used: false,
+            },
+            created_at: now,
+            expires_at: now + 30,
+        }
+    }
+
+    async fn insert_test_market_row(db: &CascadeDatabase, event_id: &str) {
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            r#"
+            INSERT INTO markets (
+                event_id,
+                slug,
+                title,
+                description,
+                b,
+                q_long,
+                q_short,
+                reserve_sats,
+                status,
+                creator_pubkey,
+                created_at,
+                long_keyset_id,
+                short_keyset_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(event_id)
+        .bind(format!("market-{event_id}"))
+        .bind("Test Market")
+        .bind("A test market")
+        .bind(10.0)
+        .bind(100.0)
+        .bind(100.0)
+        .bind(10_000_i64)
+        .bind("Active")
+        .bind("creator-pubkey")
+        .bind(now)
+        .bind("long-keyset")
+        .bind("short-keyset")
+        .execute(&db.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_wallet_funding_quote_persists_fx_source_metadata() {
+        let db = create_test_db().await;
+        let fx_quote = test_fx_quote_snapshot("fx-wallet-1");
+
+        let funding_quote = db
+            .create_wallet_funding_quote(
+                Some("funding-1"),
+                "pubkey-1",
+                "lightning",
+                fx_quote.amount_minor,
+                fx_quote.amount_msat,
+                Some("lnbc1walletfunding"),
+                Some("payment-hash-1"),
+                None,
+                None,
+                &fx_quote,
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(funding_quote.fx_quote_id, fx_quote.id);
+
+        let stored = db
+            .get_fx_quote_snapshot(&funding_quote.fx_quote_id)
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(stored.btc_usd_price, fx_quote.btc_usd_price);
+        assert_eq!(
+            stored.reference_btc_usd_price,
+            fx_quote.reference_btc_usd_price
+        );
+        assert_eq!(
+            stored.source_metadata.combination_policy,
+            fx_quote.source_metadata.combination_policy
+        );
+        assert_eq!(
+            stored.source_metadata.execution_spread_bps,
+            fx_quote.source_metadata.execution_spread_bps
+        );
+        assert_eq!(stored.observations.len(), fx_quote.observations.len());
+    }
+
+    #[tokio::test]
+    async fn test_trade_quote_snapshot_reuses_existing_fx_snapshot_id() {
+        let db = create_test_db().await;
+        let fx_quote = test_fx_quote_snapshot("fx-shared-1");
+
+        db.create_wallet_funding_quote(
+            Some("funding-shared-1"),
+            "pubkey-1",
+            "lightning",
+            fx_quote.amount_minor,
+            fx_quote.amount_msat,
+            Some("lnbc1sharedfunding"),
+            Some("payment-hash-shared-1"),
+            None,
+            None,
+            &fx_quote,
+        )
+        .await
+        .unwrap();
+
+        insert_test_market_row(&db, "event-fx-shared-1").await;
+
+        let trade_quote = db
+            .create_trade_quote_snapshot(
+                "event-fx-shared-1",
+                "buy",
+                "yes",
+                &fx_quote,
+                2_500,
+                25,
+                2_475,
+                2_500,
+                50_505_051,
+                505,
+                2.5,
+                990_000,
+                500_000,
+                501_000,
+                500_000,
+                500_000,
+                100.0,
+                100.0,
+                10_000,
+                chrono::Utc::now().timestamp() + 30,
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(trade_quote.fx_quote_id, fx_quote.id);
+
+        let stored = db
+            .get_fx_quote_snapshot(&fx_quote.id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            stored.reference_btc_usd_price,
+            fx_quote.reference_btc_usd_price
+        );
+        assert_eq!(
+            stored.source_metadata.execution_spread_bps,
+            fx_quote.source_metadata.execution_spread_bps
+        );
     }
 
     #[tokio::test]

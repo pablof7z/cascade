@@ -1,7 +1,11 @@
 mod config;
 
 use anyhow::{Context, Result};
-use cascade_api::{build_server, fx::FxQuoteService, payment::UsdBolt11PaymentProcessor};
+use cascade_api::{
+    build_server,
+    fx::{FxQuotePolicy, FxQuoteService},
+    payment::UsdBolt11PaymentProcessor,
+};
 use cascade_core::lightning::lnd_client::LndClient;
 use cascade_core::{
     db::CascadeDatabase, invoice::InvoiceService, market_manager::MarketManager,
@@ -179,9 +183,18 @@ async fn main() -> Result<()> {
         .await
         .context("Failed to connect LND client")?;
     let invoice_service = Arc::new(Mutex::new(InvoiceService::new(lnd_client, 3600, 40)));
+    let fx_policy = FxQuotePolicy {
+        quote_ttl_seconds: config.fx.quote_ttl_seconds,
+        max_provider_spread_bps: config.fx.max_provider_spread_bps,
+        max_observation_age_seconds: config.fx.max_observation_age_seconds,
+        min_provider_count: config.fx.min_provider_count,
+        usd_to_msat_spread_bps: config.fx.usd_to_msat_spread_bps,
+        msat_to_usd_spread_bps: config.fx.msat_to_usd_spread_bps,
+        fallback_btc_usd_price: (config.network.network_type == "signet")
+            .then_some(config.fx.signet_fallback_btc_usd_price),
+    };
     let fx_service = Arc::new(
-        FxQuoteService::for_network(&config.network.network_type)
-            .context("Failed to initialize FX quote service")?,
+        FxQuoteService::with_policy(fx_policy).context("Failed to initialize FX quote service")?,
     );
 
     builder

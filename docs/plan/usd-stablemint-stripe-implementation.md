@@ -218,3 +218,13 @@ This work is complete when a human user can:
 - market closure, oracle, or settlement mechanics
 
 USDC is defined separately in [usdc-wallet-rail-addendum.md](./usdc-wallet-rail-addendum.md) as an additive later rail.
+
+## Progress Notes
+
+### 2026-04-13
+
+- Workstream 2 now has a concrete `QuoteSource` trait with Coinbase, Kraken, and Bitstamp adapters feeding one shared `USD <-> msat` FX service for Lightning funding and Lightning melts.
+- The combination policy is now implemented and test-covered: stale observations are rejected, a minimum fresh-provider count is enforced, the median fresh BTC/USD rate becomes the reference quote, excessive provider spread is rejected, and a directional execution spread is applied before quote lock.
+- Persisted FX snapshots now carry expiry, executable and reference BTC/USD rates, provider observations, and source metadata so quote provenance is durable across recovery, audit, funding, and melt flows.
+- Locked quote reuse now rejects expired snapshots instead of accepting stale execution prices.
+- Scope note: `mint/migrations/017_fx_quote_source_metadata.sql` records the schema change, and runtime upgrades currently rely on `ensure_fx_quote_source_metadata_columns()` for compatibility with the active SQLite test matrix.

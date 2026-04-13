@@ -3,6 +3,7 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use cascade_core::invoice::InvoiceService;
 use cascade_core::lightning::types::{InvoiceState, PaymentHash};
+use cascade_core::product::FxQuoteSourceMetadata;
 use cdk::Amount;
 use cdk_common::database::DynMintDatabase;
 use cdk_common::nuts::{CurrencyUnit, MeltQuoteState};
@@ -32,6 +33,7 @@ enum StoredPaymentStatus {
     Unpaid,
     Paid,
     Failed,
+    Expired,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,8 +43,12 @@ struct StoredBolt11Payment {
     amount_minor: u64,
     amount_msat: u64,
     fee_minor: u64,
+    #[serde(default)]
+    reference_btc_usd_price: f64,
     source: String,
     spread_bps: u64,
+    #[serde(default)]
+    source_metadata: FxQuoteSourceMetadata,
     created_at: i64,
     expires_at: Option<u64>,
     status: StoredPaymentStatus,
@@ -148,14 +154,41 @@ impl UsdBolt11PaymentProcessor {
         PaymentIdentifier::new("payment_hash", payment_hash)
     }
 
+    fn payment_is_expired(payment: &StoredBolt11Payment) -> bool {
+        payment
+            .expires_at
+            .is_some_and(|expires_at| expires_at <= chrono::Utc::now().timestamp().max(0) as u64)
+    }
+
+    async fn expire_payment_if_needed(
+        &self,
+        secondary_namespace: &str,
+        payment: &mut StoredBolt11Payment,
+    ) -> Result<bool, payment::Error> {
+        if payment.status != StoredPaymentStatus::Unpaid || !Self::payment_is_expired(payment) {
+            return Ok(false);
+        }
+
+        payment.status = StoredPaymentStatus::Expired;
+        self.write_payment(secondary_namespace, payment).await?;
+        Ok(true)
+    }
+
     fn quote_extra_json(fx_quote: &FxQuoteEnvelope) -> serde_json::Value {
         serde_json::json!({
             "fx_quote_id": fx_quote.snapshot.id,
             "amount_minor": fx_quote.snapshot.amount_minor,
             "amount_msat": fx_quote.snapshot.amount_msat,
             "btc_usd_price": fx_quote.snapshot.btc_usd_price,
+            "reference_btc_usd_price": fx_quote.snapshot.reference_btc_usd_price,
             "source": fx_quote.snapshot.source,
             "spread_bps": fx_quote.snapshot.spread_bps,
+            "execution_spread_bps": fx_quote.snapshot.source_metadata.execution_spread_bps,
+            "combination_policy": fx_quote.snapshot.source_metadata.combination_policy,
+            "quote_direction": fx_quote.snapshot.source_metadata.quote_direction,
+            "provider_count": fx_quote.snapshot.source_metadata.provider_count,
+            "minimum_provider_count": fx_quote.snapshot.source_metadata.minimum_provider_count,
+            "max_observation_age_seconds": fx_quote.snapshot.source_metadata.max_observation_age_seconds,
             "expires_at": fx_quote.snapshot.expires_at,
             "fallback_used": fx_quote.fallback_used,
         })
@@ -179,6 +212,20 @@ impl UsdBolt11PaymentProcessor {
                 payment_amount: Amount::new(stored.amount_minor, CurrencyUnit::Usd),
                 payment_id: stored.payment_hash,
             }]);
+        }
+        if matches!(
+            stored.status,
+            StoredPaymentStatus::Failed | StoredPaymentStatus::Expired
+        ) {
+            return Ok(Vec::new());
+        }
+
+        if self
+            .expire_payment_if_needed(INCOMING_SECONDARY_NAMESPACE, &mut stored)
+            .await?
+        {
+            self.pending_incoming.write().await.remove(payment_hash);
+            return Ok(Vec::new());
         }
 
         let invoice_state = {
@@ -206,6 +253,54 @@ impl UsdBolt11PaymentProcessor {
             payment_id: stored.payment_hash,
         }])
     }
+}
+
+pub async fn store_locked_outgoing_bolt11_payment(
+    localstore: DynMintDatabase,
+    invoice: &cdk_common::Bolt11Invoice,
+    amount_minor: u64,
+    amount_msat: u64,
+    fee_minor: u64,
+    reference_btc_usd_price: f64,
+    source: &str,
+    spread_bps: u64,
+    source_metadata: &FxQuoteSourceMetadata,
+    created_at: i64,
+    expires_at: Option<u64>,
+) -> Result<(), payment::Error> {
+    let payment_hash = invoice.payment_hash().to_string();
+    let stored = StoredBolt11Payment {
+        payment_hash: payment_hash.clone(),
+        request: invoice.to_string(),
+        amount_minor,
+        amount_msat,
+        fee_minor,
+        reference_btc_usd_price,
+        source: source.to_string(),
+        spread_bps,
+        source_metadata: source_metadata.clone(),
+        created_at,
+        expires_at,
+        status: StoredPaymentStatus::Unpaid,
+        payment_proof: None,
+    };
+    let payload = serde_json::to_vec(&stored)?;
+    let mut tx = localstore
+        .begin_transaction()
+        .await
+        .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?;
+    tx.kv_write(
+        PROCESSOR_PRIMARY_NAMESPACE,
+        OUTGOING_SECONDARY_NAMESPACE,
+        &payment_hash,
+        &payload,
+    )
+    .await
+    .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?;
+    tx.commit()
+        .await
+        .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?;
+    Ok(())
 }
 
 #[async_trait]
@@ -267,8 +362,10 @@ impl MintPayment for UsdBolt11PaymentProcessor {
             amount_minor,
             amount_msat: fx_quote.snapshot.amount_msat,
             fee_minor: 0,
+            reference_btc_usd_price: fx_quote.snapshot.reference_btc_usd_price,
             source: fx_quote.snapshot.source.clone(),
             spread_bps: fx_quote.snapshot.spread_bps,
+            source_metadata: fx_quote.snapshot.source_metadata.clone(),
             created_at: fx_quote.snapshot.created_at,
             expires_at: Some(expiry),
             status: StoredPaymentStatus::Unpaid,
@@ -310,12 +407,39 @@ impl MintPayment for UsdBolt11PaymentProcessor {
                 .ok_or_else(|| payment::Error::Custom("unknown_invoice_amount".to_string()))?,
         };
 
+        let payment_hash = bolt11_options.bolt11.payment_hash().to_string();
+
+        if let Some(mut stored) = self
+            .read_payment(OUTGOING_SECONDARY_NAMESPACE, &payment_hash)
+            .await?
+        {
+            let expired = self
+                .expire_payment_if_needed(OUTGOING_SECONDARY_NAMESPACE, &mut stored)
+                .await?;
+            let status = match stored.status {
+                StoredPaymentStatus::Unpaid => MeltQuoteState::Unpaid,
+                StoredPaymentStatus::Paid => MeltQuoteState::Paid,
+                StoredPaymentStatus::Failed | StoredPaymentStatus::Expired => {
+                    MeltQuoteState::Failed
+                }
+            };
+            return Ok(PaymentQuoteResponse {
+                request_lookup_id: Some(Self::payment_identifier(&payment_hash)?),
+                amount: Amount::new(stored.amount_minor, CurrencyUnit::Usd),
+                fee: Amount::new(stored.fee_minor, CurrencyUnit::Usd),
+                state: if expired {
+                    MeltQuoteState::Failed
+                } else {
+                    status
+                },
+            });
+        }
+
         let fx_quote = self
             .fx_service
             .quote_msat_to_minor(amount_msat)
             .await
             .map_err(payment::Error::Custom)?;
-        let payment_hash = bolt11_options.bolt11.payment_hash().to_string();
 
         let stored = StoredBolt11Payment {
             payment_hash: payment_hash.clone(),
@@ -323,8 +447,10 @@ impl MintPayment for UsdBolt11PaymentProcessor {
             amount_minor: fx_quote.snapshot.amount_minor,
             amount_msat,
             fee_minor: 0,
+            reference_btc_usd_price: fx_quote.snapshot.reference_btc_usd_price,
             source: fx_quote.snapshot.source,
             spread_bps: fx_quote.snapshot.spread_bps,
+            source_metadata: fx_quote.snapshot.source_metadata,
             created_at: fx_quote.snapshot.created_at,
             expires_at: Some(fx_quote.snapshot.expires_at.max(0) as u64),
             status: StoredPaymentStatus::Unpaid,
@@ -364,8 +490,10 @@ impl MintPayment for UsdBolt11PaymentProcessor {
                 amount_minor: 0,
                 amount_msat: 0,
                 fee_minor: 0,
+                reference_btc_usd_price: 0.0,
                 source: String::new(),
                 spread_bps: 0,
+                source_metadata: FxQuoteSourceMetadata::default(),
                 created_at: chrono::Utc::now().timestamp(),
                 expires_at: None,
                 status: StoredPaymentStatus::Unpaid,
@@ -374,6 +502,14 @@ impl MintPayment for UsdBolt11PaymentProcessor {
 
         if stored.status == StoredPaymentStatus::Paid {
             return Err(payment::Error::InvoiceAlreadyPaid);
+        }
+
+        if self
+            .expire_payment_if_needed(OUTGOING_SECONDARY_NAMESPACE, &mut stored)
+            .await?
+            || stored.status == StoredPaymentStatus::Expired
+        {
+            return Err(payment::Error::Custom("payment_quote_expired".to_string()));
         }
 
         let preimage = {
@@ -472,7 +608,7 @@ impl MintPayment for UsdBolt11PaymentProcessor {
         &self,
         payment_identifier: &PaymentIdentifier,
     ) -> Result<MakePaymentResponse, Self::Err> {
-        let Some(stored) = self
+        let Some(mut stored) = self
             .read_payment(
                 OUTGOING_SECONDARY_NAMESPACE,
                 &payment_identifier.to_string(),
@@ -487,10 +623,14 @@ impl MintPayment for UsdBolt11PaymentProcessor {
             });
         };
 
+        let _ = self
+            .expire_payment_if_needed(OUTGOING_SECONDARY_NAMESPACE, &mut stored)
+            .await?;
+
         let status = match stored.status {
             StoredPaymentStatus::Unpaid => MeltQuoteState::Unpaid,
             StoredPaymentStatus::Paid => MeltQuoteState::Paid,
-            StoredPaymentStatus::Failed => MeltQuoteState::Failed,
+            StoredPaymentStatus::Failed | StoredPaymentStatus::Expired => MeltQuoteState::Failed,
         };
 
         Ok(MakePaymentResponse {

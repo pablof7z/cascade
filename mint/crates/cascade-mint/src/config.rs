@@ -37,6 +37,8 @@ pub struct MintConfig {
     pub seed: SeedSettings,
     pub lnd: LndSettings,
     #[serde(default)]
+    pub fx: FxSettings,
+    #[serde(default)]
     pub stripe: StripeSettings,
     pub network: NetworkSettings,
     pub server: ServerSettings,
@@ -76,6 +78,24 @@ pub struct LndSettings {
 #[derive(Debug, Clone, Deserialize)]
 pub struct NetworkSettings {
     pub network_type: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct FxSettings {
+    #[serde(default = "default_fx_quote_ttl_seconds")]
+    pub quote_ttl_seconds: i64,
+    #[serde(default = "default_fx_max_provider_spread_bps")]
+    pub max_provider_spread_bps: u64,
+    #[serde(default = "default_fx_max_observation_age_seconds")]
+    pub max_observation_age_seconds: i64,
+    #[serde(default = "default_fx_min_provider_count")]
+    pub min_provider_count: usize,
+    #[serde(default = "default_fx_usd_to_msat_spread_bps")]
+    pub usd_to_msat_spread_bps: u64,
+    #[serde(default = "default_fx_msat_to_usd_spread_bps")]
+    pub msat_to_usd_spread_bps: u64,
+    #[serde(default = "default_fx_signet_fallback_btc_usd_price")]
+    pub signet_fallback_btc_usd_price: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -134,6 +154,34 @@ fn default_mint_description() -> String {
 
 fn default_trade_fee_percent() -> u64 {
     1
+}
+
+fn default_fx_quote_ttl_seconds() -> i64 {
+    15 * 60
+}
+
+fn default_fx_max_provider_spread_bps() -> u64 {
+    500
+}
+
+fn default_fx_max_observation_age_seconds() -> i64 {
+    60
+}
+
+fn default_fx_min_provider_count() -> usize {
+    2
+}
+
+fn default_fx_usd_to_msat_spread_bps() -> u64 {
+    100
+}
+
+fn default_fx_msat_to_usd_spread_bps() -> u64 {
+    100
+}
+
+fn default_fx_signet_fallback_btc_usd_price() -> f64 {
+    50_000.0
 }
 
 fn default_stripe_base_url() -> String {
@@ -225,6 +273,42 @@ impl MintConfig {
         if let Ok(network) = std::env::var("NETWORK") {
             config.network.network_type = network;
         }
+        if let Ok(quote_ttl_seconds) = std::env::var("FX_QUOTE_TTL_SECONDS") {
+            config.fx.quote_ttl_seconds = quote_ttl_seconds
+                .parse()
+                .unwrap_or(config.fx.quote_ttl_seconds);
+        }
+        if let Ok(max_provider_spread_bps) = std::env::var("FX_MAX_PROVIDER_SPREAD_BPS") {
+            config.fx.max_provider_spread_bps = max_provider_spread_bps
+                .parse()
+                .unwrap_or(config.fx.max_provider_spread_bps);
+        }
+        if let Ok(max_observation_age_seconds) = std::env::var("FX_MAX_OBSERVATION_AGE_SECONDS") {
+            config.fx.max_observation_age_seconds = max_observation_age_seconds
+                .parse()
+                .unwrap_or(config.fx.max_observation_age_seconds);
+        }
+        if let Ok(min_provider_count) = std::env::var("FX_MIN_PROVIDER_COUNT") {
+            config.fx.min_provider_count = min_provider_count
+                .parse()
+                .unwrap_or(config.fx.min_provider_count);
+        }
+        if let Ok(usd_to_msat_spread_bps) = std::env::var("FX_USD_TO_MSAT_SPREAD_BPS") {
+            config.fx.usd_to_msat_spread_bps = usd_to_msat_spread_bps
+                .parse()
+                .unwrap_or(config.fx.usd_to_msat_spread_bps);
+        }
+        if let Ok(msat_to_usd_spread_bps) = std::env::var("FX_MSAT_TO_USD_SPREAD_BPS") {
+            config.fx.msat_to_usd_spread_bps = msat_to_usd_spread_bps
+                .parse()
+                .unwrap_or(config.fx.msat_to_usd_spread_bps);
+        }
+        if let Ok(signet_fallback_btc_usd_price) = std::env::var("FX_SIGNET_FALLBACK_BTC_USD_PRICE")
+        {
+            config.fx.signet_fallback_btc_usd_price = signet_fallback_btc_usd_price
+                .parse()
+                .unwrap_or(config.fx.signet_fallback_btc_usd_price);
+        }
         if let Ok(secret_key) = std::env::var("STRIPE_SECRET_KEY") {
             config.stripe.secret_key = secret_key;
         }
@@ -312,6 +396,24 @@ impl MintConfig {
         {
             anyhow::bail!("network.network_type must be 'signet', 'testnet', or 'mainnet'");
         }
+        if self.fx.quote_ttl_seconds <= 0 {
+            anyhow::bail!("fx.quote_ttl_seconds must be greater than zero");
+        }
+        if self.fx.max_observation_age_seconds <= 0 {
+            anyhow::bail!("fx.max_observation_age_seconds must be greater than zero");
+        }
+        if self.fx.min_provider_count == 0 {
+            anyhow::bail!("fx.min_provider_count must be greater than zero");
+        }
+        if self.fx.max_provider_spread_bps == 0 {
+            anyhow::bail!("fx.max_provider_spread_bps must be greater than zero");
+        }
+        if self.fx.usd_to_msat_spread_bps >= 10_000 || self.fx.msat_to_usd_spread_bps >= 10_000 {
+            anyhow::bail!("fx execution spreads must be below 10000 bps");
+        }
+        if self.fx.signet_fallback_btc_usd_price <= 0.0 {
+            anyhow::bail!("fx.signet_fallback_btc_usd_price must be greater than zero");
+        }
         if self.stripe.is_partially_configured() && !self.stripe.is_enabled() {
             anyhow::bail!(
                 "stripe must set secret_key, webhook_secret, success_url, and cancel_url together"
@@ -355,6 +457,7 @@ impl Default for MintConfig {
                 macaroon_path: "/path/to/admin.macaroon".to_string(),
                 cli_path: None,
             },
+            fx: FxSettings::default(),
             stripe: StripeSettings::default(),
             network: NetworkSettings {
                 network_type: "testnet".to_string(),
@@ -383,6 +486,20 @@ impl StripeSettings {
             || !self.webhook_secret.trim().is_empty()
             || !self.success_url.trim().is_empty()
             || !self.cancel_url.trim().is_empty()
+    }
+}
+
+impl Default for FxSettings {
+    fn default() -> Self {
+        Self {
+            quote_ttl_seconds: default_fx_quote_ttl_seconds(),
+            max_provider_spread_bps: default_fx_max_provider_spread_bps(),
+            max_observation_age_seconds: default_fx_max_observation_age_seconds(),
+            min_provider_count: default_fx_min_provider_count(),
+            usd_to_msat_spread_bps: default_fx_usd_to_msat_spread_bps(),
+            msat_to_usd_spread_bps: default_fx_msat_to_usd_spread_bps(),
+            signet_fallback_btc_usd_price: default_fx_signet_fallback_btc_usd_price(),
+        }
     }
 }
 

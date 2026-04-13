@@ -503,6 +503,7 @@ name = "cascade-api"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "axum",
  "base64 0.22.1",
  "bitcoin",
@@ -512,6 +513,7 @@ dependencies = [
  "cdk-common",
  "cdk-sqlite",
  "chrono",
+ "futures",
  "hex",
  "hmac",
  "reqwest",
@@ -1436,6 +1438,7 @@ checksum = "8b147ee9d1f6d097cef9ce628cd2ee62288d963e16fb287bd9286455b241382d"
 dependencies = [
  "futures-channel",
  "futures-core",
+ "futures-executor",
  "futures-io",
  "futures-sink",
  "futures-task",

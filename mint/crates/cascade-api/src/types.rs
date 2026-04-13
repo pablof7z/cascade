@@ -244,6 +244,8 @@ pub struct ProductPortfolioFundingResponse {
     pub spread_bps: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fx_quote_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fx_metadata: Option<ProductFxMetadataResponse>,
     pub observations: Vec<ProductFxObservationResponse>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub risk_level: Option<String>,
@@ -350,6 +352,18 @@ pub struct ProductFxObservationResponse {
     pub observed_at: i64,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ProductFxMetadataResponse {
+    pub reference_btc_usd_price: f64,
+    pub execution_spread_bps: u64,
+    pub combination_policy: String,
+    pub quote_direction: String,
+    pub provider_count: u64,
+    pub minimum_provider_count: u64,
+    pub max_observation_age_seconds: i64,
+    pub fallback_used: bool,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ProductLightningFxQuoteResponse {
     pub amount_minor: u64,
@@ -360,6 +374,7 @@ pub struct ProductLightningFxQuoteResponse {
     pub created_at: i64,
     pub expires_at: i64,
     pub fallback_used: bool,
+    pub metadata: ProductFxMetadataResponse,
     pub observations: Vec<ProductFxObservationResponse>,
 }
 
@@ -402,6 +417,8 @@ pub struct ProductTradeQuoteResponse {
     pub fx_source: Option<String>,
     pub btc_usd_price: Option<f64>,
     pub spread_bps: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fx_metadata: Option<ProductFxMetadataResponse>,
     pub fx_observations: Vec<ProductFxObservationResponse>,
     pub created_at: Option<i64>,
     pub expires_at: Option<i64>,

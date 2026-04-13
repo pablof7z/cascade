@@ -8,13 +8,14 @@ use crate::types::{
     MintQuoteBolt11Request, MintQuoteBolt11Response, ProductBuyRequest,
     ProductCoordinatorBuyRequest, ProductCoordinatorSellRequest,
     ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest, ProductFeedResponse,
-    ProductFxObservationResponse, ProductLightningFxQuoteResponse, ProductMarketDetailResponse,
-    ProductMarketSummary, ProductPortfolioFundingRequestStatusResponse,
-    ProductPortfolioFundingResponse, ProductRuntimeFundingResponse, ProductRuntimeRailResponse,
-    ProductRuntimeResponse, ProductSellRequest, ProductStripeFundingRequest,
-    ProductTradeBlindSignatureBundleResponse, ProductTradeExecutionResponse,
-    ProductTradeQuoteRequest, ProductTradeQuoteResponse, ProductTradeRequestStatusResponse,
-    ProductTradeSettlementResponse, ProductTradeStatusResponse, ProofInput, TokenOutput,
+    ProductFxMetadataResponse, ProductFxObservationResponse, ProductLightningFxQuoteResponse,
+    ProductMarketDetailResponse, ProductMarketSummary,
+    ProductPortfolioFundingRequestStatusResponse, ProductPortfolioFundingResponse,
+    ProductRuntimeFundingResponse, ProductRuntimeRailResponse, ProductRuntimeResponse,
+    ProductSellRequest, ProductStripeFundingRequest, ProductTradeBlindSignatureBundleResponse,
+    ProductTradeExecutionResponse, ProductTradeQuoteRequest, ProductTradeQuoteResponse,
+    ProductTradeRequestStatusResponse, ProductTradeSettlementResponse, ProductTradeStatusResponse,
+    ProofInput, TokenOutput,
 };
 use axum::{
     body::Bytes,
@@ -340,9 +341,11 @@ fn stripe_funding_context(amount_minor: u64, expires_at: i64) -> FxQuoteSnapshot
         amount_minor,
         amount_msat: 0,
         btc_usd_price: 0.0,
+        reference_btc_usd_price: 0.0,
         source: "stripe".to_string(),
         spread_bps: 0,
         observations: Vec::new(),
+        source_metadata: Default::default(),
         created_at,
         expires_at: expires_at.max(created_at + 300),
     }
@@ -3125,6 +3128,19 @@ fn product_fx_observation_response(
     }
 }
 
+fn product_fx_metadata_response(fx_quote: &FxQuoteSnapshot) -> ProductFxMetadataResponse {
+    ProductFxMetadataResponse {
+        reference_btc_usd_price: fx_quote.reference_btc_usd_price,
+        execution_spread_bps: fx_quote.source_metadata.execution_spread_bps,
+        combination_policy: fx_quote.source_metadata.combination_policy.clone(),
+        quote_direction: fx_quote.source_metadata.quote_direction.to_string(),
+        provider_count: fx_quote.source_metadata.provider_count,
+        minimum_provider_count: fx_quote.source_metadata.minimum_provider_count,
+        max_observation_age_seconds: fx_quote.source_metadata.max_observation_age_seconds,
+        fallback_used: fx_quote.source_metadata.fallback_used,
+    }
+}
+
 fn product_trade_settlement_response(
     settlement: &TradeSettlementRecord,
 ) -> ProductTradeSettlementResponse {
@@ -3179,6 +3195,7 @@ fn product_trade_quote_from_snapshot(
         fx_source: fx_quote.map(|quote| quote.source.clone()),
         btc_usd_price: fx_quote.map(|quote| quote.btc_usd_price),
         spread_bps: fx_quote.map(|quote| quote.spread_bps),
+        fx_metadata: fx_quote.map(product_fx_metadata_response),
         fx_observations: fx_quote
             .map(|quote| {
                 quote
@@ -3716,6 +3733,7 @@ async fn build_quote_response(
                     fx_source: Some(fx_quote.snapshot.source.clone()),
                     btc_usd_price: Some(fx_quote.snapshot.btc_usd_price),
                     spread_bps: Some(fx_quote.snapshot.spread_bps),
+                    fx_metadata: Some(product_fx_metadata_response(&fx_quote.snapshot)),
                     fx_observations: fx_quote
                         .snapshot
                         .observations
@@ -3789,6 +3807,7 @@ async fn build_quote_response(
                     fx_source: Some(fx_quote.snapshot.source.clone()),
                     btc_usd_price: Some(fx_quote.snapshot.btc_usd_price),
                     spread_bps: Some(fx_quote.snapshot.spread_bps),
+                    fx_metadata: Some(product_fx_metadata_response(&fx_quote.snapshot)),
                     fx_observations: fx_quote
                         .snapshot
                         .observations
@@ -3966,6 +3985,7 @@ fn lightning_fx_quote_response(quote: &FxQuoteEnvelope) -> ProductLightningFxQuo
         created_at: quote.snapshot.created_at,
         expires_at: quote.snapshot.expires_at,
         fallback_used: quote.fallback_used,
+        metadata: product_fx_metadata_response(&quote.snapshot),
         observations: quote
             .snapshot
             .observations
@@ -3999,6 +4019,7 @@ fn wallet_funding_response(
         btc_usd_price: is_lightning.then_some(fx_quote.btc_usd_price),
         spread_bps: is_lightning.then_some(fx_quote.spread_bps),
         fx_quote_id: is_lightning.then(|| fx_quote.id.clone()),
+        fx_metadata: is_lightning.then(|| product_fx_metadata_response(fx_quote)),
         observations: if is_lightning {
             fx_quote
                 .observations

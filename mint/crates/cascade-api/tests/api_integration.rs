@@ -1162,6 +1162,22 @@ async fn test_coordinator_trade_routes_and_status() {
     assert!(quote_payload["fx_source"].as_str().is_some());
     assert!(quote_payload["btc_usd_price"].as_f64().unwrap() > 0.0);
     assert!(quote_payload["spread_bps"].as_u64().is_some());
+    assert!(
+        quote_payload["fx_metadata"]["reference_btc_usd_price"]
+            .as_f64()
+            .unwrap()
+            > 0.0
+    );
+    assert!(quote_payload["fx_metadata"]["execution_spread_bps"]
+        .as_u64()
+        .is_some());
+    assert_eq!(
+        quote_payload["fx_metadata"]["quote_direction"].as_str(),
+        Some("usd_to_msat")
+    );
+    assert!(quote_payload["fx_metadata"]["combination_policy"]
+        .as_str()
+        .is_some());
     assert!(quote_payload["marginal_price_before_ppm"].as_u64().unwrap() > 0);
     assert!(quote_payload["marginal_price_after_ppm"].as_u64().unwrap() > 0);
     assert!(quote_payload["fx_observations"].as_array().is_some());
@@ -1182,6 +1198,10 @@ async fn test_coordinator_trade_routes_and_status() {
     assert_eq!(
         quote_status_payload["fx_quote_id"].as_str(),
         quote_payload["fx_quote_id"].as_str()
+    );
+    assert_eq!(
+        quote_status_payload["fx_metadata"]["reference_btc_usd_price"].as_f64(),
+        quote_payload["fx_metadata"]["reference_btc_usd_price"].as_f64()
     );
     let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
     let market_keyset = fetch_market_keyset(&client, &url, event_id, "yes").await;
@@ -2313,6 +2333,20 @@ async fn test_lightning_fx_quote_preview() {
     assert_eq!(payload["amount_minor"].as_u64(), Some(2500));
     assert!(payload["amount_msat"].as_u64().unwrap() > 0);
     assert!(payload["btc_usd_price"].as_f64().unwrap() > 0.0);
+    assert!(
+        payload["metadata"]["reference_btc_usd_price"]
+            .as_f64()
+            .unwrap()
+            > 0.0
+    );
+    assert!(payload["metadata"]["execution_spread_bps"]
+        .as_u64()
+        .is_some());
+    assert!(payload["metadata"]["provider_count"].as_u64().is_some());
+    assert_eq!(
+        payload["metadata"]["quote_direction"].as_str(),
+        Some("usd_to_msat")
+    );
     assert!(payload["observations"]
         .as_array()
         .map(|items| !items.is_empty())

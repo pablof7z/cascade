@@ -101,15 +101,72 @@ pub struct FxQuoteObservation {
     pub observed_at: i64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum FxQuoteDirection {
+    #[default]
+    UsdToMsat,
+    MsatToMinor,
+}
+
+impl std::fmt::Display for FxQuoteDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UsdToMsat => write!(f, "usd_to_msat"),
+            Self::MsatToMinor => write!(f, "msat_to_minor"),
+        }
+    }
+}
+
+impl std::str::FromStr for FxQuoteDirection {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.to_ascii_lowercase().as_str() {
+            "usd_to_msat" => Ok(Self::UsdToMsat),
+            "msat_to_minor" => Ok(Self::MsatToMinor),
+            _ => Err(format!("Invalid FX quote direction: {value}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FxQuoteSourceMetadata {
+    pub combination_policy: String,
+    pub quote_direction: FxQuoteDirection,
+    pub provider_count: u64,
+    pub minimum_provider_count: u64,
+    pub execution_spread_bps: u64,
+    pub max_observation_age_seconds: i64,
+    pub fallback_used: bool,
+}
+
+impl Default for FxQuoteSourceMetadata {
+    fn default() -> Self {
+        Self {
+            combination_policy: "legacy_unknown".to_string(),
+            quote_direction: FxQuoteDirection::UsdToMsat,
+            provider_count: 0,
+            minimum_provider_count: 0,
+            execution_spread_bps: 0,
+            max_observation_age_seconds: 0,
+            fallback_used: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FxQuoteSnapshot {
     pub id: String,
     pub amount_minor: u64,
     pub amount_msat: u64,
     pub btc_usd_price: f64,
+    pub reference_btc_usd_price: f64,
     pub source: String,
     pub spread_bps: u64,
     pub observations: Vec<FxQuoteObservation>,
+    pub source_metadata: FxQuoteSourceMetadata,
     pub created_at: i64,
     pub expires_at: i64,
 }
@@ -176,6 +233,124 @@ pub struct WalletFundingRequest {
     pub created_at: i64,
     pub updated_at: i64,
     pub completed_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UsdcDepositIntentStatus {
+    Pending,
+    Confirmed,
+    Credited,
+    Expired,
+    Cancelled,
+}
+
+impl std::fmt::Display for UsdcDepositIntentStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pending => write!(f, "pending"),
+            Self::Confirmed => write!(f, "confirmed"),
+            Self::Credited => write!(f, "credited"),
+            Self::Expired => write!(f, "expired"),
+            Self::Cancelled => write!(f, "cancelled"),
+        }
+    }
+}
+
+impl std::str::FromStr for UsdcDepositIntentStatus {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.to_lowercase().as_str() {
+            "pending" => Ok(Self::Pending),
+            "confirmed" => Ok(Self::Confirmed),
+            "credited" => Ok(Self::Credited),
+            "expired" => Ok(Self::Expired),
+            "cancelled" => Ok(Self::Cancelled),
+            _ => Err(format!("Invalid USDC deposit intent status: {value}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsdcDepositIntent {
+    pub id: String,
+    pub pubkey: String,
+    pub provider: Option<String>,
+    pub provider_session_id: Option<String>,
+    pub provider_redirect_url: Option<String>,
+    pub network: String,
+    pub asset: String,
+    pub destination_address: String,
+    pub requested_wallet_amount_minor: Option<u64>,
+    pub received_asset_units: Option<u64>,
+    pub onchain_tx_id: Option<String>,
+    pub status: UsdcDepositIntentStatus,
+    pub metadata_json: Option<String>,
+    pub created_at: i64,
+    pub expires_at: Option<i64>,
+    pub confirmed_at: Option<i64>,
+    pub credited_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UsdcWithdrawalStatus {
+    Pending,
+    Submitted,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+impl std::fmt::Display for UsdcWithdrawalStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pending => write!(f, "pending"),
+            Self::Submitted => write!(f, "submitted"),
+            Self::Completed => write!(f, "completed"),
+            Self::Failed => write!(f, "failed"),
+            Self::Cancelled => write!(f, "cancelled"),
+        }
+    }
+}
+
+impl std::str::FromStr for UsdcWithdrawalStatus {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.to_lowercase().as_str() {
+            "pending" => Ok(Self::Pending),
+            "submitted" => Ok(Self::Submitted),
+            "completed" => Ok(Self::Completed),
+            "failed" => Ok(Self::Failed),
+            "cancelled" => Ok(Self::Cancelled),
+            _ => Err(format!("Invalid USDC withdrawal status: {value}")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsdcWithdrawal {
+    pub id: String,
+    pub request_id: Option<String>,
+    pub pubkey: String,
+    pub provider: Option<String>,
+    pub provider_payout_id: Option<String>,
+    pub network: String,
+    pub asset: String,
+    pub destination_address: String,
+    pub wallet_amount_minor: u64,
+    pub asset_units: u64,
+    pub onchain_tx_id: Option<String>,
+    pub status: UsdcWithdrawalStatus,
+    pub error_message: Option<String>,
+    pub change_signatures_json: Option<String>,
+    pub metadata_json: Option<String>,
+    pub created_at: i64,
+    pub submitted_at: Option<i64>,
+    pub completed_at: Option<i64>,
+    pub failed_at: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

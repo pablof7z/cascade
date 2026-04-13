@@ -18,6 +18,15 @@ cert_path = "/path/to/tls.cert"
 macaroon_path = "/path/to/admin.macaroon"
 cli_path = "/path/to/lncli"
 
+[fx]
+quote_ttl_seconds = 900
+max_provider_spread_bps = 500
+max_observation_age_seconds = 60
+min_provider_count = 2
+usd_to_msat_spread_bps = 100
+msat_to_usd_spread_bps = 100
+signet_fallback_btc_usd_price = 50000.0
+
 [stripe]
 secret_key = ""
 webhook_secret = ""

@@ -63,10 +63,10 @@
   const openingProbability = $derived(earliestTrade?.probability ?? 0.5);
   const visibleAccounts = $derived(new Set(trades.map((trade) => trade.pubkey)).size);
   const averageTradeSize = $derived(tradeSummary.tradeCount > 0 ? tradeSummary.grossVolume / tradeSummary.tradeCount : 0);
-  const flowYes = $derived(
-    tradeSummary.grossVolume > 0 ? tradeSummary.yesVolume / tradeSummary.grossVolume : impliedProbability
+  const flowLong = $derived(
+    tradeSummary.grossVolume > 0 ? tradeSummary.longVolume / tradeSummary.grossVolume : impliedProbability
   );
-  const flowNo = $derived(1 - flowYes);
+  const flowShort = $derived(1 - flowLong);
 
   const caseParagraphs = $derived(
     market.body
@@ -82,7 +82,7 @@
         id: trade.id,
         kind: 'trade' as const,
         createdAt: trade.createdAt,
-        headline: `${trade.type === 'buy' ? 'Minted' : 'Withdrew'} ${trade.direction === 'yes' ? 'LONG' : 'SHORT'}`,
+        headline: `${trade.type === 'buy' ? 'Minted' : 'Withdrew'} ${trade.direction === 'long' ? 'LONG' : 'SHORT'}`,
         detail: `${formatProductAmount(trade.amount, trade.unit)} at ${formatProbability(trade.probability)}`
       })),
       ...discussions.map((discussion) => ({
@@ -156,7 +156,7 @@
       {
         eyebrow: 'Flow',
         title: latestTrade
-          ? `${latestTrade.type === 'buy' ? 'Mint' : 'Withdraw'} on ${latestTrade.direction === 'yes' ? 'LONG' : 'SHORT'}`
+          ? `${latestTrade.type === 'buy' ? 'Mint' : 'Withdraw'} on ${latestTrade.direction === 'long' ? 'LONG' : 'SHORT'}`
           : 'No visible fills yet',
         detail: latestTrade
           ? `${formatProductAmount(latestTrade.amount, latestTrade.unit)} moved ${formatRelativeTime(latestTrade.createdAt)}.`
@@ -302,7 +302,7 @@
           <dt>Latest fill</dt>
           <dd>
             {#if latestTrade}
-              {latestTrade.direction === 'yes' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'mint' : 'withdraw'}
+              {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'mint' : 'withdraw'}
             {:else}
               None
             {/if}
@@ -361,20 +361,20 @@
         <div>
           <div class="bar-label">
             <span>LONG flow share</span>
-            <span>{formatProbability(flowYes)} LONG</span>
+            <span>{formatProbability(flowLong)} LONG</span>
           </div>
           <div class="bar-track">
-            <div class="bar-fill positive-fill" style:width={`${flowYes * 100}%`}></div>
+            <div class="bar-fill positive-fill" style:width={`${flowLong * 100}%`}></div>
           </div>
         </div>
 
         <div>
           <div class="bar-label">
             <span>SHORT flow share</span>
-            <span>{formatProbability(flowNo)} SHORT</span>
+            <span>{formatProbability(flowShort)} SHORT</span>
           </div>
           <div class="bar-track">
-            <div class="bar-fill negative-fill" style:width={`${flowNo * 100}%`}></div>
+            <div class="bar-fill negative-fill" style:width={`${flowShort * 100}%`}></div>
           </div>
         </div>
       </div>
@@ -433,7 +433,7 @@
           {#each orderedTrades.slice(0, 6) as trade (trade.id)}
             <div class="dense-row">
               <div>
-                <strong>{trade.type === 'buy' ? 'Mint' : 'Withdraw'} · {trade.direction === 'yes' ? 'LONG' : 'SHORT'}</strong>
+                <strong>{trade.type === 'buy' ? 'Mint' : 'Withdraw'} · {trade.direction === 'long' ? 'LONG' : 'SHORT'}</strong>
                 <p>{formatRelativeTime(trade.createdAt)}</p>
               </div>
               <div class="dense-aside">
@@ -550,11 +550,11 @@
             <div class="chart-step">
               <span>{formatRelativeTime(trade.createdAt)}</span>
               <div class="chart-line">
-                <div class="chart-dot" class:negative-dot={trade.direction === 'no'}></div>
+                <div class="chart-dot" class:negative-dot={trade.direction === 'short'}></div>
                 <div class="chart-bar">
                   <div
                     class="chart-fill"
-                    class:negative-fill={trade.direction === 'no'}
+                    class:negative-fill={trade.direction === 'short'}
                     style:width={`${trade.probability * 100}%`}
                   ></div>
                 </div>

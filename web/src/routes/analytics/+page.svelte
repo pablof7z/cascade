@@ -76,7 +76,7 @@
         id: trade.id,
         createdAt: trade.createdAt,
         kind: 'Trade',
-        detail: `${trade.direction === 'yes' ? 'LONG' : 'SHORT'} · ${formatProductAmount(trade.amount, trade.unit)} ${productUnitLabel(trade.unit)}`
+        detail: `${trade.direction === 'long' ? 'LONG' : 'SHORT'} · ${formatProductAmount(trade.amount, trade.unit)} ${productUnitLabel(trade.unit)}`
       })),
       ...discussions.slice(0, 8).map((discussion) => ({
         id: discussion?.id ?? '',

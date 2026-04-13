@@ -240,7 +240,6 @@ The preferred first implementation is one backend deployment with these modules,
 - Lightning mint-quote and mint flow on standard Cashu NUT-23 endpoints backed by real CDK mint quote state
 - signet funding settlement that ends in edition-local Cashu proofs, not a pubkey-keyed server wallet ledger
 - one rail-agnostic funding recovery model shared by Stripe and Lightning
-- runtime manifest and request-edition guard so the frontend cannot create a signet invoice from a mainnet surface
 
 ### Signet Recommendation
 
@@ -277,7 +276,6 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 - signet funding credits a pubkey-keyed server wallet instead of issuing signet-edition proofs to the user or agent
 - the signet app depends on a separate portfolio product model rather than the same self-custodied proof behavior as mainnet
 - the browser depends on a backend current-balance or current-position snapshot to render `/portfolio`
-- a frontend can point at the wrong edition backend and still create funding or trading state without an explicit mismatch error
 
 ### Best Practices
 
@@ -423,7 +421,7 @@ Launch should fail this gate if:
 - creator builder flow with pending visibility and resume
 - portfolio and activity views wired to real data
 - environment banner or switcher
-- `/portfolio` is the canonical self-custodied account route and `/wallet` is only a compatibility redirect at launch
+- `/portfolio` is the canonical self-custodied account route and there is no `/wallet` route at launch
 
 ### Success Gates
 
@@ -539,28 +537,28 @@ Launch should fail this gate if:
 - Quote formation is now documented in code as: reject stale provider observations, require a minimum fresh-provider count, take the median BTC/USD reference rate, reject excessive provider disagreement, then apply a directional execution spread for `usd_to_msat` and `msat_to_usd`.
 - Locked FX snapshots are now persisted with expiry, executable and reference BTC/USD rates, spread, provider observations, and source metadata so funding and melt paths can reuse the same auditable quote record.
 - Funding and melt flows now reject expired FX snapshots instead of silently reusing stale prices.
-- Scope note: schema history now includes `mint/migrations/017_fx_quote_source_metadata.sql`, while runtime upgrade safety currently comes from `ensure_fx_quote_source_metadata_columns()` because `ADD COLUMN IF NOT EXISTS` was not reliable across the current SQLite test matrix.
+- Scope note: schema history now includes `mint/migrations/017_fx_quote_source_metadata.sql`, which is the only schema change mechanism for FX quote source metadata.
 - Milestone 4 funding recovery is now rail-aware instead of Lightning-only: Stripe funding rows are mirrored into CDK mint-quote state at creation time, verified webhook completion moves them into redeemable `PAID` state, `/v1/mint/stripe` issues proofs through the same blind-output flow as Lightning, and persisted funding-status reads now reconcile `ISSUED -> complete` for both rails without returning bearer proofs.
 - Milestone 5 sell execution now creates a real incoming wallet mint quote before the hidden BOLT11 payment step, then persists the underlying wallet quote id and quote-state metadata on the resulting trade settlement record so wallet-side exit recovery and audit no longer depend on a bespoke raw invoice alone.
 
 ### 2026-04-13 Review Addendum
 
-- Milestone 3 is not complete while signet can silently fall back to a static BTC/USD rate. Launch signet and mainnet must both use the live multi-provider quote policy. If a manual fallback remains for local development, gate it behind an explicit non-launch flag, surface it as degraded mode, and exclude it from milestone completion.
+- Milestone 3 is not complete unless signet and mainnet both use the live multi-provider quote policy.
 - Milestone 4 is not complete while signet Lightning funding auto-pays invoices inside the backend. Replace the auto-settle shortcut with an actual signet-value payment loop that preserves the normal `quote -> pay -> PAID -> mint` lifecycle and the same recovery semantics expected on mainnet.
 - Milestone 5 is not complete until sell exits are genuinely recoverable after interruption. A sell-created wallet mint quote must be readable and redeemable through the standard mint-quote contract, or an equivalently standard documented recovery contract. Do not mark a wallet mint quote `ISSUED` manually unless the blinded-output recovery path is durable and externally recoverable.
 - Request-id idempotency is not sufficient by itself. For buy, sell, Lightning funding, and Stripe funding, a client that loses the success response after proof issuance must be able to recover the issued outputs or resume through a documented redeemable quote path without double execution or stranded value.
-- Public product APIs and mint-authored trade payloads must emit `long` and `short`, not `yes` and `no`. If compatibility aliases are needed, keep `yes` and `no` as inbound-only parsing aliases and add an explicit follow-up to remove them from outbound responses, trade events, and price field names.
+- Public product APIs and mint-authored trade payloads must use `long` and `short`. Do not accept or emit `yes` and `no`.
 - User-facing product APIs should avoid `settlement` terminology when the behavior is actually funding, minting, or withdrawal. Internal implementation terms can remain, but the external contract should use product language consistently.
 Required tests before closing M3, M4, or M5:
 - duplicate Stripe webhook delivery remains idempotent and cannot move a funding back out of `complete` or `review_required`
 - sell interrupted after wallet-invoice payment but before client response can be recovered end to end
 - trade and funding request-id retries after a lost success response recover the same issued outputs or an equivalent redeemable quote path
 - signet paper funding no longer relies on backend auto-payment
-- launch signet and mainnet completion checks fail if FX fallback mode is active
+- launch signet and mainnet completion checks fail when live FX providers are unavailable
 
 ### 2026-04-13 Round 3
 
 - Review finding 1 is now closed in the public recovery contract: sell-created wallet quotes are mirrored into wallet funding state, `GET /v1/mint/quote/wallet/{quote_id}` exposes the same quote id after a sell exit, `POST /v1/mint/wallet` replays the issued signatures for that quote when needed, and trade request replay/status now recover completed buy and sell `issued` plus `change` bundles without re-executing the trade.
 - Review finding 2 is now closed for launch paths: the signet-only auto-payment shortcut was removed from portfolio Lightning funding, and the FX service now hard-fails when live provider observations are missing or stale instead of silently quoting against a static signet fallback.
-- Review finding 3 is now closed in the product contract: outbound trade and market payloads use `long` and `short`, while `yes` and `no` remain inbound-only parsing aliases for compatibility.
+- Review finding 3 is now closed in the product contract: trade and market payloads use `long` and `short`, and the old `yes`/`no` aliases are gone.
 - Milestone 6 recovery scope also moved forward in this round: spend-capped buy quote replay now matches the persisted quote snapshot deterministically, and coordinator request-status reads return the same proof bundles needed to recover a lost success response.

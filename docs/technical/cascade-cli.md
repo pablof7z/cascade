@@ -10,7 +10,7 @@ This document is a design spec for the command surface. It defines the intended 
 - Machine-first output. Commands print JSON to stdout by default. Human-oriented rendering is opt-in.
 - Edition selection uses `--signet` or `--mainnet`. There is no `--edition`.
 - No generic `cascade sign` or `cascade publish` commands. Domain commands own their own Nostr side effects.
-- `cascade market create` is the authoring entrypoint. It signs and publishes the kind `982` internally, then coordinates pending launch state and seed funding.
+- `cascade market create` is the authoring entrypoint. It signs and publishes the kind `982` internally, then executes the seed trade that makes the market immediately public.
 - Money is expressed in USD minor units.
 - Market side is always `yes|no` at the CLI boundary.
 - Proofs are self-custodied and managed locally by the CLI.
@@ -82,7 +82,6 @@ identity
 market
   list
   show <market>
-  pending <event-id> [--creator <pubkey>]
   price-history <market>
   activity <market>
   create
@@ -182,10 +181,10 @@ Print the current local identity summary:
 ### `cascade market list`
 
 ```text
-cascade market list [--creator <pubkey>] [--limit <n>] [--visibility public|pending|all]
+cascade market list [--creator <pubkey>] [--limit <n>]
 ```
 
-Reads the public market feed by default. With `--creator`, it can include creator-visible pending markets when the backend exposes that surface.
+Reads the public market feed. Markets are publicly visible immediately after the creator's seed trade completes.
 
 ### `cascade market show`
 
@@ -194,16 +193,6 @@ cascade market show <market>
 ```
 
 Returns market detail, recent trade records, and current prices.
-
-### `cascade market pending`
-
-```text
-cascade market pending <event-id> [--creator <pubkey>]
-```
-
-Fetch creator-only pending state before the first mint-authored kind `983` makes the market public.
-
-If `--creator` is omitted, the CLI uses the current local pubkey.
 
 ### `cascade market price-history`
 
@@ -258,11 +247,10 @@ Behavior:
 1. Build the kind `982` event from flags or the JSON file.
 2. Sign it with the local identity.
 3. Publish it directly to relays.
-4. Send the signed raw event to the product API so the creator can see the pending market immediately.
-5. Select enough local `usd` proofs for the seed spend.
-6. Execute the opening buy on `yes` or `no`.
-7. Remove spent USD proofs, persist any USD change proofs, persist the issued `long_<slug>` or `short_<slug>` proofs, and publish the updated position record.
-8. Return the signed event, accepted relays, pending-market payload, seed trade payload, and proof-store delta.
+4. Select enough local `usd` proofs for the seed spend.
+5. Execute the opening buy on `yes` or `no`.
+6. Remove spent USD proofs, persist any USD change proofs, persist the issued `long_<slug>` or `short_<slug>` proofs, and publish the updated position record.
+7. Return the signed event, accepted relays, seed trade payload, and proof-store delta.
 
 Constraints:
 
@@ -272,8 +260,8 @@ Constraints:
 
 Failure semantics:
 
-- If kind `982` publication succeeds but funding fails, the command returns the event id, relay publication result, and pending-market result with a non-zero exit code.
-- That state is valid: the creator can still inspect the pending market and retry the seed trade later.
+- If kind `982` publication succeeds but funding fails, the command returns the event id and relay publication result with a non-zero exit code.
+- That state is valid: the kind `982` is published to relays, and the creator can retry the seed trade later.
 
 ## Trade
 

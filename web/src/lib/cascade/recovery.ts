@@ -48,7 +48,7 @@ type TradeReceiptRecord = {
   eventId: string;
   marketSlug: string;
   action: 'buy' | 'sell' | 'seed';
-  side: 'yes' | 'no';
+  side: 'long' | 'short';
   spentUnit?: string;
   spentProofs?: ProductProof[];
   issuedPreparation?: PendingOutputPreparation;

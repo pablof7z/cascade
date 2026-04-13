@@ -19,6 +19,10 @@ Agents and web clients should not be forced to reason about sats or Lightning fo
 - Hosted agents and external agents use the same public and authenticated API endpoints.
 - A pubkey is a pubkey. There is no dedicated mint-side human or agent registry.
 - Market creation begins with the author publishing a signed kind `982` directly to relays. The product API is not a `982` publish proxy.
+- Nostr event data (kind `982`, kind `983`, or any other kind) is never served over HTTP. Clients fetch market definitions from relays; clients subscribe to relays for trade history. The API serves projections and LMSR state, not raw events.
+- The mint lazy-initializes LMSR pools on first trade. There is no market registration endpoint. No pre-registration step is required before trading.
+- Portfolio funding (Stripe, Lightning) flows directly from the client to the mint. The webapp has no proxy routes for funding.
+- There is no `GET /api/product/runtime` endpoint. Client configuration is build-time or Nostr-native.
 - Portfolio proofs are self-custodied by the user or agent. There is no canonical `/api/wallet` balance endpoint backed by server-held proofs.
 - There is no canonical pubkey-keyed portfolio route. The backend does not maintain a current-balance or current-position portfolio ledger for `/portfolio`.
 - Launch web clients store proofs locally in browser `localStorage` in both signet and mainnet editions. NIP-60 is explicitly out of current launch scope.
@@ -26,6 +30,21 @@ Agents and web clients should not be forced to reason about sats or Lightning fo
 - Normal product contracts are dollar-denominated and hide sats/msats.
 - Standard-first rule: if Cashu/CDK already provides a standard route or state machine for a behavior, Cascade should use it instead of inventing a parallel custom route.
 - Any custom route or custom persisted state must have a product-specific justification and should sit above the standard mint surface, not replace it.
+
+## Lazy LMSR Initialization
+
+Market creators publish kind `982` events directly to Nostr relays. The mint requires no pre-registration step.
+
+When the first trade arrives for a market:
+
+1. The mint extracts the kind `982` event ID from the trade request.
+2. The mint fetches the kind `982` event from Nostr relays using that event ID.
+3. The mint extracts LMSR parameters (initial liquidity `b`, slug, creator pubkey) from the event.
+4. The mint creates the LMSR pool and initializes keysets for LONG and SHORT.
+5. The mint executes the trade and publishes a kind `983` event to relays.
+6. After the first kind `983`, the market becomes publicly discoverable.
+
+This means there is no `POST /api/product/markets` registration step, no "pending state until the mint registers", and no visibility gate controlled by a separate registration call. The market is live the moment the first trade executes.
 
 ## Units
 
@@ -90,16 +109,16 @@ They are not all equally canonical. The route surface should be read in three bu
 
 ### Public Read
 
-- `GET /api/product/runtime` — runtime manifest with actual backend edition, mint URL, proof custody mode, and funding-rail availability
 - `GET /api/price/{currency}` — price feed
 - `GET /api/market/{id}` — fetch current market state by kind `982` event id
 - `GET /api/market/{id}/price-history` — fetch market price history by kind `982` event id
-- `GET /api/product/feed` — mint-backed public signet feed
-- `GET /api/product/markets/slug/{slug}` — public market detail once visible
 - `GET /api/product/fx/lightning/{amount_minor}` — preview a locked `USD <-> msat` quote
 - `GET /api/trades/{trade_id}` — fetch persisted trade execution status
 - `GET /api/trades/requests/{request_id}` — fetch persisted trade request status for retry/recovery
 - `GET /api/portfolio/funding/{funding_id}` — fetch persisted funding status
+- `GET /api/portfolio/funding/requests/{request_id}` — fetch persisted funding request status by idempotency key
+- `GET /api/product/activity` — network-wide activity feed
+- `GET /api/product/markets/search` — search markets
 - `GET /v1/keys` — mint-global public keys
 - `GET /{event_id}/v1/keys` — market-scoped LONG and SHORT public keys by kind `982` event id
 - `GET /health` — health check
@@ -107,26 +126,33 @@ They are not all equally canonical. The route surface should be read in three bu
 ### Authenticated / State-Changing
 
 - `POST /api/market/create`
-- `POST /api/product/markets`
 - `POST /api/portfolio/funding/stripe`
 - `POST /api/portfolio/funding/stripe/webhook`
 - `POST /api/trades/quote`
 - `POST /api/trades/buy`
 - `POST /api/trades/sell/quote`
 - `POST /api/trades/sell`
-- `GET /api/product/markets/{event_id}/pending/{creator_pubkey}`
 - `POST /v1/mint/quote/bolt11`
 - `GET /v1/mint/quote/bolt11/{quote_id}`
+- `GET /v1/mint/quote/wallet/{quote_id}`
+- `GET /v1/mint/quote/stripe/{quote_id}`
 - `POST /v1/mint/bolt11`
+- `POST /v1/mint/wallet`
+- `POST /v1/mint/stripe`
 - `POST /v1/melt/quote/bolt11`
 - `GET /v1/melt/quote/bolt11/{quote_id}`
 - `POST /v1/melt/bolt11`
+- `POST /api/portfolio/funding/usdc/deposit-intents`
+- `GET /api/portfolio/funding/usdc/deposit-intents/{intent_id}`
+- `POST /api/portfolio/withdrawals/usdc`
+- `GET /api/portfolio/withdrawals/usdc/requests/{request_id}`
+- `GET /api/portfolio/withdrawals/usdc/{withdrawal_id}`
 
 These routes reflect the current implementation. The important caveats are now:
 
 - the standard `bolt11` mint and melt paths are live through the CDK surface with a shared USD/BOLT11 payment processor
 - Cascade still adds product-specific recovery and Stripe coordination around that standard surface
-- `POST /api/market/create` still exists as migration debt and should not be treated as the canonical kind `982` publishing interface
+- `POST /api/market/create` still exists as migration debt and should not be treated as the canonical kind `982` publishing interface; it does not register the market — LMSR pools are initialized lazily on first trade
 
 ## Standard-First Route Taxonomy
 
@@ -153,8 +179,6 @@ That same rule applies when the coordinator executes a trade internally. It may 
 
 These routes are justified because they express product behavior that the standard mint surface does not express on its own:
 
-- `GET /api/product/runtime`
-  - justification: edition mismatch detection, proof-custody mode, and rail availability are product concerns, not Cashu mint concerns
 - `POST /api/portfolio/funding/stripe`
 - `POST /api/portfolio/funding/stripe/webhook`
 - `GET /api/portfolio/funding/{funding_id}`
@@ -168,10 +192,9 @@ These routes are justified because they express product behavior that the standa
 - `GET /api/trades/{trade_id}`
 - `GET /api/trades/requests/{request_id}`
   - justification: spend-based USD LMSR trading composes multiple standard mint/melt steps and market math into one product action
-- `GET /api/product/feed`
-- `GET /api/product/markets/slug/{slug}`
-- `GET /api/product/markets/{event_id}/pending/{creator_pubkey}`
-  - justification: public discovery and pending-visibility behavior are product read models, not Cashu mint primitives
+- `GET /api/market/{id}`
+- `GET /api/market/{id}/price-history`
+  - justification: projected market state read models are product surfaces, not Cashu mint primitives; raw kind `982` data comes from relays, but the mint's authoritative LMSR state is served here
 
 ### Legacy Or Debt Routes
 
@@ -179,11 +202,11 @@ These are the main remaining non-canonical routes in the codebase:
 
 - `POST /api/market/create`
 
-The earlier legacy families such as `/api/lightning/*`, `/api/trade/*`, `/v1/cascade/*`, `/api/product/markets/{event_id}/{quote,buy,sell}`, and `/api/market/{id}/resolve` have been removed from the live mint surface and should not be reintroduced.
+The earlier legacy families such as `/api/lightning/*`, `/api/trade/*`, `/v1/cascade/*`, `/api/product/markets/{event_id}/{quote,buy,sell}`, `/api/product/markets` (registration), `/api/product/feed`, `/api/product/markets/slug/{slug}`, `/api/product/runtime`, and `/api/market/{id}/resolve` have been removed from the canonical mint surface and must not be reintroduced.
 
 If a new custom route is proposed, it needs the same written justification bar as the currently allowed custom orchestration routes.
 
-The presence of `POST /api/market/create` in the current implementation does not mean the mint should be the canonical publisher of kind `982`.
+The presence of `POST /api/market/create` in the current implementation does not mean the mint should be the canonical publisher of kind `982`. Markets are created by publishing kind `982` directly to relays; the LMSR pool is initialized lazily on first trade.
 
 ## Canonical Launch Contract
 
@@ -208,7 +231,7 @@ Agents should be able to query:
 
 Analytics is public. Agents should be able to read market and platform stats without signing in.
 
-Public discovery routes should exclude markets that have no mint-authored kind `983` yet. Creator-authenticated product routes may include that user's pending markets before the first trade.
+Public discovery routes should exclude markets that have no mint-authored kind `983` yet. A market becomes publicly discoverable only after its first trade triggers lazy LMSR initialization and the mint publishes the first kind `983`.
 
 ### 2. Authenticated Product Surface
 
@@ -233,7 +256,6 @@ The exact naming can still change during implementation, but launch needs a high
 
 ### Wallet Funding
 
-- `GET /api/product/runtime`
 - `GET /api/product/fx/lightning/{amount_minor}`
 - `POST /v1/mint/quote/bolt11`
 - `GET /v1/mint/quote/bolt11/{quote_id}`
@@ -248,18 +270,10 @@ Wallet funding uses two different interface shapes on purpose:
 - Lightning portfolio funding is the standard Cashu NUT-23 BOLT11 mint flow.
 - Stripe remains a Cascade product saga because card checkout and webhook completion are not part of the Cashu core mint flow.
 
-Before any state-changing portfolio or trade request, the client should load `GET /api/product/runtime` and compare:
-
-- the browser edition
-- the backend-reported edition
-- the availability of the requested funding rail
-
-If the runtime manifest does not match the current browser edition, the client must treat the backend as unavailable for funding and trading rather than attempting to continue.
-
 - Lightning mint quotes carry invoice metadata and reconcile against the underlying invoice state through the standard mint quote lifecycle.
 - Stripe funding carries hosted Checkout metadata and completes from a verified Stripe webhook only after Stripe risk checks pass.
 - `GET /api/portfolio/funding/{funding_id}` remains the canonical persisted-status route for Stripe funding.
-- `GET /api/wallet/topups/{quote_id}` remains a legacy compatibility alias only.
+- There are no `/api/wallet/topups/*` compatibility aliases.
 - Lightning funding is standardized on `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`.
 - Outbound Lightning payment is standardized on `POST /v1/melt/quote/bolt11`, `GET /v1/melt/quote/bolt11/{quote_id}`, and `POST /v1/melt/bolt11`.
 - Those Lightning quote ids should be persisted as real CDK mint quotes in the mint localstore, not only as parallel Cascade product rows.
@@ -280,12 +294,6 @@ Lightning funding recovery is wallet-native rather than request-native:
 - after the invoice is paid, the browser calls `POST /v1/mint/bolt11` with blinded outputs
 - if the minting response is interrupted after issuance, the browser restores proofs locally through the deterministic-output recovery path instead of asking a custom `/api/...` route to return bearer proofs
 - persisted funding-status routes must never return bearer proofs
-
-State-changing product routes should also accept the client's expected edition through `X-Cascade-Edition: mainnet|signet`.
-
-- When the header matches the runtime edition, the request proceeds normally.
-- When the header does not match, the mint should reject the request with `edition_mismatch` instead of creating a quote, invoice, checkout session, or trade state on the wrong backend.
-- For backward compatibility, legacy clients that omit the header may still be served, but launch web and agent clients should send it on every state-changing product request.
 
 Persisted wallet funding responses should carry rail-specific metadata in one shared shape:
 
@@ -386,7 +394,6 @@ Settlement metadata should remain auditable:
 ### Authenticated Write / Private Read
 
 - `POST /api/market/create`
-- `GET /api/product/markets/{event_id}/pending/{creator_pubkey}`
 - `POST /api/bookmarks`
 - `GET /api/bookmarks`
 - `POST /api/discussion`
@@ -394,9 +401,7 @@ Settlement metadata should remain auditable:
 
 The reason this layer exists is simple: the user experience is "spend $10 on YES", not "manually compose a market-mint quote, a wallet-mint melt, and a Lightning invoice."
 
-If a route like `POST /api/market/create` exists, its job is to verify or coordinate around an already-signed kind `982` and the related funding flow. It should not exist solely to publish that event to relays on behalf of the author.
-
-The product layer also owns launch visibility semantics for newly created markets, including creator-only pending reads before the first mint-authored kind `983`.
+If a route like `POST /api/market/create` exists, its job is to coordinate around an already-signed kind `982` event that the creator has published directly to relays. It must not exist as a registration gate: the mint lazy-initializes the LMSR pool on the first trade, not at registration time.
 
 ## Quote And Execution Semantics
 

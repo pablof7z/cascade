@@ -132,7 +132,11 @@ impl CascadeDatabase {
         self.ensure_fx_quote_observations_column().await?;
         self.ensure_wallet_funding_quote_metadata_column().await?;
         self.ensure_trade_quote_settlement_columns().await?;
-        self.ensure_fx_quote_source_metadata_columns().await?;
+        self.execute_migration_statements(
+            include_str!("../../../migrations/017_fx_quote_source_metadata.sql"),
+            true,
+        )
+        .await?;
         self.ensure_trade_execution_request_response_column()
             .await?;
 
@@ -194,6 +198,31 @@ impl CascadeDatabase {
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         Ok(exists > 0)
+    }
+
+    async fn execute_migration_statements(
+        &self,
+        sql: &str,
+        ignore_duplicate_column_errors: bool,
+    ) -> Result<()> {
+        for statement in sql.split(';') {
+            let statement = statement.trim();
+            if statement.is_empty() {
+                continue;
+            }
+
+            match sqlx::query(statement).execute(&self.pool).await {
+                Ok(_) => {}
+                Err(error)
+                    if ignore_duplicate_column_errors
+                        && error.to_string().contains("duplicate column name") => {}
+                Err(error) => {
+                    return Err(crate::error::CascadeError::database(error.to_string()));
+                }
+            }
+        }
+
+        Ok(())
     }
 
     async fn rename_wallet_funding_tables_if_needed(&self) -> Result<()> {
@@ -359,41 +388,6 @@ impl CascadeDatabase {
 
         sqlx::query(
             "CREATE INDEX IF NOT EXISTS idx_trade_quote_snapshots_fx_quote_id ON trade_quote_snapshots(fx_quote_id)",
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(())
-    }
-
-    async fn ensure_fx_quote_source_metadata_columns(&self) -> Result<()> {
-        if !self
-            .column_exists("fx_quote_snapshots", "reference_btc_usd_price")
-            .await?
-        {
-            sqlx::query(
-                "ALTER TABLE fx_quote_snapshots ADD COLUMN reference_btc_usd_price REAL NOT NULL DEFAULT 0",
-            )
-            .execute(&self.pool)
-            .await
-            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-        }
-
-        if !self
-            .column_exists("fx_quote_snapshots", "metadata_json")
-            .await?
-        {
-            sqlx::query(
-                "ALTER TABLE fx_quote_snapshots ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}'",
-            )
-            .execute(&self.pool)
-            .await
-            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-        }
-
-        sqlx::query(
-            "UPDATE fx_quote_snapshots SET reference_btc_usd_price = btc_usd_price WHERE reference_btc_usd_price <= 0",
         )
         .execute(&self.pool)
         .await
@@ -3203,12 +3197,12 @@ impl CascadeDatabase {
         .bind(now)
         .bind(next_volume_minor)
         .bind(next_trade_count)
-        .bind(if direction == "yes" {
+        .bind(if direction == "long" {
             price_ppm as i64
         } else {
             (1_000_000_u64.saturating_sub(price_ppm)) as i64
         })
-        .bind(if direction == "yes" {
+        .bind(if direction == "long" {
             (1_000_000_u64.saturating_sub(price_ppm)) as i64
         } else {
             price_ppm as i64
@@ -3414,6 +3408,22 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_migrations_rerun_successfully() {
+        let db = create_test_db().await;
+
+        db.run_migrations().await.unwrap();
+
+        assert!(db
+            .column_exists("fx_quote_snapshots", "reference_btc_usd_price")
+            .await
+            .unwrap());
+        assert!(db
+            .column_exists("fx_quote_snapshots", "metadata_json")
+            .await
+            .unwrap());
+    }
+
+    #[tokio::test]
     async fn test_lightning_escrow_table_exists() {
         let db = create_test_db().await;
 
@@ -3537,7 +3547,6 @@ mod tests {
                 minimum_provider_count: 2,
                 execution_spread_bps: 100,
                 max_observation_age_seconds: 60,
-                fallback_used: false,
             },
             created_at: now,
             expires_at: now + 30,
@@ -3656,7 +3665,7 @@ mod tests {
             .create_trade_quote_snapshot(
                 "event-fx-shared-1",
                 "buy",
-                "yes",
+                "long",
                 &fx_quote,
                 2_500,
                 25,

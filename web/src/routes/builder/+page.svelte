@@ -57,7 +57,7 @@
     id: string;
     slug: string;
     title: string;
-    direction: 'yes' | 'no';
+    direction: 'long' | 'short';
     note: string;
   };
 
@@ -85,7 +85,7 @@
   let errorMessage = $state('');
   let builderStatus = $state('');
   let seedAmount = $state('10000');
-  let seedSide = $state<'yes' | 'no'>('yes');
+  let seedSide = $state<'long' | 'short'>('long');
   let pendingCreatorMarkets = $state<PendingCreatorMarketRecord[]>([]);
   let publicReferenceMarkets = $state<MarketRecord[]>([]);
 
@@ -173,7 +173,7 @@
         id: market.id,
         slug: market.slug,
         title: market.title,
-        direction: 'yes',
+        direction: 'long',
         note: ''
       }
     ];
@@ -184,7 +184,7 @@
     linkedMarkets = linkedMarkets.filter((item) => item.id !== id);
   }
 
-  function updateLinkDirection(id: string, direction: 'yes' | 'no') {
+  function updateLinkDirection(id: string, direction: 'long' | 'short') {
     linkedMarkets = linkedMarkets.map((item) => (item.id === id ? { ...item, direction } : item));
   }
 
@@ -217,8 +217,8 @@
     pendingCreatorMarkets = currentUser ? listPendingCreatorMarkets(currentUser.pubkey) : [];
   }
 
-  function marketUnitForSide(marketSlug: string, side: 'yes' | 'no'): string {
-    return side === 'yes' ? `long_${marketSlug}` : `short_${marketSlug}`;
+  function marketUnitForSide(marketSlug: string, side: 'long' | 'short'): string {
+    return side === 'long' ? `long_${marketSlug}` : `short_${marketSlug}`;
   }
 
   async function applyRecoveredSeedProofs(
@@ -311,7 +311,7 @@
       if (!spendProofs.length) {
         throw new Error(`Your ${portfolioLabel} no longer has enough local proofs for this seed.`);
       }
-      const issuedUnit = marketUnitForSide(slug, (quote.side as 'yes' | 'no') ?? seedSide);
+      const issuedUnit = marketUnitForSide(slug, (quote.side as 'long' | 'short') ?? seedSide);
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
         proofMintUrl(),
         issuedUnit,
@@ -340,7 +340,7 @@
       const seed = await buyMarketPosition({
         eventId,
         pubkey: currentUser.pubkey,
-        side: (quote.side as 'yes' | 'no') ?? seedSide,
+        side: (quote.side as 'long' | 'short') ?? seedSide,
         spendMinor: quote.spend_minor,
         proofs: spendProofs,
         issuedOutputs,
@@ -764,9 +764,9 @@
                 </div>
 
                 <div class="builder-selected-controls">
-                  <select bind:value={item.direction} onchange={(event) => updateLinkDirection(item.id, (event.currentTarget as HTMLSelectElement).value as 'yes' | 'no')}>
-                    <option value="yes">Supports LONG</option>
-                    <option value="no">Supports SHORT</option>
+                  <select bind:value={item.direction} onchange={(event) => updateLinkDirection(item.id, (event.currentTarget as HTMLSelectElement).value as 'long' | 'short')}>
+                    <option value="long">Supports LONG</option>
+                    <option value="short">Supports SHORT</option>
                   </select>
                   <input
                     oninput={(event) => updateLinkNote(item.id, (event.currentTarget as HTMLInputElement).value)}
@@ -840,8 +840,8 @@
               <label class="builder-field">
                 <span>Opening side</span>
                 <select bind:value={seedSide}>
-                  <option value="yes">LONG</option>
-                  <option value="no">SHORT</option>
+                  <option value="long">LONG</option>
+                  <option value="short">SHORT</option>
                 </select>
               </label>
             </div>

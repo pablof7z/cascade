@@ -126,7 +126,7 @@ Launch does not require:
 - `/note/:id` unless repurposed into blog/article rendering
 - `/u/:pubkey` should not ship as a public route
 - `/profile/:identifier` should not ship as a public route
-- `/wallet` should only exist as a compatibility redirect to `/portfolio`
+- `/wallet` should not exist at launch
 - `/relays` and `/relay/:hostname` as public product routes
 
 ## Route Assumptions Locked By This Plan
@@ -137,7 +137,7 @@ These route choices are part of the launch target unless a later explicit produc
 - `/profile` is the canonical self-profile surface.
 - `/p/:identifier` is the canonical public-profile route.
 - `/portfolio` is the canonical self-custodied capital and positions surface.
-- `/wallet` should only redirect to `/portfolio` at launch.
+- `/wallet` should not exist at launch.
 - `/u/:pubkey` and `/profile/:identifier` should not ship at launch, including as compatibility redirects.
 - `/blog` is a curated narrative route, not a required full CMS.
 
@@ -156,7 +156,6 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - bookmarks
 - leaderboard
 - analytics
-- wallet
 - portfolio
 - profile
 
@@ -170,7 +169,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - current `web/` still includes template routes outside the Cascade product surface
 - current content routes do not yet prove the full public market + identity launch surface
 - current portfolio surface still needs to be fully wired to real local proof state
-- current wallet and market flows still need the USD stablemint + Stripe and Lightning funding story wired end to end
+- current portfolio and market flows still need the USD stablemint + Stripe and Lightning funding story wired end to end
 - dashboard/workspace surfaces still exist conceptually, but they are future scope and must not distort launch acceptance
 
 ## Workstream 1: Public Shell And Navigation
@@ -229,7 +228,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 
 - [ ] Market header shows title, slug, creator identity, and current price.
 - [ ] Key stats block shows price, recent movement, volume, market cap, and trader count.
-- [ ] Trading panel shows YES and NO actions.
+- [ ] Trading panel shows LONG and SHORT actions.
 - [ ] Quick amount buttons in USD exist.
 - [ ] Manual USD input exists.
 - [ ] Initial seed amount in the builder is treated as total spend, with fees included in that amount.

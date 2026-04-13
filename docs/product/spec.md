@@ -54,6 +54,12 @@ For launch, `web/` is scoped to the public market product, the account layer, an
 - The backend never stores a canonical copy of user-held proofs; it verifies spends and returns blind signatures only
 - Pure Lightning portfolio funding should use standard Cashu mint quote and mint endpoints rather than a Cascade-only funding route
 - Standard Cashu/CDK primitives should be reused by default; any custom Cascade route or state machine must have a documented product-specific justification
+- Kind `9802` (Nostr highlights) is not a Cascade feature and must never be referenced in product surfaces, plans, or specs
+- Nostr events are distributed via Nostr relays only. The mint and webapp never serve raw Nostr event data (kind `982`, kind `983`, or any other Nostr event) over HTTP. Clients fetch market definitions from relays; clients subscribe to relays for trade history.
+- The mint lazy-initializes LMSR pools: on the first trade for a market, the mint fetches the kind `982` event from relays by event ID, extracts the LMSR parameters, creates the pool, and executes the trade. No pre-registration step is required from the market creator.
+- Portfolio funding (Stripe, Lightning) is direct client-to-mint. The webapp has no `/api/portfolio/funding/stripe` or similar proxy routes. The client browser or agent calls the mint directly.
+- The mint publishes kind `983` trade events to Nostr relays after each trade. Clients subscribe to relays to observe trade history. The API never proxies kind `983` events over HTTP.
+- There is no `GET /api/product/runtime` HTTP endpoint. Client configuration is build-time or Nostr-native, not fetched from a runtime manifest endpoint.
 
 ## Product Areas
 
@@ -94,7 +100,7 @@ It should include:
 
 - Market header and status context
 - Key market stats
-- Trading panel with YES and NO actions
+- Trading panel with LONG and SHORT actions
 - Quick size buttons in USD
 - Cost and average fill preview in USD
 - Current user's open position summary
@@ -140,13 +146,14 @@ The retained flow should be:
 4. Choose the creator's initial side
 5. Choose the creator's initial seed amount in USD as total spend
 6. Review
-7. Publish kind `982` directly to relays and enter a creator-visible pending state if the portfolio is not yet funded
-8. Complete funding and seed the market
-9. After the first mint-authored kind `983`, navigate to the publicly visible market
+7. Publish kind `982` directly to relays
+8. Fund the portfolio if not already funded
+9. Execute the creator's seed trade — the mint fetches the kind `982` event from relays by event ID, lazy-initializes the LMSR pool, and executes the trade
+10. After the first mint-authored kind `983`, navigate to the publicly visible market
 
 Signal markets are the UX label used by the React mock for what the conceptual docs call modules or informational links. The important rule is unchanged: linked markets are explanatory context only.
 
-The public app should not treat a bare kind `982` as a fully launched market. Until the first mint-authored kind `983` exists, that market is creator-visible only.
+The public app should not treat a bare kind `982` as a fully launched market. Until the first mint-authored kind `983` exists (triggered by the creator's seed trade), that market is not publicly discoverable. The mint requires no pre-registration: the first trade triggers lazy LMSR pool initialization automatically.
 
 Discard the React-only builder mechanics:
 
@@ -403,12 +410,13 @@ That interface should provide:
 - discovery and search APIs that can project over relay data
 - the same endpoints for hosted agents and external agents
 - no dedicated `/api/product/agents*` actor-registry surface
-- direct kind `982` publication to relays by the market author rather than a mint proxy endpoint that only republishes the signed event
+- direct kind `982` publication to relays by the market author; the mint is never a relay proxy for Nostr events
+- kind `982` market data and kind `983` trade data come from Nostr relays, not from HTTP endpoints; the API serves aggregated projections (rankings, analytics) not raw event data
 - local proof management for portfolio state rather than a server wallet endpoint
 - the installable `cascade` skill as the place where local portfolio-proof tooling lives
 - the same economic rules as humans; no privileged agent-only mechanics
 
-The old React-era `/api/agent/*` mock is useful as a prototype for discovery endpoints, but it is not the canonical production contract.
+There is no `/api/agent/*` production route family.
 
 ## Core Entities
 
@@ -438,7 +446,7 @@ The later workspace product adds:
 1. Land on the homepage
 2. Open a market from a feed, card, leaderboard, bookmark, or activity item
 3. Read the market case and linked signals
-4. Spend dollars on YES or NO
+4. Spend dollars on LONG or SHORT
 5. Track the resulting position in market detail and portfolio
 
 ### Create a Market
@@ -506,6 +514,6 @@ These were strong product choices in the React app and should remain:
 - Builder as a structured authoring flow, not a single text box
 - Explicit human vs agent split in onboarding
 - Separate self-profile and public-profile routes
-- Portfolio as the canonical self-custodied capital route, with `/wallet` only as a compatibility redirect
+- Portfolio as the canonical self-custodied capital route, with no `/wallet` route alias
 - Public discovery and market-reading surfaces that are dense and information-first
 - Private dashboard/workspace separated from the public market product when that later subsystem ships

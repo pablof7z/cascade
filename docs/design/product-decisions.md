@@ -52,7 +52,7 @@ Cascade needs a paper-trading edition and a real-money edition.
 The user-facing capital surface is called `Portfolio`.
 
 - The canonical route is `/portfolio`.
-- `/wallet` exists only as a compatibility redirect.
+- There is no `/wallet` product route.
 - Avoid calling the product surface "wallet" in UI copy, onboarding copy, or product docs unless the reference is specifically about internal wallet-mint infrastructure.
 
 ### No Server-Side Portfolio Ledger
@@ -109,7 +109,7 @@ Cascade should reuse standard Cashu/CDK primitives wherever those primitives can
 
 At launch, the allowed custom layers are:
 
-- product discovery and pending-market reads
+- product discovery
 - Stripe funding orchestration and webhook completion
 - spend-based LMSR trade orchestration that composes multiple standard mint/melt steps into one USD-denominated action
 - edition/runtime manifest checks such as signet/mainnet mismatch protection
@@ -162,9 +162,8 @@ Launch wallet funding happens at the USD wallet-mint boundary.
 The signed kind `982` event is not enough for public market discovery on its own.
 
 - The creator can publish kind `982` immediately.
-- The creator can see that market in a pending state before funding succeeds.
 - Other users should not see that market in normal discovery surfaces until the mint has published at least one kind `983` that `e`-tags the market.
-- The first mint-authored kind `983` is the public visibility threshold.
+- The first mint-authored kind `983` is the public visibility threshold. There is no dedicated pending-state endpoint; the kind `982` is observable on relays, but the product API only surfaces a market after its first kind `983` exists.
 
 ### Lightning Is The Rail, Not The UX
 
@@ -172,7 +171,7 @@ Cross-mint settlement uses Lightning as hidden infrastructure, but users should 
 
 - The wallet mint can melt USD value into Lightning invoices.
 - The market mint can mint LONG or SHORT tokens when those invoices are paid.
-- The normal product contract is "spend dollars on YES/NO", not "pay a Lightning invoice".
+- The normal product contract is "spend dollars on LONG/SHORT", not "pay a Lightning invoice".
 
 ### Dual Quote Model
 

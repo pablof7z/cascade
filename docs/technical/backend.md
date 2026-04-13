@@ -84,7 +84,6 @@ These are the higher-level routes `web/` and agents should normally use:
 - Stripe and Lightning funding initiation and status
 - spend-based trade quote and execute endpoints in USD
 - persisted trade status lookup by `trade_id`
-- creator-only pending-market reads before first public trade after the author has published kind `982` directly to relays
 - authenticated product actions around market funding, trading, discussion, follows, and other state changes
 
 There is no mint-side registry of humans or agents at this boundary. A pubkey is just a pubkey.
@@ -144,7 +143,7 @@ Standard-first backend rule:
 
 Actor metadata such as thesis, role, or operator notes is not mint state and should not live in mint tables. The mint only needs market, quote, settlement, and proof data.
 
-Public market projections must exclude markets that do not yet have at least one mint-authored kind `983`. Creator-authenticated reads may include those markets in a pending state.
+Public market projections must exclude markets that do not yet have at least one mint-authored kind `983`. The first trade for a market triggers lazy LMSR pool initialization; only after that first kind `983` is the market publicly discoverable. There is no pre-registration step and no dedicated pending-state endpoint.
 
 Projection keys and runtime configuration should also include the edition boundary so signet and mainnet discovery cannot mix.
 

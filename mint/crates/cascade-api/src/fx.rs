@@ -16,7 +16,6 @@ const COMBINATION_POLICY: &str = "median_non_stale_major_providers_v1";
 #[derive(Debug, Clone)]
 pub struct FxQuoteEnvelope {
     pub snapshot: FxQuoteSnapshot,
-    pub fallback_used: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -116,7 +115,7 @@ impl FxQuoteService {
 
     async fn reference_price_snapshot(
         &self,
-    ) -> Result<(Vec<FxQuoteObservation>, f64, u64, bool), String> {
+    ) -> Result<(Vec<FxQuoteObservation>, f64, u64), String> {
         let now = Utc::now().timestamp();
         let mut observations = self.fetch_provider_observations().await;
         observations.retain(|observation| self.is_observation_fresh(observation, now));
@@ -140,12 +139,7 @@ impl FxQuoteService {
             ));
         }
 
-        Ok((
-            observations,
-            reference_btc_usd_price,
-            provider_spread_bps,
-            false,
-        ))
+        Ok((observations, reference_btc_usd_price, provider_spread_bps))
     }
 
     pub async fn quote_minor_to_msat(&self, amount_minor: u64) -> Result<FxQuoteEnvelope, String> {
@@ -198,7 +192,7 @@ impl FxQuoteService {
     where
         F: FnOnce(f64, f64) -> (u64, u64),
     {
-        let (observations, reference_btc_usd_price, provider_spread_bps, fallback_used) =
+        let (observations, reference_btc_usd_price, provider_spread_bps) =
             self.reference_price_snapshot().await?;
         let execution_spread_bps = self.policy.execution_spread_bps(direction);
         let executable_btc_usd_price =
@@ -230,12 +224,10 @@ impl FxQuoteService {
                     minimum_provider_count: self.policy.min_provider_count as u64,
                     execution_spread_bps,
                     max_observation_age_seconds: self.policy.max_observation_age_seconds,
-                    fallback_used,
                 },
                 created_at: now,
                 expires_at: now + self.policy.quote_ttl_seconds,
             },
-            fallback_used,
         })
     }
 
@@ -518,7 +510,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn quote_service_rejects_missing_providers_without_fallback() {
+    async fn quote_service_rejects_missing_providers() {
         let service = test_service(Vec::new(), test_policy(chrono::Utc::now().timestamp()));
         let error = service.quote_wallet_funding(2_500).await.unwrap_err();
         assert_eq!(error, "insufficient_fresh_fx_observations:required=2:got=0");
@@ -558,7 +550,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn quote_service_rejects_stale_observations_without_fallback() {
+    async fn quote_service_rejects_stale_observations() {
         let now = chrono::Utc::now().timestamp();
         let service = test_service(
             vec![

@@ -1,4 +1,4 @@
-import { getCascadeEdition, getProductApiUrl } from '$lib/cascade/config';
+import { getProductApiUrl } from '$lib/cascade/config';
 
 type ApiErrorPayload = {
   error?: string;
@@ -63,7 +63,6 @@ export type ProductRuntime = {
   network: string;
   mint_url: string;
   proof_custody: string;
-  request_edition_header: string;
   funding: {
     lightning: ProductRuntimeRail;
     stripe: ProductRuntimeRail;
@@ -222,24 +221,18 @@ function productUrl(path: string): string {
   return `${getProductApiUrl()}${path}`;
 }
 
-function cascadeHeaders(headers?: HeadersInit): Headers {
-  const merged = new Headers(headers);
-  merged.set('x-cascade-edition', getCascadeEdition());
-  return merged;
-}
-
 function productFetch(path: string, init?: RequestInit): Promise<Response> {
   return fetch(productUrl(path), {
     ...init,
     cache: init?.cache ?? 'no-store',
-    headers: cascadeHeaders(init?.headers)
+    headers: init?.headers
   });
 }
 
 export async function buyMarketPosition(input: {
   eventId: string;
   pubkey: string;
-  side: 'yes' | 'no';
+  side: 'long' | 'short';
   spendMinor: number;
   proofs: ProductProof[];
   issuedOutputs: BlindedMessageInput[];
@@ -267,7 +260,7 @@ export async function buyMarketPosition(input: {
 export async function sellMarketPosition(input: {
   eventId: string;
   pubkey: string;
-  side: 'yes' | 'no';
+  side: 'long' | 'short';
   quantity: number;
   proofs: ProductProof[];
   issuedOutputs: BlindedMessageInput[];
@@ -294,7 +287,7 @@ export async function sellMarketPosition(input: {
 
 export async function quoteBuyTrade(input: {
   eventId: string;
-  side: 'yes' | 'no';
+  side: 'long' | 'short';
   spendMinor: number;
 }): Promise<Response> {
   return productFetch('/api/trades/quote', {
@@ -310,7 +303,7 @@ export async function quoteBuyTrade(input: {
 
 export async function quoteSellTrade(input: {
   eventId: string;
-  side: 'yes' | 'no';
+  side: 'long' | 'short';
   quantity: number;
 }): Promise<Response> {
   return productFetch('/api/trades/sell/quote', {

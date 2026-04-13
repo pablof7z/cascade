@@ -10,7 +10,7 @@ A module is an **atomic prediction**. It asks a single, binary, observable quest
 
 **Characteristics:**
 - One clear real-world event
-- Binary outcome: YES or NO
+- Binary directional market: LONG or SHORT
 - Defined observable condition (no ambiguity about what the question is asking)
 - Independent market — its price is set solely by trading activity on this module
 - Tradeable by anyone

@@ -62,7 +62,7 @@
         createdAt: trade.createdAt,
         label: trade.type === 'buy' ? 'Minted' : 'Withdrew',
         title: market ? sanitizeMarketCopy(market.title) : trade.marketId,
-        subtitle: `${trade.direction === 'yes' ? 'LONG' : 'SHORT'} · ${formatProductAmount(trade.amount, trade.unit)} ${productUnitLabel(trade.unit)} · ${formatProbability(trade.probability)}`,
+        subtitle: `${trade.direction === 'long' ? 'LONG' : 'SHORT'} · ${formatProductAmount(trade.amount, trade.unit)} ${productUnitLabel(trade.unit)} · ${formatProbability(trade.probability)}`,
         href: market ? marketUrl(market.slug) : '/activity'
       };
     });

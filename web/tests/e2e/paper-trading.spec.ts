@@ -223,7 +223,7 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   await expect(tradePanel.getByRole('button', { name: 'Mint SHORT' })).toBeVisible();
   await tradePanel.locator('input[type="number"]').first().fill('2500');
   await tradePanel.getByRole('button', { name: 'Mint SHORT' }).click();
-  await expect(tradePanel.getByText(`Bought NO on ${market.slug}.`)).toBeVisible();
+  await expect(tradePanel.getByText(`Bought SHORT on ${market.slug}.`)).toBeVisible();
 
   const rewroteBuyReceipt = await page.evaluate(() => {
     const receiptKey = Object.keys(localStorage).find((key) => key.includes('cascade_trade_receipts'));
@@ -261,7 +261,7 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   const withdrawButton = tradePanel.getByRole('button', { name: /^Withdraw / });
   await expect(withdrawButton).toBeEnabled();
   await withdrawButton.click();
-  await expect(tradePanel.getByText(/Withdrew (YES|NO) on/)).toContainText(market.slug);
+  await expect(tradePanel.getByText(/Withdrew (LONG|SHORT) on/)).toContainText(market.slug);
 
   await page.goto('/portfolio');
   await ensureLoggedIn(page, creatorSecret);

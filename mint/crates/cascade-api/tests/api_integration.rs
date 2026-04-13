@@ -445,14 +445,12 @@ async fn create_wallet_funding_and_get_proofs(
     url: &str,
     pubkey: &str,
     amount_minor: u64,
-    edition: &str,
 ) -> serde_json::Value {
     create_wallet_funding_and_get_proofs_with_invoice_service(
         client,
         url,
         pubkey,
         amount_minor,
-        edition,
         None,
     )
     .await
@@ -463,12 +461,10 @@ async fn create_wallet_funding_and_get_proofs_with_invoice_service(
     url: &str,
     pubkey: &str,
     amount_minor: u64,
-    edition: &str,
     invoice_service: Option<&SharedInvoiceService>,
 ) -> serde_json::Value {
     let quote_response = client
         .post(format!("{url}/v1/mint/quote/bolt11"))
-        .header("x-cascade-edition", edition)
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount": amount_minor,
@@ -506,7 +502,7 @@ async fn create_signet_funding_and_get_proofs(
     pubkey: &str,
     amount_minor: u64,
 ) -> serde_json::Value {
-    create_wallet_funding_and_get_proofs(client, url, pubkey, amount_minor, "signet").await
+    create_wallet_funding_and_get_proofs(client, url, pubkey, amount_minor).await
 }
 
 async fn fetch_active_usd_keyset(client: &reqwest::Client, url: &str) -> KeySet {
@@ -535,10 +531,10 @@ async fn fetch_market_keyset(
     assert_eq!(response.status(), 200);
     let payload: Value = response.json().await.unwrap();
     let payload = payload.get("Ok").cloned().unwrap_or(payload);
-    let keyset = if side.eq_ignore_ascii_case("yes") || side.eq_ignore_ascii_case("long") {
-        payload["long_keyset"].clone()
-    } else {
-        payload["short_keyset"].clone()
+    let keyset = match side.to_ascii_lowercase().as_str() {
+        "long" => payload["long_keyset"].clone(),
+        "short" => payload["short_keyset"].clone(),
+        other => panic!("unsupported side {other}; expected long or short"),
     };
 
     let id = keyset["id"].as_str().unwrap();
@@ -625,13 +621,13 @@ async fn create_public_market_with_seed(
     )
     .unwrap();
     let usd_keyset = fetch_active_usd_keyset(client, url).await;
-    let market_keyset = fetch_market_keyset(client, url, event_id, "yes").await;
+    let market_keyset = fetch_market_keyset(client, url, event_id, "long").await;
 
     let quote_response = client
         .post(format!("{url}/api/trades/quote"))
         .json(&json!({
             "event_id": event_id,
-            "side": "yes",
+            "side": "long",
             "spend_minor": spend_minor
         }))
         .send()
@@ -657,7 +653,7 @@ async fn create_public_market_with_seed(
         .json(&json!({
             "event_id": event_id,
             "pubkey": creator,
-            "side": "yes",
+            "side": "long",
             "spend_minor": spend_minor,
             "proofs": funding_proofs,
             "issued_outputs": issued_outputs,
@@ -1341,52 +1337,6 @@ async fn test_product_read_models_support_pagination_search_and_activity_without
 }
 
 #[tokio::test]
-async fn test_product_read_endpoints_reject_cross_edition_headers() {
-    let url = create_product_test_server().await;
-    let client = reqwest::Client::new();
-    let creator = "7777777777777777777777777777777777777777777777777777777777777777";
-    let event_id = "8888888888888888888888888888888888888888888888888888888888888888";
-    let slug = "edition-boundary-market";
-
-    create_public_market_with_seed(
-        &client,
-        &url,
-        creator,
-        event_id,
-        slug,
-        "Edition Boundary Market",
-        "Edition boundary market",
-        sample_market_event_with_metadata(
-            event_id,
-            slug,
-            creator,
-            "Edition Boundary Market",
-            "Edition boundary market",
-            &[json!(["t", "boundary"])],
-        ),
-        4_000,
-    )
-    .await;
-
-    let paths = vec![
-        "/api/product/feed".to_string(),
-        "/api/product/activity".to_string(),
-        "/api/product/markets/search?q=boundary".to_string(),
-        format!("/api/product/markets/slug/{slug}"),
-    ];
-
-    for path in paths {
-        let response = client
-            .get(format!("{url}{path}"))
-            .header("x-cascade-edition", "mainnet")
-            .send()
-            .await
-            .unwrap();
-        assert_eq!(response.status(), 409, "path {path} should reject mismatch");
-    }
-}
-
-#[tokio::test]
 async fn test_paper_wallet_buy_and_sell_flow() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();
@@ -1415,13 +1365,13 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     )
     .unwrap();
     let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
-    let market_keyset = fetch_market_keyset(&client, &url, event_id, "yes").await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
 
     let buy_quote_response = client
         .post(format!("{url}/api/trades/quote"))
         .json(&serde_json::json!({
             "event_id": event_id,
-            "side": "yes",
+            "side": "long",
             "spend_minor": 8000
         }))
         .send()
@@ -1445,7 +1395,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .json(&serde_json::json!({
             "event_id": event_id,
             "pubkey": creator,
-            "side": "yes",
+            "side": "long",
             "spend_minor": 8000,
             "proofs": funding_proofs,
             "issued_outputs": issued_outputs,
@@ -1519,7 +1469,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .post(format!("{url}/api/trades/sell/quote"))
         .json(&serde_json::json!({
             "event_id": event_id,
-            "side": "yes",
+            "side": "long",
             "quantity": first_quantity / 2.0
         }))
         .send()
@@ -1555,7 +1505,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .json(&serde_json::json!({
             "event_id": event_id,
             "pubkey": creator,
-            "side": "yes",
+            "side": "long",
             "quantity": first_quantity / 2.0,
             "request_id": "paper-sell-request-1",
             "proofs": sell_input_proofs.clone(),
@@ -1683,7 +1633,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .json(&serde_json::json!({
             "event_id": event_id,
             "pubkey": creator,
-            "side": "yes",
+            "side": "long",
             "quantity": first_quantity / 2.0,
             "request_id": "paper-sell-request-1",
             "proofs": sell_input_proofs,
@@ -1744,7 +1694,7 @@ async fn test_coordinator_trade_routes_and_status() {
         .post(format!("{url}/api/trades/quote"))
         .json(&serde_json::json!({
             "event_id": event_id,
-            "side": "yes",
+            "side": "long",
             "spend_minor": 4000
         }))
         .send()
@@ -1803,7 +1753,7 @@ async fn test_coordinator_trade_routes_and_status() {
         quote_payload["fx_metadata"]["reference_btc_usd_price"].as_f64()
     );
     let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
-    let market_keyset = fetch_market_keyset(&client, &url, event_id, "yes").await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
     let (issued_outputs, issued_pre_mint) = prepare_outputs(
         &market_keyset,
         quote_payload["quantity_minor"].as_u64().unwrap(),
@@ -1821,7 +1771,7 @@ async fn test_coordinator_trade_routes_and_status() {
         .json(&serde_json::json!({
             "event_id": event_id,
             "pubkey": creator,
-            "side": "yes",
+            "side": "long",
             "spend_minor": 4000,
             "quote_id": buy_quote_id,
             "proofs": funding_proofs,
@@ -1923,7 +1873,7 @@ async fn test_coordinator_trade_routes_and_status() {
         .post(format!("{url}/api/trades/sell/quote"))
         .json(&serde_json::json!({
             "event_id": event_id,
-            "side": "yes",
+            "side": "long",
             "quantity": quantity / 2.0
         }))
         .send()
@@ -1956,7 +1906,7 @@ async fn test_coordinator_trade_routes_and_status() {
         .json(&serde_json::json!({
             "event_id": event_id,
             "pubkey": creator,
-            "side": "yes",
+            "side": "long",
             "quantity": quantity / 2.0,
             "quote_id": sell_quote_id,
             "proofs": issued_market_proofs,
@@ -2018,7 +1968,6 @@ async fn test_lightning_funding_quote_settles_after_status_poll() {
 
     let quote_response = client
         .post(format!("{url}/v1/mint/quote/bolt11"))
-        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount": 2500,
@@ -2229,31 +2178,6 @@ async fn test_runtime_reports_actual_edition_and_funding_rails() {
 }
 
 #[tokio::test]
-async fn test_lightning_funding_rejects_client_edition_mismatch() {
-    let url = create_product_test_server().await;
-    let client = reqwest::Client::new();
-
-    let response = client
-        .post(format!("{url}/v1/mint/quote/bolt11"))
-        .header("x-cascade-edition", "mainnet")
-        .json(&serde_json::json!({
-            "pubkey": "edition-mismatch-user",
-            "amount": 2500,
-            "unit": "usd"
-        }))
-        .send()
-        .await
-        .unwrap();
-
-    assert_eq!(response.status(), 409);
-    let payload: serde_json::Value = response.json().await.unwrap();
-    assert_eq!(
-        payload["error"].as_str(),
-        Some("edition_mismatch:expected=mainnet:actual=signet")
-    );
-}
-
-#[tokio::test]
 async fn test_lightning_funding_request_id_is_idempotent() {
     let (url, invoice_service) =
         create_product_test_server_bundle_with_funding(None, None, "signet").await;
@@ -2263,7 +2187,6 @@ async fn test_lightning_funding_request_id_is_idempotent() {
 
     let first_response = client
         .post(format!("{url}/v1/mint/quote/bolt11"))
-        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount": 2500,
@@ -2281,7 +2204,6 @@ async fn test_lightning_funding_request_id_is_idempotent() {
 
     let second_response = client
         .post(format!("{url}/v1/mint/quote/bolt11"))
-        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount": 2500,
@@ -2334,7 +2256,6 @@ async fn test_lightning_funding_mint_replays_issued_signatures() {
 
     let quote_response = client
         .post(format!("{url}/v1/mint/quote/bolt11"))
-        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": "replay-issued-funding-user",
             "amount": 2500,
@@ -2622,7 +2543,6 @@ async fn test_usdc_deposit_intent_unavailable_on_signet() {
 
     let response = client
         .post(format!("{url}/api/portfolio/funding/usdc/deposit-intents"))
-        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": "usdc-signet-user",
             "requested_wallet_amount_minor": 5000
@@ -2653,7 +2573,6 @@ async fn test_usdc_deposit_intent_create_and_fetch() {
 
     let create_response = client
         .post(format!("{url}/api/portfolio/funding/usdc/deposit-intents"))
-        .header("x-cascade-edition", "mainnet")
         .json(&serde_json::json!({
             "pubkey": "usdc-mainnet-user",
             "requested_wallet_amount_minor": 12500,
@@ -2700,7 +2619,6 @@ async fn test_usdc_withdrawal_unavailable_on_signet() {
 
     let response = client
         .post(format!("{url}/api/portfolio/withdrawals/usdc"))
-        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": "usdc-signet-user",
             "amount_minor": 5000,
@@ -2745,14 +2663,12 @@ async fn test_usdc_withdrawal_requires_explicit_enablement() {
         &url,
         "usdc-mainnet-user",
         5000,
-        "mainnet",
         Some(&invoice_service),
     )
     .await;
 
     let response = client
         .post(format!("{url}/api/portfolio/withdrawals/usdc"))
-        .header("x-cascade-edition", "mainnet")
         .json(&serde_json::json!({
             "pubkey": "usdc-mainnet-user",
             "amount_minor": 2500,
@@ -2792,7 +2708,6 @@ async fn test_usdc_withdrawal_create_fetch_and_idempotency() {
         &url,
         pubkey,
         5000,
-        "mainnet",
         Some(&invoice_service),
     )
     .await;
@@ -2811,7 +2726,6 @@ async fn test_usdc_withdrawal_create_fetch_and_idempotency() {
 
     let create_response = client
         .post(format!("{url}/api/portfolio/withdrawals/usdc"))
-        .header("x-cascade-edition", "mainnet")
         .json(&request_body)
         .send()
         .await
@@ -2870,7 +2784,6 @@ async fn test_usdc_withdrawal_create_fetch_and_idempotency() {
 
     let replay_response = client
         .post(format!("{url}/api/portfolio/withdrawals/usdc"))
-        .header("x-cascade-edition", "mainnet")
         .json(&request_body)
         .send()
         .await
@@ -2910,7 +2823,7 @@ async fn test_trade_execution_requires_input_proofs() {
         .json(&serde_json::json!({
             "event_id": event_id,
             "pubkey": creator,
-            "side": "yes",
+            "side": "long",
             "spend_minor": 4000
         }))
         .send()
@@ -2925,7 +2838,7 @@ async fn test_trade_execution_requires_input_proofs() {
         .json(&serde_json::json!({
             "event_id": event_id,
             "pubkey": creator,
-            "side": "yes",
+            "side": "long",
             "quantity": 1.0
         }))
         .send()
@@ -2969,12 +2882,12 @@ async fn test_trade_request_id_is_idempotent() {
     )
     .unwrap();
     let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
-    let market_keyset = fetch_market_keyset(&client, &url, event_id, "yes").await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
     let buy_quote_response = client
         .post(format!("{url}/api/trades/quote"))
         .json(&serde_json::json!({
             "event_id": event_id,
-            "side": "yes",
+            "side": "long",
             "spend_minor": 4000
         }))
         .send()
@@ -2998,7 +2911,7 @@ async fn test_trade_request_id_is_idempotent() {
         .json(&serde_json::json!({
             "event_id": event_id,
             "pubkey": creator,
-            "side": "yes",
+            "side": "long",
             "spend_minor": 4000,
             "request_id": request_id,
             "proofs": funding_proofs.clone(),
@@ -3021,7 +2934,7 @@ async fn test_trade_request_id_is_idempotent() {
         .json(&serde_json::json!({
             "event_id": event_id,
             "pubkey": creator,
-            "side": "yes",
+            "side": "long",
             "spend_minor": 4000,
             "request_id": request_id,
             "proofs": funding_proofs,
@@ -3101,12 +3014,12 @@ async fn test_trade_request_replays_buy_after_pre_issuance_checkpoint() {
         .await
         .unwrap();
 
-    let market_keyset = fetch_market_keyset(&client, &url, event_id, "yes").await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
     let buy_quote_response = client
         .post(format!("{url}/api/trades/quote"))
         .json(&serde_json::json!({
             "event_id": event_id,
-            "side": "yes",
+            "side": "long",
             "spend_minor": 4000
         }))
         .send()
@@ -3129,7 +3042,7 @@ async fn test_trade_request_replays_buy_after_pre_issuance_checkpoint() {
             creator,
             event_id,
             "buy",
-            "yes",
+            "long",
             Some(4000),
             None,
         )
@@ -3147,7 +3060,7 @@ async fn test_trade_request_replays_buy_after_pre_issuance_checkpoint() {
         pubkey: creator.to_string(),
         market_event_id: event_id.to_string(),
         trade_type: "buy".to_string(),
-        side: "yes".to_string(),
+        side: "long".to_string(),
         rail: "lightning".to_string(),
         mode: "bolt11_wallet_to_market".to_string(),
         settlement_minor: buy_quote.settlement_minor,
@@ -3190,7 +3103,7 @@ async fn test_trade_request_replays_buy_after_pre_issuance_checkpoint() {
             buy_quote.quote_id.as_deref(),
             creator,
             &market,
-            "yes",
+            "long",
             "buy",
             buy_quote.spend_minor,
             buy_quote.fee_minor,
@@ -3222,7 +3135,7 @@ async fn test_trade_request_replays_buy_after_pre_issuance_checkpoint() {
     let replay_request = cascade_api::types::ProductCoordinatorBuyRequest {
         event_id: event_id.to_string(),
         pubkey: creator.to_string(),
-        side: "yes".to_string(),
+        side: "long".to_string(),
         spend_minor: 4000,
         proofs: Vec::new(),
         issued_outputs: Vec::new(),
@@ -3257,7 +3170,7 @@ async fn test_trade_request_replays_buy_after_pre_issuance_checkpoint() {
         .json(&serde_json::json!({
             "event_id": event_id,
             "pubkey": creator,
-            "side": "yes",
+            "side": "long",
             "spend_minor": 4000,
             "request_id": request_id,
             "proofs": [],
@@ -3331,7 +3244,6 @@ async fn test_signet_funding_enforces_single_and_window_limits() {
 
     let too_large_response = client
         .post(format!("{url}/v1/mint/quote/bolt11"))
-        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount": 10001,
@@ -3350,7 +3262,6 @@ async fn test_signet_funding_enforces_single_and_window_limits() {
     for amount_minor in [10_000_u64, 10_000_u64, 5_000_u64] {
         let response = client
             .post(format!("{url}/v1/mint/quote/bolt11"))
-            .header("x-cascade-edition", "signet")
             .json(&serde_json::json!({
                 "pubkey": pubkey,
                 "amount": amount_minor,
@@ -3364,7 +3275,6 @@ async fn test_signet_funding_enforces_single_and_window_limits() {
 
     let capped_response = client
         .post(format!("{url}/v1/mint/quote/bolt11"))
-        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount": 100,

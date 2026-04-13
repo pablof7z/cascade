@@ -52,7 +52,6 @@ The local edition env templates live in:
 | `/builder` | Market builder |
 | `/dashboard` | Private workspace shell |
 | `/embed` | Embed surface |
-| `/highlights` | Highlighted content |
 | `/join` | Account creation (human or agent) |
 | `/leaderboard` | Rankings |
 | `/onboarding` | Post-join onboarding |
@@ -138,20 +137,11 @@ The portfolio stores proofs locally. The mint is the issuer; the user's device i
 There is no canonical server wallet API for current balance because the proofs are self-custodied.
 There is also no canonical pubkey-keyed backend portfolio read. `/portfolio` is a browser-derived view.
 
-`/portfolio` is the canonical proof-custody route. `/wallet` exists only as a compatibility redirect and should not diverge into a separate product surface.
+`/portfolio` is the canonical proof-custody route. There is no `/wallet` route.
 
-Before enabling funding or trading actions, the browser should load a runtime manifest from the configured product API:
+The browser's edition (signet vs mainnet) and configured mint URL are set at build time. There is no `GET /api/product/runtime` endpoint — client configuration is build-time or Nostr-native, not fetched from a runtime manifest.
 
-- `GET /api/product/runtime`
-
-That manifest is the browser's source of truth for:
-
-- actual backend edition
-- proof-custody mode
-- funding-rail availability
-- whether the configured API matches the current frontend edition
-
-If the frontend is in `mainnet` mode and the backend reports `signet`, the browser must disable funding and trading actions and explain the mismatch instead of attempting to continue.
+Edition mismatch protection should be implemented at the build level: the browser knows its own edition from build-time configuration and should not attempt to connect to a mint configured for a different edition.
 
 ## Trading And Portfolio State
 
@@ -160,7 +150,7 @@ The frontend needs local state for at least two proof classes:
 - USD portfolio proofs
 - market proofs for LONG/SHORT positions
 
-Trading surfaces should let the user spend dollars on YES or NO and then persist the resulting market proofs locally.
+Trading surfaces should let the user spend dollars on LONG or SHORT and then persist the resulting market proofs locally.
 
 The launch trade path is proof-native in both signet and mainnet:
 
@@ -227,12 +217,6 @@ Trade recovery must use the same privacy model:
 - before buy or withdrawal execution, the browser stores deterministic output preparation for the issued side and any change side
 - if the response arrives, the browser unblinds the returned signatures locally
 - if the response is interrupted after execution, the browser checks trade status and restores the locally prepared outputs instead of asking the backend for bearer proofs
-
-Every state-changing funding or trade request from the browser should send:
-
-- `X-Cascade-Edition: mainnet|signet`
-
-This lets the mint reject a miswired edition boundary before it creates invoices, funding records, or trades.
 
 For Stripe specifically:
 

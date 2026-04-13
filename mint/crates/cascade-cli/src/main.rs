@@ -9,10 +9,9 @@ use cascade_api::types::{
     BlindedMessageInput, MintBolt11Request, MintBolt11Response, MintQuoteBolt11Request,
     MintQuoteBolt11Response, ProductCoordinatorBuyRequest, ProductCoordinatorSellRequest,
     ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest, ProductFeedResponse,
-    ProductMarketDetailResponse,
-    ProductPortfolioFundingRequestStatusResponse, ProductTradeExecutionResponse,
-    ProductTradeQuoteResponse, ProductTradeRequestStatusResponse, ProductTradeStatusResponse,
-    TokenOutput,
+    ProductMarketDetailResponse, ProductPortfolioFundingRequestStatusResponse,
+    ProductTradeExecutionResponse, ProductTradeQuoteResponse, ProductTradeRequestStatusResponse,
+    ProductTradeStatusResponse, TokenOutput,
 };
 use cdk::amount::{FeeAndAmounts, SplitTarget};
 use cdk::dhke::construct_proofs;
@@ -519,11 +518,12 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
 
                 let public_market_ids = public_market_event_ids(ctx, &loaded).await?;
                 let fetch_limit = args.limit.map(|limit| limit.max(100)).unwrap_or(200);
-                let markets = fetch_creator_market_records(ctx, Some(&loaded), creator, fetch_limit)
-                    .await?
-                    .into_iter()
-                    .filter(|market| public_market_ids.contains(&market.event_id))
-                    .collect::<Vec<_>>();
+                let markets =
+                    fetch_creator_market_records(ctx, Some(&loaded), creator, fetch_limit)
+                        .await?
+                        .into_iter()
+                        .filter(|market| public_market_ids.contains(&market.event_id))
+                        .collect::<Vec<_>>();
                 ctx.emit(&json!({ "markets": limit_vec(markets, args.limit) }))
             } else {
                 let payload: ProductFeedResponse = ctx
@@ -1460,10 +1460,10 @@ async fn fetch_market_keyset(
         )
         .await?;
     let payload = payload.get("Ok").cloned().unwrap_or(payload);
-    let keyset = if side.eq_ignore_ascii_case("yes") || side.eq_ignore_ascii_case("long") {
-        payload["long_keyset"].clone()
-    } else {
-        payload["short_keyset"].clone()
+    let keyset = match side.to_ascii_lowercase().as_str() {
+        "long" => payload["long_keyset"].clone(),
+        "short" => payload["short_keyset"].clone(),
+        other => bail!("unsupported side {other}; expected long or short"),
     };
 
     let id = keyset["id"]
@@ -2002,14 +2002,28 @@ fn parse_market_record(value: Value) -> Option<MarketRecord> {
     })
 }
 
-async fn public_market_event_ids(ctx: &AppContext, loaded: &LoadedConfig) -> Result<HashSet<String>> {
+async fn public_market_event_ids(
+    ctx: &AppContext,
+    loaded: &LoadedConfig,
+) -> Result<HashSet<String>> {
     let payload: ProductFeedResponse = ctx
-        .request_json(loaded, Method::GET, "/api/product/feed", None, AuthMode::None)
+        .request_json(
+            loaded,
+            Method::GET,
+            "/api/product/feed",
+            None,
+            AuthMode::None,
+        )
         .await?;
     Ok(payload
         .markets
         .into_iter()
-        .filter_map(|value| value.get("id").and_then(Value::as_str).map(ToString::to_string))
+        .filter_map(|value| {
+            value
+                .get("id")
+                .and_then(Value::as_str)
+                .map(ToString::to_string)
+        })
         .collect())
 }
 
@@ -2030,7 +2044,11 @@ async fn fetch_creator_market_records(
         .await?;
     let mut markets = events
         .into_iter()
-        .filter_map(|event| serde_json::to_value(event).ok().and_then(parse_market_record))
+        .filter_map(|event| {
+            serde_json::to_value(event)
+                .ok()
+                .and_then(parse_market_record)
+        })
         .collect::<Vec<_>>();
     markets.sort_by(|left, right| right.created_at.cmp(&left.created_at));
     Ok(markets)
@@ -2518,8 +2536,8 @@ fn is_hex_event_id(value: &str) -> bool {
 
 fn market_unit_for_side(slug: &str, side: &str) -> Result<String> {
     match side.to_ascii_lowercase().as_str() {
-        "yes" | "long" => Ok(format!("long_{slug}")),
-        "no" | "short" => Ok(format!("short_{slug}")),
+        "long" => Ok(format!("long_{slug}")),
+        "short" => Ok(format!("short_{slug}")),
         other => bail!("unsupported side {other}; expected long or short"),
     }
 }
@@ -2560,4 +2578,27 @@ async fn build_nostr_client(keys: Option<Keys>, relays: &[String]) -> Result<Cli
     }
     client.connect().await;
     Ok(client)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::market_unit_for_side;
+
+    #[test]
+    fn market_unit_for_side_accepts_long_and_short() {
+        assert_eq!(
+            market_unit_for_side("btc-above-150k", "long").unwrap(),
+            "long_btc-above-150k"
+        );
+        assert_eq!(
+            market_unit_for_side("btc-above-150k", "SHORT").unwrap(),
+            "short_btc-above-150k"
+        );
+    }
+
+    #[test]
+    fn market_unit_for_side_rejects_yes_and_no_aliases() {
+        assert!(market_unit_for_side("btc-above-150k", "yes").is_err());
+        assert!(market_unit_for_side("btc-above-150k", "no").is_err());
+    }
 }

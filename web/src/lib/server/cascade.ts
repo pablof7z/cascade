@@ -1,5 +1,5 @@
 import type { NDKFilter, NDKKind, NostrEvent } from '@nostr-dev-kit/ndk';
-import { getCascadeEdition, getProductApiUrl } from '$lib/cascade/config';
+import { getProductApiUrl } from '$lib/cascade/config';
 import { fetchProfilesByPubkeys, fetchUserWithProfile, getServerNdk } from '$lib/server/nostr';
 import {
   buildTradeSummary,
@@ -256,11 +256,7 @@ async function refreshRecentDiscussions(limit: number): Promise<void> {
 }
 
 async function fetchProductJson<T>(path: string): Promise<T | null> {
-  const response = await fetch(`${getProductApiUrl()}${path}`, {
-    headers: {
-      'x-cascade-edition': getCascadeEdition()
-    }
-  });
+  const response = await fetch(`${getProductApiUrl()}${path}`);
   if (!response.ok) return null;
   return (await response.json()) as T;
 }

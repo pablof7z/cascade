@@ -151,7 +151,6 @@ Build the spend-based USD trade surface on top of the low-level quotes.
 - coordinate exit melts and wallet reminting
 - provide recovery and status endpoints for interrupted client flows
 - keep authenticated actions on NIP-98
-- expose creator-visible pending-market state before the first mint-authored kind `983`
 
 Definition of done:
 
@@ -193,7 +192,7 @@ Make the new system production-safe.
 - persist mint, quote, FX, and funding state
 - configure Stripe webhooks
 - add smoke checks for Stripe funding, Lightning funding, buy, and sell flows
-- add smoke checks for creator-only pending-market visibility before first funding and public visibility after first kind `983`
+- add smoke checks for public market visibility after first kind `983`
 - run separate signet and mainnet deployments with separate config, data, and operator identities
 
 ## Launch Definition
@@ -227,13 +226,13 @@ USDC is defined separately in [usdc-wallet-rail-addendum.md](./usdc-wallet-rail-
 - The combination policy is now implemented and test-covered: stale observations are rejected, a minimum fresh-provider count is enforced, the median fresh BTC/USD rate becomes the reference quote, excessive provider spread is rejected, and a directional execution spread is applied before quote lock.
 - Persisted FX snapshots now carry expiry, executable and reference BTC/USD rates, provider observations, and source metadata so quote provenance is durable across recovery, audit, funding, and melt flows.
 - Locked quote reuse now rejects expired snapshots instead of accepting stale execution prices.
-- Scope note: `mint/migrations/017_fx_quote_source_metadata.sql` records the schema change, and runtime upgrades currently rely on `ensure_fx_quote_source_metadata_columns()` for compatibility with the active SQLite test matrix.
+- Scope note: `mint/migrations/017_fx_quote_source_metadata.sql` is the schema change mechanism for FX quote source metadata.
 - Workstream 4 now has a shared post-payment recovery model across Lightning and Stripe: persisted funding reads reconcile mirrored CDK mint-quote state, Lightning funding status now moves to `complete` after standard quote issuance, and verified Stripe webhooks now leave the funding in redeemable `PAID` state until the browser mints proofs through `/v1/mint/stripe`.
 - Stripe funding creation now mirrors each funding id into mint localstore immediately so webhook completion, later minting, and interrupted client recovery all reference one durable quote id instead of a Stripe-only saga row.
 
 ### 2026-04-13 Review Addendum
 
-- Workstream 2 is not complete while signet can silently quote against a hard-coded BTC/USD fallback. Launch signet and mainnet must both exercise the live multi-provider quote path. If a manual fallback is kept for local development, it must be opt-in, visibly degraded, and excluded from launch completion.
+- Workstream 2 is not complete unless signet and mainnet both require the live multi-provider quote path.
 - Workstream 3 is not complete while signet Lightning funding auto-settles invoices inside the backend. Paper funding must still use a real signet-value payment loop and the same `quote -> pay -> PAID -> mint` lifecycle as mainnet.
 - Workstream 4 is not complete until the new sell-side wallet quote is actually recoverable. Persisting `wallet_mint_quote_id`, state, and expiry in trade metadata is not enough if the standard mint-quote routes cannot read or redeem that quote after interruption.
 - Do not manually force a wallet mint quote to `ISSUED` unless the corresponding blinded-output recovery path is durable and externally reachable.
@@ -244,7 +243,7 @@ Required test additions:
 - interrupted sell after wallet invoice payment but before client receipt of proofs
 - interrupted funding after `PAID` and after successful proof issuance
 - signet paper funding without backend auto-payment
-- launch checks that fail when FX fallback mode is active
+- launch checks that fail when live FX providers are unavailable
 
 ### 2026-04-13 Round 3
 

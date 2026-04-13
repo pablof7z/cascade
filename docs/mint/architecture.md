@@ -35,12 +35,12 @@ The market mint is the execution layer for positions.
 
 The web app and agent-facing product API compose the two mints.
 
-- users ask to spend dollars on YES or NO
+- users ask to spend dollars on LONG or SHORT
 - the coordinator gets a fresh `USD <-> msat` FX quote
 - the coordinator gets a fresh market `LONG/SHORT <-> msat` quote
+- the coordinator lazy-initializes the LMSR pool on the first trade for a market (fetching the kind `982` event from relays by event ID)
 - the coordinator executes the stablemint melt and market-mint mint flow
 - the coordinator stores recovery state for interrupted client flows
-- the coordinator enforces creator-only pending visibility until the first mint-authored kind `983`
 
 The mints do not need a bespoke public protocol between them. The public wire shape remains Cashu mint and melt plus BOLT11 while the product layer hides that complexity.
 
@@ -126,7 +126,7 @@ The market mint is the source of truth for executable market state.
 - quote state ties an executable market quote to a specific LMSR snapshot and expiry
 - keyset metadata ties proofs back to a market and side
 - trade history inside the market mint is the source material for kind `983`
-- public discovery eligibility begins only after the first mint-authored kind `983` for that market
+- public discovery eligibility begins only after the first mint-authored kind `983` for that market (triggered by the first trade, which also lazy-initializes the LMSR pool)
 
 The wallet mint is the source of truth for:
 
@@ -225,16 +225,17 @@ Custom logic is justified only for product-specific behavior such as Stripe fund
 ### Buy
 
 1. User asks to spend `$X` on LONG or SHORT for a market.
-2. Coordinator gets a fresh `USD <-> msat` FX quote.
-3. Coordinator computes the implied `msat` budget.
-4. Market mint computes the executable `LONG/SHORT <-> msat` quote.
-5. Market mint creates a standard mint quote backed by a Lightning invoice.
-6. Wallet mint creates a melt quote for that invoice in USD minor units.
-7. User authorizes spending local USD proofs.
-8. Wallet mint consumes the USD proofs and pays the invoice.
-9. User redeems the market-mint quote and receives LONG or SHORT proofs.
-10. Market mint publishes a kind `983` buy event.
-11. If this is the market's first kind `983`, the market becomes publicly discoverable.
+2. **Lazy initialization (first trade only):** If no LMSR pool exists for the market, the coordinator fetches the kind `982` event from Nostr relays by event ID, extracts LMSR parameters, and creates the pool. No pre-registration is required.
+3. Coordinator gets a fresh `USD <-> msat` FX quote.
+4. Coordinator computes the implied `msat` budget.
+5. Market mint computes the executable `LONG/SHORT <-> msat` quote.
+6. Market mint creates a standard mint quote backed by a Lightning invoice.
+7. Wallet mint creates a melt quote for that invoice in USD minor units.
+8. User authorizes spending local USD proofs.
+9. Wallet mint consumes the USD proofs and pays the invoice.
+10. User redeems the market-mint quote and receives LONG or SHORT proofs.
+11. Market mint publishes a kind `983` buy event.
+12. If this is the market's first kind `983`, the market becomes publicly discoverable.
 
 The persisted settlement record for this leg should identify the logical rail path as `wallet_mint -> market_mint` with `mode = bolt11_wallet_to_market`.
 

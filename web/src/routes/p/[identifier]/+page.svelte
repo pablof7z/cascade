@@ -28,8 +28,8 @@
   const marketList = $derived(data.markets as MarketRecord[]);
   const positionList = $derived(data.positions as PositionRecord[]);
   const profileLabel = $derived(displayName(resolvedProfile, shortPubkey(resolvedPubkey)));
-  const longCount = $derived(positionList.filter((position) => position.direction === 'yes').length);
-  const shortCount = $derived(positionList.filter((position) => position.direction === 'no').length);
+  const longCount = $derived(positionList.filter((position) => position.direction === 'long').length);
+  const shortCount = $derived(positionList.filter((position) => position.direction === 'short').length);
 </script>
 
 <section class="profile-header">
@@ -111,7 +111,7 @@
           <div class="profile-row">
             <div>
               <strong>{position.marketTitle || position.marketId}</strong>
-              <p>{position.direction === 'yes' ? 'LONG' : 'SHORT'} · {position.quantity} units</p>
+              <p>{position.direction === 'long' ? 'LONG' : 'SHORT'} · {position.quantity} units</p>
             </div>
             <span>{formatRelativeTime(Math.floor(position.createdAt / 1000))}</span>
           </div>

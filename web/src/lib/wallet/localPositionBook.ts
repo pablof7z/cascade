@@ -7,7 +7,7 @@ export type LocalPositionBookEntry = {
   marketEventId: string;
   marketSlug: string;
   marketTitle: string;
-  side: 'yes' | 'no';
+  side: 'long' | 'short';
   quantityMinor: number;
   costBasisMinor: number;
   updatedAt: number;
@@ -25,7 +25,7 @@ type LocalPositionTradeInput = {
   marketEventId: string;
   marketSlug: string;
   marketTitle: string;
-  side: 'yes' | 'no';
+  side: 'long' | 'short';
   action: 'buy' | 'sell' | 'seed';
   quantityMinor: number;
   amountMinor: number;
@@ -56,7 +56,7 @@ function loadState(): LocalPositionBookState {
               typeof candidate.mintUrl !== 'string' ||
               typeof candidate.marketEventId !== 'string' ||
               typeof candidate.marketSlug !== 'string' ||
-              (candidate.side !== 'yes' && candidate.side !== 'no') ||
+              (candidate.side !== 'long' && candidate.side !== 'short') ||
               typeof candidate.quantityMinor !== 'number' ||
               typeof candidate.costBasisMinor !== 'number'
             ) {
@@ -123,11 +123,13 @@ function normalizedTradeInputAction(value: string | null, fallback: 'buy' | 'sel
   return fallback;
 }
 
-function normalizedTradeInputSide(value: string | null, fallback: 'yes' | 'no'): 'yes' | 'no' {
-  if (value === 'yes' || value === 'no') return value;
-  if (value === 'long') return 'yes';
-  if (value === 'short') return 'no';
-  return fallback;
+function normalizedTradeInputSide(
+  value: string | null,
+  fallback: 'long' | 'short'
+): 'long' | 'short' | null {
+  if (value === null) return fallback;
+  if (value === 'long' || value === 'short') return value;
+  return null;
 }
 
 export function listLocalPositionBook(mintUrl: string): LocalPositionBookEntry[] {
@@ -207,7 +209,7 @@ export function applyLocalPositionTradeFromPayload(
   mintUrl: string,
   payload: ProductTradeExecution | ProductTradeStatus,
   fallbackAction: 'buy' | 'sell' | 'seed',
-  fallbackSide: 'yes' | 'no'
+  fallbackSide: 'long' | 'short'
 ): boolean {
   const trade = payload.trade as ProductTradeEvent | undefined;
   const tradeId = typeof trade?.id === 'string' ? trade.id : null;
@@ -221,6 +223,7 @@ export function applyLocalPositionTradeFromPayload(
     parseTradeTagValue(trade?.tags, 'direction'),
     fallbackSide
   );
+  if (!side) return false;
   const quantity = Number.parseFloat(parseTradeTagValue(trade?.tags, 'quantity') || '');
   const amountMinor = Number.parseInt(parseTradeTagValue(trade?.tags, 'amount') || '', 10);
 

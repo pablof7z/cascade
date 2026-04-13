@@ -139,7 +139,6 @@ pub struct FxQuoteSourceMetadata {
     pub minimum_provider_count: u64,
     pub execution_spread_bps: u64,
     pub max_observation_age_seconds: i64,
-    pub fallback_used: bool,
 }
 
 impl Default for FxQuoteSourceMetadata {
@@ -151,7 +150,6 @@ impl Default for FxQuoteSourceMetadata {
             minimum_provider_count: 0,
             execution_spread_bps: 0,
             max_observation_age_seconds: 0,
-            fallback_used: false,
         }
     }
 }
@@ -511,4 +509,25 @@ pub struct MarketTradeRecord {
     pub price_ppm: u64,
     pub created_at: i64,
     pub raw_event_json: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FxQuoteDirection, FxQuoteSourceMetadata};
+
+    #[test]
+    fn fx_quote_source_metadata_serialization_omits_fallback_flag() {
+        let metadata = FxQuoteSourceMetadata {
+            combination_policy: "median_non_stale_major_providers_v1".to_string(),
+            quote_direction: FxQuoteDirection::UsdToMsat,
+            provider_count: 3,
+            minimum_provider_count: 2,
+            execution_spread_bps: 100,
+            max_observation_age_seconds: 60,
+        };
+
+        let value = serde_json::to_value(metadata).unwrap();
+
+        assert!(value.get("fallback_used").is_none());
+    }
 }

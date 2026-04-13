@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { Mint, Wallet, type CounterSource, type MintQuoteState } from '@cashu/cashu-ts';
-import { getCascadeEdition, normalizeMintUrl, storageKey } from '$lib/cascade/config';
+import { normalizeMintUrl, storageKey } from '$lib/cascade/config';
 import type { BlindedMessageInput, ProductProof, TokenOutput } from '$lib/cascade/api';
 import { toProductProof } from '$lib/wallet/cashuTokens';
 
@@ -135,8 +135,7 @@ export async function createUsdLightningMintQuote(
   const response = await fetch(`${normalizeMintUrl(mintUrl)}/v1/mint/quote/bolt11`, {
     method: 'POST',
     headers: {
-      'content-type': 'application/json',
-      'x-cascade-edition': getCascadeEdition()
+      'content-type': 'application/json'
     },
     body: JSON.stringify({
       amount: amountMinor,

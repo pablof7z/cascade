@@ -6,8 +6,8 @@ use crate::stripe::{
 };
 use crate::types::{
     BlindedMessageInput, MintBolt11Request, MintBolt11Response, MintQuoteBolt11Request,
-    MintQuoteBolt11Response, ProductActivityItem, ProductActivityResponse,
-    ProductBuyRequest, ProductCoordinatorBuyRequest, ProductCoordinatorSellRequest,
+    MintQuoteBolt11Response, ProductActivityItem, ProductActivityResponse, ProductBuyRequest,
+    ProductCoordinatorBuyRequest, ProductCoordinatorSellRequest,
     ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest, ProductFeedResponse,
     ProductFxMetadataResponse, ProductFxObservationResponse, ProductLightningFxQuoteResponse,
     ProductMarketDetailResponse, ProductMarketSearchResponse, ProductMarketSummary,
@@ -62,7 +62,6 @@ const NIP98_AUTH_KIND: i64 = 27_235;
 const NIP98_AUTH_WINDOW_SECONDS: i64 = 120;
 const SHARE_MINOR_SCALE: u64 = 10_000;
 const MAX_MARKET_DENOMINATION_POWER: u32 = 32;
-const CLIENT_EDITION_HEADER: &str = "x-cascade-edition";
 const DEFAULT_FEED_MARKET_LIMIT: usize = 60;
 const DEFAULT_FEED_TRADE_LIMIT: usize = 240;
 const MAX_FEED_MARKET_LIMIT: usize = 240;
@@ -113,45 +112,12 @@ pub struct ProductSearchQuery {
     offset: Option<usize>,
 }
 
-fn normalize_client_edition(value: &str) -> Option<&'static str> {
-    match value.trim().to_ascii_lowercase().as_str() {
-        "paper" | "signet" => Some("signet"),
-        "mainnet" => Some("mainnet"),
-        _ => None,
-    }
-}
-
-fn edition_mismatch_error(expected: &str, actual: &str) -> String {
-    format!("edition_mismatch:expected={expected}:actual={actual}")
-}
-
-fn require_client_edition(
-    headers: &HeaderMap,
-    state: &AppState,
-) -> Option<(StatusCode, Json<Value>)> {
-    let expected = headers
-        .get(CLIENT_EDITION_HEADER)
-        .and_then(|value| value.to_str().ok())
-        .and_then(normalize_client_edition)?;
-
-    let actual = state.edition();
-    if expected == actual {
-        return None;
-    }
-
-    Some((
-        StatusCode::CONFLICT,
-        Json(json!({ "error": edition_mismatch_error(expected, actual) })),
-    ))
-}
-
 fn runtime_response(state: &AppState) -> ProductRuntimeResponse {
     ProductRuntimeResponse {
         edition: state.edition().to_string(),
         network: state.network_type.clone(),
         mint_url: state.mint_url.clone(),
         proof_custody: "browser_local".to_string(),
-        request_edition_header: CLIENT_EDITION_HEADER.to_string(),
         funding: ProductRuntimeFundingResponse {
             lightning: ProductRuntimeRailResponse {
                 available: true,
@@ -1272,13 +1238,8 @@ fn market_proof_unit(market: &Market, side: Side) -> String {
 
 pub async fn feed(
     State(state): State<AppState>,
-    headers: HeaderMap,
     Query(query): Query<ProductFeedQuery>,
 ) -> (StatusCode, Json<Value>) {
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
-    }
-
     let markets = state.db.list_public_markets().await.unwrap_or_default();
     let trades = state
         .db
@@ -1329,13 +1290,8 @@ pub async fn runtime(State(state): State<AppState>) -> (StatusCode, Json<Product
 
 pub async fn market_detail(
     State(state): State<AppState>,
-    headers: HeaderMap,
     Path(slug): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
-    }
-
     match state.db.get_public_market_by_slug(&slug).await {
         Ok(Some((market, launch))) => market_detail_response(&state, &market, &launch).await,
         Ok(None) => (
@@ -1356,10 +1312,6 @@ pub async fn pending_market_detail(
     headers: HeaderMap,
     Path((event_id, creator_pubkey)): Path<(String, String)>,
 ) -> (StatusCode, Json<Value>) {
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
-    }
-
     let auth = match request_auth_context(&headers, &method, &uri) {
         Ok(auth) => auth,
         Err(error) => return (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
@@ -1415,13 +1367,8 @@ pub async fn pending_market_detail(
 
 pub async fn search_markets(
     State(state): State<AppState>,
-    headers: HeaderMap,
     Query(query): Query<ProductSearchQuery>,
 ) -> (StatusCode, Json<Value>) {
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
-    }
-
     let search_query = query.q.unwrap_or_default();
     let limit = bounded_limit(query.limit, DEFAULT_DISCOVERY_LIMIT, MAX_DISCOVERY_LIMIT);
     let offset = bounded_offset(query.offset);
@@ -1467,13 +1414,8 @@ pub async fn search_markets(
 
 pub async fn activity_feed(
     State(state): State<AppState>,
-    headers: HeaderMap,
     Query(query): Query<ProductPaginationQuery>,
 ) -> (StatusCode, Json<Value>) {
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
-    }
-
     let limit = bounded_limit(query.limit, DEFAULT_ACTIVITY_LIMIT, MAX_ACTIVITY_LIMIT);
     let offset = bounded_offset(query.offset);
 
@@ -1659,7 +1601,6 @@ async fn create_lightning_wallet_funding_quote_record(
 
 pub async fn create_mint_quote_bolt11(
     State(state): State<AppState>,
-    headers: HeaderMap,
     Json(req): Json<MintQuoteBolt11Request>,
 ) -> (StatusCode, Json<Value>) {
     if req.amount == 0 {
@@ -1674,10 +1615,6 @@ pub async fn create_mint_quote_bolt11(
             StatusCode::BAD_REQUEST,
             Json(json!({ "error": "unit_unsupported" })),
         );
-    }
-
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
     }
 
     match prepare_wallet_funding_request(
@@ -1774,7 +1711,6 @@ pub async fn create_mint_quote_bolt11(
 
 pub async fn create_stripe_funding(
     State(state): State<AppState>,
-    headers: HeaderMap,
     Json(req): Json<ProductStripeFundingRequest>,
 ) -> (StatusCode, Json<Value>) {
     if req.pubkey.trim().is_empty() || req.amount_minor == 0 {
@@ -1782,10 +1718,6 @@ pub async fn create_stripe_funding(
             StatusCode::BAD_REQUEST,
             Json(json!({ "error": "pubkey_and_amount_minor_are_required" })),
         );
-    }
-
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
     }
 
     match prepare_wallet_funding_request(
@@ -2499,7 +2431,6 @@ pub async fn get_wallet_funding_status(
 
 pub async fn create_usdc_deposit_intent(
     State(state): State<AppState>,
-    headers: HeaderMap,
     Json(req): Json<ProductUsdcDepositIntentRequest>,
 ) -> (StatusCode, Json<Value>) {
     if req.pubkey.trim().is_empty() {
@@ -2513,10 +2444,6 @@ pub async fn create_usdc_deposit_intent(
             StatusCode::BAD_REQUEST,
             Json(json!({ "error": "requested_wallet_amount_minor_must_be_greater_than_zero" })),
         );
-    }
-
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
     }
 
     if state.paper_mode {
@@ -2595,7 +2522,6 @@ pub async fn get_usdc_deposit_intent(
 
 pub async fn create_usdc_withdrawal(
     State(state): State<AppState>,
-    headers: HeaderMap,
     Json(req): Json<ProductUsdcWithdrawalRequest>,
 ) -> (StatusCode, Json<Value>) {
     if req.pubkey.trim().is_empty() {
@@ -2615,10 +2541,6 @@ pub async fn create_usdc_withdrawal(
             StatusCode::BAD_REQUEST,
             Json(json!({ "error": "input_proofs_required" })),
         );
-    }
-
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
     }
 
     if state.paper_mode {
@@ -2928,10 +2850,6 @@ pub async fn create_market(
         }
     }
 
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
-    }
-
     if req.event_id.trim().is_empty()
         || req.slug.trim().is_empty()
         || req.title.trim().is_empty()
@@ -3084,13 +3002,8 @@ pub async fn create_market(
 
 pub async fn quote_trade(
     State(state): State<AppState>,
-    headers: HeaderMap,
     Json(req): Json<ProductCoordinatorTradeQuoteRequest>,
 ) -> (StatusCode, Json<Value>) {
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
-    }
-
     let quote_request = ProductTradeQuoteRequest {
         trade_type: "buy".to_string(),
         side: req.side,
@@ -3102,13 +3015,8 @@ pub async fn quote_trade(
 
 pub async fn quote_trade_sell(
     State(state): State<AppState>,
-    headers: HeaderMap,
     Json(req): Json<ProductCoordinatorTradeQuoteRequest>,
 ) -> (StatusCode, Json<Value>) {
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
-    }
-
     let quote_request = ProductTradeQuoteRequest {
         trade_type: "sell".to_string(),
         side: req.side,
@@ -3137,10 +3045,6 @@ pub async fn buy_trade(
                 Json(json!({ "error": "request_signer_must_match_pubkey" })),
             );
         }
-    }
-
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
     }
 
     let buy_request = ProductBuyRequest {
@@ -3181,10 +3085,6 @@ pub async fn sell_trade(
                 Json(json!({ "error": "request_signer_must_match_pubkey" })),
             );
         }
-    }
-
-    if let Some(response) = require_client_edition(&headers, &state) {
-        return response;
     }
 
     let sell_request = ProductSellRequest {
@@ -4620,7 +4520,6 @@ fn product_fx_metadata_response(fx_quote: &FxQuoteSnapshot) -> ProductFxMetadata
         provider_count: fx_quote.source_metadata.provider_count,
         minimum_provider_count: fx_quote.source_metadata.minimum_provider_count,
         max_observation_age_seconds: fx_quote.source_metadata.max_observation_age_seconds,
-        fallback_used: fx_quote.source_metadata.fallback_used,
     }
 }
 
@@ -5096,8 +4995,8 @@ fn stripe_funding_limit_error_response(error: &str) -> (StatusCode, Json<Value>)
 
 fn parse_side(value: &str) -> Result<Side, String> {
     match value.to_lowercase().as_str() {
-        "yes" | "long" => Ok(Side::Long),
-        "no" | "short" => Ok(Side::Short),
+        "long" => Ok(Side::Long),
+        "short" => Ok(Side::Short),
         _ => Err("side must be long or short".to_string()),
     }
 }
@@ -5560,7 +5459,6 @@ async fn execute_buy_trade_settlement(
                 minimum_provider_count: metadata.minimum_provider_count,
                 execution_spread_bps: metadata.execution_spread_bps,
                 max_observation_age_seconds: metadata.max_observation_age_seconds,
-                fallback_used: metadata.fallback_used,
             })
             .unwrap_or_default(),
         quote
@@ -5712,7 +5610,6 @@ async fn execute_sell_trade_settlement(
                 minimum_provider_count: metadata.minimum_provider_count,
                 execution_spread_bps: metadata.execution_spread_bps,
                 max_observation_age_seconds: metadata.max_observation_age_seconds,
-                fallback_used: metadata.fallback_used,
             })
             .unwrap_or_default(),
         quote
@@ -5888,7 +5785,6 @@ fn lightning_fx_quote_response(quote: &FxQuoteEnvelope) -> ProductLightningFxQuo
         spread_bps: quote.snapshot.spread_bps,
         created_at: quote.snapshot.created_at,
         expires_at: quote.snapshot.expires_at,
-        fallback_used: quote.fallback_used,
         metadata: product_fx_metadata_response(&quote.snapshot),
         observations: quote
             .snapshot
@@ -6247,4 +6143,22 @@ fn verify_event_signature(event: &Nip98AuthEvent, event_id: &str) -> Result<(), 
     Secp256k1::verification_only()
         .verify_schnorr(&signature, &message, &public_key)
         .map_err(|_| "invalid_nip98_signature".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_side;
+    use cascade_core::market::Side;
+
+    #[test]
+    fn parse_side_accepts_long_and_short() {
+        assert_eq!(parse_side("long").unwrap(), Side::Long);
+        assert_eq!(parse_side("SHORT").unwrap(), Side::Short);
+    }
+
+    #[test]
+    fn parse_side_rejects_yes_and_no_aliases() {
+        assert_eq!(parse_side("yes").unwrap_err(), "side must be long or short");
+        assert_eq!(parse_side("no").unwrap_err(), "side must be long or short");
+    }
 }

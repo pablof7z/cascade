@@ -154,7 +154,6 @@ pub struct ProductRuntimeResponse {
     pub network: String,
     pub mint_url: String,
     pub proof_custody: String,
-    pub request_edition_header: String,
     pub funding: ProductRuntimeFundingResponse,
 }
 
@@ -389,7 +388,6 @@ pub struct ProductFxMetadataResponse {
     pub provider_count: u64,
     pub minimum_provider_count: u64,
     pub max_observation_age_seconds: i64,
-    pub fallback_used: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -401,7 +399,6 @@ pub struct ProductLightningFxQuoteResponse {
     pub spread_bps: u64,
     pub created_at: i64,
     pub expires_at: i64,
-    pub fallback_used: bool,
     pub metadata: ProductFxMetadataResponse,
     pub observations: Vec<ProductFxObservationResponse>,
 }

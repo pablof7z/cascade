@@ -200,22 +200,6 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             "/api/portfolio/withdrawals/usdc/{withdrawal_id}",
             get(product::get_usdc_withdrawal),
         )
-        .route(
-            "/api/wallet/topups/requests/{request_id}",
-            get(product::wallet_funding_request_status),
-        )
-        .route(
-            "/api/wallet/topups/{quote_id}",
-            get(product::get_wallet_funding_status),
-        )
-        .route(
-            "/api/wallet/topups/stripe",
-            post(product::create_stripe_funding),
-        )
-        .route(
-            "/api/wallet/topups/stripe/webhook",
-            post(product::stripe_webhook),
-        )
         // Market-scoped key discovery
         .route(
             "/{event_id}/v1/keys",

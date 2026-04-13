@@ -20,7 +20,7 @@ A module is a single, binary, observable prediction. It works exactly like a Pol
 - "Will the US enter recession in 2026?"
 - "Will GPT-5 score above 90% on the MMLU benchmark?"
 
-Each module has a clear outcome: YES or NO. It has its own LMSR-priced bonding curve. It's independently tradeable.
+Each module presents a clear directional claim. Traders can take LONG or SHORT. It has its own LMSR-priced bonding curve and is independently tradeable.
 
 ### Theses — Networks of Beliefs
 

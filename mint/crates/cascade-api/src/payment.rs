@@ -190,7 +190,6 @@ impl UsdBolt11PaymentProcessor {
             "minimum_provider_count": fx_quote.snapshot.source_metadata.minimum_provider_count,
             "max_observation_age_seconds": fx_quote.snapshot.source_metadata.max_observation_age_seconds,
             "expires_at": fx_quote.snapshot.expires_at,
-            "fallback_used": fx_quote.fallback_used,
         })
     }
 
@@ -639,5 +638,49 @@ impl MintPayment for UsdBolt11PaymentProcessor {
             status,
             total_spent: Amount::new(stored.amount_minor + stored.fee_minor, CurrencyUnit::Usd),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cascade_core::product::{
+        FxQuoteDirection, FxQuoteObservation, FxQuoteSnapshot, FxQuoteSourceMetadata,
+    };
+
+    fn sample_fx_quote() -> FxQuoteEnvelope {
+        FxQuoteEnvelope {
+            snapshot: FxQuoteSnapshot {
+                id: "fx-quote-1".to_string(),
+                amount_minor: 2_500,
+                amount_msat: 50_505_051,
+                btc_usd_price: 49_500.0,
+                reference_btc_usd_price: 50_000.0,
+                source: "coinbase,kraken,bitstamp".to_string(),
+                spread_bps: 400,
+                observations: vec![FxQuoteObservation {
+                    source: "coinbase".to_string(),
+                    btc_usd_price: 50_000.0,
+                    observed_at: 1_700_000_000,
+                }],
+                source_metadata: FxQuoteSourceMetadata {
+                    combination_policy: "median_non_stale_major_providers_v1".to_string(),
+                    quote_direction: FxQuoteDirection::UsdToMsat,
+                    provider_count: 3,
+                    minimum_provider_count: 2,
+                    execution_spread_bps: 100,
+                    max_observation_age_seconds: 60,
+                },
+                created_at: 1_700_000_000,
+                expires_at: 1_700_000_030,
+            },
+        }
+    }
+
+    #[test]
+    fn quote_extra_json_omits_fallback_flag() {
+        let payload = UsdBolt11PaymentProcessor::quote_extra_json(&sample_fx_quote());
+
+        assert!(payload.get("fallback_used").is_none());
     }
 }

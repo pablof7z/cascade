@@ -29,7 +29,7 @@ export type TradeRecord = {
   marketId: string;
   amount: number;
   unit: string;
-  direction: 'yes' | 'no';
+  direction: 'long' | 'short';
   type: 'buy' | 'sell';
   pricePpm: number;
   probability: number;
@@ -42,11 +42,11 @@ export type MarketTradeSummary = {
   grossVolume: number;
   buyVolume: number;
   sellVolume: number;
-  yesVolume: number;
-  noVolume: number;
+  longVolume: number;
+  shortVolume: number;
   latestTradeAt: number | null;
   latestPricePpm: number | null;
-  latestDirection: 'yes' | 'no' | null;
+  latestDirection: 'long' | 'short' | null;
   latestType: 'buy' | 'sell' | null;
 };
 
@@ -73,7 +73,7 @@ export type PositionRecord = {
   pubkey: string;
   marketId: string;
   marketTitle?: string;
-  direction: 'yes' | 'no';
+  direction: 'long' | 'short';
   quantity: number;
   stakeSats: number;
   entryPrice: number;
@@ -123,7 +123,7 @@ export function parseTradeEvent(event: NDKEvent | NostrEvent): TradeRecord | nul
   const pricePpm = integerTag(raw.tags, 'price');
 
   if (!marketId) return null;
-  if (direction !== 'yes' && direction !== 'no') return null;
+  if (direction !== 'long' && direction !== 'short') return null;
   if (type !== 'buy' && type !== 'sell') return null;
   if (!amount || !pricePpm) return null;
 
@@ -241,8 +241,8 @@ export function buildTradeSummary(trades: TradeRecord[]): MarketTradeSummary {
       grossVolume: 0,
       buyVolume: 0,
       sellVolume: 0,
-      yesVolume: 0,
-      noVolume: 0,
+      longVolume: 0,
+      shortVolume: 0,
       latestTradeAt: null,
       latestPricePpm: null,
       latestDirection: null,
@@ -258,8 +258,8 @@ export function buildTradeSummary(trades: TradeRecord[]): MarketTradeSummary {
     grossVolume: trades.reduce((sum, trade) => sum + trade.amount, 0),
     buyVolume: trades.filter((trade) => trade.type === 'buy').reduce((sum, trade) => sum + trade.amount, 0),
     sellVolume: trades.filter((trade) => trade.type === 'sell').reduce((sum, trade) => sum + trade.amount, 0),
-    yesVolume: trades.filter((trade) => trade.direction === 'yes').reduce((sum, trade) => sum + trade.amount, 0),
-    noVolume: trades.filter((trade) => trade.direction === 'no').reduce((sum, trade) => sum + trade.amount, 0),
+    longVolume: trades.filter((trade) => trade.direction === 'long').reduce((sum, trade) => sum + trade.amount, 0),
+    shortVolume: trades.filter((trade) => trade.direction === 'short').reduce((sum, trade) => sum + trade.amount, 0),
     latestTradeAt: latest.createdAt,
     latestPricePpm: latest.pricePpm,
     latestDirection: latest.direction,
@@ -407,11 +407,9 @@ function readNumber(value: unknown): number | undefined {
   return undefined;
 }
 
-function readDirection(value: unknown): 'yes' | 'no' | undefined {
-  if (value === 'yes' || value === 'no') return value;
-  if (value === 'YES') return 'yes';
-  if (value === 'NO') return 'no';
-  if (value === 'LONG' || value === 'long') return 'yes';
-  if (value === 'SHORT' || value === 'short') return 'no';
+function readDirection(value: unknown): 'long' | 'short' | undefined {
+  if (value === 'long' || value === 'short') return value;
+  if (value === 'LONG') return 'long';
+  if (value === 'SHORT') return 'short';
   return undefined;
 }

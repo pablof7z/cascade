@@ -57,7 +57,7 @@
   const currentUser = $derived(ndk.$currentUser);
 
   let availableMinor = $state(0);
-  let buySide = $state<'yes' | 'no'>('yes');
+  let buySide = $state<'long' | 'short'>('long');
   let buySpend = $state('2500');
   let sellQuantity = $state('');
   let status = $state('');
@@ -65,24 +65,24 @@
 
   const currentPosition = $derived.by(() => {
     const yesQuantity = shareMinorToQuantity(
-      localProofBalance(proofMintUrl(), marketUnitForSide('yes'))
+      localProofBalance(proofMintUrl(), marketUnitForSide('long'))
     );
     const noQuantity = shareMinorToQuantity(
-      localProofBalance(proofMintUrl(), marketUnitForSide('no'))
+      localProofBalance(proofMintUrl(), marketUnitForSide('short'))
     );
 
     if (yesQuantity > 0 && noQuantity > 0) {
-      return buySide === 'no'
-        ? { side: 'no' as const, quantity: noQuantity }
-        : { side: 'yes' as const, quantity: yesQuantity };
+      return buySide === 'short'
+        ? { side: 'short' as const, quantity: noQuantity }
+        : { side: 'long' as const, quantity: yesQuantity };
     }
 
     if (yesQuantity > 0) {
-      return { side: 'yes' as const, quantity: yesQuantity };
+      return { side: 'long' as const, quantity: yesQuantity };
     }
 
     if (noQuantity > 0) {
-      return { side: 'no' as const, quantity: noQuantity };
+      return { side: 'short' as const, quantity: noQuantity };
     }
 
     return null;
@@ -92,8 +92,8 @@
     return getProductApiUrl().replace(/\/+$/, '');
   }
 
-  function marketUnitForSide(side: 'yes' | 'no'): string {
-    return side === 'yes' ? `long_${marketSlug}` : `short_${marketSlug}`;
+  function marketUnitForSide(side: 'long' | 'short'): string {
+    return side === 'long' ? `long_${marketSlug}` : `short_${marketSlug}`;
   }
 
   function createTradeRequestId(): string {
@@ -162,7 +162,7 @@
       (receipt) => receipt.action !== 'seed'
     );
     if (!receipts.length) return;
-    let recoveredSide: 'yes' | 'no' | null = null;
+    let recoveredSide: 'long' | 'short' | null = null;
 
     for (const receipt of receipts) {
       try {
@@ -311,7 +311,7 @@
       if (!spendProofs.length) {
         throw new Error('Not enough local USD proofs to cover this trade.');
       }
-      const marketUnit = marketUnitForSide((quote.side as 'yes' | 'no') ?? buySide);
+      const marketUnit = marketUnitForSide((quote.side as 'long' | 'short') ?? buySide);
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
         proofMintUrl(),
         marketUnit,
@@ -347,7 +347,7 @@
       const response = await buyMarketPosition({
         eventId: marketId,
         pubkey: currentUser.pubkey,
-        side: (quote.side as 'yes' | 'no') ?? buySide,
+        side: (quote.side as 'long' | 'short') ?? buySide,
         spendMinor: quote.spend_minor,
         proofs: spendProofs,
         issuedOutputs,
@@ -428,7 +428,7 @@
         throw new Error('Sell quote is missing a quote id.');
       }
       const lockedQuoteId = quote.quote_id;
-      const marketUnit = marketUnitForSide((quote.side as 'yes' | 'no') ?? sellSide);
+      const marketUnit = marketUnitForSide((quote.side as 'long' | 'short') ?? sellSide);
       const spendProofs = selectLocalProofsForAmount(
         proofMintUrl(),
         marketUnit,
@@ -472,7 +472,7 @@
       const response = await sellMarketPosition({
         eventId: marketId,
         pubkey: currentUser.pubkey,
-        side: (quote.side as 'yes' | 'no') ?? sellSide,
+        side: (quote.side as 'long' | 'short') ?? sellSide,
         quantity: quote.quantity,
         proofs: spendProofs,
         issuedOutputs,
@@ -547,10 +547,10 @@
     <div class="trade-field">
       <span>Side</span>
       <div class="trade-side-row">
-        <button class:active={buySide === 'yes'} type="button" onclick={() => (buySide = 'yes')}>
+        <button class:active={buySide === 'long'} type="button" onclick={() => (buySide = 'long')}>
           LONG {formatProbability(yesProbability)}
         </button>
-        <button class:active={buySide === 'no'} type="button" onclick={() => (buySide = 'no')}>
+        <button class:active={buySide === 'short'} type="button" onclick={() => (buySide = 'short')}>
           SHORT {formatProbability(noProbability)}
         </button>
       </div>
@@ -559,7 +559,7 @@
     <div class="trade-field">
       <span>Buy spend</span>
       <input bind:value={buySpend} min="100" step="100" type="number" />
-      <button class="button-primary" type="button" onclick={buy}>Mint {buySide === 'yes' ? 'LONG' : 'SHORT'}</button>
+      <button class="button-primary" type="button" onclick={buy}>Mint {buySide === 'long' ? 'LONG' : 'SHORT'}</button>
     </div>
 
     <div class="trade-field">
@@ -567,7 +567,7 @@
       <strong>{currentPosition ? `${currentPosition.quantity.toFixed(2)} shares` : 'None yet'}</strong>
       <input bind:value={sellQuantity} min="0" step="0.1" type="number" />
       <button class="button-secondary" disabled={!currentPosition} type="button" onclick={sell}>
-        Withdraw {currentPosition ? (currentPosition.side === 'yes' ? 'LONG' : 'SHORT') : (buySide === 'yes' ? 'LONG' : 'SHORT')}
+        Withdraw {currentPosition ? (currentPosition.side === 'long' ? 'LONG' : 'SHORT') : (buySide === 'long' ? 'LONG' : 'SHORT')}
       </button>
     </div>
   {/if}

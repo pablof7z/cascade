@@ -61,7 +61,7 @@
     market_event_id: string;
     market_slug: string;
     market_title: string;
-    direction: 'yes' | 'no';
+    direction: 'long' | 'short';
     quantity: number;
     current_price_ppm: number;
     market_value_minor: number;
@@ -157,13 +157,13 @@
     return `${walletEntry.unit} · ${amount.toFixed(2)}`;
   }
 
-  function parseMarketProofUnit(unit: string): { slug: string; direction: 'yes' | 'no' } | null {
+  function parseMarketProofUnit(unit: string): { slug: string; direction: 'long' | 'short' } | null {
     if (/^long_/i.test(unit)) {
-      return { slug: unit.slice('long_'.length), direction: 'yes' };
+      return { slug: unit.slice('long_'.length), direction: 'long' };
     }
 
     if (/^short_/i.test(unit)) {
-      return { slug: unit.slice('short_'.length), direction: 'no' };
+      return { slug: unit.slice('short_'.length), direction: 'short' };
     }
 
     return null;
@@ -226,7 +226,7 @@
             'Failed to load current market pricing.'
           );
           const currentPricePpm =
-            entry.direction === 'yes'
+            entry.direction === 'long'
               ? payload.market.price_yes_ppm
               : payload.market.price_no_ppm;
           const marketValueMinor = Math.floor((entry.quantity * currentPricePpm) / 1_000_000);
@@ -1099,7 +1099,7 @@
             <a class="position-row" href={`/market/${position.market_slug}`}>
               <div class="position-copy">
                 <strong>{position.market_title}</strong>
-                <p>{position.direction === 'yes' ? 'LONG' : 'SHORT'} · {position.quantity.toFixed(2)} shares · {describePositionPrice(position)}</p>
+                <p>{position.direction === 'long' ? 'LONG' : 'SHORT'} · {position.quantity.toFixed(2)} shares · {describePositionPrice(position)}</p>
               </div>
               <div class="position-metrics">
                 <span>{formatUsdMinor(position.market_value_minor)}</span>

@@ -116,12 +116,16 @@ They are not all equally canonical. The route surface should be read in three bu
 - `POST /api/trades/sell`
 - `GET /api/product/markets/{event_id}/pending/{creator_pubkey}`
 - `POST /v1/mint/quote/bolt11`
+- `GET /v1/mint/quote/bolt11/{quote_id}`
 - `POST /v1/mint/bolt11`
+- `POST /v1/melt/quote/bolt11`
+- `GET /v1/melt/quote/bolt11/{quote_id}`
+- `POST /v1/melt/bolt11`
 
-These routes reflect the current implementation, but the main remaining gap is still the missing standard melt path. The main issues are:
+These routes reflect the current implementation. The important caveats are now:
 
-- the standard `bolt11` mint path is still implemented through Cascade glue instead of a real CDK payment processor
-- the standard `bolt11` melt path is still not live
+- the standard `bolt11` mint and melt paths are live through the CDK surface with a shared USD/BOLT11 payment processor
+- Cascade still adds product-specific recovery and Stripe coordination around that standard surface
 - `POST /api/market/create` still exists as migration debt and should not be treated as the canonical kind `982` publishing interface
 
 ## Standard-First Route Taxonomy
@@ -140,6 +144,8 @@ These should be the canonical routes whenever the behavior is pure mint/melt beh
 - `POST /v1/melt/bolt11`
 
 If Cascade needs extra product metadata for one of these flows, that metadata should attach to the standard quote or operation rather than replacing the standard route with a custom one.
+
+At the implementation level, the public `bolt11` mint and melt routes are backed by the shared USD/BOLT11 payment processor and standard Cashu wire contract. Cascade-specific code is still allowed to reconcile quote state or attach recovery metadata around that standard contract, but not to replace it with a different route shape.
 
 ### Justified Custom Cascade Surface
 
@@ -253,8 +259,10 @@ If the runtime manifest does not match the current browser edition, the client m
 - `GET /api/portfolio/funding/{funding_id}` remains the canonical persisted-status route for Stripe funding.
 - `GET /api/wallet/topups/{quote_id}` remains a legacy compatibility alias only.
 - Lightning funding is standardized on `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`.
+- Outbound Lightning payment is standardized on `POST /v1/melt/quote/bolt11`, `GET /v1/melt/quote/bolt11/{quote_id}`, and `POST /v1/melt/bolt11`.
 - Those Lightning quote ids should be persisted as real CDK mint quotes in the mint localstore, not only as parallel Cascade product rows.
 - `POST /v1/mint/bolt11` should issue proofs through the standard CDK mint path after quote-state reconciliation, not through a bespoke blind-signing flow.
+- `POST /v1/melt/bolt11` should execute invoice payment through the standard CDK melt path after quote-state reconciliation, not through a bespoke settlement endpoint.
 - Lightning clients should recover quote creation by retrying `POST /v1/mint/quote/bolt11` with the same `request_id`. `GET /api/portfolio/funding/requests/{request_id}` is not part of the Lightning funding contract.
 
 Lightning mint quote reads should be settlement-aware. `GET /v1/mint/quote/bolt11/{quote_id}` is allowed to reconcile persisted quote state against the underlying invoice state before responding, so a paid invoice can move from `UNPAID` to `PAID` after restart or client interruption without a bespoke callback from the browser.
@@ -337,7 +345,7 @@ The persisted quote is also the settlement contract for the coordinator. It shou
 - `spread_bps`
 - `fx_observations[]`
 
-Executed trade responses and `GET /api/trades/{trade_id}` should also expose a settlement object when one exists. The canonical launch shape is a completed hidden BOLT11 settlement record: the mint creates the invoice for the receiving side, pays it over the Lightning abstraction, and records the invoice, payment hash, and FX snapshot so recovery and auditing can reason about the hidden rail step without inventing a bespoke public swap primitive.
+Executed trade responses and `GET /api/trades/{trade_id}` should also expose a settlement object when one exists. The canonical launch shape is a completed BOLT11 settlement record: the mint creates the invoice for the receiving side, pays it over the Lightning abstraction, and records the invoice, payment hash, and FX snapshot so recovery and auditing can reason about the internal rail step without inventing a bespoke public swap primitive.
 
 The settlement record must describe the logical direction explicitly instead of using a vague internal label:
 

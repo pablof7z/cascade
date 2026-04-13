@@ -189,6 +189,21 @@ The hosted Stripe flow should be:
 
 Stripe must not introduce a separate balance ledger or a server-side proof issuance path. It terminates in the same browser-side blind-output issuance and recovery model already used by Lightning mint quotes.
 
+## USDC Wallet Infrastructure
+
+USDC is an additive later wallet rail, not a replacement for the USD wallet mint.
+
+- the mint can be configured with a provider-agnostic treasury wallet address for native USDC
+- the mint does not currently store or manage an EVM private key; outbound execution should come from a treasury signer or provider integration
+- the backend persists USDC deposit intents independently from Stripe and Lightning funding quotes
+- a deposit intent records the intended wallet credit amount, destination address, provider correlation fields, and later onchain confirmation references
+- the backend also persists outbound USDC withdrawal records that consume USD proofs, return USD change proofs, and wait for treasury submission plus completion tracking
+- outbound USDC withdrawal creation is disabled by default and must be explicitly enabled once a real payout executor exists
+- provider webhook success must not be treated as sufficient to issue proofs
+- the authoritative transition remains confirmed native USDC receipt into the configured treasury flow
+
+The initial infrastructure surface is intentionally generic so later direct deposits or third-party ramps such as MoonPay can attach to the same deposit-intent records, and later treasury execution can attach to the same withdrawal records, instead of dictating backend state shape.
+
 ## Lightning Integration
 
 Lightning is both a launch wallet-funding rail and the settlement rail between the wallet mint and the market mint.
@@ -199,7 +214,7 @@ Lightning is both a launch wallet-funding rail and the settlement rail between t
 - those Lightning funding quotes should also exist as real CDK mint-quote records in mint storage, not only as parallel product-saga rows
 - incoming Lightning proof issuance should run through CDK `process_mint_request` once the quote is paid, rather than a custom blind-signing path
 - persisted buy/sell quotes carry the Lightning-facing settlement budget and provider observations needed for the eventual inter-mint saga
-- executed buy/sell records should carry the completed hidden BOLT11 settlement metadata, not a signet-only synthetic settlement label
+- executed buy/sell records should carry the completed BOLT11 settlement metadata, not a signet-only synthetic settlement label
 - the market mint can return a standard invoice-backed quote for a LONG or SHORT trade
 - the wallet mint can pay that quote by consuming USD proofs
 - the reverse path can return market exit value back into the wallet mint

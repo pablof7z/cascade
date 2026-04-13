@@ -13,6 +13,7 @@ use tokio::sync::{Mutex, RwLock};
 use crate::fx::FxQuoteService;
 use crate::handlers::{self, market, price, product};
 use crate::stripe::StripeGateway;
+use crate::usdc::UsdcWallet;
 use cascade_core::{db::CascadeDatabase, invoice::InvoiceService, MarketManager};
 
 /// Application state shared across route handlers
@@ -20,7 +21,7 @@ use cascade_core::{db::CascadeDatabase, invoice::InvoiceService, MarketManager};
 pub struct AppState {
     pub market_manager: Arc<MarketManager>,
     pub invoice_service: Arc<Mutex<InvoiceService>>,
-    /// Funding quotes currently being issued through /v1/mint/bolt11.
+    /// Funding quotes currently being issued through the standard /v1/mint/quote/bolt11 flow.
     pub processing_fundings: Arc<Mutex<HashSet<String>>>,
     /// Set of spent proof secrets (to prevent double-redemption)
     /// In production, this would be persisted to a database
@@ -29,6 +30,8 @@ pub struct AppState {
     pub fx_service: Arc<FxQuoteService>,
     /// Optional Stripe gateway for hosted card funding
     pub stripe_gateway: Option<Arc<StripeGateway>>,
+    /// Optional USDC treasury wallet configuration for deposit intents
+    pub usdc_wallet: Option<Arc<UsdcWallet>>,
     /// CDK mint for proof verification and keyset validation
     pub mint: Arc<cdk::mint::Mint>,
     /// Cascade database for price history and other queries
@@ -49,6 +52,7 @@ impl AppState {
         invoice_service: Arc<Mutex<InvoiceService>>,
         fx_service: Arc<FxQuoteService>,
         stripe_gateway: Option<Arc<StripeGateway>>,
+        usdc_wallet: Option<Arc<UsdcWallet>>,
         mint: Arc<cdk::mint::Mint>,
         db: Arc<CascadeDatabase>,
         paper_mode: bool,
@@ -62,6 +66,7 @@ impl AppState {
             spent_proofs: Arc::new(RwLock::new(HashSet::new())),
             fx_service,
             stripe_gateway,
+            usdc_wallet,
             mint,
             db,
             test_mode: false,
@@ -76,6 +81,7 @@ impl AppState {
         invoice_service: Arc<Mutex<InvoiceService>>,
         fx_service: Arc<FxQuoteService>,
         stripe_gateway: Option<Arc<StripeGateway>>,
+        usdc_wallet: Option<Arc<UsdcWallet>>,
         mint: Arc<cdk::mint::Mint>,
         db: Arc<CascadeDatabase>,
     ) -> Self {
@@ -86,6 +92,7 @@ impl AppState {
             spent_proofs: Arc::new(RwLock::new(HashSet::new())),
             fx_service,
             stripe_gateway,
+            usdc_wallet,
             mint,
             db,
             test_mode: true,
@@ -174,6 +181,26 @@ pub fn build_cascade_routes(state: AppState) -> Router {
         .route(
             "/api/portfolio/funding/stripe/webhook",
             post(product::stripe_webhook),
+        )
+        .route(
+            "/api/portfolio/funding/usdc/deposit-intents",
+            post(product::create_usdc_deposit_intent),
+        )
+        .route(
+            "/api/portfolio/funding/usdc/deposit-intents/{intent_id}",
+            get(product::get_usdc_deposit_intent),
+        )
+        .route(
+            "/api/portfolio/withdrawals/usdc",
+            post(product::create_usdc_withdrawal),
+        )
+        .route(
+            "/api/portfolio/withdrawals/usdc/requests/{request_id}",
+            get(product::get_usdc_withdrawal_by_request_id),
+        )
+        .route(
+            "/api/portfolio/withdrawals/usdc/{withdrawal_id}",
+            get(product::get_usdc_withdrawal),
         )
         .route(
             "/api/wallet/topups/requests/{request_id}",

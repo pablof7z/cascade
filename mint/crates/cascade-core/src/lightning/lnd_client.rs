@@ -7,11 +7,15 @@
 
 use crate::error::{CascadeError, Result};
 use crate::lightning::types::{InvoiceState, LightningInvoice, PaymentHash, Preimage};
+use cdk_common::bitcoin::hashes::{sha256, Hash};
+use cdk_common::bitcoin::secp256k1::{Secp256k1, SecretKey};
+use cdk_common::lightning_invoice::{Currency, InvoiceBuilder, PaymentSecret};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 use tokio::process::Command;
 use tokio::sync::RwLock;
 
@@ -590,18 +594,33 @@ impl LndClient {
     ) -> (LightningInvoice, Preimage) {
         let preimage = self.generate_preimage(amount_msat);
         let payment_hash = preimage.payment_hash();
-
-        (
-            LightningInvoice {
-                payment_request: format!(
+        let created_at = chrono::Utc::now().timestamp();
+        let expiry_seconds = expiry_seconds.unwrap_or(3600);
+        let cltv_expiry = cltv_expiry.or(Some(40));
+        let payment_request = self
+            .build_mock_bolt11_invoice(
+                amount_msat,
+                &payment_hash,
+                description.as_deref(),
+                created_at,
+                expiry_seconds,
+                cltv_expiry.unwrap_or(40),
+            )
+            .unwrap_or_else(|_| {
+                format!(
                     "lnbc{}1p{}",
                     amount_msat / 1000,
                     &payment_hash.to_hex()[..16]
-                ),
+                )
+            });
+
+        (
+            LightningInvoice {
+                payment_request,
                 payment_hash,
                 amount_msat,
-                created_at: chrono::Utc::now().timestamp(),
-                expiry_seconds: expiry_seconds.unwrap_or(3600),
+                created_at,
+                expiry_seconds,
                 cltv_expiry,
                 description,
                 state: InvoiceState::Open,
@@ -624,6 +643,71 @@ impl LndClient {
         let result = hasher.finalize();
         preimage_bytes.copy_from_slice(&result);
         Preimage::from_bytes(preimage_bytes)
+    }
+
+    fn build_mock_bolt11_invoice(
+        &self,
+        amount_msat: u64,
+        payment_hash: &PaymentHash,
+        description: Option<&str>,
+        created_at: i64,
+        expiry_seconds: u64,
+        cltv_expiry: u64,
+    ) -> Result<String> {
+        let private_key = SecretKey::from_slice(
+            &hex::decode("e126f68f7eafcc8b74f54d269fe206be715000f94dac067d1c04a8ca3b2db734")
+                .map_err(|error| {
+                    CascadeError::PaymentError(format!(
+                        "Failed to decode mock invoice signing key: {error}"
+                    ))
+                })?,
+        )
+        .map_err(|error| {
+            CascadeError::PaymentError(format!("Failed to build mock invoice signing key: {error}"))
+        })?;
+
+        let currency = match self
+            .config
+            .network
+            .as_deref()
+            .map(|network| network.trim().to_ascii_lowercase())
+            .as_deref()
+        {
+            Some("mainnet") | Some("bitcoin") | Some("bc") => Currency::Bitcoin,
+            Some("signet") | Some("tbs") => Currency::Signet,
+            Some("regtest") | Some("bcrt") => Currency::Regtest,
+            Some("testnet") | Some("tb") => Currency::BitcoinTestnet,
+            _ => Currency::Bitcoin,
+        };
+        let description = description
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or("Cascade mock invoice")
+            .to_string();
+        let payment_hash = sha256::Hash::from_slice(&payment_hash.bytes).map_err(|error| {
+            CascadeError::PaymentError(format!("Invalid mock payment hash bytes: {error}"))
+        })?;
+        let created_at = SystemTime::UNIX_EPOCH
+            .checked_add(Duration::from_secs(created_at.max(0) as u64))
+            .ok_or_else(|| {
+                CascadeError::PaymentError(
+                    "Mock invoice creation timestamp is out of range".to_string(),
+                )
+            })?;
+
+        let invoice = InvoiceBuilder::new(currency)
+            .amount_milli_satoshis(amount_msat)
+            .description(description)
+            .payment_hash(payment_hash)
+            .payment_secret(PaymentSecret([42u8; 32]))
+            .timestamp(created_at)
+            .expiry_time(Duration::from_secs(expiry_seconds))
+            .min_final_cltv_expiry_delta(cltv_expiry)
+            .build_signed(|hash| Secp256k1::new().sign_ecdsa_recoverable(hash, &private_key))
+            .map_err(|error| {
+                CascadeError::PaymentError(format!("Failed to build mock BOLT11 invoice: {error}"))
+            })?;
+
+        Ok(invoice.to_string())
     }
 
     async fn upsert_issued_invoice(

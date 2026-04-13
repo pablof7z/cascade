@@ -2,14 +2,17 @@
 
 pub mod fx;
 pub mod handlers;
+pub mod payment;
 pub mod routes;
 pub mod stripe;
 pub mod types;
+pub mod usdc;
 
 use crate::stripe::{StripeConfig, StripeGateway};
+use crate::usdc::{UsdcConfig, UsdcWallet};
 use axum::Router;
 use cascade_core::db::CascadeDatabase;
-use cascade_core::lightning::lnd_client::{LndClient, LndConfig};
+use cascade_core::invoice::InvoiceService;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower_http::cors::{Any, CorsLayer};
@@ -17,32 +20,24 @@ use tower_http::cors::{Any, CorsLayer};
 /// Build the complete HTTP server combining CDK routes + Cascade custom routes
 pub async fn build_server(
     market_manager: Arc<cascade_core::MarketManager>,
-    lnd_config: LndConfig,
+    invoice_service: Arc<Mutex<InvoiceService>>,
+    fx_service: Arc<fx::FxQuoteService>,
     stripe_config: Option<StripeConfig>,
+    usdc_config: Option<UsdcConfig>,
     mint: Arc<cdk::mint::Mint>,
     db: Arc<CascadeDatabase>,
     network_type: &str,
     mint_url: &str,
 ) -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
-    // Create InvoiceService with LND client
-    let mut lnd_client = LndClient::new(lnd_config);
-    lnd_client
-        .connect()
-        .await
-        .map_err(|e| format!("Failed to connect LND client: {e}"))?;
-
-    let invoice_service = Arc::new(Mutex::new(cascade_core::invoice::InvoiceService::new(
-        lnd_client, 3600, // default expiry: 1 hour
-        40,   // CLTV delta
-    )));
-    let fx_service = Arc::new(
-        fx::FxQuoteService::for_network(network_type)
-            .map_err(|e| format!("Failed to initialize FX quote service: {e}"))?,
-    );
     let stripe_gateway = stripe_config
         .map(StripeGateway::new)
         .transpose()
         .map_err(|e| format!("Failed to initialize Stripe gateway: {e}"))?
+        .map(Arc::new);
+    let usdc_wallet = usdc_config
+        .map(UsdcWallet::new)
+        .transpose()
+        .map_err(|e| format!("Failed to initialize USDC wallet: {e}"))?
         .map(Arc::new);
 
     mint.start()
@@ -55,6 +50,7 @@ pub async fn build_server(
         invoice_service,
         fx_service,
         stripe_gateway,
+        usdc_wallet,
         mint.clone(),
         db,
         network_type == "signet",
@@ -66,7 +62,7 @@ pub async fn build_server(
     let cascade_routes = routes::build_cascade_routes(state);
 
     // Build CDK mint routes (Cashu standard endpoints)
-    let mint_routes = cdk_axum::create_mint_router(mint, Vec::new())
+    let mint_routes = cdk_axum::create_mint_router(mint, vec!["bolt11".to_string()])
         .await
         .map_err(|e| format!("Failed to create mint router: {}", e))?;
 

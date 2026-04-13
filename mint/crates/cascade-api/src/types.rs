@@ -139,6 +139,7 @@ pub struct ProductRuntimeRailResponse {
 pub struct ProductRuntimeFundingResponse {
     pub lightning: ProductRuntimeRailResponse,
     pub stripe: ProductRuntimeRailResponse,
+    pub usdc: ProductRuntimeRailResponse,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -258,6 +259,88 @@ pub struct ProductPortfolioFundingRequestStatusResponse {
     pub status: String,
     pub error: Option<String>,
     pub funding: Option<ProductPortfolioFundingResponse>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ProductUsdcDepositIntentRequest {
+    pub pubkey: String,
+    #[serde(default)]
+    pub requested_wallet_amount_minor: Option<u64>,
+    #[serde(default)]
+    pub provider: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ProductUsdcDepositIntentResponse {
+    pub id: String,
+    pub asset: String,
+    pub network: String,
+    pub destination_address: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requested_wallet_amount_minor: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub received_asset_units: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_session_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_redirect_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub onchain_tx_id: Option<String>,
+    pub status: String,
+    pub created_at: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confirmed_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credited_at: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ProductUsdcWithdrawalRequest {
+    pub pubkey: String,
+    pub amount_minor: u64,
+    pub destination_address: String,
+    #[serde(default)]
+    pub proofs: Vec<ProofInput>,
+    #[serde(default)]
+    pub change_outputs: Vec<BlindedMessageInput>,
+    #[serde(default)]
+    pub provider: Option<String>,
+    #[serde(default)]
+    pub request_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ProductUsdcWithdrawalResponse {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_id: Option<String>,
+    pub asset: String,
+    pub network: String,
+    pub destination_address: String,
+    pub amount_minor: u64,
+    pub asset_units: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_payout_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub onchain_tx_id: Option<String>,
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub change: Option<ProductTradeBlindSignatureBundleResponse>,
+    pub created_at: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub submitted_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failed_at: Option<i64>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -388,7 +471,7 @@ pub struct ProductCoordinatorSellRequest {
     pub request_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ProductTradeBlindSignatureBundleResponse {
     pub unit: String,
     pub signatures: Vec<TokenOutput>,

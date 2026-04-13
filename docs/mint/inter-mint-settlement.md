@@ -198,11 +198,11 @@ That matters for two reasons:
 
 The product API hides the choreography, but the underlying primitives remain recognizable and composable.
 
-For clarity, that means the hidden rail path should ultimately be backed by the standard routes:
+For clarity, that means the internal Lightning settlement choreography should be backed by the standard routes:
 
 - wallet funding in Lightning: `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, `POST /v1/mint/bolt11`
-- buy-side hidden settlement: `POST /v1/melt/quote/bolt11`, `GET /v1/melt/quote/bolt11/{quote_id}`, `POST /v1/melt/bolt11` on the wallet mint, paired with standard mint-quote redemption on the market mint
-- sell-side hidden settlement: `POST /v1/melt/quote/bolt11`, `GET /v1/melt/quote/bolt11/{quote_id}`, `POST /v1/melt/bolt11` on the market mint, paired with standard mint-quote redemption on the wallet mint
+- buy-side settlement: `POST /v1/melt/quote/bolt11`, `GET /v1/melt/quote/bolt11/{quote_id}`, `POST /v1/melt/bolt11` on the wallet mint, paired with standard mint-quote redemption on the market mint
+- sell-side settlement: `POST /v1/melt/quote/bolt11`, `GET /v1/melt/quote/bolt11/{quote_id}`, `POST /v1/melt/bolt11` on the market mint, paired with standard mint-quote redemption on the wallet mint
 
 If the codebase still uses a custom route for one of those jobs, that route is migration debt unless it has a documented product-specific justification.
 

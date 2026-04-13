@@ -1,0 +1,503 @@
+use crate::fx::{FxQuoteEnvelope, FxQuoteService};
+use anyhow::anyhow;
+use async_trait::async_trait;
+use cascade_core::invoice::InvoiceService;
+use cascade_core::lightning::types::{InvoiceState, PaymentHash};
+use cdk::Amount;
+use cdk_common::database::DynMintDatabase;
+use cdk_common::nuts::{CurrencyUnit, MeltQuoteState};
+use cdk_common::payment::{
+    self, Bolt11Settings, CreateIncomingPaymentResponse, Event, IncomingPaymentOptions,
+    MakePaymentResponse, MintPayment, OutgoingPaymentOptions, PaymentIdentifier,
+    PaymentQuoteResponse, SettingsResponse, WaitPaymentResponse,
+};
+use futures::Stream;
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::pin::Pin;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+use std::time::Duration;
+use tokio::sync::{Mutex, RwLock};
+
+const PROCESSOR_PRIMARY_NAMESPACE: &str = "cascade_usd_bolt11";
+const INCOMING_SECONDARY_NAMESPACE: &str = "incoming";
+const OUTGOING_SECONDARY_NAMESPACE: &str = "outgoing";
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+enum StoredPaymentStatus {
+    Unpaid,
+    Paid,
+    Failed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct StoredBolt11Payment {
+    payment_hash: String,
+    request: String,
+    amount_minor: u64,
+    amount_msat: u64,
+    fee_minor: u64,
+    source: String,
+    spread_bps: u64,
+    created_at: i64,
+    expires_at: Option<u64>,
+    status: StoredPaymentStatus,
+    payment_proof: Option<String>,
+}
+
+#[derive(Clone)]
+pub struct UsdBolt11PaymentProcessor {
+    invoice_service: Arc<Mutex<InvoiceService>>,
+    fx_service: Arc<FxQuoteService>,
+    localstore: DynMintDatabase,
+    pending_incoming: Arc<RwLock<HashSet<String>>>,
+    wait_active: Arc<AtomicBool>,
+    cancel_wait: Arc<AtomicBool>,
+    paper_mode: bool,
+    settings: SettingsResponse,
+}
+
+impl std::fmt::Debug for UsdBolt11PaymentProcessor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UsdBolt11PaymentProcessor")
+            .field("paper_mode", &self.paper_mode)
+            .finish_non_exhaustive()
+    }
+}
+
+impl UsdBolt11PaymentProcessor {
+    pub fn new(
+        invoice_service: Arc<Mutex<InvoiceService>>,
+        fx_service: Arc<FxQuoteService>,
+        localstore: DynMintDatabase,
+        paper_mode: bool,
+    ) -> Self {
+        Self {
+            invoice_service,
+            fx_service,
+            localstore,
+            pending_incoming: Arc::new(RwLock::new(HashSet::new())),
+            wait_active: Arc::new(AtomicBool::new(false)),
+            cancel_wait: Arc::new(AtomicBool::new(false)),
+            paper_mode,
+            settings: SettingsResponse {
+                unit: CurrencyUnit::Usd.to_string(),
+                bolt11: Some(Bolt11Settings {
+                    mpp: false,
+                    amountless: false,
+                    invoice_description: true,
+                }),
+                bolt12: None,
+                custom: Default::default(),
+            },
+        }
+    }
+
+    async fn read_payment(
+        &self,
+        secondary_namespace: &str,
+        payment_hash: &str,
+    ) -> Result<Option<StoredBolt11Payment>, payment::Error> {
+        let stored = self
+            .localstore
+            .kv_read(
+                PROCESSOR_PRIMARY_NAMESPACE,
+                secondary_namespace,
+                payment_hash,
+            )
+            .await
+            .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?;
+
+        stored
+            .map(|bytes| {
+                serde_json::from_slice::<StoredBolt11Payment>(&bytes).map_err(payment::Error::from)
+            })
+            .transpose()
+    }
+
+    async fn write_payment(
+        &self,
+        secondary_namespace: &str,
+        payment: &StoredBolt11Payment,
+    ) -> Result<(), payment::Error> {
+        let payload = serde_json::to_vec(payment)?;
+        let mut tx = self
+            .localstore
+            .begin_transaction()
+            .await
+            .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?;
+        tx.kv_write(
+            PROCESSOR_PRIMARY_NAMESPACE,
+            secondary_namespace,
+            &payment.payment_hash,
+            &payload,
+        )
+        .await
+        .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?;
+        tx.commit()
+            .await
+            .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?;
+        Ok(())
+    }
+
+    fn payment_identifier(payment_hash: &str) -> Result<PaymentIdentifier, payment::Error> {
+        PaymentIdentifier::new("payment_hash", payment_hash)
+    }
+
+    fn quote_extra_json(fx_quote: &FxQuoteEnvelope) -> serde_json::Value {
+        serde_json::json!({
+            "fx_quote_id": fx_quote.snapshot.id,
+            "amount_minor": fx_quote.snapshot.amount_minor,
+            "amount_msat": fx_quote.snapshot.amount_msat,
+            "btc_usd_price": fx_quote.snapshot.btc_usd_price,
+            "source": fx_quote.snapshot.source,
+            "spread_bps": fx_quote.snapshot.spread_bps,
+            "expires_at": fx_quote.snapshot.expires_at,
+            "fallback_used": fx_quote.fallback_used,
+        })
+    }
+
+    async fn settle_incoming_if_paid(
+        &self,
+        payment_hash: &str,
+        payment_identifier: &PaymentIdentifier,
+    ) -> Result<Vec<WaitPaymentResponse>, payment::Error> {
+        let Some(mut stored) = self
+            .read_payment(INCOMING_SECONDARY_NAMESPACE, payment_hash)
+            .await?
+        else {
+            return Ok(Vec::new());
+        };
+
+        if stored.status == StoredPaymentStatus::Paid {
+            return Ok(vec![WaitPaymentResponse {
+                payment_identifier: payment_identifier.clone(),
+                payment_amount: Amount::new(stored.amount_minor, CurrencyUnit::Usd),
+                payment_id: stored.payment_hash,
+            }]);
+        }
+
+        let invoice_state = {
+            let invoice_service = self.invoice_service.lock().await;
+            let payment_hash = PaymentHash::from_hex(payment_hash)
+                .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?;
+            invoice_service
+                .check_invoice_status(&payment_hash)
+                .await
+                .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?
+        };
+
+        if invoice_state != InvoiceState::Settled {
+            return Ok(Vec::new());
+        }
+
+        stored.status = StoredPaymentStatus::Paid;
+        self.write_payment(INCOMING_SECONDARY_NAMESPACE, &stored)
+            .await?;
+        self.pending_incoming.write().await.remove(payment_hash);
+
+        Ok(vec![WaitPaymentResponse {
+            payment_identifier: payment_identifier.clone(),
+            payment_amount: Amount::new(stored.amount_minor, CurrencyUnit::Usd),
+            payment_id: stored.payment_hash,
+        }])
+    }
+}
+
+#[async_trait]
+impl MintPayment for UsdBolt11PaymentProcessor {
+    type Err = payment::Error;
+
+    async fn get_settings(&self) -> Result<SettingsResponse, Self::Err> {
+        Ok(self.settings.clone())
+    }
+
+    async fn create_incoming_payment_request(
+        &self,
+        options: IncomingPaymentOptions,
+    ) -> Result<CreateIncomingPaymentResponse, Self::Err> {
+        let IncomingPaymentOptions::Bolt11(bolt11_options) = options else {
+            return Err(payment::Error::UnsupportedPaymentOption);
+        };
+
+        if bolt11_options.amount.unit() != &CurrencyUnit::Usd {
+            return Err(payment::Error::UnsupportedUnit);
+        }
+
+        let amount_minor = bolt11_options.amount.value();
+        if amount_minor == 0 {
+            return Err(payment::Error::Custom(
+                "amount_minor_must_be_positive".to_string(),
+            ));
+        }
+
+        let fx_quote = self
+            .fx_service
+            .quote_wallet_funding(amount_minor)
+            .await
+            .map_err(payment::Error::Custom)?;
+
+        let now = chrono::Utc::now().timestamp().max(0) as u64;
+        let expiry = bolt11_options
+            .unix_expiry
+            .unwrap_or(fx_quote.snapshot.expires_at.max(0) as u64);
+        let expiry_seconds = expiry.saturating_sub(now).max(60);
+
+        let invoice = {
+            let mut invoice_service = self.invoice_service.lock().await;
+            invoice_service
+                .create_invoice(
+                    fx_quote.snapshot.amount_msat,
+                    bolt11_options.description.clone(),
+                    Some(expiry_seconds),
+                    self.paper_mode,
+                )
+                .await
+                .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?
+        };
+
+        let payment_hash = invoice.payment_hash.to_hex();
+        let stored = StoredBolt11Payment {
+            payment_hash: payment_hash.clone(),
+            request: invoice.bolt11().to_string(),
+            amount_minor,
+            amount_msat: fx_quote.snapshot.amount_msat,
+            fee_minor: 0,
+            source: fx_quote.snapshot.source.clone(),
+            spread_bps: fx_quote.snapshot.spread_bps,
+            created_at: fx_quote.snapshot.created_at,
+            expires_at: Some(expiry),
+            status: StoredPaymentStatus::Unpaid,
+            payment_proof: None,
+        };
+        self.write_payment(INCOMING_SECONDARY_NAMESPACE, &stored)
+            .await?;
+        self.pending_incoming
+            .write()
+            .await
+            .insert(payment_hash.clone());
+
+        Ok(CreateIncomingPaymentResponse {
+            request_lookup_id: Self::payment_identifier(&payment_hash)?,
+            request: stored.request,
+            expiry: stored.expires_at,
+            extra_json: Some(Self::quote_extra_json(&fx_quote)),
+        })
+    }
+
+    async fn get_payment_quote(
+        &self,
+        unit: &CurrencyUnit,
+        options: OutgoingPaymentOptions,
+    ) -> Result<PaymentQuoteResponse, Self::Err> {
+        let OutgoingPaymentOptions::Bolt11(bolt11_options) = options else {
+            return Err(payment::Error::UnsupportedPaymentOption);
+        };
+
+        if unit != &CurrencyUnit::Usd {
+            return Err(payment::Error::UnsupportedUnit);
+        }
+
+        let amount_msat = match bolt11_options.melt_options {
+            Some(melt_options) => u64::from(melt_options.amount_msat()),
+            None => bolt11_options
+                .bolt11
+                .amount_milli_satoshis()
+                .ok_or_else(|| payment::Error::Custom("unknown_invoice_amount".to_string()))?,
+        };
+
+        let fx_quote = self
+            .fx_service
+            .quote_msat_to_minor(amount_msat)
+            .await
+            .map_err(payment::Error::Custom)?;
+        let payment_hash = bolt11_options.bolt11.payment_hash().to_string();
+
+        let stored = StoredBolt11Payment {
+            payment_hash: payment_hash.clone(),
+            request: bolt11_options.bolt11.to_string(),
+            amount_minor: fx_quote.snapshot.amount_minor,
+            amount_msat,
+            fee_minor: 0,
+            source: fx_quote.snapshot.source,
+            spread_bps: fx_quote.snapshot.spread_bps,
+            created_at: fx_quote.snapshot.created_at,
+            expires_at: Some(fx_quote.snapshot.expires_at.max(0) as u64),
+            status: StoredPaymentStatus::Unpaid,
+            payment_proof: None,
+        };
+        self.write_payment(OUTGOING_SECONDARY_NAMESPACE, &stored)
+            .await?;
+
+        Ok(PaymentQuoteResponse {
+            request_lookup_id: Some(Self::payment_identifier(&payment_hash)?),
+            amount: Amount::new(stored.amount_minor, CurrencyUnit::Usd),
+            fee: Amount::new(stored.fee_minor, CurrencyUnit::Usd),
+            state: MeltQuoteState::Unpaid,
+        })
+    }
+
+    async fn make_payment(
+        &self,
+        unit: &CurrencyUnit,
+        options: OutgoingPaymentOptions,
+    ) -> Result<MakePaymentResponse, Self::Err> {
+        let OutgoingPaymentOptions::Bolt11(bolt11_options) = options else {
+            return Err(payment::Error::UnsupportedPaymentOption);
+        };
+
+        if unit != &CurrencyUnit::Usd {
+            return Err(payment::Error::UnsupportedUnit);
+        }
+
+        let payment_hash = bolt11_options.bolt11.payment_hash().to_string();
+        let mut stored = self
+            .read_payment(OUTGOING_SECONDARY_NAMESPACE, &payment_hash)
+            .await?
+            .unwrap_or(StoredBolt11Payment {
+                payment_hash: payment_hash.clone(),
+                request: bolt11_options.bolt11.to_string(),
+                amount_minor: 0,
+                amount_msat: 0,
+                fee_minor: 0,
+                source: String::new(),
+                spread_bps: 0,
+                created_at: chrono::Utc::now().timestamp(),
+                expires_at: None,
+                status: StoredPaymentStatus::Unpaid,
+                payment_proof: None,
+            });
+
+        if stored.status == StoredPaymentStatus::Paid {
+            return Err(payment::Error::InvoiceAlreadyPaid);
+        }
+
+        let preimage = {
+            let invoice_service = self.invoice_service.lock().await;
+            invoice_service
+                .pay_invoice(&stored.request)
+                .await
+                .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?
+        };
+
+        stored.status = StoredPaymentStatus::Paid;
+        stored.payment_proof = Some(preimage.to_hex());
+        self.write_payment(OUTGOING_SECONDARY_NAMESPACE, &stored)
+            .await?;
+
+        Ok(MakePaymentResponse {
+            payment_lookup_id: Self::payment_identifier(&payment_hash)?,
+            payment_proof: stored.payment_proof,
+            status: MeltQuoteState::Paid,
+            total_spent: Amount::new(stored.amount_minor + stored.fee_minor, unit.clone()),
+        })
+    }
+
+    async fn wait_payment_event(
+        &self,
+    ) -> Result<Pin<Box<dyn Stream<Item = Event> + Send>>, Self::Err> {
+        self.cancel_wait.store(false, Ordering::SeqCst);
+        self.wait_active.store(true, Ordering::SeqCst);
+
+        let processor = self.clone();
+        let stream = futures::stream::unfold(Vec::<Event>::new(), move |mut queued| {
+            let processor = processor.clone();
+            async move {
+                loop {
+                    if processor.cancel_wait.load(Ordering::SeqCst) {
+                        processor.wait_active.store(false, Ordering::SeqCst);
+                        return None;
+                    }
+
+                    if let Some(event) = queued.pop() {
+                        return Some((event, queued));
+                    }
+
+                    let pending_hashes = processor
+                        .pending_incoming
+                        .read()
+                        .await
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<_>>();
+
+                    for payment_hash in pending_hashes {
+                        let identifier = match Self::payment_identifier(&payment_hash) {
+                            Ok(identifier) => identifier,
+                            Err(_) => continue,
+                        };
+                        if let Ok(payments) = processor
+                            .settle_incoming_if_paid(&payment_hash, &identifier)
+                            .await
+                        {
+                            for payment in payments {
+                                queued.push(Event::PaymentReceived(payment));
+                            }
+                        }
+                    }
+
+                    if !queued.is_empty() {
+                        continue;
+                    }
+
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                }
+            }
+        });
+
+        Ok(Box::pin(stream))
+    }
+
+    fn is_wait_invoice_active(&self) -> bool {
+        self.wait_active.load(Ordering::SeqCst)
+    }
+
+    fn cancel_wait_invoice(&self) {
+        self.cancel_wait.store(true, Ordering::SeqCst);
+    }
+
+    async fn check_incoming_payment_status(
+        &self,
+        payment_identifier: &PaymentIdentifier,
+    ) -> Result<Vec<WaitPaymentResponse>, Self::Err> {
+        self.settle_incoming_if_paid(&payment_identifier.to_string(), payment_identifier)
+            .await
+    }
+
+    async fn check_outgoing_payment(
+        &self,
+        payment_identifier: &PaymentIdentifier,
+    ) -> Result<MakePaymentResponse, Self::Err> {
+        let Some(stored) = self
+            .read_payment(
+                OUTGOING_SECONDARY_NAMESPACE,
+                &payment_identifier.to_string(),
+            )
+            .await?
+        else {
+            return Ok(MakePaymentResponse {
+                payment_lookup_id: payment_identifier.clone(),
+                payment_proof: None,
+                status: MeltQuoteState::Unknown,
+                total_spent: Amount::new(0, CurrencyUnit::Usd),
+            });
+        };
+
+        let status = match stored.status {
+            StoredPaymentStatus::Unpaid => MeltQuoteState::Unpaid,
+            StoredPaymentStatus::Paid => MeltQuoteState::Paid,
+            StoredPaymentStatus::Failed => MeltQuoteState::Failed,
+        };
+
+        Ok(MakePaymentResponse {
+            payment_lookup_id: payment_identifier.clone(),
+            payment_proof: stored.payment_proof,
+            status,
+            total_spent: Amount::new(stored.amount_minor + stored.fee_minor, CurrencyUnit::Usd),
+        })
+    }
+}

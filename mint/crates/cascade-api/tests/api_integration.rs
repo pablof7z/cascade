@@ -6,14 +6,19 @@
 use axum::Router;
 use cdk::amount::{FeeAndAmounts, SplitTarget};
 use cdk::dhke::construct_proofs;
-use cdk::mint::{MintBuilder, UnitConfig};
+use cdk::mint::{MintBuilder, MintMeltLimits, UnitConfig};
 use cdk::nuts::{BlindSignature, CurrencyUnit, KeySet, KeysResponse, PreMintSecrets, Proof};
 use cdk::Amount;
+use cdk_common::nut00::KnownMethod;
+use cdk_common::nuts::PaymentMethod;
+use cdk_common::Bolt11Invoice;
 use hmac::{Hmac, Mac};
 use serde_json::{json, Value};
 use sha2::Sha256;
+use std::str::FromStr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+use tokio::sync::Mutex;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -54,12 +59,44 @@ async fn create_test_server() -> String {
 }
 
 async fn create_product_test_server() -> String {
-    create_product_test_server_with_stripe(None).await
+    create_product_test_server_with_funding(None, None, "signet").await
 }
 
 async fn create_product_test_server_with_stripe(
     stripe_config: Option<cascade_api::stripe::StripeConfig>,
 ) -> String {
+    create_product_test_server_with_funding(stripe_config, None, "signet").await
+}
+
+async fn create_product_test_server_with_usdc(
+    usdc_config: Option<cascade_api::usdc::UsdcConfig>,
+    network_type: &'static str,
+) -> String {
+    create_product_test_server_with_funding(None, usdc_config, network_type).await
+}
+
+async fn create_product_test_server_with_usdc_bundle(
+    usdc_config: Option<cascade_api::usdc::UsdcConfig>,
+    network_type: &'static str,
+) -> (String, Arc<Mutex<cascade_core::invoice::InvoiceService>>) {
+    create_product_test_server_bundle_with_funding(None, usdc_config, network_type).await
+}
+
+async fn create_product_test_server_with_funding(
+    stripe_config: Option<cascade_api::stripe::StripeConfig>,
+    usdc_config: Option<cascade_api::usdc::UsdcConfig>,
+    network_type: &'static str,
+) -> String {
+    create_product_test_server_bundle_with_funding(stripe_config, usdc_config, network_type)
+        .await
+        .0
+}
+
+async fn create_product_test_server_bundle_with_funding(
+    stripe_config: Option<cascade_api::stripe::StripeConfig>,
+    usdc_config: Option<cascade_api::usdc::UsdcConfig>,
+    network_type: &'static str,
+) -> (String, Arc<Mutex<cascade_core::invoice::InvoiceService>>) {
     let cdk_db = Arc::new(cdk_sqlite::mint::memory::empty().await.unwrap());
     let mut builder = MintBuilder::new(cdk_db.clone());
     builder
@@ -83,8 +120,44 @@ async fn create_product_test_server_with_stripe(
         )
         .unwrap();
 
+    let lnd_config = cascade_core::LndConfig {
+        host: "127.0.0.1:10009".to_string(),
+        cert_path: None,
+        macaroon_path: None,
+        tls_domain: None,
+        network: Some(network_type.to_string()),
+        cli_path: None,
+    };
+    let mut lnd_client = cascade_core::lightning::lnd_client::LndClient::new(lnd_config.clone());
+    lnd_client.connect().await.unwrap();
+    let invoice_service = Arc::new(Mutex::new(cascade_core::invoice::InvoiceService::new(
+        lnd_client, 3600, 40,
+    )));
+    let fx_service = Arc::new(cascade_api::fx::FxQuoteService::for_network(network_type).unwrap());
+    builder
+        .add_payment_processor(
+            CurrencyUnit::Usd,
+            PaymentMethod::Known(KnownMethod::Bolt11),
+            MintMeltLimits::new(1, 100_000_000),
+            Arc::new(cascade_api::payment::UsdBolt11PaymentProcessor::new(
+                invoice_service.clone(),
+                fx_service.clone(),
+                cdk_db.clone(),
+                network_type == "signet",
+            )),
+        )
+        .await
+        .unwrap();
+
     let seed = [7_u8; 32];
-    let mint = Arc::new(builder.build_with_seed(cdk_db, &seed).await.unwrap());
+    let advertised_mint_info = builder.current_mint_info();
+    let mint = Arc::new(
+        builder
+            .build_with_seed(cdk_db.clone(), &seed)
+            .await
+            .unwrap(),
+    );
+    mint.set_mint_info(advertised_mint_info).await.unwrap();
     let cascade_db = Arc::new(
         cascade_core::db::CascadeDatabase::connect("sqlite::memory:")
             .await
@@ -97,18 +170,13 @@ async fn create_product_test_server_with_stripe(
 
     let app = cascade_api::build_server(
         market_manager,
-        cascade_core::LndConfig {
-            host: "127.0.0.1:10009".to_string(),
-            cert_path: None,
-            macaroon_path: None,
-            tls_domain: None,
-            network: None,
-            cli_path: None,
-        },
+        invoice_service.clone(),
+        fx_service,
         stripe_config,
+        usdc_config,
         mint,
         cascade_db,
-        "signet",
+        network_type,
         "http://127.0.0.1:0",
     )
     .await
@@ -117,13 +185,14 @@ async fn create_product_test_server_with_stripe(
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let url = format!("http://{}", addr);
+    let invoice_service_for_return = invoice_service.clone();
 
     tokio::spawn(async move {
         axum::serve(listener, app).await.unwrap();
     });
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    url
+    (url, invoice_service_for_return)
 }
 
 async fn create_mock_stripe_server() -> String {
@@ -195,15 +264,35 @@ fn sample_market_event(event_id: &str, slug: &str, pubkey: &str) -> serde_json::
     })
 }
 
-async fn create_signet_funding_and_get_proofs(
+async fn create_wallet_funding_and_get_proofs(
     client: &reqwest::Client,
     url: &str,
     pubkey: &str,
     amount_minor: u64,
+    edition: &str,
+) -> serde_json::Value {
+    create_wallet_funding_and_get_proofs_with_invoice_service(
+        client,
+        url,
+        pubkey,
+        amount_minor,
+        edition,
+        None,
+    )
+    .await
+}
+
+async fn create_wallet_funding_and_get_proofs_with_invoice_service(
+    client: &reqwest::Client,
+    url: &str,
+    pubkey: &str,
+    amount_minor: u64,
+    edition: &str,
+    invoice_service: Option<&Arc<Mutex<cascade_core::invoice::InvoiceService>>>,
 ) -> serde_json::Value {
     let quote_response = client
         .post(format!("{url}/v1/mint/quote/bolt11"))
-        .header("x-cascade-edition", "signet")
+        .header("x-cascade-edition", edition)
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount": amount_minor,
@@ -215,8 +304,31 @@ async fn create_signet_funding_and_get_proofs(
     assert_eq!(quote_response.status(), 200);
     let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
     let quote_id = quote_payload["quote"].as_str().unwrap();
+
+    if edition == "mainnet" {
+        if let (Some(invoice_service), Some(invoice)) =
+            (invoice_service, quote_payload["request"].as_str())
+        {
+            invoice_service
+                .lock()
+                .await
+                .pay_invoice(invoice)
+                .await
+                .unwrap();
+        }
+    }
+
     let paid_quote = wait_for_mint_quote_state(client, url, quote_id, &["PAID"]).await;
     mint_funding_quote_and_get_proofs(client, url, &paid_quote, amount_minor).await
+}
+
+async fn create_signet_funding_and_get_proofs(
+    client: &reqwest::Client,
+    url: &str,
+    pubkey: &str,
+    amount_minor: u64,
+) -> serde_json::Value {
+    create_wallet_funding_and_get_proofs(client, url, pubkey, amount_minor, "signet").await
 }
 
 async fn fetch_active_usd_keyset(client: &reqwest::Client, url: &str) -> KeySet {
@@ -326,6 +438,33 @@ async fn wait_for_mint_quote_state(
 
     panic!(
         "mint quote {quote_id} did not reach expected state in time; last payload: {last_payload}"
+    );
+}
+
+async fn wait_for_melt_quote_state(
+    client: &reqwest::Client,
+    url: &str,
+    quote_id: &str,
+    expected_states: &[&str],
+) -> serde_json::Value {
+    let mut last_payload = serde_json::Value::Null;
+    for _ in 0..50 {
+        let response = client
+            .get(format!("{url}/v1/melt/quote/bolt11/{quote_id}"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        let payload: serde_json::Value = response.json().await.unwrap();
+        last_payload = payload.clone();
+        if expected_states.contains(&payload["state"].as_str().unwrap_or_default()) {
+            return payload;
+        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    }
+
+    panic!(
+        "melt quote {quote_id} did not reach expected state in time; last payload: {last_payload}"
     );
 }
 
@@ -1254,10 +1393,8 @@ async fn test_lightning_funding_quote_settles_after_status_poll() {
     let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
     let quote_id = quote_payload["quote"].as_str().unwrap().to_string();
     assert_eq!(quote_payload["state"].as_str(), Some("UNPAID"));
-    assert!(quote_payload["request"]
-        .as_str()
-        .unwrap()
-        .starts_with("lnbc"));
+    let invoice = quote_payload["request"].as_str().unwrap();
+    assert!(Bolt11Invoice::from_str(invoice).is_ok());
     assert_eq!(quote_payload["amount"].as_u64(), Some(2500));
     assert_eq!(quote_payload["unit"].as_str(), Some("usd"));
 
@@ -1279,6 +1416,118 @@ async fn test_lightning_funding_quote_settles_after_status_poll() {
 
     let issued_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["ISSUED"]).await;
     assert_eq!(issued_quote["state"].as_str(), Some("ISSUED"));
+}
+
+#[tokio::test]
+async fn test_product_mint_info_advertises_bolt11_mint_and_melt() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+
+    let response = client.get(format!("{url}/v1/info")).send().await.unwrap();
+    assert_eq!(response.status(), 200);
+
+    let payload: serde_json::Value = response.json().await.unwrap();
+    let nut04_methods = payload["nuts"]["4"]["methods"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let nut05_methods = payload["nuts"]["5"]["methods"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+
+    assert!(nut04_methods.iter().any(|method| {
+        method["method"].as_str() == Some("bolt11") && method["unit"].as_str() == Some("usd")
+    }));
+    assert!(nut05_methods.iter().any(|method| {
+        method["method"].as_str() == Some("bolt11") && method["unit"].as_str() == Some("usd")
+    }));
+}
+
+#[tokio::test]
+async fn test_standard_bolt11_melt_routes_pay_invoice() {
+    let (url, invoice_service) =
+        create_product_test_server_bundle_with_funding(None, None, "signet").await;
+    let client = reqwest::Client::new();
+
+    let invoice = {
+        let mut invoice_service = invoice_service.lock().await;
+        invoice_service
+            .create_invoice(
+                1_750_000,
+                Some("Cascade melt integration test".to_string()),
+                Some(1800),
+                false,
+            )
+            .await
+            .unwrap()
+    };
+
+    let melt_quote_response = client
+        .post(format!("{url}/v1/melt/quote/bolt11"))
+        .json(&serde_json::json!({
+            "request": invoice.bolt11().to_string(),
+            "unit": "usd"
+        }))
+        .send()
+        .await
+        .unwrap();
+    let melt_quote_status = melt_quote_response.status();
+    let melt_quote_body = melt_quote_response.text().await.unwrap();
+    assert_eq!(melt_quote_status, 200, "{melt_quote_body}");
+    let melt_quote_payload: serde_json::Value = serde_json::from_str(&melt_quote_body).unwrap();
+    let melt_quote_id = melt_quote_payload["quote"].as_str().unwrap().to_string();
+    assert_eq!(melt_quote_payload["state"].as_str(), Some("UNPAID"));
+    assert_eq!(
+        melt_quote_payload["request"].as_str(),
+        Some(invoice.bolt11())
+    );
+
+    let funding_amount_minor = melt_quote_payload["amount"].as_u64().unwrap()
+        + melt_quote_payload["fee_reserve"].as_u64().unwrap_or(0);
+    let funding_proofs = create_signet_funding_and_get_proofs(
+        &client,
+        &url,
+        "9999999999999999999999999999999999999999999999999999999999999999",
+        funding_amount_minor,
+    )
+    .await;
+
+    let melt_response = client
+        .post(format!("{url}/v1/melt/bolt11"))
+        .json(&serde_json::json!({
+            "quote": melt_quote_id,
+            "inputs": funding_proofs
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(melt_response.status(), 200);
+    let melt_payload: serde_json::Value = melt_response.json().await.unwrap();
+    assert_eq!(melt_payload["state"].as_str(), Some("PAID"));
+    assert!(melt_payload["payment_preimage"].as_str().is_some());
+
+    let paid_quote = wait_for_melt_quote_state(
+        &client,
+        &url,
+        melt_payload["quote"].as_str().unwrap(),
+        &["PAID"],
+    )
+    .await;
+    assert_eq!(paid_quote["state"].as_str(), Some("PAID"));
+    assert!(paid_quote["payment_preimage"].as_str().is_some());
+
+    let settled_invoice = {
+        let invoice_service = invoice_service.lock().await;
+        invoice_service
+            .check_invoice_status(&invoice.payment_hash)
+            .await
+            .unwrap()
+    };
+    assert_eq!(
+        settled_invoice,
+        cascade_core::lightning::types::InvoiceState::Settled
+    );
 }
 
 #[tokio::test]
@@ -1304,6 +1553,14 @@ async fn test_runtime_reports_actual_edition_and_funding_rails() {
     assert_eq!(
         payload["funding"]["stripe"]["available"].as_bool(),
         Some(false)
+    );
+    assert_eq!(
+        payload["funding"]["usdc"]["available"].as_bool(),
+        Some(false)
+    );
+    assert_eq!(
+        payload["funding"]["usdc"]["reason"].as_str(),
+        Some("usdc_mainnet_only")
     );
 }
 
@@ -1589,6 +1846,272 @@ async fn test_stripe_funding_moves_to_review_required_for_high_risk() {
         Some("highest")
     );
     assert!(funding_status_payload.get("issued_proofs").is_none());
+}
+
+#[tokio::test]
+async fn test_usdc_deposit_intent_unavailable_on_signet() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+
+    let response = client
+        .post(format!("{url}/api/portfolio/funding/usdc/deposit-intents"))
+        .header("x-cascade-edition", "signet")
+        .json(&serde_json::json!({
+            "pubkey": "usdc-signet-user",
+            "requested_wallet_amount_minor": 5000
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 503);
+    let payload: serde_json::Value = response.json().await.unwrap();
+    assert_eq!(payload["error"].as_str(), Some("usdc_mainnet_only"));
+}
+
+#[tokio::test]
+async fn test_usdc_deposit_intent_create_and_fetch() {
+    let url = create_product_test_server_with_usdc(
+        Some(cascade_api::usdc::UsdcConfig {
+            network: "base".to_string(),
+            asset: "USDC".to_string(),
+            treasury_address: "0x1111111111111111111111111111111111111111".to_string(),
+            deposit_intent_expiry_seconds: 3600,
+            withdrawals_enabled: false,
+        }),
+        "mainnet",
+    )
+    .await;
+    let client = reqwest::Client::new();
+
+    let create_response = client
+        .post(format!("{url}/api/portfolio/funding/usdc/deposit-intents"))
+        .header("x-cascade-edition", "mainnet")
+        .json(&serde_json::json!({
+            "pubkey": "usdc-mainnet-user",
+            "requested_wallet_amount_minor": 12500,
+            "provider": "moonpay"
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), 201);
+    let create_payload: serde_json::Value = create_response.json().await.unwrap();
+    let intent_id = create_payload["id"].as_str().unwrap().to_string();
+    assert_eq!(create_payload["asset"].as_str(), Some("USDC"));
+    assert_eq!(create_payload["network"].as_str(), Some("base"));
+    assert_eq!(
+        create_payload["destination_address"].as_str(),
+        Some("0x1111111111111111111111111111111111111111")
+    );
+    assert_eq!(create_payload["provider"].as_str(), Some("moonpay"));
+    assert_eq!(create_payload["status"].as_str(), Some("pending"));
+    assert_eq!(
+        create_payload["requested_wallet_amount_minor"].as_u64(),
+        Some(12_500)
+    );
+
+    let get_response = client
+        .get(format!(
+            "{url}/api/portfolio/funding/usdc/deposit-intents/{intent_id}"
+        ))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(get_response.status(), 200);
+    let get_payload: serde_json::Value = get_response.json().await.unwrap();
+    assert_eq!(get_payload["id"].as_str(), Some(intent_id.as_str()));
+    assert_eq!(get_payload["status"].as_str(), Some("pending"));
+    assert_eq!(get_payload["provider"].as_str(), Some("moonpay"));
+    assert!(get_payload["expires_at"].as_i64().is_some());
+}
+
+#[tokio::test]
+async fn test_usdc_withdrawal_unavailable_on_signet() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+
+    let response = client
+        .post(format!("{url}/api/portfolio/withdrawals/usdc"))
+        .header("x-cascade-edition", "signet")
+        .json(&serde_json::json!({
+            "pubkey": "usdc-signet-user",
+            "amount_minor": 5000,
+            "destination_address": "0x1111111111111111111111111111111111111111",
+            "proofs": [
+                {
+                    "amount": 1,
+                    "id": "deadbeef",
+                    "secret": "secret",
+                    "C": "02aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "witness": null,
+                    "dleq": null
+                }
+            ],
+            "change_outputs": []
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 503);
+    let payload: serde_json::Value = response.json().await.unwrap();
+    assert_eq!(payload["error"].as_str(), Some("usdc_mainnet_only"));
+}
+
+#[tokio::test]
+async fn test_usdc_withdrawal_requires_explicit_enablement() {
+    let (url, invoice_service) = create_product_test_server_with_usdc_bundle(
+        Some(cascade_api::usdc::UsdcConfig {
+            network: "base".to_string(),
+            asset: "USDC".to_string(),
+            treasury_address: "0x1111111111111111111111111111111111111111".to_string(),
+            deposit_intent_expiry_seconds: 3600,
+            withdrawals_enabled: false,
+        }),
+        "mainnet",
+    )
+    .await;
+    let client = reqwest::Client::new();
+    let proofs = create_wallet_funding_and_get_proofs_with_invoice_service(
+        &client,
+        &url,
+        "usdc-mainnet-user",
+        5000,
+        "mainnet",
+        Some(&invoice_service),
+    )
+    .await;
+
+    let response = client
+        .post(format!("{url}/api/portfolio/withdrawals/usdc"))
+        .header("x-cascade-edition", "mainnet")
+        .json(&serde_json::json!({
+            "pubkey": "usdc-mainnet-user",
+            "amount_minor": 2500,
+            "destination_address": "0x1111111111111111111111111111111111111111",
+            "proofs": proofs,
+            "change_outputs": []
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), 503);
+    let payload: serde_json::Value = response.json().await.unwrap();
+    assert_eq!(
+        payload["error"].as_str(),
+        Some("usdc_withdrawals_unavailable")
+    );
+}
+
+#[tokio::test]
+async fn test_usdc_withdrawal_create_fetch_and_idempotency() {
+    let (url, invoice_service) = create_product_test_server_with_usdc_bundle(
+        Some(cascade_api::usdc::UsdcConfig {
+            network: "base".to_string(),
+            asset: "USDC".to_string(),
+            treasury_address: "0x1111111111111111111111111111111111111111".to_string(),
+            deposit_intent_expiry_seconds: 3600,
+            withdrawals_enabled: true,
+        }),
+        "mainnet",
+    )
+    .await;
+    let client = reqwest::Client::new();
+    let pubkey = "usdc-withdraw-mainnet-user";
+    let proofs = create_wallet_funding_and_get_proofs_with_invoice_service(
+        &client,
+        &url,
+        pubkey,
+        5000,
+        "mainnet",
+        Some(&invoice_service),
+    )
+    .await;
+    let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
+    let (change_outputs, _) = prepare_outputs(&usd_keyset, 1000, TEST_USD_DENOMINATIONS);
+
+    let request_body = serde_json::json!({
+        "pubkey": pubkey,
+        "amount_minor": 4000,
+        "destination_address": "0x2222222222222222222222222222222222222222",
+        "proofs": proofs,
+        "change_outputs": change_outputs,
+        "provider": "manual",
+        "request_id": "usdc-withdrawal-1"
+    });
+
+    let create_response = client
+        .post(format!("{url}/api/portfolio/withdrawals/usdc"))
+        .header("x-cascade-edition", "mainnet")
+        .json(&request_body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), 202);
+    let create_payload: serde_json::Value = create_response.json().await.unwrap();
+    let withdrawal_id = create_payload["id"].as_str().unwrap().to_string();
+    assert_eq!(create_payload["status"].as_str(), Some("pending"));
+    assert_eq!(create_payload["asset"].as_str(), Some("USDC"));
+    assert_eq!(create_payload["network"].as_str(), Some("base"));
+    assert_eq!(
+        create_payload["destination_address"].as_str(),
+        Some("0x2222222222222222222222222222222222222222")
+    );
+    assert_eq!(create_payload["amount_minor"].as_u64(), Some(4_000));
+    assert_eq!(create_payload["asset_units"].as_u64(), Some(40_000_000));
+    assert_eq!(create_payload["provider"].as_str(), Some("manual"));
+    assert_eq!(
+        create_payload["request_id"].as_str(),
+        Some("usdc-withdrawal-1")
+    );
+    let change_amount = create_payload["change"]["signatures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|signature| signature["amount"].as_u64().unwrap())
+        .sum::<u64>();
+    assert_eq!(change_amount, 1000);
+
+    let get_response = client
+        .get(format!(
+            "{url}/api/portfolio/withdrawals/usdc/{withdrawal_id}"
+        ))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(get_response.status(), 200);
+    let get_payload: serde_json::Value = get_response.json().await.unwrap();
+    assert_eq!(get_payload["id"].as_str(), Some(withdrawal_id.as_str()));
+    assert_eq!(get_payload["status"].as_str(), Some("pending"));
+    assert_eq!(get_payload["change"]["unit"].as_str(), Some("usd"));
+
+    let request_lookup_response = client
+        .get(format!(
+            "{url}/api/portfolio/withdrawals/usdc/requests/usdc-withdrawal-1"
+        ))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(request_lookup_response.status(), 200);
+    let request_lookup_payload: serde_json::Value = request_lookup_response.json().await.unwrap();
+    assert_eq!(
+        request_lookup_payload["id"].as_str(),
+        Some(withdrawal_id.as_str())
+    );
+
+    let replay_response = client
+        .post(format!("{url}/api/portfolio/withdrawals/usdc"))
+        .header("x-cascade-edition", "mainnet")
+        .json(&request_body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(replay_response.status(), 200);
+    let replay_payload: serde_json::Value = replay_response.json().await.unwrap();
+    assert_eq!(replay_payload["id"].as_str(), Some(withdrawal_id.as_str()));
+    assert_eq!(replay_payload["status"].as_str(), Some("pending"));
 }
 
 #[tokio::test]

@@ -1,19 +1,21 @@
 mod config;
 
 use anyhow::{Context, Result};
-use cascade_api::build_server;
+use cascade_api::{build_server, fx::FxQuoteService, payment::UsdBolt11PaymentProcessor};
+use cascade_core::lightning::lnd_client::LndClient;
 use cascade_core::{
-    db::CascadeDatabase, market_manager::MarketManager, trade::TradeExecutor, LmsrEngine, LndConfig,
+    db::CascadeDatabase, invoice::InvoiceService, market_manager::MarketManager,
+    trade::TradeExecutor, LmsrEngine, LndConfig,
 };
-use cdk::mint::{MintBuilder, UnitConfig};
-use cdk::Amount;
-use cdk_common::nut04::MintMethodOptions;
-use cdk_common::nuts::{CurrencyUnit, MintMethodSettings, PaymentMethod};
+use cdk::mint::{MintBuilder, MintMeltLimits, UnitConfig};
+use cdk_common::nut00::KnownMethod;
+use cdk_common::nuts::{CurrencyUnit, PaymentMethod};
 use cdk_sqlite::MintSqliteDatabase;
 use clap::Parser;
 use config::MintConfig;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+use tokio::sync::Mutex;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// Load seed from file or generate a new one.
@@ -162,16 +164,42 @@ async fn main() -> Result<()> {
         },
     )?;
 
-    let mut mint_info = builder.current_mint_info();
-    mint_info.nuts.nut04.methods.push(MintMethodSettings {
-        method: PaymentMethod::BOLT11,
-        unit: CurrencyUnit::Usd,
-        min_amount: Some(Amount::from(1_u64)),
-        max_amount: None,
-        options: Some(MintMethodOptions::Bolt11 { description: true }),
-    });
-    mint_info.nuts.nut04.disabled = false;
-    builder = builder.with_mint_info(mint_info);
+    let lnd_config = LndConfig {
+        host: format!("{}:{}", config.lnd.host, config.lnd.port),
+        cert_path: Some(config.lnd.cert_path.clone()),
+        macaroon_path: Some(config.lnd.macaroon_path.clone()),
+        tls_domain: None,
+        network: Some(config.network.network_type.clone()),
+        cli_path: config.lnd.cli_path.clone(),
+    };
+
+    let mut lnd_client = LndClient::new(lnd_config.clone());
+    lnd_client
+        .connect()
+        .await
+        .context("Failed to connect LND client")?;
+    let invoice_service = Arc::new(Mutex::new(InvoiceService::new(lnd_client, 3600, 40)));
+    let fx_service = Arc::new(
+        FxQuoteService::for_network(&config.network.network_type)
+            .context("Failed to initialize FX quote service")?,
+    );
+
+    builder
+        .add_payment_processor(
+            CurrencyUnit::Usd,
+            PaymentMethod::Known(KnownMethod::Bolt11),
+            MintMeltLimits::new(1, 100_000_000),
+            Arc::new(UsdBolt11PaymentProcessor::new(
+                invoice_service.clone(),
+                fx_service.clone(),
+                cdk_db.clone(),
+                config.network.network_type == "signet",
+            )),
+        )
+        .await
+        .context("Failed to add USD bolt11 payment processor")?;
+
+    let advertised_mint_info = builder.current_mint_info();
 
     // Build with seed — this creates the signatory internally via DbSignatory
     // keystore = Arc<dyn MintKeysDatabase> — MintSqliteDatabase implements this
@@ -179,33 +207,9 @@ async fn main() -> Result<()> {
         .build_with_seed(cdk_db.clone(), &seed)
         .await
         .context("Failed to build CDK mint")?;
-
-    let mut mint_info = mint
-        .mint_info()
+    mint.set_mint_info(advertised_mint_info)
         .await
-        .context("Failed to load CDK mint info")?;
-    mint_info.name = Some(config.mint.name.clone());
-    mint_info.description = Some(config.mint.description.clone());
-    mint_info.urls = Some(vec![config.mint.url.clone()]);
-    if !mint_info
-        .nuts
-        .nut04
-        .methods
-        .iter()
-        .any(|method| method.method == PaymentMethod::BOLT11 && method.unit == CurrencyUnit::Usd)
-    {
-        mint_info.nuts.nut04.methods.push(MintMethodSettings {
-            method: PaymentMethod::BOLT11,
-            unit: CurrencyUnit::Usd,
-            min_amount: Some(Amount::from(1_u64)),
-            max_amount: None,
-            options: Some(MintMethodOptions::Bolt11 { description: true }),
-        });
-    }
-    mint_info.nuts.nut04.disabled = false;
-    mint.set_mint_info(mint_info)
-        .await
-        .context("Failed to persist CDK mint info")?;
+        .context("Failed to persist current mint info")?;
 
     let _mint = Arc::new(mint);
     tracing::info!("CDK Mint initialized");
@@ -225,21 +229,12 @@ async fn main() -> Result<()> {
     let _trade_executor = Arc::new(TradeExecutor::new(lmsr_engine, fee_bps));
     tracing::info!("Trade executor initialized");
 
-    // 12. Create LndConfig for cascade-api
-    let lnd_config = LndConfig {
-        host: format!("{}:{}", config.lnd.host, config.lnd.port),
-        cert_path: Some(config.lnd.cert_path.clone()),
-        macaroon_path: Some(config.lnd.macaroon_path.clone()),
-        tls_domain: None,
-        network: Some(config.network.network_type.clone()),
-        cli_path: config.lnd.cli_path.clone(),
-    };
-
-    // 13. Build HTTP server (CDK standard + Cascade custom routes)
+    // 12. Build HTTP server (CDK standard + Cascade custom routes)
     let cascade_db = Arc::new(cascade_db);
     let app = build_server(
         market_manager.clone(),
-        lnd_config,
+        invoice_service,
+        fx_service,
         config
             .stripe
             .is_enabled()
@@ -256,6 +251,16 @@ async fn main() -> Result<()> {
                 window_seconds: config.stripe.window_seconds,
                 allowed_risk_levels: config.stripe.allowed_risk_levels.clone(),
             }),
+        config
+            .usdc
+            .is_enabled()
+            .then(|| cascade_api::usdc::UsdcConfig {
+                network: config.usdc.network.clone(),
+                asset: config.usdc.asset.clone(),
+                treasury_address: config.usdc.treasury_address.clone(),
+                deposit_intent_expiry_seconds: config.usdc.deposit_intent_expiry_seconds,
+                withdrawals_enabled: config.usdc.withdrawals_enabled,
+            }),
         _mint.clone(),
         cascade_db,
         &config.network.network_type,
@@ -264,7 +269,7 @@ async fn main() -> Result<()> {
     .await
     .map_err(|e| anyhow::anyhow!("Failed to build HTTP server: {}", e))?;
 
-    // 14. Start listening
+    // 13. Start listening
     let addr = format!("{}:{}", config.server.host, config.server.port);
     let listener = TcpListener::bind(&addr)
         .await

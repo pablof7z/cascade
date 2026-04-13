@@ -30,7 +30,6 @@
   import type { LocalFundingHistoryRecord } from '$lib/cascade/recovery';
   import { ndk } from '$lib/ndk/client';
   import { formatProbability } from '$lib/ndk/cascade';
-  import { decodeLocalProofToken, encodeLocalProofWallet } from '$lib/wallet/cashuTokens';
   import {
     checkUsdLightningMintQuote,
     createUsdLightningMintQuote,
@@ -42,8 +41,7 @@
     addLocalProofs,
     listLocalProofs,
     listLocalProofWallets,
-    localProofBalance,
-    type StoredProofWallet
+    localProofBalance
   } from '$lib/wallet/localProofs';
   import { listLocalPositionBook } from '$lib/wallet/localPositionBook';
 
@@ -87,14 +85,10 @@
   let fundingAmount = $state(paperEdition ? '10000' : '2500');
   let localBalanceMinor = $state(0);
   let localProofCount = $state(0);
-  let localProofWallets = $state<StoredProofWallet[]>([]);
   let localPositions = $state<LocalPortfolioPosition[]>([]);
   let localPositionValueMinor = $state(0);
   let pendingFundings = $state<LocalPendingFunding[]>([]);
   let fundingHistory = $state<LocalFundingHistoryRecord[]>([]);
-  let selectedExportUnit = $state('');
-  let exportedToken = $state('');
-  let importToken = $state('');
 
   function proofMintUrl(): string {
     return getProductApiUrl().replace(/\/+$/, '');
@@ -102,13 +96,8 @@
 
   function refreshLocalProofSummary() {
     const mintUrl = proofMintUrl();
-    const wallets = listLocalProofWallets(mintUrl);
-    localProofWallets = wallets;
     localBalanceMinor = localProofBalance(mintUrl, proofUnit);
     localProofCount = listLocalProofs(mintUrl, proofUnit).length;
-    if (!selectedExportUnit || !wallets.some((walletEntry) => walletEntry.unit === selectedExportUnit)) {
-      selectedExportUnit = wallets[0]?.unit ?? '';
-    }
   }
 
   function refreshLocalFundingState() {
@@ -128,33 +117,6 @@
       checkout_session_id: entry.checkoutSessionId
     }));
     fundingHistory = listFundingHistory(currentUser.pubkey);
-  }
-
-  function formatProofBucketAmount(unit: string, amount: number): string {
-    if (unit === proofUnit) {
-      return formatUsdMinor(amount);
-    }
-
-    const parsed = parseMarketProofUnit(unit);
-    if (parsed) {
-      return `${parsed.direction.toUpperCase()} ${shareMinorToQuantity(amount).toFixed(2)} shares`;
-    }
-
-    return `${amount.toFixed(2)} ${unit}`;
-  }
-
-  function describeProofWallet(walletEntry: StoredProofWallet): string {
-    const amount = walletEntry.proofs.reduce((sum, proof) => sum + proof.amount, 0);
-    if (walletEntry.unit === proofUnit) {
-      return `USD cash · ${formatUsdMinor(amount)}`;
-    }
-
-    const parsed = parseMarketProofUnit(walletEntry.unit);
-    if (parsed) {
-      return `${parsed.direction.toUpperCase()} · ${parsed.slug} · ${shareMinorToQuantity(amount).toFixed(2)} shares`;
-    }
-
-    return `${walletEntry.unit} · ${amount.toFixed(2)}`;
   }
 
   function parseMarketProofUnit(unit: string): { slug: string; direction: 'long' | 'short' } | null {
@@ -272,9 +234,6 @@
     );
   }
 
-  const selectedExportWallet = $derived(
-    localProofWallets.find((walletEntry) => walletEntry.unit === selectedExportUnit) ?? null
-  );
   const usingLocalPositionMarks = $derived(localPositions.length > 0);
   const displayedPositionValueMinor = $derived(localPositionValueMinor);
   const displayedTotalValueMinor = $derived(localBalanceMinor + displayedPositionValueMinor);
@@ -357,56 +316,6 @@
     void loadLocalPositionMarks();
     status = `${sourceLabel} added ${formatUsdMinor(proofs.reduce((sum, proof) => sum + proof.amount, 0))} of browser-local proofs.`;
     return true;
-  }
-
-  async function prepareExportToken() {
-    errorMessage = '';
-
-    if (!selectedExportWallet) {
-      exportedToken = '';
-      errorMessage = 'No local proof bucket is available to export.';
-      return;
-    }
-
-    exportedToken = encodeLocalProofWallet(selectedExportWallet);
-    const amount = selectedExportWallet.proofs.reduce((sum, proof) => sum + proof.amount, 0);
-    status = `Prepared ${formatProofBucketAmount(selectedExportWallet.unit, amount)} as a Cashu token string.`;
-  }
-
-  async function copyExportToken() {
-    if (!browser || !exportedToken) {
-      errorMessage = 'Prepare a token before copying it.';
-      return;
-    }
-
-    if (!navigator.clipboard?.writeText) {
-      errorMessage = 'Clipboard access is not available in this browser.';
-      return;
-    }
-
-    await navigator.clipboard.writeText(exportedToken);
-    status = 'Copied the exported token to your clipboard.';
-  }
-
-  async function importPortfolioToken() {
-    errorMessage = '';
-
-    if (!importToken.trim()) {
-      errorMessage = 'Paste a Cashu token before importing it.';
-      return;
-    }
-
-    try {
-      const decoded = decodeLocalProofToken(importToken, proofMintUrl());
-      addLocalProofs(decoded.mintUrl, decoded.unit, decoded.proofs);
-      refreshLocalProofSummary();
-      await loadLocalPositionMarks();
-      importToken = '';
-      status = `Imported ${formatProofBucketAmount(decoded.unit, decoded.amount)} into this browser.`;
-    } catch (error) {
-      errorMessage =
-        error instanceof Error ? error.message : 'Failed to import the pasted Cashu token.';
-    }
   }
 
   function formatSignetFundingError(message: string): string {
@@ -1017,70 +926,6 @@
     <section class="wallet-panel">
       <div class="panel-header">
         <div>
-          <h2>Move proofs</h2>
-          <p class="muted">
-            Export or import Cashu token strings locally in this browser. These are bearer proofs.
-          </p>
-        </div>
-      </div>
-
-      <div class="proof-transfer-grid">
-        <div class="proof-transfer-column">
-          <label class="field">
-            <span>Export bucket</span>
-            <select aria-label="Export token bucket" bind:value={selectedExportUnit}>
-              {#if localProofWallets.length}
-                {#each localProofWallets as walletEntry (walletEntry.unit)}
-                  <option value={walletEntry.unit}>{describeProofWallet(walletEntry)}</option>
-                {/each}
-              {:else}
-                <option value="">No local proofs yet</option>
-              {/if}
-            </select>
-          </label>
-
-          <div class="proof-transfer-actions">
-            <button class="button-primary" disabled={!localProofWallets.length} onclick={prepareExportToken} type="button">
-              Prepare token
-            </button>
-            <button class="button-secondary" disabled={!exportedToken} onclick={copyExportToken} type="button">
-              Copy token
-            </button>
-          </div>
-
-          <label class="field">
-            <span>Exported token</span>
-            <textarea
-              aria-label="Exported token"
-              bind:value={exportedToken}
-              placeholder="Prepare a Cashu token string from a local proof bucket."
-              readonly
-              rows="5"
-            ></textarea>
-          </label>
-        </div>
-
-        <div class="proof-transfer-column">
-          <label class="field field-wide">
-            <span>Import token</span>
-            <textarea
-              aria-label="Import token"
-              bind:value={importToken}
-              placeholder="Paste a Cashu token string for this edition's mint."
-              rows="5"
-            ></textarea>
-          </label>
-
-          <button class="button-primary proof-transfer-submit" onclick={importPortfolioToken} type="button">
-            Import token
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <section class="wallet-panel">
-      <div class="panel-header">
-        <div>
           <h2>Open positions</h2>
           <p class="muted">
             {#if usingLocalPositionMarks}
@@ -1229,47 +1074,6 @@
     background: var(--color-base-100);
     color: white;
     padding: 0.85rem 0.95rem;
-  }
-
-  .field select,
-  .field textarea {
-    width: 100%;
-    box-sizing: border-box;
-    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    background: var(--color-base-100);
-    color: white;
-    padding: 0.85rem 0.95rem;
-  }
-
-  .field textarea {
-    resize: vertical;
-    min-height: 7rem;
-    font-family: var(--font-mono);
-    font-size: 0.82rem;
-  }
-
-  .field-wide {
-    max-width: none;
-  }
-
-  .proof-transfer-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-    gap: 1rem;
-  }
-
-  .proof-transfer-column,
-  .proof-transfer-actions {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .proof-transfer-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .proof-transfer-submit {
-    width: fit-content;
   }
 
   .position-list,

@@ -10,6 +10,7 @@
   import { onDestroy } from 'svelte';
   import { ndk, ensureClientNdk } from '$lib/ndk/client';
   import { cleanText, displayName, profileIdentifier } from '$lib/ndk/format';
+  import { sanitizeProfileForPublish } from '$lib/ndk/profilePublish';
   import {
     DEFAULT_BLOSSOM_SERVER,
     blossomServerFromEvent,
@@ -257,7 +258,7 @@
 
       // ── kind 0: profile ──────────────────────────────────────
       const previousProfile = currentUser.profile ? { ...currentUser.profile } : undefined;
-      const nextProfile: NDKUserProfile = { ...(currentUser.profile ?? {}) };
+      const nextProfile: NDKUserProfile = sanitizeProfileForPublish(currentUser.profile);
       nextProfile.name = cleanText(name) || undefined;
       nextProfile.displayName = cleanText(display) || undefined;
       nextProfile.about = cleanText(about) || undefined;

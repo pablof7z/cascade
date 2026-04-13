@@ -359,39 +359,21 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   await expect(localPositionRow.getByText('Mark only')).toBeVisible();
 });
 
-test('portfolio can export and import local USD proofs', async ({ page }) => {
-  const secret = secretKeyFor(`portfolio-export:${Date.now()}`);
+test('portfolio hides manual proof transfer controls', async ({ page }) => {
+  const secret = secretKeyFor(`portfolio-hide-proof-transfer:${Date.now()}`);
 
   await loginWithPrivateKey(page, secret);
-  await fundPortfolio(page, secret, 10_000);
-
   await page.goto('/portfolio');
   await ensureLoggedIn(page, secret);
   await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
-  await page.getByRole('button', { name: 'Prepare token' }).click();
 
-  const exportedToken = page.getByRole('textbox', { name: 'Exported token' });
-  await expect(exportedToken).toHaveValue(/cashu/i);
-  const tokenValue = await exportedToken.inputValue();
-
-  await page.evaluate(() => {
-    const usdKey = Object.keys(localStorage).find(
-      (key) => key.startsWith('cascade:proof-wallet:') && key.endsWith(':usd')
-    );
-    if (usdKey) {
-      localStorage.removeItem(usdKey);
-    }
-  });
-
-  await page.reload();
-  await ensureLoggedIn(page, secret);
-  const walletPanels = page.locator('.wallet-grid .wallet-panel');
-  await expect(walletPanels.first()).toContainText('$0.00');
-
-  await page.getByRole('textbox', { name: 'Import token' }).fill(tokenValue);
-  await page.getByRole('button', { name: 'Import token' }).click();
-  await expect(page.getByText(`Imported ${formatUsdMinor(10_000)} into this browser.`)).toBeVisible();
-  await expect(walletPanels.first()).toContainText('$100.00');
+  await expect(page.getByRole('heading', { name: 'Move proofs' })).toHaveCount(0);
+  await expect(page.getByText('Export or import Cashu token strings locally in this browser.')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Prepare token' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Copy token' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Import token' })).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Exported token' })).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Import token' })).toHaveCount(0);
 });
 
 test('signet portfolio can fund through the Lightning funding flow', async ({ page }) => {

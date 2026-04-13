@@ -140,7 +140,12 @@ impl FxQuoteService {
             ));
         }
 
-        Ok((observations, reference_btc_usd_price, provider_spread_bps, false))
+        Ok((
+            observations,
+            reference_btc_usd_price,
+            provider_spread_bps,
+            false,
+        ))
     }
 
     pub async fn quote_minor_to_msat(&self, amount_minor: u64) -> Result<FxQuoteEnvelope, String> {
@@ -467,9 +472,7 @@ fn provider_spread_bps(observations: &[FxQuoteObservation], reference_btc_usd_pr
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        median_price, provider_spread_bps, FxQuotePolicy, FxQuoteService, QuoteSource,
-    };
+    use super::{median_price, provider_spread_bps, FxQuotePolicy, FxQuoteService, QuoteSource};
     use async_trait::async_trait;
     use cascade_core::product::FxQuoteDirection;
     use std::sync::Arc;

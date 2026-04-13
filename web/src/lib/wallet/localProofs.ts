@@ -1,5 +1,15 @@
 import { browser } from '$app/environment';
+import { getCascadeEdition } from '$lib/cascade/config';
 import type { ProductProof } from '$lib/cascade/api';
+import {
+  canonicalizeProofWalletUnit,
+  normalizeProofMintUrl,
+  proofWalletLegacyPrefix,
+  proofWalletLegacyStorageKeys,
+  proofWalletStorageCandidates,
+  proofWalletStorageKey,
+  proofWalletStoragePrefix
+} from './proofStorage';
 
 const STORAGE_VERSION = 1;
 
@@ -11,40 +21,10 @@ export type StoredProofWallet = {
   updatedAt: number;
 };
 
-function canonicalizeUnit(unit: string): string {
-  const trimmed = unit.trim();
-  if (!trimmed) return trimmed;
-
-  if (/^usd$/i.test(trimmed)) {
-    return 'usd';
-  }
-
-  if (/^long_/i.test(trimmed)) {
-    return `long_${trimmed.slice('long_'.length).toLowerCase()}`;
-  }
-
-  if (/^short_/i.test(trimmed)) {
-    return `short_${trimmed.slice('short_'.length).toLowerCase()}`;
-  }
-
-  return trimmed;
-}
-
-function rawStorageKey(mintUrl: string, unit: string): string {
-  return `cascade:proof-wallet:${mintUrl}:${unit}`;
-}
-
-function storageKey(mintUrl: string, unit: string): string {
-  return rawStorageKey(normalizeMintUrl(mintUrl), canonicalizeUnit(unit));
-}
-
-function normalizeMintUrl(value: string): string {
-  return value.replace(/\/+$/, '');
-}
-
 export function readLocalProofWallet(mintUrl: string, unit: string): StoredProofWallet {
-  const normalizedMintUrl = normalizeMintUrl(mintUrl);
-  const canonicalUnit = canonicalizeUnit(unit);
+  const normalizedMintUrl = normalizeProofMintUrl(mintUrl);
+  const canonicalUnit = canonicalizeProofWalletUnit(unit);
+  const edition = getCascadeEdition();
 
   if (!browser) {
     return {
@@ -56,10 +36,7 @@ export function readLocalProofWallet(mintUrl: string, unit: string): StoredProof
     };
   }
 
-  const candidateKeys = [
-    storageKey(normalizedMintUrl, canonicalUnit),
-    ...legacyStorageKeys(normalizedMintUrl, canonicalUnit)
-  ];
+  const candidateKeys = proofWalletStorageCandidates(edition, normalizedMintUrl, canonicalUnit);
   const proofsByCommitment = new Map<string, ProductProof>();
   let updatedAt = 0;
   let foundLegacyKey = false;
@@ -76,7 +53,7 @@ export function readLocalProofWallet(mintUrl: string, unit: string): StoredProof
       proofsByCommitment.set(proof.C, proof);
     }
 
-    if (key !== storageKey(normalizedMintUrl, canonicalUnit)) {
+    if (key !== proofWalletStorageKey(edition, normalizedMintUrl, canonicalUnit)) {
       foundLegacyKey = true;
     }
   }
@@ -91,7 +68,7 @@ export function readLocalProofWallet(mintUrl: string, unit: string): StoredProof
 
   if (foundLegacyKey) {
     writeLocalProofWallet(next);
-    for (const key of legacyStorageKeys(normalizedMintUrl, canonicalUnit)) {
+    for (const key of proofWalletLegacyStorageKeys(normalizedMintUrl, canonicalUnit)) {
       window.localStorage.removeItem(key);
     }
   }
@@ -101,10 +78,10 @@ export function readLocalProofWallet(mintUrl: string, unit: string): StoredProof
 
 export function writeLocalProofWallet(wallet: StoredProofWallet): void {
   if (!browser) return;
-  const normalizedMintUrl = normalizeMintUrl(wallet.mintUrl);
-  const canonicalUnit = canonicalizeUnit(wallet.unit);
+  const normalizedMintUrl = normalizeProofMintUrl(wallet.mintUrl);
+  const canonicalUnit = canonicalizeProofWalletUnit(wallet.unit);
   window.localStorage.setItem(
-    storageKey(normalizedMintUrl, canonicalUnit),
+    proofWalletStorageKey(getCascadeEdition(), normalizedMintUrl, canonicalUnit),
     JSON.stringify({
       ...wallet,
       version: STORAGE_VERSION,
@@ -122,36 +99,23 @@ export function listLocalProofs(mintUrl: string, unit: string): ProductProof[] {
 export function listLocalProofWallets(mintUrl: string): StoredProofWallet[] {
   if (!browser) return [];
 
-  const normalizedMintUrl = normalizeMintUrl(mintUrl);
-  const keyPrefix = `cascade:proof-wallet:${normalizedMintUrl}:`;
+  const normalizedMintUrl = normalizeProofMintUrl(mintUrl);
+  const editionPrefix = proofWalletStoragePrefix(getCascadeEdition(), normalizedMintUrl);
+  const legacyPrefix = proofWalletLegacyPrefix(normalizedMintUrl);
 
   const units = new Set(
     Object.keys(window.localStorage)
-      .filter((key) => key.startsWith(keyPrefix))
-      .map((key) => key.slice(keyPrefix.length))
+      .filter((key) => key.startsWith(editionPrefix) || key.startsWith(legacyPrefix))
+      .map((key) =>
+        key.startsWith(editionPrefix) ? key.slice(editionPrefix.length) : key.slice(legacyPrefix.length)
+      )
       .filter(Boolean)
-      .map((unit) => canonicalizeUnit(unit))
+      .map((unit) => canonicalizeProofWalletUnit(unit))
   );
 
   return Array.from(units)
     .map((unit) => readLocalProofWallet(normalizedMintUrl, unit))
     .filter((wallet) => wallet.proofs.length > 0);
-}
-
-function legacyStorageKeys(mintUrl: string, unit: string): string[] {
-  if (unit === 'usd') {
-    return [rawStorageKey(mintUrl, 'USD')];
-  }
-
-  if (unit.startsWith('long_')) {
-    return [rawStorageKey(mintUrl, `LONG_${unit.slice('long_'.length)}`)];
-  }
-
-  if (unit.startsWith('short_')) {
-    return [rawStorageKey(mintUrl, `SHORT_${unit.slice('short_'.length)}`)];
-  }
-
-  return [];
 }
 
 function parseStoredWallet(
@@ -176,8 +140,8 @@ function parseStoredWallet(
 
     return {
       version: STORAGE_VERSION,
-      mintUrl: normalizeMintUrl(typeof parsed.mintUrl === 'string' ? parsed.mintUrl : mintUrl),
-      unit: canonicalizeUnit(typeof parsed.unit === 'string' ? parsed.unit : unit),
+      mintUrl: normalizeProofMintUrl(typeof parsed.mintUrl === 'string' ? parsed.mintUrl : mintUrl),
+      unit: canonicalizeProofWalletUnit(typeof parsed.unit === 'string' ? parsed.unit : unit),
       proofs,
       updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : 0
     };

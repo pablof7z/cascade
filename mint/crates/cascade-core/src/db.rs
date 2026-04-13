@@ -403,9 +403,7 @@ impl CascadeDatabase {
     }
 
     async fn ensure_trade_execution_request_response_column(&self) -> Result<()> {
-        if self
-            .table_exists("trade_execution_requests")
-            .await?
+        if self.table_exists("trade_execution_requests").await?
             && !self
                 .column_exists("trade_execution_requests", "response_json")
                 .await?
@@ -882,54 +880,6 @@ impl CascadeDatabase {
             ORDER BY COALESCE(s.public_visible_at, m.created_at) DESC
             "#,
         )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(rows
-            .into_iter()
-            .map(|row| map_market_and_launch_state_row(&row))
-            .collect())
-    }
-
-    pub async fn list_creator_markets(
-        &self,
-        pubkey: &str,
-    ) -> Result<Vec<(Market, MarketLaunchState)>> {
-        let rows = sqlx::query(
-            r#"
-            SELECT
-                m.event_id,
-                m.slug,
-                m.title,
-                m.description,
-                m.b,
-                m.q_long,
-                m.q_short,
-                m.reserve_sats,
-                m.status,
-                m.resolution_outcome,
-                m.creator_pubkey,
-                m.created_at,
-                m.resolved_at,
-                m.long_keyset_id,
-                m.short_keyset_id,
-                s.raw_event_json,
-                s.visibility,
-                s.first_trade_at,
-                s.public_visible_at,
-                s.volume_minor,
-                s.trade_count,
-                s.last_price_yes_ppm,
-                s.last_price_no_ppm,
-                s.updated_at
-            FROM markets m
-            INNER JOIN market_launch_state s ON s.event_id = m.event_id
-            WHERE m.creator_pubkey = ?
-            ORDER BY m.created_at DESC
-            "#,
-        )
-        .bind(pubkey)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;

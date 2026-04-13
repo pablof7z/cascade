@@ -135,11 +135,9 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             get(market::get_price_history),
         )
         .route("/api/product/feed", get(product::feed))
+        .route("/api/product/activity", get(product::activity_feed))
         .route("/api/product/runtime", get(product::runtime))
-        .route(
-            "/api/product/markets/creator/{pubkey}",
-            get(product::creator_markets),
-        )
+        .route("/api/product/markets/search", get(product::search_markets))
         .route(
             "/api/product/markets/slug/{slug}",
             get(product::market_detail),

@@ -899,9 +899,9 @@
 
   {#if !currentUser}
     <section class="wallet-panel">
-      <h2>Sign in to use your portfolio</h2>
-      <p class="muted">Trade markets and track your positions.</p>
-      <a class="button-primary" href="/join">Sign in</a>
+      <h2>Connect to view your portfolio</h2>
+      <p class="muted">Trade markets, track your positions, and keep your proofs in this browser.</p>
+      <a class="button-primary" href="/join">Connect</a>
     </section>
   {:else}
     <section class="wallet-grid">

@@ -9,6 +9,8 @@ use axum::{
     http::{HeaderMap, Method, Uri},
     Router,
 };
+use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
+use bitcoin::secp256k1::{Keypair, Message, Secp256k1, SecretKey, XOnlyPublicKey};
 use cdk::amount::{FeeAndAmounts, SplitTarget};
 use cdk::dhke::construct_proofs;
 use cdk::mint::{MintBuilder, MintMeltLimits, UnitConfig};
@@ -19,7 +21,7 @@ use cdk_common::nuts::PaymentMethod;
 use cdk_common::Bolt11Invoice;
 use hmac::{Hmac, Mac};
 use serde_json::{json, Value};
-use sha2::Sha256;
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::{Arc, OnceLock};
@@ -358,6 +360,32 @@ fn stripe_signature(secret: &str, body: &str, timestamp: i64) -> String {
 }
 
 fn sample_market_event(event_id: &str, slug: &str, pubkey: &str) -> serde_json::Value {
+    sample_market_event_with_metadata(
+        event_id,
+        slug,
+        pubkey,
+        "Test Market",
+        "A market created in tests.",
+        &[],
+    )
+}
+
+fn sample_market_event_with_metadata(
+    event_id: &str,
+    slug: &str,
+    pubkey: &str,
+    title: &str,
+    description: &str,
+    extra_tags: &[Value],
+) -> serde_json::Value {
+    let mut tags = vec![
+        json!(["d", slug]),
+        json!(["title", title]),
+        json!(["description", description]),
+        json!(["status", "open"]),
+    ];
+    tags.extend(extra_tags.iter().cloned());
+
     serde_json::json!({
         "id": event_id,
         "pubkey": pubkey,
@@ -365,13 +393,51 @@ fn sample_market_event(event_id: &str, slug: &str, pubkey: &str) -> serde_json::
         "kind": 982,
         "content": "A signed market body for tests.",
         "sig": "00",
-        "tags": [
-            ["d", slug],
-            ["title", "Test Market"],
-            ["description", "A market created in tests."],
-            ["status", "open"]
-        ]
+        "tags": tags
     })
+}
+
+fn secret_key_from_byte(byte: u8) -> SecretKey {
+    SecretKey::from_slice(&[byte; 32]).unwrap()
+}
+
+fn pubkey_from_secret_key(secret_key: &SecretKey) -> String {
+    let secp = Secp256k1::new();
+    let keypair = Keypair::from_secret_key(&secp, secret_key);
+    XOnlyPublicKey::from_keypair(&keypair).0.to_string()
+}
+
+fn nip98_authorization_header(secret_key: &SecretKey, method: &Method, url: &str) -> String {
+    let secp = Secp256k1::new();
+    let keypair = Keypair::from_secret_key(&secp, secret_key);
+    let pubkey = XOnlyPublicKey::from_keypair(&keypair).0.to_string();
+    let created_at = chrono::Utc::now().timestamp();
+    let tags = vec![
+        vec!["u".to_string(), url.to_string()],
+        vec!["method".to_string(), method.as_str().to_string()],
+    ];
+    let serialized =
+        serde_json::to_string(&json!([0, pubkey, created_at, 27_235, tags, ""])).unwrap();
+    let event_id = hex::encode(Sha256::digest(serialized.as_bytes()));
+    let digest = hex::decode(&event_id).unwrap();
+    let message = Message::from_digest_slice(&digest).unwrap();
+    let signature = secp
+        .sign_schnorr_no_aux_rand(&message, &keypair)
+        .to_string();
+    let auth_event = json!({
+        "id": event_id,
+        "pubkey": pubkey,
+        "created_at": created_at,
+        "kind": 27_235,
+        "tags": tags,
+        "content": "",
+        "sig": signature,
+    });
+
+    format!(
+        "Nostr {}",
+        BASE64_STANDARD.encode(serde_json::to_vec(&auth_event).unwrap())
+    )
 }
 
 async fn create_wallet_funding_and_get_proofs(
@@ -524,6 +590,88 @@ fn proofs_from_signatures(
 
 fn proof_amount_total(proofs: &[Proof]) -> u64 {
     proofs.iter().map(|proof| proof.amount.to_u64()).sum()
+}
+
+async fn create_public_market_with_seed(
+    client: &reqwest::Client,
+    url: &str,
+    creator: &str,
+    event_id: &str,
+    slug: &str,
+    title: &str,
+    description: &str,
+    raw_event: Value,
+    spend_minor: u64,
+) -> serde_json::Value {
+    let create_response = client
+        .post(format!("{url}/api/product/markets"))
+        .json(&json!({
+            "event_id": event_id,
+            "title": title,
+            "description": description,
+            "slug": slug,
+            "body": format!("{title} body"),
+            "creator_pubkey": creator,
+            "raw_event": raw_event,
+            "b": 10.0
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(create_response.status(), 201);
+
+    let funding_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_funding_and_get_proofs(client, url, creator, 10_000).await,
+    )
+    .unwrap();
+    let usd_keyset = fetch_active_usd_keyset(client, url).await;
+    let market_keyset = fetch_market_keyset(client, url, event_id, "yes").await;
+
+    let quote_response = client
+        .post(format!("{url}/api/trades/quote"))
+        .json(&json!({
+            "event_id": event_id,
+            "side": "yes",
+            "spend_minor": spend_minor
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(quote_response.status(), 200);
+    let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
+
+    let (issued_outputs, _) = prepare_outputs(
+        &market_keyset,
+        quote_payload["quantity_minor"].as_u64().unwrap(),
+        TEST_MARKET_DENOMINATIONS,
+    );
+    let change_minor = proof_amount_total(&funding_proofs).saturating_sub(spend_minor);
+    let change_outputs = if change_minor > 0 {
+        prepare_outputs(&usd_keyset, change_minor, TEST_USD_DENOMINATIONS).0
+    } else {
+        json!([])
+    };
+
+    let buy_response = client
+        .post(format!("{url}/api/trades/buy"))
+        .json(&json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "yes",
+            "spend_minor": spend_minor,
+            "proofs": funding_proofs,
+            "issued_outputs": issued_outputs,
+            "change_outputs": change_outputs
+        }))
+        .send()
+        .await
+        .unwrap();
+    let buy_status = buy_response.status();
+    let buy_payload: serde_json::Value = buy_response.json().await.unwrap();
+    assert_eq!(buy_status, 201, "buy payload: {buy_payload}");
+    assert_eq!(buy_payload["market"]["visibility"].as_str(), Some("public"));
+
+    buy_payload
 }
 
 async fn wait_for_mint_quote_state_for_method(
@@ -949,7 +1097,9 @@ async fn test_content_type_header() {
 async fn test_pending_market_stays_private_until_first_trade() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();
-    let creator = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    let creator_secret = secret_key_from_byte(1);
+    let creator = pubkey_from_secret_key(&creator_secret);
+    let viewer_secret = secret_key_from_byte(2);
     let event_id = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     let slug = "pending-market";
 
@@ -962,7 +1112,7 @@ async fn test_pending_market_stays_private_until_first_trade() {
             "slug": slug,
             "body": "Pending body",
             "creator_pubkey": creator,
-            "raw_event": sample_market_event(event_id, slug, creator),
+            "raw_event": sample_market_event(event_id, slug, &creator),
             "b": 10.0
         }))
         .send()
@@ -974,20 +1124,6 @@ async fn test_pending_market_stays_private_until_first_trade() {
     assert_eq!(
         created.get("visibility").and_then(|value| value.as_str()),
         Some("pending")
-    );
-
-    let creator_response = client
-        .get(format!("{url}/api/product/markets/creator/{creator}"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(creator_response.status(), 200);
-    let creator_payload: serde_json::Value = creator_response.json().await.unwrap();
-    assert_eq!(
-        creator_payload["markets"]
-            .as_array()
-            .map(|items| items.len()),
-        Some(1)
     );
 
     let feed_response = client
@@ -1002,10 +1138,13 @@ async fn test_pending_market_stays_private_until_first_trade() {
         Some(0)
     );
 
+    let pending_detail_url = format!("{url}/api/product/markets/{event_id}/pending/{creator}");
     let pending_detail_response = client
-        .get(format!(
-            "{url}/api/product/markets/{event_id}/pending/{creator}"
-        ))
+        .get(&pending_detail_url)
+        .header(
+            "authorization",
+            nip98_authorization_header(&creator_secret, &Method::GET, &pending_detail_url),
+        )
         .send()
         .await
         .unwrap();
@@ -1023,13 +1162,228 @@ async fn test_pending_market_stays_private_until_first_trade() {
     );
 
     let forbidden_pending_detail_response = client
+        .get(&pending_detail_url)
+        .header(
+            "authorization",
+            nip98_authorization_header(&viewer_secret, &Method::GET, &pending_detail_url),
+        )
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(forbidden_pending_detail_response.status(), 401);
+
+    let anonymous_pending_detail_response = client.get(&pending_detail_url).send().await.unwrap();
+    assert_eq!(anonymous_pending_detail_response.status(), 401);
+}
+
+#[tokio::test]
+async fn test_product_read_models_support_pagination_search_and_activity_without_pending_leaks() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+    let macro_creator = "1111111111111111111111111111111111111111111111111111111111111111";
+    let ai_creator = "2222222222222222222222222222222222222222222222222222222222222222";
+    let pending_creator = "3333333333333333333333333333333333333333333333333333333333333333";
+
+    create_public_market_with_seed(
+        &client,
+        &url,
+        macro_creator,
+        "4444444444444444444444444444444444444444444444444444444444444444",
+        "macro-shock",
+        "Macro Shock",
+        "Macro market",
+        sample_market_event_with_metadata(
+            "4444444444444444444444444444444444444444444444444444444444444444",
+            "macro-shock",
+            macro_creator,
+            "Macro Shock",
+            "Macro market",
+            &[json!(["t", "macro"]), json!(["c", "economy"])],
+        ),
+        4_000,
+    )
+    .await;
+
+    create_public_market_with_seed(
+        &client,
+        &url,
+        ai_creator,
+        "5555555555555555555555555555555555555555555555555555555555555555",
+        "ai-chip-cycle",
+        "AI Chip Cycle",
+        "AI market",
+        sample_market_event_with_metadata(
+            "5555555555555555555555555555555555555555555555555555555555555555",
+            "ai-chip-cycle",
+            ai_creator,
+            "AI Chip Cycle",
+            "AI market",
+            &[json!(["t", "ai"]), json!(["c", "chips"])],
+        ),
+        4_500,
+    )
+    .await;
+
+    let pending_event_id = "6666666666666666666666666666666666666666666666666666666666666666";
+    let pending_slug = "hidden-pending";
+    let pending_create_response = client
+        .post(format!("{url}/api/product/markets"))
+        .json(&json!({
+            "event_id": pending_event_id,
+            "title": "Hidden Pending",
+            "description": "Should stay private",
+            "slug": pending_slug,
+            "body": "pending",
+            "creator_pubkey": pending_creator,
+            "raw_event": sample_market_event_with_metadata(
+                pending_event_id,
+                pending_slug,
+                pending_creator,
+                "Hidden Pending",
+                "Should stay private",
+                &[json!(["t", "macro"])]
+            ),
+            "b": 10.0
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(pending_create_response.status(), 201);
+
+    let feed_response = client
         .get(format!(
-            "{url}/api/product/markets/{event_id}/pending/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            "{url}/api/product/feed?market_limit=1&market_offset=0&trade_limit=1&trade_offset=0"
         ))
         .send()
         .await
         .unwrap();
-    assert_eq!(forbidden_pending_detail_response.status(), 404);
+    assert_eq!(feed_response.status(), 200);
+    let feed_payload: serde_json::Value = feed_response.json().await.unwrap();
+    assert_eq!(
+        feed_payload["markets"].as_array().map(|items| items.len()),
+        Some(1)
+    );
+    assert_eq!(
+        feed_payload["trades"].as_array().map(|items| items.len()),
+        Some(1)
+    );
+    assert_eq!(feed_payload["next_market_offset"].as_u64(), Some(1));
+    assert_eq!(feed_payload["next_trade_offset"].as_u64(), Some(1));
+
+    let search_response = client
+        .get(format!("{url}/api/product/markets/search?q=macro&limit=10"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(search_response.status(), 200);
+    let search_payload: serde_json::Value = search_response.json().await.unwrap();
+    assert_eq!(
+        search_payload["markets"]
+            .as_array()
+            .map(|items| items.len()),
+        Some(1)
+    );
+    assert_eq!(
+        search_payload["markets"][0]["slug"].as_str(),
+        Some("macro-shock")
+    );
+
+    let hidden_search_response = client
+        .get(format!(
+            "{url}/api/product/markets/search?q=hidden&limit=10"
+        ))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(hidden_search_response.status(), 200);
+    let hidden_search_payload: serde_json::Value = hidden_search_response.json().await.unwrap();
+    assert_eq!(
+        hidden_search_payload["markets"]
+            .as_array()
+            .map(|items| items.len()),
+        Some(0)
+    );
+
+    let activity_response = client
+        .get(format!("{url}/api/product/activity?limit=2&offset=0"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(activity_response.status(), 200);
+    let activity_payload: serde_json::Value = activity_response.json().await.unwrap();
+    assert_eq!(
+        activity_payload["items"]
+            .as_array()
+            .map(|items| items.len()),
+        Some(2)
+    );
+    assert_eq!(activity_payload["next_offset"].as_u64(), Some(2));
+    assert!(activity_payload["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|item| item["market"]["event_id"].as_str() != Some(pending_event_id)));
+
+    let activity_page_two_response = client
+        .get(format!("{url}/api/product/activity?limit=2&offset=2"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(activity_page_two_response.status(), 200);
+    let activity_page_two_payload: serde_json::Value =
+        activity_page_two_response.json().await.unwrap();
+    assert_eq!(
+        activity_page_two_payload["items"]
+            .as_array()
+            .map(|items| items.len()),
+        Some(2)
+    );
+}
+
+#[tokio::test]
+async fn test_product_read_endpoints_reject_cross_edition_headers() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+    let creator = "7777777777777777777777777777777777777777777777777777777777777777";
+    let event_id = "8888888888888888888888888888888888888888888888888888888888888888";
+    let slug = "edition-boundary-market";
+
+    create_public_market_with_seed(
+        &client,
+        &url,
+        creator,
+        event_id,
+        slug,
+        "Edition Boundary Market",
+        "Edition boundary market",
+        sample_market_event_with_metadata(
+            event_id,
+            slug,
+            creator,
+            "Edition Boundary Market",
+            "Edition boundary market",
+            &[json!(["t", "boundary"])],
+        ),
+        4_000,
+    )
+    .await;
+
+    let paths = vec![
+        "/api/product/feed".to_string(),
+        "/api/product/activity".to_string(),
+        "/api/product/markets/search?q=boundary".to_string(),
+        format!("/api/product/markets/slug/{slug}"),
+    ];
+
+    for path in paths {
+        let response = client
+            .get(format!("{url}{path}"))
+            .header("x-cascade-edition", "mainnet")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 409, "path {path} should reject mismatch");
+    }
 }
 
 #[tokio::test]

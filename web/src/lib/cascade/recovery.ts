@@ -56,12 +56,22 @@ type TradeReceiptRecord = {
   createdAt: number;
 };
 
+export type PendingCreatorMarketRecord = {
+  eventId: string;
+  pubkey: string;
+  slug: string;
+  title: string;
+  createdAt: number;
+};
+
 const PENDING_FUNDINGS_KEY = storageKey('cascade_pending_fundings');
 const TRADE_RECEIPTS_KEY = storageKey('cascade_trade_receipts');
 const FUNDING_HISTORY_KEY = storageKey('cascade_funding_history');
+const PENDING_CREATOR_MARKETS_KEY = storageKey('cascade_pending_creator_markets');
 const MAX_PENDING_FUNDINGS = 32;
 const MAX_TRADE_RECEIPTS = 32;
 const MAX_FUNDING_HISTORY = 64;
+const MAX_PENDING_CREATOR_MARKETS = 64;
 
 function loadRecords<T>(key: string): T[] {
   try {
@@ -225,6 +235,34 @@ export function listTradeReceipts(pubkey: string, eventId?: string): TradeReceip
     if (eventId && record.eventId !== eventId) return false;
     return true;
   });
+}
+
+export function trackPendingCreatorMarket(entry: PendingCreatorMarketRecord): void {
+  const records = loadRecords<PendingCreatorMarketRecord>(PENDING_CREATOR_MARKETS_KEY).filter(
+    (record) => !(record.eventId === entry.eventId && record.pubkey === entry.pubkey)
+  );
+
+  records.unshift(entry);
+
+  if (records.length > MAX_PENDING_CREATOR_MARKETS) records.splice(MAX_PENDING_CREATOR_MARKETS);
+  saveRecords(PENDING_CREATOR_MARKETS_KEY, records);
+}
+
+export function listPendingCreatorMarkets(pubkey: string): PendingCreatorMarketRecord[] {
+  return loadRecords<PendingCreatorMarketRecord>(PENDING_CREATOR_MARKETS_KEY).filter(
+    (record) => record.pubkey === pubkey
+  );
+}
+
+export function clearPendingCreatorMarket(eventId: string, pubkey?: string): void {
+  const records = loadRecords<PendingCreatorMarketRecord>(PENDING_CREATOR_MARKETS_KEY).filter(
+    (record) => {
+      if (record.eventId !== eventId) return true;
+      if (pubkey && record.pubkey !== pubkey) return true;
+      return false;
+    }
+  );
+  saveRecords(PENDING_CREATOR_MARKETS_KEY, records);
 }
 
 export function clearTradeReceipt(id: string): void {

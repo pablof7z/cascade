@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatProductAmount, productUnitLabel } from '$lib/cascade/format';
   import {
     buildTradeSummary,
     formatProbability,
@@ -75,7 +76,7 @@
         id: trade.id,
         createdAt: trade.createdAt,
         kind: 'Trade',
-        detail: `${trade.direction === 'yes' ? 'LONG' : 'SHORT'} · ${formatSats(trade.amount)} ${trade.unit}`
+        detail: `${trade.direction === 'yes' ? 'LONG' : 'SHORT'} · ${formatProductAmount(trade.amount, trade.unit)} ${productUnitLabel(trade.unit)}`
       })),
       ...discussions.slice(0, 8).map((discussion) => ({
         id: discussion?.id ?? '',
@@ -116,7 +117,7 @@
   </div>
   <div>
     <span>Visible Volume</span>
-    <strong>{formatSats(visibleVolume)} sats</strong>
+    <strong>{formatProductAmount(visibleVolume, 'sat')} {productUnitLabel('sat')}</strong>
   </div>
   <div>
     <span>Active Markets</span>

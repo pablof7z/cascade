@@ -6,10 +6,10 @@ use anyhow::{anyhow, bail, Context, Result};
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
 use cascade_api::types::{
-    BlindedMessageInput, CreatorMarketsResponse, MintBolt11Request, MintBolt11Response,
-    MintQuoteBolt11Request, MintQuoteBolt11Response, ProductCoordinatorBuyRequest,
-    ProductCoordinatorSellRequest, ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest,
-    ProductFeedResponse, ProductMarketDetailResponse, ProductMarketSummary,
+    BlindedMessageInput, MintBolt11Request, MintBolt11Response, MintQuoteBolt11Request,
+    MintQuoteBolt11Response, ProductCoordinatorBuyRequest, ProductCoordinatorSellRequest,
+    ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest, ProductFeedResponse,
+    ProductMarketDetailResponse,
     ProductPortfolioFundingRequestStatusResponse, ProductTradeExecutionResponse,
     ProductTradeQuoteResponse, ProductTradeRequestStatusResponse, ProductTradeStatusResponse,
     TokenOutput,
@@ -509,33 +509,23 @@ async fn handle_proofs(ctx: &AppContext, command: &ProofsCommand) -> Result<()> 
 async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> {
     match &command.command {
         MarketSubcommand::List(args) => {
+            let loaded = ctx.require_config()?;
             if let Some(creator) = &args.creator {
-                let loaded = ctx.require_config()?;
-                let payload: CreatorMarketsResponse = ctx
-                    .request_json(
-                        &loaded,
-                        Method::GET,
-                        &format!("/api/product/markets/creator/{creator}"),
-                        None,
-                        AuthMode::None,
-                    )
-                    .await?;
-                let markets: Vec<ProductMarketSummary> = match args.visibility.as_str() {
-                    "pending" => payload
-                        .markets
-                        .into_iter()
-                        .filter(|market| market.visibility == "pending")
-                        .collect(),
-                    "all" => payload.markets,
-                    _ => payload
-                        .markets
-                        .into_iter()
-                        .filter(|market| market.visibility == "public")
-                        .collect(),
-                };
+                if args.visibility != "public" {
+                    bail!(
+                        "creator market listing only supports --visibility public; use `cascade market pending <event_id>` for creator-only pending markets"
+                    );
+                }
+
+                let public_market_ids = public_market_event_ids(ctx, &loaded).await?;
+                let fetch_limit = args.limit.map(|limit| limit.max(100)).unwrap_or(200);
+                let markets = fetch_creator_market_records(ctx, Some(&loaded), creator, fetch_limit)
+                    .await?
+                    .into_iter()
+                    .filter(|market| public_market_ids.contains(&market.event_id))
+                    .collect::<Vec<_>>();
                 ctx.emit(&json!({ "markets": limit_vec(markets, args.limit) }))
             } else {
-                let loaded = ctx.require_config()?;
                 let payload: ProductFeedResponse = ctx
                     .request_json(
                         &loaded,
@@ -579,7 +569,7 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
                     Method::GET,
                     &format!("/api/product/markets/{}/pending/{}", args.event_id, creator),
                     None,
-                    AuthMode::None,
+                    AuthMode::Nip98,
                 )
                 .await?;
             ctx.emit(&detail)
@@ -1902,17 +1892,9 @@ async fn resolve_market_selector(
             });
         }
 
-        let creator_payload: CreatorMarketsResponse = ctx
-            .request_json(
-                loaded,
-                Method::GET,
-                &format!("/api/product/markets/creator/{}", ctx.pubkey_hex(loaded)?),
-                None,
-                AuthMode::None,
-            )
-            .await?;
-        if let Some(market) = creator_payload
-            .markets
+        let authored_markets =
+            fetch_creator_market_records(ctx, Some(loaded), &ctx.pubkey_hex(loaded)?, 200).await?;
+        if let Some(market) = authored_markets
             .into_iter()
             .find(|market| market.event_id == selector)
         {
@@ -2018,6 +2000,40 @@ fn parse_market_record(value: Value) -> Option<MarketRecord> {
         created_at,
         raw_event: value,
     })
+}
+
+async fn public_market_event_ids(ctx: &AppContext, loaded: &LoadedConfig) -> Result<HashSet<String>> {
+    let payload: ProductFeedResponse = ctx
+        .request_json(loaded, Method::GET, "/api/product/feed", None, AuthMode::None)
+        .await?;
+    Ok(payload
+        .markets
+        .into_iter()
+        .filter_map(|value| value.get("id").and_then(Value::as_str).map(ToString::to_string))
+        .collect())
+}
+
+async fn fetch_creator_market_records(
+    ctx: &AppContext,
+    loaded: Option<&LoadedConfig>,
+    creator: &str,
+    limit: usize,
+) -> Result<Vec<MarketRecord>> {
+    let events = ctx
+        .fetch_events(
+            loaded,
+            Filter::new()
+                .author(parse_public_key(creator)?)
+                .kind(Kind::Custom(982))
+                .limit(limit),
+        )
+        .await?;
+    let mut markets = events
+        .into_iter()
+        .filter_map(|event| serde_json::to_value(event).ok().and_then(parse_market_record))
+        .collect::<Vec<_>>();
+    markets.sort_by(|left, right| right.created_at.cmp(&left.created_at));
+    Ok(markets)
 }
 
 fn parse_trade_activity(value: &Value) -> Option<ActivityEntry> {

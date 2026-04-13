@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { NDKUserProfile } from '@nostr-dev-kit/ndk';
-  import { isPaperEdition } from '$lib/cascade/config';
   import { formatProductAmount, productUnitLabel } from '$lib/cascade/format';
   import {
     formatProbability,
@@ -22,7 +21,6 @@
 
   let { data }: PageProps = $props();
   let activeFilter = $state<Filter>('All');
-  const paperEdition = isPaperEdition();
 
   const filters: Filter[] = ['All', 'New Markets', 'Trades', 'Discussion'];
   const profiles = $derived(data.profiles as Record<string, NDKUserProfile>);
@@ -122,7 +120,7 @@
   </div>
   <div>
     <span>Visible Volume</span>
-    <strong>{paperEdition ? formatProductAmount(trades.reduce((sum, trade) => sum + trade.amount, 0), 'usd') : `${formatSats(trades.reduce((sum, trade) => sum + trade.amount, 0))} sats`}</strong>
+    <strong>{formatProductAmount(trades.reduce((sum, trade) => sum + trade.amount, 0), 'usd')}</strong>
   </div>
 </section>
 

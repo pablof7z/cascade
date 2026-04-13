@@ -1,5 +1,4 @@
 import { NDKEvent, type NostrEvent } from '@nostr-dev-kit/ndk';
-import { isPaperEdition } from '$lib/cascade/config';
 import { formatProductAmount } from '$lib/cascade/format';
 
 export const CASCADE_MARKET_KIND = 982;
@@ -329,11 +328,7 @@ export function threadUrl(slug: string, threadId: string): string {
 }
 
 export function formatSats(value: number | null | undefined): string {
-  if (isPaperEdition()) {
-    return formatProductAmount(value, 'usd');
-  }
-  if (!value || Number.isNaN(value)) return '0';
-  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value);
+  return formatProductAmount(value, 'usd');
 }
 
 export function formatProbability(probability: number | null | undefined): string {

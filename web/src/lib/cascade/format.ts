@@ -33,5 +33,5 @@ export function productUnitLabel(unit: string | null | undefined = null): string
   if (unit?.toLowerCase() === 'usd' || isPaperEdition()) {
     return 'USD';
   }
-  return 'sats';
+  return 'tokens';
 }

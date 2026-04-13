@@ -44,7 +44,7 @@ Cascade needs a paper-trading edition and a real-money edition.
 - Proofs, reserves, databases, Nostr publishing identities, relay projections, and payment rails must not mix between editions.
 - The paper-trading edition exists so humans, agents, and the owner can exercise the full flow without mainnet funds.
 - Mainnet and signet use the same proof-custody implementation. The difference is value and infrastructure, not different wallet mechanics.
-- Mainnet and signet also use the same funding and execution mechanics. Signet uses valueless infrastructure and test rails, not auto-complete shortcuts that bypass the normal top-up or trade lifecycle.
+- Mainnet and signet also use the same funding and execution mechanics. Signet uses valueless infrastructure and test rails, not auto-complete shortcuts that bypass the normal funding or trade lifecycle.
 - Launch proof custody is browser-local storage in both editions. NIP-60 is deferred and may return later, but it is not part of the current product.
 
 ### User-Facing Capital Surface Is Portfolio
@@ -66,7 +66,7 @@ Cascade does not maintain a canonical per-user portfolio on the backend.
 - The backend may verify consumed proofs and track them as spent
 - The backend may persist funding and settlement metadata, but never a canonical copy of the user's unspent proofs
 - The backend must not persist a canonical snapshot of a user's unspent holdings
-- `/portfolio` is derived in the browser from local proofs, browser-local trade/top-up recovery state, and public market data
+- `/portfolio` is derived in the browser from local proofs, browser-local trade/funding recovery state, and public market data
 
 This is true in both signet and mainnet.
 
@@ -183,7 +183,7 @@ Freshly card-funded USD value is portable bearer ecash once proofs are issued, s
 - Stripe risk signals should feed a wallet-risk policy layer.
 - Launch should enforce conservative Stripe volume caps before checkout creation.
 - Stripe webhook completion must fetch Stripe risk data before issuing proofs.
-- Higher-risk top-ups should end in `review_required` or rejection, not in immediately portable proofs with server-side "limits" that cannot actually be enforced.
+- Higher-risk funding requests should end in `review_required` or rejection, not in immediately portable proofs with server-side "limits" that cannot actually be enforced.
 - The precise scoring model can evolve, but launch must have an explicit pre-issuance risk gate.
 
 ### Mint URL Routing

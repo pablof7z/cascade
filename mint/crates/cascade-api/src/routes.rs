@@ -20,14 +20,14 @@ use cascade_core::{db::CascadeDatabase, invoice::InvoiceService, MarketManager};
 pub struct AppState {
     pub market_manager: Arc<MarketManager>,
     pub invoice_service: Arc<Mutex<InvoiceService>>,
-    /// Top-up quotes currently being issued through /v1/mint/bolt11.
-    pub processing_topups: Arc<Mutex<HashSet<String>>>,
+    /// Funding quotes currently being issued through /v1/mint/bolt11.
+    pub processing_fundings: Arc<Mutex<HashSet<String>>>,
     /// Set of spent proof secrets (to prevent double-redemption)
     /// In production, this would be persisted to a database
     pub spent_proofs: Arc<RwLock<HashSet<String>>>,
     /// FX quote service for USD <-> msat conversion
     pub fx_service: Arc<FxQuoteService>,
-    /// Optional Stripe gateway for hosted card top-ups
+    /// Optional Stripe gateway for hosted card funding
     pub stripe_gateway: Option<Arc<StripeGateway>>,
     /// CDK mint for proof verification and keyset validation
     pub mint: Arc<cdk::mint::Mint>,
@@ -58,7 +58,7 @@ impl AppState {
         Self {
             market_manager,
             invoice_service,
-            processing_topups: Arc::new(Mutex::new(HashSet::new())),
+            processing_fundings: Arc::new(Mutex::new(HashSet::new())),
             spent_proofs: Arc::new(RwLock::new(HashSet::new())),
             fx_service,
             stripe_gateway,
@@ -82,7 +82,7 @@ impl AppState {
         Self {
             market_manager,
             invoice_service,
-            processing_topups: Arc::new(Mutex::new(HashSet::new())),
+            processing_fundings: Arc::new(Mutex::new(HashSet::new())),
             spent_proofs: Arc::new(RwLock::new(HashSet::new())),
             fx_service,
             stripe_gateway,
@@ -185,16 +185,32 @@ pub fn build_cascade_routes(state: AppState) -> Router {
         )
         .route("/api/trades/{trade_id}", get(product::trade_status))
         .route(
+            "/api/portfolio/funding/requests/{request_id}",
+            get(product::wallet_funding_request_status),
+        )
+        .route(
+            "/api/portfolio/funding/{quote_id}",
+            get(product::get_wallet_funding_status),
+        )
+        .route(
+            "/api/portfolio/funding/stripe",
+            post(product::create_stripe_funding),
+        )
+        .route(
+            "/api/portfolio/funding/stripe/webhook",
+            post(product::stripe_webhook),
+        )
+        .route(
             "/api/wallet/topups/requests/{request_id}",
-            get(product::wallet_topup_request_status),
+            get(product::wallet_funding_request_status),
         )
         .route(
             "/api/wallet/topups/{quote_id}",
-            get(product::get_wallet_topup_status),
+            get(product::get_wallet_funding_status),
         )
         .route(
             "/api/wallet/topups/stripe",
-            post(product::create_stripe_topup),
+            post(product::create_stripe_funding),
         )
         .route(
             "/api/wallet/topups/stripe/webhook",

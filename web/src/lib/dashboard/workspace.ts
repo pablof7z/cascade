@@ -35,7 +35,7 @@ export type AgentWallet = {
   balanceUsd: number;
   allocatedUsd: number;
   monthlySpendUsd: number;
-  status: 'funded' | 'watch' | 'top-up';
+  status: 'funded' | 'watch' | 'funding';
 };
 
 export type FieldAgent = {

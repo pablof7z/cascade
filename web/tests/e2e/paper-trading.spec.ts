@@ -394,7 +394,7 @@ test('portfolio can export and import local USD proofs', async ({ page }) => {
   await expect(walletPanels.first()).toContainText('$100.00');
 });
 
-test('signet portfolio can fund through the Lightning top-up flow', async ({ page }) => {
+test('signet portfolio can fund through the Lightning funding flow', async ({ page }) => {
   const secret = secretKeyFor(`lightning-wallet:${Date.now()}`);
 
   await loginWithPrivateKey(page, secret);
@@ -422,5 +422,5 @@ test('signet portfolio can fund through the Lightning top-up flow', async ({ pag
   await expect(walletPanels.first()).toContainText('Local Proofs');
   await expect(walletPanels.first()).toContainText('$25.00');
   await expect(page.locator('.history-row').filter({ hasText: 'lightning · complete' }).first()).toBeVisible();
-  await expect(page.getByText('No pending top-ups.')).toBeVisible();
+  await expect(page.getByText('No pending funding requests.')).toBeVisible();
 });

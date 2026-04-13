@@ -1,33 +1,33 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import {
-    createStripeTopup,
+    createStripeFunding,
     fetchMarketDetailBySlug,
+    fetchPortfolioFundingRequestStatus,
+    fetchPortfolioFundingStatus,
     fetchProductRuntime,
-    fetchWalletTopupRequestStatus,
-    fetchWalletTopupStatus,
     parseJson,
     type ProductMarketDetail,
     type ProductProof,
     type ProductRuntime,
-    type ProductWalletTopup,
-    type ProductWalletTopupRequestStatus
+    type ProductPortfolioFunding,
+    type ProductPortfolioFundingRequestStatus
   } from '$lib/cascade/api';
-  import { getProductApiUrl, isPaperEdition, isStripeTopupEnabled } from '$lib/cascade/config';
+  import { getProductApiUrl, isPaperEdition, isStripeFundingEnabled } from '$lib/cascade/config';
   import { formatUsdMinor } from '$lib/cascade/format';
   import { quantityToShareMinor, shareMinorToQuantity } from '$lib/cascade/shares';
   import {
-    patchPendingTopup,
-    attachPendingTopupMintPreparation,
-    clearPendingTopup,
-    listPendingTopups,
-    listTopupHistory,
-    markPendingTopupNotified,
-    recordTopupHistory,
-    trackPendingTopup,
-    type PendingTopupRecord
+    patchPendingFunding,
+    attachPendingFundingMintPreparation,
+    clearPendingFunding,
+    listPendingFundings,
+    listFundingHistory,
+    markPendingFundingNotified,
+    recordFundingHistory,
+    trackPendingFunding,
+    type PendingFundingRecord
   } from '$lib/cascade/recovery';
-  import type { LocalTopupHistoryRecord } from '$lib/cascade/recovery';
+  import type { LocalFundingHistoryRecord } from '$lib/cascade/recovery';
   import { ndk } from '$lib/ndk/client';
   import { formatProbability } from '$lib/ndk/cascade';
   import { decodeLocalProofToken, encodeLocalProofWallet } from '$lib/wallet/cashuTokens';
@@ -47,7 +47,7 @@
   } from '$lib/wallet/localProofs';
   import { listLocalPositionBook } from '$lib/wallet/localPositionBook';
 
-  type LocalPendingTopup = {
+  type LocalPendingFunding = {
     id: string;
     rail: 'lightning' | 'stripe';
     amount_minor: number;
@@ -71,13 +71,13 @@
 
   const currentUser = $derived(ndk.$currentUser);
   const paperEdition = isPaperEdition();
-  const stripeTopupEnabled = isStripeTopupEnabled();
+  const stripeFundingEnabled = isStripeFundingEnabled();
   const editionLabel = paperEdition ? 'Signet' : 'Mainnet';
   const portfolioLabel = paperEdition ? 'signet portfolio' : 'portfolio';
 
   const proofUnit = 'usd';
-  const signetTopupSingleLimitMinor = 10000;
-  const signetTopupWindowLimitMinor = 25000;
+  const signetFundingSingleLimitMinor = 10000;
+  const signetFundingWindowLimitMinor = 25000;
 
   let runtime = $state<ProductRuntime | null>(null);
   let loading = $state(false);
@@ -90,8 +90,8 @@
   let localProofWallets = $state<StoredProofWallet[]>([]);
   let localPositions = $state<LocalPortfolioPosition[]>([]);
   let localPositionValueMinor = $state(0);
-  let pendingTopups = $state<LocalPendingTopup[]>([]);
-  let topupHistory = $state<LocalTopupHistoryRecord[]>([]);
+  let pendingFundings = $state<LocalPendingFunding[]>([]);
+  let fundingHistory = $state<LocalFundingHistoryRecord[]>([]);
   let selectedExportUnit = $state('');
   let exportedToken = $state('');
   let importToken = $state('');
@@ -113,13 +113,13 @@
 
   function refreshLocalFundingState() {
     if (!currentUser) {
-      pendingTopups = [];
-      topupHistory = [];
+      pendingFundings = [];
+      fundingHistory = [];
       return;
     }
 
-    pendingTopups = listPendingTopups(currentUser.pubkey).map((entry) => ({
-      id: entry.topupId ?? entry.id,
+    pendingFundings = listPendingFundings(currentUser.pubkey).map((entry) => ({
+      id: entry.fundingId ?? entry.id,
       rail: entry.rail,
       amount_minor: entry.amountMinor,
       status: entry.status ?? 'invoice_pending',
@@ -127,7 +127,7 @@
       checkout_url: entry.checkoutUrl,
       checkout_session_id: entry.checkoutSessionId
     }));
-    topupHistory = listTopupHistory(currentUser.pubkey);
+    fundingHistory = listFundingHistory(currentUser.pubkey);
   }
 
   function formatProofBucketAmount(unit: string, amount: number): string {
@@ -282,11 +282,11 @@
   const runtimeEditionMismatch = $derived(
     runtime !== null && runtime.edition !== expectedEdition
   );
-  const lightningTopupAvailable = $derived(
+  const lightningFundingAvailable = $derived(
     runtime !== null && !runtimeEditionMismatch && runtime.funding.lightning.available
   );
-  const stripeTopupAvailable = $derived(
-    stripeTopupEnabled &&
+  const stripeFundingAvailable = $derived(
+    stripeFundingEnabled &&
       runtime !== null &&
       !runtimeEditionMismatch &&
       runtime.funding.stripe.available
@@ -307,16 +307,16 @@
 
     const configuredReason =
       rail === 'stripe' ? runtime.funding.stripe.reason : runtime.funding.lightning.reason;
-    if (configuredReason === 'stripe_topups_unavailable') {
-      return 'Stripe top-ups are not configured for this edition yet.';
+    if (configuredReason === 'stripe_fundings_unavailable') {
+      return 'Stripe funding is not configured for this edition yet.';
     }
-    if (configuredReason === 'lightning_topups_unavailable') {
-      return 'Lightning top-ups are not configured for this edition yet.';
+    if (configuredReason === 'lightning_fundings_unavailable') {
+      return 'Lightning funding is not configured for this edition yet.';
     }
 
     return rail === 'stripe'
-      ? 'Stripe top-ups are unavailable for this edition right now.'
-      : 'Lightning top-ups are unavailable for this edition right now.';
+      ? 'Stripe funding is unavailable for this edition right now.'
+      : 'Lightning funding is unavailable for this edition right now.';
   }
 
   async function loadRuntime() {
@@ -409,61 +409,61 @@
     }
   }
 
-  function formatSignetTopupError(message: string): string {
-    if (message.startsWith('signet_topup_single_limit_exceeded')) {
-      return `Signet funding is capped at ${formatUsdMinor(signetTopupSingleLimitMinor)} per top-up.`;
+  function formatSignetFundingError(message: string): string {
+    if (message.startsWith('signet_funding_single_limit_exceeded')) {
+      return `Signet funding is capped at ${formatUsdMinor(signetFundingSingleLimitMinor)} per funding request.`;
     }
 
-    if (message.startsWith('signet_topup_window_limit_exceeded')) {
-      return `Signet funding is capped at ${formatUsdMinor(signetTopupWindowLimitMinor)} per 24 hours.`;
+    if (message.startsWith('signet_funding_window_limit_exceeded')) {
+      return `Signet funding is capped at ${formatUsdMinor(signetFundingWindowLimitMinor)} per 24 hours.`;
     }
 
     return message;
   }
 
-  function formatStripeTopupError(message: string): string {
-    if (message.startsWith('stripe_topup_single_limit_exceeded')) {
+  function formatStripeFundingError(message: string): string {
+    if (message.startsWith('stripe_funding_single_limit_exceeded')) {
       const maxMinor = Number.parseInt(message.split('max_minor=')[1] ?? '', 10);
       if (Number.isFinite(maxMinor) && maxMinor > 0) {
-        return `Card top-ups are capped at ${formatUsdMinor(maxMinor)} per top-up right now.`;
+        return `Card funding is capped at ${formatUsdMinor(maxMinor)} per funding request right now.`;
       }
-      return 'Card top-ups are capped per top-up right now.';
+      return 'Card funding is capped per funding request right now.';
     }
 
-    if (message.startsWith('stripe_topup_window_limit_exceeded')) {
+    if (message.startsWith('stripe_funding_window_limit_exceeded')) {
       const windowMinor = Number.parseInt(message.split('window_minor=')[1]?.split(':')[0] ?? '', 10);
       if (Number.isFinite(windowMinor) && windowMinor > 0) {
-        return `Card top-ups are capped at ${formatUsdMinor(windowMinor)} per 24 hours right now.`;
+        return `Card funding is capped at ${formatUsdMinor(windowMinor)} per 24 hours right now.`;
       }
-      return 'Card top-ups are capped per 24 hours right now.';
+      return 'Card funding is capped per 24 hours right now.';
     }
 
     return message;
   }
 
-  function topupLabel(rail: string): string {
-    return rail === 'stripe' ? 'Stripe top-up' : 'Lightning top-up';
+  function fundingLabel(rail: string): string {
+    return rail === 'stripe' ? 'Stripe funding' : 'Lightning funding';
   }
 
-  async function recoverLightningQuote(trackedTopup: PendingTopupRecord) {
-    if (!trackedTopup.requestId) {
+  async function recoverLightningQuote(trackedFunding: PendingFundingRecord) {
+    if (!trackedFunding.requestId) {
       return null;
     }
 
     try {
-      const quote = await createUsdLightningMintQuote(proofMintUrl(), trackedTopup.amountMinor, {
-        description: `Cascade portfolio top-up for ${trackedTopup.pubkey}`,
-        pubkey: trackedTopup.pubkey,
-        requestId: trackedTopup.requestId
+      const quote = await createUsdLightningMintQuote(proofMintUrl(), trackedFunding.amountMinor, {
+        description: `Cascade portfolio funding for ${trackedFunding.pubkey}`,
+        pubkey: trackedFunding.pubkey,
+        requestId: trackedFunding.requestId
       });
       return quote;
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Lightning top-up recovery failed.';
-      if (message === 'wallet_topup_request_in_progress') {
-        if (!trackedTopup.pendingNotified) {
-          status = `Recovered pending ${topupLabel(trackedTopup.rail).toLowerCase()} for ${formatUsdMinor(trackedTopup.amountMinor)}.`;
-          markPendingTopupNotified(trackedTopup.id);
+        error instanceof Error ? error.message : 'Lightning funding recovery failed.';
+      if (message === 'wallet_funding_request_in_progress') {
+        if (!trackedFunding.pendingNotified) {
+          status = `Recovered pending ${fundingLabel(trackedFunding.rail).toLowerCase()} for ${formatUsdMinor(trackedFunding.amountMinor)}.`;
+          markPendingFundingNotified(trackedFunding.id);
         }
         return null;
       }
@@ -472,31 +472,31 @@
     }
   }
 
-  function isPendingTopupStatus(status: string): boolean {
+  function isPendingFundingStatus(status: string): boolean {
     return status === 'invoice_pending' || status === 'pending';
   }
 
-  async function createLightningTopup() {
+  async function createLightningFunding() {
     if (!currentUser) {
-      errorMessage = `Sign in before starting a top-up for your ${portfolioLabel}.`;
+      errorMessage = `Sign in before starting funding for your ${portfolioLabel}.`;
       return;
     }
 
-    if (!lightningTopupAvailable) {
+    if (!lightningFundingAvailable) {
       errorMessage = railUnavailableMessage('lightning');
       return;
     }
 
     const amountMinor = Number.parseInt(fundingAmount, 10) || 0;
     if (amountMinor <= 0) {
-      errorMessage = 'Enter a Lightning top-up amount greater than zero.';
+      errorMessage = 'Enter a Lightning funding amount greater than zero.';
       return;
     }
 
-    status = `Creating a Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
+    status = `Creating a Lightning mint quote for ${formatUsdMinor(amountMinor)}.`;
     errorMessage = '';
     const requestId = crypto.randomUUID();
-    trackPendingTopup({
+    trackPendingFunding({
       id: requestId,
       requestId,
       pubkey: currentUser.pubkey,
@@ -505,26 +505,26 @@
     });
     try {
       const quote = await createUsdLightningMintQuote(proofMintUrl(), amountMinor, {
-        description: `Cascade portfolio top-up for ${currentUser.pubkey}`,
+        description: `Cascade portfolio funding for ${currentUser.pubkey}`,
         pubkey: currentUser.pubkey,
         requestId
       });
-      patchPendingTopup(requestId, {
-        topupId: quote.quote,
+      patchPendingFunding(requestId, {
+        fundingId: quote.quote,
         status: 'invoice_pending',
         invoice: quote.request
       });
       refreshLocalFundingState();
-      status = `Created a Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
-      await reconcilePendingTopups();
+      status = `Created a Lightning funding quote for ${formatUsdMinor(amountMinor)}.`;
+      await reconcilePendingFundings();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Lightning top-up creation failed.';
-      if (message === 'wallet_topup_request_in_progress') {
-        status = `Recovering the Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
+        error instanceof Error ? error.message : 'Lightning funding quote creation failed.';
+      if (message === 'wallet_funding_request_in_progress') {
+        status = `Recovering the Lightning funding quote for ${formatUsdMinor(amountMinor)}.`;
       } else {
-        clearPendingTopup(requestId);
-        errorMessage = formatSignetTopupError(message);
+        clearPendingFunding(requestId);
+        errorMessage = formatSignetFundingError(message);
         status = '';
       }
     }
@@ -532,25 +532,25 @@
 
   async function createStripeCheckout() {
     if (!currentUser) {
-      errorMessage = `Sign in before starting a top-up for your ${portfolioLabel}.`;
+      errorMessage = `Sign in before starting funding for your ${portfolioLabel}.`;
       return;
     }
 
-    if (!stripeTopupAvailable) {
+    if (!stripeFundingAvailable) {
       errorMessage = railUnavailableMessage('stripe');
       return;
     }
 
     const amountMinor = Number.parseInt(fundingAmount, 10) || 0;
     if (amountMinor <= 0) {
-      errorMessage = 'Enter a Stripe top-up amount greater than zero.';
+      errorMessage = 'Enter a Stripe funding amount greater than zero.';
       return;
     }
 
-    status = `Creating a Stripe top-up for ${formatUsdMinor(amountMinor)}.`;
+    status = `Creating Stripe funding for ${formatUsdMinor(amountMinor)}.`;
     errorMessage = '';
     const requestId = crypto.randomUUID();
-    trackPendingTopup({
+    trackPendingFunding({
       id: requestId,
       requestId,
       pubkey: currentUser.pubkey,
@@ -559,92 +559,95 @@
     });
 
     try {
-      const response = await createStripeTopup({
+      const response = await createStripeFunding({
         pubkey: currentUser.pubkey,
         amountMinor,
         requestId
       });
-      const topup = await parseJson<ProductWalletTopup>(response, 'Stripe top-up creation failed.');
+      const funding = await parseJson<ProductPortfolioFunding>(
+        response,
+        'Stripe funding creation failed.'
+      );
 
-      patchPendingTopup(requestId, {
-        topupId: topup.id,
-        status: topup.status,
-        checkoutUrl: topup.checkout_url ?? undefined,
-        checkoutSessionId: topup.checkout_session_id ?? undefined,
-        checkoutExpiresAt: topup.checkout_expires_at ?? undefined
+      patchPendingFunding(requestId, {
+        fundingId: funding.id,
+        status: funding.status,
+        checkoutUrl: funding.checkout_url ?? undefined,
+        checkoutSessionId: funding.checkout_session_id ?? undefined,
+        checkoutExpiresAt: funding.checkout_expires_at ?? undefined
       });
       refreshLocalFundingState();
 
-      if (topup.status === 'complete') {
-        recordTopupHistory({
+      if (funding.status === 'complete') {
+        recordFundingHistory({
           id: requestId,
-          topupId: topup.id,
+          fundingId: funding.id,
           pubkey: currentUser.pubkey,
           amountMinor,
           rail: 'stripe',
-          status: topup.status,
-          checkoutUrl: topup.checkout_url ?? undefined,
-          checkoutSessionId: topup.checkout_session_id ?? undefined,
-          checkoutExpiresAt: topup.checkout_expires_at ?? undefined,
+          status: funding.status,
+          checkoutUrl: funding.checkout_url ?? undefined,
+          checkoutSessionId: funding.checkout_session_id ?? undefined,
+          checkoutExpiresAt: funding.checkout_expires_at ?? undefined,
           createdAt: Date.now()
         });
-        clearPendingTopup(requestId);
+        clearPendingFunding(requestId);
         refreshLocalFundingState();
-        status = `Stripe top-up settled for ${formatUsdMinor(amountMinor)}. Claiming browser-local proofs for card funding is not enabled yet.`;
+        status = `Stripe funding settled for ${formatUsdMinor(amountMinor)}. Claiming browser-local proofs for card funding is not enabled yet.`;
         return;
       }
 
-      status = `Created a Stripe top-up for ${formatUsdMinor(amountMinor)}.`;
-      if (browser && topup.checkout_url) {
-        window.location.assign(topup.checkout_url);
+      status = `Created Stripe funding for ${formatUsdMinor(amountMinor)}.`;
+      if (browser && funding.checkout_url) {
+        window.location.assign(funding.checkout_url);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Stripe top-up creation failed.';
-      if (message === 'wallet_topup_request_in_progress') {
-        status = `Recovering the Stripe top-up for ${formatUsdMinor(amountMinor)}.`;
-      } else if (message === 'stripe_topups_unavailable') {
-        clearPendingTopup(requestId);
-        errorMessage = 'Stripe top-ups are not configured for this edition yet.';
+      const message = error instanceof Error ? error.message : 'Stripe funding creation failed.';
+      if (message === 'wallet_funding_request_in_progress') {
+        status = `Recovering Stripe funding for ${formatUsdMinor(amountMinor)}.`;
+      } else if (message === 'stripe_fundings_unavailable') {
+        clearPendingFunding(requestId);
+        errorMessage = 'Stripe funding is not configured for this edition yet.';
         status = '';
       } else {
-        clearPendingTopup(requestId);
-        errorMessage = formatStripeTopupError(message);
+        clearPendingFunding(requestId);
+        errorMessage = formatStripeFundingError(message);
         status = '';
       }
     }
   }
 
-  async function refreshPendingTopups() {
+  async function refreshPendingFundings() {
     if (!runtime || runtimeEditionMismatch) {
       errorMessage = railUnavailableMessage('lightning');
       return;
     }
 
-    status = 'Refreshing pending top-ups.';
+    status = 'Refreshing pending funding requests.';
     errorMessage = '';
-    await reconcilePendingTopups();
+    await reconcilePendingFundings();
   }
 
-  async function reconcilePendingTopups() {
+  async function reconcilePendingFundings() {
     if (!currentUser || !runtime || runtimeEditionMismatch) return;
 
-    const trackedTopups = listPendingTopups(currentUser.pubkey);
-    if (!trackedTopups.length) return;
+    const trackedFundings = listPendingFundings(currentUser.pubkey);
+    if (!trackedFundings.length) return;
 
     let walletNeedsRefresh = false;
 
-    for (const trackedTopup of trackedTopups) {
+    for (const trackedFunding of trackedFundings) {
       try {
-        if (trackedTopup.rail === 'lightning') {
-          let recoveredQuoteId = trackedTopup.topupId;
-          if (trackedTopup.requestId && !trackedTopup.topupId) {
-            const quote = await recoverLightningQuote(trackedTopup);
+        if (trackedFunding.rail === 'lightning') {
+          let recoveredQuoteId = trackedFunding.fundingId;
+          if (trackedFunding.requestId && !trackedFunding.fundingId) {
+            const quote = await recoverLightningQuote(trackedFunding);
             if (!quote) {
               continue;
             }
 
-            patchPendingTopup(trackedTopup.id, {
-              topupId: quote.quote,
+            patchPendingFunding(trackedFunding.id, {
+              fundingId: quote.quote,
               status: quote.state === 'UNPAID' ? 'invoice_pending' : quote.state.toLowerCase(),
               invoice: quote.request
             });
@@ -658,27 +661,27 @@
           const quote = await checkUsdLightningMintQuote(proofMintUrl(), quoteId);
 
           if (quote.state === 'UNPAID') {
-            patchPendingTopup(trackedTopup.id, {
+            patchPendingFunding(trackedFunding.id, {
               status: 'invoice_pending',
               invoice: quote.request
             });
-            if (!trackedTopup.pendingNotified) {
-              status = `Recovered pending ${topupLabel(trackedTopup.rail).toLowerCase()} for ${formatUsdMinor(trackedTopup.amountMinor)}.`;
-              markPendingTopupNotified(trackedTopup.id);
+            if (!trackedFunding.pendingNotified) {
+              status = `Recovered pending ${fundingLabel(trackedFunding.rail).toLowerCase()} for ${formatUsdMinor(trackedFunding.amountMinor)}.`;
+              markPendingFundingNotified(trackedFunding.id);
             }
             continue;
           }
 
           if (quote.state === 'PAID') {
-            patchPendingTopup(trackedTopup.id, {
+            patchPendingFunding(trackedFunding.id, {
               status: 'paid',
               invoice: quote.request
             });
             const preparation =
-              trackedTopup.mintPreparation ??
+              trackedFunding.mintPreparation ??
               (await prepareUsdLightningMint(proofMintUrl(), quote.amount));
-            if (!trackedTopup.mintPreparation) {
-              attachPendingTopupMintPreparation(trackedTopup.id, preparation);
+            if (!trackedFunding.mintPreparation) {
+              attachPendingFundingMintPreparation(trackedFunding.id, preparation);
             }
 
             const minted = await mintUsdLightningQuote(
@@ -687,163 +690,163 @@
               quote.amount,
               preparation
             );
-            recordTopupHistory({
-              id: trackedTopup.id,
-              topupId: quote.quote,
-              pubkey: trackedTopup.pubkey,
+            recordFundingHistory({
+              id: trackedFunding.id,
+              fundingId: quote.quote,
+              pubkey: trackedFunding.pubkey,
               amountMinor: quote.amount,
-              rail: trackedTopup.rail,
+              rail: trackedFunding.rail,
               status: 'complete',
               invoice: quote.request,
-              createdAt: trackedTopup.createdAt
+              createdAt: trackedFunding.createdAt
             });
-            clearPendingTopup(trackedTopup.id);
+            clearPendingFunding(trackedFunding.id);
             walletNeedsRefresh = true;
-            applyIssuedProofs(minted.proofs, 'Recovered Lightning top-up');
+            applyIssuedProofs(minted.proofs, 'Recovered Lightning funding');
             continue;
           }
 
           if (quote.state === 'ISSUED') {
-            if (!trackedTopup.mintPreparation) {
-              recordTopupHistory({
-                id: trackedTopup.id,
-                topupId: quote.quote,
-                pubkey: trackedTopup.pubkey,
+            if (!trackedFunding.mintPreparation) {
+              recordFundingHistory({
+                id: trackedFunding.id,
+                fundingId: quote.quote,
+                pubkey: trackedFunding.pubkey,
                 amountMinor: quote.amount,
-                rail: trackedTopup.rail,
+                rail: trackedFunding.rail,
                 status: 'complete',
                 invoice: quote.request,
-                createdAt: trackedTopup.createdAt
+                createdAt: trackedFunding.createdAt
               });
-              clearPendingTopup(trackedTopup.id);
+              clearPendingFunding(trackedFunding.id);
               walletNeedsRefresh = true;
-              status = `Recovered issued Lightning top-up for ${formatUsdMinor(trackedTopup.amountMinor)}, but this browser no longer has the local mint recovery data.`;
+              status = `Recovered issued Lightning funding for ${formatUsdMinor(trackedFunding.amountMinor)}, but this browser no longer has the local mint recovery data.`;
               continue;
             }
 
             const proofs = await restoreUsdLightningQuote(
               proofMintUrl(),
-              trackedTopup.mintPreparation
+              trackedFunding.mintPreparation
             );
-            recordTopupHistory({
-              id: trackedTopup.id,
-              topupId: quote.quote,
-              pubkey: trackedTopup.pubkey,
+            recordFundingHistory({
+              id: trackedFunding.id,
+              fundingId: quote.quote,
+              pubkey: trackedFunding.pubkey,
               amountMinor: quote.amount,
-              rail: trackedTopup.rail,
+              rail: trackedFunding.rail,
               status: 'complete',
               invoice: quote.request,
-              createdAt: trackedTopup.createdAt
+              createdAt: trackedFunding.createdAt
             });
-            clearPendingTopup(trackedTopup.id);
+            clearPendingFunding(trackedFunding.id);
             walletNeedsRefresh = true;
-            applyIssuedProofs(proofs, 'Recovered Lightning top-up');
+            applyIssuedProofs(proofs, 'Recovered Lightning funding');
             continue;
           }
         }
 
-        let topup: ProductWalletTopup | null = null;
+        let funding: ProductPortfolioFunding | null = null;
 
-        if (trackedTopup.requestId && !trackedTopup.topupId) {
-          const requestResponse = await fetchWalletTopupRequestStatus(trackedTopup.requestId);
-          const requestStatus = await parseJson<ProductWalletTopupRequestStatus>(
+        if (trackedFunding.requestId && !trackedFunding.fundingId) {
+          const requestResponse = await fetchPortfolioFundingRequestStatus(trackedFunding.requestId);
+          const requestStatus = await parseJson<ProductPortfolioFundingRequestStatus>(
             requestResponse,
-            `Failed to recover the ${topupLabel(trackedTopup.rail).toLowerCase()} status.`
+            `Failed to recover the ${fundingLabel(trackedFunding.rail).toLowerCase()} status.`
           );
 
           if (requestStatus.status === 'pending') {
-            if (!trackedTopup.pendingNotified) {
-              status = `Recovered pending ${topupLabel(trackedTopup.rail).toLowerCase()} for ${formatUsdMinor(trackedTopup.amountMinor)}.`;
-              markPendingTopupNotified(trackedTopup.id);
+            if (!trackedFunding.pendingNotified) {
+              status = `Recovered pending ${fundingLabel(trackedFunding.rail).toLowerCase()} for ${formatUsdMinor(trackedFunding.amountMinor)}.`;
+              markPendingFundingNotified(trackedFunding.id);
             }
             continue;
           }
 
           if (requestStatus.status === 'failed') {
-            recordTopupHistory({
-              id: trackedTopup.id,
-              topupId: trackedTopup.topupId,
-              pubkey: trackedTopup.pubkey,
-              amountMinor: trackedTopup.amountMinor,
-              rail: trackedTopup.rail,
+            recordFundingHistory({
+              id: trackedFunding.id,
+              fundingId: trackedFunding.fundingId,
+              pubkey: trackedFunding.pubkey,
+              amountMinor: trackedFunding.amountMinor,
+              rail: trackedFunding.rail,
               status: 'failed',
-              createdAt: trackedTopup.createdAt
+              createdAt: trackedFunding.createdAt
             });
-            clearPendingTopup(trackedTopup.id);
+            clearPendingFunding(trackedFunding.id);
             refreshLocalFundingState();
             errorMessage =
-              requestStatus.error || `${topupLabel(trackedTopup.rail)} creation failed.`;
+              requestStatus.error || `${fundingLabel(trackedFunding.rail)} creation failed.`;
             continue;
           }
 
-          topup = requestStatus.topup || null;
-          if (topup?.id) {
-            patchPendingTopup(trackedTopup.id, {
-              topupId: topup.id,
-              status: topup.status,
-              invoice: topup.invoice ?? undefined,
-              paymentHash: topup.payment_hash ?? undefined,
-              checkoutUrl: topup.checkout_url ?? undefined,
-              checkoutSessionId: topup.checkout_session_id ?? undefined,
-              checkoutExpiresAt: topup.checkout_expires_at ?? undefined
+          funding = requestStatus.funding || null;
+          if (funding?.id) {
+            patchPendingFunding(trackedFunding.id, {
+              fundingId: funding.id,
+              status: funding.status,
+              invoice: funding.invoice ?? undefined,
+              paymentHash: funding.payment_hash ?? undefined,
+              checkoutUrl: funding.checkout_url ?? undefined,
+              checkoutSessionId: funding.checkout_session_id ?? undefined,
+              checkoutExpiresAt: funding.checkout_expires_at ?? undefined
             });
           }
         }
 
-        if (!topup) {
-          const topupId = trackedTopup.topupId ?? trackedTopup.id;
-          const response = await fetchWalletTopupStatus(topupId);
-          topup = await parseJson<ProductWalletTopup>(
+        if (!funding) {
+          const fundingId = trackedFunding.fundingId ?? trackedFunding.id;
+          const response = await fetchPortfolioFundingStatus(fundingId);
+          funding = await parseJson<ProductPortfolioFunding>(
             response,
-            `Failed to recover the ${topupLabel(trackedTopup.rail).toLowerCase()} status.`
+            `Failed to recover the ${fundingLabel(trackedFunding.rail).toLowerCase()} status.`
           );
         }
 
-        if (isPendingTopupStatus(topup.status)) {
-          patchPendingTopup(trackedTopup.id, {
-            topupId: topup.id,
-            status: topup.status,
-            invoice: topup.invoice ?? undefined,
-            paymentHash: topup.payment_hash ?? undefined,
-            checkoutUrl: topup.checkout_url ?? undefined,
-            checkoutSessionId: topup.checkout_session_id ?? undefined,
-            checkoutExpiresAt: topup.checkout_expires_at ?? undefined
+        if (isPendingFundingStatus(funding.status)) {
+          patchPendingFunding(trackedFunding.id, {
+            fundingId: funding.id,
+            status: funding.status,
+            invoice: funding.invoice ?? undefined,
+            paymentHash: funding.payment_hash ?? undefined,
+            checkoutUrl: funding.checkout_url ?? undefined,
+            checkoutSessionId: funding.checkout_session_id ?? undefined,
+            checkoutExpiresAt: funding.checkout_expires_at ?? undefined
           });
-          if (!trackedTopup.pendingNotified) {
-            status = `Recovered pending ${topupLabel(topup.rail).toLowerCase()} for ${formatUsdMinor(topup.amount_minor)}.`;
-            markPendingTopupNotified(trackedTopup.id);
+          if (!trackedFunding.pendingNotified) {
+            status = `Recovered pending ${fundingLabel(funding.rail).toLowerCase()} for ${formatUsdMinor(funding.amount_minor)}.`;
+            markPendingFundingNotified(trackedFunding.id);
           }
           continue;
         }
 
-        recordTopupHistory({
-          id: trackedTopup.id,
-          topupId: topup.id,
-          pubkey: trackedTopup.pubkey,
-          amountMinor: topup.amount_minor,
-          rail: trackedTopup.rail,
-          status: topup.status,
-          invoice: topup.invoice ?? undefined,
-          paymentHash: topup.payment_hash ?? undefined,
-          checkoutUrl: topup.checkout_url ?? undefined,
-          checkoutSessionId: topup.checkout_session_id ?? undefined,
-          checkoutExpiresAt: topup.checkout_expires_at ?? undefined,
-          createdAt: trackedTopup.createdAt
+        recordFundingHistory({
+          id: trackedFunding.id,
+          fundingId: funding.id,
+          pubkey: trackedFunding.pubkey,
+          amountMinor: funding.amount_minor,
+          rail: trackedFunding.rail,
+          status: funding.status,
+          invoice: funding.invoice ?? undefined,
+          paymentHash: funding.payment_hash ?? undefined,
+          checkoutUrl: funding.checkout_url ?? undefined,
+          checkoutSessionId: funding.checkout_session_id ?? undefined,
+          checkoutExpiresAt: funding.checkout_expires_at ?? undefined,
+          createdAt: trackedFunding.createdAt
         });
-        clearPendingTopup(trackedTopup.id);
+        clearPendingFunding(trackedFunding.id);
         walletNeedsRefresh = true;
 
-        if (topup.status === 'complete') {
-          status = `Recovered ${topupLabel(topup.rail).toLowerCase()} settlement for ${formatUsdMinor(topup.amount_minor)}. Browser-local proof claiming for this rail is not enabled yet.`;
+        if (funding.status === 'complete') {
+          status = `Recovered ${fundingLabel(funding.rail).toLowerCase()} settlement for ${formatUsdMinor(funding.amount_minor)}. Browser-local proof claiming for this rail is not enabled yet.`;
         } else {
           status =
-            topup.status === 'review_required'
-              ? `Recovered ${topupLabel(topup.rail).toLowerCase()} under review for ${formatUsdMinor(topup.amount_minor)}. No proofs were issued.`
-              : `Recovered ${topup.status.replace(/_/g, ' ')} ${topupLabel(topup.rail).toLowerCase()} for ${formatUsdMinor(topup.amount_minor)}.`;
+            funding.status === 'review_required'
+              ? `Recovered ${fundingLabel(funding.rail).toLowerCase()} under review for ${formatUsdMinor(funding.amount_minor)}. No proofs were issued.`
+              : `Recovered ${funding.status.replace(/_/g, ' ')} ${fundingLabel(funding.rail).toLowerCase()} for ${formatUsdMinor(funding.amount_minor)}.`;
         }
       } catch (error) {
-        console.error('pending_topup_reconcile_failed', trackedTopup, error);
-        // Keep tracked topups in storage until the status endpoint is reachable again.
+        console.error('pending_funding_reconcile_failed', trackedFunding, error);
+        // Keep tracked fundings in storage until the status endpoint is reachable again.
       }
     }
 
@@ -865,7 +868,7 @@
     if (!browser || !currentUser || !runtime) return;
     void (async () => {
       await refreshPortfolioView();
-      await reconcilePendingTopups();
+      await reconcilePendingFundings();
     })();
   });
 
@@ -873,7 +876,7 @@
     if (!browser || !currentUser || !runtime || runtimeEditionMismatch) return;
 
     const interval = window.setInterval(() => {
-      void reconcilePendingTopups();
+      void reconcilePendingFundings();
     }, 1000);
 
     return () => window.clearInterval(interval);
@@ -936,13 +939,13 @@
           <p class="muted">
             Fund browser-local USD proofs with Stripe or Lightning.
             {#if paperEdition}
-              In signet, funding still follows the normal pending-topup lifecycle. Limit {formatUsdMinor(signetTopupSingleLimitMinor)}
-              per top-up and {formatUsdMinor(signetTopupWindowLimitMinor)} per 24 hours.
+              In signet, funding still follows the normal pending-funding lifecycle. Limit {formatUsdMinor(signetFundingSingleLimitMinor)}
+              per funding request and {formatUsdMinor(signetFundingWindowLimitMinor)} per 24 hours.
             {/if}
           </p>
           {#if !runtimeNotice && runtime && !runtime.funding.lightning.available}
             <p class="muted">{railUnavailableMessage('lightning')}</p>
-          {:else if stripeTopupEnabled && runtime && !runtime.funding.stripe.available}
+          {:else if stripeFundingEnabled && runtime && !runtime.funding.stripe.available}
             <p class="muted">{railUnavailableMessage('stripe')}</p>
           {/if}
         </div>
@@ -959,10 +962,10 @@
             type="number"
           />
         </label>
-        {#if stripeTopupEnabled}
+        {#if stripeFundingEnabled}
           <button
             class="button-primary"
-            disabled={!stripeTopupAvailable}
+            disabled={!stripeFundingAvailable}
             onclick={createStripeCheckout}
             type="button"
           >
@@ -971,35 +974,35 @@
         {/if}
         <button
           class="button-secondary"
-          disabled={!lightningTopupAvailable}
-          onclick={createLightningTopup}
+          disabled={!lightningFundingAvailable}
+          onclick={createLightningFunding}
           type="button"
         >
           Create Lightning invoice
         </button>
       </div>
 
-      {#if pendingTopups.length}
+      {#if pendingFundings.length}
         <div class="history-list">
-          {#each pendingTopups as topup (topup.id)}
+          {#each pendingFundings as funding (funding.id)}
             <div class="history-row history-row-stack">
               <div class="history-copy">
-                <strong>{formatUsdMinor(topup.amount_minor)}</strong>
+                <strong>{formatUsdMinor(funding.amount_minor)}</strong>
                 <p class="muted">
-                  {topup.rail} · {topup.status}
+                  {funding.rail} · {funding.status}
                 </p>
-                {#if topup.invoice}
-                  <code>{topup.invoice}</code>
+                {#if funding.invoice}
+                  <code>{funding.invoice}</code>
                 {/if}
-                {#if topup.checkout_session_id}
-                  <p class="muted">Checkout session {topup.checkout_session_id}</p>
+                {#if funding.checkout_session_id}
+                  <p class="muted">Checkout session {funding.checkout_session_id}</p>
                 {/if}
               </div>
               <div class="proof-transfer-actions">
-                {#if topup.checkout_url}
-                  <a class="button-secondary" href={topup.checkout_url}>Open checkout</a>
+                {#if funding.checkout_url}
+                  <a class="button-secondary" href={funding.checkout_url}>Open checkout</a>
                 {/if}
-                <button class="button-secondary" onclick={refreshPendingTopups} type="button">
+                <button class="button-secondary" onclick={refreshPendingFundings} type="button">
                   Refresh status
                 </button>
               </div>
@@ -1007,7 +1010,7 @@
           {/each}
         </div>
       {:else}
-        <p class="muted">No pending top-ups.</p>
+        <p class="muted">No pending funding requests.</p>
       {/if}
     </section>
 
@@ -1125,9 +1128,9 @@
         </div>
       </div>
 
-      {#if topupHistory.length}
+      {#if fundingHistory.length}
         <div class="history-list">
-          {#each topupHistory as event (event.id)}
+          {#each fundingHistory as event (event.id)}
             <div class="history-row">
               <div>
                 <strong>{formatUsdMinor(event.amountMinor)}</strong>

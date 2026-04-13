@@ -227,7 +227,8 @@ pub struct PortfolioCommand {
 pub enum PortfolioSubcommand {
     Show,
     Faucet(PortfolioFaucetArgs),
-    Topup(PortfolioTopupCommand),
+    #[command(alias = "topup")]
+    Funding(PortfolioFundingCommand),
 }
 
 #[derive(Debug, Args)]
@@ -237,32 +238,32 @@ pub struct PortfolioFaucetArgs {
 }
 
 #[derive(Debug, Args)]
-pub struct PortfolioTopupCommand {
+pub struct PortfolioFundingCommand {
     #[command(subcommand)]
-    pub command: PortfolioTopupSubcommand,
+    pub command: PortfolioFundingSubcommand,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum PortfolioTopupSubcommand {
-    Lightning(PortfolioTopupLightningCommand),
+pub enum PortfolioFundingSubcommand {
+    Lightning(PortfolioLightningFundingCommand),
     Status(IdArg),
     RequestStatus(IdArg),
     Settle(IdArg),
 }
 
 #[derive(Debug, Args)]
-pub struct PortfolioTopupLightningCommand {
+pub struct PortfolioLightningFundingCommand {
     #[command(subcommand)]
-    pub command: PortfolioTopupLightningSubcommand,
+    pub command: PortfolioLightningFundingSubcommand,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum PortfolioTopupLightningSubcommand {
-    Quote(PortfolioTopupLightningQuoteArgs),
+pub enum PortfolioLightningFundingSubcommand {
+    Quote(PortfolioLightningFundingQuoteArgs),
 }
 
 #[derive(Debug, Args)]
-pub struct PortfolioTopupLightningQuoteArgs {
+pub struct PortfolioLightningFundingQuoteArgs {
     #[arg(long = "amount-minor")]
     pub amount_minor: u64,
     #[arg(long = "request-id")]

@@ -2,10 +2,10 @@ import { storageKey } from '$lib/cascade/config';
 import type { ProductProof } from '$lib/cascade/api';
 import type { PendingOutputPreparation } from '$lib/wallet/cashuMint';
 
-export type PendingTopupRecord = {
+export type PendingFundingRecord = {
   id: string;
   requestId?: string;
-  topupId?: string;
+  fundingId?: string;
   pubkey: string;
   amountMinor: number;
   rail: 'lightning' | 'stripe';
@@ -24,9 +24,9 @@ export type PendingTopupRecord = {
   createdAt: number;
 };
 
-export type LocalTopupHistoryRecord = {
+export type LocalFundingHistoryRecord = {
   id: string;
-  topupId?: string;
+  fundingId?: string;
   pubkey: string;
   amountMinor: number;
   rail: 'lightning' | 'stripe';
@@ -56,12 +56,12 @@ type TradeReceiptRecord = {
   createdAt: number;
 };
 
-const PENDING_TOPUPS_KEY = storageKey('cascade_pending_topups');
+const PENDING_FUNDINGS_KEY = storageKey('cascade_pending_fundings');
 const TRADE_RECEIPTS_KEY = storageKey('cascade_trade_receipts');
-const TOPUP_HISTORY_KEY = storageKey('cascade_topup_history');
-const MAX_PENDING_TOPUPS = 32;
+const FUNDING_HISTORY_KEY = storageKey('cascade_funding_history');
+const MAX_PENDING_FUNDINGS = 32;
 const MAX_TRADE_RECEIPTS = 32;
-const MAX_TOPUP_HISTORY = 64;
+const MAX_FUNDING_HISTORY = 64;
 
 function loadRecords<T>(key: string): T[] {
   try {
@@ -81,8 +81,8 @@ function saveRecords<T>(key: string, records: T[]): void {
   }
 }
 
-export function trackPendingTopup(entry: Omit<PendingTopupRecord, 'pendingNotified' | 'createdAt'>): void {
-  const records = loadRecords<PendingTopupRecord>(PENDING_TOPUPS_KEY).filter(
+export function trackPendingFunding(entry: Omit<PendingFundingRecord, 'pendingNotified' | 'createdAt'>): void {
+  const records = loadRecords<PendingFundingRecord>(PENDING_FUNDINGS_KEY).filter(
     (record) => record.id !== entry.id
   );
 
@@ -92,36 +92,36 @@ export function trackPendingTopup(entry: Omit<PendingTopupRecord, 'pendingNotifi
     createdAt: Date.now()
   });
 
-  if (records.length > MAX_PENDING_TOPUPS) records.splice(MAX_PENDING_TOPUPS);
-  saveRecords(PENDING_TOPUPS_KEY, records);
+  if (records.length > MAX_PENDING_FUNDINGS) records.splice(MAX_PENDING_FUNDINGS);
+  saveRecords(PENDING_FUNDINGS_KEY, records);
 }
 
-export function listPendingTopups(pubkey: string): PendingTopupRecord[] {
-  return loadRecords<PendingTopupRecord>(PENDING_TOPUPS_KEY).filter((record) => record.pubkey === pubkey);
+export function listPendingFundings(pubkey: string): PendingFundingRecord[] {
+  return loadRecords<PendingFundingRecord>(PENDING_FUNDINGS_KEY).filter((record) => record.pubkey === pubkey);
 }
 
-export function markPendingTopupNotified(id: string): void {
-  const records = loadRecords<PendingTopupRecord>(PENDING_TOPUPS_KEY);
+export function markPendingFundingNotified(id: string): void {
+  const records = loadRecords<PendingFundingRecord>(PENDING_FUNDINGS_KEY);
   const index = records.findIndex((record) => record.id === id);
   if (index === -1) return;
   records[index] = { ...records[index], pendingNotified: true };
-  saveRecords(PENDING_TOPUPS_KEY, records);
+  saveRecords(PENDING_FUNDINGS_KEY, records);
 }
 
-export function attachPendingTopupId(id: string, topupId: string): void {
-  const records = loadRecords<PendingTopupRecord>(PENDING_TOPUPS_KEY);
+export function attachPendingFundingId(id: string, fundingId: string): void {
+  const records = loadRecords<PendingFundingRecord>(PENDING_FUNDINGS_KEY);
   const index = records.findIndex((record) => record.id === id);
   if (index === -1) return;
-  records[index] = { ...records[index], topupId };
-  saveRecords(PENDING_TOPUPS_KEY, records);
+  records[index] = { ...records[index], fundingId };
+  saveRecords(PENDING_FUNDINGS_KEY, records);
 }
 
-export function patchPendingTopup(
+export function patchPendingFunding(
   id: string,
   patch: Partial<
     Pick<
-      PendingTopupRecord,
-      | 'topupId'
+      PendingFundingRecord,
+      | 'fundingId'
       | 'status'
       | 'invoice'
       | 'paymentHash'
@@ -131,35 +131,35 @@ export function patchPendingTopup(
     >
   >
 ): void {
-  const records = loadRecords<PendingTopupRecord>(PENDING_TOPUPS_KEY);
+  const records = loadRecords<PendingFundingRecord>(PENDING_FUNDINGS_KEY);
   const index = records.findIndex((record) => record.id === id);
   if (index === -1) return;
   records[index] = { ...records[index], ...patch };
-  saveRecords(PENDING_TOPUPS_KEY, records);
+  saveRecords(PENDING_FUNDINGS_KEY, records);
 }
 
-export function attachPendingTopupMintPreparation(
+export function attachPendingFundingMintPreparation(
   id: string,
-  preparation: NonNullable<PendingTopupRecord['mintPreparation']>
+  preparation: NonNullable<PendingFundingRecord['mintPreparation']>
 ): void {
-  const records = loadRecords<PendingTopupRecord>(PENDING_TOPUPS_KEY);
+  const records = loadRecords<PendingFundingRecord>(PENDING_FUNDINGS_KEY);
   const index = records.findIndex((record) => record.id === id);
   if (index === -1) return;
   records[index] = { ...records[index], mintPreparation: preparation };
-  saveRecords(PENDING_TOPUPS_KEY, records);
+  saveRecords(PENDING_FUNDINGS_KEY, records);
 }
 
-export function clearPendingTopup(id: string): void {
-  const records = loadRecords<PendingTopupRecord>(PENDING_TOPUPS_KEY).filter(
+export function clearPendingFunding(id: string): void {
+  const records = loadRecords<PendingFundingRecord>(PENDING_FUNDINGS_KEY).filter(
     (record) => record.id !== id
   );
-  saveRecords(PENDING_TOPUPS_KEY, records);
+  saveRecords(PENDING_FUNDINGS_KEY, records);
 }
 
-export function recordTopupHistory(
-  entry: Omit<LocalTopupHistoryRecord, 'updatedAt'>
+export function recordFundingHistory(
+  entry: Omit<LocalFundingHistoryRecord, 'updatedAt'>
 ): void {
-  const records = loadRecords<LocalTopupHistoryRecord>(TOPUP_HISTORY_KEY).filter(
+  const records = loadRecords<LocalFundingHistoryRecord>(FUNDING_HISTORY_KEY).filter(
     (record) => record.id !== entry.id
   );
 
@@ -168,12 +168,12 @@ export function recordTopupHistory(
     updatedAt: Date.now()
   });
 
-  if (records.length > MAX_TOPUP_HISTORY) records.splice(MAX_TOPUP_HISTORY);
-  saveRecords(TOPUP_HISTORY_KEY, records);
+  if (records.length > MAX_FUNDING_HISTORY) records.splice(MAX_FUNDING_HISTORY);
+  saveRecords(FUNDING_HISTORY_KEY, records);
 }
 
-export function listTopupHistory(pubkey: string): LocalTopupHistoryRecord[] {
-  return loadRecords<LocalTopupHistoryRecord>(TOPUP_HISTORY_KEY).filter(
+export function listFundingHistory(pubkey: string): LocalFundingHistoryRecord[] {
+  return loadRecords<LocalFundingHistoryRecord>(FUNDING_HISTORY_KEY).filter(
     (record) => record.pubkey === pubkey
   );
 }

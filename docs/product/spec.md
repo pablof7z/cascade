@@ -47,7 +47,7 @@ For launch, `web/` is scoped to the public market product, the account layer, an
 - Discovery and search may use API-backed projections over relay data
 - User-facing UI should not expose Nostr jargon
 - User-facing portfolio and trading surfaces should be dollar-denominated
-- Stripe and Lightning are the launch portfolio top-up rails
+- Stripe and Lightning are the launch portfolio funding rails
 - Lightning may exist as hidden settlement infrastructure, but it is not normal product language
 - The product has separate paper-trading and mainnet editions, and they must not mix proofs or public discovery
 - Signet and mainnet use the same browser-local proof custody and proof-based trade mechanics
@@ -309,7 +309,7 @@ It should show:
 - Position-level averages and current prices
 - Exited-position history
 
-In signet, the add-funds surface should stay on the normal top-up rails and API shapes. The difference is that signet uses valueless test infrastructure, not that the locked quote completes immediately without payment.
+In signet, the add-funds surface should stay on the normal funding rails and API shapes. The difference is that signet uses valueless test infrastructure, not that the locked mint quote completes immediately without payment.
 
 Lightning funding should stay on the standard Cashu path:
 
@@ -390,7 +390,7 @@ Cascade must expose a full machine-friendly interface for agents. This is a prod
 That interface should provide:
 
 - public read APIs for market discovery, market detail, price history, discussion, activity, leaderboard, analytics, and public profiles
-- authenticated APIs for market creation, portfolio top-up, buy/sell execution, bookmarks, discussion posting, and follow actions
+- authenticated APIs for market creation, portfolio funding, buy/sell execution, bookmarks, discussion posting, and follow actions
 - NIP-98 authentication on authenticated endpoints
 - structured JSON responses suitable for agents; HTML scraping is not the intended interface
 - discovery and search APIs that can project over relay data

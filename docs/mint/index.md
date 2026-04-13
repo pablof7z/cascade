@@ -4,7 +4,7 @@ This directory is the canonical documentation set for the Cascade mint layer.
 
 The mint layer is the financial core of the product. It is a custom CDK Rust Cashu system with two logical roles:
 
-- a **wallet mint** that issues USD-denominated ecash and accepts Stripe and Lightning-funded top-ups
+- a **wallet mint** that issues USD-denominated ecash and accepts Stripe and Lightning funding
 - a **market mint** that prices LONG and SHORT market tokens with LMSR, tracks per-market state, settles buys and sells, and publishes mint-authored kind `983` trade events
 
 The user-facing product is dollar-denominated. Lightning may still exist behind the scenes as the settlement rail between the wallet mint and the market mint, but it is not the normal product language.

@@ -286,14 +286,14 @@ pub struct MintBolt11Response {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ProductStripeTopupRequest {
+pub struct ProductStripeFundingRequest {
     pub pubkey: String,
     pub amount_minor: u64,
     pub request_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct ProductWalletTopupResponse {
+pub struct ProductPortfolioFundingResponse {
     pub id: String,
     pub rail: String,
     pub amount_minor: u64,
@@ -326,13 +326,13 @@ pub struct ProductWalletTopupResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ProductWalletTopupRequestStatusResponse {
+pub struct ProductPortfolioFundingRequestStatusResponse {
     pub request_id: String,
     pub rail: String,
     pub amount_minor: u64,
     pub status: String,
     pub error: Option<String>,
-    pub topup: Option<ProductWalletTopupResponse>,
+    pub funding: Option<ProductPortfolioFundingResponse>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

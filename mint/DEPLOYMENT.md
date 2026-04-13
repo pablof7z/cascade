@@ -6,7 +6,7 @@ This document describes how to run the Cascade mint layer in a production-friend
 
 Cascade is not a generic Cashu deployment. The target architecture has two logical mint roles:
 
-- a **wallet mint** that issues USD ecash and accepts Stripe and Lightning-funded top-ups
+- a **wallet mint** that issues USD ecash and accepts Stripe and Lightning funding
 - a **market mint** that executes LMSR trades and issues LONG/SHORT market tokens
 
 The current codebase is still migrating toward that full target. Use this file together with:
@@ -33,7 +33,7 @@ On macOS the current process supervisor is `launchd`. On Linux, the equivalent s
 ```text
 Caddy / TLS
   -> Cascade product API / coordinator
-  -> wallet mint (USD, Stripe + Lightning top-ups)
+  -> wallet mint (USD, Stripe + Lightning funding)
   -> market mint (LMSR, LONG/SHORT keysets)
   -> FX quote source
   -> SQLite
@@ -170,8 +170,8 @@ Persist at least:
 - trade history
 - payment quote state
 - FX quote state
-- Stripe top-up state once the gateway lands
-- Lightning top-up quote state
+- Stripe funding state once the gateway lands
+- Lightning funding quote state
 
 Back up the database and seed material before upgrades.
 
@@ -225,8 +225,8 @@ curl -sS https://mint.f7z.io/<event_id>/v1/keys
 As the wallet mint lands, also verify:
 
 - Stripe webhook delivery
-- Lightning top-up creation and completion
-- wallet top-up creation and completion
+- Lightning funding creation and completion
+- wallet funding creation and completion
 - buy flow from USD wallet value into market tokens
 - sell flow from market tokens back into USD wallet value
 - signet paper-funding path
@@ -243,8 +243,8 @@ The returned runtime manifest should report the actual backend edition and fundi
 
 ## Operational Notes
 
-- Card payments are reversible; bearer ecash is not. Add explicit top-up risk controls.
-- The signet faucet should stay capped. Current policy is `100.00 USD` max per top-up and `250.00 USD` max per pubkey over a rolling 24 hour window.
+- Card payments are reversible; bearer ecash is not. Add explicit funding risk controls.
+- The signet faucet should stay capped. Current policy is `100.00 USD` max per funding request and `250.00 USD` max per pubkey over a rolling 24 hour window.
 - Do not expose sats or Lightning concepts in the normal product UI.
 - Treat the older sat-oriented route set as migration debt, not the final deployment contract.
 

@@ -17,7 +17,7 @@
 There is no order book. There is no counterparty. Trading is against the **LMSR** (Logarithmic Market Scoring Rule) — an automated market maker built into the mint.
 
 **To fund your wallet:**
-- You buy USD ecash through Cascade's Stripe gateway or a Lightning top-up flow
+- You buy USD ecash through Cascade's Stripe gateway or a Lightning funding flow
 - The wallet mint issues you dollar-denominated Cashu ecash
 
 **To take a position:**

@@ -99,10 +99,10 @@ trade
 portfolio
   show
   faucet
-  topup lightning quote
-  topup status <topup-id>
-  topup request-status <request-id>
-  topup settle <topup-id>
+  funding lightning quote
+  funding status <funding-id>
+  funding request-status <request-id>
+  funding settle <funding-id>
 
 proofs
   list
@@ -344,7 +344,7 @@ cascade portfolio show
 Returns:
 
 - current local `usd` balance
-- pending top-ups
+- pending funding requests
 - locally derived open positions from market-proof holdings
 - public mark value for those positions
 - any compatibility activity data the product API still exposes
@@ -357,37 +357,37 @@ cascade portfolio faucet --amount-minor <u64>
 
 Signet only. This mints local paper-trading USD proofs and stores them in the `usd` bucket.
 
-### `cascade portfolio topup lightning quote`
+### `cascade portfolio funding lightning quote`
 
 ```text
-cascade portfolio topup lightning quote --amount-minor <u64> [--request-id <id>]
+cascade portfolio funding lightning quote --amount-minor <u64> [--request-id <id>]
 ```
 
 Creates a Lightning funding quote for a user-chosen USD amount.
 
-### `cascade portfolio topup status`
+### `cascade portfolio funding status`
 
 ```text
-cascade portfolio topup status <topup-id>
+cascade portfolio funding status <funding-id>
 ```
 
-### `cascade portfolio topup request-status`
+### `cascade portfolio funding request-status`
 
 ```text
-cascade portfolio topup request-status <request-id>
+cascade portfolio funding request-status <request-id>
 ```
 
-### `cascade portfolio topup settle`
+### `cascade portfolio funding settle`
 
 ```text
-cascade portfolio topup settle <topup-id>
+cascade portfolio funding settle <funding-id>
 ```
 
 Behavior:
 
 - Complete the funding flow when the underlying invoice has been paid.
 - Persist any issued `usd` proofs locally.
-- Return both the top-up payload and the updated portfolio summary.
+- Return both the funding payload and the updated portfolio summary.
 
 ## Proofs
 

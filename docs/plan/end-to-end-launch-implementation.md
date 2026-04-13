@@ -84,7 +84,7 @@ Launch should prefer a small number of deployable services with clear logical mo
 
 ### Optional Supporting Modules
 
-- `signet invoice-driven paper funding` on the same top-up lifecycle as mainnet
+- `signet invoice-driven paper funding` on the same funding lifecycle as mainnet
 - `USDC deposit module` later, as described in the addendum
 
 The preferred first implementation is one backend deployment with these modules, not separate network services for each concern.
@@ -162,8 +162,8 @@ The preferred first implementation is one backend deployment with these modules,
 ### Scope
 
 - persist market state fully
-- persist quote state, top-up state, trade state, and recovery state
-- support idempotent retries for top-ups and trades
+- persist quote state, funding state, trade state, and recovery state
+- support idempotent retries for funding and trades
 
 ### Deliverables
 
@@ -173,7 +173,7 @@ The preferred first implementation is one backend deployment with these modules,
 
 ### Success Gates
 
-- restart does not lose pending trade/top-up state
+- restart does not lose pending trade/funding state
 - a paid-but-not-redeemed flow can be recovered
 - duplicate webhook or client retry does not double-issue proofs
 
@@ -211,7 +211,7 @@ The preferred first implementation is one backend deployment with these modules,
 
 ### Success Gates
 
-- wallet top-ups and market buys can both consume locked FX quotes
+- wallet funding and market buys can both consume locked FX quotes
 - expired quotes are rejected predictably
 - provider outage degrades safely instead of silently using stale data
 
@@ -230,23 +230,23 @@ The preferred first implementation is one backend deployment with these modules,
 
 ### Scope
 
-- implement Stripe top-ups
-- implement Lightning top-ups
-- keep signet on the normal top-up paths and the same invoice lifecycle as mainnet
+- implement Stripe funding
+- implement Lightning funding
+- keep signet on the normal funding paths and the same invoice lifecycle as mainnet
 
 ### Deliverables
 
-- Stripe top-up initiation and webhook completion
-- Lightning top-up quote and mint flow on standard Cashu NUT-23 endpoints
-- signet top-up settlement that ends in edition-local Cashu proofs, not a pubkey-keyed server wallet ledger
-- one rail-agnostic top-up recovery model shared by Stripe and Lightning
+- Stripe funding initiation and webhook completion
+- Lightning mint-quote and mint flow on standard Cashu NUT-23 endpoints backed by real CDK mint quote state
+- signet funding settlement that ends in edition-local Cashu proofs, not a pubkey-keyed server wallet ledger
+- one rail-agnostic funding recovery model shared by Stripe and Lightning
 - runtime manifest and request-edition guard so the frontend cannot create a signet invoice from a mainnet surface
 
 ### Signet Recommendation
 
 Paper trading should not require real card rails. The signet edition should expose:
 
-- signet top-up quotes on the same rails and API shapes as mainnet
+- signet funding quotes on the same rails and API shapes as mainnet
 - signet quote settlement after actual payment on signet-value rails instead of a separate faucet concept
 
 Those signet-only rails should still feed the same wallet model as mainnet:
@@ -261,6 +261,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 
 - a user with `$0` can fund the portfolio in signet without real money
 - the Lightning portfolio rail works through `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`
+- the Lightning portfolio rail does not hide a bespoke server-side proof-issuance path behind those standard endpoints
 - browser-local recovery can restore a paid Lightning quote after refresh without a server-held proof copy
 - the backend does not maintain a pubkey-keyed current portfolio ledger in either edition
 - a user with `$0` can fund the portfolio in mainnet through Stripe or Lightning
@@ -329,7 +330,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 - `POST /api/trades/buy`
 - `POST /api/trades/sell/quote`
 - `POST /api/trades/sell`
-- top-up status routes
+- funding-status routes
 - pending market read route for creator flows
 
 ### Success Gates
@@ -346,7 +347,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 ### Best Practices
 
 - treat create-and-seed as one saga with resumable checkpoints
-- keep quote IDs, trade IDs, and top-up IDs stable and externally visible
+- keep quote IDs, trade IDs, and funding IDs stable and externally visible
 - make status endpoints the recovery contract
 
 ## Milestone 7: Discovery, Projection, And Read APIs
@@ -392,7 +393,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 
 ### Deliverables
 
-- portfolio top-ups in the active app
+- portfolio funding in the active app
 - buy/sell flows in USD
 - creator builder flow with pending visibility and resume
 - portfolio and activity views wired to real data
@@ -436,14 +437,14 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 ### Success Gates
 
 - all eight steps work without manual DB edits
-- restart recovery works for at least one interrupted top-up and one interrupted trade
+- restart recovery works for at least one interrupted funding flow and one interrupted trade
 - no mainnet systems are touched during signet testing
 
 ### Failure Gates
 
 - paper trading requires hidden operator intervention
 - edition boundaries are not operationally enforced
-- proof portability or top-up flows are not recoverable after restart
+- proof portability or funding flows are not recoverable after restart
 
 ## Milestone 10: Mainnet Launch Gate
 

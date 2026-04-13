@@ -94,8 +94,11 @@ pub struct StripeSettings {
     pub checkout_expiry_seconds: u64,
     #[serde(default = "default_stripe_product_name")]
     pub product_name: String,
-    #[serde(default = "default_stripe_max_topup_minor")]
-    pub max_topup_minor: u64,
+    #[serde(
+        default = "default_stripe_max_funding_minor",
+        alias = "max_topup_minor"
+    )]
+    pub max_funding_minor: u64,
     #[serde(default = "default_stripe_window_limit_minor")]
     pub window_limit_minor: u64,
     #[serde(default = "default_stripe_window_seconds")]
@@ -142,10 +145,10 @@ fn default_stripe_checkout_expiry_seconds() -> u64 {
 }
 
 fn default_stripe_product_name() -> String {
-    "Cascade Portfolio Top-up".to_string()
+    "Cascade Portfolio Funding".to_string()
 }
 
-fn default_stripe_max_topup_minor() -> u64 {
+fn default_stripe_max_funding_minor() -> u64 {
     10_000
 }
 
@@ -245,10 +248,14 @@ impl MintConfig {
         if let Ok(product_name) = std::env::var("STRIPE_PRODUCT_NAME") {
             config.stripe.product_name = product_name;
         }
-        if let Ok(max_topup_minor) = std::env::var("STRIPE_MAX_TOPUP_MINOR") {
-            config.stripe.max_topup_minor = max_topup_minor
+        if let Ok(max_funding_minor) = std::env::var("STRIPE_MAX_FUNDING_MINOR") {
+            config.stripe.max_funding_minor = max_funding_minor
                 .parse()
-                .unwrap_or(config.stripe.max_topup_minor);
+                .unwrap_or(config.stripe.max_funding_minor);
+        } else if let Ok(max_topup_minor) = std::env::var("STRIPE_MAX_TOPUP_MINOR") {
+            config.stripe.max_funding_minor = max_topup_minor
+                .parse()
+                .unwrap_or(config.stripe.max_funding_minor);
         }
         if let Ok(window_limit_minor) = std::env::var("STRIPE_WINDOW_LIMIT_MINOR") {
             config.stripe.window_limit_minor = window_limit_minor
@@ -311,9 +318,9 @@ impl MintConfig {
             );
         }
         if self.stripe.is_enabled() {
-            if self.stripe.max_topup_minor == 0 || self.stripe.window_limit_minor == 0 {
+            if self.stripe.max_funding_minor == 0 || self.stripe.window_limit_minor == 0 {
                 anyhow::bail!(
-                    "stripe.max_topup_minor and stripe.window_limit_minor must be greater than zero"
+                    "stripe.max_funding_minor and stripe.window_limit_minor must be greater than zero"
                 );
             }
             if self.stripe.window_seconds <= 0 {
@@ -389,7 +396,7 @@ impl Default for StripeSettings {
             base_url: default_stripe_base_url(),
             checkout_expiry_seconds: default_stripe_checkout_expiry_seconds(),
             product_name: default_stripe_product_name(),
-            max_topup_minor: default_stripe_max_topup_minor(),
+            max_funding_minor: default_stripe_max_funding_minor(),
             window_limit_minor: default_stripe_window_limit_minor(),
             window_seconds: default_stripe_window_seconds(),
             allowed_risk_levels: default_stripe_allowed_risk_levels(),

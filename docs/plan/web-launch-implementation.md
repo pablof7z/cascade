@@ -34,7 +34,7 @@ Launch means:
 - discovery and search are API-backed projections over real event data
 - portfolio proofs remain self-custodied by the user or agent
 - portfolio and trading surfaces are dollar-denominated
-- portfolio top-ups run through Stripe and Lightning
+- portfolio funding runs through Stripe and Lightning
 - signet and mainnet are separate frontend editions with separate proof namespaces and environment labeling
 - both editions use the same browser-local proof storage implementation; NIP-60 is deferred
 - template/demo routes that are not part of Cascade are removed, redirected, or repurposed
@@ -453,8 +453,8 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Balance display exists in USD.
 - [ ] Add-funds flow exists.
 - [ ] Add-funds flow offers Stripe and Lightning.
-- [ ] Signet funding uses the normal top-up rails and the same invoice lifecycle in the same edition-local proof model rather than introducing a separate "paper wallet" account system.
-- [ ] Stripe and Lightning top-ups share one browser-local recovery surface, even though Lightning uses the standard Cashu mint flow and Stripe uses a persisted product saga.
+- [ ] Signet funding uses the normal funding rails and the same invoice lifecycle in the same edition-local proof model rather than introducing a separate "paper wallet" account system.
+- [ ] Stripe and Lightning funding share one browser-local recovery surface, even though Lightning uses the standard Cashu mint flow and Stripe uses a persisted product saga.
 - [ ] Add-funds pending, paid, and minted states exist.
 - [ ] Lightning funding uses `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`.
 - [ ] If the initial Lightning quote response is lost, the browser retries `POST /v1/mint/quote/bolt11` with the same client `request_id` until the mint replays the same quote.

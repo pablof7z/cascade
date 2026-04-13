@@ -56,7 +56,7 @@ pub struct WalletFundingEvent {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum WalletTopupStatus {
+pub enum WalletFundingStatus {
     InvoicePending,
     Paid,
     Complete,
@@ -65,7 +65,7 @@ pub enum WalletTopupStatus {
     Cancelled,
 }
 
-impl std::fmt::Display for WalletTopupStatus {
+impl std::fmt::Display for WalletFundingStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvoicePending => write!(f, "invoice_pending"),
@@ -78,7 +78,7 @@ impl std::fmt::Display for WalletTopupStatus {
     }
 }
 
-impl std::str::FromStr for WalletTopupStatus {
+impl std::str::FromStr for WalletFundingStatus {
     type Err = String;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
@@ -89,7 +89,7 @@ impl std::str::FromStr for WalletTopupStatus {
             "review_required" => Ok(Self::ReviewRequired),
             "expired" => Ok(Self::Expired),
             "cancelled" => Ok(Self::Cancelled),
-            _ => Err(format!("Invalid wallet topup status: {value}")),
+            _ => Err(format!("Invalid wallet funding status: {value}")),
         }
     }
 }
@@ -115,13 +115,13 @@ pub struct FxQuoteSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WalletTopupQuote {
+pub struct WalletFundingQuote {
     pub id: String,
     pub pubkey: String,
     pub rail: String,
     pub amount_minor: u64,
     pub amount_msat: u64,
-    pub status: WalletTopupStatus,
+    pub status: WalletFundingStatus,
     pub invoice: Option<String>,
     pub payment_hash: Option<String>,
     pub fx_quote_id: String,
@@ -135,13 +135,13 @@ pub struct WalletTopupQuote {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum WalletTopupRequestStatus {
+pub enum WalletFundingRequestStatus {
     Pending,
     Complete,
     Failed,
 }
 
-impl std::fmt::Display for WalletTopupRequestStatus {
+impl std::fmt::Display for WalletFundingRequestStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Pending => write!(f, "pending"),
@@ -151,7 +151,7 @@ impl std::fmt::Display for WalletTopupRequestStatus {
     }
 }
 
-impl std::str::FromStr for WalletTopupRequestStatus {
+impl std::str::FromStr for WalletFundingRequestStatus {
     type Err = String;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
@@ -159,20 +159,20 @@ impl std::str::FromStr for WalletTopupRequestStatus {
             "pending" => Ok(Self::Pending),
             "complete" => Ok(Self::Complete),
             "failed" => Ok(Self::Failed),
-            _ => Err(format!("Invalid wallet topup request status: {value}")),
+            _ => Err(format!("Invalid wallet funding request status: {value}")),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WalletTopupRequest {
+pub struct WalletFundingRequest {
     pub request_id: String,
     pub pubkey: String,
     pub rail: String,
     pub amount_minor: u64,
-    pub status: WalletTopupRequestStatus,
+    pub status: WalletFundingRequestStatus,
     pub error_message: Option<String>,
-    pub topup_quote_id: Option<String>,
+    pub funding_quote_id: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
     pub completed_at: Option<i64>,

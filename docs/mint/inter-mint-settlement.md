@@ -32,8 +32,8 @@ The result is a two-quote model composed behind one product action.
 The wallet mint is the canonical USD cash layer.
 
 - issues USD ecash proofs
-- accepts Stripe top-ups
-- accepts Lightning-funded USD top-ups
+- accepts Stripe funding
+- accepts Lightning-funded USD mint quotes
 - melts USD proofs into BOLT11 invoices when paying the market mint
 
 ### Market Mint
@@ -53,7 +53,7 @@ The FX layer is external to LMSR.
 - quotes `USD <-> msat`
 - uses external market data and policy spread
 - returns executable quotes with expiry
-- is used by the wallet mint for Lightning top-ups and Lightning melts
+- is used by the wallet mint for Lightning funding and Lightning melts
 
 ### Product Coordinator
 
@@ -74,7 +74,7 @@ This quote belongs to the wallet mint boundary.
 
 Examples:
 
-- top up `$25.00` through Lightning
+- fund `$25.00` through Lightning
 - pay a market-mint invoice from USD proofs
 - redeem market value back into USD proofs
 
@@ -107,15 +107,15 @@ A valid market quote must include at least:
 
 ## Funding The Wallet
 
-### Stripe Top-Up
+### Stripe Funding
 
 1. User chooses a dollar amount.
-2. Wallet mint or coordinator creates a Stripe-backed top-up.
+2. Wallet mint or coordinator creates a Stripe-backed funding request.
 3. Stripe webhook confirms payment completion.
 4. Wallet mint marks the quote paid.
 5. User redeems the quote for USD proofs.
 
-### Lightning Top-Up
+### Lightning Funding
 
 1. User chooses a dollar amount.
 2. Wallet mint locks a `USD <-> msat` quote through the standard Cashu NUT-23 mint-quote flow.
@@ -124,7 +124,7 @@ A valid market quote must include at least:
 5. Wallet mint marks the mint quote `PAID`.
 6. User calls the standard Cashu mint endpoint and receives USD proofs.
 
-The user sees a dollar-denominated top-up flow. The invoice is a funding mechanism, not the product's unit of account.
+The user sees a dollar-denominated funding flow. The invoice is a funding mechanism, not the product's unit of account.
 
 For wallet funding, the canonical public endpoints are:
 
@@ -192,7 +192,7 @@ This is not a single on-chain atomic transaction. It is a quote-based saga and m
 
 Launch requires persisted state for:
 
-- top-up quotes
+- funding quotes
 - FX quotes
 - market quotes
 - mint quotes

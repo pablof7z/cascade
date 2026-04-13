@@ -70,7 +70,10 @@ impl FxQuoteService {
         })
     }
 
-    pub async fn quote_wallet_topup(&self, amount_minor: u64) -> Result<FxQuoteEnvelope, String> {
+    pub async fn quote_wallet_funding(
+        &self,
+        amount_minor: u64,
+    ) -> Result<FxQuoteEnvelope, String> {
         if amount_minor == 0 {
             return Err("amount_minor_must_be_positive".to_string());
         }
@@ -256,7 +259,7 @@ mod tests {
     #[tokio::test]
     async fn static_fallback_quotes_msat() {
         let service = FxQuoteService::static_only(50_000.0).unwrap();
-        let quote = service.quote_wallet_topup(2_500).await.unwrap();
+        let quote = service.quote_wallet_funding(2_500).await.unwrap();
         assert_eq!(quote.snapshot.amount_minor, 2_500);
         assert_eq!(quote.snapshot.amount_msat, 50_000_000);
         assert_eq!(quote.snapshot.btc_usd_price, 50_000.0);

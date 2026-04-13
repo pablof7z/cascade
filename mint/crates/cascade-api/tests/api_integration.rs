@@ -195,7 +195,7 @@ fn sample_market_event(event_id: &str, slug: &str, pubkey: &str) -> serde_json::
     })
 }
 
-async fn create_signet_topup_and_get_proofs(
+async fn create_signet_funding_and_get_proofs(
     client: &reqwest::Client,
     url: &str,
     pubkey: &str,
@@ -216,7 +216,7 @@ async fn create_signet_topup_and_get_proofs(
     let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
     let quote_id = quote_payload["quote"].as_str().unwrap();
     let paid_quote = wait_for_mint_quote_state(client, url, quote_id, &["PAID"]).await;
-    mint_topup_quote_and_get_proofs(client, url, &paid_quote, amount_minor).await
+    mint_funding_quote_and_get_proofs(client, url, &paid_quote, amount_minor).await
 }
 
 async fn fetch_active_usd_keyset(client: &reqwest::Client, url: &str) -> KeySet {
@@ -329,7 +329,7 @@ async fn wait_for_mint_quote_state(
     );
 }
 
-async fn mint_topup_quote_and_get_proofs(
+async fn mint_funding_quote_and_get_proofs(
     client: &reqwest::Client,
     url: &str,
     quote_payload: &serde_json::Value,
@@ -783,8 +783,8 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .await
         .unwrap();
 
-    let topup_proofs: Vec<Proof> = serde_json::from_value(
-        create_signet_topup_and_get_proofs(&client, &url, creator, 10_000).await,
+    let funding_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_funding_and_get_proofs(&client, &url, creator, 10_000).await,
     )
     .unwrap();
     let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
@@ -809,7 +809,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     );
     let (change_outputs, change_pre_mint) = prepare_outputs(
         &usd_keyset,
-        proof_amount_total(&topup_proofs).saturating_sub(8000),
+        proof_amount_total(&funding_proofs).saturating_sub(8000),
         TEST_USD_DENOMINATIONS,
     );
 
@@ -819,7 +819,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
             "pubkey": creator,
             "side": "yes",
             "spend_minor": 8000,
-            "proofs": topup_proofs,
+            "proofs": funding_proofs,
             "issued_outputs": issued_outputs,
             "change_outputs": change_outputs
         }))
@@ -971,8 +971,8 @@ async fn test_coordinator_trade_routes_and_status() {
         .await
         .unwrap();
 
-    let topup_proofs: Vec<Proof> = serde_json::from_value(
-        create_signet_topup_and_get_proofs(&client, &url, creator, 10_000).await,
+    let funding_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_funding_and_get_proofs(&client, &url, creator, 10_000).await,
     )
     .unwrap();
 
@@ -1027,7 +1027,7 @@ async fn test_coordinator_trade_routes_and_status() {
     );
     let (change_outputs, change_pre_mint) = prepare_outputs(
         &usd_keyset,
-        proof_amount_total(&topup_proofs)
+        proof_amount_total(&funding_proofs)
             .saturating_sub(quote_payload["spend_minor"].as_u64().unwrap()),
         TEST_USD_DENOMINATIONS,
     );
@@ -1040,7 +1040,7 @@ async fn test_coordinator_trade_routes_and_status() {
             "side": "yes",
             "spend_minor": 4000,
             "quote_id": buy_quote_id,
-            "proofs": topup_proofs,
+            "proofs": funding_proofs,
             "issued_outputs": issued_outputs,
             "change_outputs": change_outputs
         }))
@@ -1196,7 +1196,7 @@ async fn test_coordinator_trade_routes_and_status() {
 }
 
 #[tokio::test]
-async fn test_lightning_topup_quote_settles_after_status_poll() {
+async fn test_lightning_funding_quote_settles_after_status_poll() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();
     let pubkey = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
@@ -1236,7 +1236,7 @@ async fn test_lightning_topup_quote_settles_after_status_poll() {
     let paid_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["PAID"]).await;
     assert_eq!(paid_quote["quote"].as_str(), Some(quote_id.as_str()));
     assert_eq!(paid_quote["state"].as_str(), Some("PAID"));
-    let minted_proofs = mint_topup_quote_and_get_proofs(&client, &url, &paid_quote, 2500).await;
+    let minted_proofs = mint_funding_quote_and_get_proofs(&client, &url, &paid_quote, 2500).await;
     assert!(minted_proofs.as_array().is_some());
 
     let issued_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["ISSUED"]).await;
@@ -1270,7 +1270,7 @@ async fn test_runtime_reports_actual_edition_and_funding_rails() {
 }
 
 #[tokio::test]
-async fn test_lightning_topup_rejects_client_edition_mismatch() {
+async fn test_lightning_funding_rejects_client_edition_mismatch() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();
 
@@ -1295,11 +1295,11 @@ async fn test_lightning_topup_rejects_client_edition_mismatch() {
 }
 
 #[tokio::test]
-async fn test_lightning_topup_request_id_is_idempotent() {
+async fn test_lightning_funding_request_id_is_idempotent() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();
     let pubkey = "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef";
-    let request_id = "topup-request-idempotent-1";
+    let request_id = "funding-request-idempotent-1";
 
     let first_response = client
         .post(format!("{url}/v1/mint/quote/bolt11"))
@@ -1338,7 +1338,7 @@ async fn test_lightning_topup_request_id_is_idempotent() {
     assert_eq!(second_payload["state"].as_str(), Some("UNPAID"));
 
     let request_status_response = client
-        .get(format!("{url}/api/wallet/topups/requests/{request_id}"))
+        .get(format!("{url}/api/portfolio/funding/requests/{request_id}"))
         .send()
         .await
         .unwrap();
@@ -1346,13 +1346,13 @@ async fn test_lightning_topup_request_id_is_idempotent() {
     let request_status_payload: serde_json::Value = request_status_response.json().await.unwrap();
     assert_eq!(request_status_payload["status"].as_str(), Some("complete"));
     assert_eq!(
-        request_status_payload["topup"]["id"].as_str(),
+        request_status_payload["funding"]["id"].as_str(),
         Some(quote_id.as_str())
     );
 
     let paid_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["PAID"]).await;
     assert_eq!(paid_quote["state"].as_str(), Some("PAID"));
-    let minted_proofs = mint_topup_quote_and_get_proofs(&client, &url, &paid_quote, 2500).await;
+    let minted_proofs = mint_funding_quote_and_get_proofs(&client, &url, &paid_quote, 2500).await;
     assert!(minted_proofs.as_array().is_some());
 
     let issued_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["ISSUED"]).await;
@@ -1360,19 +1360,19 @@ async fn test_lightning_topup_request_id_is_idempotent() {
 }
 
 #[tokio::test]
-async fn test_stripe_topup_completes_from_webhook() {
+async fn test_stripe_funding_completes_from_webhook() {
     let stripe_base_url = create_mock_stripe_server().await;
     let webhook_secret = "whsec_test_cascade";
     let url = create_product_test_server_with_stripe(Some(cascade_api::stripe::StripeConfig {
         secret_key: "sk_test_cascade".to_string(),
         webhook_secret: webhook_secret.to_string(),
-        success_url: "https://cascade.test/portfolio?stripe=success&topup_id={TOPUP_ID}"
+        success_url: "https://cascade.test/portfolio?stripe=success&funding_id={FUNDING_ID}"
             .to_string(),
-        cancel_url: "https://cascade.test/portfolio?stripe=cancel&topup_id={TOPUP_ID}".to_string(),
+        cancel_url: "https://cascade.test/portfolio?stripe=cancel&funding_id={FUNDING_ID}".to_string(),
         base_url: stripe_base_url,
         checkout_expiry_seconds: 1800,
-        product_name: "Cascade Portfolio Top-up".to_string(),
-        max_topup_minor: 10_000,
+        product_name: "Cascade Portfolio Funding".to_string(),
+        max_funding_minor: 10_000,
         window_limit_minor: 25_000,
         window_seconds: 24 * 60 * 60,
         allowed_risk_levels: vec!["normal".to_string()],
@@ -1380,10 +1380,10 @@ async fn test_stripe_topup_completes_from_webhook() {
     .await;
     let client = reqwest::Client::new();
     let pubkey = "f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0";
-    let request_id = "stripe-topup-request-1";
+    let request_id = "stripe-funding-request-1";
 
     let create_response = client
-        .post(format!("{url}/api/wallet/topups/stripe"))
+        .post(format!("{url}/api/portfolio/funding/stripe"))
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount_minor": 4200,
@@ -1394,7 +1394,7 @@ async fn test_stripe_topup_completes_from_webhook() {
         .unwrap();
     assert_eq!(create_response.status(), 201);
     let create_payload: serde_json::Value = create_response.json().await.unwrap();
-    let topup_id = create_payload["id"].as_str().unwrap().to_string();
+    let funding_id = create_payload["id"].as_str().unwrap().to_string();
     assert_eq!(create_payload["status"].as_str(), Some("pending"));
     assert_eq!(create_payload["rail"].as_str(), Some("stripe"));
     assert_eq!(
@@ -1409,7 +1409,7 @@ async fn test_stripe_topup_completes_from_webhook() {
     assert!(create_payload["fx_quote_id"].is_null());
 
     let request_status_response = client
-        .get(format!("{url}/api/wallet/topups/requests/{request_id}"))
+        .get(format!("{url}/api/portfolio/funding/requests/{request_id}"))
         .send()
         .await
         .unwrap();
@@ -1417,8 +1417,8 @@ async fn test_stripe_topup_completes_from_webhook() {
     let request_status_payload: serde_json::Value = request_status_response.json().await.unwrap();
     assert_eq!(request_status_payload["status"].as_str(), Some("complete"));
     assert_eq!(
-        request_status_payload["topup"]["id"].as_str(),
-        Some(topup_id.as_str())
+        request_status_payload["funding"]["id"].as_str(),
+        Some(funding_id.as_str())
     );
 
     let event_body = serde_json::json!({
@@ -1427,12 +1427,12 @@ async fn test_stripe_topup_completes_from_webhook() {
         "data": {
             "object": {
                 "id": "cs_test_cascade",
-                "client_reference_id": topup_id,
+                "client_reference_id": funding_id,
                 "payment_status": "paid",
                 "payment_intent": "pi_test_cascade",
                 "expires_at": chrono::Utc::now().timestamp() + 1800,
                 "metadata": {
-                    "topup_id": request_status_payload["topup"]["id"].as_str().unwrap()
+                    "funding_id": request_status_payload["funding"]["id"].as_str().unwrap()
                 }
             }
         }
@@ -1442,7 +1442,7 @@ async fn test_stripe_topup_completes_from_webhook() {
     let signature = stripe_signature(webhook_secret, &event_body, timestamp);
 
     let webhook_response = client
-        .post(format!("{url}/api/wallet/topups/stripe/webhook"))
+        .post(format!("{url}/api/portfolio/funding/stripe/webhook"))
         .header("stripe-signature", signature)
         .header("content-type", "application/json")
         .body(event_body)
@@ -1451,32 +1451,32 @@ async fn test_stripe_topup_completes_from_webhook() {
         .unwrap();
     assert_eq!(webhook_response.status(), 200);
 
-    let topup_status_response = client
-        .get(format!("{url}/api/wallet/topups/{topup_id}"))
+    let funding_status_response = client
+        .get(format!("{url}/api/portfolio/funding/{funding_id}"))
         .send()
         .await
         .unwrap();
-    assert_eq!(topup_status_response.status(), 200);
-    let topup_status_payload: serde_json::Value = topup_status_response.json().await.unwrap();
-    assert_eq!(topup_status_payload["status"].as_str(), Some("paid"));
-    assert_eq!(topup_status_payload["risk_level"].as_str(), Some("normal"));
-    assert!(topup_status_payload.get("issued_proofs").is_none());
+    assert_eq!(funding_status_response.status(), 200);
+    let funding_status_payload: serde_json::Value = funding_status_response.json().await.unwrap();
+    assert_eq!(funding_status_payload["status"].as_str(), Some("paid"));
+    assert_eq!(funding_status_payload["risk_level"].as_str(), Some("normal"));
+    assert!(funding_status_payload.get("issued_proofs").is_none());
 }
 
 #[tokio::test]
-async fn test_stripe_topup_moves_to_review_required_for_high_risk() {
+async fn test_stripe_funding_moves_to_review_required_for_high_risk() {
     let stripe_base_url = create_mock_stripe_server_with_risk_level("highest").await;
     let webhook_secret = "whsec_test_cascade";
     let url = create_product_test_server_with_stripe(Some(cascade_api::stripe::StripeConfig {
         secret_key: "sk_test_cascade".to_string(),
         webhook_secret: webhook_secret.to_string(),
-        success_url: "https://cascade.test/portfolio?stripe=success&topup_id={TOPUP_ID}"
+        success_url: "https://cascade.test/portfolio?stripe=success&funding_id={FUNDING_ID}"
             .to_string(),
-        cancel_url: "https://cascade.test/portfolio?stripe=cancel&topup_id={TOPUP_ID}".to_string(),
+        cancel_url: "https://cascade.test/portfolio?stripe=cancel&funding_id={FUNDING_ID}".to_string(),
         base_url: stripe_base_url,
         checkout_expiry_seconds: 1800,
-        product_name: "Cascade Portfolio Top-up".to_string(),
-        max_topup_minor: 10_000,
+        product_name: "Cascade Portfolio Funding".to_string(),
+        max_funding_minor: 10_000,
         window_limit_minor: 25_000,
         window_seconds: 24 * 60 * 60,
         allowed_risk_levels: vec!["normal".to_string()],
@@ -1486,7 +1486,7 @@ async fn test_stripe_topup_moves_to_review_required_for_high_risk() {
     let pubkey = "1111111111111111111111111111111111111111111111111111111111111111";
 
     let create_response = client
-        .post(format!("{url}/api/wallet/topups/stripe"))
+        .post(format!("{url}/api/portfolio/funding/stripe"))
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount_minor": 4200
@@ -1496,7 +1496,7 @@ async fn test_stripe_topup_moves_to_review_required_for_high_risk() {
         .unwrap();
     assert_eq!(create_response.status(), 201);
     let create_payload: serde_json::Value = create_response.json().await.unwrap();
-    let topup_id = create_payload["id"].as_str().unwrap().to_string();
+    let funding_id = create_payload["id"].as_str().unwrap().to_string();
 
     let event_body = serde_json::json!({
         "id": "evt_stripe_checkout_high_risk",
@@ -1504,12 +1504,12 @@ async fn test_stripe_topup_moves_to_review_required_for_high_risk() {
         "data": {
             "object": {
                 "id": "cs_test_cascade",
-                "client_reference_id": topup_id,
+                "client_reference_id": funding_id,
                 "payment_status": "paid",
                 "payment_intent": "pi_test_high_risk",
                 "expires_at": chrono::Utc::now().timestamp() + 1800,
                 "metadata": {
-                    "topup_id": create_payload["id"].as_str().unwrap()
+                    "funding_id": create_payload["id"].as_str().unwrap()
                 }
             }
         }
@@ -1519,7 +1519,7 @@ async fn test_stripe_topup_moves_to_review_required_for_high_risk() {
     let signature = stripe_signature(webhook_secret, &event_body, timestamp);
 
     let webhook_response = client
-        .post(format!("{url}/api/wallet/topups/stripe/webhook"))
+        .post(format!("{url}/api/portfolio/funding/stripe/webhook"))
         .header("stripe-signature", signature)
         .header("content-type", "application/json")
         .body(event_body)
@@ -1530,19 +1530,19 @@ async fn test_stripe_topup_moves_to_review_required_for_high_risk() {
     let webhook_payload: serde_json::Value = webhook_response.json().await.unwrap();
     assert_eq!(webhook_payload["status"].as_str(), Some("review_required"));
 
-    let topup_status_response = client
-        .get(format!("{url}/api/wallet/topups/{topup_id}"))
+    let funding_status_response = client
+        .get(format!("{url}/api/portfolio/funding/{funding_id}"))
         .send()
         .await
         .unwrap();
-    assert_eq!(topup_status_response.status(), 200);
-    let topup_status_payload: serde_json::Value = topup_status_response.json().await.unwrap();
+    assert_eq!(funding_status_response.status(), 200);
+    let funding_status_payload: serde_json::Value = funding_status_response.json().await.unwrap();
     assert_eq!(
-        topup_status_payload["status"].as_str(),
+        funding_status_payload["status"].as_str(),
         Some("review_required")
     );
-    assert_eq!(topup_status_payload["risk_level"].as_str(), Some("highest"));
-    assert!(topup_status_payload.get("issued_proofs").is_none());
+    assert_eq!(funding_status_payload["risk_level"].as_str(), Some("highest"));
+    assert!(funding_status_payload.get("issued_proofs").is_none());
 }
 
 #[tokio::test]
@@ -1628,8 +1628,8 @@ async fn test_trade_request_id_is_idempotent() {
         .await
         .unwrap();
 
-    let topup_proofs: Vec<Proof> = serde_json::from_value(
-        create_signet_topup_and_get_proofs(&client, &url, creator, 10_000).await,
+    let funding_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_funding_and_get_proofs(&client, &url, creator, 10_000).await,
     )
     .unwrap();
     let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
@@ -1653,7 +1653,7 @@ async fn test_trade_request_id_is_idempotent() {
     );
     let (change_outputs, _change_pre_mint) = prepare_outputs(
         &usd_keyset,
-        proof_amount_total(&topup_proofs).saturating_sub(4000),
+        proof_amount_total(&funding_proofs).saturating_sub(4000),
         TEST_USD_DENOMINATIONS,
     );
 
@@ -1665,7 +1665,7 @@ async fn test_trade_request_id_is_idempotent() {
             "side": "yes",
             "spend_minor": 4000,
             "request_id": request_id,
-            "proofs": topup_proofs.clone(),
+            "proofs": funding_proofs.clone(),
             "issued_outputs": issued_outputs,
             "change_outputs": change_outputs
         }))
@@ -1688,7 +1688,7 @@ async fn test_trade_request_id_is_idempotent() {
             "side": "yes",
             "spend_minor": 4000,
             "request_id": request_id,
-            "proofs": topup_proofs,
+            "proofs": funding_proofs,
             "issued_outputs": [],
             "change_outputs": []
         }))
@@ -1751,7 +1751,7 @@ async fn test_lightning_fx_quote_preview() {
 }
 
 #[tokio::test]
-async fn test_signet_topup_enforces_single_and_window_limits() {
+async fn test_signet_funding_enforces_single_and_window_limits() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();
     let pubkey = "abababababababababababababababababababababababababababababababab";
@@ -1771,7 +1771,7 @@ async fn test_signet_topup_enforces_single_and_window_limits() {
     let too_large_payload: serde_json::Value = too_large_response.json().await.unwrap();
     assert_eq!(
         too_large_payload["error"].as_str(),
-        Some("signet_topup_single_limit_exceeded:max_minor=10000")
+        Some("signet_funding_single_limit_exceeded:max_minor=10000")
     );
 
     for amount_minor in [10_000_u64, 10_000_u64, 5_000_u64] {
@@ -1804,6 +1804,6 @@ async fn test_signet_topup_enforces_single_and_window_limits() {
     let capped_payload: serde_json::Value = capped_response.json().await.unwrap();
     assert_eq!(
         capped_payload["error"].as_str(),
-        Some("signet_topup_window_limit_exceeded:window_minor=25000:remaining_minor=0")
+        Some("signet_funding_window_limit_exceeded:window_minor=25000:remaining_minor=0")
     );
 }

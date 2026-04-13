@@ -15,8 +15,8 @@ Cascade has two logical mint roles.
 The wallet mint is the user-facing cash layer.
 
 - issues USD-denominated ecash
-- accepts Stripe-funded top-ups
-- accepts Lightning-funded top-ups for a locked USD amount
+- accepts Stripe funding
+- accepts Lightning-funded mint quotes for a locked USD amount
 - stores the user's liquid wallet balance as bearer proofs
 - melts USD proofs into Lightning invoices when paying the market mint
 
@@ -49,7 +49,7 @@ The mints do not need a bespoke public protocol between them. The public wire sh
 ```text
 web / agents
   -> product API / trade coordinator
-  -> wallet mint (USD ecash, Stripe + Lightning top-ups)
+  -> wallet mint (USD ecash, Stripe + Lightning funding)
   -> market mint (LMSR execution, LONG/SHORT issuance)
   -> FX quote source
   -> SQLite / persistent mint storage
@@ -68,7 +68,7 @@ The normal product unit is USD.
 
 - normal UI shows dollars, not sats or msats
 - product APIs represent USD in integer minor units
-- wallet top-up, buy, sell, portfolio, and PnL surfaces stay dollar-denominated
+- wallet funding, buy, sell, portfolio, and PnL surfaces stay dollar-denominated
 
 ### Settlement Rail Unit
 
@@ -131,12 +131,12 @@ The market mint is the source of truth for executable market state.
 The wallet mint is the source of truth for:
 
 - USD keysets
-- wallet top-up quotes
-- Stripe top-up state
-- Lightning top-up state
+- wallet funding quotes
+- Stripe funding state
+- Lightning funding state
 - outgoing melt state when the wallet funds a market buy
 - incoming mint state when market exits return value to the wallet
-- Stripe risk-policy state attached to pending card top-ups before proof issuance
+- Stripe risk-policy state attached to pending card funding before proof issuance
 
 The intended steady state is full mint-side persistence for both wallet-mint and market-mint state. The current code still has some in-memory market state, which is implementation debt.
 
@@ -155,10 +155,10 @@ Cascade therefore needs custom payment processors at the mint boundary.
 
 The wallet mint needs:
 
-- an incoming `stripe` payment method for card top-ups
+- an incoming `stripe` payment method for card funding
 - an incoming Lightning mint-quote path that prices a USD amount into `msat`
 - an outgoing Lightning melt path that prices a market-mint invoice into USD minor units and consumes the correct USD proofs
-- a risk-policy hook that can cap Stripe top-up volume before checkout creation and gate proof issuance after webhook completion
+- a risk-policy hook that can cap Stripe funding volume before checkout creation and gate proof issuance after webhook completion
 
 ### Market Mint Processors
 
@@ -185,7 +185,7 @@ This is the Cashu-facing layer:
 
 This is the layer `web/` and agents should normally use:
 
-- wallet top-up creation and status in USD
+- wallet funding creation and status in USD
 - spend-based trade quote and execute endpoints in USD
 - sell quote and execute endpoints in USD
 - public discovery, analytics, discussion, and profile APIs
@@ -197,11 +197,11 @@ The product contract exists because the user experience is "spend $10 on YES", n
 ### Wallet Funding With Stripe
 
 1. User starts an add-funds flow in dollars.
-2. Wallet mint creates a Stripe-backed top-up.
+2. Wallet mint creates a Stripe-backed funding request.
 3. User completes the card payment through Stripe.
 4. Stripe webhook fetches Stripe risk data for the completed payment.
 5. If the payment passes the configured Stripe risk policy, wallet mint issues USD proofs to the user's local wallet.
-6. If the payment fails the configured Stripe risk policy, the top-up moves to `review_required` and no proofs are issued.
+6. If the payment fails the configured Stripe risk policy, the funding request moves to `review_required` and no proofs are issued.
 
 ### Wallet Funding With Lightning
 
@@ -265,7 +265,7 @@ Card payments are reversible. Bearer ecash is not.
 
 Launch therefore needs explicit risk controls around the Stripe gateway. Examples include:
 
-- top-up limits
+- funding limits
 - fraud checks
 - webhook-time proof issuance gates keyed off Stripe risk signals
 - `review_required` handling for completed but higher-risk payments

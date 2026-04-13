@@ -23,7 +23,7 @@ export type ProductFxObservation = {
   observed_at: number;
 };
 
-export type ProductWalletTopup = {
+export type ProductPortfolioFunding = {
   id: string;
   rail: string;
   amount_minor: number;
@@ -44,13 +44,13 @@ export type ProductWalletTopup = {
   expires_at: number;
 };
 
-export type ProductWalletTopupRequestStatus = {
+export type ProductPortfolioFundingRequestStatus = {
   request_id: string;
   rail: string;
   amount_minor: number;
   status: string;
   error?: string | null;
-  topup?: ProductWalletTopup | null;
+  funding?: ProductPortfolioFunding | null;
 };
 
 export type ProductRuntimeRail = {
@@ -314,12 +314,12 @@ export async function fetchMarketDetailBySlug(slug: string): Promise<Response> {
   return productFetch(`/api/product/markets/slug/${encodeURIComponent(slug)}`);
 }
 
-export async function createStripeTopup(input: {
+export async function createStripeFunding(input: {
   pubkey: string;
   amountMinor: number;
   requestId?: string;
 }): Promise<Response> {
-  return productFetch('/api/wallet/topups/stripe', {
+  return productFetch('/api/portfolio/funding/stripe', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -330,12 +330,12 @@ export async function createStripeTopup(input: {
   });
 }
 
-export async function fetchWalletTopupRequestStatus(requestId: string): Promise<Response> {
-  return productFetch(`/api/wallet/topups/requests/${requestId}`);
+export async function fetchPortfolioFundingRequestStatus(requestId: string): Promise<Response> {
+  return productFetch(`/api/portfolio/funding/requests/${requestId}`);
 }
 
-export async function fetchWalletTopupStatus(topupId: string): Promise<Response> {
-  return productFetch(`/api/wallet/topups/${topupId}`);
+export async function fetchPortfolioFundingStatus(fundingId: string): Promise<Response> {
+  return productFetch(`/api/portfolio/funding/${fundingId}`);
 }
 
 export async function fetchTradeStatus(tradeId: string): Promise<Response> {

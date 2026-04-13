@@ -126,7 +126,7 @@ It should allow users to:
 
 - view their USD balance
 - add funds through the Stripe gateway
-- add funds through a Lightning top-up flow for a chosen USD amount
+- add funds through the standard Lightning mint-quote flow for a chosen USD amount
 - receive or import ecash tokens
 - send or export ecash tokens
 - review transaction history
@@ -179,7 +179,7 @@ Canonical market-proof units are lowercase and slug-based:
 If the browser encounters older uppercase market-proof buckets from earlier builds, it should migrate them into the lowercase canonical buckets during local storage reads rather than maintaining parallel holdings.
 
 There is no server-side proof mirror in the launch design. The backend may expose quote, trade, and settlement status, but bearer proofs remain browser-local.
-There is also no server-side portfolio ledger in the launch design. Pending top-ups and trade recovery are resumed from browser-local recovery records plus quote/status routes, not from a backend "current portfolio" snapshot.
+There is also no server-side portfolio ledger in the launch design. Pending funding requests and trade recovery are resumed from browser-local recovery records plus quote/status routes, not from a backend "current portfolio" snapshot.
 The mint may know funding quotes, payment hashes, trade execution records, and spent-proof state. It must not know or reconstruct the browser's current unspent proof set.
 
 The `/portfolio` surface derives both spendable state and performance from:
@@ -201,15 +201,15 @@ The launch `/portfolio` surface must also handle local proof movement directly i
 - the browser Cashu client must be pinned explicitly and kept compatible with the mint's active NUT-02/NUT-04 behavior
 - do not rely on a transitive `@cashu/cashu-ts` version, because keyset-id derivation mismatches break local proof funding and trading even when the HTTP endpoints are otherwise correct
 
-In signet, funding still starts from the normal top-up UI and API contract, and the quote remains pending until the payment object is actually settled. Paper trading comes from signet-value rails and test infrastructure, not from a separate faucet surface or instant quote completion.
+In signet, funding still starts from the normal add-funds UI and API contract, and the quote remains pending until the payment object is actually settled. Paper trading comes from signet-value rails and test infrastructure, not from a separate faucet surface or instant quote completion.
 
 Portfolio funding uses one recovery model across both launch rails:
 
 - the browser stores pending funding recovery state in local storage
-- Lightning top-ups use the standard Cashu NUT-23 mint flow instead of a bespoke Cascade funding endpoint
-- Stripe top-ups use a persisted product top-up request with a client `request_id`
-- Lightning top-ups remain pending until the invoice is actually paid
-- Stripe top-ups remain pending until the verified webhook completes them
+- Lightning funding uses the standard Cashu NUT-23 mint flow instead of a bespoke Cascade funding endpoint
+- Stripe funding uses a persisted product funding request with a client `request_id`
+- Lightning mint quotes remain pending until the invoice is actually paid
+- Stripe funding remains pending until the verified webhook completes it
 - after Lightning reaches `PAID`, the browser calls `POST /v1/mint/bolt11` and stores the resulting proofs locally
 - after Stripe reaches a paid-and-allowed state, the browser must complete the corresponding custom mint flow with blinded outputs and store the resulting proofs locally
 - if a Stripe payment is captured but not accepted by the configured issuance policy, the browser should show `review_required` and must not assume funded proofs exist
@@ -232,22 +232,22 @@ Every state-changing funding or trade request from the browser should send:
 
 - `X-Cascade-Edition: mainnet|signet`
 
-This lets the mint reject a miswired edition boundary before it creates invoices, top-up records, or trades.
+This lets the mint reject a miswired edition boundary before it creates invoices, funding records, or trades.
 
 For Stripe specifically:
 
 - `/portfolio` offers a hosted Checkout action alongside Lightning when the edition has Stripe configured
 - the UI can navigate the user to the returned `checkout_url`
 - the return from Stripe is not the source of truth for proof issuance
-- the browser must recover through the same pending-topup polling path used for Lightning
-- signet and mainnet use the same browser-local proof storage and the same top-up recovery mechanics
+- the browser must recover through the same pending-funding polling path used for Lightning
+- signet and mainnet use the same browser-local proof storage and the same funding recovery mechanics
 
 For Lightning specifically:
 
 - `/portfolio` should fund through `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`
 - the UI still starts from a USD amount and renders the returned invoice as a funding mechanism only
-- the browser must not depend on bespoke `/api/wallet/topups/lightning/*` routes for Lightning funding
-- the browser must not depend on `GET /api/wallet/topups/requests/{request_id}` for Lightning recovery either; Lightning recovery stays on the standard mint quote flow plus client `request_id`
+- the browser must not depend on bespoke `/api/portfolio/funding/lightning/*` routes for Lightning funding
+- the browser must not depend on `GET /api/portfolio/funding/requests/{request_id}` for Lightning recovery either; Lightning recovery stays on the standard mint quote flow plus client `request_id`
 
 - export a locally held proof bucket as a standard Cashu token string
 - import a Cashu token string into the local browser store

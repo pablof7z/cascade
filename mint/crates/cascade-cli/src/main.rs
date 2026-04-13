@@ -11,7 +11,7 @@ use cascade_api::types::{
     ProductCoordinatorSellRequest, ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest,
     ProductFeedResponse, ProductMarketDetailResponse, ProductMarketSummary,
     ProductTradeExecutionResponse, ProductTradeQuoteResponse, ProductTradeRequestStatusResponse,
-    ProductTradeStatusResponse, ProductWalletTopupRequestStatusResponse, TokenOutput,
+    ProductPortfolioFundingRequestStatusResponse, ProductTradeStatusResponse, TokenOutput,
 };
 use cdk::amount::{FeeAndAmounts, SplitTarget};
 use cdk::dhke::construct_proofs;
@@ -833,7 +833,7 @@ async fn handle_portfolio(ctx: &AppContext, command: &PortfolioCommand) -> Resul
                         amount: args.amount_minor,
                         unit: "usd".to_string(),
                         description: Some(format!(
-                            "Cascade portfolio top-up for {}",
+                            "Cascade portfolio funding for {}",
                             ctx.pubkey_hex(&loaded)?
                         )),
                         pubkey: Some(ctx.pubkey_hex(&loaded)?),
@@ -855,9 +855,9 @@ async fn handle_portfolio(ctx: &AppContext, command: &PortfolioCommand) -> Resul
                 }
             }))
         }
-        PortfolioSubcommand::Topup(topup) => match &topup.command {
-            PortfolioTopupSubcommand::Lightning(lightning) => match &lightning.command {
-                PortfolioTopupLightningSubcommand::Quote(args) => {
+        PortfolioSubcommand::Funding(funding) => match &funding.command {
+            PortfolioFundingSubcommand::Lightning(lightning) => match &lightning.command {
+                PortfolioLightningFundingSubcommand::Quote(args) => {
                     let payload: MintQuoteBolt11Response = ctx
                         .request_json(
                             &loaded,
@@ -867,7 +867,7 @@ async fn handle_portfolio(ctx: &AppContext, command: &PortfolioCommand) -> Resul
                                 amount: args.amount_minor,
                                 unit: "usd".to_string(),
                                 description: Some(format!(
-                                    "Cascade portfolio top-up for {}",
+                                    "Cascade portfolio funding for {}",
                                     ctx.pubkey_hex(&loaded)?
                                 )),
                                 pubkey: Some(ctx.pubkey_hex(&loaded)?),
@@ -879,7 +879,7 @@ async fn handle_portfolio(ctx: &AppContext, command: &PortfolioCommand) -> Resul
                     ctx.emit(&payload)
                 }
             },
-            PortfolioTopupSubcommand::Status(args) => {
+            PortfolioFundingSubcommand::Status(args) => {
                 let payload: MintQuoteBolt11Response = ctx
                     .request_json(
                         &loaded,
@@ -891,19 +891,19 @@ async fn handle_portfolio(ctx: &AppContext, command: &PortfolioCommand) -> Resul
                     .await?;
                 ctx.emit(&payload)
             }
-            PortfolioTopupSubcommand::RequestStatus(args) => {
-                let payload: ProductWalletTopupRequestStatusResponse = ctx
+            PortfolioFundingSubcommand::RequestStatus(args) => {
+                let payload: ProductPortfolioFundingRequestStatusResponse = ctx
                     .request_json(
                         &loaded,
                         Method::GET,
-                        &format!("/api/wallet/topups/requests/{}", args.id),
+                        &format!("/api/portfolio/funding/requests/{}", args.id),
                         None,
                         AuthMode::None,
                     )
                     .await?;
                 ctx.emit(&payload)
             }
-            PortfolioTopupSubcommand::Settle(args) => {
+            PortfolioFundingSubcommand::Settle(args) => {
                 let quote: MintQuoteBolt11Response = ctx
                     .request_json(
                         &loaded,

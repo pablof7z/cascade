@@ -251,7 +251,7 @@ async fn main() -> Result<()> {
                 base_url: config.stripe.base_url.clone(),
                 checkout_expiry_seconds: config.stripe.checkout_expiry_seconds,
                 product_name: config.stripe.product_name.clone(),
-                max_topup_minor: config.stripe.max_topup_minor,
+                max_funding_minor: config.stripe.max_funding_minor,
                 window_limit_minor: config.stripe.window_limit_minor,
                 window_seconds: config.stripe.window_seconds,
                 allowed_risk_levels: config.stripe.allowed_risk_levels.clone(),

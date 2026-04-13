@@ -5,7 +5,7 @@ This document is the canonical implementation roadmap for the Cascade financial 
 It covers the mint layer, the FX layer, the Stripe and Lightning wallet-funding rails, and the end-to-end web integration needed so a user can:
 
 1. add funds in dollars through Stripe
-2. add funds in dollars through a Lightning top-up flow
+2. add funds in dollars through a Lightning funding flow
 3. spend dollars on a market position
 4. sell the position back into dollar wallet value
 
@@ -38,8 +38,8 @@ Cascade has four cooperating layers:
 ### 1. Wallet Mint
 
 - issues USD ecash
-- accepts Stripe-funded top-ups
-- accepts Lightning-funded top-ups
+- accepts Stripe funding
+- accepts Lightning-funded mint quotes
 - stores the user's liquid wallet balance as bearer proofs
 - pays market-mint invoices by consuming USD proofs
 
@@ -56,14 +56,14 @@ Cascade has four cooperating layers:
 - quotes `USD <-> msat`
 - locks executable rates with expiry
 - combines multiple major provider feeds behind one modular quote-source interface
-- is used by the wallet mint for Lightning top-ups and Lightning melts
+- is used by the wallet mint for Lightning funding and Lightning melts
 
 ### 4. Product Coordinator
 
 - offers spend-based and sell-based APIs in USD
 - composes FX quotes with market quotes
 - hides inter-mint settlement complexity from `web/` and agents
-- persists trade and top-up state needed for UX and recovery
+- persists trade and funding state needed for UX and recovery
 
 ### 5. Edition Split
 
@@ -93,12 +93,12 @@ Implement the `USD <-> msat` quote layer used by the wallet mint.
 - add a quote source abstraction for external FX data
 - add multiple provider adapters and a documented combination policy
 - persist executable quote snapshots with expiry, spread, and source metadata
-- use the same quote layer for Lightning top-ups and Lightning melts
+- use the same quote layer for Lightning funding and Lightning melts
 - expose internal diagnostics needed for recovery and auditability
 
 Definition of done:
 
-- wallet mint can lock a Lightning top-up quote for a USD amount
+- wallet mint can lock a Lightning funding quote for a USD amount
 - wallet mint can lock a melt quote for a market-mint invoice in USD
 - expired or stale FX quotes are rejected safely
 
@@ -108,19 +108,19 @@ Implement the USD wallet mint with both launch funding paths.
 
 - add wallet-mint configuration for USD operation
 - implement or integrate a `stripe` payment processor / gateway
-- add incoming Lightning mint-quote support for USD-denominated top-ups on the standard Cashu NUT-23 BOLT11 endpoints
+- add incoming Lightning mint-quote support for USD-denominated funding on the standard Cashu NUT-23 BOLT11 endpoints
 - map Stripe and Lightning payment completion to mint quote completion
 - let the browser mint and recover USD proofs locally after successful Lightning funding
 - issue USD proofs only after verified Stripe completion and risk acceptance
 - add risk controls for reversible card payments
 - gate proof issuance on Stripe risk signals and conservative volume caps
-- keep one persisted top-up saga model across Stripe and Lightning, with rail-specific metadata instead of rail-specific custody paths
+- keep one persisted funding saga model across Stripe and Lightning, with rail-specific metadata instead of rail-specific custody paths
 
 Definition of done:
 
-- user can start a Stripe top-up
+- user can start Stripe funding
 - Stripe webhook marks the payment complete
-- user can start a Lightning top-up for a locked USD amount through `POST /v1/mint/quote/bolt11`
+- user can start Lightning funding for a locked USD amount through `POST /v1/mint/quote/bolt11`
 - Lightning payment marks the mint quote `PAID`
 - the browser can call `POST /v1/mint/bolt11` and recover the issued proofs locally after interruption
 - Stripe retains the persisted request/status saga because card checkout is not a standard Cashu mint flow
@@ -164,8 +164,8 @@ Definition of done:
 Wire the active frontend to the new financial layer.
 
 - show portfolio balance in USD
-- launch Stripe top-up from `/portfolio`
-- launch Lightning top-up from `/portfolio` for a chosen USD amount
+- launch Stripe funding from `/portfolio`
+- launch Lightning funding from `/portfolio` for a chosen USD amount
 - store USD proofs and market proofs locally
 - show trade inputs in USD on market pages
 - show portfolio and PnL in USD
@@ -190,9 +190,9 @@ Make the new system production-safe.
 
 - deploy the mint layer under process supervision
 - keep TLS termination stable via Caddy
-- persist mint, quote, FX, and top-up state
+- persist mint, quote, FX, and funding state
 - configure Stripe webhooks
-- add smoke checks for Stripe top-up, Lightning top-up, buy, and sell flows
+- add smoke checks for Stripe funding, Lightning funding, buy, and sell flows
 - add smoke checks for creator-only pending-market visibility before first funding and public visibility after first kind `983`
 - run separate signet and mainnet deployments with separate config, data, and operator identities
 

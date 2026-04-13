@@ -18,7 +18,7 @@ pub struct StripeConfig {
     pub base_url: String,
     pub checkout_expiry_seconds: u64,
     pub product_name: String,
-    pub max_topup_minor: u64,
+    pub max_funding_minor: u64,
     pub window_limit_minor: u64,
     pub window_seconds: i64,
     pub allowed_risk_levels: Vec<String>,
@@ -66,7 +66,7 @@ impl StripeGateway {
         {
             return Err("stripe_gateway_not_fully_configured".to_string());
         }
-        if config.max_topup_minor == 0
+        if config.max_funding_minor == 0
             || config.window_limit_minor == 0
             || config.window_seconds <= 0
         {
@@ -83,8 +83,8 @@ impl StripeGateway {
         Ok(Self { client, config })
     }
 
-    pub fn max_topup_minor(&self) -> u64 {
-        self.config.max_topup_minor
+    pub fn max_funding_minor(&self) -> u64 {
+        self.config.max_funding_minor
     }
 
     pub fn window_limit_minor(&self) -> u64 {
@@ -110,9 +110,9 @@ impl StripeGateway {
             .any(|allowed| allowed == &normalized)
     }
 
-    pub async fn create_topup_checkout_session(
+    pub async fn create_funding_checkout_session(
         &self,
-        topup_id: &str,
+        funding_id: &str,
         pubkey: &str,
         amount_minor: u64,
         request_id: Option<&str>,
@@ -123,14 +123,14 @@ impl StripeGateway {
 
         let mut form = vec![
             ("mode".to_string(), "payment".to_string()),
-            ("client_reference_id".to_string(), topup_id.to_string()),
+            ("client_reference_id".to_string(), funding_id.to_string()),
             (
                 "success_url".to_string(),
-                self.render_return_url(&self.config.success_url, topup_id),
+                self.render_return_url(&self.config.success_url, funding_id),
             ),
             (
                 "cancel_url".to_string(),
-                self.render_return_url(&self.config.cancel_url, topup_id),
+                self.render_return_url(&self.config.cancel_url, funding_id),
             ),
             (
                 "line_items[0][price_data][currency]".to_string(),
@@ -142,14 +142,14 @@ impl StripeGateway {
             ),
             (
                 "line_items[0][price_data][product_data][description]".to_string(),
-                format!("Cascade portfolio top-up for {edition}"),
+                format!("Cascade portfolio funding for {edition}"),
             ),
             (
                 "line_items[0][price_data][unit_amount]".to_string(),
                 amount_minor.to_string(),
             ),
             ("line_items[0][quantity]".to_string(), "1".to_string()),
-            ("metadata[topup_id]".to_string(), topup_id.to_string()),
+            ("metadata[funding_id]".to_string(), funding_id.to_string()),
             ("metadata[pubkey]".to_string(), pubkey.to_string()),
             (
                 "metadata[amount_minor]".to_string(),
@@ -157,8 +157,8 @@ impl StripeGateway {
             ),
             ("metadata[edition]".to_string(), edition.to_string()),
             (
-                "payment_intent_data[metadata][topup_id]".to_string(),
-                topup_id.to_string(),
+                "payment_intent_data[metadata][funding_id]".to_string(),
+                funding_id.to_string(),
             ),
             (
                 "payment_intent_data[metadata][pubkey]".to_string(),
@@ -304,8 +304,8 @@ impl StripeGateway {
         serde_json::from_slice(body).map_err(|error| format!("invalid_stripe_webhook: {error}"))
     }
 
-    fn render_return_url(&self, template: &str, topup_id: &str) -> String {
-        template.replace("{TOPUP_ID}", topup_id)
+    fn render_return_url(&self, template: &str, funding_id: &str) -> String {
+        template.replace("{FUNDING_ID}", funding_id)
     }
 }
 
@@ -359,7 +359,7 @@ fn stripe_value_at<'a>(value: &'a Value, path: &[&str]) -> Option<&'a Value> {
     Some(current)
 }
 
-pub fn topup_metadata_checkout_fields(
+pub fn funding_metadata_checkout_fields(
     metadata_json: Option<&str>,
 ) -> (Option<String>, Option<String>, Option<i64>, Option<String>) {
     let Some(json) = metadata_json else {
@@ -389,7 +389,7 @@ pub fn topup_metadata_checkout_fields(
     )
 }
 
-pub fn topup_metadata_merge(extra: &[(&str, Value)]) -> Value {
+pub fn funding_metadata_merge(extra: &[(&str, Value)]) -> Value {
     let mut map = serde_json::Map::new();
     for (key, value) in extra {
         map.insert((*key).to_string(), value.clone());

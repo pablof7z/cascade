@@ -7,7 +7,7 @@
 | Language | Rust |
 | Database | SQLite (active config; PostgreSQL remains the production target) |
 | Cashu | CDK Rust (Cashu Dev Kit) |
-| Wallet funding | Stripe gateway + Lightning top-up quotes |
+| Wallet funding | Stripe gateway + Lightning mint quotes |
 | Settlement rail | Lightning backend (currently LND-oriented) |
 | Nostr publishing | Custom Nostr client |
 | Network | Signet (testing), mainnet (production) |
@@ -23,7 +23,7 @@ The backend's primary role is operating the Cascade mint layer.
 
 That mint layer has two logical responsibilities:
 
-- the **wallet mint**, which stores spendable USD ecash and accepts Stripe and Lightning-funded top-ups
+- the **wallet mint**, which stores spendable USD ecash and accepts Stripe and Lightning-funded portfolio funding
 - the **market mint**, which owns LMSR state and issues LONG/SHORT market tokens
 
 The market mint database is the authoritative source of LMSR state. Not Nostr. Not the frontend.
@@ -38,7 +38,7 @@ HTTP API / product coordinator
    ├── Wallet Mint
    │   ├── USD keysets
    │   ├── Stripe gateway state
-   │   ├── Lightning top-up quote state
+   │   ├── Lightning mint-quote state
    │   └── outgoing market-payment settlement
    │
    ├── Market Mint
@@ -51,13 +51,13 @@ HTTP API / product coordinator
    │   └── USD <-> msat executable quotes
    │
    ├── SQLite
-   │   └── keysets, proofs, quotes, market state, top-up state
+   │   └── keysets, proofs, quotes, market state, funding state
    │
    ├── Lightning backend
    │   └── inter-mint settlement rail
    │
    ├── Stripe webhooks
-   │   └── card-funded top-up completion
+   │   └── card-funded portfolio funding completion
    │
    └── Nostr publisher
        └── kind 983 trade audit log
@@ -81,7 +81,7 @@ These are the Cashu-facing endpoints used by the wallet and by any Cashu-aware c
 These are the higher-level routes `web/` and agents should normally use:
 
 - public discovery, analytics, profile, and discussion APIs
-- Stripe and Lightning top-up initiation and status
+- Stripe and Lightning funding initiation and status
 - spend-based trade quote and execute endpoints in USD
 - persisted trade status lookup by `trade_id`
 - creator-only pending-market reads before first public trade after the author has published kind `982` directly to relays
@@ -117,8 +117,8 @@ The intended persistent schema includes:
 - **Keysets**: USD wallet keysets and market keyset mappings
 - **Proofs**: spent-proof state and restore metadata for blinded outputs, not a server-side mirror of user-held proofs
 - **Trade history**: internal record of all trades, source of kind `983`
-- **Wallet top-ups**: Stripe session / payment-intent mapping and completion status
-- **Wallet Lightning top-ups**: incoming quote, invoice, and settlement state
+- **Wallet funding**: Stripe session / payment-intent mapping and completion status
+- **Wallet Lightning mint quotes**: incoming quote, invoice, and settlement state
 - **Payment quotes**: outgoing and incoming mint/melt quote state for inter-mint settlement
 - **FX quotes**: executable `USD <-> msat` quote snapshots and expiries
 - **Trade settlements**: persisted settlement records attached to executed trades so status and recovery can reason about the hidden rail step separately from the user-facing trade event
@@ -147,14 +147,14 @@ The `USD <-> msat` boundary should be implemented as a modular multi-provider qu
 - quote construction applies one documented combination policy
 - persisted quote snapshots include contributing provider prices, final executable rate, spread, and expiry
 - persisted trade quotes also store the selected FX snapshot id, the `msat` settlement amount, and the marginal price movement for the exact LMSR fill
-- trade and top-up execution consumes locked quotes rather than ad hoc spot reads
+- trade and funding execution consumes locked quotes rather than ad hoc spot reads
 - launch quote preview should be inspectable through a dedicated endpoint so operators can curl a locked `USD <-> msat` quote without creating a payment object
 
 ## Stripe Integration
 
 Stripe is a launch funding rail for the wallet mint.
 
-- user starts a dollar top-up
+- user starts a dollar funding flow
 - backend creates the Stripe session or payment intent
 - Stripe webhook confirms completion
 - wallet mint marks the quote paid and issues USD ecash
@@ -163,31 +163,33 @@ Card payments are reversible, so launch needs explicit risk controls around fres
 
 Because wallet proofs are browser-local bearer assets, the backend cannot safely rely on post-issuance portability limits. Launch should instead:
 
-- cap Stripe top-up size and rolling Stripe volume before Checkout creation
+- cap Stripe funding size and rolling Stripe volume before Checkout creation
 - fetch Stripe risk data from the webhook completion path
 - issue proofs only when the configured risk policy accepts the payment
-- move rejected card top-ups into `review_required` or failure without issuing proofs
+- move rejected card funding attempts into `review_required` or failure without issuing proofs
 
 The hosted Stripe flow should be:
 
-- client requests `POST /api/wallet/topups/stripe` with `pubkey`, `amount_minor`, and optional `request_id`
-- backend persists the top-up request before creating the Checkout Session
-- backend creates a hosted Checkout Session with top-up identifiers in metadata
-- backend persists the top-up quote with rail `stripe` and pending status
+- client requests `POST /api/portfolio/funding/stripe` with `pubkey`, `amount_minor`, and optional `request_id`
+- backend persists the funding request before creating the Checkout Session
+- backend creates a hosted Checkout Session with funding identifiers in metadata
+- backend persists the Stripe funding record with rail `stripe` and pending status
 - browser redirects to the returned `checkout_url`
 - Stripe webhook is the authoritative completion path
-- webhook fetches Stripe risk data, then either marks the quote paid for later browser minting or marks the top-up `review_required`
-- browser resumes by polling `GET /api/wallet/topups/{topup_id}` or `GET /api/wallet/topups/requests/{request_id}`
+- webhook fetches Stripe risk data, then either marks the quote paid for later browser minting or marks the funding request `review_required`
+- browser resumes by polling `GET /api/portfolio/funding/{funding_id}` or `GET /api/portfolio/funding/requests/{request_id}`
 
-Stripe must not introduce a separate balance ledger or a server-side proof issuance path. It terminates in the same browser-side blind-output issuance and recovery model already used by Lightning top-ups.
+Stripe must not introduce a separate balance ledger or a server-side proof issuance path. It terminates in the same browser-side blind-output issuance and recovery model already used by Lightning mint quotes.
 
 ## Lightning Integration
 
 Lightning is both a launch wallet-funding rail and the settlement rail between the wallet mint and the market mint.
 
-- the wallet mint should expose incoming USD top-ups through the standard Cashu NUT-23 BOLT11 mint flow
-- the wallet mint can create USD top-up invoices by locking `USD <-> msat` FX quotes
+- the wallet mint should expose incoming USD funding through the standard Cashu NUT-23 BOLT11 mint flow
+- the wallet mint can create USD mint quotes by locking `USD <-> msat` FX quotes
 - incoming mint-quote status polling reconciles persisted quote state against real invoice state, so a paid invoice can move to `PAID` after restart or client interruption
+- those Lightning funding quotes should also exist as real CDK mint-quote records in mint storage, not only as parallel product-saga rows
+- incoming Lightning proof issuance should run through CDK `process_mint_request` once the quote is paid, rather than a custom blind-signing path
 - persisted buy/sell quotes carry the Lightning-facing settlement budget and provider observations needed for the eventual inter-mint saga
 - executed buy/sell records should carry the completed hidden BOLT11 settlement metadata, not a signet-only synthetic settlement label
 - the market mint can return a standard invoice-backed quote for a LONG or SHORT trade
@@ -203,7 +205,7 @@ Incoming Lightning portfolio funding should therefore look like:
 - `POST /v1/mint/quote/bolt11` with `{"amount": <usd_minor>, "unit": "usd"}`
 - if the browser loses the initial quote response, it retries `POST /v1/mint/quote/bolt11` with the same client `request_id` until the mint replays the same quote
 - `GET /v1/mint/quote/bolt11/{quote_id}` until the quote reaches `PAID`
-- `POST /v1/mint/bolt11` with blinded outputs to issue the USD proofs
+- `POST /v1/mint/bolt11` with blinded outputs to issue the USD proofs through the standard CDK mint path
 
 That keeps pure wallet funding on the Cashu-standard surface. Cascade-specific `/api/...` routes should remain focused on product orchestration such as market creation, quoting, buying, and withdrawal flows.
 

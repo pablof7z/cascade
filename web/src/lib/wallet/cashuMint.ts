@@ -148,7 +148,7 @@ export async function createUsdLightningMintQuote(
   });
 
   if (!response.ok) {
-    throw new Error(await parseError(response, 'Lightning top-up creation failed.'));
+    throw new Error(await parseError(response, 'Lightning funding quote creation failed.'));
   }
 
   return (await response.json()) as Bolt11MintQuote;
@@ -162,7 +162,7 @@ export async function checkUsdLightningMintQuote(
     cache: 'no-store'
   });
   if (!response.ok) {
-    throw new Error(await parseError(response, 'Failed to load Lightning top-up status.'));
+    throw new Error(await parseError(response, 'Failed to load Lightning mint quote status.'));
   }
   return (await response.json()) as Bolt11MintQuote;
 }

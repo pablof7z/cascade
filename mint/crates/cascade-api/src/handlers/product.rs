@@ -1,6 +1,6 @@
 use crate::fx::FxQuoteEnvelope;
 use crate::routes::AppState;
-use crate::stripe::{stripe_event_metadata, topup_metadata_checkout_fields, topup_metadata_merge};
+use crate::stripe::{stripe_event_metadata, funding_metadata_checkout_fields, funding_metadata_merge};
 use crate::types::{
     BlindedMessageInput, CreatorMarketsResponse, MintBolt11Request, MintBolt11Response,
     MintQuoteBolt11Request, MintQuoteBolt11Response, ProductBuyRequest,
@@ -8,11 +8,12 @@ use crate::types::{
     ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest, ProductFeedResponse,
     ProductFxObservationResponse, ProductLightningFxQuoteResponse, ProductMarketDetailResponse,
     ProductMarketSummary, ProductRuntimeFundingResponse, ProductRuntimeRailResponse,
-    ProductRuntimeResponse, ProductSellRequest, ProductStripeTopupRequest,
+    ProductRuntimeResponse, ProductSellRequest, ProductStripeFundingRequest,
     ProductTradeBlindSignatureBundleResponse, ProductTradeExecutionResponse,
     ProductTradeQuoteRequest, ProductTradeQuoteResponse, ProductTradeRequestStatusResponse,
     ProductTradeSettlementResponse, ProductTradeStatusResponse,
-    ProductWalletTopupRequestStatusResponse, ProductWalletTopupResponse, ProofInput, TokenOutput,
+    ProductPortfolioFundingRequestStatusResponse, ProductPortfolioFundingResponse, ProofInput,
+    TokenOutput,
 };
 use axum::{
     body::Bytes,
@@ -24,16 +25,21 @@ use bitcoin::secp256k1::{schnorr::Signature, Message, Secp256k1, XOnlyPublicKey}
 use cascade_core::{
     product::{
         FxQuoteSnapshot, MarketLaunchState, TradeExecutionRequest, TradeExecutionRequestStatus,
-        TradeQuoteSnapshot, TradeSettlementInsert, TradeSettlementRecord, WalletTopupQuote,
-        WalletTopupRequest, WalletTopupRequestStatus, WalletTopupStatus,
+        TradeQuoteSnapshot, TradeSettlementInsert, TradeSettlementRecord, WalletFundingQuote,
+        WalletFundingRequest, WalletFundingRequestStatus, WalletFundingStatus,
     },
     Market, Side,
 };
 use cdk::mint::QuoteId;
-use cdk::nuts::{BlindSignature, BlindedMessage, CurrencyUnit, State as ProofState};
+use cdk::mint::MintInput;
+use cdk::nuts::{
+    BlindSignature, BlindedMessage, CurrencyUnit, MintQuoteState, MintRequest,
+    State as ProofState,
+};
 use cdk::Amount;
-use cdk_common::mint::Operation;
+use cdk_common::mint::{MintQuote as StoredMintQuote, Operation};
 use cdk_common::nut00::KnownMethod;
+use cdk_common::payment::PaymentIdentifier;
 use cdk_common::PaymentMethod;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -44,9 +50,9 @@ const TRADE_FEE_BPS: u64 = 100;
 const TRADE_QUOTE_TTL_SECONDS: i64 = 30;
 const FALLBACK_MINT_PUBKEY: &str =
     "1111111111111111111111111111111111111111111111111111111111111111";
-const SIGNET_TOPUP_SINGLE_LIMIT_MINOR: u64 = 10_000;
-const SIGNET_TOPUP_WINDOW_LIMIT_MINOR: u64 = 25_000;
-const SIGNET_TOPUP_WINDOW_SECONDS: i64 = 24 * 60 * 60;
+const SIGNET_FUNDING_SINGLE_LIMIT_MINOR: u64 = 10_000;
+const SIGNET_FUNDING_WINDOW_LIMIT_MINOR: u64 = 25_000;
+const SIGNET_FUNDING_WINDOW_SECONDS: i64 = 24 * 60 * 60;
 const NIP98_AUTH_KIND: i64 = 27_235;
 const NIP98_AUTH_WINDOW_SECONDS: i64 = 120;
 const SHARE_MINOR_SCALE: u64 = 10_000;
@@ -123,13 +129,13 @@ fn runtime_response(state: &AppState) -> ProductRuntimeResponse {
                     .stripe_gateway
                     .as_ref()
                     .map(|_| None)
-                    .unwrap_or_else(|| Some("stripe_topups_unavailable".to_string())),
+                    .unwrap_or_else(|| Some("stripe_fundings_unavailable".to_string())),
             },
         },
     }
 }
 
-fn topup_metadata_json(source: &str, extra: Value) -> Result<String, serde_json::Error> {
+fn funding_metadata_json(source: &str, extra: Value) -> Result<String, serde_json::Error> {
     let mut payload = json!({ "source": source });
 
     if let Some(object) = payload.as_object_mut() {
@@ -143,41 +149,190 @@ fn topup_metadata_json(source: &str, extra: Value) -> Result<String, serde_json:
     serde_json::to_string(&payload)
 }
 
-fn wallet_topup_status_label(quote: &WalletTopupQuote) -> String {
-    if quote.rail == "stripe" && quote.status == WalletTopupStatus::InvoicePending {
+fn wallet_funding_status_label(quote: &WalletFundingQuote) -> String {
+    if quote.rail == "stripe" && quote.status == WalletFundingStatus::InvoicePending {
         "pending".to_string()
     } else {
         quote.status.to_string()
     }
 }
 
-fn mint_quote_state_label(quote: &WalletTopupQuote) -> &'static str {
-    match quote.status {
-        WalletTopupStatus::InvoicePending => "UNPAID",
-        WalletTopupStatus::Paid => "PAID",
-        WalletTopupStatus::Complete => "ISSUED",
-        WalletTopupStatus::Expired | WalletTopupStatus::Cancelled => "UNPAID",
-        WalletTopupStatus::ReviewRequired => "PAID",
+fn cdk_mint_quote_state_label(state: MintQuoteState) -> &'static str {
+    match state {
+        MintQuoteState::Unpaid => "UNPAID",
+        MintQuoteState::Paid => "PAID",
+        MintQuoteState::Issued => "ISSUED",
     }
 }
 
-fn mint_quote_bolt11_response(quote: &WalletTopupQuote) -> Result<MintQuoteBolt11Response, String> {
-    let request = quote
-        .invoice
+fn mint_quote_bolt11_response_from_cdk(
+    quote: &StoredMintQuote,
+) -> Result<MintQuoteBolt11Response, String> {
+    let amount = quote
+        .amount
         .clone()
-        .ok_or_else(|| "topup_quote_missing_invoice".to_string())?;
+        .ok_or_else(|| "mint_quote_amount_missing".to_string())?;
 
     Ok(MintQuoteBolt11Response {
-        quote: quote.id.clone(),
-        request,
-        amount: quote.amount_minor,
+        quote: quote.id.to_string(),
+        request: quote.request.clone(),
+        amount: amount.value(),
         unit: "usd".to_string(),
-        state: mint_quote_state_label(quote).to_string(),
-        expiry: Some(quote.expires_at),
+        state: cdk_mint_quote_state_label(quote.state()).to_string(),
+        expiry: Some(i64::try_from(quote.expiry).unwrap_or(i64::MAX)),
     })
 }
 
-fn stripe_topup_context(amount_minor: u64, expires_at: i64) -> FxQuoteSnapshot {
+fn wallet_funding_amount(quote: &WalletFundingQuote) -> Amount<CurrencyUnit> {
+    Amount::new(quote.amount_minor, CurrencyUnit::Usd)
+}
+
+fn build_cdk_mint_quote_for_wallet_funding(
+    quote: &WalletFundingQuote,
+) -> Result<StoredMintQuote, String> {
+    let quote_id = QuoteId::from_str(&quote.id).map_err(|error| error.to_string())?;
+    let request = quote
+        .invoice
+        .clone()
+        .ok_or_else(|| "funding_quote_missing_invoice".to_string())?;
+    let payment_hash = quote
+        .payment_hash
+        .clone()
+        .ok_or_else(|| "funding_quote_missing_payment_hash".to_string())?;
+    let request_lookup_id =
+        PaymentIdentifier::new("payment_hash", &payment_hash).map_err(|error| error.to_string())?;
+    let amount = wallet_funding_amount(quote);
+    let zero = Amount::new(0, CurrencyUnit::Usd);
+    let extra_json = Some(json!({
+        "source": "cascade_wallet_funding",
+        "rail": quote.rail,
+        "fx_quote_id": quote.fx_quote_id,
+    }));
+
+    Ok(StoredMintQuote::new(
+        Some(quote_id),
+        request,
+        CurrencyUnit::Usd,
+        Some(amount),
+        quote.expires_at.max(0) as u64,
+        request_lookup_id,
+        None,
+        zero.clone(),
+        zero,
+        PaymentMethod::Known(KnownMethod::Bolt11),
+        quote.created_at.max(0) as u64,
+        Vec::new(),
+        Vec::new(),
+        extra_json,
+    ))
+}
+
+fn reconcile_cdk_mint_quote_with_wallet_funding(
+    mint_quote: &mut cdk_common::database::mint::Acquired<StoredMintQuote>,
+    quote: &WalletFundingQuote,
+) -> Result<(), String> {
+    let amount = wallet_funding_amount(quote);
+    let payment_hash = quote
+        .payment_hash
+        .as_deref()
+        .ok_or_else(|| "funding_quote_missing_payment_hash".to_string())?;
+    let payment_hash = payment_hash.to_string();
+
+    if matches!(
+        quote.status,
+        WalletFundingStatus::Paid | WalletFundingStatus::Complete
+    ) && !mint_quote.payment_ids().contains(&&payment_hash)
+    {
+        mint_quote
+            .add_payment(
+                amount.clone(),
+                payment_hash.clone(),
+                quote.settled_at.map(|timestamp| timestamp.max(0) as u64),
+            )
+            .map_err(|error| error.to_string())?;
+    }
+
+    if quote.status == WalletFundingStatus::Complete && mint_quote.state() != MintQuoteState::Issued {
+        let remaining = mint_quote.amount_mintable();
+        if remaining.value() > 0 {
+            mint_quote
+                .add_issuance(remaining)
+                .map_err(|error| error.to_string())?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn ensure_cdk_mint_quote_for_wallet_funding(
+    state: &AppState,
+    quote: &WalletFundingQuote,
+) -> Result<StoredMintQuote, String> {
+    if quote.rail != "lightning" {
+        return Err("wallet_funding_quote_not_lightning".to_string());
+    }
+
+    let quote_id = QuoteId::from_str(&quote.id).map_err(|error| error.to_string())?;
+    let localstore = state.mint.localstore();
+    let mut tx = localstore
+        .begin_transaction()
+        .await
+        .map_err(|error| error.to_string())?;
+
+    let mut mint_quote = match tx
+        .get_mint_quote(&quote_id)
+        .await
+        .map_err(|error| error.to_string())?
+    {
+        Some(quote) => quote,
+        None => tx
+            .add_mint_quote(build_cdk_mint_quote_for_wallet_funding(quote)?)
+            .await
+            .map_err(|error| error.to_string())?,
+    };
+
+    reconcile_cdk_mint_quote_with_wallet_funding(&mut mint_quote, quote)?;
+    tx.update_mint_quote(&mut mint_quote)
+        .await
+        .map_err(|error| error.to_string())?;
+    tx.commit().await.map_err(|error| error.to_string())?;
+
+    Ok(mint_quote.inner())
+}
+
+async fn sync_lightning_funding_quote_state(
+    state: &AppState,
+    quote: &WalletFundingQuote,
+) -> Result<(WalletFundingQuote, StoredMintQuote), String> {
+    let synced_quote = sync_wallet_funding_quote_best_effort(state, quote).await?;
+    let mint_quote = ensure_cdk_mint_quote_for_wallet_funding(state, &synced_quote).await?;
+
+    if mint_quote.state() == MintQuoteState::Issued
+        && synced_quote.status != WalletFundingStatus::Complete
+    {
+        let metadata_json = funding_metadata_json(
+            "bolt11",
+            json!({
+                "payment_hash": synced_quote.payment_hash,
+                "funding_quote_id": synced_quote.id,
+                "reconciled_via": "mint_quote_state"
+            }),
+        )
+        .map_err(|error| error.to_string())?;
+
+        let completed_quote = state
+            .db
+            .complete_wallet_funding_quote(&synced_quote.id, None, Some(&metadata_json))
+            .await
+            .map_err(|error| error.to_string())?;
+
+        return Ok((completed_quote, mint_quote));
+    }
+
+    Ok((synced_quote, mint_quote))
+}
+
+fn stripe_funding_context(amount_minor: u64, expires_at: i64) -> FxQuoteSnapshot {
     let created_at = chrono::Utc::now().timestamp();
     FxQuoteSnapshot {
         id: uuid::Uuid::new_v4().to_string(),
@@ -192,7 +347,7 @@ fn stripe_topup_context(amount_minor: u64, expires_at: i64) -> FxQuoteSnapshot {
     }
 }
 
-fn stripe_topup_metadata(
+fn stripe_funding_metadata(
     checkout_url: Option<&str>,
     checkout_session_id: Option<&str>,
     checkout_expires_at: Option<i64>,
@@ -222,7 +377,7 @@ fn stripe_topup_metadata(
         fields.push(("risk_level", Value::String(risk_level.to_string())));
     }
 
-    topup_metadata_merge(&fields)
+    funding_metadata_merge(&fields)
 }
 
 fn quantity_to_minor(quantity: f64) -> Result<u64, String> {
@@ -588,7 +743,7 @@ pub async fn preview_lightning_fx_quote(
     State(state): State<AppState>,
     Path(amount_minor): Path<u64>,
 ) -> (StatusCode, Json<Value>) {
-    match state.fx_service.quote_wallet_topup(amount_minor).await {
+    match state.fx_service.quote_wallet_funding(amount_minor).await {
         Ok(quote) => (
             StatusCode::OK,
             Json(json!(lightning_fx_quote_response(&quote))),
@@ -597,35 +752,35 @@ pub async fn preview_lightning_fx_quote(
     }
 }
 
-enum WalletTopupRequestGuard {
+enum WalletFundingRequestGuard {
     New,
-    Complete(ProductWalletTopupResponse),
+    Complete(ProductPortfolioFundingResponse),
     Pending,
     Failed(String),
 }
 
-async fn create_lightning_wallet_topup_quote_record(
+async fn create_lightning_wallet_funding_quote_record(
     state: &AppState,
     pubkey: &str,
     amount_minor: u64,
     request_id: Option<&str>,
     description: Option<&str>,
     enforce_limits: bool,
-) -> Result<WalletTopupQuote, (StatusCode, String)> {
+) -> Result<WalletFundingQuote, (StatusCode, String)> {
     if state.paper_mode && enforce_limits && !pubkey.trim().is_empty() {
-        if let Err(error) = enforce_signet_topup_limits(state, pubkey, amount_minor).await {
+        if let Err(error) = enforce_signet_funding_limits(state, pubkey, amount_minor).await {
             if let Some(request_id) = request_id {
-                let _ = state.db.fail_wallet_topup_request(request_id, &error).await;
+                let _ = state.db.fail_wallet_funding_request(request_id, &error).await;
             }
-            return Err((signet_topup_limit_error_response(&error).0, error));
+            return Err((signet_funding_limit_error_response(&error).0, error));
         }
     }
 
-    let fx_quote = match state.fx_service.quote_wallet_topup(amount_minor).await {
+    let fx_quote = match state.fx_service.quote_wallet_funding(amount_minor).await {
         Ok(quote) => quote.snapshot,
         Err(error) => {
             if let Some(request_id) = request_id {
-                let _ = state.db.fail_wallet_topup_request(request_id, &error).await;
+                let _ = state.db.fail_wallet_funding_request(request_id, &error).await;
             }
             return Err((StatusCode::BAD_GATEWAY, error));
         }
@@ -636,9 +791,9 @@ async fn create_lightning_wallet_topup_quote_record(
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| {
             if pubkey.trim().is_empty() {
-                "Cascade portfolio top-up".to_string()
+                "Cascade portfolio funding".to_string()
             } else {
-                format!("Cascade portfolio top-up for {}", pubkey)
+                format!("Cascade portfolio funding for {}", pubkey)
             }
         });
     let invoice = {
@@ -658,7 +813,7 @@ async fn create_lightning_wallet_topup_quote_record(
                 if let Some(request_id) = request_id {
                     let _ = state
                         .db
-                        .fail_wallet_topup_request(request_id, &error_message)
+                        .fail_wallet_funding_request(request_id, &error_message)
                         .await;
                 }
                 return Err((StatusCode::INTERNAL_SERVER_ERROR, error_message));
@@ -668,7 +823,7 @@ async fn create_lightning_wallet_topup_quote_record(
 
     let quote = state
         .db
-        .create_wallet_topup_quote(
+        .create_wallet_funding_quote(
             None,
             pubkey,
             "lightning",
@@ -688,14 +843,14 @@ async fn create_lightning_wallet_topup_quote_record(
                 let request_id = request_id.to_string();
                 let error_copy = error_message.clone();
                 tokio::spawn(async move {
-                    let _ = db.fail_wallet_topup_request(&request_id, &error_copy).await;
+                    let _ = db.fail_wallet_funding_request(&request_id, &error_copy).await;
                 });
             }
             (StatusCode::INTERNAL_SERVER_ERROR, error_message)
         })?;
 
     if state.paper_mode {
-        schedule_signet_topup_payment(state.clone(), invoice.bolt11().to_string());
+        schedule_signet_funding_payment(state.clone(), invoice.bolt11().to_string());
     }
 
     Ok(quote)
@@ -724,7 +879,7 @@ pub async fn create_mint_quote_bolt11(
         return response;
     }
 
-    match prepare_wallet_topup_request(
+    match prepare_wallet_funding_request(
         &state,
         req.request_id.as_deref(),
         req.pubkey.as_deref().unwrap_or(""),
@@ -733,13 +888,13 @@ pub async fn create_mint_quote_bolt11(
     )
     .await
     {
-        Ok(WalletTopupRequestGuard::Complete(response)) => {
-            let quote = match state.db.get_wallet_topup_quote(&response.id).await {
+        Ok(WalletFundingRequestGuard::Complete(response)) => {
+            let quote = match state.db.get_wallet_funding_quote(&response.id).await {
                 Ok(Some(quote)) => quote,
                 Ok(None) => {
                     return (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!({ "error": "wallet_topup_quote_not_found" })),
+                        Json(json!({ "error": "wallet_funding_quote_not_found" })),
                     );
                 }
                 Err(error) => {
@@ -750,7 +905,17 @@ pub async fn create_mint_quote_bolt11(
                 }
             };
 
-            return match mint_quote_bolt11_response(&quote) {
+            let mint_quote = match sync_lightning_funding_quote_state(&state, &quote).await {
+                Ok((_, mint_quote)) => mint_quote,
+                Err(error) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!({ "error": error })),
+                    )
+                }
+            };
+
+            return match mint_quote_bolt11_response_from_cdk(&mint_quote) {
                 Ok(response) => (StatusCode::OK, Json(json!(response))),
                 Err(error) => (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -758,22 +923,22 @@ pub async fn create_mint_quote_bolt11(
                 ),
             };
         }
-        Ok(WalletTopupRequestGuard::Pending) => {
+        Ok(WalletFundingRequestGuard::Pending) => {
             return (
                 StatusCode::CONFLICT,
-                Json(json!({ "error": "wallet_topup_request_in_progress" })),
+                Json(json!({ "error": "wallet_funding_request_in_progress" })),
             );
         }
-        Ok(WalletTopupRequestGuard::Failed(error)) => {
+        Ok(WalletFundingRequestGuard::Failed(error)) => {
             return (StatusCode::CONFLICT, Json(json!({ "error": error })));
         }
-        Ok(WalletTopupRequestGuard::New) => {}
+        Ok(WalletFundingRequestGuard::New) => {}
         Err(error) => {
             return (StatusCode::CONFLICT, Json(json!({ "error": error })));
         }
     }
 
-    match create_lightning_wallet_topup_quote_record(
+    match create_lightning_wallet_funding_quote_record(
         &state,
         req.pubkey.as_deref().unwrap_or(""),
         req.amount,
@@ -783,21 +948,33 @@ pub async fn create_mint_quote_bolt11(
     )
     .await
     {
-        Ok(quote) => match mint_quote_bolt11_response(&quote) {
-            Ok(response) => (StatusCode::OK, Json(json!(response))),
-            Err(error) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error })),
-            ),
-        },
+        Ok(quote) => {
+            let mint_quote = match ensure_cdk_mint_quote_for_wallet_funding(&state, &quote).await {
+                Ok(mint_quote) => mint_quote,
+                Err(error) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!({ "error": error })),
+                    )
+                }
+            };
+
+            match mint_quote_bolt11_response_from_cdk(&mint_quote) {
+                Ok(response) => (StatusCode::OK, Json(json!(response))),
+                Err(error) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": error })),
+                ),
+            }
+        }
         Err((status, error)) => (status, Json(json!({ "error": error }))),
     }
 }
 
-pub async fn create_stripe_topup(
+pub async fn create_stripe_funding(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(req): Json<ProductStripeTopupRequest>,
+    Json(req): Json<ProductStripeFundingRequest>,
 ) -> (StatusCode, Json<Value>) {
     if req.pubkey.trim().is_empty() || req.amount_minor == 0 {
         return (
@@ -810,7 +987,7 @@ pub async fn create_stripe_topup(
         return response;
     }
 
-    match prepare_wallet_topup_request(
+    match prepare_wallet_funding_request(
         &state,
         req.request_id.as_deref(),
         &req.pubkey,
@@ -819,31 +996,31 @@ pub async fn create_stripe_topup(
     )
     .await
     {
-        Ok(WalletTopupRequestGuard::Complete(response)) => {
+        Ok(WalletFundingRequestGuard::Complete(response)) => {
             return (StatusCode::OK, Json(json!(response)));
         }
-        Ok(WalletTopupRequestGuard::Pending) => {
+        Ok(WalletFundingRequestGuard::Pending) => {
             return (
                 StatusCode::CONFLICT,
-                Json(json!({ "error": "wallet_topup_request_in_progress" })),
+                Json(json!({ "error": "wallet_funding_request_in_progress" })),
             );
         }
-        Ok(WalletTopupRequestGuard::Failed(error)) => {
+        Ok(WalletFundingRequestGuard::Failed(error)) => {
             return (StatusCode::CONFLICT, Json(json!({ "error": error })));
         }
-        Ok(WalletTopupRequestGuard::New) => {}
+        Ok(WalletFundingRequestGuard::New) => {}
         Err(error) => {
             return (StatusCode::CONFLICT, Json(json!({ "error": error })));
         }
     }
 
     if state.paper_mode {
-        if let Err(error) = enforce_signet_topup_limits(&state, &req.pubkey, req.amount_minor).await
+        if let Err(error) = enforce_signet_funding_limits(&state, &req.pubkey, req.amount_minor).await
         {
             if let Some(request_id) = req.request_id.as_deref() {
-                let _ = state.db.fail_wallet_topup_request(request_id, &error).await;
+                let _ = state.db.fail_wallet_funding_request(request_id, &error).await;
             }
-            return signet_topup_limit_error_response(&error);
+            return signet_funding_limit_error_response(&error);
         }
     }
 
@@ -851,16 +1028,16 @@ pub async fn create_stripe_topup(
         if let Some(request_id) = req.request_id.as_deref() {
             let _ = state
                 .db
-                .fail_wallet_topup_request(request_id, "stripe_topups_unavailable")
+                .fail_wallet_funding_request(request_id, "stripe_fundings_unavailable")
                 .await;
         }
         return (
             StatusCode::SERVICE_UNAVAILABLE,
-            Json(json!({ "error": "stripe_topups_unavailable" })),
+            Json(json!({ "error": "stripe_fundings_unavailable" })),
         );
     };
 
-    if let Err(error) = enforce_stripe_topup_limits(
+    if let Err(error) = enforce_stripe_funding_limits(
         &state,
         stripe_gateway.as_ref(),
         &req.pubkey,
@@ -869,9 +1046,9 @@ pub async fn create_stripe_topup(
     .await
     {
         if let Some(request_id) = req.request_id.as_deref() {
-            let _ = state.db.fail_wallet_topup_request(request_id, &error).await;
+            let _ = state.db.fail_wallet_funding_request(request_id, &error).await;
         }
-        return stripe_topup_limit_error_response(&error);
+        return stripe_funding_limit_error_response(&error);
     }
 
     let quote_id = uuid::Uuid::new_v4().to_string();
@@ -881,7 +1058,7 @@ pub async fn create_stripe_topup(
         "mainnet"
     };
     let session = match stripe_gateway
-        .create_topup_checkout_session(
+        .create_funding_checkout_session(
             &quote_id,
             &req.pubkey,
             req.amount_minor,
@@ -893,19 +1070,19 @@ pub async fn create_stripe_topup(
         Ok(session) => session,
         Err(error) => {
             if let Some(request_id) = req.request_id.as_deref() {
-                let _ = state.db.fail_wallet_topup_request(request_id, &error).await;
+                let _ = state.db.fail_wallet_funding_request(request_id, &error).await;
             }
             return (StatusCode::BAD_GATEWAY, Json(json!({ "error": error })));
         }
     };
 
-    let fx_quote = stripe_topup_context(
+    let fx_quote = stripe_funding_context(
         req.amount_minor,
         session
             .expires_at
             .unwrap_or_else(|| chrono::Utc::now().timestamp() + 30 * 60),
     );
-    let metadata_json = match serde_json::to_string(&stripe_topup_metadata(
+    let metadata_json = match serde_json::to_string(&stripe_funding_metadata(
         Some(&session.url),
         Some(&session.id),
         session.expires_at,
@@ -916,7 +1093,7 @@ pub async fn create_stripe_topup(
             if let Some(request_id) = req.request_id.as_deref() {
                 let _ = state
                     .db
-                    .fail_wallet_topup_request(request_id, &error.to_string())
+                    .fail_wallet_funding_request(request_id, &error.to_string())
                     .await;
             }
             return (
@@ -928,7 +1105,7 @@ pub async fn create_stripe_topup(
 
     match state
         .db
-        .create_wallet_topup_quote(
+        .create_wallet_funding_quote(
             Some(&quote_id),
             &req.pubkey,
             "stripe",
@@ -942,7 +1119,7 @@ pub async fn create_stripe_topup(
         )
         .await
     {
-        Ok(quote) => match load_wallet_topup_response(&state, &quote).await {
+        Ok(quote) => match load_wallet_funding_response(&state, &quote).await {
             Ok(response) => (StatusCode::CREATED, Json(json!(response))),
             Err(error) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -954,7 +1131,7 @@ pub async fn create_stripe_topup(
             if let Some(request_id) = req.request_id.as_deref() {
                 let _ = state
                     .db
-                    .fail_wallet_topup_request(request_id, &error_message)
+                    .fail_wallet_funding_request(request_id, &error_message)
                     .await;
             }
             (
@@ -973,7 +1150,7 @@ pub async fn stripe_webhook(
     let Some(stripe_gateway) = state.stripe_gateway.clone() else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
-            Json(json!({ "error": "stripe_topups_unavailable" })),
+            Json(json!({ "error": "stripe_fundings_unavailable" })),
         );
     };
 
@@ -1000,25 +1177,25 @@ pub async fn stripe_webhook(
             }
 
             let metadata = stripe_event_metadata(object);
-            let topup_id = metadata.get("topup_id").cloned().or_else(|| {
+            let funding_id = metadata.get("funding_id").cloned().or_else(|| {
                 object
                     .get("client_reference_id")
                     .and_then(Value::as_str)
                     .map(str::to_string)
             });
-            let Some(topup_id) = topup_id else {
+            let Some(funding_id) = funding_id else {
                 return (
                     StatusCode::OK,
-                    Json(json!({ "status": "ignored", "reason": "missing_topup_id" })),
+                    Json(json!({ "status": "ignored", "reason": "missing_funding_id" })),
                 );
             };
 
-            let quote = match state.db.get_wallet_topup_quote(&topup_id).await {
+            let quote = match state.db.get_wallet_funding_quote(&funding_id).await {
                 Ok(Some(quote)) => quote,
                 Ok(None) => {
                     return (
                         StatusCode::OK,
-                        Json(json!({ "status": "ignored", "reason": "topup_not_found" })),
+                        Json(json!({ "status": "ignored", "reason": "funding_not_found" })),
                     )
                 }
                 Err(error) => {
@@ -1032,14 +1209,14 @@ pub async fn stripe_webhook(
             if quote.rail != "stripe" {
                 return (
                     StatusCode::OK,
-                    Json(json!({ "status": "ignored", "reason": "non_stripe_topup" })),
+                    Json(json!({ "status": "ignored", "reason": "non_stripe_funding" })),
                 );
             }
-            if quote.status != WalletTopupStatus::InvoicePending {
+            if quote.status != WalletFundingStatus::InvoicePending {
                 return (
                     StatusCode::OK,
                     Json(json!({
-                        "status": wallet_topup_status_label(&quote),
+                        "status": wallet_funding_status_label(&quote),
                         "event_id": event.id
                     })),
                 );
@@ -1055,7 +1232,7 @@ pub async fn stripe_webhook(
                 None => None,
             };
             let normalized_risk_level = stripe_gateway.normalized_risk_level(risk_level.as_deref());
-            let existing_metadata = topup_metadata_checkout_fields(quote.metadata_json.as_deref());
+            let existing_metadata = funding_metadata_checkout_fields(quote.metadata_json.as_deref());
             let checkout_session_id = object
                 .get("id")
                 .and_then(Value::as_str)
@@ -1064,7 +1241,7 @@ pub async fn stripe_webhook(
                 .get("expires_at")
                 .and_then(Value::as_i64)
                 .or(existing_metadata.2);
-            let extra = stripe_topup_metadata(
+            let extra = stripe_funding_metadata(
                 existing_metadata.0.as_deref(),
                 checkout_session_id,
                 checkout_expires_at,
@@ -1074,7 +1251,7 @@ pub async fn stripe_webhook(
             if !stripe_gateway.is_risk_level_allowed(Some(&normalized_risk_level)) {
                 match state
                     .db
-                    .mark_wallet_topup_quote_review_required(
+                    .mark_wallet_funding_quote_review_required(
                         &quote.id,
                         Some(&normalized_risk_level),
                         Some(&serde_json::to_string(&extra).unwrap_or_else(|_| "{}".to_string())),
@@ -1094,7 +1271,7 @@ pub async fn stripe_webhook(
                     ),
                 }
             } else {
-                let metadata_json = match topup_metadata_json("stripe", extra) {
+                let metadata_json = match funding_metadata_json("stripe", extra) {
                     Ok(value) => value,
                     Err(error) => {
                         return (
@@ -1106,7 +1283,7 @@ pub async fn stripe_webhook(
 
                 match state
                     .db
-                    .mark_wallet_topup_quote_paid(&quote.id, Some(&metadata_json))
+                    .mark_wallet_funding_quote_paid(&quote.id, Some(&metadata_json))
                     .await
                 {
                     Ok(_) => (
@@ -1123,7 +1300,7 @@ pub async fn stripe_webhook(
         "checkout.session.expired" => {
             let object = &event.data.object;
             let metadata = stripe_event_metadata(object);
-            let Some(topup_id) = metadata.get("topup_id").cloned().or_else(|| {
+            let Some(funding_id) = metadata.get("funding_id").cloned().or_else(|| {
                 object
                     .get("client_reference_id")
                     .and_then(Value::as_str)
@@ -1131,11 +1308,11 @@ pub async fn stripe_webhook(
             }) else {
                 return (
                     StatusCode::OK,
-                    Json(json!({ "status": "ignored", "reason": "missing_topup_id" })),
+                    Json(json!({ "status": "ignored", "reason": "missing_funding_id" })),
                 );
             };
 
-            match state.db.expire_wallet_topup_quote(&topup_id).await {
+            match state.db.expire_wallet_funding_quote(&funding_id).await {
                 Ok(_) => (
                     StatusCode::OK,
                     Json(json!({ "status": "expired", "event_id": event.id })),
@@ -1150,15 +1327,15 @@ pub async fn stripe_webhook(
     }
 }
 
-pub async fn wallet_topup_request_status(
+pub async fn wallet_funding_request_status(
     State(state): State<AppState>,
     Path(request_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    match load_wallet_topup_request_status_response(&state, &request_id).await {
+    match load_wallet_funding_request_status_response(&state, &request_id).await {
         Ok(Some(response)) => (StatusCode::OK, Json(json!(response))),
         Ok(None) => (
             StatusCode::NOT_FOUND,
-            Json(json!({ "error": "wallet_topup_request_not_found" })),
+            Json(json!({ "error": "wallet_funding_request_not_found" })),
         ),
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -1167,17 +1344,17 @@ pub async fn wallet_topup_request_status(
     }
 }
 
-async fn load_wallet_topup_status(
+async fn load_wallet_funding_status(
     State(state): State<AppState>,
     Path(quote_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
     let now = chrono::Utc::now().timestamp();
-    let existing = match state.db.get_wallet_topup_quote(&quote_id).await {
+    let existing = match state.db.get_wallet_funding_quote(&quote_id).await {
         Ok(Some(quote)) => quote,
         Ok(None) => {
             return (
                 StatusCode::NOT_FOUND,
-                Json(json!({ "error": "topup_quote_not_found" })),
+                Json(json!({ "error": "funding_quote_not_found" })),
             )
         }
         Err(error) => {
@@ -1191,16 +1368,16 @@ async fn load_wallet_topup_status(
     if existing.expires_at <= now && existing.status.to_string() == "invoice_pending" {
         let _ = state
             .db
-            .expire_wallet_topups_for_pubkey(&existing.pubkey, now)
+            .expire_wallet_fundings_for_pubkey(&existing.pubkey, now)
             .await;
     }
 
-    let quote = match state.db.get_wallet_topup_quote(&quote_id).await {
+    let quote = match state.db.get_wallet_funding_quote(&quote_id).await {
         Ok(Some(quote)) => quote,
         Ok(None) => {
             return (
                 StatusCode::NOT_FOUND,
-                Json(json!({ "error": "topup_quote_not_found" })),
+                Json(json!({ "error": "funding_quote_not_found" })),
             )
         }
         Err(error) => {
@@ -1211,12 +1388,19 @@ async fn load_wallet_topup_status(
         }
     };
 
-    let quote = match sync_wallet_topup_quote_best_effort(&state, &quote).await {
-        Ok(quote) => quote,
-        Err(_) => quote,
+    let quote = if quote.rail == "lightning" {
+        match sync_lightning_funding_quote_state(&state, &quote).await {
+            Ok((quote, _)) => quote,
+            Err(_) => quote,
+        }
+    } else {
+        match sync_wallet_funding_quote_best_effort(&state, &quote).await {
+            Ok(quote) => quote,
+            Err(_) => quote,
+        }
     };
 
-    match load_wallet_topup_response(&state, &quote).await {
+    match load_wallet_funding_response(&state, &quote).await {
         Ok(response) => (StatusCode::OK, Json(json!(response))),
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -1230,7 +1414,7 @@ pub async fn get_mint_quote_bolt11(
     Path(quote_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
     let now = chrono::Utc::now().timestamp();
-    let existing = match state.db.get_wallet_topup_quote(&quote_id).await {
+    let existing = match state.db.get_wallet_funding_quote(&quote_id).await {
         Ok(Some(quote)) => quote,
         Ok(None) => {
             return (
@@ -1246,11 +1430,11 @@ pub async fn get_mint_quote_bolt11(
         }
     };
 
-    if existing.expires_at <= now && existing.status == WalletTopupStatus::InvoicePending {
-        let _ = state.db.expire_wallet_topup_quote(&existing.id).await;
+    if existing.expires_at <= now && existing.status == WalletFundingStatus::InvoicePending {
+        let _ = state.db.expire_wallet_funding_quote(&existing.id).await;
     }
 
-    let quote = match state.db.get_wallet_topup_quote(&quote_id).await {
+    let quote = match state.db.get_wallet_funding_quote(&quote_id).await {
         Ok(Some(quote)) => quote,
         Ok(None) => {
             return (
@@ -1266,12 +1450,19 @@ pub async fn get_mint_quote_bolt11(
         }
     };
 
-    let quote = match sync_wallet_topup_quote_best_effort(&state, &quote).await {
-        Ok(quote) => quote,
-        Err(_) => quote,
+    let (quote, mint_quote) = match sync_lightning_funding_quote_state(&state, &quote).await {
+        Ok(result) => result,
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "detail": error })),
+            )
+        }
     };
 
-    match mint_quote_bolt11_response(&quote) {
+    let _ = quote;
+
+    match mint_quote_bolt11_response_from_cdk(&mint_quote) {
         Ok(response) => (StatusCode::OK, Json(json!(response))),
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -1291,7 +1482,7 @@ pub async fn mint_bolt11(
         );
     }
 
-    let quote = match state.db.get_wallet_topup_quote(&req.quote).await {
+    let quote = match state.db.get_wallet_funding_quote(&req.quote).await {
         Ok(Some(quote)) => quote,
         Ok(None) => {
             return (
@@ -1307,19 +1498,24 @@ pub async fn mint_bolt11(
         }
     };
 
-    let quote = match sync_wallet_topup_quote_best_effort(&state, &quote).await {
-        Ok(quote) => quote,
-        Err(_) => quote,
+    let (quote, mint_quote) = match sync_lightning_funding_quote_state(&state, &quote).await {
+        Ok(result) => result,
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "detail": error })),
+            )
+        }
     };
 
-    if quote.status == WalletTopupStatus::Complete {
+    if mint_quote.state() == MintQuoteState::Issued || quote.status == WalletFundingStatus::Complete {
         return (
             StatusCode::BAD_REQUEST,
             Json(json!({ "detail": "Quote already issued" })),
         );
     }
 
-    if quote.status != WalletTopupStatus::Paid {
+    if mint_quote.state() != MintQuoteState::Paid {
         return (
             StatusCode::BAD_REQUEST,
             Json(json!({ "detail": "Quote not paid" })),
@@ -1327,7 +1523,7 @@ pub async fn mint_bolt11(
     }
 
     {
-        let mut processing = state.processing_topups.lock().await;
+        let mut processing = state.processing_fundings.lock().await;
         if !processing.insert(req.quote.clone()) {
             return (
                 StatusCode::CONFLICT,
@@ -1337,78 +1533,46 @@ pub async fn mint_bolt11(
     }
 
     let issue_result = async {
-        let active_keyset_id = active_keyset_id_for_unit(&state, &CurrencyUnit::Usd)
-            .map_err(|detail| ("internal".to_string(), detail))?;
-
-        let total_outputs = req
-            .outputs
-            .iter()
-            .fold(0_u64, |sum, output| sum.saturating_add(output.amount));
-        if total_outputs != quote.amount_minor {
-            return Err((
-                "bad_request".to_string(),
-                "outputs_amount_mismatch".to_string(),
-            ));
-        }
-
         let blinded_messages = req
             .outputs
             .iter()
-            .map(|output| {
-                if output.id != active_keyset_id {
-                    return Err("invalid_keyset_for_unit".to_string());
-                }
-                cdk_blinded_message_from_input(output)
-            })
+            .map(cdk_blinded_message_from_input)
             .collect::<Result<Vec<_>, String>>()
             .map_err(|error| ("bad_request".to_string(), error))?;
 
-        state
-            .mint
-            .verify_outputs(&blinded_messages)
-            .map_err(|error| ("bad_request".to_string(), error.to_string()))?;
+        let quote_id =
+            QuoteId::from_str(&quote.id).map_err(|error| ("bad_request".to_string(), error.to_string()))?;
+        let mint_request = MintRequest {
+            quote: quote_id,
+            outputs: blinded_messages,
+            signature: None,
+        };
 
         let mint_response = state
             .mint
-            .blind_sign(blinded_messages.clone())
+            .process_mint_request(MintInput::Single(mint_request))
             .await
-            .map_err(|error| ("internal".to_string(), error.to_string()))?;
+            .map_err(|error| {
+                let detail = error.to_string();
+                let kind = if detail.contains("unpaid")
+                    || detail.contains("issued")
+                    || detail.contains("amount")
+                    || detail.contains("keyset")
+                    || detail.contains("duplicate")
+                    || detail.contains("output")
+                {
+                    "bad_request"
+                } else {
+                    "internal"
+                };
+                (kind.to_string(), detail)
+            })?;
 
-        let quote_id = QuoteId::from_str(&quote.id)
-            .map_err(|error| ("bad_request".to_string(), error.to_string()))?;
-        let operation = Operation::new_mint(
-            Amount::from(total_outputs),
-            PaymentMethod::Known(KnownMethod::Bolt11),
-        );
-        let blinded_secrets = blinded_messages
-            .iter()
-            .map(|message| message.blinded_secret)
-            .collect::<Vec<_>>();
-
-        let mut tx = state
-            .mint
-            .localstore()
-            .begin_transaction()
-            .await
-            .map_err(|error| ("internal".to_string(), error.to_string()))?;
-        tx.add_blinded_messages(Some(&quote_id), &blinded_messages, &operation)
-            .await
-            .map_err(|error| ("internal".to_string(), error.to_string()))?;
-        tx.add_blind_signatures(&blinded_secrets, &mint_response, Some(quote_id))
-            .await
-            .map_err(|error| ("internal".to_string(), error.to_string()))?;
-        tx.add_completed_operation(&operation, &HashMap::new())
-            .await
-            .map_err(|error| ("internal".to_string(), error.to_string()))?;
-        tx.commit()
-            .await
-            .map_err(|error| ("internal".to_string(), error.to_string()))?;
-
-        let metadata_json = topup_metadata_json(
+        let metadata_json = funding_metadata_json(
             "bolt11",
             json!({
                 "payment_hash": quote.payment_hash,
-                "topup_quote_id": quote.id,
+                "funding_quote_id": quote.id,
                 "minted_via": "v1/mint/bolt11"
             }),
         )
@@ -1416,12 +1580,13 @@ pub async fn mint_bolt11(
 
         state
             .db
-            .complete_wallet_topup_quote(&quote.id, None, Some(&metadata_json))
+            .complete_wallet_funding_quote(&quote.id, None, Some(&metadata_json))
             .await
             .map_err(|error| ("internal".to_string(), error.to_string()))?;
 
         Ok(MintBolt11Response {
             signatures: mint_response
+                .signatures
                 .into_iter()
                 .map(token_output_from_signature)
                 .collect(),
@@ -1430,7 +1595,7 @@ pub async fn mint_bolt11(
     .await;
 
     {
-        let mut processing = state.processing_topups.lock().await;
+        let mut processing = state.processing_fundings.lock().await;
         processing.remove(&req.quote);
     }
 
@@ -1446,11 +1611,11 @@ pub async fn mint_bolt11(
     }
 }
 
-pub async fn get_wallet_topup_status(
+pub async fn get_wallet_funding_status(
     State(state): State<AppState>,
     Path(quote_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    load_wallet_topup_status(State(state), Path(quote_id)).await
+    load_wallet_funding_status(State(state), Path(quote_id)).await
 }
 
 pub async fn create_market(
@@ -1769,33 +1934,33 @@ pub async fn trade_quote_status(
     }
 }
 
-async fn prepare_wallet_topup_request(
+async fn prepare_wallet_funding_request(
     state: &AppState,
     request_id: Option<&str>,
     pubkey: &str,
     rail: &str,
     amount_minor: u64,
-) -> Result<WalletTopupRequestGuard, String> {
+) -> Result<WalletFundingRequestGuard, String> {
     let Some(request_id) = request_id.filter(|value| !value.trim().is_empty()) else {
-        return Ok(WalletTopupRequestGuard::New);
+        return Ok(WalletFundingRequestGuard::New);
     };
 
     if let Some(existing) = state
         .db
-        .get_wallet_topup_request(request_id)
+        .get_wallet_funding_request(request_id)
         .await
         .map_err(|error| error.to_string())?
     {
-        return handle_existing_wallet_topup_request(state, &existing, pubkey, rail, amount_minor)
+        return handle_existing_wallet_funding_request(state, &existing, pubkey, rail, amount_minor)
             .await;
     }
 
     match state
         .db
-        .create_wallet_topup_request(request_id, pubkey, rail, amount_minor)
+        .create_wallet_funding_request(request_id, pubkey, rail, amount_minor)
         .await
     {
-        Ok(_) => Ok(WalletTopupRequestGuard::New),
+        Ok(_) => Ok(WalletFundingRequestGuard::New),
         Err(error) => {
             let error_message = error.to_string();
             if !error_message.contains("UNIQUE constraint failed") {
@@ -1804,45 +1969,45 @@ async fn prepare_wallet_topup_request(
 
             let Some(existing) = state
                 .db
-                .get_wallet_topup_request(request_id)
+                .get_wallet_funding_request(request_id)
                 .await
                 .map_err(|db_error| db_error.to_string())?
             else {
                 return Err(error_message);
             };
 
-            handle_existing_wallet_topup_request(state, &existing, pubkey, rail, amount_minor).await
+            handle_existing_wallet_funding_request(state, &existing, pubkey, rail, amount_minor).await
         }
     }
 }
 
-async fn handle_existing_wallet_topup_request(
+async fn handle_existing_wallet_funding_request(
     state: &AppState,
-    existing: &WalletTopupRequest,
+    existing: &WalletFundingRequest,
     pubkey: &str,
     rail: &str,
     amount_minor: u64,
-) -> Result<WalletTopupRequestGuard, String> {
-    if !wallet_topup_request_matches(existing, pubkey, rail, amount_minor) {
-        return Err("wallet_topup_request_id_conflict".to_string());
+) -> Result<WalletFundingRequestGuard, String> {
+    if !wallet_funding_request_matches(existing, pubkey, rail, amount_minor) {
+        return Err("wallet_funding_request_id_conflict".to_string());
     }
 
     match existing.status {
-        WalletTopupRequestStatus::Complete => Ok(WalletTopupRequestGuard::Complete(
-            load_wallet_topup_response_for_request(state, existing).await?,
+        WalletFundingRequestStatus::Complete => Ok(WalletFundingRequestGuard::Complete(
+            load_wallet_funding_response_for_request(state, existing).await?,
         )),
-        WalletTopupRequestStatus::Pending => Ok(WalletTopupRequestGuard::Pending),
-        WalletTopupRequestStatus::Failed => Ok(WalletTopupRequestGuard::Failed(
+        WalletFundingRequestStatus::Pending => Ok(WalletFundingRequestGuard::Pending),
+        WalletFundingRequestStatus::Failed => Ok(WalletFundingRequestGuard::Failed(
             existing
                 .error_message
                 .clone()
-                .unwrap_or_else(|| "wallet_topup_request_failed".to_string()),
+                .unwrap_or_else(|| "wallet_funding_request_failed".to_string()),
         )),
     }
 }
 
-fn wallet_topup_request_matches(
-    existing: &WalletTopupRequest,
+fn wallet_funding_request_matches(
+    existing: &WalletFundingRequest,
     pubkey: &str,
     rail: &str,
     amount_minor: u64,
@@ -1850,23 +2015,23 @@ fn wallet_topup_request_matches(
     existing.pubkey == pubkey && existing.rail == rail && existing.amount_minor == amount_minor
 }
 
-async fn load_wallet_topup_response_for_request(
+async fn load_wallet_funding_response_for_request(
     state: &AppState,
-    request: &WalletTopupRequest,
-) -> Result<ProductWalletTopupResponse, String> {
-    let topup_quote_id = request
-        .topup_quote_id
+    request: &WalletFundingRequest,
+) -> Result<ProductPortfolioFundingResponse, String> {
+    let funding_quote_id = request
+        .funding_quote_id
         .as_deref()
-        .ok_or_else(|| "wallet_topup_request_missing_quote".to_string())?;
+        .ok_or_else(|| "wallet_funding_request_missing_quote".to_string())?;
 
     let quote = state
         .db
-        .get_wallet_topup_quote(topup_quote_id)
+        .get_wallet_funding_quote(funding_quote_id)
         .await
         .map_err(|error| error.to_string())?
-        .ok_or_else(|| "topup_quote_not_found".to_string())?;
+        .ok_or_else(|| "funding_quote_not_found".to_string())?;
 
-    load_wallet_topup_response(state, &quote).await
+    load_wallet_funding_response(state, &quote).await
 }
 
 pub async fn trade_request_status(
@@ -2954,32 +3119,32 @@ async fn load_market_summary_by_event_id(
     Ok(product_market_summary(state, &market, &launch))
 }
 
-async fn load_wallet_topup_request_status_response(
+async fn load_wallet_funding_request_status_response(
     state: &AppState,
     request_id: &str,
-) -> Result<Option<ProductWalletTopupRequestStatusResponse>, String> {
+) -> Result<Option<ProductPortfolioFundingRequestStatusResponse>, String> {
     let Some(request) = state
         .db
-        .get_wallet_topup_request(request_id)
+        .get_wallet_funding_request(request_id)
         .await
         .map_err(|error| error.to_string())?
     else {
         return Ok(None);
     };
 
-    let topup = if request.status == WalletTopupRequestStatus::Complete {
-        Some(load_wallet_topup_response_for_request(state, &request).await?)
+    let funding = if request.status == WalletFundingRequestStatus::Complete {
+        Some(load_wallet_funding_response_for_request(state, &request).await?)
     } else {
         None
     };
 
-    Ok(Some(ProductWalletTopupRequestStatusResponse {
+    Ok(Some(ProductPortfolioFundingRequestStatusResponse {
         request_id: request.request_id,
         rail: request.rail,
         amount_minor: request.amount_minor,
         status: request.status.to_string(),
         error: request.error_message,
-        topup,
+        funding,
     }))
 }
 
@@ -3323,36 +3488,36 @@ async fn market_detail_response(
     }
 }
 
-async fn enforce_signet_topup_limits(
+async fn enforce_signet_funding_limits(
     state: &AppState,
     pubkey: &str,
     amount_minor: u64,
 ) -> Result<(), String> {
-    if amount_minor > SIGNET_TOPUP_SINGLE_LIMIT_MINOR {
+    if amount_minor > SIGNET_FUNDING_SINGLE_LIMIT_MINOR {
         return Err(format!(
-            "signet_topup_single_limit_exceeded:max_minor={SIGNET_TOPUP_SINGLE_LIMIT_MINOR}"
+            "signet_funding_single_limit_exceeded:max_minor={SIGNET_FUNDING_SINGLE_LIMIT_MINOR}"
         ));
     }
 
-    let window_started_at = chrono::Utc::now().timestamp() - SIGNET_TOPUP_WINDOW_SECONDS;
+    let window_started_at = chrono::Utc::now().timestamp() - SIGNET_FUNDING_WINDOW_SECONDS;
     let funded_in_window = state
         .db
-        .sum_wallet_topup_quote_amount_since_all_rails(pubkey, window_started_at)
+        .sum_wallet_funding_quote_amount_since_all_rails(pubkey, window_started_at)
         .await
         .map_err(|error| error.to_string())?;
 
-    if funded_in_window.saturating_add(amount_minor) > SIGNET_TOPUP_WINDOW_LIMIT_MINOR {
-        let remaining_minor = SIGNET_TOPUP_WINDOW_LIMIT_MINOR.saturating_sub(funded_in_window);
+    if funded_in_window.saturating_add(amount_minor) > SIGNET_FUNDING_WINDOW_LIMIT_MINOR {
+        let remaining_minor = SIGNET_FUNDING_WINDOW_LIMIT_MINOR.saturating_sub(funded_in_window);
         return Err(format!(
-            "signet_topup_window_limit_exceeded:window_minor={SIGNET_TOPUP_WINDOW_LIMIT_MINOR}:remaining_minor={remaining_minor}"
+            "signet_funding_window_limit_exceeded:window_minor={SIGNET_FUNDING_WINDOW_LIMIT_MINOR}:remaining_minor={remaining_minor}"
         ));
     }
 
     Ok(())
 }
 
-fn signet_topup_limit_error_response(error: &str) -> (StatusCode, Json<Value>) {
-    let status = if error.starts_with("signet_topup_window_limit_exceeded") {
+fn signet_funding_limit_error_response(error: &str) -> (StatusCode, Json<Value>) {
+    let status = if error.starts_with("signet_funding_window_limit_exceeded") {
         StatusCode::TOO_MANY_REQUESTS
     } else {
         StatusCode::BAD_REQUEST
@@ -3360,23 +3525,23 @@ fn signet_topup_limit_error_response(error: &str) -> (StatusCode, Json<Value>) {
     (status, Json(json!({ "error": error })))
 }
 
-async fn enforce_stripe_topup_limits(
+async fn enforce_stripe_funding_limits(
     state: &AppState,
     stripe_gateway: &crate::stripe::StripeGateway,
     pubkey: &str,
     amount_minor: u64,
 ) -> Result<(), String> {
-    if amount_minor > stripe_gateway.max_topup_minor() {
+    if amount_minor > stripe_gateway.max_funding_minor() {
         return Err(format!(
-            "stripe_topup_single_limit_exceeded:max_minor={}",
-            stripe_gateway.max_topup_minor()
+            "stripe_funding_single_limit_exceeded:max_minor={}",
+            stripe_gateway.max_funding_minor()
         ));
     }
 
     let window_started_at = chrono::Utc::now().timestamp() - stripe_gateway.window_seconds();
     let funded_in_window = state
         .db
-        .sum_wallet_topup_quote_amount_since(pubkey, "stripe", window_started_at)
+        .sum_wallet_funding_quote_amount_since(pubkey, "stripe", window_started_at)
         .await
         .map_err(|error| error.to_string())?;
 
@@ -3385,7 +3550,7 @@ async fn enforce_stripe_topup_limits(
             .window_limit_minor()
             .saturating_sub(funded_in_window);
         return Err(format!(
-            "stripe_topup_window_limit_exceeded:window_minor={}:remaining_minor={remaining_minor}",
+            "stripe_funding_window_limit_exceeded:window_minor={}:remaining_minor={remaining_minor}",
             stripe_gateway.window_limit_minor()
         ));
     }
@@ -3393,8 +3558,8 @@ async fn enforce_stripe_topup_limits(
     Ok(())
 }
 
-fn stripe_topup_limit_error_response(error: &str) -> (StatusCode, Json<Value>) {
-    let status = if error.starts_with("stripe_topup_window_limit_exceeded") {
+fn stripe_funding_limit_error_response(error: &str) -> (StatusCode, Json<Value>) {
+    let status = if error.starts_with("stripe_funding_window_limit_exceeded") {
         StatusCode::TOO_MANY_REQUESTS
     } else {
         StatusCode::BAD_REQUEST
@@ -3544,7 +3709,7 @@ async fn build_quote_response(
             let settlement_minor = total_minor;
             let fx_quote = state
                 .fx_service
-                .quote_wallet_topup(settlement_minor)
+                .quote_wallet_funding(settlement_minor)
                 .await?;
             let (next_q_long, next_q_short) = next_buy_quantities(market, side, quantity);
             let (post_yes_ppm, post_no_ppm) = current_prices_ppm(
@@ -3618,7 +3783,7 @@ async fn build_quote_response(
             let settlement_minor = net_minor;
             let fx_quote = state
                 .fx_service
-                .quote_wallet_topup(settlement_minor)
+                .quote_wallet_funding(settlement_minor)
                 .await?;
             let (next_q_long, next_q_short) = next_sell_quantities(market, side, quantity);
             let (post_yes_ppm, post_no_ppm) = current_prices_ppm(
@@ -3804,14 +3969,14 @@ async fn load_market_for_trading(state: &AppState, event_id: &str) -> Result<Mar
     }
 }
 
-async fn load_wallet_topup_response(
+async fn load_wallet_funding_response(
     state: &AppState,
-    quote: &WalletTopupQuote,
-) -> Result<ProductWalletTopupResponse, String> {
-    let quote = sync_wallet_topup_quote_best_effort(state, quote)
+    quote: &WalletFundingQuote,
+) -> Result<ProductPortfolioFundingResponse, String> {
+    let quote = sync_wallet_funding_quote_best_effort(state, quote)
         .await
         .unwrap_or_else(|_| quote.clone());
-    wallet_topup_response_for_state(state, &quote).await
+    wallet_funding_response_for_state(state, &quote).await
 }
 
 fn lightning_fx_quote_response(quote: &FxQuoteEnvelope) -> ProductLightningFxQuoteResponse {
@@ -3833,21 +3998,21 @@ fn lightning_fx_quote_response(quote: &FxQuoteEnvelope) -> ProductLightningFxQuo
     }
 }
 
-fn wallet_topup_response(
-    quote: &WalletTopupQuote,
+fn wallet_funding_response(
+    quote: &WalletFundingQuote,
     fx_quote: &FxQuoteSnapshot,
     metadata_json: Option<&str>,
-) -> ProductWalletTopupResponse {
+) -> ProductPortfolioFundingResponse {
     let (checkout_url, checkout_session_id, checkout_expires_at, risk_level) =
-        topup_metadata_checkout_fields(metadata_json);
+        funding_metadata_checkout_fields(metadata_json);
     let is_lightning = quote.rail == "lightning";
 
-    ProductWalletTopupResponse {
+    ProductPortfolioFundingResponse {
         id: quote.id.clone(),
         rail: quote.rail.clone(),
         amount_minor: quote.amount_minor,
         amount_msat: is_lightning.then_some(quote.amount_msat),
-        status: wallet_topup_status_label(quote),
+        status: wallet_funding_status_label(quote),
         invoice: quote.invoice.clone(),
         payment_hash: quote.payment_hash.clone(),
         checkout_url,
@@ -3872,10 +4037,10 @@ fn wallet_topup_response(
     }
 }
 
-async fn wallet_topup_response_for_state(
+async fn wallet_funding_response_for_state(
     state: &AppState,
-    quote: &WalletTopupQuote,
-) -> Result<ProductWalletTopupResponse, String> {
+    quote: &WalletFundingQuote,
+) -> Result<ProductPortfolioFundingResponse, String> {
     let fx_quote = state
         .db
         .get_fx_quote_snapshot(&quote.fx_quote_id)
@@ -3894,14 +4059,14 @@ async fn wallet_topup_response_for_state(
         .as_ref()
         .and_then(|event| event.metadata_json.as_deref())
         .or(quote.metadata_json.as_deref());
-    Ok(wallet_topup_response(quote, &fx_quote, metadata_json))
+    Ok(wallet_funding_response(quote, &fx_quote, metadata_json))
 }
 
-async fn sync_wallet_topup_quote_best_effort(
+async fn sync_wallet_funding_quote_best_effort(
     state: &AppState,
-    quote: &WalletTopupQuote,
-) -> Result<WalletTopupQuote, String> {
-    if quote.status != WalletTopupStatus::InvoicePending {
+    quote: &WalletFundingQuote,
+) -> Result<WalletFundingQuote, String> {
+    if quote.status != WalletFundingStatus::InvoicePending {
         return Ok(quote.clone());
     }
 
@@ -3920,12 +4085,12 @@ async fn sync_wallet_topup_quote_best_effort(
     match invoice_status.as_str() {
         "settled" => state
             .db
-            .mark_wallet_topup_quote_paid(
+            .mark_wallet_funding_quote_paid(
                 &quote.id,
                 Some(
                     &json!({
                         "payment_hash": payment_hash,
-                        "topup_quote_id": quote.id,
+                        "funding_quote_id": quote.id,
                         "settled_via": "invoice_status_poll"
                     })
                     .to_string(),
@@ -3935,15 +4100,15 @@ async fn sync_wallet_topup_quote_best_effort(
             .map_err(|error| error.to_string()),
         "expired" | "cancelled" => state
             .db
-            .expire_wallet_topup_quote(&quote.id)
+            .expire_wallet_funding_quote(&quote.id)
             .await
             .map_err(|error| error.to_string())?
-            .ok_or_else(|| "topup_quote_not_found".to_string()),
+            .ok_or_else(|| "funding_quote_not_found".to_string()),
         _ => Ok(quote.clone()),
     }
 }
 
-fn schedule_signet_topup_payment(state: AppState, invoice: String) {
+fn schedule_signet_funding_payment(state: AppState, invoice: String) {
     tokio::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_millis(250)).await;
         let invoice_service = state.invoice_service.lock().await;

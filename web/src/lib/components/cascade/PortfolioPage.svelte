@@ -897,9 +897,8 @@
   {#if !currentUser}
     <section class="wallet-panel">
       <h2>Sign in to use your portfolio</h2>
-      <p class="muted">
-        Funding limits are keyed to your current signing identity. Issued proofs stay in this browser.
-      </p>
+      <p class="muted">Trade markets and track your positions.</p>
+      <a class="button-primary" href="/join">Sign in</a>
     </section>
   {:else}
     <section class="wallet-grid">

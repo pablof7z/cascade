@@ -24,6 +24,8 @@ Agents and web clients should not be forced to reason about sats or Lightning fo
 - Launch web clients store proofs locally in browser `localStorage` in both signet and mainnet editions. NIP-60 is explicitly out of current launch scope.
 - No API contract may imply market closure, oracle declaration, or winner-payout semantics.
 - Normal product contracts are dollar-denominated and hide sats/msats.
+- Standard-first rule: if Cashu/CDK already provides a standard route or state machine for a behavior, Cascade should use it instead of inventing a parallel custom route.
+- Any custom route or custom persisted state must have a product-specific justification and should sit above the standard mint surface, not replace it.
 
 ## Units
 
@@ -80,6 +82,12 @@ The canonical market identifier inside the mint is the kind `982` event id.
 
 These routes exist today in `mint/crates/cascade-api/src/routes.rs`.
 
+They are not all equally canonical. The route surface should be read in three buckets:
+
+- standard Cashu/CDK routes that should remain
+- justified custom Cascade product routes
+- legacy compatibility or migration-debt routes that should be removed once the standard surface is fully wired
+
 ### Public Read
 
 - `GET /api/product/runtime` — runtime manifest with actual backend edition, mint URL, proof custody mode, and funding-rail availability
@@ -117,6 +125,63 @@ These routes reflect the current implementation, not the fully aligned launch co
 - they still reflect the earlier sats-era trade story
 - they do not yet describe Stripe funding on the wallet mint
 - they do not yet express the spend-based USD trade orchestration that `web/` and agents need
+- some of them are legacy custom routes that duplicate responsibilities the standard Cashu mint/melt surface should own
+
+## Standard-First Route Taxonomy
+
+### Standard Cashu/CDK Surface
+
+These should be the canonical routes whenever the behavior is pure mint/melt behavior:
+
+- `GET /v1/keys`
+- `GET /{event_id}/v1/keys`
+- `POST /v1/mint/quote/bolt11`
+- `GET /v1/mint/quote/bolt11/{quote_id}`
+- `POST /v1/mint/bolt11`
+- `POST /v1/melt/quote/bolt11`
+- `GET /v1/melt/quote/bolt11/{quote_id}`
+- `POST /v1/melt/bolt11`
+
+If Cascade needs extra product metadata for one of these flows, that metadata should attach to the standard quote or operation rather than replacing the standard route with a custom one.
+
+### Justified Custom Cascade Surface
+
+These routes are justified because they express product behavior that the standard mint surface does not express on its own:
+
+- `GET /api/product/runtime`
+  - justification: edition mismatch detection, proof-custody mode, and rail availability are product concerns, not Cashu mint concerns
+- `POST /api/portfolio/funding/stripe`
+- `POST /api/portfolio/funding/stripe/webhook`
+- `GET /api/portfolio/funding/{funding_id}`
+- `GET /api/portfolio/funding/requests/{request_id}`
+  - justification: Stripe checkout, webhook completion, and risk gating are not part of standard Cashu minting
+- `POST /api/trades/quote`
+- `GET /api/trades/quotes/{quote_id}`
+- `POST /api/trades/buy`
+- `POST /api/trades/sell/quote`
+- `POST /api/trades/sell`
+- `GET /api/trades/{trade_id}`
+- `GET /api/trades/requests/{request_id}`
+  - justification: spend-based USD LMSR trading composes multiple standard mint/melt steps and market math into one product action
+- `GET /api/product/feed`
+- `GET /api/product/markets/slug/{slug}`
+- `GET /api/product/markets/{event_id}/pending/{creator_pubkey}`
+  - justification: public discovery and pending-visibility behavior are product read models, not Cashu mint primitives
+
+### Legacy Or Debt Routes
+
+These routes should not be treated as canonical long-term interfaces:
+
+- `POST /api/lightning/create-order`
+- `POST /api/lightning/check-order`
+- `POST /api/lightning/settle/{order_id}`
+- `POST /api/trade/bid`
+- `POST /api/trade/ask`
+- `POST /v1/cascade/redeem`
+- `POST /v1/cascade/settle`
+- `POST /api/market/create`
+
+If one of these still exists in the codebase, it should be understood as migration debt, a temporary compatibility alias, or an implementation seam to remove. New clients should not depend on them unless the route is re-justified explicitly.
 
 The presence of `POST /api/market/create` in the current implementation does not mean the mint should be the canonical publisher of kind `982`.
 

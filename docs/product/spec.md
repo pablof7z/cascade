@@ -53,6 +53,7 @@ For launch, `web/` is scoped to the public market product, the account layer, an
 - Signet and mainnet use the same browser-local proof custody and proof-based trade mechanics
 - The backend never stores a canonical copy of user-held proofs; it verifies spends and returns blind signatures only
 - Pure Lightning portfolio funding should use standard Cashu mint quote and mint endpoints rather than a Cascade-only funding route
+- Standard Cashu/CDK primitives should be reused by default; any custom Cascade route or state machine must have a documented product-specific justification
 
 ## Product Areas
 
@@ -317,7 +318,13 @@ Lightning funding should stay on the standard Cashu path:
 - pay invoice
 - mint proofs
 
-Cascade-specific `/api/...` routes remain for orchestration and card flows, not for replacing the standard wallet-mint Lightning funding lifecycle.
+Hidden inter-mint settlement should also converge on the standard Cashu melt path:
+
+- create melt quote
+- pay invoice from proofs
+- redeem the receiving mint quote
+
+Cascade-specific `/api/...` routes remain for orchestration and card flows, not for replacing the standard wallet-mint or market-mint mint/melt lifecycle.
 
 Market exits return value to the portfolio balance as USD ecash. Off-platform bank payout is a later milestone, not a launch requirement.
 

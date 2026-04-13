@@ -99,6 +99,23 @@ Off-the-shelf Cashu mints cannot do LMSR-priced token issuance. We build custom.
 - Implementation: CDK Rust (Cashu Dev Kit)
 - Not Nutshell, not cashu-ts, not any existing mint
 
+### Standard-First CDK Reuse
+
+Cascade should reuse standard Cashu/CDK primitives wherever those primitives can already express the required behavior.
+
+- Do not add a custom Cascade route if a standard Cashu mint or melt route already exists for that job.
+- Do not add a parallel Cascade state machine when CDK already persists the canonical mint/melt quote state.
+- Custom logic is allowed only when the product behavior is genuinely outside the standard mint contract and the deviation is documented with a justification.
+
+At launch, the allowed custom layers are:
+
+- product discovery and pending-market reads
+- Stripe funding orchestration and webhook completion
+- spend-based LMSR trade orchestration that composes multiple standard mint/melt steps into one USD-denominated action
+- edition/runtime manifest checks such as signet/mainnet mismatch protection
+
+Everything else should default to the standard CDK/Cashu surface and be treated as debt if it drifts away from it.
+
 ### Two Keysets Per Market
 
 One keyset for LONG tokens, one for SHORT tokens. All users share the market's keyset — not per-user keysets.

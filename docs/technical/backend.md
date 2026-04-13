@@ -135,6 +135,12 @@ The backend may still persist quote status, request status, settlement status, a
 
 Legacy compatibility code that mutates backend-only portfolio mirrors should be deleted rather than kept dormant. Unused mirror code is still architectural drift.
 
+Standard-first backend rule:
+
+- prefer CDK's canonical mint/melt quote state for standard Cashu operations
+- when Cascade needs extra product metadata, attach it to the canonical quote or operation id instead of replacing the standard flow
+- add a custom backend table or route only when the behavior is outside the standard mint contract and the justification is documented
+
 Actor metadata such as thesis, role, or operator notes is not mint state and should not live in mint tables. The mint only needs market, quote, settlement, and proof data.
 
 Public market projections must exclude markets that do not yet have at least one mint-authored kind `983`. Creator-authenticated reads may include those markets in a pending state.

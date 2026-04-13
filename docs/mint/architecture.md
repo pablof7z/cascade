@@ -192,6 +192,16 @@ This is the layer `web/` and agents should normally use:
 
 The product contract exists because the user experience is "spend $10 on YES", not "manually compose mint quotes, melt quotes, and Lightning invoices."
 
+## Standard-First Rule
+
+Reuse standard CDK/Cashu mint and melt flows whenever the required behavior is already expressible there.
+
+- incoming Lightning funding should stay on the standard mint-quote and mint endpoints
+- outgoing Lightning settlement between mints should stay on the standard melt-quote and melt endpoints
+- custom Cascade routes should sit above those standard flows as orchestration, not replace them
+
+Custom logic is justified only for product-specific behavior such as Stripe funding, edition/runtime protection, public discovery reads, and spend-based LMSR trade orchestration.
+
 ## Trade Lifecycle
 
 ### Wallet Funding With Stripe

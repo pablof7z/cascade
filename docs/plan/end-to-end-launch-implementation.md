@@ -292,6 +292,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 - implement invoice-backed market-mint issuance
 - implement exit flows back into the wallet mint
 - persist market quote state and settlement metadata
+- converge hidden Lightning settlement onto standard CDK melt primitives instead of bespoke settlement routes
 
 ### Deliverables
 
@@ -302,6 +303,10 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
   - `bolt11_wallet_to_market` for buys
   - `bolt11_market_to_wallet` for sells
 - settlement metadata that captures invoice/payment state for restart-safe auditing
+- standard `POST /v1/melt/quote/bolt11`
+- standard `GET /v1/melt/quote/bolt11/{quote_id}`
+- standard `POST /v1/melt/bolt11`
+- product orchestration backed by standard mint/melt quote ids rather than parallel bespoke settlement endpoints
 
 ### Success Gates
 
@@ -313,6 +318,20 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 
 - market activity still depends on ad hoc custom settlement endpoints
 - quote recovery after restart is incomplete
+
+## Standard-First Review Gate
+
+Before Milestone 10, do a route-level review and classify every remaining custom endpoint as one of:
+
+- justified product orchestration
+- compatibility alias scheduled for removal
+- unjustified drift to delete
+
+Launch should fail this gate if:
+
+- a standard CDK mint or melt primitive is still hidden behind an unnecessary custom Cascade endpoint
+- a custom route exists without a written justification
+- the web depends on a custom route where the standard Cashu flow is available
 
 ### Best Practices
 

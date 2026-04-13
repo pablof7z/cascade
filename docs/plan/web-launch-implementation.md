@@ -459,6 +459,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Lightning funding uses `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`.
 - [ ] If the initial Lightning quote response is lost, the browser retries `POST /v1/mint/quote/bolt11` with the same client `request_id` until the mint replays the same quote.
 - [ ] Browser-local Lightning recovery can restore proofs after an interrupted mint response using locally stored deterministic wallet state.
+- [ ] The browser does not depend on a bespoke Lightning funding route when the standard Cashu mint flow already covers the job.
 - [ ] Builder preserves pending market state after kind `982` publication when the creator still needs funding.
 - [ ] Public users do not see pending markets until the first mint-authored kind `983`.
 - [ ] Send/export token flow exists.
@@ -538,6 +539,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] `/portfolio` keeps locally held market positions visible even when public market detail fetches fail, without falling back to backend-derived prices or PnL.
 - [ ] Market-proof storage uses a fixed integer share-minor scale of `10_000` units per whole share in both signet and mainnet.
 - [ ] Market-proof bucket names are canonicalized to lowercase `long_<slug>` / `short_<slug>`.
+- [ ] Web product orchestration may call `/api/trades/*`, but any pure mint or melt action stays on the standard Cashu route surface.
 - [ ] Browser storage migrates any legacy uppercase market-proof buckets into the lowercase canonical buckets during load.
 - [ ] Market keysets use a wide denomination ladder so browser-local proof buckets stay compact even for large share positions.
 - [ ] Builder, market trading, and `/portfolio` do not depend on a server-side per-pubkey wallet ledger in signet.

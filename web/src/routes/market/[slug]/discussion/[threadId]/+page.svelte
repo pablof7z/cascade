@@ -1,13 +1,47 @@
 <script lang="ts">
+  import { NDKEvent } from '@nostr-dev-kit/ndk';
+  import { invalidateAll } from '$app/navigation';
   import type { DiscussionThread } from '$lib/ndk/cascade';
   import { formatRelativeTime, marketDiscussionUrl, truncateText } from '$lib/ndk/cascade';
   import { displayName, shortPubkey } from '$lib/ndk/format';
+  import { ndk } from '$lib/ndk/client';
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
 
+  const currentUser = $derived(ndk.$currentUser);
+
   function authorLabel(pubkey: string): string {
     return displayName(data.profiles[pubkey], shortPubkey(pubkey));
+  }
+
+  let replyBody = $state('');
+  let replySubmitting = $state(false);
+  let replyError = $state('');
+
+  async function postReply() {
+    if (!replyBody.trim()) return;
+    replySubmitting = true;
+    replyError = '';
+    try {
+      const event = new NDKEvent(ndk);
+      event.kind = 1111;
+      event.content = replyBody.trim();
+      event.tags = [
+        ['E', data.thread.post.id, '', 'root'],
+        ['K', '1111'],
+        ['e', data.thread.post.id, '', 'root'],
+        ['k', '1111'],
+        ['e', data.thread.post.id, '', 'reply']
+      ];
+      await event.publish();
+      replyBody = '';
+      await invalidateAll();
+    } catch (err) {
+      replyError = err instanceof Error ? err.message : 'Failed to publish. Please try again.';
+    } finally {
+      replySubmitting = false;
+    }
   }
 </script>
 
@@ -43,3 +77,71 @@
     {/if}
   </article>
 {/snippet}
+
+<section class="section">
+  {#if currentUser}
+    <div class="reply-compose">
+      <textarea
+        class="reply-body"
+        rows={4}
+        placeholder="Write a reply…"
+        bind:value={replyBody}
+        disabled={replySubmitting}
+      ></textarea>
+      {#if replyError}
+        <p class="reply-error">{replyError}</p>
+      {/if}
+      <div class="reply-actions">
+        <button class="button-primary" onclick={postReply} disabled={replySubmitting || !replyBody.trim()}>
+          {replySubmitting ? 'Posting…' : 'Post reply'}
+        </button>
+      </div>
+    </div>
+  {:else}
+    <p class="reply-signin">
+      <a href="/join">Sign in</a> to reply.
+    </p>
+  {/if}
+</section>
+
+<style>
+  .reply-compose {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .reply-body {
+    width: 100%;
+    border: 1px solid var(--border-subtle);
+    border-radius: 2px;
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.6rem;
+    box-sizing: border-box;
+    resize: vertical;
+  }
+
+  .reply-body:focus {
+    outline: none;
+    border-color: var(--text-muted);
+  }
+
+  .reply-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .reply-error {
+    color: var(--negative);
+    font-size: 0.85rem;
+    margin: 0;
+  }
+
+  .reply-signin {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+</style>

@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { NDKUserProfile } from '@nostr-dev-kit/ndk';
+  import { NDKEvent } from '@nostr-dev-kit/ndk';
+  import { invalidateAll } from '$app/navigation';
   import PaperTradePanel from '$lib/components/cascade/PaperTradePanel.svelte';
   import { isPaperEdition } from '$lib/cascade/config';
   import { formatProductAmount, productUnitLabel } from '$lib/cascade/format';
@@ -176,6 +178,40 @@
 
   function priceCents(probability: number): string {
     return `${Math.round(probability * 100)}¢`;
+  }
+
+  let composeSubject = $state('');
+  let composeBody = $state('');
+  let composeSubmitting = $state(false);
+  let composeError = $state('');
+
+  async function postThread() {
+    if (!composeBody.trim()) return;
+    composeSubmitting = true;
+    composeError = '';
+    try {
+      const event = new NDKEvent(ndk);
+      event.kind = 1111;
+      event.content = composeBody.trim();
+      const tags: string[][] = [
+        ['E', market.id, '', 'root'],
+        ['K', '982'],
+        ['e', market.id, '', 'root'],
+        ['k', '982']
+      ];
+      if (composeSubject.trim()) {
+        tags.push(['subject', composeSubject.trim()]);
+      }
+      event.tags = tags;
+      await event.publish();
+      composeSubject = '';
+      composeBody = '';
+      await invalidateAll();
+    } catch (err) {
+      composeError = err instanceof Error ? err.message : 'Failed to publish. Please try again.';
+    } finally {
+      composeSubmitting = false;
+    }
   }
 </script>
 
@@ -460,6 +496,37 @@
         <div class="panel-empty">No discussion threads yet.</div>
       {/if}
     </div>
+
+    {#if currentUser}
+      <div class="compose-area">
+        <input
+          class="compose-subject"
+          type="text"
+          placeholder="Subject (optional)"
+          bind:value={composeSubject}
+          disabled={composeSubmitting}
+        />
+        <textarea
+          class="compose-body"
+          rows={4}
+          placeholder="Start a thread…"
+          bind:value={composeBody}
+          disabled={composeSubmitting}
+        ></textarea>
+        {#if composeError}
+          <p class="compose-error">{composeError}</p>
+        {/if}
+        <div class="compose-actions">
+          <button class="button-primary" onclick={postThread} disabled={composeSubmitting || !composeBody.trim()}>
+            {composeSubmitting ? 'Posting…' : 'Post thread'}
+          </button>
+        </div>
+      </div>
+    {:else}
+      <p class="compose-signin">
+        <a href="/join?from=/market/{market.slug}/discussion">Sign in</a> to join the discussion.
+      </p>
+    {/if}
   </section>
 {/if}
 
@@ -1000,5 +1067,53 @@
       justify-items: start;
       text-align: left;
     }
+  }
+
+  .compose-area {
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .compose-subject,
+  .compose-body {
+    width: 100%;
+    border: 1px solid var(--border-subtle);
+    border-radius: 2px;
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.6rem;
+    box-sizing: border-box;
+    resize: vertical;
+  }
+
+  .compose-subject:focus,
+  .compose-body:focus {
+    outline: none;
+    border-color: var(--text-muted);
+  }
+
+  .compose-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .compose-error {
+    color: var(--negative);
+    font-size: 0.85rem;
+    margin: 0;
+  }
+
+  .compose-signin {
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
   }
 </style>

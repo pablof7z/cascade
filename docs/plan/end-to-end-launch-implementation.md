@@ -298,6 +298,10 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 - LONG and SHORT issuance via paid quotes
 - exit path from market proofs to portfolio proofs
 - exact quantity and proceeds handling for finite LMSR trades
+- persisted settlement records that identify the logical Lightning direction explicitly:
+  - `bolt11_wallet_to_market` for buys
+  - `bolt11_market_to_wallet` for sells
+- settlement metadata that captures invoice/payment state for restart-safe auditing
 
 ### Success Gates
 

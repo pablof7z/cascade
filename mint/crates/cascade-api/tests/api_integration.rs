@@ -832,7 +832,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     assert_eq!(buy_payload["market"]["visibility"].as_str(), Some("public"));
     assert_eq!(
         buy_payload["settlement"]["mode"].as_str(),
-        Some("bolt11_internal")
+        Some("bolt11_wallet_to_market")
     );
     assert_eq!(
         buy_payload["settlement"]["rail"].as_str(),
@@ -844,6 +844,18 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     );
     assert!(buy_payload["settlement"]["invoice"].as_str().is_some());
     assert!(buy_payload["settlement"]["payment_hash"].as_str().is_some());
+    assert_eq!(
+        buy_payload["settlement"]["metadata"]["payer_role"].as_str(),
+        Some("wallet_mint")
+    );
+    assert_eq!(
+        buy_payload["settlement"]["metadata"]["receiver_role"].as_str(),
+        Some("market_mint")
+    );
+    assert_eq!(
+        buy_payload["settlement"]["metadata"]["invoice_state"].as_str(),
+        Some("settled")
+    );
     let first_quantity = buy_quote_payload["quantity"].as_f64().unwrap();
     let issued_market_proofs = proofs_from_signatures(
         &buy_payload["issued"]["signatures"],
@@ -923,7 +935,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     );
     assert_eq!(
         sell_payload["settlement"]["mode"].as_str(),
-        Some("bolt11_internal")
+        Some("bolt11_market_to_wallet")
     );
     assert_eq!(
         sell_payload["settlement"]["rail"].as_str(),
@@ -933,6 +945,18 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     assert!(sell_payload["settlement"]["payment_hash"]
         .as_str()
         .is_some());
+    assert_eq!(
+        sell_payload["settlement"]["metadata"]["payer_role"].as_str(),
+        Some("market_mint")
+    );
+    assert_eq!(
+        sell_payload["settlement"]["metadata"]["receiver_role"].as_str(),
+        Some("wallet_mint")
+    );
+    assert_eq!(
+        sell_payload["settlement"]["metadata"]["invoice_state"].as_str(),
+        Some("settled")
+    );
 
     let detail_response = client
         .get(format!("{url}/api/product/markets/slug/{slug}"))
@@ -1081,7 +1105,7 @@ async fn test_coordinator_trade_routes_and_status() {
     );
     assert_eq!(
         trade_status_payload["settlement"]["mode"].as_str(),
-        Some("bolt11_internal")
+        Some("bolt11_wallet_to_market")
     );
     assert_eq!(
         trade_status_payload["settlement"]["rail"].as_str(),
@@ -1093,6 +1117,18 @@ async fn test_coordinator_trade_routes_and_status() {
     assert!(trade_status_payload["settlement"]["payment_hash"]
         .as_str()
         .is_some());
+    assert_eq!(
+        trade_status_payload["settlement"]["metadata"]["payer_role"].as_str(),
+        Some("wallet_mint")
+    );
+    assert_eq!(
+        trade_status_payload["settlement"]["metadata"]["receiver_role"].as_str(),
+        Some("market_mint")
+    );
+    assert_eq!(
+        trade_status_payload["settlement"]["metadata"]["invoice_state"].as_str(),
+        Some("settled")
+    );
     assert_eq!(
         trade_status_payload["market"]["event_id"].as_str(),
         Some(event_id)
@@ -1368,7 +1404,8 @@ async fn test_stripe_funding_completes_from_webhook() {
         webhook_secret: webhook_secret.to_string(),
         success_url: "https://cascade.test/portfolio?stripe=success&funding_id={FUNDING_ID}"
             .to_string(),
-        cancel_url: "https://cascade.test/portfolio?stripe=cancel&funding_id={FUNDING_ID}".to_string(),
+        cancel_url: "https://cascade.test/portfolio?stripe=cancel&funding_id={FUNDING_ID}"
+            .to_string(),
         base_url: stripe_base_url,
         checkout_expiry_seconds: 1800,
         product_name: "Cascade Portfolio Funding".to_string(),
@@ -1459,7 +1496,10 @@ async fn test_stripe_funding_completes_from_webhook() {
     assert_eq!(funding_status_response.status(), 200);
     let funding_status_payload: serde_json::Value = funding_status_response.json().await.unwrap();
     assert_eq!(funding_status_payload["status"].as_str(), Some("paid"));
-    assert_eq!(funding_status_payload["risk_level"].as_str(), Some("normal"));
+    assert_eq!(
+        funding_status_payload["risk_level"].as_str(),
+        Some("normal")
+    );
     assert!(funding_status_payload.get("issued_proofs").is_none());
 }
 
@@ -1472,7 +1512,8 @@ async fn test_stripe_funding_moves_to_review_required_for_high_risk() {
         webhook_secret: webhook_secret.to_string(),
         success_url: "https://cascade.test/portfolio?stripe=success&funding_id={FUNDING_ID}"
             .to_string(),
-        cancel_url: "https://cascade.test/portfolio?stripe=cancel&funding_id={FUNDING_ID}".to_string(),
+        cancel_url: "https://cascade.test/portfolio?stripe=cancel&funding_id={FUNDING_ID}"
+            .to_string(),
         base_url: stripe_base_url,
         checkout_expiry_seconds: 1800,
         product_name: "Cascade Portfolio Funding".to_string(),
@@ -1541,7 +1582,10 @@ async fn test_stripe_funding_moves_to_review_required_for_high_risk() {
         funding_status_payload["status"].as_str(),
         Some("review_required")
     );
-    assert_eq!(funding_status_payload["risk_level"].as_str(), Some("highest"));
+    assert_eq!(
+        funding_status_payload["risk_level"].as_str(),
+        Some("highest")
+    );
     assert!(funding_status_payload.get("issued_proofs").is_none());
 }
 

@@ -151,6 +151,12 @@ The low-level composition is:
 8. Wallet mint consumes the USD proofs and pays the invoice.
 9. User redeems the market-mint quote and receives LONG or SHORT proofs.
 
+Persisted settlement records for buys should expose that logical direction explicitly:
+
+- payer role: `wallet_mint`
+- receiver role: `market_mint`
+- settlement mode: `bolt11_wallet_to_market`
+
 No new public swap primitive is required. The product coordinator simply makes the standard path feel like one action.
 
 ## Sell Flow
@@ -170,6 +176,12 @@ The low-level composition is:
 6. User submits market proofs to the market mint melt.
 7. Market mint consumes those proofs and pays the wallet-mint invoice.
 8. User redeems the wallet-mint quote and receives USD proofs.
+
+Persisted settlement records for sells should expose that logical direction explicitly:
+
+- payer role: `market_mint`
+- receiver role: `wallet_mint`
+- settlement mode: `bolt11_market_to_wallet`
 
 ## Why We Reuse Existing Primitives
 

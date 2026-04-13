@@ -282,6 +282,20 @@ The persisted quote is also the settlement contract for the coordinator. It shou
 
 Executed trade responses and `GET /api/trades/{trade_id}` should also expose a settlement object when one exists. The canonical launch shape is a completed hidden BOLT11 settlement record: the mint creates the invoice for the receiving side, pays it over the Lightning abstraction, and records the invoice, payment hash, and FX snapshot so recovery and auditing can reason about the hidden rail step without inventing a bespoke public swap primitive.
 
+The settlement record must describe the logical direction explicitly instead of using a vague internal label:
+
+- buy: `wallet_mint -> market_mint` with `mode = bolt11_wallet_to_market`
+- sell: `market_mint -> wallet_mint` with `mode = bolt11_market_to_wallet`
+
+Settlement metadata should remain auditable:
+
+- `payer_role`
+- `receiver_role`
+- `invoice_state`
+- `invoice_created_at`
+- `invoice_expiry_seconds`
+- FX snapshot fields and `payment_preimage` when available
+
 ### Public Read
 
 - `GET /api/home`
@@ -377,6 +391,9 @@ Launch execution is proof-native, but intentionally narrower than a fully genera
 - the launch web client unblinds those signatures and stores the resulting proofs locally in the browser
 - buy and withdrawal execution must reject proofless requests in both signet and mainnet
 - execution responses must not include a server-authored portfolio balance or open-position snapshot
+- settlement responses should use explicit logical modes:
+  - `bolt11_wallet_to_market` for buys
+  - `bolt11_market_to_wallet` for sells
 
 Proofless pubkey-only trade execution is not part of the launch contract.
 

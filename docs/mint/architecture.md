@@ -226,6 +226,8 @@ The product contract exists because the user experience is "spend $10 on YES", n
 10. Market mint publishes a kind `983` buy event.
 11. If this is the market's first kind `983`, the market becomes publicly discoverable.
 
+The persisted settlement record for this leg should identify the logical rail path as `wallet_mint -> market_mint` with `mode = bolt11_wallet_to_market`.
+
 ### Sell
 
 1. User asks to sell some or all market proofs.
@@ -237,6 +239,8 @@ The product contract exists because the user experience is "spend $10 on YES", n
 7. Market mint consumes the proofs and pays the invoice.
 8. User redeems the wallet-mint quote and receives USD proofs.
 9. Market mint publishes a kind `983` sell event.
+
+The persisted settlement record for this leg should identify the logical rail path as `market_mint -> wallet_mint` with `mode = bolt11_market_to_wallet`.
 
 ### Swap
 

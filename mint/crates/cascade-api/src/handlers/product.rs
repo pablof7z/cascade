@@ -1,19 +1,20 @@
 use crate::fx::FxQuoteEnvelope;
 use crate::routes::AppState;
-use crate::stripe::{stripe_event_metadata, funding_metadata_checkout_fields, funding_metadata_merge};
+use crate::stripe::{
+    funding_metadata_checkout_fields, funding_metadata_merge, stripe_event_metadata,
+};
 use crate::types::{
     BlindedMessageInput, CreatorMarketsResponse, MintBolt11Request, MintBolt11Response,
     MintQuoteBolt11Request, MintQuoteBolt11Response, ProductBuyRequest,
     ProductCoordinatorBuyRequest, ProductCoordinatorSellRequest,
     ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest, ProductFeedResponse,
     ProductFxObservationResponse, ProductLightningFxQuoteResponse, ProductMarketDetailResponse,
-    ProductMarketSummary, ProductRuntimeFundingResponse, ProductRuntimeRailResponse,
+    ProductMarketSummary, ProductPortfolioFundingRequestStatusResponse,
+    ProductPortfolioFundingResponse, ProductRuntimeFundingResponse, ProductRuntimeRailResponse,
     ProductRuntimeResponse, ProductSellRequest, ProductStripeFundingRequest,
     ProductTradeBlindSignatureBundleResponse, ProductTradeExecutionResponse,
     ProductTradeQuoteRequest, ProductTradeQuoteResponse, ProductTradeRequestStatusResponse,
-    ProductTradeSettlementResponse, ProductTradeStatusResponse,
-    ProductPortfolioFundingRequestStatusResponse, ProductPortfolioFundingResponse, ProofInput,
-    TokenOutput,
+    ProductTradeSettlementResponse, ProductTradeStatusResponse, ProofInput, TokenOutput,
 };
 use axum::{
     body::Bytes,
@@ -30,11 +31,10 @@ use cascade_core::{
     },
     Market, Side,
 };
-use cdk::mint::QuoteId;
 use cdk::mint::MintInput;
+use cdk::mint::QuoteId;
 use cdk::nuts::{
-    BlindSignature, BlindedMessage, CurrencyUnit, MintQuoteState, MintRequest,
-    State as ProofState,
+    BlindSignature, BlindedMessage, CurrencyUnit, MintQuoteState, MintRequest, State as ProofState,
 };
 use cdk::Amount;
 use cdk_common::mint::{MintQuote as StoredMintQuote, Operation};
@@ -252,7 +252,8 @@ fn reconcile_cdk_mint_quote_with_wallet_funding(
             .map_err(|error| error.to_string())?;
     }
 
-    if quote.status == WalletFundingStatus::Complete && mint_quote.state() != MintQuoteState::Issued {
+    if quote.status == WalletFundingStatus::Complete && mint_quote.state() != MintQuoteState::Issued
+    {
         let remaining = mint_quote.amount_mintable();
         if remaining.value() > 0 {
             mint_quote
@@ -770,7 +771,10 @@ async fn create_lightning_wallet_funding_quote_record(
     if state.paper_mode && enforce_limits && !pubkey.trim().is_empty() {
         if let Err(error) = enforce_signet_funding_limits(state, pubkey, amount_minor).await {
             if let Some(request_id) = request_id {
-                let _ = state.db.fail_wallet_funding_request(request_id, &error).await;
+                let _ = state
+                    .db
+                    .fail_wallet_funding_request(request_id, &error)
+                    .await;
             }
             return Err((signet_funding_limit_error_response(&error).0, error));
         }
@@ -780,7 +784,10 @@ async fn create_lightning_wallet_funding_quote_record(
         Ok(quote) => quote.snapshot,
         Err(error) => {
             if let Some(request_id) = request_id {
-                let _ = state.db.fail_wallet_funding_request(request_id, &error).await;
+                let _ = state
+                    .db
+                    .fail_wallet_funding_request(request_id, &error)
+                    .await;
             }
             return Err((StatusCode::BAD_GATEWAY, error));
         }
@@ -843,7 +850,9 @@ async fn create_lightning_wallet_funding_quote_record(
                 let request_id = request_id.to_string();
                 let error_copy = error_message.clone();
                 tokio::spawn(async move {
-                    let _ = db.fail_wallet_funding_request(&request_id, &error_copy).await;
+                    let _ = db
+                        .fail_wallet_funding_request(&request_id, &error_copy)
+                        .await;
                 });
             }
             (StatusCode::INTERNAL_SERVER_ERROR, error_message)
@@ -1015,10 +1024,14 @@ pub async fn create_stripe_funding(
     }
 
     if state.paper_mode {
-        if let Err(error) = enforce_signet_funding_limits(&state, &req.pubkey, req.amount_minor).await
+        if let Err(error) =
+            enforce_signet_funding_limits(&state, &req.pubkey, req.amount_minor).await
         {
             if let Some(request_id) = req.request_id.as_deref() {
-                let _ = state.db.fail_wallet_funding_request(request_id, &error).await;
+                let _ = state
+                    .db
+                    .fail_wallet_funding_request(request_id, &error)
+                    .await;
             }
             return signet_funding_limit_error_response(&error);
         }
@@ -1046,7 +1059,10 @@ pub async fn create_stripe_funding(
     .await
     {
         if let Some(request_id) = req.request_id.as_deref() {
-            let _ = state.db.fail_wallet_funding_request(request_id, &error).await;
+            let _ = state
+                .db
+                .fail_wallet_funding_request(request_id, &error)
+                .await;
         }
         return stripe_funding_limit_error_response(&error);
     }
@@ -1070,7 +1086,10 @@ pub async fn create_stripe_funding(
         Ok(session) => session,
         Err(error) => {
             if let Some(request_id) = req.request_id.as_deref() {
-                let _ = state.db.fail_wallet_funding_request(request_id, &error).await;
+                let _ = state
+                    .db
+                    .fail_wallet_funding_request(request_id, &error)
+                    .await;
             }
             return (StatusCode::BAD_GATEWAY, Json(json!({ "error": error })));
         }
@@ -1232,7 +1251,8 @@ pub async fn stripe_webhook(
                 None => None,
             };
             let normalized_risk_level = stripe_gateway.normalized_risk_level(risk_level.as_deref());
-            let existing_metadata = funding_metadata_checkout_fields(quote.metadata_json.as_deref());
+            let existing_metadata =
+                funding_metadata_checkout_fields(quote.metadata_json.as_deref());
             let checkout_session_id = object
                 .get("id")
                 .and_then(Value::as_str)
@@ -1508,7 +1528,8 @@ pub async fn mint_bolt11(
         }
     };
 
-    if mint_quote.state() == MintQuoteState::Issued || quote.status == WalletFundingStatus::Complete {
+    if mint_quote.state() == MintQuoteState::Issued || quote.status == WalletFundingStatus::Complete
+    {
         return (
             StatusCode::BAD_REQUEST,
             Json(json!({ "detail": "Quote already issued" })),
@@ -1540,8 +1561,8 @@ pub async fn mint_bolt11(
             .collect::<Result<Vec<_>, String>>()
             .map_err(|error| ("bad_request".to_string(), error))?;
 
-        let quote_id =
-            QuoteId::from_str(&quote.id).map_err(|error| ("bad_request".to_string(), error.to_string()))?;
+        let quote_id = QuoteId::from_str(&quote.id)
+            .map_err(|error| ("bad_request".to_string(), error.to_string()))?;
         let mint_request = MintRequest {
             quote: quote_id,
             outputs: blinded_messages,
@@ -1951,8 +1972,14 @@ async fn prepare_wallet_funding_request(
         .await
         .map_err(|error| error.to_string())?
     {
-        return handle_existing_wallet_funding_request(state, &existing, pubkey, rail, amount_minor)
-            .await;
+        return handle_existing_wallet_funding_request(
+            state,
+            &existing,
+            pubkey,
+            rail,
+            amount_minor,
+        )
+        .await;
     }
 
     match state
@@ -1976,7 +2003,8 @@ async fn prepare_wallet_funding_request(
                 return Err(error_message);
             };
 
-            handle_existing_wallet_funding_request(state, &existing, pubkey, rail, amount_minor).await
+            handle_existing_wallet_funding_request(state, &existing, pubkey, rail, amount_minor)
+                .await
         }
     }
 }
@@ -3879,7 +3907,13 @@ async fn build_trade_settlement_insert(
         .map(|expires_at| (expires_at - now).max(60) as u64)
         .unwrap_or(300);
 
-    let (invoice, preimage) = {
+    let (mode, payer_role, receiver_role) = match quote.trade_type.as_str() {
+        "buy" => ("bolt11_wallet_to_market", "wallet_mint", "market_mint"),
+        "sell" => ("bolt11_market_to_wallet", "market_mint", "wallet_mint"),
+        _ => return Err("unsupported_trade_type_for_settlement".to_string()),
+    };
+
+    let (invoice, preimage, invoice_state) = {
         let mut invoice_service = state.invoice_service.lock().await;
         let invoice = invoice_service
             .create_invoice(
@@ -3897,7 +3931,16 @@ async fn build_trade_settlement_insert(
             .pay_invoice(invoice.bolt11())
             .await
             .map_err(|error| format!("failed_to_pay_trade_settlement_invoice: {error}"))?;
-        (invoice, preimage)
+        let invoice_state = invoice_service
+            .get_invoice_status(&invoice.payment_hash.to_hex())
+            .await
+            .map_err(|error| format!("failed_to_verify_trade_settlement_invoice: {error}"))?;
+        if invoice_state != "settled" {
+            return Err(format!(
+                "trade_settlement_invoice_not_settled:state={invoice_state}"
+            ));
+        }
+        (invoice, preimage, invoice_state)
     };
 
     Ok(Some(TradeSettlementInsert {
@@ -3907,7 +3950,7 @@ async fn build_trade_settlement_insert(
         trade_type: quote.trade_type.clone(),
         side: quote.side.clone(),
         rail: "lightning".to_string(),
-        mode: "bolt11_internal".to_string(),
+        mode: mode.to_string(),
         settlement_minor: quote.settlement_minor,
         settlement_msat: quote.settlement_msat,
         settlement_fee_msat: quote.settlement_fee_msat,
@@ -3916,6 +3959,11 @@ async fn build_trade_settlement_insert(
         payment_hash: Some(invoice.payment_hash.to_hex()),
         metadata_json: Some(
             json!({
+                "payer_role": payer_role,
+                "receiver_role": receiver_role,
+                "invoice_state": invoice_state,
+                "invoice_created_at": invoice.created_at,
+                "invoice_expiry_seconds": invoice.expiry_seconds,
                 "fx_source": quote.fx_source,
                 "btc_usd_price": quote.btc_usd_price,
                 "spread_bps": quote.spread_bps,

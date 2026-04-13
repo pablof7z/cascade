@@ -13,3 +13,11 @@
 <div class={cn('dialog-header', className)}>
   {@render children?.()}
 </div>
+
+<style>
+  :global(.dialog-header) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+</style>

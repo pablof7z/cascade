@@ -11,3 +11,15 @@
 <TabsPrimitive.Content {...restProps} class={cn('tabs-content', className)}>
   {@render children?.()}
 </TabsPrimitive.Content>
+
+<style>
+  :global(.tabs-content) {
+    margin-top: 0.5rem;
+  }
+
+  :global(.tabs-content:focus-visible) {
+    outline: 2px solid var(--border);
+    outline-offset: 2px;
+    border-radius: 0.45rem;
+  }
+</style>

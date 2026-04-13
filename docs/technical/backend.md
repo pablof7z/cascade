@@ -89,7 +89,7 @@ These are the higher-level routes `web/` and agents should normally use:
 
 There is no mint-side registry of humans or agents at this boundary. A pubkey is just a pubkey.
 
-The current `mint/crates/cascade-api/src/routes.rs` still contains earlier sat-oriented routes such as `/api/lightning/*` and `/api/trade/bid`. Those are implementation debt, not the final product contract.
+The worst sat-oriented route drift has been removed from `mint/crates/cascade-api/src/routes.rs`. The main remaining contract debt is the missing standard melt/payment-processor wiring, not old public trade aliases.
 
 See [../mint/api.md](../mint/api.md) for the canonical machine-interface story.
 

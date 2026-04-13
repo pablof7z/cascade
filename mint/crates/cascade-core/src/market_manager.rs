@@ -2,7 +2,7 @@
 
 use crate::error::Result;
 use crate::lmsr::LmsrEngine;
-use crate::market::{Market, MarketStatus, Side};
+use crate::market::{Market, MarketStatus};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -116,23 +116,6 @@ impl MarketManager {
         Ok(())
     }
 
-    /// Resolve a market
-    pub async fn resolve_market(&self, event_id: &str, outcome: Side) -> Result<()> {
-        let mut markets = self.markets.write().await;
-        let market = markets
-            .get_mut(event_id)
-            .ok_or_else(|| crate::error::CascadeError::MarketNotFound(event_id.to_string()))?;
-
-        if !market.is_active() {
-            return Err(crate::error::CascadeError::MarketNotActive(
-                event_id.to_string(),
-            ));
-        }
-
-        market.resolve(outcome);
-        Ok(())
-    }
-
     /// Archive a market (no more trades, ready for deletion)
     pub async fn archive_market(&self, event_id: &str) -> Result<()> {
         let mut markets = self.markets.write().await;
@@ -243,31 +226,5 @@ mod tests {
         let market = manager.get_market("evt123").await.unwrap();
         assert_eq!(market.q_long, 10.0);
         assert_eq!(market.reserve_sats, 1000);
-    }
-
-    #[tokio::test]
-    async fn test_resolve_market() {
-        let lmsr = LmsrEngine::new(10.0).unwrap();
-        let manager = MarketManager::new(lmsr);
-
-        manager
-            .create_market(
-                "evt123".to_string(),
-                "btc".to_string(),
-                "BTC Market".to_string(),
-                "".to_string(),
-                10.0,
-                "creator".to_string(),
-                "keyset_long".to_string(),
-                "keyset_short".to_string(),
-            )
-            .await
-            .unwrap();
-
-        manager.resolve_market("evt123", Side::Long).await.unwrap();
-
-        let market = manager.get_market("evt123").await.unwrap();
-        assert!(market.is_resolved());
-        assert_eq!(market.resolution_outcome, Some(Side::Long));
     }
 }

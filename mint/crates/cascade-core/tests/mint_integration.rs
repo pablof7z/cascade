@@ -193,14 +193,8 @@ async fn test_list_active_markets() {
     let active_markets = manager.list_active_markets().await.unwrap();
     assert_eq!(active_markets.len(), 3);
 
-    // Resolve one market
-    manager
-        .resolve_market("event_1", cascade_core::Side::Long)
-        .await
-        .expect("Failed to resolve market");
-
     let active_markets = manager.list_active_markets().await.unwrap();
-    assert_eq!(active_markets.len(), 2);
+    assert_eq!(active_markets.len(), 3);
 }
 
 /// Test market not found error.

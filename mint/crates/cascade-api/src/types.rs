@@ -35,51 +35,6 @@ pub struct MarketsListResponse {
     pub markets: Vec<MarketResponse>,
 }
 
-// Trade endpoints
-
-#[derive(Debug, Deserialize)]
-pub struct BuyRequest {
-    pub market_id: String,
-    pub side: String, // "long" or "short"
-    pub quantity: f64,
-    pub buyer_pubkey: String,
-    /// Blinded messages for the market token keyset — client provides these
-    /// so the mint can blind-sign LONG or SHORT tokens via process_swap_request.
-    /// The keyset ID in each BlindedMessage must match the market's LONG or SHORT keyset.
-    #[serde(default)]
-    pub outputs: Vec<BlindedMessageInput>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct SellRequest {
-    pub market_id: String,
-    pub side: String,
-    pub quantity: f64,
-    pub seller_pubkey: String,
-    /// Input SAT proofs the user is spending to sell their position.
-    /// If provided, process_swap_request will be used to atomically spend these
-    /// proofs and sign the market token outputs.
-    #[serde(default)]
-    pub proofs: Vec<ProofInput>,
-    /// Blinded messages for the market token keyset — client provides these
-    /// so the mint can blind-sign LONG or SHORT tokens via process_swap_request.
-    #[serde(default)]
-    pub outputs: Vec<BlindedMessageInput>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct TradeResponse {
-    pub trade_id: String,
-    pub market_id: String,
-    pub side: String,
-    pub quantity: f64,
-    pub cost_sats: u64,
-    pub fee_sats: u64,
-    /// Blind-signed tokens returned to the client (only when outputs are provided)
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub tokens: Vec<TokenOutput>,
-}
-
 // Price endpoints
 
 #[derive(Debug, Serialize)]
@@ -105,36 +60,6 @@ pub struct QuoteResponse {
     pub quantity: f64,
     pub cost_sats: u64,
     pub price: f64,
-}
-
-// Resolution endpoints
-
-#[derive(Debug, Deserialize)]
-pub struct ResolveRequest {
-    pub market_id: String,
-    pub outcome: String, // "long" or "short"
-}
-
-#[derive(Debug, Serialize)]
-pub struct ResolveResponse {
-    pub market_id: String,
-    pub outcome: String,
-}
-
-// Payout endpoints
-
-#[derive(Debug, Deserialize)]
-pub struct PayoutRequest {
-    pub market_id: String,
-    pub recipient_pubkey: String,
-    pub winning_tokens: f64,
-}
-
-#[derive(Debug, Serialize)]
-pub struct PayoutResponse {
-    pub payout_id: String,
-    pub market_id: String,
-    pub payout_sats: u64,
 }
 
 // Error response
@@ -500,80 +425,6 @@ pub struct ProductTradeSettlementResponse {
     pub completed_at: Option<i64>,
 }
 
-// Lightning trade endpoints
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct LightningTradeRequest {
-    pub market_id: String, // event_id of the market
-    pub side: String,      // "LONG" or "SHORT"
-    pub amount_sats: u64,
-    pub buyer_pubkey: String,
-    pub expiry_seconds: Option<u64>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct LightningTradeResponse {
-    pub order_id: String,
-    pub market_id: String,
-    pub side: String,
-    pub amount_sats: u64,
-    pub fee_sats: u64,
-    pub total_sats: u64,
-    pub invoice: String,
-    pub payment_hash: String,
-    pub expires_at: i64,
-}
-
-/// Lightning sell request
-#[derive(Debug, Deserialize)]
-pub struct LightningSellRequest {
-    pub market_id: String, // event_id of the market
-    pub side: String,      // "LONG" or "SHORT"
-    pub amount_sats: u64,
-    pub seller_pubkey: String,
-    pub expiry_seconds: Option<u64>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct InvoiceStatusRequest {
-    pub payment_hash: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct InvoiceStatusResponse {
-    pub payment_hash: String,
-    pub state: String, // "open", "settled", "expired", "cancelled"
-    pub amount_sats: u64,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct SettleRequest {
-    pub order_id: String,
-    pub preimage: String, // hex-encoded 32-byte preimage
-}
-
-#[derive(Debug, Serialize)]
-pub struct SettleResponse {
-    pub order_id: String,
-    pub state: String,
-    pub fulfilled: bool,
-}
-
-#[derive(Debug, Serialize)]
-pub struct EscrowStatsResponse {
-    pub pending_count: u64,
-    pub pending_sats: u64,
-    pub settled_count: u64,
-    pub settled_sats: u64,
-    pub refunded_count: u64,
-    pub refunded_sats: u64,
-    pub failed_count: u64,
-}
-
-// =============================================================================
-// Settlement & Redemption Endpoints (Phase 7)
-// =============================================================================
-
 /// Cashu proof for redemption - matches NUT-01 Proof structure
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -618,48 +469,6 @@ pub struct BlindedMessageInput {
 
 fn default_lmsr_b() -> f64 {
     10.0
-}
-
-/// Mid-market redemption request
-#[derive(Debug, Deserialize)]
-pub struct MarketRedeemRequest {
-    pub market_id: String,
-    pub side: String, // "yes" or "no"
-    pub shares: f64,
-    pub proof: ProofInput,
-    /// Blinded messages for SAT tokens the client wants minted in exchange
-    pub outputs: Vec<BlindedMessageInput>,
-}
-
-/// Mid-market redemption response
-#[derive(Debug, Serialize)]
-pub struct MarketRedeemResponse {
-    pub success: bool,
-    pub payout: u64,
-    pub fee: u64,
-    pub net_payout: u64,
-    pub tokens: Vec<TokenOutput>,
-}
-
-/// Post-resolution settlement request
-#[derive(Debug, Deserialize)]
-pub struct MarketSettleRequest {
-    pub market_id: String,
-    pub side: String, // "yes" or "no"
-    pub proof: ProofInput,
-    /// Blinded messages for SAT tokens — provided by winner for blind signing
-    pub outputs: Vec<BlindedMessageInput>,
-}
-
-/// Post-resolution settlement response
-#[derive(Debug, Serialize)]
-pub struct MarketSettleResponse {
-    pub success: bool,
-    pub won: bool,
-    pub payout: u64,
-    pub fee: u64,
-    pub net_payout: u64,
-    pub tokens: Vec<TokenOutput>,
 }
 
 /// Token output from minting — matches CDK NUT-00 BlindSignature JSON format

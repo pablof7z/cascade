@@ -3,9 +3,7 @@
 pub mod market;
 pub mod price;
 pub mod product;
-pub mod resolve;
 pub mod settlement;
-pub mod trade;
 
 use axum::Json;
 use serde_json::json;

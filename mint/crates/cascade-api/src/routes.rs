@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
 use crate::fx::FxQuoteService;
-use crate::handlers::{self, market, price, product, resolve, trade};
+use crate::handlers::{self, market, price, product};
 use crate::stripe::StripeGateway;
 use cascade_core::{db::CascadeDatabase, invoice::InvoiceService, MarketManager};
 
@@ -120,19 +120,6 @@ pub fn build_cascade_routes(state: AppState) -> Router {
     Router::new()
         // Price feeds
         .route("/api/price/{currency}", get(price::get_prices))
-        // Lightning trade settlement
-        .route(
-            "/api/lightning/create-order",
-            post(handlers::trade::create_lightning_trade),
-        )
-        .route(
-            "/api/lightning/check-order",
-            post(handlers::trade::get_invoice_status),
-        )
-        .route(
-            "/api/lightning/settle/{order_id}",
-            post(handlers::trade::settle_lightning_trade),
-        )
         // Market management
         .route("/api/market/create", post(market::create_market))
         .route("/api/market/{id}", get(market::get_market))
@@ -155,18 +142,6 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             get(product::pending_market_detail),
         )
         .route("/api/product/markets", post(product::create_market))
-        .route(
-            "/api/product/markets/{event_id}/quote",
-            post(product::quote_market_trade),
-        )
-        .route(
-            "/api/product/markets/{event_id}/buy",
-            post(product::buy_market_position),
-        )
-        .route(
-            "/api/product/markets/{event_id}/sell",
-            post(product::sell_market_position),
-        )
         .route(
             "/api/product/fx/lightning/{amount_minor}",
             get(product::preview_lightning_fx_quote),
@@ -216,18 +191,11 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             "/api/wallet/topups/stripe/webhook",
             post(product::stripe_webhook),
         )
-        .route("/api/market/{id}/resolve", post(resolve::resolve_market))
-        // Trade execution
-        .route("/api/trade/bid", post(trade::buy))
-        .route("/api/trade/ask", post(trade::sell))
         // Market-scoped key discovery
         .route(
             "/{event_id}/v1/keys",
             get(handlers::settlement::get_market_keys),
         )
-        // Phase 7: Settlement & Redemption
-        .route("/v1/cascade/redeem", post(handlers::settlement::redeem))
-        .route("/v1/cascade/settle", post(handlers::settlement::settle))
         .route(
             "/v1/mint/quote/bolt11",
             post(product::create_mint_quote_bolt11),

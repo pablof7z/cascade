@@ -106,30 +106,23 @@ They are not all equally canonical. The route surface should be read in three bu
 
 ### Authenticated / State-Changing
 
-- `POST /api/lightning/create-order`
-- `POST /api/lightning/check-order`
-- `POST /api/lightning/settle/{order_id}`
 - `POST /api/market/create`
 - `POST /api/product/markets`
-- `POST /api/product/markets/{event_id}/quote`
-- `POST /api/product/markets/{event_id}/buy`
-- `POST /api/product/markets/{event_id}/sell`
+- `POST /api/portfolio/funding/stripe`
+- `POST /api/portfolio/funding/stripe/webhook`
 - `POST /api/trades/quote`
 - `POST /api/trades/buy`
 - `POST /api/trades/sell/quote`
 - `POST /api/trades/sell`
 - `GET /api/product/markets/{event_id}/pending/{creator_pubkey}`
-- `POST /api/trade/bid`
-- `POST /api/trade/ask`
-- `POST /v1/cascade/redeem`
-- `POST /v1/cascade/settle`
+- `POST /v1/mint/quote/bolt11`
+- `POST /v1/mint/bolt11`
 
-These routes reflect the current implementation, not the fully aligned launch contract. The main gaps are:
+These routes reflect the current implementation, but the main remaining gap is still the missing standard melt path. The main issues are:
 
-- they still reflect the earlier sats-era trade story
-- they do not yet describe Stripe funding on the wallet mint
-- they do not yet express the spend-based USD trade orchestration that `web/` and agents need
-- some of them are legacy custom routes that duplicate responsibilities the standard Cashu mint/melt surface should own
+- the standard `bolt11` mint path is still implemented through Cascade glue instead of a real CDK payment processor
+- the standard `bolt11` melt path is still not live
+- `POST /api/market/create` still exists as migration debt and should not be treated as the canonical kind `982` publishing interface
 
 ## Standard-First Route Taxonomy
 
@@ -174,22 +167,13 @@ These routes are justified because they express product behavior that the standa
 
 ### Legacy Or Debt Routes
 
-These routes should not be treated as canonical long-term interfaces:
+These are the main remaining non-canonical routes in the codebase:
 
-- `POST /api/lightning/create-order`
-- `POST /api/lightning/check-order`
-- `POST /api/lightning/settle/{order_id}`
-- `POST /api/trade/bid`
-- `POST /api/trade/ask`
-- `POST /api/product/markets/{event_id}/quote`
-- `POST /api/product/markets/{event_id}/buy`
-- `POST /api/product/markets/{event_id}/sell`
-- `POST /v1/cascade/redeem`
-- `POST /v1/cascade/settle`
 - `POST /api/market/create`
-- `POST /api/market/{id}/resolve`
 
-If one of these still exists in the codebase, it should be understood as migration debt, a temporary compatibility alias, or an implementation seam to remove. New clients should not depend on them unless the route is re-justified explicitly.
+The earlier legacy families such as `/api/lightning/*`, `/api/trade/*`, `/v1/cascade/*`, `/api/product/markets/{event_id}/{quote,buy,sell}`, and `/api/market/{id}/resolve` have been removed from the live mint surface and should not be reintroduced.
+
+If a new custom route is proposed, it needs the same written justification bar as the currently allowed custom orchestration routes.
 
 The presence of `POST /api/market/create` in the current implementation does not mean the mint should be the canonical publisher of kind `982`.
 

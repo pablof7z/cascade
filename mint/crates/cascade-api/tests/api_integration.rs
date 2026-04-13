@@ -814,8 +814,9 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     );
 
     let buy_response = client
-        .post(format!("{url}/api/product/markets/{event_id}/buy"))
+        .post(format!("{url}/api/trades/buy"))
         .json(&serde_json::json!({
+            "event_id": event_id,
             "pubkey": creator,
             "side": "yes",
             "spend_minor": 8000,
@@ -909,8 +910,9 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     );
 
     let sell_response = client
-        .post(format!("{url}/api/product/markets/{event_id}/sell"))
+        .post(format!("{url}/api/trades/sell"))
         .json(&serde_json::json!({
+            "event_id": event_id,
             "pubkey": creator,
             "side": "yes",
             "quantity": first_quantity / 2.0,

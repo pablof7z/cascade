@@ -122,7 +122,7 @@
   </div>
   <div>
     <span>Visible Volume</span>
-    <strong>{paperEdition ? formatProductAmount(trades.reduce((sum, trade) => sum + trade.amount, 0), 'usd') : `${formatSats(trades.reduce((sum, trade) => sum + trade.amount, 0))} sats`}</strong>
+    <strong>{formatProductAmount(trades.reduce((sum, trade) => sum + trade.amount, 0), paperEdition ? 'usd' : 'sat')} {paperEdition ? '' : productUnitLabel('sat')}</strong>
   </div>
 </section>
 

@@ -45,7 +45,7 @@
   const tradeSummary = $derived(buildTradeSummary(trades));
   const currentUser = $derived(ndk.$currentUser);
   const paperEdition = isPaperEdition();
-  const valueUnitLabel = paperEdition ? 'USD' : 'sats';
+  const valueUnitLabel = paperEdition ? 'USD' : 'tokens';
   const discussionThreads = $derived(buildDiscussionThreads(discussions, market.id));
   const author = $derived(displayName(profiles[market.pubkey], shortPubkey(market.pubkey)));
   const tabs = $derived([

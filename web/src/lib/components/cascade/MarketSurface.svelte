@@ -22,6 +22,7 @@
     type TradeRecord
   } from '$lib/ndk/cascade';
   import { displayName, shortPubkey } from '$lib/ndk/format';
+  import { ndk } from '$lib/ndk/client';
 
   let {
     market,
@@ -40,6 +41,7 @@
   } = $props();
 
   const tradeSummary = $derived(buildTradeSummary(trades));
+  const currentUser = $derived(ndk.$currentUser);
   const paperEdition = isPaperEdition();
   const valueUnitLabel = paperEdition ? 'USD' : 'sats';
   const discussionThreads = $derived(buildDiscussionThreads(discussions, market.id));
@@ -206,8 +208,11 @@
       </div>
 
       <div class="market-header-actions">
-        <a class="button-primary" href="/portfolio">Open portfolio</a>
-        <a class="button-secondary" href="/embed/market/{market.slug}">Embed market</a>
+        {#if currentUser}
+          <a class="button-primary" href="/portfolio">Portfolio</a>
+        {:else}
+          <a class="button-primary" href="/join?from=/market/{market.slug}">Trade this market</a>
+        {/if}
       </div>
 
       {#if paperEdition}

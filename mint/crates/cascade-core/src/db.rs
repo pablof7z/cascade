@@ -4,9 +4,8 @@ use crate::error::Result;
 use crate::market::{Market, MarketStatus, Side, Trade, TradeDirection};
 use crate::product::{
     FxQuoteObservation, FxQuoteSnapshot, MarketLaunchState, MarketPosition, MarketTradeRecord,
-    MarketVisibility, PortfolioPositionSnapshot, PortfolioProofInsert, PortfolioProofSpend,
-    TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot, TradeSettlementInsert,
-    TradeSettlementRecord, TradeSettlementStatus, WalletBalanceRecord, WalletFundingEvent,
+    MarketVisibility, TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot,
+    TradeSettlementInsert, TradeSettlementRecord, TradeSettlementStatus, WalletFundingEvent,
     WalletTopupQuote, WalletTopupRequest, WalletTopupRequestStatus, WalletTopupStatus,
 };
 use crate::trade::Payout;
@@ -103,10 +102,19 @@ impl CascadeDatabase {
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
-        sqlx::query(include_str!("../../../migrations/012_portfolio_proofs.sql"))
-            .execute(&self.pool)
-            .await
-            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+        sqlx::query(include_str!(
+            "../../../migrations/013_drop_portfolio_proofs.sql"
+        ))
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        sqlx::query(include_str!(
+            "../../../migrations/014_drop_portfolio_ledgers.sql"
+        ))
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         Ok(())
     }
@@ -713,135 +721,6 @@ impl CascadeDatabase {
         Ok(row.map(|row| map_market_and_launch_state_row(&row)))
     }
 
-    pub async fn ensure_wallet(&self, pubkey: &str) -> Result<()> {
-        sqlx::query(
-            r#"
-            INSERT INTO wallet_balances (pubkey)
-            VALUES (?)
-            ON CONFLICT(pubkey) DO NOTHING
-            "#,
-        )
-        .bind(pubkey)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(())
-    }
-
-    pub async fn get_wallet_balance(&self, pubkey: &str) -> Result<Option<WalletBalanceRecord>> {
-        let row = sqlx::query_as::<_, (String, i64, i64, i64, i64)>(
-            r#"
-            SELECT pubkey, available_minor, pending_minor, total_deposited_minor, updated_at
-            FROM wallet_balances
-            WHERE pubkey = ?
-            "#,
-        )
-        .bind(pubkey)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(row.map(
-            |(pubkey, available_minor, pending_minor, total_deposited_minor, updated_at)| {
-                WalletBalanceRecord {
-                    pubkey,
-                    available_minor: available_minor.max(0) as u64,
-                    pending_minor: pending_minor.max(0) as u64,
-                    total_deposited_minor: total_deposited_minor.max(0) as u64,
-                    updated_at,
-                }
-            },
-        ))
-    }
-
-    pub async fn list_wallet_funding_events(
-        &self,
-        pubkey: &str,
-        limit: i64,
-    ) -> Result<Vec<WalletFundingEvent>> {
-        let rows = sqlx::query_as::<
-            _,
-            (
-                String,
-                String,
-                String,
-                i64,
-                String,
-                Option<String>,
-                Option<String>,
-                i64,
-            ),
-        >(
-            r#"
-            SELECT id, pubkey, rail, amount_minor, status, risk_level, metadata_json, created_at
-            FROM wallet_funding_events
-            WHERE pubkey = ?
-            ORDER BY created_at DESC
-            LIMIT ?
-            "#,
-        )
-        .bind(pubkey)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(rows
-            .into_iter()
-            .map(
-                |(
-                    id,
-                    pubkey,
-                    rail,
-                    amount_minor,
-                    status,
-                    risk_level,
-                    metadata_json,
-                    created_at,
-                )| {
-                    WalletFundingEvent {
-                        id,
-                        pubkey,
-                        rail,
-                        amount_minor: amount_minor.max(0) as u64,
-                        status,
-                        risk_level,
-                        metadata_json,
-                        created_at,
-                    }
-                },
-            )
-            .collect())
-    }
-
-    pub async fn sum_wallet_funding_amount_since(
-        &self,
-        pubkey: &str,
-        rail: &str,
-        since: i64,
-    ) -> Result<u64> {
-        let amount_minor = sqlx::query_scalar::<_, Option<i64>>(
-            r#"
-            SELECT SUM(amount_minor)
-            FROM wallet_funding_events
-            WHERE pubkey = ?
-              AND rail = ?
-              AND status = 'complete'
-              AND created_at >= ?
-            "#,
-        )
-        .bind(pubkey)
-        .bind(rail)
-        .bind(since)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?
-        .unwrap_or(0);
-
-        Ok(amount_minor.max(0) as u64)
-    }
-
     pub async fn sum_wallet_topup_quote_amount_since(
         &self,
         pubkey: &str,
@@ -990,21 +869,6 @@ impl CascadeDatabase {
         .bind(quote.metadata_json.as_deref())
         .bind(quote.created_at)
         .bind(quote.expires_at)
-        .execute(&mut *tx)
-        .await?;
-
-        sqlx::query(
-            r#"
-            INSERT INTO wallet_balances (pubkey, pending_minor, updated_at)
-            VALUES (?, ?, ?)
-            ON CONFLICT(pubkey) DO UPDATE SET
-                pending_minor = pending_minor + excluded.pending_minor,
-                updated_at = excluded.updated_at
-            "#,
-        )
-        .bind(pubkey)
-        .bind(amount_minor as i64)
-        .bind(now)
         .execute(&mut *tx)
         .await?;
 
@@ -1215,7 +1079,7 @@ impl CascadeDatabase {
                 settled_at,
                 completed_at
             FROM wallet_topup_quotes
-            WHERE pubkey = ? AND status = 'invoice_pending'
+            WHERE pubkey = ? AND status IN ('invoice_pending', 'paid')
             ORDER BY created_at DESC
             LIMIT ?
             "#,
@@ -1285,9 +1149,7 @@ impl CascadeDatabase {
             return Ok(0);
         }
 
-        let mut expired_total_minor = 0_i64;
-        for (quote_id, amount_minor) in &expired_rows {
-            expired_total_minor += *amount_minor;
+        for (quote_id, _amount_minor) in &expired_rows {
             sqlx::query(
                 r#"
                 UPDATE wallet_topup_quotes
@@ -1296,26 +1158,6 @@ impl CascadeDatabase {
                 "#,
             )
             .bind(quote_id)
-            .execute(&mut *tx)
-            .await?;
-        }
-
-        if expired_total_minor > 0 {
-            sqlx::query(
-                r#"
-                UPDATE wallet_balances
-                SET pending_minor = CASE
-                    WHEN pending_minor >= ? THEN pending_minor - ?
-                    ELSE 0
-                END,
-                    updated_at = ?
-                WHERE pubkey = ?
-                "#,
-            )
-            .bind(expired_total_minor)
-            .bind(expired_total_minor)
-            .bind(now)
-            .bind(pubkey)
             .execute(&mut *tx)
             .await?;
         }
@@ -1339,7 +1181,6 @@ impl CascadeDatabase {
             return Ok(Some(existing));
         }
 
-        let now = chrono::Utc::now().timestamp();
         sqlx::query(
             r#"
             UPDATE wallet_topup_quotes
@@ -1348,24 +1189,6 @@ impl CascadeDatabase {
             "#,
         )
         .bind(quote_id)
-        .execute(&mut *tx)
-        .await?;
-
-        sqlx::query(
-            r#"
-            UPDATE wallet_balances
-            SET pending_minor = CASE
-                WHEN pending_minor >= ? THEN pending_minor - ?
-                ELSE 0
-            END,
-                updated_at = ?
-            WHERE pubkey = ?
-            "#,
-        )
-        .bind(existing.amount_minor as i64)
-        .bind(existing.amount_minor as i64)
-        .bind(now)
-        .bind(&existing.pubkey)
         .execute(&mut *tx)
         .await?;
 
@@ -1391,6 +1214,7 @@ impl CascadeDatabase {
                 tx.commit().await?;
                 return Ok(existing);
             }
+            WalletTopupStatus::Paid | WalletTopupStatus::InvoicePending => {}
             WalletTopupStatus::Expired
             | WalletTopupStatus::Cancelled
             | WalletTopupStatus::ReviewRequired => {
@@ -1399,7 +1223,6 @@ impl CascadeDatabase {
                     existing.status
                 )));
             }
-            WalletTopupStatus::InvoicePending => {}
         }
 
         let now = chrono::Utc::now().timestamp();
@@ -1408,27 +1231,10 @@ impl CascadeDatabase {
                 r#"
                 UPDATE wallet_topup_quotes
                 SET status = 'expired'
-                WHERE id = ? AND status = 'invoice_pending'
+                WHERE id = ? AND status IN ('invoice_pending', 'paid')
                 "#,
             )
             .bind(quote_id)
-            .execute(&mut *tx)
-            .await?;
-            sqlx::query(
-                r#"
-                UPDATE wallet_balances
-                SET pending_minor = CASE
-                    WHEN pending_minor >= ? THEN pending_minor - ?
-                    ELSE 0
-                END,
-                    updated_at = ?
-                WHERE pubkey = ?
-                "#,
-            )
-            .bind(existing.amount_minor as i64)
-            .bind(existing.amount_minor as i64)
-            .bind(now)
-            .bind(&existing.pubkey)
             .execute(&mut *tx)
             .await?;
             tx.commit().await?;
@@ -1437,31 +1243,36 @@ impl CascadeDatabase {
             ));
         }
 
-        let funding_event_id = uuid::Uuid::new_v4().to_string();
-        sqlx::query(
-            r#"
-            INSERT INTO wallet_funding_events (
-                id,
-                pubkey,
-                rail,
-                amount_minor,
-                status,
-                risk_level,
-                metadata_json,
-                created_at
+        let funding_event_id = if existing.pubkey.trim().is_empty() {
+            None
+        } else {
+            let funding_event_id = uuid::Uuid::new_v4().to_string();
+            sqlx::query(
+                r#"
+                INSERT INTO wallet_funding_events (
+                    id,
+                    pubkey,
+                    rail,
+                    amount_minor,
+                    status,
+                    risk_level,
+                    metadata_json,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, 'complete', ?, ?, ?)
+                "#,
             )
-            VALUES (?, ?, ?, ?, 'complete', ?, ?, ?)
-            "#,
-        )
-        .bind(&funding_event_id)
-        .bind(&existing.pubkey)
-        .bind(&existing.rail)
-        .bind(existing.amount_minor as i64)
-        .bind(risk_level)
-        .bind(metadata_json)
-        .bind(now)
-        .execute(&mut *tx)
-        .await?;
+            .bind(&funding_event_id)
+            .bind(&existing.pubkey)
+            .bind(&existing.rail)
+            .bind(existing.amount_minor as i64)
+            .bind(risk_level)
+            .bind(metadata_json)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+            Some(funding_event_id)
+        };
 
         sqlx::query(
             r#"
@@ -1471,36 +1282,14 @@ impl CascadeDatabase {
                 metadata_json = ?,
                 settled_at = ?,
                 completed_at = ?
-            WHERE id = ? AND status = 'invoice_pending'
+            WHERE id = ? AND status IN ('invoice_pending', 'paid')
             "#,
         )
-        .bind(&funding_event_id)
+        .bind(funding_event_id.as_deref())
         .bind(metadata_json)
         .bind(now)
         .bind(now)
         .bind(quote_id)
-        .execute(&mut *tx)
-        .await?;
-
-        sqlx::query(
-            r#"
-            UPDATE wallet_balances
-            SET available_minor = available_minor + ?,
-                pending_minor = CASE
-                    WHEN pending_minor >= ? THEN pending_minor - ?
-                    ELSE 0
-                END,
-                total_deposited_minor = total_deposited_minor + ?,
-                updated_at = ?
-            WHERE pubkey = ?
-            "#,
-        )
-        .bind(existing.amount_minor as i64)
-        .bind(existing.amount_minor as i64)
-        .bind(existing.amount_minor as i64)
-        .bind(existing.amount_minor as i64)
-        .bind(now)
-        .bind(&existing.pubkey)
         .execute(&mut *tx)
         .await?;
 
@@ -1529,6 +1318,7 @@ impl CascadeDatabase {
                 tx.commit().await?;
                 return Ok(existing);
             }
+            WalletTopupStatus::Paid | WalletTopupStatus::InvoicePending => {}
             WalletTopupStatus::Complete
             | WalletTopupStatus::Expired
             | WalletTopupStatus::Cancelled => {
@@ -1537,36 +1327,40 @@ impl CascadeDatabase {
                     existing.status
                 )));
             }
-            WalletTopupStatus::InvoicePending => {}
         }
 
         let now = chrono::Utc::now().timestamp();
-        let funding_event_id = uuid::Uuid::new_v4().to_string();
         let metadata_json = metadata_json.map(str::to_string).or(existing.metadata_json);
-        sqlx::query(
-            r#"
-            INSERT INTO wallet_funding_events (
-                id,
-                pubkey,
-                rail,
-                amount_minor,
-                status,
-                risk_level,
-                metadata_json,
-                created_at
+        let funding_event_id = if existing.pubkey.trim().is_empty() {
+            None
+        } else {
+            let funding_event_id = uuid::Uuid::new_v4().to_string();
+            sqlx::query(
+                r#"
+                INSERT INTO wallet_funding_events (
+                    id,
+                    pubkey,
+                    rail,
+                    amount_minor,
+                    status,
+                    risk_level,
+                    metadata_json,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, 'review_required', ?, ?, ?)
+                "#,
             )
-            VALUES (?, ?, ?, ?, 'review_required', ?, ?, ?)
-            "#,
-        )
-        .bind(&funding_event_id)
-        .bind(&existing.pubkey)
-        .bind(&existing.rail)
-        .bind(existing.amount_minor as i64)
-        .bind(risk_level)
-        .bind(metadata_json.as_deref())
-        .bind(now)
-        .execute(&mut *tx)
-        .await?;
+            .bind(&funding_event_id)
+            .bind(&existing.pubkey)
+            .bind(&existing.rail)
+            .bind(existing.amount_minor as i64)
+            .bind(risk_level)
+            .bind(metadata_json.as_deref())
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+            Some(funding_event_id)
+        };
 
         sqlx::query(
             r#"
@@ -1579,7 +1373,7 @@ impl CascadeDatabase {
             WHERE id = ? AND status = 'invoice_pending'
             "#,
         )
-        .bind(&funding_event_id)
+        .bind(funding_event_id.as_deref())
         .bind(metadata_json)
         .bind(now)
         .bind(now)
@@ -1587,21 +1381,73 @@ impl CascadeDatabase {
         .execute(&mut *tx)
         .await?;
 
+        tx.commit().await?;
+
+        self.get_wallet_topup_quote(quote_id)
+            .await?
+            .ok_or_else(|| crate::error::CascadeError::invalid_input("topup quote not found"))
+    }
+
+    pub async fn mark_wallet_topup_quote_paid(
+        &self,
+        quote_id: &str,
+        metadata_json: Option<&str>,
+    ) -> Result<WalletTopupQuote> {
+        let mut tx = self.pool.begin().await?;
+        let Some(existing) = self.get_wallet_topup_quote(quote_id).await? else {
+            return Err(crate::error::CascadeError::invalid_input(
+                "topup quote not found".to_string(),
+            ));
+        };
+
+        match existing.status {
+            WalletTopupStatus::Paid | WalletTopupStatus::Complete => {
+                tx.commit().await?;
+                return Ok(existing);
+            }
+            WalletTopupStatus::ReviewRequired
+            | WalletTopupStatus::Expired
+            | WalletTopupStatus::Cancelled => {
+                return Err(crate::error::CascadeError::invalid_input(format!(
+                    "cannot mark topup paid in status {}",
+                    existing.status
+                )));
+            }
+            WalletTopupStatus::InvoicePending => {}
+        }
+
+        let now = chrono::Utc::now().timestamp();
+        if existing.expires_at <= now {
+            sqlx::query(
+                r#"
+                UPDATE wallet_topup_quotes
+                SET status = 'expired'
+                WHERE id = ? AND status = 'invoice_pending'
+                "#,
+            )
+            .bind(quote_id)
+            .execute(&mut *tx)
+            .await?;
+
+            tx.commit().await?;
+            return Err(crate::error::CascadeError::invalid_input(
+                "topup quote has expired".to_string(),
+            ));
+        }
+
+        let metadata_json = metadata_json.map(str::to_string).or(existing.metadata_json);
         sqlx::query(
             r#"
-            UPDATE wallet_balances
-            SET pending_minor = CASE
-                WHEN pending_minor >= ? THEN pending_minor - ?
-                ELSE 0
-            END,
-                updated_at = ?
-            WHERE pubkey = ?
+            UPDATE wallet_topup_quotes
+            SET status = 'paid',
+                metadata_json = ?,
+                settled_at = ?
+            WHERE id = ? AND status = 'invoice_pending'
             "#,
         )
-        .bind(existing.amount_minor as i64)
-        .bind(existing.amount_minor as i64)
+        .bind(metadata_json)
         .bind(now)
-        .bind(&existing.pubkey)
+        .bind(quote_id)
         .execute(&mut *tx)
         .await?;
 
@@ -2953,52 +2799,8 @@ impl CascadeDatabase {
         })
     }
 
-    pub async fn insert_portfolio_proofs(&self, proofs: &[PortfolioProofInsert]) -> Result<()> {
-        if proofs.is_empty() {
-            return Ok(());
-        }
-
-        let mut tx = self.pool.begin().await?;
-        let now = chrono::Utc::now().timestamp();
-
-        for proof in proofs {
-            sqlx::query(
-                r#"
-                INSERT OR IGNORE INTO portfolio_proofs (
-                    secret,
-                    keyset_id,
-                    unit,
-                    amount,
-                    commitment,
-                    market_event_id,
-                    direction,
-                    source,
-                    created_at,
-                    spent_trade_id,
-                    spent_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)
-                "#,
-            )
-            .bind(&proof.secret)
-            .bind(&proof.keyset_id)
-            .bind(proof.unit.to_lowercase())
-            .bind(proof.amount as i64)
-            .bind(&proof.commitment)
-            .bind(proof.market_event_id.as_deref())
-            .bind(proof.direction.as_deref())
-            .bind(&proof.source)
-            .bind(now)
-            .execute(&mut *tx)
-            .await?;
-        }
-
-        tx.commit().await?;
-        Ok(())
-    }
-
     #[allow(clippy::too_many_arguments)]
-    pub async fn apply_trade_execution_with_portfolio_proofs(
+    pub async fn apply_trade_execution_snapshots(
         &self,
         trade_id: &str,
         created_at: i64,
@@ -3010,22 +2812,12 @@ impl CascadeDatabase {
         amount_minor: u64,
         fee_minor: u64,
         quantity_delta: f64,
-        cost_basis_delta_minor: i64,
-        wallet_delta_minor: i64,
         price_ppm: u64,
         raw_event_json: &str,
         next_q_long: f64,
         next_q_short: f64,
         next_reserve_minor: u64,
         settlement: Option<&TradeSettlementInsert>,
-        input_proofs: &[PortfolioProofSpend],
-        expected_input_unit: &str,
-        expected_market_event_id: Option<&str>,
-        expected_direction: Option<&str>,
-        issued_proofs: &[PortfolioProofInsert],
-        change_proofs: &[PortfolioProofInsert],
-        wallet_snapshot_minor: Option<u64>,
-        position_snapshot: Option<&PortfolioPositionSnapshot>,
     ) -> Result<MarketTradeRecord> {
         let mut tx = self.pool.begin().await?;
         let now = created_at;
@@ -3060,241 +2852,6 @@ impl CascadeDatabase {
                     "trade quote has expired".to_string(),
                 ));
             }
-        }
-
-        for proof in input_proofs {
-            let row = sqlx::query_as::<
-                _,
-                (
-                    String,
-                    String,
-                    String,
-                    i64,
-                    String,
-                    Option<String>,
-                    Option<String>,
-                    Option<String>,
-                    Option<i64>,
-                ),
-            >(
-                r#"
-                SELECT
-                    secret,
-                    keyset_id,
-                    unit,
-                    amount,
-                    commitment,
-                    market_event_id,
-                    direction,
-                    spent_trade_id,
-                    spent_at
-                FROM portfolio_proofs
-                WHERE secret = ?
-                LIMIT 1
-                "#,
-            )
-            .bind(&proof.secret)
-            .fetch_optional(&mut *tx)
-            .await?;
-
-            let Some((
-                secret,
-                keyset_id,
-                unit,
-                amount,
-                commitment,
-                market_event_id,
-                proof_direction,
-                _spent_trade_id,
-                spent_at,
-            )) = row
-            else {
-                return Err(crate::error::CascadeError::invalid_input(
-                    "portfolio_proof_not_found".to_string(),
-                ));
-            };
-
-            if spent_at.is_some() {
-                return Err(crate::error::CascadeError::invalid_input(
-                    "portfolio_proof_already_spent".to_string(),
-                ));
-            }
-
-            if secret != proof.secret
-                || keyset_id != proof.keyset_id
-                || amount as u64 != proof.amount
-                || commitment != proof.commitment
-            {
-                return Err(crate::error::CascadeError::invalid_input(
-                    "portfolio_proof_mismatch".to_string(),
-                ));
-            }
-
-            if !unit.eq_ignore_ascii_case(expected_input_unit) {
-                return Err(crate::error::CascadeError::invalid_input(
-                    "portfolio_proof_wrong_unit".to_string(),
-                ));
-            }
-
-            if let Some(expected_market_event_id) = expected_market_event_id {
-                if market_event_id.as_deref() != Some(expected_market_event_id) {
-                    return Err(crate::error::CascadeError::invalid_input(
-                        "portfolio_proof_wrong_market".to_string(),
-                    ));
-                }
-            }
-
-            if let Some(expected_direction) = expected_direction {
-                if proof_direction.as_deref() != Some(expected_direction) {
-                    return Err(crate::error::CascadeError::invalid_input(
-                        "portfolio_proof_wrong_direction".to_string(),
-                    ));
-                }
-            }
-        }
-
-        if let Some(wallet_snapshot_minor) = wallet_snapshot_minor {
-            sqlx::query(
-                r#"
-                INSERT INTO wallet_balances (pubkey, available_minor, total_deposited_minor, updated_at)
-                VALUES (?, ?, 0, ?)
-                ON CONFLICT(pubkey) DO UPDATE SET
-                    available_minor = excluded.available_minor,
-                    updated_at = excluded.updated_at
-                "#,
-            )
-            .bind(wallet_pubkey)
-            .bind(wallet_snapshot_minor as i64)
-            .bind(now)
-            .execute(&mut *tx)
-            .await?;
-        }
-
-        if let Some(position_snapshot) = position_snapshot {
-            sqlx::query(
-                r#"
-                INSERT INTO market_positions (
-                    pubkey,
-                    market_event_id,
-                    market_slug,
-                    direction,
-                    quantity,
-                    cost_basis_minor,
-                    updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(pubkey, market_event_id, direction) DO UPDATE SET
-                    market_slug = excluded.market_slug,
-                    quantity = excluded.quantity,
-                    cost_basis_minor = excluded.cost_basis_minor,
-                    updated_at = excluded.updated_at
-                "#,
-            )
-            .bind(wallet_pubkey)
-            .bind(&market.event_id)
-            .bind(&market.slug)
-            .bind(direction)
-            .bind(position_snapshot.quantity)
-            .bind(position_snapshot.cost_basis_minor as i64)
-            .bind(now)
-            .execute(&mut *tx)
-            .await?;
-        }
-
-        let wallet_row = sqlx::query_as::<_, (i64,)>(
-            "SELECT available_minor FROM wallet_balances WHERE pubkey = ?",
-        )
-        .bind(wallet_pubkey)
-        .fetch_optional(&mut *tx)
-        .await?;
-        let current_wallet = wallet_row.map(|(value,)| value).unwrap_or(0);
-        let next_wallet = current_wallet + wallet_delta_minor;
-        if next_wallet < 0 {
-            return Err(crate::error::CascadeError::InsufficientFunds {
-                need: wallet_delta_minor.unsigned_abs(),
-                have: current_wallet.max(0) as u64,
-            });
-        }
-
-        sqlx::query(
-            r#"
-            INSERT INTO wallet_balances (pubkey, available_minor, total_deposited_minor, updated_at)
-            VALUES (?, ?, 0, ?)
-            ON CONFLICT(pubkey) DO UPDATE SET
-                available_minor = ?,
-                updated_at = excluded.updated_at
-            "#,
-        )
-        .bind(wallet_pubkey)
-        .bind(next_wallet)
-        .bind(now)
-        .bind(next_wallet)
-        .execute(&mut *tx)
-        .await?;
-
-        let existing_position = sqlx::query_as::<_, (f64, i64)>(
-            r#"
-            SELECT quantity, cost_basis_minor
-            FROM market_positions
-            WHERE pubkey = ? AND market_event_id = ? AND direction = ?
-            "#,
-        )
-        .bind(wallet_pubkey)
-        .bind(&market.event_id)
-        .bind(direction)
-        .fetch_optional(&mut *tx)
-        .await?;
-
-        let (current_qty, current_cost_basis) = existing_position.unwrap_or((0.0, 0));
-        let next_qty = current_qty + quantity_delta;
-        if next_qty < -f64::EPSILON {
-            return Err(crate::error::CascadeError::invalid_input(
-                "Position quantity cannot go negative",
-            ));
-        }
-        let next_cost_basis = (current_cost_basis + cost_basis_delta_minor).max(0);
-
-        if next_qty <= f64::EPSILON {
-            sqlx::query(
-                r#"
-                DELETE FROM market_positions
-                WHERE pubkey = ? AND market_event_id = ? AND direction = ?
-                "#,
-            )
-            .bind(wallet_pubkey)
-            .bind(&market.event_id)
-            .bind(direction)
-            .execute(&mut *tx)
-            .await?;
-        } else {
-            sqlx::query(
-                r#"
-                INSERT INTO market_positions (
-                    pubkey,
-                    market_event_id,
-                    market_slug,
-                    direction,
-                    quantity,
-                    cost_basis_minor,
-                    updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(pubkey, market_event_id, direction) DO UPDATE SET
-                    market_slug = excluded.market_slug,
-                    quantity = excluded.quantity,
-                    cost_basis_minor = excluded.cost_basis_minor,
-                    updated_at = excluded.updated_at
-                "#,
-            )
-            .bind(wallet_pubkey)
-            .bind(&market.event_id)
-            .bind(&market.slug)
-            .bind(direction)
-            .bind(next_qty)
-            .bind(next_cost_basis)
-            .bind(now)
-            .execute(&mut *tx)
-            .await?;
         }
 
         sqlx::query(
@@ -3446,59 +3003,6 @@ impl CascadeDatabase {
             .bind(settlement.metadata_json.as_deref())
             .bind(now)
             .bind(now)
-            .bind(now)
-            .execute(&mut *tx)
-            .await?;
-        }
-
-        for proof in input_proofs {
-            let result = sqlx::query(
-                r#"
-                UPDATE portfolio_proofs
-                SET spent_trade_id = ?, spent_at = ?
-                WHERE secret = ? AND spent_at IS NULL
-                "#,
-            )
-            .bind(trade_id)
-            .bind(now)
-            .bind(&proof.secret)
-            .execute(&mut *tx)
-            .await?;
-
-            if result.rows_affected() != 1 {
-                return Err(crate::error::CascadeError::invalid_input(
-                    "portfolio_proof_is_no_longer_spendable".to_string(),
-                ));
-            }
-        }
-
-        for proof in issued_proofs.iter().chain(change_proofs.iter()) {
-            sqlx::query(
-                r#"
-                INSERT INTO portfolio_proofs (
-                    secret,
-                    keyset_id,
-                    unit,
-                    amount,
-                    commitment,
-                    market_event_id,
-                    direction,
-                    source,
-                    created_at,
-                    spent_trade_id,
-                    spent_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)
-                "#,
-            )
-            .bind(&proof.secret)
-            .bind(&proof.keyset_id)
-            .bind(proof.unit.to_lowercase())
-            .bind(proof.amount as i64)
-            .bind(&proof.commitment)
-            .bind(proof.market_event_id.as_deref())
-            .bind(proof.direction.as_deref())
-            .bind(&proof.source)
             .bind(now)
             .execute(&mut *tx)
             .await?;

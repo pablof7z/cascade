@@ -6,13 +6,17 @@ use anyhow::{anyhow, bail, Context, Result};
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
 use cascade_api::types::{
-    CreatorMarketsResponse, ProductCoordinatorBuyRequest, ProductCoordinatorSellRequest,
-    ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest, ProductFeedResponse,
-    ProductLightningTopupQuoteRequest, ProductMarketDetailResponse, ProductMarketSummary,
+    BlindedMessageInput, CreatorMarketsResponse, MintBolt11Request, MintBolt11Response,
+    MintQuoteBolt11Request, MintQuoteBolt11Response, ProductCoordinatorBuyRequest,
+    ProductCoordinatorSellRequest, ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest,
+    ProductFeedResponse, ProductMarketDetailResponse, ProductMarketSummary,
     ProductTradeExecutionResponse, ProductTradeQuoteResponse, ProductTradeRequestStatusResponse,
-    ProductTradeStatusResponse, ProductWalletResponse, ProductWalletTopupRequestStatusResponse,
-    ProductWalletTopupResponse,
+    ProductTradeStatusResponse, ProductWalletTopupRequestStatusResponse, TokenOutput,
 };
+use cdk::amount::{FeeAndAmounts, SplitTarget};
+use cdk::dhke::construct_proofs;
+use cdk::nuts::{BlindSignature, CurrencyUnit, KeySet, KeysResponse, PreMintSecrets};
+use cdk::Amount;
 use clap::Parser;
 use cli::*;
 use config::{
@@ -313,7 +317,6 @@ struct PortfolioView {
     local_usd_minor: u64,
     proof_wallets: Vec<proof_store::ProofWalletSummary>,
     local_positions: Vec<LocalPositionView>,
-    mirror: Option<ProductWalletResponse>,
 }
 
 #[derive(Debug, Serialize)]
@@ -821,53 +824,71 @@ async fn handle_portfolio(ctx: &AppContext, command: &PortfolioCommand) -> Resul
                 bail!("portfolio faucet is signet-only");
             }
 
-            let payload: ProductWalletTopupResponse = ctx
+            let quote: MintQuoteBolt11Response = ctx
                 .request_json(
                     &loaded,
                     Method::POST,
-                    "/api/wallet/topups/lightning/quote",
-                    Some(serde_json::to_value(ProductLightningTopupQuoteRequest {
-                        pubkey: ctx.pubkey_hex(&loaded)?,
-                        amount_minor: args.amount_minor,
+                    "/v1/mint/quote/bolt11",
+                    Some(serde_json::to_value(MintQuoteBolt11Request {
+                        amount: args.amount_minor,
+                        unit: "usd".to_string(),
+                        description: Some(format!(
+                            "Cascade portfolio top-up for {}",
+                            ctx.pubkey_hex(&loaded)?
+                        )),
+                        pubkey: Some(ctx.pubkey_hex(&loaded)?),
                         request_id: None,
                     })?),
                     AuthMode::None,
                 )
                 .await?;
-            maybe_import_topup_proofs(&loaded, &payload)?;
-            ctx.emit(&payload)
+            let paid_quote =
+                wait_for_mint_quote_state(ctx, &loaded, &quote.quote, &["PAID"]).await?;
+            let proofs =
+                claim_lightning_quote_to_store(ctx, &loaded, &paid_quote.quote, paid_quote.amount)
+                    .await?;
+            ctx.emit(&json!({
+                "quote": paid_quote,
+                "imported_proofs": {
+                    "count": proofs.len(),
+                    "amount_minor": proofs.iter().map(|proof| proof.amount).sum::<u64>(),
+                }
+            }))
         }
         PortfolioSubcommand::Topup(topup) => match &topup.command {
             PortfolioTopupSubcommand::Lightning(lightning) => match &lightning.command {
                 PortfolioTopupLightningSubcommand::Quote(args) => {
-                    let payload: ProductWalletTopupResponse = ctx
+                    let payload: MintQuoteBolt11Response = ctx
                         .request_json(
                             &loaded,
                             Method::POST,
-                            "/api/wallet/topups/lightning/quote",
-                            Some(serde_json::to_value(ProductLightningTopupQuoteRequest {
-                                pubkey: ctx.pubkey_hex(&loaded)?,
-                                amount_minor: args.amount_minor,
+                            "/v1/mint/quote/bolt11",
+                            Some(serde_json::to_value(MintQuoteBolt11Request {
+                                amount: args.amount_minor,
+                                unit: "usd".to_string(),
+                                description: Some(format!(
+                                    "Cascade portfolio top-up for {}",
+                                    ctx.pubkey_hex(&loaded)?
+                                )),
+                                pubkey: Some(ctx.pubkey_hex(&loaded)?),
                                 request_id: args.request_id.clone(),
                             })?),
                             AuthMode::None,
                         )
                         .await?;
-                    maybe_import_topup_proofs(&loaded, &payload)?;
                     ctx.emit(&payload)
                 }
             },
             PortfolioTopupSubcommand::Status(args) => {
-                let payload: ProductWalletTopupResponse = ctx
+                let payload: MintQuoteBolt11Response = ctx
                     .request_json(
                         &loaded,
                         Method::GET,
-                        &format!("/api/wallet/topups/{}", args.id),
+                        &format!("/v1/mint/quote/bolt11/{}", args.id),
                         None,
                         AuthMode::None,
                     )
                     .await?;
-                maybe_import_topup_proofs(&loaded, &payload)?;
                 ctx.emit(&payload)
             }
             PortfolioTopupSubcommand::RequestStatus(args) => {
@@ -880,23 +901,36 @@ async fn handle_portfolio(ctx: &AppContext, command: &PortfolioCommand) -> Resul
                         AuthMode::None,
                     )
                     .await?;
-                if let Some(topup) = &payload.topup {
-                    maybe_import_topup_proofs(&loaded, topup)?;
-                }
                 ctx.emit(&payload)
             }
             PortfolioTopupSubcommand::Settle(args) => {
-                let payload: ProductWalletTopupResponse = ctx
+                let quote: MintQuoteBolt11Response = ctx
                     .request_json(
                         &loaded,
                         Method::GET,
-                        &format!("/api/wallet/topups/lightning/{}", args.id),
+                        &format!("/v1/mint/quote/bolt11/{}", args.id),
                         None,
                         AuthMode::None,
                     )
                     .await?;
-                maybe_import_topup_proofs(&loaded, &payload)?;
-                ctx.emit(&payload)
+
+                if !quote.state.eq_ignore_ascii_case("PAID") {
+                    ctx.emit(&json!({
+                        "quote": quote,
+                        "message": "quote is not paid yet; nothing to claim"
+                    }))
+                } else {
+                    let proofs =
+                        claim_lightning_quote_to_store(ctx, &loaded, &quote.quote, quote.amount)
+                            .await?;
+                    ctx.emit(&json!({
+                        "quote": quote,
+                        "imported_proofs": {
+                            "count": proofs.len(),
+                            "amount_minor": proofs.iter().map(|proof| proof.amount).sum::<u64>(),
+                        }
+                    }))
+                }
             }
         },
     }
@@ -1396,6 +1430,189 @@ struct ResolvedMarketSelector {
     title: String,
 }
 
+fn keyset_denominations(keyset: &KeySet) -> Vec<u64> {
+    let mut denominations: Vec<u64> = keyset
+        .keys
+        .keys()
+        .iter()
+        .map(|(amount, _)| amount.to_u64())
+        .collect();
+    denominations.sort_unstable();
+    denominations
+}
+
+async fn fetch_active_usd_keyset(ctx: &AppContext, loaded: &LoadedConfig) -> Result<KeySet> {
+    let payload: KeysResponse = ctx
+        .request_json(loaded, Method::GET, "/v1/keys", None, AuthMode::None)
+        .await?;
+
+    payload
+        .keysets
+        .into_iter()
+        .find(|keyset| keyset.unit == CurrencyUnit::Usd && keyset.active.unwrap_or(false))
+        .ok_or_else(|| anyhow!("active USD keyset not found"))
+}
+
+async fn fetch_market_keyset(
+    ctx: &AppContext,
+    loaded: &LoadedConfig,
+    event_id: &str,
+    side: &str,
+) -> Result<KeySet> {
+    let payload: Value = ctx
+        .request_json(
+            loaded,
+            Method::GET,
+            &format!("/{event_id}/v1/keys"),
+            None,
+            AuthMode::None,
+        )
+        .await?;
+    let payload = payload.get("Ok").cloned().unwrap_or(payload);
+    let keyset = if side.eq_ignore_ascii_case("yes") || side.eq_ignore_ascii_case("long") {
+        payload["long_keyset"].clone()
+    } else {
+        payload["short_keyset"].clone()
+    };
+
+    let id = keyset["id"]
+        .as_str()
+        .ok_or_else(|| anyhow!("market keyset id missing"))?;
+    let unit = keyset["unit"]
+        .as_str()
+        .ok_or_else(|| anyhow!("market keyset unit missing"))?;
+    let keys = keyset["keys"]
+        .as_object()
+        .ok_or_else(|| anyhow!("market keyset keys missing"))?
+        .iter()
+        .map(|(amount, public_key)| {
+            Ok((
+                amount.clone(),
+                Value::String(
+                    public_key["pubkey"]
+                        .as_str()
+                        .ok_or_else(|| anyhow!("market keyset pubkey missing"))?
+                        .to_string(),
+                ),
+            ))
+        })
+        .collect::<Result<serde_json::Map<String, Value>>>()?;
+
+    serde_json::from_value(json!({
+        "id": id,
+        "unit": unit,
+        "active": true,
+        "keys": keys
+    }))
+    .context("failed to decode market keyset")
+}
+
+fn prepare_outputs(
+    keyset: &KeySet,
+    amount: u64,
+) -> Result<(Vec<BlindedMessageInput>, Option<PreMintSecrets>)> {
+    if amount == 0 {
+        return Ok((Vec::new(), None));
+    }
+
+    let pre_mint = PreMintSecrets::random(
+        keyset.id,
+        Amount::from(amount),
+        &SplitTarget::default(),
+        &FeeAndAmounts::from((0, keyset_denominations(keyset))),
+    )?;
+
+    let outputs = serde_json::from_value(serde_json::to_value(pre_mint.blinded_messages())?)?;
+    Ok((outputs, Some(pre_mint)))
+}
+
+fn proofs_from_signatures(
+    signatures: &[TokenOutput],
+    pre_mint: &PreMintSecrets,
+    keyset: &KeySet,
+) -> Result<Vec<cascade_api::types::ProofInput>> {
+    if signatures.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let blind_signatures: Vec<BlindSignature> =
+        serde_json::from_value(serde_json::to_value(signatures)?)?;
+    let proofs = construct_proofs(
+        blind_signatures,
+        pre_mint.rs(),
+        pre_mint.secrets(),
+        &keyset.keys,
+    )?;
+    serde_json::from_value(serde_json::to_value(proofs)?)
+        .context("failed to decode proofs from blind signatures")
+}
+
+async fn wait_for_mint_quote_state(
+    ctx: &AppContext,
+    loaded: &LoadedConfig,
+    quote_id: &str,
+    expected_states: &[&str],
+) -> Result<MintQuoteBolt11Response> {
+    let mut last_state = String::new();
+    for _ in 0..50 {
+        let payload: MintQuoteBolt11Response = ctx
+            .request_json(
+                loaded,
+                Method::GET,
+                &format!("/v1/mint/quote/bolt11/{quote_id}"),
+                None,
+                AuthMode::None,
+            )
+            .await?;
+        last_state = payload.state.clone();
+        if expected_states
+            .iter()
+            .any(|state| payload.state.eq_ignore_ascii_case(state))
+        {
+            return Ok(payload);
+        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    }
+
+    bail!("mint quote {quote_id} did not reach expected state; last state {last_state}");
+}
+
+async fn claim_lightning_quote_to_store(
+    ctx: &AppContext,
+    loaded: &LoadedConfig,
+    quote_id: &str,
+    amount_minor: u64,
+) -> Result<Vec<cascade_api::types::ProofInput>> {
+    let usd_keyset = fetch_active_usd_keyset(ctx, loaded).await?;
+    let (outputs, pre_mint) = prepare_outputs(&usd_keyset, amount_minor)?;
+    let pre_mint = pre_mint.ok_or_else(|| anyhow!("cannot claim a zero-amount mint quote"))?;
+    let payload: MintBolt11Response = ctx
+        .request_json(
+            loaded,
+            Method::POST,
+            "/v1/mint/bolt11",
+            Some(serde_json::to_value(MintBolt11Request {
+                quote: quote_id.to_string(),
+                outputs,
+            })?),
+            AuthMode::None,
+        )
+        .await?;
+    let proofs = proofs_from_signatures(&payload.signatures, &pre_mint, &usd_keyset)?;
+
+    let path = ctx.proof_store_path(loaded);
+    let mut store = ProofStore::load(&path)?;
+    store.add_proofs(
+        &loaded.config.api_base_url,
+        "usd",
+        &proofs,
+        WalletMetadata::default(),
+    );
+    store.save(&path)?;
+
+    Ok(proofs)
+}
+
 async fn execute_buy(
     ctx: &AppContext,
     loaded: &LoadedConfig,
@@ -1409,7 +1626,31 @@ async fn execute_buy(
     let path = ctx.proof_store_path(loaded);
     let mut store = ProofStore::load(&path)?;
     let spend_proofs = store.select_for_amount("usd", spend_minor)?;
+    let input_total_minor: u64 = spend_proofs.iter().map(|proof| proof.amount).sum();
     let request_id = request_id.unwrap_or_else(|| Uuid::new_v4().to_string());
+    let quote: ProductTradeQuoteResponse = ctx
+        .request_json(
+            loaded,
+            Method::POST,
+            "/api/trades/quote",
+            Some(serde_json::to_value(ProductCoordinatorTradeQuoteRequest {
+                event_id: event_id.to_string(),
+                side: side.to_string(),
+                spend_minor: Some(spend_minor),
+                quantity: None,
+            })?),
+            AuthMode::None,
+        )
+        .await?;
+    let market_keyset = fetch_market_keyset(ctx, loaded, event_id, side).await?;
+    let usd_keyset = fetch_active_usd_keyset(ctx, loaded).await?;
+    let (issued_outputs, issued_pre_mint) = prepare_outputs(&market_keyset, quote.quantity_minor)?;
+    let (change_outputs, change_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        input_total_minor.saturating_sub(quote.spend_minor),
+    )?;
+    let issued_pre_mint =
+        issued_pre_mint.ok_or_else(|| anyhow!("buy quote returned zero issued amount"))?;
     let payload: ProductTradeExecutionResponse = ctx
         .request_json(
             loaded,
@@ -1421,7 +1662,9 @@ async fn execute_buy(
                 side: side.to_string(),
                 spend_minor,
                 proofs: spend_proofs.clone(),
-                quote_id: None,
+                issued_outputs,
+                change_outputs,
+                quote_id: quote.quote_id.clone(),
                 request_id: Some(request_id.clone()),
             })?),
             AuthMode::Nip98,
@@ -1432,18 +1675,25 @@ async fn execute_buy(
         spend_proofs.iter().map(|proof| proof.C.clone()).collect();
     let _ = store.remove_proofs_by_commitment("usd", &spent_commitments);
     if let Some(change) = &payload.change {
+        let change_pre_mint = change_pre_mint
+            .as_ref()
+            .ok_or_else(|| anyhow!("buy change signatures returned without prepared outputs"))?;
+        let change_proofs =
+            proofs_from_signatures(&change.signatures, change_pre_mint, &usd_keyset)?;
         store.add_proofs(
             &loaded.config.api_base_url,
             &change.unit,
-            &change.proofs,
+            &change_proofs,
             WalletMetadata::default(),
         );
     }
     if let Some(issued) = &payload.issued {
+        let issued_proofs =
+            proofs_from_signatures(&issued.signatures, &issued_pre_mint, &market_keyset)?;
         store.add_proofs(
             &loaded.config.api_base_url,
             &issued.unit,
-            &issued.proofs,
+            &issued_proofs,
             WalletMetadata {
                 market_event_id: Some(event_id),
                 market_slug: Some(slug),
@@ -1476,7 +1726,31 @@ async fn execute_sell(
     let unit = market_unit_for_side(slug, side)?;
     let target_minor = quantity_to_share_minor(quantity)?;
     let spend_proofs = store.select_for_amount(&unit, target_minor)?;
+    let input_total_minor: u64 = spend_proofs.iter().map(|proof| proof.amount).sum();
     let request_id = request_id.unwrap_or_else(|| Uuid::new_v4().to_string());
+    let quote: ProductTradeQuoteResponse = ctx
+        .request_json(
+            loaded,
+            Method::POST,
+            "/api/trades/sell/quote",
+            Some(serde_json::to_value(ProductCoordinatorTradeQuoteRequest {
+                event_id: event_id.to_string(),
+                side: side.to_string(),
+                spend_minor: None,
+                quantity: Some(quantity),
+            })?),
+            AuthMode::None,
+        )
+        .await?;
+    let market_keyset = fetch_market_keyset(ctx, loaded, event_id, side).await?;
+    let usd_keyset = fetch_active_usd_keyset(ctx, loaded).await?;
+    let (issued_outputs, issued_pre_mint) = prepare_outputs(&usd_keyset, quote.net_minor)?;
+    let (change_outputs, change_pre_mint) = prepare_outputs(
+        &market_keyset,
+        input_total_minor.saturating_sub(quote.quantity_minor),
+    )?;
+    let issued_pre_mint =
+        issued_pre_mint.ok_or_else(|| anyhow!("sell quote returned zero issued amount"))?;
 
     let payload: ProductTradeExecutionResponse = ctx
         .request_json(
@@ -1489,7 +1763,9 @@ async fn execute_sell(
                 side: side.to_string(),
                 quantity,
                 proofs: spend_proofs.clone(),
-                quote_id: None,
+                issued_outputs,
+                change_outputs,
+                quote_id: quote.quote_id.clone(),
                 request_id: Some(request_id.clone()),
             })?),
             AuthMode::Nip98,
@@ -1500,10 +1776,15 @@ async fn execute_sell(
         spend_proofs.iter().map(|proof| proof.C.clone()).collect();
     let _ = store.remove_proofs_by_commitment(&unit, &spent_commitments);
     if let Some(change) = &payload.change {
+        let change_pre_mint = change_pre_mint
+            .as_ref()
+            .ok_or_else(|| anyhow!("sell change signatures returned without prepared outputs"))?;
+        let change_proofs =
+            proofs_from_signatures(&change.signatures, change_pre_mint, &market_keyset)?;
         store.add_proofs(
             &loaded.config.api_base_url,
             &change.unit,
-            &change.proofs,
+            &change_proofs,
             WalletMetadata {
                 market_event_id: Some(event_id),
                 market_slug: Some(slug),
@@ -1513,10 +1794,12 @@ async fn execute_sell(
         );
     }
     if let Some(issued) = &payload.issued {
+        let issued_proofs =
+            proofs_from_signatures(&issued.signatures, &issued_pre_mint, &usd_keyset)?;
         store.add_proofs(
             &loaded.config.api_base_url,
             &issued.unit,
-            &issued.proofs,
+            &issued_proofs,
             WalletMetadata::default(),
         );
     }
@@ -1540,16 +1823,6 @@ async fn sync_positions_after_trade(ctx: &AppContext, _loaded: &LoadedConfig) ->
 async fn build_portfolio_view(ctx: &AppContext, loaded: &LoadedConfig) -> Result<PortfolioView> {
     let store = ProofStore::load(&ctx.proof_store_path(loaded))?;
     let pubkey = ctx.pubkey_hex(loaded)?;
-    let mirror = ctx
-        .request_json::<ProductWalletResponse>(
-            loaded,
-            Method::GET,
-            &format!("/api/product/portfolio/{pubkey}"),
-            None,
-            AuthMode::None,
-        )
-        .await
-        .ok();
 
     let local_usd_minor = store
         .wallet("usd")
@@ -1597,26 +1870,7 @@ async fn build_portfolio_view(ctx: &AppContext, loaded: &LoadedConfig) -> Result
         local_usd_minor,
         proof_wallets: store.list(),
         local_positions: positions,
-        mirror,
     })
-}
-
-fn maybe_import_topup_proofs(
-    loaded: &LoadedConfig,
-    topup: &ProductWalletTopupResponse,
-) -> Result<()> {
-    let Some(proofs) = &topup.issued_proofs else {
-        return Ok(());
-    };
-    let path = PathBuf::from(&loaded.config.proof_store);
-    let mut store = ProofStore::load(&path)?;
-    store.add_proofs(
-        &loaded.config.api_base_url,
-        "usd",
-        proofs,
-        WalletMetadata::default(),
-    );
-    store.save(&path)
 }
 
 async fn resolve_market_selector(

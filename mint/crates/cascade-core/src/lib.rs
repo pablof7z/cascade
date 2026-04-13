@@ -27,8 +27,7 @@ pub use market::{Market, MarketStatus, Side};
 pub use market_manager::MarketManager;
 pub use product::{
     FxQuoteSnapshot, MarketLaunchState, MarketPosition, MarketTradeRecord, MarketVisibility,
-    TradeQuoteSnapshot, WalletBalanceRecord, WalletFundingEvent, WalletTopupQuote,
-    WalletTopupStatus,
+    TradeQuoteSnapshot, WalletFundingEvent, WalletTopupQuote, WalletTopupStatus,
 };
 pub use trade::TradeExecutor;
 

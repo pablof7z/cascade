@@ -13,6 +13,8 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@cashu/cashu-ts": "file:./vendor/cashu-ts-compat",
+    "@cashu/cashu-ts-actual": "npm:@cashu/cashu-ts@3.6.3",
     "@nostr-dev-kit/blossom": "^8.0.0",
     "@nostr-dev-kit/ndk": "^3.0.0",
     "@nostr-dev-kit/sessions": "^1.0.0",

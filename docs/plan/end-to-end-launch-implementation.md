@@ -23,6 +23,7 @@
 - Paper trading and real-money trading are separate editions.
 - Mainnet and signet use the same product model, but never the same funds, proofs, relays, or backing infrastructure.
 - Mainnet and signet also use the same proof-custody implementation: browser-local proof storage, not NIP-60 in only one edition.
+- The backend never stores a canonical mirror of user proofs in either edition.
 
 ## Edition Model
 
@@ -56,6 +57,7 @@ Cascade runs two editions from one codebase.
 - separate relay inputs or environment filters for discovery
 - separate frontend environment labels and local proof namespaces
 - same browser-local proof manager implementation in both editions
+- same blinded-output minting and trade-recovery model in both editions
 
 If any of those boundaries are blurred, the editions are not safe.
 
@@ -235,7 +237,7 @@ The preferred first implementation is one backend deployment with these modules,
 ### Deliverables
 
 - Stripe top-up initiation and webhook completion
-- Lightning top-up quote and completion flow
+- Lightning top-up quote and mint flow on standard Cashu NUT-23 endpoints
 - signet top-up settlement that ends in edition-local Cashu proofs, not a pubkey-keyed server wallet ledger
 - one rail-agnostic top-up recovery model shared by Stripe and Lightning
 - runtime manifest and request-edition guard so the frontend cannot create a signet invoice from a mainnet surface
@@ -258,6 +260,9 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 ### Success Gates
 
 - a user with `$0` can fund the portfolio in signet without real money
+- the Lightning portfolio rail works through `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`
+- browser-local recovery can restore a paid Lightning quote after refresh without a server-held proof copy
+- the backend does not maintain a pubkey-keyed current portfolio ledger in either edition
 - a user with `$0` can fund the portfolio in mainnet through Stripe or Lightning
 - Stripe redirect returns to the product, but proof issuance still depends on webhook completion
 - no funding path issues proofs before confirmed payment
@@ -270,6 +275,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 - Stripe introduces a second recovery/status model that diverges from Lightning
 - signet funding credits a pubkey-keyed server wallet instead of issuing signet-edition proofs to the user or agent
 - the signet app depends on a separate portfolio product model rather than the same self-custodied proof behavior as mainnet
+- the browser depends on a backend current-balance or current-position snapshot to render `/portfolio`
 - a frontend can point at the wrong edition backend and still create funding or trading state without an explicit mismatch error
 
 ### Best Practices

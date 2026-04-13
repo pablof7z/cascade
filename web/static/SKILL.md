@@ -93,7 +93,7 @@ Ask short, narrow questions such as:
 - Authenticated API actions use NIP-98.
 - In normal launch product use, trade requests are NIP-98-authenticated and the mint records the request signer in the `p` tag on kind `983`.
 - Portfolio proofs are self-custodied. There is no canonical `/api/wallet` balance endpoint.
-- If you want the packaged local tooling, install the repo skill with `npx skills add pablof7z/cascade --skill cascade`. It includes `scripts/start-signet-agent.mjs`, `scripts/cascade-agent-http.mjs`, and `scripts/cashu-proof-store.mjs`.
+- If you want the packaged local tooling, install the repo skill with `npx skills add pablof7z/cascade --skill cascade`. It includes self-contained Node scripts for `agent.json` initialization, NIP-98 HTTP calls, direct relay publication, and local proof storage.
 
 ## Human Copy-Paste Onboarding
 

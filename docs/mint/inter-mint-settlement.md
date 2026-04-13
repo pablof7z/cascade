@@ -118,13 +118,19 @@ A valid market quote must include at least:
 ### Lightning Top-Up
 
 1. User chooses a dollar amount.
-2. Wallet mint locks a `USD <-> msat` quote.
-3. Wallet mint creates a BOLT11 invoice for the quoted `msat` amount.
+2. Wallet mint locks a `USD <-> msat` quote through the standard Cashu NUT-23 mint-quote flow.
+3. Wallet mint returns a BOLT11 invoice for the quoted `msat` amount.
 4. User pays the invoice.
-5. Wallet mint marks the quote paid.
-6. User redeems the quote for USD proofs.
+5. Wallet mint marks the mint quote `PAID`.
+6. User calls the standard Cashu mint endpoint and receives USD proofs.
 
 The user sees a dollar-denominated top-up flow. The invoice is a funding mechanism, not the product's unit of account.
+
+For wallet funding, the canonical public endpoints are:
+
+- `POST /v1/mint/quote/bolt11`
+- `GET /v1/mint/quote/bolt11/{quote_id}`
+- `POST /v1/mint/bolt11`
 
 ## Buy Flow
 

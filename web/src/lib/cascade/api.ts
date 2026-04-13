@@ -4,18 +4,6 @@ type ApiErrorPayload = {
   error?: string;
 };
 
-export type ProductWalletPosition = {
-  market_event_id: string;
-  market_slug: string;
-  market_title: string;
-  direction: string;
-  quantity: number;
-  cost_basis_minor: number;
-  current_price_ppm: number;
-  market_value_minor: number;
-  unrealized_pnl_minor: number;
-};
-
 export type ProductProof = {
   id: string;
   amount: number;
@@ -27,15 +15,6 @@ export type ProductProof = {
     s: string;
     r: string;
   } | null;
-};
-
-export type ProductFundingEvent = {
-  id: string;
-  rail: string;
-  amount_minor: number;
-  status: string;
-  risk_level?: string | null;
-  created_at: number;
 };
 
 export type ProductFxObservation = {
@@ -61,7 +40,6 @@ export type ProductWalletTopup = {
   fx_quote_id?: string | null;
   observations: ProductFxObservation[];
   risk_level?: string | null;
-  issued_proofs?: ProductProof[] | null;
   created_at: number;
   expires_at: number;
 };
@@ -73,16 +51,6 @@ export type ProductWalletTopupRequestStatus = {
   status: string;
   error?: string | null;
   topup?: ProductWalletTopup | null;
-};
-
-export type ProductWallet = {
-  pubkey: string;
-  available_minor: number;
-  pending_minor: number;
-  total_deposited_minor: number;
-  positions: ProductWalletPosition[];
-  pending_topups: ProductWalletTopup[];
-  funding_events: ProductFundingEvent[];
 };
 
 export type ProductRuntimeRail = {
@@ -150,18 +118,29 @@ export type ProductTradeSettlement = {
   completed_at?: number | null;
 };
 
-export type ProductTradeProofBundle = {
+export type BlindedMessageInput = {
+  amount: number;
+  id: string;
+  b_: string;
+};
+
+export type TokenOutput = {
+  amount: number;
+  id: string;
+  c_: string;
+};
+
+export type ProductTradeBlindSignatureBundle = {
   unit: string;
-  proofs: ProductProof[];
+  signatures: TokenOutput[];
 };
 
 export type ProductTradeExecution = {
-  wallet: ProductWallet;
   market: ProductMarketSummary;
   trade: ProductTradeEvent;
   settlement?: ProductTradeSettlement | null;
-  issued?: ProductTradeProofBundle | null;
-  change?: ProductTradeProofBundle | null;
+  issued?: ProductTradeBlindSignatureBundle | null;
+  change?: ProductTradeBlindSignatureBundle | null;
 };
 
 export type ProductTradeQuote = {
@@ -230,6 +209,7 @@ function cascadeHeaders(headers?: HeadersInit): Headers {
 function productFetch(path: string, init?: RequestInit): Promise<Response> {
   return fetch(productUrl(path), {
     ...init,
+    cache: init?.cache ?? 'no-store',
     headers: cascadeHeaders(init?.headers)
   });
 }
@@ -240,6 +220,8 @@ export async function buyMarketPosition(input: {
   side: 'yes' | 'no';
   spendMinor: number;
   proofs: ProductProof[];
+  issuedOutputs: BlindedMessageInput[];
+  changeOutputs: BlindedMessageInput[];
   quoteId?: string;
   requestId?: string;
 }): Promise<Response> {
@@ -252,6 +234,8 @@ export async function buyMarketPosition(input: {
       side: input.side,
       spend_minor: input.spendMinor,
       proofs: input.proofs,
+      issued_outputs: input.issuedOutputs,
+      change_outputs: input.changeOutputs,
       quote_id: input.quoteId,
       request_id: input.requestId
     })
@@ -264,6 +248,8 @@ export async function sellMarketPosition(input: {
   side: 'yes' | 'no';
   quantity: number;
   proofs: ProductProof[];
+  issuedOutputs: BlindedMessageInput[];
+  changeOutputs: BlindedMessageInput[];
   quoteId?: string;
   requestId?: string;
 }): Promise<Response> {
@@ -276,6 +262,8 @@ export async function sellMarketPosition(input: {
       side: input.side,
       quantity: input.quantity,
       proofs: input.proofs,
+      issued_outputs: input.issuedOutputs,
+      change_outputs: input.changeOutputs,
       quote_id: input.quoteId,
       request_id: input.requestId
     })
@@ -322,33 +310,8 @@ export async function fetchProductRuntime(): Promise<Response> {
   return productFetch('/api/product/runtime');
 }
 
-export async function fetchPortfolioMirror(pubkey: string): Promise<Response> {
-  const portfolioResponse = await productFetch(`/api/product/portfolio/${pubkey}`);
-  if (portfolioResponse.status !== 404) {
-    return portfolioResponse;
-  }
-
-  return productFetch(`/api/product/wallet/${pubkey}`);
-}
-
 export async function fetchMarketDetailBySlug(slug: string): Promise<Response> {
   return productFetch(`/api/product/markets/slug/${encodeURIComponent(slug)}`);
-}
-
-export async function createLightningTopupQuote(input: {
-  pubkey: string;
-  amountMinor: number;
-  requestId?: string;
-}): Promise<Response> {
-  return productFetch('/api/wallet/topups/lightning/quote', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      pubkey: input.pubkey,
-      amount_minor: input.amountMinor,
-      request_id: input.requestId
-    })
-  });
 }
 
 export async function createStripeTopup(input: {
@@ -394,45 +357,33 @@ export function hasCompletedTradeSettlement(
   return value?.settlement?.status === 'complete';
 }
 
-function isProductProofBundle(value: unknown): value is ProductTradeProofBundle {
+function isBlindSignatureBundle(value: unknown): value is ProductTradeBlindSignatureBundle {
   if (!value || typeof value !== 'object') return false;
-  const bundle = value as { unit?: unknown; proofs?: unknown };
+  const bundle = value as { unit?: unknown; signatures?: unknown };
   return (
     typeof bundle.unit === 'string' &&
-    Array.isArray(bundle.proofs) &&
-    bundle.proofs.every(
-      (proof) =>
-        proof &&
-        typeof proof === 'object' &&
-        typeof (proof as { id?: unknown }).id === 'string' &&
-        typeof (proof as { secret?: unknown }).secret === 'string' &&
-        typeof (proof as { C?: unknown }).C === 'string' &&
-        typeof (proof as { amount?: unknown }).amount === 'number'
+    Array.isArray(bundle.signatures) &&
+    bundle.signatures.every(
+      (signature) =>
+        signature &&
+        typeof signature === 'object' &&
+        typeof (signature as { id?: unknown }).id === 'string' &&
+        typeof (signature as { c_?: unknown }).c_ === 'string' &&
+        typeof (signature as { amount?: unknown }).amount === 'number'
     )
   );
 }
 
-export function extractTradeProofBundles(value: {
-  settlement?: ProductTradeSettlement | null;
-  issued?: ProductTradeProofBundle | null;
-  change?: ProductTradeProofBundle | null;
+export function extractTradeBlindSignatureBundles(value: {
+  issued?: ProductTradeBlindSignatureBundle | null;
+  change?: ProductTradeBlindSignatureBundle | null;
 }): {
-  issued: ProductTradeProofBundle | null;
-  change: ProductTradeProofBundle | null;
+  issued: ProductTradeBlindSignatureBundle | null;
+  change: ProductTradeBlindSignatureBundle | null;
 } {
-  const directIssued = value.issued && isProductProofBundle(value.issued) ? value.issued : null;
-  const directChange = value.change && isProductProofBundle(value.change) ? value.change : null;
-  if (directIssued || directChange) {
-    return {
-      issued: directIssued,
-      change: directChange
-    };
-  }
-
-  const metadata = value.settlement?.metadata;
   return {
-    issued: isProductProofBundle(metadata?.issued) ? metadata.issued : null,
-    change: isProductProofBundle(metadata?.change) ? metadata.change : null
+    issued: value.issued && isBlindSignatureBundle(value.issued) ? value.issued : null,
+    change: value.change && isBlindSignatureBundle(value.change) ? value.change : null
   };
 }
 

@@ -347,7 +347,7 @@ Returns:
 - pending top-ups
 - locally derived open positions from market-proof holdings
 - public mark value for those positions
-- any compatibility mirror data the product API still exposes
+- any compatibility activity data the product API still exposes
 
 ### `cascade portfolio faucet`
 

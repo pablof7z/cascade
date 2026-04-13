@@ -108,9 +108,10 @@ Implement the USD wallet mint with both launch funding paths.
 
 - add wallet-mint configuration for USD operation
 - implement or integrate a `stripe` payment processor / gateway
-- add incoming Lightning mint-quote support for USD-denominated top-ups
+- add incoming Lightning mint-quote support for USD-denominated top-ups on the standard Cashu NUT-23 BOLT11 endpoints
 - map Stripe and Lightning payment completion to mint quote completion
-- issue USD proofs to the user's local wallet after successful funding
+- let the browser mint and recover USD proofs locally after successful Lightning funding
+- issue USD proofs only after verified Stripe completion and risk acceptance
 - add risk controls for reversible card payments
 - gate proof issuance on Stripe risk signals and conservative volume caps
 - keep one persisted top-up saga model across Stripe and Lightning, with rail-specific metadata instead of rail-specific custody paths
@@ -119,10 +120,10 @@ Definition of done:
 
 - user can start a Stripe top-up
 - Stripe webhook marks the payment complete
-- user can start a Lightning top-up for a locked USD amount
-- Lightning payment marks the top-up quote paid
-- wallet mint issues USD proofs for both funding paths
-- the same top-up request recovery and status endpoints work for both rails
+- user can start a Lightning top-up for a locked USD amount through `POST /v1/mint/quote/bolt11`
+- Lightning payment marks the mint quote `PAID`
+- the browser can call `POST /v1/mint/bolt11` and recover the issued proofs locally after interruption
+- Stripe retains the persisted request/status saga because card checkout is not a standard Cashu mint flow
 
 ## Workstream 4: Market Mint Quote And Payment Processors
 

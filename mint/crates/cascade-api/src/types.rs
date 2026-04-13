@@ -254,23 +254,6 @@ pub struct ProductTradeRequestStatusResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ProductFundingEventResponse {
-    pub id: String,
-    pub rail: String,
-    pub amount_minor: u64,
-    pub status: String,
-    pub risk_level: Option<String>,
-    pub created_at: i64,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ProductLightningTopupQuoteRequest {
-    pub pubkey: String,
-    pub amount_minor: u64,
-    pub request_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 pub struct MintQuoteBolt11Request {
     pub amount: u64,
     pub unit: String,
@@ -297,7 +280,7 @@ pub struct MintBolt11Request {
     pub outputs: Vec<BlindedMessageInput>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct MintBolt11Response {
     pub signatures: Vec<TokenOutput>,
 }
@@ -338,8 +321,6 @@ pub struct ProductWalletTopupResponse {
     pub observations: Vec<ProductFxObservationResponse>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub risk_level: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub issued_proofs: Option<Vec<ProofInput>>,
     pub created_at: i64,
     pub expires_at: i64,
 }
@@ -372,30 +353,6 @@ pub struct ProductLightningFxQuoteResponse {
     pub expires_at: i64,
     pub fallback_used: bool,
     pub observations: Vec<ProductFxObservationResponse>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ProductWalletPositionResponse {
-    pub market_event_id: String,
-    pub market_slug: String,
-    pub market_title: String,
-    pub direction: String,
-    pub quantity: f64,
-    pub cost_basis_minor: u64,
-    pub current_price_ppm: u64,
-    pub market_value_minor: u64,
-    pub unrealized_pnl_minor: i64,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ProductWalletResponse {
-    pub pubkey: String,
-    pub available_minor: u64,
-    pub pending_minor: u64,
-    pub total_deposited_minor: u64,
-    pub positions: Vec<ProductWalletPositionResponse>,
-    pub pending_topups: Vec<ProductWalletTopupResponse>,
-    pub funding_events: Vec<ProductFundingEventResponse>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -451,6 +408,10 @@ pub struct ProductBuyRequest {
     pub spend_minor: u64,
     #[serde(default)]
     pub proofs: Vec<ProofInput>,
+    #[serde(default)]
+    pub issued_outputs: Vec<BlindedMessageInput>,
+    #[serde(default)]
+    pub change_outputs: Vec<BlindedMessageInput>,
     pub quote_id: Option<String>,
     pub request_id: Option<String>,
 }
@@ -463,6 +424,10 @@ pub struct ProductCoordinatorBuyRequest {
     pub spend_minor: u64,
     #[serde(default)]
     pub proofs: Vec<ProofInput>,
+    #[serde(default)]
+    pub issued_outputs: Vec<BlindedMessageInput>,
+    #[serde(default)]
+    pub change_outputs: Vec<BlindedMessageInput>,
     pub quote_id: Option<String>,
     pub request_id: Option<String>,
 }
@@ -474,6 +439,10 @@ pub struct ProductSellRequest {
     pub quantity: f64,
     #[serde(default)]
     pub proofs: Vec<ProofInput>,
+    #[serde(default)]
+    pub issued_outputs: Vec<BlindedMessageInput>,
+    #[serde(default)]
+    pub change_outputs: Vec<BlindedMessageInput>,
     pub quote_id: Option<String>,
     pub request_id: Option<String>,
 }
@@ -486,24 +455,27 @@ pub struct ProductCoordinatorSellRequest {
     pub quantity: f64,
     #[serde(default)]
     pub proofs: Vec<ProofInput>,
+    #[serde(default)]
+    pub issued_outputs: Vec<BlindedMessageInput>,
+    #[serde(default)]
+    pub change_outputs: Vec<BlindedMessageInput>,
     pub quote_id: Option<String>,
     pub request_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ProductTradeProofBundleResponse {
+pub struct ProductTradeBlindSignatureBundleResponse {
     pub unit: String,
-    pub proofs: Vec<ProofInput>,
+    pub signatures: Vec<TokenOutput>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ProductTradeExecutionResponse {
-    pub wallet: ProductWalletResponse,
     pub market: ProductMarketSummary,
     pub trade: Value,
     pub settlement: Option<ProductTradeSettlementResponse>,
-    pub issued: Option<ProductTradeProofBundleResponse>,
-    pub change: Option<ProductTradeProofBundleResponse>,
+    pub issued: Option<ProductTradeBlindSignatureBundleResponse>,
+    pub change: Option<ProductTradeBlindSignatureBundleResponse>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -691,7 +663,7 @@ pub struct MarketSettleResponse {
 }
 
 /// Token output from minting — matches CDK NUT-00 BlindSignature JSON format
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TokenOutput {
     /// Denomination in satoshis
     pub amount: u64,

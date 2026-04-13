@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import {
     buyMarketPosition,
-    extractTradeProofBundles,
+    extractTradeBlindSignatureBundles,
     fetchTradeQuoteStatus,
     quoteBuyTrade,
     fetchTradeRequestStatus,
@@ -34,6 +34,11 @@
     removeLocalProofs,
     selectLocalProofsForAmount
   } from '$lib/wallet/localProofs';
+  import {
+    prepareProofOutputs,
+    restorePreparedOutputs,
+    unblindPreparedOutputs
+  } from '$lib/wallet/cashuMint';
   import { applyLocalPositionTradeFromPayload } from '$lib/wallet/localPositionBook';
 
   type DraftLink = {
@@ -191,12 +196,30 @@
     return localProofBalance(proofMintUrl(), 'usd');
   }
 
-  function applyRecoveredSeedProofs(
+  function marketUnitForSide(marketSlug: string, side: 'yes' | 'no'): string {
+    return side === 'yes' ? `long_${marketSlug}` : `short_${marketSlug}`;
+  }
+
+  async function applyRecoveredSeedProofs(
     receipt: ReturnType<typeof listTradeReceipts>[number],
     payload: ProductTradeExecution | ProductTradeStatus
   ) {
-    const { issued, change } = extractTradeProofBundles(payload);
-    if (!issued && !change) {
+    const { issued, change } =
+      'issued' in payload
+        ? extractTradeBlindSignatureBundles(payload)
+        : { issued: null, change: null };
+    const issuedProofs = receipt.issuedPreparation
+      ? issued
+        ? await unblindPreparedOutputs(proofMintUrl(), receipt.issuedPreparation, issued.signatures)
+        : await restorePreparedOutputs(proofMintUrl(), receipt.issuedPreparation)
+      : [];
+    const changeProofs = receipt.changePreparation
+      ? change
+        ? await unblindPreparedOutputs(proofMintUrl(), receipt.changePreparation, change.signatures)
+        : await restorePreparedOutputs(proofMintUrl(), receipt.changePreparation)
+      : [];
+
+    if (!issuedProofs.length && !changeProofs.length) {
       throw new Error('seed_proofs_missing');
     }
 
@@ -204,12 +227,12 @@
       removeLocalProofs(proofMintUrl(), receipt.spentUnit, receipt.spentProofs);
     }
 
-    if (change) {
-      addLocalProofs(proofMintUrl(), change.unit, change.proofs);
+    if (receipt.changePreparation && changeProofs.length) {
+      addLocalProofs(proofMintUrl(), receipt.changePreparation.unit, changeProofs);
     }
 
-    if (issued) {
-      addLocalProofs(proofMintUrl(), issued.unit, issued.proofs);
+    if (receipt.issuedPreparation && issuedProofs.length) {
+      addLocalProofs(proofMintUrl(), receipt.issuedPreparation.unit, issuedProofs);
     }
 
     applyLocalPositionTradeFromPayload(proofMintUrl(), payload, receipt.action, receipt.side);
@@ -267,6 +290,17 @@
       if (!spendProofs.length) {
         throw new Error(`Your ${portfolioLabel} no longer has enough local proofs for this seed.`);
       }
+      const issuedUnit = marketUnitForSide(slug, (quote.side as 'yes' | 'no') ?? seedSide);
+      const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
+        proofMintUrl(),
+        issuedUnit,
+        quote.quantity_minor
+      );
+      const changeMinor = spendProofs.reduce((sum, proof) => sum + proof.amount, 0) - quote.spend_minor;
+      const changeBundle =
+        changeMinor > 0 ? await prepareProofOutputs(proofMintUrl(), 'usd', changeMinor) : null;
+      const changeOutputs = changeBundle?.outputs ?? [];
+      const changePreparation = changeBundle?.preparation;
 
       trackTradeReceipt({
         id: requestId,
@@ -277,7 +311,9 @@
         action: 'seed',
         side: seedSide,
         spentUnit: 'usd',
-        spentProofs: spendProofs
+        spentProofs: spendProofs,
+        issuedPreparation,
+        changePreparation
       });
 
       const seed = await buyMarketPosition({
@@ -286,6 +322,8 @@
         side: (quote.side as 'yes' | 'no') ?? seedSide,
         spendMinor: quote.spend_minor,
         proofs: spendProofs,
+        issuedOutputs,
+        changeOutputs,
         quoteId: lockedQuoteId,
         requestId
       });
@@ -297,7 +335,7 @@
         attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
-      applyRecoveredSeedProofs(
+      await applyRecoveredSeedProofs(
         {
           id: requestId,
           pubkey: currentUser.pubkey,
@@ -307,6 +345,8 @@
           side: seedSide,
           spentUnit: 'usd',
           spentProofs: spendProofs,
+          issuedPreparation,
+          changePreparation,
           createdAt: Date.now()
         },
         payload
@@ -467,7 +507,7 @@
             builderStatus = `Recovered pending settlement for ${receipt.marketSlug}.`;
             continue;
           }
-          applyRecoveredSeedProofs(receipt, payload);
+          await applyRecoveredSeedProofs(receipt, payload);
           clearTradeReceipt(receipt.id);
           builderStatus = 'Recovered seeded market and now public.';
           await loadCreatorMarkets();
@@ -504,7 +544,7 @@
               builderStatus = `Recovered pending settlement for ${receipt.marketSlug}.`;
               continue;
             }
-            applyRecoveredSeedProofs(receipt, tradePayload);
+            await applyRecoveredSeedProofs(receipt, tradePayload);
             clearTradeReceipt(receipt.id);
             builderStatus = 'Recovered seeded market and now public.';
             await loadCreatorMarkets();
@@ -548,7 +588,7 @@
             builderStatus = `Recovered pending settlement for ${receipt.marketSlug}.`;
             continue;
           }
-          applyRecoveredSeedProofs(receipt, tradePayload);
+          await applyRecoveredSeedProofs(receipt, tradePayload);
           clearTradeReceipt(receipt.id);
           builderStatus = 'Recovered seeded market and now public.';
           await loadCreatorMarkets();

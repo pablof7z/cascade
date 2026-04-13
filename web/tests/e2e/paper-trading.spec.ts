@@ -80,21 +80,24 @@ async function fundPortfolio(page: Page, secretKey: string, amountMinor: number)
   await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
 
   let remainingMinor = amountMinor;
+  let fundedMinor = 0;
+  const localProofsPanel = page.locator('.wallet-grid .wallet-panel').first();
 
   while (remainingMinor > 0) {
     const chunkMinor = Math.min(remainingMinor, SIGNET_TOPUP_SINGLE_LIMIT_MINOR);
     await page.getByRole('spinbutton', { name: 'Funding amount' }).fill(String(chunkMinor));
     await page.getByRole('button', { name: 'Create Lightning invoice' }).click();
     await expect(
-      page.getByText(`Created a Lightning top-up for ${formatUsdMinor(chunkMinor)}.`)
+      page.locator('.history-row').filter({ hasText: `lightning · invoice_pending` }).first()
     ).toBeVisible();
-    await expect(
-      page.getByText(
-        new RegExp(
-          `(?:Recovered )?Lightning top-up added ${formatUsdMinor(chunkMinor).replace('$', '\\$')} of browser-local proofs\\.`
-        )
+    fundedMinor += chunkMinor;
+    await expect
+      .poll(
+        async () =>
+          (await localProofsPanel.textContent())?.includes(formatUsdMinor(fundedMinor)) ?? false,
+        { timeout: 45_000 }
       )
-    ).toBeVisible();
+      .toBe(true);
     remainingMinor -= chunkMinor;
   }
 }
@@ -402,15 +405,16 @@ test('signet portfolio can fund through the Lightning top-up flow', async ({ pag
   await page.getByRole('spinbutton', { name: 'Funding amount' }).fill('2500');
   await page.getByRole('button', { name: 'Create Lightning invoice' }).click();
   await expect(
-    page.getByText(`Created a Lightning top-up for ${formatUsdMinor(2500)}.`)
+    page.locator('.history-row').filter({ hasText: `lightning · invoice_pending` }).first()
   ).toBeVisible();
-  await expect(
-    page.getByText(
-      new RegExp(
-        `(?:Recovered )?Lightning top-up added ${formatUsdMinor(2500).replace('$', '\\$')} of browser-local proofs\\.`
-      )
+  const localProofsPanel = page.locator('.wallet-grid .wallet-panel').first();
+  await expect
+    .poll(
+      async () =>
+        (await localProofsPanel.textContent())?.includes(formatUsdMinor(2500)) ?? false,
+      { timeout: 45_000 }
     )
-  ).toBeVisible();
+    .toBe(true);
 
   await page.goto('/portfolio');
   await ensureLoggedIn(page, secret);

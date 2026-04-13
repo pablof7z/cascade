@@ -94,17 +94,20 @@ Shows the current user's open positions across all markets:
 Only open positions are shown in the main list. Fully sold positions may appear in a history section.
 
 There is no canonical private `/api/portfolio` route backed by server-held proofs. Portfolio is derived from user-side proof state, user-published position records, and public market data.
+There is also no canonical pubkey-keyed `/api/product/portfolio/:pubkey` or `/api/product/wallet/:pubkey` route for current holdings.
 
 For launch, that means:
 
 - spendable cash comes from locally stored USD proofs
 - open-position quantities come from locally stored market proofs
+- Lightning-funded USD proofs arrive through the standard Cashu mint flow and are then stored locally in the browser
+- trade-issued market proofs and change proofs are created from blind signatures returned by the product trade routes and unblinded locally in the browser
 - current portfolio value comes from public market prices
 - launch cost basis comes from a browser-local executed-trade position book maintained by the active browser
 - exact withdrawal previews come from sell quotes
 - token import/export is a browser-local proof-management action, not a server wallet API
 - the first import/export implementation can operate on one proof bucket at a time: one mint, one unit, one encoded Cashu token string
-- if public market pricing is unavailable, the holding still appears from local proof state and local trade metadata, but with price unavailable / mark-only display rather than mirror-derived valuation
+- if public market pricing is unavailable, the holding still appears from local proof state and local trade metadata, but with price unavailable / mark-only display rather than backend-derived valuation
 
 ## Public Profile Surface
 
@@ -134,6 +137,9 @@ The launch browser-local position book is intentionally narrow:
 - imported proofs or proofs acquired on another device may not have local cost basis
 - those holdings should still appear in `/portfolio`, but with mark-only valuation rather than fabricated PnL
 - it should also retain enough local market metadata to render a readable holding row even if public market detail fetches fail temporarily
+
+The backend must not keep a proof-by-proof mirror of this state. It can expose trade and settlement records, but the bearer proofs themselves remain local to the browser.
+The backend must also not keep a canonical per-pubkey portfolio ledger for spendable cash or current open positions.
 
 ## Future: Deriving Positions From Kind 983
 

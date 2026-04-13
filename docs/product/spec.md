@@ -51,6 +51,8 @@ For launch, `web/` is scoped to the public market product, the account layer, an
 - Lightning may exist as hidden settlement infrastructure, but it is not normal product language
 - The product has separate paper-trading and mainnet editions, and they must not mix proofs or public discovery
 - Signet and mainnet use the same browser-local proof custody and proof-based trade mechanics
+- The backend never stores a canonical copy of user-held proofs; it verifies spends and returns blind signatures only
+- Pure Lightning portfolio funding should use standard Cashu mint quote and mint endpoints rather than a Cascade-only funding route
 
 ## Product Areas
 
@@ -121,6 +123,7 @@ Trade execution on the market page is proof-based:
 - buys consume locally held USD proofs and return newly issued LONG or SHORT proofs plus any USD change proofs
 - withdrawals consume locally held market proofs and return newly issued USD proofs plus any market-proof change
 - the browser is the source of truth for spendable proofs in both signet and mainnet
+- the backend does not maintain a canonical per-user current-balance or current-position portfolio ledger
 
 Because proofs are integer-denominated, market-proof balances are stored as fixed share-minor units rather than floats. Launch uses `10_000` stored units per whole share and converts to human share quantities only at the UI boundary.
 
@@ -307,6 +310,14 @@ It should show:
 - Exited-position history
 
 In signet, the add-funds surface should stay on the normal top-up rails and API shapes. The difference is that signet uses valueless test infrastructure, not that the locked quote completes immediately without payment.
+
+Lightning funding should stay on the standard Cashu path:
+
+- create mint quote
+- pay invoice
+- mint proofs
+
+Cascade-specific `/api/...` routes remain for orchestration and card flows, not for replacing the standard wallet-mint Lightning funding lifecycle.
 
 Market exits return value to the portfolio balance as USD ecash. Off-platform bank payout is a later milestone, not a launch requirement.
 

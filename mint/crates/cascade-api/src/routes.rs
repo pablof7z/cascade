@@ -20,6 +20,8 @@ use cascade_core::{db::CascadeDatabase, invoice::InvoiceService, MarketManager};
 pub struct AppState {
     pub market_manager: Arc<MarketManager>,
     pub invoice_service: Arc<Mutex<InvoiceService>>,
+    /// Top-up quotes currently being issued through /v1/mint/bolt11.
+    pub processing_topups: Arc<Mutex<HashSet<String>>>,
     /// Set of spent proof secrets (to prevent double-redemption)
     /// In production, this would be persisted to a database
     pub spent_proofs: Arc<RwLock<HashSet<String>>>,
@@ -56,6 +58,7 @@ impl AppState {
         Self {
             market_manager,
             invoice_service,
+            processing_topups: Arc::new(Mutex::new(HashSet::new())),
             spent_proofs: Arc::new(RwLock::new(HashSet::new())),
             fx_service,
             stripe_gateway,
@@ -79,6 +82,7 @@ impl AppState {
         Self {
             market_manager,
             invoice_service,
+            processing_topups: Arc::new(Mutex::new(HashSet::new())),
             spent_proofs: Arc::new(RwLock::new(HashSet::new())),
             fx_service,
             stripe_gateway,
@@ -163,8 +167,6 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             "/api/product/markets/{event_id}/sell",
             post(product::sell_market_position),
         )
-        .route("/api/product/portfolio/{pubkey}", get(product::portfolio))
-        .route("/api/product/wallet/{pubkey}", get(product::wallet))
         .route(
             "/api/product/fx/lightning/{amount_minor}",
             get(product::preview_lightning_fx_quote),
@@ -198,14 +200,6 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             "/api/wallet/topups/stripe/webhook",
             post(product::stripe_webhook),
         )
-        .route(
-            "/api/wallet/topups/lightning/quote",
-            post(product::create_lightning_topup_quote),
-        )
-        .route(
-            "/api/wallet/topups/lightning/{quote_id}",
-            get(product::get_lightning_topup_quote),
-        )
         .route("/api/market/{id}/resolve", post(resolve::resolve_market))
         // Trade execution
         .route("/api/trade/bid", post(trade::buy))
@@ -218,6 +212,15 @@ pub fn build_cascade_routes(state: AppState) -> Router {
         // Phase 7: Settlement & Redemption
         .route("/v1/cascade/redeem", post(handlers::settlement::redeem))
         .route("/v1/cascade/settle", post(handlers::settlement::settle))
+        .route(
+            "/v1/mint/quote/bolt11",
+            post(product::create_mint_quote_bolt11),
+        )
+        .route(
+            "/v1/mint/quote/bolt11/{quote_id}",
+            get(product::get_mint_quote_bolt11),
+        )
+        .route("/v1/mint/bolt11", post(product::mint_bolt11))
         // Health check
         .route("/health", get(health_check))
         .with_state(state)

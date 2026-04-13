@@ -4,14 +4,26 @@
 //! These tests start a local server and make HTTP requests to it.
 
 use axum::Router;
+use cdk::amount::{FeeAndAmounts, SplitTarget};
+use cdk::dhke::construct_proofs;
 use cdk::mint::{MintBuilder, UnitConfig};
-use cdk::nuts::CurrencyUnit;
+use cdk::nuts::{BlindSignature, CurrencyUnit, KeySet, KeysResponse, PreMintSecrets, Proof};
+use cdk::Amount;
 use hmac::{Hmac, Mac};
+use serde_json::{json, Value};
 use sha2::Sha256;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
 type HmacSha256 = Hmac<Sha256>;
+
+const TEST_USD_DENOMINATIONS: &[u64] = &[
+    1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
+];
+const TEST_MARKET_DENOMINATIONS: &[u64] = &[
+    1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072,
+    262144, 524288, 1048576,
+];
 
 /// Test helper to create a test server
 async fn create_test_server() -> String {
@@ -189,42 +201,166 @@ async fn create_signet_topup_and_get_proofs(
     pubkey: &str,
     amount_minor: u64,
 ) -> serde_json::Value {
-    let response = client
-        .post(format!("{url}/api/wallet/topups/lightning/quote"))
+    let quote_response = client
+        .post(format!("{url}/v1/mint/quote/bolt11"))
+        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": pubkey,
-            "amount_minor": amount_minor
+            "amount": amount_minor,
+            "unit": "usd"
         }))
         .send()
         .await
         .unwrap();
-    assert_eq!(response.status(), 201);
-    let payload: serde_json::Value = response.json().await.unwrap();
-    assert_eq!(payload["status"].as_str(), Some("invoice_pending"));
-    let quote_id = payload["id"].as_str().unwrap();
-    wait_for_topup_completion(client, url, quote_id).await["issued_proofs"].clone()
+    assert_eq!(quote_response.status(), 200);
+    let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
+    let quote_id = quote_payload["quote"].as_str().unwrap();
+    let paid_quote = wait_for_mint_quote_state(client, url, quote_id, &["PAID"]).await;
+    mint_topup_quote_and_get_proofs(client, url, &paid_quote, amount_minor).await
 }
 
-async fn wait_for_topup_completion(
+async fn fetch_active_usd_keyset(client: &reqwest::Client, url: &str) -> KeySet {
+    let response = client.get(format!("{url}/v1/keys")).send().await.unwrap();
+    assert_eq!(response.status(), 200);
+
+    let payload: KeysResponse = response.json().await.unwrap();
+    payload
+        .keysets
+        .into_iter()
+        .find(|keyset| keyset.unit == CurrencyUnit::Usd && keyset.active.unwrap_or(false))
+        .expect("active usd keyset")
+}
+
+async fn fetch_market_keyset(
+    client: &reqwest::Client,
+    url: &str,
+    event_id: &str,
+    side: &str,
+) -> KeySet {
+    let response = client
+        .get(format!("{url}/{event_id}/v1/keys"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let payload: Value = response.json().await.unwrap();
+    let payload = payload.get("Ok").cloned().unwrap_or(payload);
+    let keyset = if side.eq_ignore_ascii_case("yes") || side.eq_ignore_ascii_case("long") {
+        payload["long_keyset"].clone()
+    } else {
+        payload["short_keyset"].clone()
+    };
+
+    let id = keyset["id"].as_str().unwrap();
+    let unit = keyset["unit"].as_str().unwrap();
+    let keys = keyset["keys"]
+        .as_object()
+        .unwrap()
+        .iter()
+        .map(|(amount, public_key)| {
+            (
+                amount.clone(),
+                Value::String(public_key["pubkey"].as_str().unwrap().to_string()),
+            )
+        })
+        .collect::<serde_json::Map<String, Value>>();
+
+    serde_json::from_value(json!({
+        "id": id,
+        "unit": unit,
+        "active": true,
+        "keys": keys
+    }))
+    .unwrap()
+}
+
+fn prepare_outputs(keyset: &KeySet, amount: u64, denominations: &[u64]) -> (Value, PreMintSecrets) {
+    let pre_mint = PreMintSecrets::random(
+        keyset.id,
+        Amount::from(amount),
+        &SplitTarget::default(),
+        &FeeAndAmounts::from((0, denominations.to_vec())),
+    )
+    .unwrap();
+
+    (
+        serde_json::to_value(pre_mint.blinded_messages()).unwrap(),
+        pre_mint,
+    )
+}
+
+fn proofs_from_signatures(
+    signatures: &Value,
+    pre_mint: &PreMintSecrets,
+    keyset: &KeySet,
+) -> Vec<Proof> {
+    let signatures: Vec<BlindSignature> = serde_json::from_value(signatures.clone()).unwrap();
+    construct_proofs(signatures, pre_mint.rs(), pre_mint.secrets(), &keyset.keys).unwrap()
+}
+
+fn proof_amount_total(proofs: &[Proof]) -> u64 {
+    proofs.iter().map(|proof| proof.amount.to_u64()).sum()
+}
+
+async fn wait_for_mint_quote_state(
     client: &reqwest::Client,
     url: &str,
     quote_id: &str,
+    expected_states: &[&str],
 ) -> serde_json::Value {
-    for _ in 0..20 {
+    let mut last_payload = serde_json::Value::Null;
+    for _ in 0..50 {
         let response = client
-            .get(format!("{url}/api/wallet/topups/{quote_id}"))
+            .get(format!("{url}/v1/mint/quote/bolt11/{quote_id}"))
             .send()
             .await
             .unwrap();
         assert_eq!(response.status(), 200);
         let payload: serde_json::Value = response.json().await.unwrap();
-        if payload["status"].as_str() == Some("complete") {
+        last_payload = payload.clone();
+        if expected_states.contains(&payload["state"].as_str().unwrap_or_default()) {
             return payload;
         }
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     }
 
-    panic!("topup quote {quote_id} did not complete in time");
+    panic!(
+        "mint quote {quote_id} did not reach expected state in time; last payload: {last_payload}"
+    );
+}
+
+async fn mint_topup_quote_and_get_proofs(
+    client: &reqwest::Client,
+    url: &str,
+    quote_payload: &serde_json::Value,
+    amount_minor: u64,
+) -> serde_json::Value {
+    let keyset = fetch_active_usd_keyset(client, url).await;
+    let pre_mint = PreMintSecrets::random(
+        keyset.id,
+        Amount::from(amount_minor),
+        &SplitTarget::default(),
+        &FeeAndAmounts::from((0, TEST_USD_DENOMINATIONS.to_vec())),
+    )
+    .unwrap();
+
+    let outputs = serde_json::to_value(pre_mint.blinded_messages()).unwrap();
+    let mint_response = client
+        .post(format!("{url}/v1/mint/bolt11"))
+        .json(&serde_json::json!({
+            "quote": quote_payload["quote"].as_str().unwrap(),
+            "outputs": outputs
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(mint_response.status(), 200);
+    let mint_payload: serde_json::Value = mint_response.json().await.unwrap();
+    let signatures: Vec<BlindSignature> =
+        serde_json::from_value(mint_payload["signatures"].clone()).unwrap();
+    let proofs =
+        construct_proofs(signatures, pre_mint.rs(), pre_mint.secrets(), &keyset.keys).unwrap();
+    serde_json::to_value(proofs).unwrap()
 }
 
 /// Test that the health endpoint returns OK
@@ -647,7 +783,35 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .await
         .unwrap();
 
-    let topup_proofs = create_signet_topup_and_get_proofs(&client, &url, creator, 10_000).await;
+    let topup_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_topup_and_get_proofs(&client, &url, creator, 10_000).await,
+    )
+    .unwrap();
+    let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "yes").await;
+
+    let buy_quote_response = client
+        .post(format!("{url}/api/trades/quote"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "side": "yes",
+            "spend_minor": 8000
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(buy_quote_response.status(), 200);
+    let buy_quote_payload: serde_json::Value = buy_quote_response.json().await.unwrap();
+    let (issued_outputs, issued_pre_mint) = prepare_outputs(
+        &market_keyset,
+        buy_quote_payload["quantity_minor"].as_u64().unwrap(),
+        TEST_MARKET_DENOMINATIONS,
+    );
+    let (change_outputs, change_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        proof_amount_total(&topup_proofs).saturating_sub(8000),
+        TEST_USD_DENOMINATIONS,
+    );
 
     let buy_response = client
         .post(format!("{url}/api/product/markets/{event_id}/buy"))
@@ -655,13 +819,16 @@ async fn test_paper_wallet_buy_and_sell_flow() {
             "pubkey": creator,
             "side": "yes",
             "spend_minor": 8000,
-            "proofs": topup_proofs
+            "proofs": topup_proofs,
+            "issued_outputs": issued_outputs,
+            "change_outputs": change_outputs
         }))
         .send()
         .await
         .unwrap();
-    assert_eq!(buy_response.status(), 201);
+    let buy_status = buy_response.status();
     let buy_payload: serde_json::Value = buy_response.json().await.unwrap();
+    assert_eq!(buy_status, 201, "buy payload: {buy_payload}");
     assert_eq!(buy_payload["market"]["visibility"].as_str(), Some("public"));
     assert_eq!(
         buy_payload["settlement"]["mode"].as_str(),
@@ -677,10 +844,17 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     );
     assert!(buy_payload["settlement"]["invoice"].as_str().is_some());
     assert!(buy_payload["settlement"]["payment_hash"].as_str().is_some());
-    let first_quantity = buy_payload["wallet"]["positions"][0]["quantity"]
-        .as_f64()
-        .unwrap();
-    let issued_market_proofs = buy_payload["issued"]["proofs"].clone();
+    let first_quantity = buy_quote_payload["quantity"].as_f64().unwrap();
+    let issued_market_proofs = proofs_from_signatures(
+        &buy_payload["issued"]["signatures"],
+        &issued_pre_mint,
+        &market_keyset,
+    );
+    let _buy_change_proofs = proofs_from_signatures(
+        &buy_payload["change"]["signatures"],
+        &change_pre_mint,
+        &usd_keyset,
+    );
     assert!(first_quantity > 0.0);
 
     let feed_response = client
@@ -698,20 +872,55 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         Some(1)
     );
 
+    let sell_quote_response = client
+        .post(format!("{url}/api/trades/sell/quote"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "side": "yes",
+            "quantity": first_quantity / 2.0
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(sell_quote_response.status(), 200);
+    let sell_quote_payload: serde_json::Value = sell_quote_response.json().await.unwrap();
+    let (sell_issued_outputs, sell_issued_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        sell_quote_payload["net_minor"].as_u64().unwrap(),
+        TEST_USD_DENOMINATIONS,
+    );
+    let (sell_change_outputs, sell_change_pre_mint) = prepare_outputs(
+        &market_keyset,
+        proof_amount_total(&issued_market_proofs)
+            .saturating_sub(sell_quote_payload["quantity_minor"].as_u64().unwrap()),
+        TEST_MARKET_DENOMINATIONS,
+    );
+
     let sell_response = client
         .post(format!("{url}/api/product/markets/{event_id}/sell"))
         .json(&serde_json::json!({
             "pubkey": creator,
             "side": "yes",
             "quantity": first_quantity / 2.0,
-            "proofs": issued_market_proofs
+            "proofs": issued_market_proofs,
+            "issued_outputs": sell_issued_outputs,
+            "change_outputs": sell_change_outputs
         }))
         .send()
         .await
         .unwrap();
     assert_eq!(sell_response.status(), 201);
     let sell_payload: serde_json::Value = sell_response.json().await.unwrap();
-    assert!(sell_payload["wallet"]["available_minor"].as_u64().unwrap() > 2000);
+    let _sell_usd_proofs = proofs_from_signatures(
+        &sell_payload["issued"]["signatures"],
+        &sell_issued_pre_mint,
+        &usd_keyset,
+    );
+    let _sell_market_change_proofs = proofs_from_signatures(
+        &sell_payload["change"]["signatures"],
+        &sell_change_pre_mint,
+        &market_keyset,
+    );
     assert_eq!(
         sell_payload["settlement"]["mode"].as_str(),
         Some("bolt11_internal")
@@ -762,7 +971,10 @@ async fn test_coordinator_trade_routes_and_status() {
         .await
         .unwrap();
 
-    let topup_proofs = create_signet_topup_and_get_proofs(&client, &url, creator, 10_000).await;
+    let topup_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_topup_and_get_proofs(&client, &url, creator, 10_000).await,
+    )
+    .unwrap();
 
     let quote_response = client
         .post(format!("{url}/api/trades/quote"))
@@ -806,6 +1018,19 @@ async fn test_coordinator_trade_routes_and_status() {
         quote_status_payload["fx_quote_id"].as_str(),
         quote_payload["fx_quote_id"].as_str()
     );
+    let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "yes").await;
+    let (issued_outputs, issued_pre_mint) = prepare_outputs(
+        &market_keyset,
+        quote_payload["quantity_minor"].as_u64().unwrap(),
+        TEST_MARKET_DENOMINATIONS,
+    );
+    let (change_outputs, change_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        proof_amount_total(&topup_proofs)
+            .saturating_sub(quote_payload["spend_minor"].as_u64().unwrap()),
+        TEST_USD_DENOMINATIONS,
+    );
 
     let buy_response = client
         .post(format!("{url}/api/trades/buy"))
@@ -815,18 +1040,28 @@ async fn test_coordinator_trade_routes_and_status() {
             "side": "yes",
             "spend_minor": 4000,
             "quote_id": buy_quote_id,
-            "proofs": topup_proofs
+            "proofs": topup_proofs,
+            "issued_outputs": issued_outputs,
+            "change_outputs": change_outputs
         }))
         .send()
         .await
         .unwrap();
-    assert_eq!(buy_response.status(), 201);
+    let buy_status = buy_response.status();
     let buy_payload: serde_json::Value = buy_response.json().await.unwrap();
+    assert_eq!(buy_status, 201, "buy payload: {buy_payload}");
     let trade_id = buy_payload["trade"]["id"].as_str().unwrap().to_string();
-    let quantity = buy_payload["wallet"]["positions"][0]["quantity"]
-        .as_f64()
-        .unwrap();
-    let issued_market_proofs = buy_payload["issued"]["proofs"].clone();
+    let quantity = quote_payload["quantity"].as_f64().unwrap();
+    let issued_market_proofs = proofs_from_signatures(
+        &buy_payload["issued"]["signatures"],
+        &issued_pre_mint,
+        &market_keyset,
+    );
+    let _buy_change_proofs = proofs_from_signatures(
+        &buy_payload["change"]["signatures"],
+        &change_pre_mint,
+        &usd_keyset,
+    );
     assert_eq!(buy_payload["market"]["visibility"].as_str(), Some("public"));
 
     let trade_status_response = client
@@ -903,6 +1138,17 @@ async fn test_coordinator_trade_routes_and_status() {
     );
     assert!(sell_quote_payload["settlement_msat"].as_u64().unwrap() > 0);
     let sell_quote_id = sell_quote_payload["quote_id"].as_str().unwrap().to_string();
+    let (sell_issued_outputs, sell_issued_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        sell_quote_payload["net_minor"].as_u64().unwrap(),
+        TEST_USD_DENOMINATIONS,
+    );
+    let (sell_change_outputs, sell_change_pre_mint) = prepare_outputs(
+        &market_keyset,
+        proof_amount_total(&issued_market_proofs)
+            .saturating_sub(sell_quote_payload["quantity_minor"].as_u64().unwrap()),
+        TEST_MARKET_DENOMINATIONS,
+    );
 
     let sell_response = client
         .post(format!("{url}/api/trades/sell"))
@@ -912,14 +1158,25 @@ async fn test_coordinator_trade_routes_and_status() {
             "side": "yes",
             "quantity": quantity / 2.0,
             "quote_id": sell_quote_id,
-            "proofs": issued_market_proofs
+            "proofs": issued_market_proofs,
+            "issued_outputs": sell_issued_outputs,
+            "change_outputs": sell_change_outputs
         }))
         .send()
         .await
         .unwrap();
     assert_eq!(sell_response.status(), 201);
     let sell_payload: serde_json::Value = sell_response.json().await.unwrap();
-    assert!(sell_payload["wallet"]["available_minor"].as_u64().unwrap() > 0);
+    let _sell_usd_proofs = proofs_from_signatures(
+        &sell_payload["issued"]["signatures"],
+        &sell_issued_pre_mint,
+        &usd_keyset,
+    );
+    let _sell_market_change_proofs = proofs_from_signatures(
+        &sell_payload["change"]["signatures"],
+        &sell_change_pre_mint,
+        &market_keyset,
+    );
 
     let executed_sell_quote_status_response = client
         .get(format!(
@@ -945,83 +1202,45 @@ async fn test_lightning_topup_quote_settles_after_status_poll() {
     let pubkey = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
     let quote_response = client
-        .post(format!("{url}/api/wallet/topups/lightning/quote"))
+        .post(format!("{url}/v1/mint/quote/bolt11"))
+        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": pubkey,
-            "amount_minor": 2500
+            "amount": 2500,
+            "unit": "usd"
         }))
         .send()
         .await
         .unwrap();
-    assert_eq!(quote_response.status(), 201);
+    assert_eq!(quote_response.status(), 200);
     let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
-    let quote_id = quote_payload["id"].as_str().unwrap().to_string();
-    assert_eq!(quote_payload["status"].as_str(), Some("invoice_pending"));
-    assert!(quote_payload["invoice"]
+    let quote_id = quote_payload["quote"].as_str().unwrap().to_string();
+    assert_eq!(quote_payload["state"].as_str(), Some("UNPAID"));
+    assert!(quote_payload["request"]
         .as_str()
         .unwrap()
         .starts_with("lnbc"));
-    assert!(quote_payload["amount_msat"].as_u64().unwrap() > 0);
-    assert!(quote_payload["fx_quote_id"].as_str().is_some());
-    assert!(quote_payload["observations"].as_array().is_some());
-    assert!(quote_payload["issued_proofs"].is_null());
-
-    let wallet_pending_response = client
-        .get(format!("{url}/api/product/portfolio/{pubkey}"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(wallet_pending_response.status(), 200);
-    let wallet_pending_payload: serde_json::Value = wallet_pending_response.json().await.unwrap();
-    assert_eq!(wallet_pending_payload["available_minor"].as_u64(), Some(0));
-    assert_eq!(wallet_pending_payload["pending_minor"].as_u64(), Some(2500));
-    assert_eq!(
-        wallet_pending_payload["pending_topups"]
-            .as_array()
-            .map(|items| items.len()),
-        Some(1)
-    );
+    assert_eq!(quote_payload["amount"].as_u64(), Some(2500));
+    assert_eq!(quote_payload["unit"].as_str(), Some("usd"));
 
     let get_quote_response = client
-        .get(format!("{url}/api/wallet/topups/lightning/{quote_id}"))
+        .get(format!("{url}/v1/mint/quote/bolt11/{quote_id}"))
         .send()
         .await
         .unwrap();
     assert_eq!(get_quote_response.status(), 200);
     let get_quote_payload: serde_json::Value = get_quote_response.json().await.unwrap();
-    assert_eq!(get_quote_payload["id"].as_str(), Some(quote_id.as_str()));
-    assert_eq!(
-        get_quote_payload["status"].as_str(),
-        Some("invoice_pending")
-    );
+    assert_eq!(get_quote_payload["quote"].as_str(), Some(quote_id.as_str()));
+    assert_eq!(get_quote_payload["state"].as_str(), Some("UNPAID"));
 
-    let completed_payload = wait_for_topup_completion(&client, &url, &quote_id).await;
-    assert_eq!(completed_payload["id"].as_str(), Some(quote_id.as_str()));
-    assert_eq!(completed_payload["status"].as_str(), Some("complete"));
-    assert!(completed_payload["issued_proofs"].as_array().is_some());
+    let paid_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["PAID"]).await;
+    assert_eq!(paid_quote["quote"].as_str(), Some(quote_id.as_str()));
+    assert_eq!(paid_quote["state"].as_str(), Some("PAID"));
+    let minted_proofs = mint_topup_quote_and_get_proofs(&client, &url, &paid_quote, 2500).await;
+    assert!(minted_proofs.as_array().is_some());
 
-    let wallet_complete_response = client
-        .get(format!("{url}/api/product/portfolio/{pubkey}"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(wallet_complete_response.status(), 200);
-    let wallet_complete_payload: serde_json::Value = wallet_complete_response.json().await.unwrap();
-    assert_eq!(
-        wallet_complete_payload["available_minor"].as_u64(),
-        Some(2500)
-    );
-    assert_eq!(wallet_complete_payload["pending_minor"].as_u64(), Some(0));
-    assert_eq!(
-        wallet_complete_payload["pending_topups"]
-            .as_array()
-            .map(|items| items.len()),
-        Some(0)
-    );
-    assert_eq!(
-        wallet_complete_payload["funding_events"][0]["rail"].as_str(),
-        Some("lightning")
-    );
+    let issued_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["ISSUED"]).await;
+    assert_eq!(issued_quote["state"].as_str(), Some("ISSUED"));
 }
 
 #[tokio::test]
@@ -1056,11 +1275,12 @@ async fn test_lightning_topup_rejects_client_edition_mismatch() {
     let client = reqwest::Client::new();
 
     let response = client
-        .post(format!("{url}/api/wallet/topups/lightning/quote"))
+        .post(format!("{url}/v1/mint/quote/bolt11"))
         .header("x-cascade-edition", "mainnet")
         .json(&serde_json::json!({
             "pubkey": "edition-mismatch-user",
-            "amount_minor": 2500
+            "amount": 2500,
+            "unit": "usd"
         }))
         .send()
         .await
@@ -1082,27 +1302,30 @@ async fn test_lightning_topup_request_id_is_idempotent() {
     let request_id = "topup-request-idempotent-1";
 
     let first_response = client
-        .post(format!("{url}/api/wallet/topups/lightning/quote"))
+        .post(format!("{url}/v1/mint/quote/bolt11"))
+        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": pubkey,
-            "amount_minor": 2500,
+            "amount": 2500,
+            "unit": "usd",
             "request_id": request_id
         }))
         .send()
         .await
         .unwrap();
-    assert_eq!(first_response.status(), 201);
+    assert_eq!(first_response.status(), 200);
     let first_payload: serde_json::Value = first_response.json().await.unwrap();
-    let quote_id = first_payload["id"].as_str().unwrap().to_string();
-    let invoice = first_payload["invoice"].as_str().unwrap().to_string();
-    assert_eq!(first_payload["status"].as_str(), Some("invoice_pending"));
-    assert!(first_payload["issued_proofs"].is_null());
+    let quote_id = first_payload["quote"].as_str().unwrap().to_string();
+    let invoice = first_payload["request"].as_str().unwrap().to_string();
+    assert_eq!(first_payload["state"].as_str(), Some("UNPAID"));
 
     let second_response = client
-        .post(format!("{url}/api/wallet/topups/lightning/quote"))
+        .post(format!("{url}/v1/mint/quote/bolt11"))
+        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": pubkey,
-            "amount_minor": 2500,
+            "amount": 2500,
+            "unit": "usd",
             "request_id": request_id
         }))
         .send()
@@ -1110,9 +1333,9 @@ async fn test_lightning_topup_request_id_is_idempotent() {
         .unwrap();
     assert_eq!(second_response.status(), 200);
     let second_payload: serde_json::Value = second_response.json().await.unwrap();
-    assert_eq!(second_payload["id"].as_str(), Some(quote_id.as_str()));
-    assert_eq!(second_payload["invoice"].as_str(), Some(invoice.as_str()));
-    assert_eq!(second_payload["status"].as_str(), Some("invoice_pending"));
+    assert_eq!(second_payload["quote"].as_str(), Some(quote_id.as_str()));
+    assert_eq!(second_payload["request"].as_str(), Some(invoice.as_str()));
+    assert_eq!(second_payload["state"].as_str(), Some("UNPAID"));
 
     let request_status_response = client
         .get(format!("{url}/api/wallet/topups/requests/{request_id}"))
@@ -1127,24 +1350,13 @@ async fn test_lightning_topup_request_id_is_idempotent() {
         Some(quote_id.as_str())
     );
 
-    let wallet_pending_response = client
-        .get(format!("{url}/api/product/portfolio/{pubkey}"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(wallet_pending_response.status(), 200);
-    let wallet_pending_payload: serde_json::Value = wallet_pending_response.json().await.unwrap();
-    assert_eq!(wallet_pending_payload["available_minor"].as_u64(), Some(0));
-    assert_eq!(wallet_pending_payload["pending_minor"].as_u64(), Some(2500));
-    assert_eq!(
-        wallet_pending_payload["pending_topups"]
-            .as_array()
-            .map(|items| items.len()),
-        Some(1)
-    );
+    let paid_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["PAID"]).await;
+    assert_eq!(paid_quote["state"].as_str(), Some("PAID"));
+    let minted_proofs = mint_topup_quote_and_get_proofs(&client, &url, &paid_quote, 2500).await;
+    assert!(minted_proofs.as_array().is_some());
 
-    let completed_payload = wait_for_topup_completion(&client, &url, &quote_id).await;
-    assert_eq!(completed_payload["status"].as_str(), Some("complete"));
+    let issued_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["ISSUED"]).await;
+    assert_eq!(issued_quote["state"].as_str(), Some("ISSUED"));
 }
 
 #[tokio::test]
@@ -1246,23 +1458,9 @@ async fn test_stripe_topup_completes_from_webhook() {
         .unwrap();
     assert_eq!(topup_status_response.status(), 200);
     let topup_status_payload: serde_json::Value = topup_status_response.json().await.unwrap();
-    assert_eq!(topup_status_payload["status"].as_str(), Some("complete"));
+    assert_eq!(topup_status_payload["status"].as_str(), Some("paid"));
     assert_eq!(topup_status_payload["risk_level"].as_str(), Some("normal"));
-    assert!(topup_status_payload["issued_proofs"].as_array().is_some());
-
-    let portfolio_response = client
-        .get(format!("{url}/api/product/portfolio/{pubkey}"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(portfolio_response.status(), 200);
-    let portfolio_payload: serde_json::Value = portfolio_response.json().await.unwrap();
-    assert_eq!(portfolio_payload["available_minor"].as_u64(), Some(4200));
-    assert_eq!(portfolio_payload["pending_minor"].as_u64(), Some(0));
-    assert_eq!(
-        portfolio_payload["funding_events"][0]["rail"].as_str(),
-        Some("stripe")
-    );
+    assert!(topup_status_payload.get("issued_proofs").is_none());
 }
 
 #[tokio::test]
@@ -1344,21 +1542,7 @@ async fn test_stripe_topup_moves_to_review_required_for_high_risk() {
         Some("review_required")
     );
     assert_eq!(topup_status_payload["risk_level"].as_str(), Some("highest"));
-    assert!(topup_status_payload["issued_proofs"].is_null());
-
-    let portfolio_response = client
-        .get(format!("{url}/api/product/portfolio/{pubkey}"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(portfolio_response.status(), 200);
-    let portfolio_payload: serde_json::Value = portfolio_response.json().await.unwrap();
-    assert_eq!(portfolio_payload["available_minor"].as_u64(), Some(0));
-    assert_eq!(portfolio_payload["pending_minor"].as_u64(), Some(0));
-    assert_eq!(
-        portfolio_payload["funding_events"][0]["status"].as_str(),
-        Some("review_required")
-    );
+    assert!(topup_status_payload.get("issued_proofs").is_none());
 }
 
 #[tokio::test]
@@ -1444,7 +1628,34 @@ async fn test_trade_request_id_is_idempotent() {
         .await
         .unwrap();
 
-    let topup_proofs = create_signet_topup_and_get_proofs(&client, &url, creator, 10_000).await;
+    let topup_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_topup_and_get_proofs(&client, &url, creator, 10_000).await,
+    )
+    .unwrap();
+    let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "yes").await;
+    let buy_quote_response = client
+        .post(format!("{url}/api/trades/quote"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "side": "yes",
+            "spend_minor": 4000
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(buy_quote_response.status(), 200);
+    let buy_quote_payload: serde_json::Value = buy_quote_response.json().await.unwrap();
+    let (issued_outputs, _issued_pre_mint) = prepare_outputs(
+        &market_keyset,
+        buy_quote_payload["quantity_minor"].as_u64().unwrap(),
+        TEST_MARKET_DENOMINATIONS,
+    );
+    let (change_outputs, _change_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        proof_amount_total(&topup_proofs).saturating_sub(4000),
+        TEST_USD_DENOMINATIONS,
+    );
 
     let first_buy_response = client
         .post(format!("{url}/api/trades/buy"))
@@ -1454,13 +1665,16 @@ async fn test_trade_request_id_is_idempotent() {
             "side": "yes",
             "spend_minor": 4000,
             "request_id": request_id,
-            "proofs": topup_proofs.clone()
+            "proofs": topup_proofs.clone(),
+            "issued_outputs": issued_outputs,
+            "change_outputs": change_outputs
         }))
         .send()
         .await
         .unwrap();
-    assert_eq!(first_buy_response.status(), 201);
+    let first_buy_status = first_buy_response.status();
     let first_buy_payload: serde_json::Value = first_buy_response.json().await.unwrap();
+    assert_eq!(first_buy_status, 201, "buy payload: {first_buy_payload}");
     let trade_id = first_buy_payload["trade"]["id"]
         .as_str()
         .unwrap()
@@ -1474,7 +1688,9 @@ async fn test_trade_request_id_is_idempotent() {
             "side": "yes",
             "spend_minor": 4000,
             "request_id": request_id,
-            "proofs": topup_proofs
+            "proofs": topup_proofs,
+            "issued_outputs": [],
+            "change_outputs": []
         }))
         .send()
         .await
@@ -1498,15 +1714,6 @@ async fn test_trade_request_id_is_idempotent() {
         request_status_payload["trade"]["id"].as_str(),
         Some(trade_id.as_str())
     );
-
-    let wallet_response = client
-        .get(format!("{url}/api/product/portfolio/{creator}"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(wallet_response.status(), 200);
-    let wallet_payload: serde_json::Value = wallet_response.json().await.unwrap();
-    assert_eq!(wallet_payload["available_minor"].as_u64(), Some(6000));
 
     let detail_response = client
         .get(format!("{url}/api/product/markets/slug/{slug}"))
@@ -1550,10 +1757,12 @@ async fn test_signet_topup_enforces_single_and_window_limits() {
     let pubkey = "abababababababababababababababababababababababababababababababab";
 
     let too_large_response = client
-        .post(format!("{url}/api/wallet/topups/lightning/quote"))
+        .post(format!("{url}/v1/mint/quote/bolt11"))
+        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": pubkey,
-            "amount_minor": 10001
+            "amount": 10001,
+            "unit": "usd"
         }))
         .send()
         .await
@@ -1567,22 +1776,26 @@ async fn test_signet_topup_enforces_single_and_window_limits() {
 
     for amount_minor in [10_000_u64, 10_000_u64, 5_000_u64] {
         let response = client
-            .post(format!("{url}/api/wallet/topups/lightning/quote"))
+            .post(format!("{url}/v1/mint/quote/bolt11"))
+            .header("x-cascade-edition", "signet")
             .json(&serde_json::json!({
                 "pubkey": pubkey,
-                "amount_minor": amount_minor
+                "amount": amount_minor,
+                "unit": "usd"
             }))
             .send()
             .await
             .unwrap();
-        assert_eq!(response.status(), 201);
+        assert_eq!(response.status(), 200);
     }
 
     let capped_response = client
-        .post(format!("{url}/api/wallet/topups/lightning/quote"))
+        .post(format!("{url}/v1/mint/quote/bolt11"))
+        .header("x-cascade-edition", "signet")
         .json(&serde_json::json!({
             "pubkey": pubkey,
-            "amount_minor": 100
+            "amount": 100,
+            "unit": "usd"
         }))
         .send()
         .await

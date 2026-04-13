@@ -27,7 +27,7 @@ function toCashuProof(proof: ProductProof): Proof {
   };
 }
 
-function toProductProof(proof: Proof): ProductProof {
+export function toProductProof(proof: Proof): ProductProof {
   if (proof.witness && typeof proof.witness !== 'string') {
     throw new Error('Importing witness-bearing proofs is not supported yet.');
   }

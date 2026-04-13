@@ -59,13 +59,12 @@ TOPUP_JSON="$(
   curl -fsS \
     -X POST \
     -H 'content-type: application/json' \
-    -H "x-cascade-edition: ${EDITION}" \
-    --data "{\"pubkey\":\"${EDITION}-lightning-readiness\",\"amount_minor\":100}" \
-    "${BASE_URL}/api/wallet/topups/lightning/quote"
+    --data "{\"amount\":100,\"unit\":\"usd\",\"description\":\"${EDITION} readiness check\"}" \
+    "${BASE_URL}/v1/mint/quote/bolt11"
 )"
 
 INVOICE_PREFIX="$(
-  node -e 'const fs=require("fs"); const data=JSON.parse(fs.readFileSync(0, "utf8")); const invoice=String(data.invoice || ""); process.stdout.write(invoice.slice(0, 5));' \
+  node -e 'const fs=require("fs"); const data=JSON.parse(fs.readFileSync(0, "utf8")); const invoice=String(data.request || ""); process.stdout.write(invoice.slice(0, 5));' \
     <<<"${TOPUP_JSON}"
 )"
 

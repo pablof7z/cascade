@@ -115,7 +115,7 @@ The intended persistent schema includes:
 - **Markets**: market event ID, slug, creator pubkey, status, creation timestamp
 - **LMSR state**: per-market `qLong`, `qShort`, `b`, `reserve_minor`
 - **Keysets**: USD wallet keysets and market keyset mappings
-- **Proofs**: issued and spent-proof state
+- **Proofs**: spent-proof state and restore metadata for blinded outputs, not a server-side mirror of user-held proofs
 - **Trade history**: internal record of all trades, source of kind `983`
 - **Wallet top-ups**: Stripe session / payment-intent mapping and completion status
 - **Wallet Lightning top-ups**: incoming quote, invoice, and settlement state
@@ -124,6 +124,14 @@ The intended persistent schema includes:
 - **Trade settlements**: persisted settlement records attached to executed trades so status and recovery can reason about the hidden rail step separately from the user-facing trade event
 
 The current implementation still keeps some market state partly in-memory. That is migration debt.
+
+Launch must not persist a canonical per-user portfolio ledger. In particular:
+
+- no pubkey-keyed current cash-balance table for `/portfolio`
+- no pubkey-keyed current open-position table for `/portfolio`
+- no pubkey-keyed API that claims to answer current holdings from backend state
+
+The backend may still persist quote status, request status, settlement status, anti-abuse state, and spent-proof state.
 
 Actor metadata such as thesis, role, or operator notes is not mint state and should not live in mint tables. The mint only needs market, quote, settlement, and proof data.
 
@@ -168,17 +176,18 @@ The hosted Stripe flow should be:
 - backend persists the top-up quote with rail `stripe` and pending status
 - browser redirects to the returned `checkout_url`
 - Stripe webhook is the authoritative completion path
-- webhook fetches Stripe risk data, then either issues browser-local USD proofs or marks the top-up `review_required`
+- webhook fetches Stripe risk data, then either marks the quote paid for later browser minting or marks the top-up `review_required`
 - browser resumes by polling `GET /api/wallet/topups/{topup_id}` or `GET /api/wallet/topups/requests/{request_id}`
 
-Stripe must not introduce a separate balance ledger or a separate proof issuance path. It terminates in the same proof issuance and recovery logic already used by Lightning top-ups.
+Stripe must not introduce a separate balance ledger or a server-side proof issuance path. It terminates in the same browser-side blind-output issuance and recovery model already used by Lightning top-ups.
 
 ## Lightning Integration
 
 Lightning is both a launch wallet-funding rail and the settlement rail between the wallet mint and the market mint.
 
+- the wallet mint should expose incoming USD top-ups through the standard Cashu NUT-23 BOLT11 mint flow
 - the wallet mint can create USD top-up invoices by locking `USD <-> msat` FX quotes
-- incoming top-up status polling reconciles persisted quote state against real invoice state, so a paid invoice can complete after restart or client interruption
+- incoming mint-quote status polling reconciles persisted quote state against real invoice state, so a paid invoice can move to `PAID` after restart or client interruption
 - persisted buy/sell quotes carry the Lightning-facing settlement budget and provider observations needed for the eventual inter-mint saga
 - executed buy/sell records should carry the completed hidden BOLT11 settlement metadata, not a signet-only synthetic settlement label
 - the market mint can return a standard invoice-backed quote for a LONG or SHORT trade
@@ -188,6 +197,15 @@ Lightning is both a launch wallet-funding rail and the settlement rail between t
 This is backend plumbing, not normal product UX. The frontend should not force the user to think in sats or Lightning invoices.
 
 In signet, the product should preserve these same quote shapes and the same payment lifecycle. The difference is the backing rail and value, not whether the mint skips settlement.
+
+Incoming Lightning portfolio funding should therefore look like:
+
+- `POST /v1/mint/quote/bolt11` with `{"amount": <usd_minor>, "unit": "usd"}`
+- if the browser loses the initial quote response, it retries `POST /v1/mint/quote/bolt11` with the same client `request_id` until the mint replays the same quote
+- `GET /v1/mint/quote/bolt11/{quote_id}` until the quote reaches `PAID`
+- `POST /v1/mint/bolt11` with blinded outputs to issue the USD proofs
+
+That keeps pure wallet funding on the Cashu-standard surface. Cascade-specific `/api/...` routes should remain focused on product orchestration such as market creation, quoting, buying, and withdrawal flows.
 
 The current mint runtime uses the local `lncli` binary as the concrete LND adapter. Runtime config should therefore include TLS cert path, macaroon path, network, and either an explicit `lncli` path or a deployment environment where `lncli` is resolvable on `PATH`.
 
@@ -202,6 +220,8 @@ This is the public audit trail. Anyone subscribed to kind `983` events for a giv
 1. **Mint state is authoritative**. Never derive executable state from Nostr events.
 2. **Reserve is always solvent**. The LMSR reserve is accounted in settlement units and must remain mathematically sufficient.
 3. **Atomic trade execution**. State updates and token issuance happen in the same logical trade transaction.
-4. **Spent-proof tracking**. All consumed proofs are recorded; presenting a spent proof returns an error.
-5. **No proof-level owner identity**. Cashu is bearer-based; optional NIP-98 authenticates a request signer, not a permanent proof owner.
-6. **Normal product flows are dollar-denominated**. Sats and msats are backend implementation details, not user-facing product units.
+4. **No proof mirror**. The backend must never persist a canonical copy of user-held proofs or return bearer proofs in status payloads.
+5. **No server portfolio ledger**. The backend must never claim canonical current holdings for a pubkey through a balance or position snapshot API.
+6. **Spent-proof tracking**. All consumed proofs are recorded in mint-side proof state; presenting a spent proof returns an error.
+7. **No proof-level owner identity**. Cashu is bearer-based; optional NIP-98 authenticates a request signer, not a permanent proof owner.
+8. **Normal product flows are dollar-denominated**. Sats and msats are backend implementation details, not user-facing product units.

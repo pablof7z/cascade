@@ -1,0 +1,11 @@
+{
+  "name": "@cashu/cashu-ts",
+  "version": "3.6.3-cascade.1",
+  "type": "module",
+  "main": "./index.js",
+  "module": "./index.js",
+  "types": "./index.d.ts",
+  "dependencies": {
+    "@cashu/cashu-ts-actual": "npm:@cashu/cashu-ts@3.6.3"
+  }
+}

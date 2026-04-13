@@ -20,6 +20,7 @@ Agents and web clients should not be forced to reason about sats or Lightning fo
 - A pubkey is a pubkey. There is no dedicated mint-side human or agent registry.
 - Market creation begins with the author publishing a signed kind `982` directly to relays. The product API is not a `982` publish proxy.
 - Portfolio proofs are self-custodied by the user or agent. There is no canonical `/api/wallet` balance endpoint backed by server-held proofs.
+- There is no canonical pubkey-keyed portfolio route. The backend does not maintain a current-balance or current-position portfolio ledger for `/portfolio`.
 - Launch web clients store proofs locally in browser `localStorage` in both signet and mainnet editions. NIP-60 is explicitly out of current launch scope.
 - No API contract may imply market closure, oracle declaration, or winner-payout semantics.
 - Normal product contracts are dollar-denominated and hide sats/msats.
@@ -49,7 +50,7 @@ The wallet mint should expose:
 - NUT-12 DLEQ proofs
 - NUT-17 WebSocket subscriptions
 - a custom `stripe` payment method for incoming top-ups
-- incoming Lightning mint quotes for USD funding
+- standard NUT-23 incoming Lightning mint quotes for USD funding
 - outgoing Lightning melt quotes for paying market-mint invoices from USD proofs
 
 The important semantic points are:
@@ -159,6 +160,8 @@ Authenticated agents should be able to:
 
 All authenticated launch endpoints use NIP-98.
 
+Authenticated agents should not expect a server answer for "what do I currently hold?" That answer comes from local proof state plus public market data.
+
 ## Product-Orchestration Routes
 
 The exact naming can still change during implementation, but launch needs a higher-level product contract on top of the low-level mints. A reasonable canonical shape is:
@@ -167,14 +170,18 @@ The exact naming can still change during implementation, but launch needs a high
 
 - `GET /api/product/runtime`
 - `GET /api/product/fx/lightning/{amount_minor}`
+- `POST /v1/mint/quote/bolt11`
+- `GET /v1/mint/quote/bolt11/{quote_id}`
+- `POST /v1/mint/bolt11`
 - `POST /api/wallet/topups/stripe`
 - `POST /api/wallet/topups/stripe/webhook`
 - `GET /api/wallet/topups/requests/{request_id}`
 - `GET /api/wallet/topups/{topup_id}`
-- `POST /api/wallet/topups/lightning/quote`
-- `GET /api/wallet/topups/lightning/{quote_id}`
 
-Wallet top-ups are one persisted saga with rail-specific payment metadata.
+Wallet funding uses two different interface shapes on purpose:
+
+- Lightning portfolio funding is the standard Cashu NUT-23 BOLT11 mint flow.
+- Stripe remains a Cascade product saga because card checkout and webhook completion are not part of the Cashu core mint flow.
 
 Before any state-changing portfolio or trade request, the client should load `GET /api/product/runtime` and compare:
 
@@ -184,16 +191,25 @@ Before any state-changing portfolio or trade request, the client should load `GE
 
 If the runtime manifest does not match the current browser edition, the client must treat the backend as unavailable for funding and trading rather than attempting to continue.
 
-- Lightning top-ups carry invoice metadata and reconcile against the underlying invoice state.
+- Lightning top-ups carry invoice metadata and reconcile against the underlying invoice state through the standard mint quote lifecycle.
 - Stripe top-ups carry hosted Checkout metadata and complete from a verified Stripe webhook only after Stripe risk checks pass.
-- `GET /api/wallet/topups/{topup_id}` is the canonical status route for both rails.
-- `GET /api/wallet/topups/lightning/{quote_id}` remains the Lightning-specific alias.
+- `GET /api/wallet/topups/{topup_id}` remains the canonical persisted-status route for Stripe and compatibility reads.
+- Lightning funding is standardized on `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`.
+- Lightning clients should recover quote creation by retrying `POST /v1/mint/quote/bolt11` with the same `request_id`. `GET /api/wallet/topups/requests/{request_id}` is not part of the Lightning funding contract.
 
-Lightning top-up status reads should be settlement-aware. `GET /api/wallet/topups/{topup_id}` and `GET /api/wallet/topups/lightning/{quote_id}` are allowed to reconcile the persisted quote against the underlying invoice state before responding, so a paid invoice can complete on a later status poll or wallet refresh without a separate bespoke callback from the client.
+Lightning mint quote reads should be settlement-aware. `GET /v1/mint/quote/bolt11/{quote_id}` is allowed to reconcile persisted quote state against the underlying invoice state before responding, so a paid invoice can move from `UNPAID` to `PAID` after restart or client interruption without a bespoke callback from the browser.
 
 In signet, the wallet mint should keep the same top-up quote API and the same invoice lifecycle as mainnet. The difference is that the invoice and backing value live on signet or test infrastructure, not that the quote auto-completes without payment.
 
-Top-up creation should accept an optional client-supplied `request_id`. The mint persists that request id before payment-object creation so duplicate retries can replay the same top-up quote instead of creating a second invoice or Checkout session, and interrupted clients can recover through `GET /api/wallet/topups/requests/{request_id}` even if they never received the final `topup_id`.
+Stripe top-up creation should accept an optional client-supplied `request_id`. The mint persists that request id before payment-object creation so duplicate retries can replay the same Checkout session instead of creating a second card payment, and interrupted clients can recover through `GET /api/wallet/topups/requests/{request_id}` even if they never received the final `topup_id`.
+
+Lightning funding recovery is wallet-native rather than request-native:
+
+- the browser stores the standard mint `quote_id` locally
+- if the browser loses the initial quote response, it retries `POST /v1/mint/quote/bolt11` with the same client `request_id` until the mint replays the same quote
+- after the invoice is paid, the browser calls `POST /v1/mint/bolt11` with blinded outputs
+- if the minting response is interrupted after issuance, the browser restores proofs locally through the deterministic-output recovery path instead of asking a custom `/api/...` route to return bearer proofs
+- persisted top-up status routes must never return bearer proofs
 
 State-changing product routes should also accept the client's expected edition through `X-Cascade-Edition: mainnet|signet`.
 
@@ -208,7 +224,6 @@ Persisted wallet top-up responses should carry rail-specific metadata in one sha
   - `rail`
   - `amount_minor`
   - `status`
-  - `issued_proofs`
   - `created_at`
   - `expires_at`
 - Lightning-specific:
@@ -225,9 +240,15 @@ Persisted wallet top-up responses should carry rail-specific metadata in one sha
   - `checkout_expires_at`
   - `risk_level`
 
-Wallet top-up statuses should include the normal pending/completed states plus a non-issuance review path for card rails. A Stripe top-up that was paid but failed the configured issuance policy should surface as `review_required`, with no `issued_proofs`.
+Wallet top-up statuses should include the normal pending/completed states plus a non-issuance review path for card rails. A Stripe top-up that was paid but failed the configured issuance policy should surface as `review_required`.
 
 Stripe top-ups should complete only from a verified webhook, not from the browser redirect. The browser return from Checkout is allowed to resume the normal `GET /api/wallet/topups/{topup_id}` polling flow, but it is not the authoritative settlement signal.
+
+For standard Lightning funding, the canonical NUT-23 state progression is:
+
+- `UNPAID` while the BOLT11 invoice is still open
+- `PAID` once the invoice has settled but proofs have not been minted yet
+- `ISSUED` after `POST /v1/mint/bolt11` succeeds
 
 ### Trading
 
@@ -256,7 +277,7 @@ The persisted quote is also the settlement contract for the coordinator. It shou
 - `spread_bps`
 - `fx_observations[]`
 
-Executed trade responses and `GET /api/trades/{trade_id}` should also expose a settlement object when one exists. The canonical launch shape is a completed hidden BOLT11 settlement record: the mint creates the invoice for the receiving side, pays it over the Lightning abstraction, and records the invoice, payment hash, FX snapshot, and proof bundles so recovery and auditing can reason about the hidden rail step without inventing a bespoke public swap primitive.
+Executed trade responses and `GET /api/trades/{trade_id}` should also expose a settlement object when one exists. The canonical launch shape is a completed hidden BOLT11 settlement record: the mint creates the invoice for the receiving side, pays it over the Lightning abstraction, and records the invoice, payment hash, and FX snapshot so recovery and auditing can reason about the hidden rail step without inventing a bespoke public swap primitive.
 
 ### Public Read
 
@@ -347,16 +368,19 @@ Execution routes consume bearer proofs.
 Launch execution is proof-native, but intentionally narrower than a fully general Cashu wallet client:
 
 - the browser submits the locally held bearer proofs it wants to spend
-- the mint validates and consumes those proofs
-- the mint returns newly issued target-side proofs plus any source-side change proofs
-- the launch web client stores those returned proofs locally in the browser
-- the older pubkey-keyed portfolio mirror is legacy compatibility and recovery support only; it is not the spendable source of truth
+- the browser also submits blinded outputs for the target-side issuance and any change
+- the mint validates and consumes those proofs without storing a canonical mirror of them
+- the mint returns blind signatures for the requested issued and change outputs
+- the launch web client unblinds those signatures and stores the resulting proofs locally in the browser
 - buy and withdrawal execution must reject proofless requests in both signet and mainnet
+- execution responses must not include a server-authored portfolio balance or open-position snapshot
 
 Proofless pubkey-only trade execution is not part of the launch contract.
 
 - `POST /api/trades/buy` must require spendable USD proofs from the caller
 - `POST /api/trades/sell` must require spendable market proofs from the caller
+- `POST /api/trades/buy` must require blinded outputs for issued market tokens and any USD change
+- `POST /api/trades/sell` must require blinded outputs for issued USD tokens and any market-token change
 - signet top-up quotes use the same invoice-pending and settlement flow as mainnet, and they still feed the same proof-native execution path
 
 Canonical market-proof units are lowercase:
@@ -366,13 +390,11 @@ Canonical market-proof units are lowercase:
 
 Clients may still encounter older uppercase proof buckets from pre-convergence builds. They should normalize those locally into the lowercase canonical units instead of treating them as separate holdings.
 
-Launch trade execution does not yet require browser-generated blinded outputs. The current product contract is:
+Trade recovery is also proof-private by contract:
 
-- proof inputs from the client
-- mint-generated issued proofs in the response
-- mint-generated change proofs in the response when the selected input proofs exceed the executable quote amount
-
-That keeps signet and mainnet on the same self-custodied browser-local proof model while the blind-output hardening path remains future work.
+- the browser stores deterministic output preparation for the issued side and any change side before execution
+- if the response arrives, it unblinds the returned signatures locally
+- if the response is interrupted after execution, it restores the locally prepared outputs instead of asking the backend for bearer proofs
 
 ### Market Proof Denomination
 
@@ -396,6 +418,7 @@ Cascade does not custody user funds in a canonical account ledger.
 - the mint validates and consumes proofs, but it does not expose a per-user wallet ledger
 - there is no canonical `/api/wallet` route for "my current spendable balance"
 - there is no canonical private `/api/portfolio` route that depends on server-held proofs
+- there is no canonical pubkey-keyed `/api/product/portfolio/:pubkey` or `/api/product/wallet/:pubkey` launch contract
 
 Portfolio surfaces must instead be derived from:
 

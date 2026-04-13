@@ -9,6 +9,7 @@ cascade-core = { path = "../cascade-core" }
 
 # CDK for Mint types
 cdk.workspace = true
+cdk-common.workspace = true
 
 # Web framework
 axum.workspace = true

@@ -71,6 +71,7 @@ Launch does not require:
 - Follow graph data comes from real kind `3` follow events.
 - Discovery and search can be served from API projections over relay data.
 - Portfolio proofs are self-custodied. There is no canonical `/api/wallet` balance endpoint.
+- The browser Cashu client is pinned explicitly to a version compatible with the mint's active keyset-id derivation and standard mint/melt flow behavior.
 - The normal human product UI does not expose sats, msats, or Lightning invoices.
 - Portfolio funding is Stripe and Lightning-based and market trading spends USD value.
 - Public market discovery excludes markets until the first mint-authored kind `983`.
@@ -453,8 +454,11 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Add-funds flow exists.
 - [ ] Add-funds flow offers Stripe and Lightning.
 - [ ] Signet funding uses the normal top-up rails and the same invoice lifecycle in the same edition-local proof model rather than introducing a separate "paper wallet" account system.
-- [ ] Stripe and Lightning top-ups share the same pending-topup local recovery model and the same final proof-import path.
+- [ ] Stripe and Lightning top-ups share one browser-local recovery surface, even though Lightning uses the standard Cashu mint flow and Stripe uses a persisted product saga.
 - [ ] Add-funds pending, paid, and minted states exist.
+- [ ] Lightning funding uses `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`.
+- [ ] If the initial Lightning quote response is lost, the browser retries `POST /v1/mint/quote/bolt11` with the same client `request_id` until the mint replays the same quote.
+- [ ] Browser-local Lightning recovery can restore proofs after an interrupted mint response using locally stored deterministic wallet state.
 - [ ] Builder preserves pending market state after kind `982` publication when the creator still needs funding.
 - [ ] Public users do not see pending markets until the first mint-authored kind `983`.
 - [ ] Send/export token flow exists.
@@ -519,12 +523,18 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] There is no canonical `/api/wallet` route in the launch contract.
 - [ ] There is no canonical `/api/product/portfolio/:pubkey` or legacy `/api/product/wallet/:pubkey` pubkey-keyed balance API in the launch contract.
 - [ ] `/portfolio` derives balance and spendable state from local proof storage.
-- [ ] Trade execution consumes locally stored proofs and writes returned issued/change proofs back into browser-local storage.
+- [ ] `/portfolio` does not depend on any backend current-balance or current-position snapshot for a pubkey.
+- [ ] Trade execution consumes locally stored proofs and browser-generated blinded outputs, then writes locally unblinded issued/change proofs back into browser-local storage.
 - [ ] `POST /api/trades/buy` and `POST /api/trades/sell` reject proofless pubkey-only execution in both editions.
-- [ ] The older pubkey-keyed portfolio mirror is treated as legacy compatibility and recovery support only, not as the spendable source of truth.
-- [ ] Open-position cost basis and unrealized PnL come from a browser-local executed-trade position book, not from the pubkey-keyed mirror.
+- [ ] `POST /api/trades/buy` and `POST /api/trades/sell` require browser-generated blinded outputs for the issued side and any change side.
+- [ ] Trade execution responses return blind signatures, not fully formed proofs.
+- [ ] Trade execution responses do not include a server-authored portfolio balance or open-position snapshot.
+- [ ] The backend never persists or reconstructs a canonical set of the user's unspent proofs.
+- [ ] Browser-local trade recovery restores deterministic issued/change outputs after an interrupted response instead of depending on a server proof mirror.
+- [ ] Any pubkey-keyed funding-activity endpoint is non-canonical and must not expose or imply server-held proofs.
+- [ ] Open-position cost basis and unrealized PnL come from a browser-local executed-trade position book, not from backend compatibility state.
 - [ ] Imported or older local proofs without browser-local trade history still appear in `/portfolio`, but as mark-only holdings.
-- [ ] `/portfolio` keeps locally held market positions visible even when public market detail fetches fail, without falling back to mirror-derived prices or PnL.
+- [ ] `/portfolio` keeps locally held market positions visible even when public market detail fetches fail, without falling back to backend-derived prices or PnL.
 - [ ] Market-proof storage uses a fixed integer share-minor scale of `10_000` units per whole share in both signet and mainnet.
 - [ ] Market-proof bucket names are canonicalized to lowercase `long_<slug>` / `short_<slug>`.
 - [ ] Browser storage migrates any legacy uppercase market-proof buckets into the lowercase canonical buckets during load.

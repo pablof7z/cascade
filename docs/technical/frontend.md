@@ -136,6 +136,7 @@ It should allow users to:
 The portfolio stores proofs locally. The mint is the issuer; the user's device is the holder.
 
 There is no canonical server wallet API for current balance because the proofs are self-custodied.
+There is also no canonical pubkey-keyed backend portfolio read. `/portfolio` is a browser-derived view.
 
 `/portfolio` is the canonical proof-custody route. `/wallet` exists only as a compatibility redirect and should not diverge into a separate product surface.
 
@@ -165,8 +166,9 @@ The launch trade path is proof-native in both signet and mainnet:
 
 - the browser selects locally stored USD proofs for buys
 - the browser selects locally stored market proofs for withdrawals
-- the mint returns newly issued target-side proofs plus any source-side change proofs
-- the browser removes the consumed proofs from local storage and persists the returned proofs locally
+- the browser prepares blinded outputs for the target-side issuance and any change
+- the mint returns blind signatures, not user proofs
+- the browser unblinds those signatures locally, removes the consumed proofs from local storage, and persists the resulting proofs locally
 - the browser never relies on a proofless pubkey-only trade shortcut in either edition
 
 Canonical market-proof units are lowercase and slug-based:
@@ -176,15 +178,9 @@ Canonical market-proof units are lowercase and slug-based:
 
 If the browser encounters older uppercase market-proof buckets from earlier builds, it should migrate them into the lowercase canonical buckets during local storage reads rather than maintaining parallel holdings.
 
-The older pubkey-keyed portfolio mirror can still be used for recovery hints and non-canonical compatibility reads, but it is not the spendable source of truth for trading.
-
-Mirror data is informational only:
-
-- it can help with funding history, pending top-up compatibility, and recovery hints
-- it must not be treated as spend authority
-- it must not be treated as the canonical source for open-position valuation or PnL
-- it must not be used as a fallback price or PnL source for open positions in `/portfolio`
-- if mirror data disagrees with local proofs, local proofs win for spendable state
+There is no server-side proof mirror in the launch design. The backend may expose quote, trade, and settlement status, but bearer proofs remain browser-local.
+There is also no server-side portfolio ledger in the launch design. Pending top-ups and trade recovery are resumed from browser-local recovery records plus quote/status routes, not from a backend "current portfolio" snapshot.
+The mint may know funding quotes, payment hashes, trade execution records, and spent-proof state. It must not know or reconstruct the browser's current unspent proof set.
 
 The `/portfolio` surface derives both spendable state and performance from:
 
@@ -197,22 +193,40 @@ For launch cost basis and PnL:
 - successful buy, seed, and withdrawal executions in this browser update a browser-local position book
 - that local position book tracks quantity and cost basis by market side
 - imported proofs or older proofs without local trade history may have quantity but no local cost basis
-- when local cost basis is unavailable, `/portfolio` should show a mark-only value instead of inventing PnL from the mirror
-- when public market pricing is temporarily unavailable, `/portfolio` should keep the local holding visible with price unavailable rather than falling back to mirror valuation
+- when local cost basis is unavailable, `/portfolio` should show a mark-only value instead of inventing PnL from backend compatibility state
+- when public market pricing is temporarily unavailable, `/portfolio` should keep the local holding visible with price unavailable rather than falling back to backend-derived valuation
 
 The launch `/portfolio` surface must also handle local proof movement directly in the browser:
+
+- the browser Cashu client must be pinned explicitly and kept compatible with the mint's active NUT-02/NUT-04 behavior
+- do not rely on a transitive `@cashu/cashu-ts` version, because keyset-id derivation mismatches break local proof funding and trading even when the HTTP endpoints are otherwise correct
 
 In signet, funding still starts from the normal top-up UI and API contract, and the quote remains pending until the payment object is actually settled. Paper trading comes from signet-value rails and test infrastructure, not from a separate faucet surface or instant quote completion.
 
 Portfolio funding uses one recovery model across both launch rails:
 
-- the browser creates a top-up request with a client `request_id`
-- the mint returns a persisted top-up id plus rail-specific payment metadata
-- the browser stores pending-topup recovery state in local storage
+- the browser stores pending funding recovery state in local storage
+- Lightning top-ups use the standard Cashu NUT-23 mint flow instead of a bespoke Cascade funding endpoint
+- Stripe top-ups use a persisted product top-up request with a client `request_id`
 - Lightning top-ups remain pending until the invoice is actually paid
 - Stripe top-ups remain pending until the verified webhook completes them
-- after completion, the browser polls the same top-up status route and imports the issued proofs into local storage
+- after Lightning reaches `PAID`, the browser calls `POST /v1/mint/bolt11` and stores the resulting proofs locally
+- after Stripe reaches a paid-and-allowed state, the browser must complete the corresponding custom mint flow with blinded outputs and store the resulting proofs locally
 - if a Stripe payment is captured but not accepted by the configured issuance policy, the browser should show `review_required` and must not assume funded proofs exist
+
+For Lightning specifically, browser-local recovery must be proof-native:
+
+- the browser stores the standard mint `quote_id`
+- if the browser loses the initial quote response, it retries `POST /v1/mint/quote/bolt11` with the same client `request_id` until the mint replays the same quote
+- once the quote reaches `PAID`, the browser prepares deterministic blinded outputs from a browser-local Cashu seed and counter
+- if the minting response is interrupted after issuance, the browser restores those proofs locally from the same seed/counter path instead of relying on a server-held proof copy
+- signet and mainnet use the same local recovery implementation
+
+Trade recovery must use the same privacy model:
+
+- before buy or withdrawal execution, the browser stores deterministic output preparation for the issued side and any change side
+- if the response arrives, the browser unblinds the returned signatures locally
+- if the response is interrupted after execution, the browser checks trade status and restores the locally prepared outputs instead of asking the backend for bearer proofs
 
 Every state-changing funding or trade request from the browser should send:
 
@@ -227,6 +241,13 @@ For Stripe specifically:
 - the return from Stripe is not the source of truth for proof issuance
 - the browser must recover through the same pending-topup polling path used for Lightning
 - signet and mainnet use the same browser-local proof storage and the same top-up recovery mechanics
+
+For Lightning specifically:
+
+- `/portfolio` should fund through `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`
+- the UI still starts from a USD amount and renders the returned invoice as a funding mechanism only
+- the browser must not depend on bespoke `/api/wallet/topups/lightning/*` routes for Lightning funding
+- the browser must not depend on `GET /api/wallet/topups/requests/{request_id}` for Lightning recovery either; Lightning recovery stays on the standard mint quote flow plus client `request_id`
 
 - export a locally held proof bucket as a standard Cashu token string
 - import a Cashu token string into the local browser store

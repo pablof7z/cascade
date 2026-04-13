@@ -3,7 +3,7 @@
   import { invalidateAll } from '$app/navigation';
   import {
     buyMarketPosition,
-    extractTradeProofBundles,
+    extractTradeBlindSignatureBundles,
     fetchTradeQuoteStatus,
     quoteBuyTrade,
     quoteSellTrade,
@@ -35,6 +35,11 @@
     removeLocalProofs,
     selectLocalProofsForAmount
   } from '$lib/wallet/localProofs';
+  import {
+    prepareProofOutputs,
+    restorePreparedOutputs,
+    unblindPreparedOutputs
+  } from '$lib/wallet/cashuMint';
   import { applyLocalPositionTradeFromPayload } from '$lib/wallet/localPositionBook';
 
   let {
@@ -108,12 +113,28 @@
     refreshLocalWallet();
   }
 
-  function applyRecoveredTradeProofs(
+  async function applyRecoveredTradeProofs(
     receipt: ReturnType<typeof listTradeReceipts>[number],
     payload: ProductTradeExecution | ProductTradeStatus
   ) {
-    const { issued, change } = extractTradeProofBundles(payload);
-    if (!issued && !change) {
+    const { issued, change } =
+      'issued' in payload
+        ? extractTradeBlindSignatureBundles(payload)
+        : { issued: null, change: null };
+
+    const issuedProofs = receipt.issuedPreparation
+      ? issued
+        ? await unblindPreparedOutputs(proofMintUrl(), receipt.issuedPreparation, issued.signatures)
+        : await restorePreparedOutputs(proofMintUrl(), receipt.issuedPreparation)
+      : [];
+
+    const changeProofs = receipt.changePreparation
+      ? change
+        ? await unblindPreparedOutputs(proofMintUrl(), receipt.changePreparation, change.signatures)
+        : await restorePreparedOutputs(proofMintUrl(), receipt.changePreparation)
+      : [];
+
+    if (!issuedProofs.length && !changeProofs.length) {
       throw new Error('trade_proofs_missing');
     }
 
@@ -121,12 +142,12 @@
       removeLocalProofs(proofMintUrl(), receipt.spentUnit, receipt.spentProofs);
     }
 
-    if (change) {
-      addLocalProofs(proofMintUrl(), change.unit, change.proofs);
+    if (receipt.changePreparation && changeProofs.length) {
+      addLocalProofs(proofMintUrl(), receipt.changePreparation.unit, changeProofs);
     }
 
-    if (issued) {
-      addLocalProofs(proofMintUrl(), issued.unit, issued.proofs);
+    if (receipt.issuedPreparation && issuedProofs.length) {
+      addLocalProofs(proofMintUrl(), receipt.issuedPreparation.unit, issuedProofs);
     }
 
     applyLocalPositionTradeFromPayload(proofMintUrl(), payload, receipt.action, receipt.side);
@@ -155,7 +176,7 @@
             status = `Recovered pending settlement for ${receipt.action} on ${payload.market.slug}.`;
             continue;
           }
-          applyRecoveredTradeProofs(receipt, payload);
+          await applyRecoveredTradeProofs(receipt, payload);
           clearTradeReceipt(receipt.id);
           recoveredSide = receipt.side;
           status = `Recovered ${receipt.action} on ${payload.market.slug}.`;
@@ -199,7 +220,7 @@
             status = `Recovered pending settlement for ${receipt.action} on ${receipt.marketSlug}.`;
             continue;
           }
-          applyRecoveredTradeProofs(receipt, tradePayload);
+          await applyRecoveredTradeProofs(receipt, tradePayload);
           clearTradeReceipt(receipt.id);
           recoveredSide = receipt.side;
           status = `Recovered ${receipt.action} on ${tradePayload.market.slug}.`;
@@ -243,7 +264,7 @@
         status = `Recovered pending settlement for ${receipt.action} on ${receipt.marketSlug}.`;
         return 'handled';
       }
-      applyRecoveredTradeProofs(receipt, tradePayload);
+      await applyRecoveredTradeProofs(receipt, tradePayload);
       clearTradeReceipt(receipt.id);
       status = `Recovered ${receipt.action} on ${tradePayload.market.slug}.`;
       return 'executed';
@@ -290,6 +311,23 @@
       if (!spendProofs.length) {
         throw new Error('Not enough local USD proofs to cover this trade.');
       }
+      const marketUnit = marketUnitForSide((quote.side as 'yes' | 'no') ?? buySide);
+      const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
+        proofMintUrl(),
+        marketUnit,
+        quote.quantity_minor
+      );
+      const changeMinor = spendProofs.reduce((sum, proof) => sum + proof.amount, 0) - quote.spend_minor;
+      const changePreparation =
+        changeMinor > 0
+          ? (
+              await prepareProofOutputs(proofMintUrl(), 'usd', changeMinor)
+            ).preparation
+          : undefined;
+      const changeOutputs =
+        changeMinor > 0
+          ? (await prepareProofOutputs(proofMintUrl(), 'usd', changeMinor, changePreparation)).outputs
+          : [];
 
       const requestId = createTradeRequestId();
       trackTradeReceipt({
@@ -301,7 +339,9 @@
         action: 'buy',
         side: buySide,
         spentUnit: 'usd',
-        spentProofs: spendProofs
+        spentProofs: spendProofs,
+        issuedPreparation,
+        changePreparation
       });
 
       const response = await buyMarketPosition({
@@ -310,6 +350,8 @@
         side: (quote.side as 'yes' | 'no') ?? buySide,
         spendMinor: quote.spend_minor,
         proofs: spendProofs,
+        issuedOutputs,
+        changeOutputs,
         quoteId: lockedQuoteId,
         requestId
       });
@@ -321,7 +363,7 @@
         attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
-      applyRecoveredTradeProofs(
+      await applyRecoveredTradeProofs(
         {
           id: requestId,
           pubkey: currentUser.pubkey,
@@ -331,6 +373,8 @@
           side: buySide,
           spentUnit: 'usd',
           spentProofs: spendProofs,
+          issuedPreparation,
+          changePreparation,
           createdAt: Date.now()
         },
         payload
@@ -393,6 +437,22 @@
       if (!spendProofs.length) {
         throw new Error(`Not enough local ${sellSide.toUpperCase()} proofs to withdraw.`);
       }
+      const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
+        proofMintUrl(),
+        'usd',
+        quote.net_minor
+      );
+      const changeMinor =
+        spendProofs.reduce((sum, proof) => sum + proof.amount, 0) - quote.quantity_minor;
+      const changePreparation =
+        changeMinor > 0
+          ? (await prepareProofOutputs(proofMintUrl(), marketUnit, changeMinor)).preparation
+          : undefined;
+      const changeOutputs =
+        changeMinor > 0
+          ? (await prepareProofOutputs(proofMintUrl(), marketUnit, changeMinor, changePreparation))
+              .outputs
+          : [];
 
       const requestId = createTradeRequestId();
       trackTradeReceipt({
@@ -404,7 +464,9 @@
         action: 'sell',
         side: sellSide,
         spentUnit: marketUnit,
-        spentProofs: spendProofs
+        spentProofs: spendProofs,
+        issuedPreparation,
+        changePreparation
       });
 
       const response = await sellMarketPosition({
@@ -413,6 +475,8 @@
         side: (quote.side as 'yes' | 'no') ?? sellSide,
         quantity: quote.quantity,
         proofs: spendProofs,
+        issuedOutputs,
+        changeOutputs,
         quoteId: lockedQuoteId,
         requestId
       });
@@ -424,7 +488,7 @@
         attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
-      applyRecoveredTradeProofs(
+      await applyRecoveredTradeProofs(
         {
           id: requestId,
           pubkey: currentUser.pubkey,
@@ -434,6 +498,8 @@
           side: sellSide,
           spentUnit: marketUnit,
           spentProofs: spendProofs,
+          issuedPreparation,
+          changePreparation,
           createdAt: Date.now()
         },
         payload

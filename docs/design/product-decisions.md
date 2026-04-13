@@ -55,6 +55,21 @@ The user-facing capital surface is called `Portfolio`.
 - `/wallet` exists only as a compatibility redirect.
 - Avoid calling the product surface "wallet" in UI copy, onboarding copy, or product docs unless the reference is specifically about internal wallet-mint infrastructure.
 
+### No Server-Side Portfolio Ledger
+
+Cascade does not maintain a canonical per-user portfolio on the backend.
+
+- No pubkey-keyed balance ledger for spendable USD value
+- No pubkey-keyed open-position ledger for current holdings
+- No pubkey-keyed `/api/product/portfolio/:pubkey` or `/api/product/wallet/:pubkey` route in the launch contract
+- The backend may persist quote state, trade status, settlement status, and anti-abuse/risk state
+- The backend may verify consumed proofs and track them as spent
+- The backend may persist funding and settlement metadata, but never a canonical copy of the user's unspent proofs
+- The backend must not persist a canonical snapshot of a user's unspent holdings
+- `/portfolio` is derived in the browser from local proofs, browser-local trade/top-up recovery state, and public market data
+
+This is true in both signet and mainnet.
+
 ### Svelte — React Is Gone
 
 Complete migration from React to Svelte 5 + SvelteKit. No React in new code. No exceptions.
@@ -118,6 +133,10 @@ Launch wallet funding happens at the USD wallet-mint boundary.
 - Lightning is also a launch funding rail.
 - A successful Stripe payment or Lightning payment credits the user with USD ecash.
 - Off-platform bank payout is not required for launch.
+- Lightning portfolio funding should use the standard Cashu NUT-23 BOLT11 mint flow, not a bespoke Cascade-only funding endpoint.
+- That means incoming Lightning funding should look like `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`.
+- If the browser loses the initial quote response, it should retry `POST /v1/mint/quote/bolt11` with the same client `request_id` rather than depending on a custom Lightning recovery route.
+- Cascade-specific `/api/...` routes are allowed for orchestration such as market buying and selling, but pure wallet-mint Lightning funding should stay on the standard Cashu path.
 
 > "let's use a stripe gateway"
 

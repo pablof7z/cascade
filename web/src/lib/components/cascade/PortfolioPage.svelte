@@ -2,18 +2,14 @@
   import { browser } from '$app/environment';
   import {
     createStripeTopup,
-    createLightningTopupQuote,
     fetchMarketDetailBySlug,
-    fetchPortfolioMirror,
     fetchProductRuntime,
     fetchWalletTopupRequestStatus,
     fetchWalletTopupStatus,
     parseJson,
-    type ProductFundingEvent,
     type ProductMarketDetail,
     type ProductProof,
     type ProductRuntime,
-    type ProductWallet,
     type ProductWalletTopup,
     type ProductWalletTopupRequestStatus
   } from '$lib/cascade/api';
@@ -21,15 +17,27 @@
   import { formatUsdMinor } from '$lib/cascade/format';
   import { quantityToShareMinor, shareMinorToQuantity } from '$lib/cascade/shares';
   import {
-    attachPendingTopupId,
+    patchPendingTopup,
+    attachPendingTopupMintPreparation,
     clearPendingTopup,
     listPendingTopups,
+    listTopupHistory,
     markPendingTopupNotified,
-    trackPendingTopup
+    recordTopupHistory,
+    trackPendingTopup,
+    type PendingTopupRecord
   } from '$lib/cascade/recovery';
+  import type { LocalTopupHistoryRecord } from '$lib/cascade/recovery';
   import { ndk } from '$lib/ndk/client';
   import { formatProbability } from '$lib/ndk/cascade';
   import { decodeLocalProofToken, encodeLocalProofWallet } from '$lib/wallet/cashuTokens';
+  import {
+    checkUsdLightningMintQuote,
+    createUsdLightningMintQuote,
+    mintUsdLightningQuote,
+    prepareUsdLightningMint,
+    restoreUsdLightningQuote
+  } from '$lib/wallet/cashuMint';
   import {
     addLocalProofs,
     listLocalProofs,
@@ -39,8 +47,14 @@
   } from '$lib/wallet/localProofs';
   import { listLocalPositionBook } from '$lib/wallet/localPositionBook';
 
-  type PaperWallet = ProductWallet & {
-    funding_events: ProductFundingEvent[];
+  type LocalPendingTopup = {
+    id: string;
+    rail: 'lightning' | 'stripe';
+    amount_minor: number;
+    status: string;
+    invoice?: string;
+    checkout_url?: string;
+    checkout_session_id?: string;
   };
 
   type LocalPortfolioPosition = {
@@ -65,7 +79,6 @@
   const signetTopupSingleLimitMinor = 10000;
   const signetTopupWindowLimitMinor = 25000;
 
-  let wallet = $state<PaperWallet | null>(null);
   let runtime = $state<ProductRuntime | null>(null);
   let loading = $state(false);
   let errorMessage = $state('');
@@ -77,6 +90,8 @@
   let localProofWallets = $state<StoredProofWallet[]>([]);
   let localPositions = $state<LocalPortfolioPosition[]>([]);
   let localPositionValueMinor = $state(0);
+  let pendingTopups = $state<LocalPendingTopup[]>([]);
+  let topupHistory = $state<LocalTopupHistoryRecord[]>([]);
   let selectedExportUnit = $state('');
   let exportedToken = $state('');
   let importToken = $state('');
@@ -94,6 +109,25 @@
     if (!selectedExportUnit || !wallets.some((walletEntry) => walletEntry.unit === selectedExportUnit)) {
       selectedExportUnit = wallets[0]?.unit ?? '';
     }
+  }
+
+  function refreshLocalFundingState() {
+    if (!currentUser) {
+      pendingTopups = [];
+      topupHistory = [];
+      return;
+    }
+
+    pendingTopups = listPendingTopups(currentUser.pubkey).map((entry) => ({
+      id: entry.topupId ?? entry.id,
+      rail: entry.rail,
+      amount_minor: entry.amountMinor,
+      status: entry.status ?? 'invoice_pending',
+      invoice: entry.invoice,
+      checkout_url: entry.checkoutUrl,
+      checkout_session_id: entry.checkoutSessionId
+    }));
+    topupHistory = listTopupHistory(currentUser.pubkey);
   }
 
   function formatProofBucketAmount(unit: string, amount: number): string {
@@ -304,23 +338,13 @@
     }
   }
 
-  async function loadWallet() {
-    if (!currentUser) return;
+  async function refreshPortfolioView() {
     loading = true;
-    errorMessage = '';
     try {
-      if (!runtime || runtimeEditionMismatch) {
-        wallet = null;
-        return;
-      }
-      const response = await fetchPortfolioMirror(currentUser.pubkey);
-      wallet = await parseJson<PaperWallet>(response, 'Failed to load portfolio funding activity.');
-    } catch (error) {
-      wallet = null;
-      errorMessage =
-        error instanceof Error ? error.message : 'Failed to load portfolio funding activity.';
-    } finally {
+      refreshLocalProofSummary();
+      refreshLocalFundingState();
       await loadLocalPositionMarks();
+    } finally {
       loading = false;
     }
   }
@@ -421,6 +445,33 @@
     return rail === 'stripe' ? 'Stripe top-up' : 'Lightning top-up';
   }
 
+  async function recoverLightningQuote(trackedTopup: PendingTopupRecord) {
+    if (!trackedTopup.requestId) {
+      return null;
+    }
+
+    try {
+      const quote = await createUsdLightningMintQuote(proofMintUrl(), trackedTopup.amountMinor, {
+        description: `Cascade portfolio top-up for ${trackedTopup.pubkey}`,
+        pubkey: trackedTopup.pubkey,
+        requestId: trackedTopup.requestId
+      });
+      return quote;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Lightning top-up recovery failed.';
+      if (message === 'wallet_topup_request_in_progress') {
+        if (!trackedTopup.pendingNotified) {
+          status = `Recovered pending ${topupLabel(trackedTopup.rail).toLowerCase()} for ${formatUsdMinor(trackedTopup.amountMinor)}.`;
+          markPendingTopupNotified(trackedTopup.id);
+        }
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
   function isPendingTopupStatus(status: string): boolean {
     return status === 'invoice_pending' || status === 'pending';
   }
@@ -453,25 +504,19 @@
       rail: 'lightning'
     });
     try {
-      const response = await createLightningTopupQuote({
+      const quote = await createUsdLightningMintQuote(proofMintUrl(), amountMinor, {
+        description: `Cascade portfolio top-up for ${currentUser.pubkey}`,
         pubkey: currentUser.pubkey,
-        amountMinor,
         requestId
       });
-      const topup = await parseJson<ProductWalletTopup>(response, 'Lightning top-up creation failed.');
-
-      attachPendingTopupId(requestId, topup.id);
-      if (topup.status === 'complete') {
-        clearPendingTopup(requestId);
-      }
-      await loadWallet();
-      if (topup.status === 'complete') {
-        if (!applyIssuedProofs(topup.issued_proofs, 'Lightning top-up')) {
-          status = `Completed the Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
-        }
-      } else {
-        status = `Created a Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
-      }
+      patchPendingTopup(requestId, {
+        topupId: quote.quote,
+        status: 'invoice_pending',
+        invoice: quote.request
+      });
+      refreshLocalFundingState();
+      status = `Created a Lightning top-up for ${formatUsdMinor(amountMinor)}.`;
+      await reconcilePendingTopups();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Lightning top-up creation failed.';
@@ -521,14 +566,31 @@
       });
       const topup = await parseJson<ProductWalletTopup>(response, 'Stripe top-up creation failed.');
 
-      attachPendingTopupId(requestId, topup.id);
-      await loadWallet();
+      patchPendingTopup(requestId, {
+        topupId: topup.id,
+        status: topup.status,
+        checkoutUrl: topup.checkout_url ?? undefined,
+        checkoutSessionId: topup.checkout_session_id ?? undefined,
+        checkoutExpiresAt: topup.checkout_expires_at ?? undefined
+      });
+      refreshLocalFundingState();
 
       if (topup.status === 'complete') {
+        recordTopupHistory({
+          id: requestId,
+          topupId: topup.id,
+          pubkey: currentUser.pubkey,
+          amountMinor,
+          rail: 'stripe',
+          status: topup.status,
+          checkoutUrl: topup.checkout_url ?? undefined,
+          checkoutSessionId: topup.checkout_session_id ?? undefined,
+          checkoutExpiresAt: topup.checkout_expires_at ?? undefined,
+          createdAt: Date.now()
+        });
         clearPendingTopup(requestId);
-        if (!applyIssuedProofs(topup.issued_proofs, 'Stripe top-up')) {
-          status = `Completed the Stripe top-up for ${formatUsdMinor(amountMinor)}.`;
-        }
+        refreshLocalFundingState();
+        status = `Stripe top-up settled for ${formatUsdMinor(amountMinor)}. Claiming browser-local proofs for card funding is not enabled yet.`;
         return;
       }
 
@@ -560,7 +622,6 @@
 
     status = 'Refreshing pending top-ups.';
     errorMessage = '';
-    await loadWallet();
     await reconcilePendingTopups();
   }
 
@@ -574,6 +635,113 @@
 
     for (const trackedTopup of trackedTopups) {
       try {
+        if (trackedTopup.rail === 'lightning') {
+          let recoveredQuoteId = trackedTopup.topupId;
+          if (trackedTopup.requestId && !trackedTopup.topupId) {
+            const quote = await recoverLightningQuote(trackedTopup);
+            if (!quote) {
+              continue;
+            }
+
+            patchPendingTopup(trackedTopup.id, {
+              topupId: quote.quote,
+              status: quote.state === 'UNPAID' ? 'invoice_pending' : quote.state.toLowerCase(),
+              invoice: quote.request
+            });
+            recoveredQuoteId = quote.quote;
+          }
+
+          const quoteId = recoveredQuoteId;
+          if (!quoteId) {
+            continue;
+          }
+          const quote = await checkUsdLightningMintQuote(proofMintUrl(), quoteId);
+
+          if (quote.state === 'UNPAID') {
+            patchPendingTopup(trackedTopup.id, {
+              status: 'invoice_pending',
+              invoice: quote.request
+            });
+            if (!trackedTopup.pendingNotified) {
+              status = `Recovered pending ${topupLabel(trackedTopup.rail).toLowerCase()} for ${formatUsdMinor(trackedTopup.amountMinor)}.`;
+              markPendingTopupNotified(trackedTopup.id);
+            }
+            continue;
+          }
+
+          if (quote.state === 'PAID') {
+            patchPendingTopup(trackedTopup.id, {
+              status: 'paid',
+              invoice: quote.request
+            });
+            const preparation =
+              trackedTopup.mintPreparation ??
+              (await prepareUsdLightningMint(proofMintUrl(), quote.amount));
+            if (!trackedTopup.mintPreparation) {
+              attachPendingTopupMintPreparation(trackedTopup.id, preparation);
+            }
+
+            const minted = await mintUsdLightningQuote(
+              proofMintUrl(),
+              quote.quote,
+              quote.amount,
+              preparation
+            );
+            recordTopupHistory({
+              id: trackedTopup.id,
+              topupId: quote.quote,
+              pubkey: trackedTopup.pubkey,
+              amountMinor: quote.amount,
+              rail: trackedTopup.rail,
+              status: 'complete',
+              invoice: quote.request,
+              createdAt: trackedTopup.createdAt
+            });
+            clearPendingTopup(trackedTopup.id);
+            walletNeedsRefresh = true;
+            applyIssuedProofs(minted.proofs, 'Recovered Lightning top-up');
+            continue;
+          }
+
+          if (quote.state === 'ISSUED') {
+            if (!trackedTopup.mintPreparation) {
+              recordTopupHistory({
+                id: trackedTopup.id,
+                topupId: quote.quote,
+                pubkey: trackedTopup.pubkey,
+                amountMinor: quote.amount,
+                rail: trackedTopup.rail,
+                status: 'complete',
+                invoice: quote.request,
+                createdAt: trackedTopup.createdAt
+              });
+              clearPendingTopup(trackedTopup.id);
+              walletNeedsRefresh = true;
+              status = `Recovered issued Lightning top-up for ${formatUsdMinor(trackedTopup.amountMinor)}, but this browser no longer has the local mint recovery data.`;
+              continue;
+            }
+
+            const proofs = await restoreUsdLightningQuote(
+              proofMintUrl(),
+              trackedTopup.mintPreparation
+            );
+            recordTopupHistory({
+              id: trackedTopup.id,
+              topupId: quote.quote,
+              pubkey: trackedTopup.pubkey,
+              amountMinor: quote.amount,
+              rail: trackedTopup.rail,
+              status: 'complete',
+              invoice: quote.request,
+              createdAt: trackedTopup.createdAt
+            });
+            clearPendingTopup(trackedTopup.id);
+            walletNeedsRefresh = true;
+            applyIssuedProofs(proofs, 'Recovered Lightning top-up');
+            continue;
+          }
+        }
+
         let topup: ProductWalletTopup | null = null;
 
         if (trackedTopup.requestId && !trackedTopup.topupId) {
@@ -592,7 +760,17 @@
           }
 
           if (requestStatus.status === 'failed') {
+            recordTopupHistory({
+              id: trackedTopup.id,
+              topupId: trackedTopup.topupId,
+              pubkey: trackedTopup.pubkey,
+              amountMinor: trackedTopup.amountMinor,
+              rail: trackedTopup.rail,
+              status: 'failed',
+              createdAt: trackedTopup.createdAt
+            });
             clearPendingTopup(trackedTopup.id);
+            refreshLocalFundingState();
             errorMessage =
               requestStatus.error || `${topupLabel(trackedTopup.rail)} creation failed.`;
             continue;
@@ -600,7 +778,15 @@
 
           topup = requestStatus.topup || null;
           if (topup?.id) {
-            attachPendingTopupId(trackedTopup.id, topup.id);
+            patchPendingTopup(trackedTopup.id, {
+              topupId: topup.id,
+              status: topup.status,
+              invoice: topup.invoice ?? undefined,
+              paymentHash: topup.payment_hash ?? undefined,
+              checkoutUrl: topup.checkout_url ?? undefined,
+              checkoutSessionId: topup.checkout_session_id ?? undefined,
+              checkoutExpiresAt: topup.checkout_expires_at ?? undefined
+            });
           }
         }
 
@@ -614,6 +800,15 @@
         }
 
         if (isPendingTopupStatus(topup.status)) {
+          patchPendingTopup(trackedTopup.id, {
+            topupId: topup.id,
+            status: topup.status,
+            invoice: topup.invoice ?? undefined,
+            paymentHash: topup.payment_hash ?? undefined,
+            checkoutUrl: topup.checkout_url ?? undefined,
+            checkoutSessionId: topup.checkout_session_id ?? undefined,
+            checkoutExpiresAt: topup.checkout_expires_at ?? undefined
+          });
           if (!trackedTopup.pendingNotified) {
             status = `Recovered pending ${topupLabel(topup.rail).toLowerCase()} for ${formatUsdMinor(topup.amount_minor)}.`;
             markPendingTopupNotified(trackedTopup.id);
@@ -621,38 +816,55 @@
           continue;
         }
 
+        recordTopupHistory({
+          id: trackedTopup.id,
+          topupId: topup.id,
+          pubkey: trackedTopup.pubkey,
+          amountMinor: topup.amount_minor,
+          rail: trackedTopup.rail,
+          status: topup.status,
+          invoice: topup.invoice ?? undefined,
+          paymentHash: topup.payment_hash ?? undefined,
+          checkoutUrl: topup.checkout_url ?? undefined,
+          checkoutSessionId: topup.checkout_session_id ?? undefined,
+          checkoutExpiresAt: topup.checkout_expires_at ?? undefined,
+          createdAt: trackedTopup.createdAt
+        });
         clearPendingTopup(trackedTopup.id);
         walletNeedsRefresh = true;
 
         if (topup.status === 'complete') {
-          applyIssuedProofs(topup.issued_proofs, `Recovered ${topupLabel(topup.rail)}`);
+          status = `Recovered ${topupLabel(topup.rail).toLowerCase()} settlement for ${formatUsdMinor(topup.amount_minor)}. Browser-local proof claiming for this rail is not enabled yet.`;
         } else {
           status =
             topup.status === 'review_required'
               ? `Recovered ${topupLabel(topup.rail).toLowerCase()} under review for ${formatUsdMinor(topup.amount_minor)}. No proofs were issued.`
               : `Recovered ${topup.status.replace(/_/g, ' ')} ${topupLabel(topup.rail).toLowerCase()} for ${formatUsdMinor(topup.amount_minor)}.`;
         }
-      } catch {
+      } catch (error) {
+        console.error('pending_topup_reconcile_failed', trackedTopup, error);
         // Keep tracked topups in storage until the status endpoint is reachable again.
       }
     }
 
     if (walletNeedsRefresh) {
-      await loadWallet();
+      await refreshPortfolioView();
+    } else {
+      refreshLocalFundingState();
     }
   }
 
   $effect(() => {
     if (!browser) return;
     refreshLocalProofSummary();
+    refreshLocalFundingState();
     void loadRuntime();
   });
 
   $effect(() => {
     if (!browser || !currentUser || !runtime) return;
     void (async () => {
-      refreshLocalProofSummary();
-      await loadWallet();
+      await refreshPortfolioView();
       await reconcilePendingTopups();
     })();
   });
@@ -768,17 +980,14 @@
         </button>
       </div>
 
-      {#if wallet?.pending_topups?.length}
+      {#if pendingTopups.length}
         <div class="history-list">
-          {#each wallet.pending_topups as topup (topup.id)}
+          {#each pendingTopups as topup (topup.id)}
             <div class="history-row history-row-stack">
               <div class="history-copy">
                 <strong>{formatUsdMinor(topup.amount_minor)}</strong>
                 <p class="muted">
                   {topup.rail} · {topup.status}
-                  {#if topup.fx_source}
-                    · fx {topup.fx_source}
-                  {/if}
                 </p>
                 {#if topup.invoice}
                   <code>{topup.invoice}</code>
@@ -913,24 +1122,24 @@
     <section class="wallet-panel">
       <div class="panel-header">
         <div>
-          <h2>Funding history</h2>
+          <h2>Recent funding activity</h2>
         </div>
       </div>
 
-      {#if wallet?.funding_events?.length}
+      {#if topupHistory.length}
         <div class="history-list">
-          {#each wallet.funding_events as event (event.id)}
+          {#each topupHistory as event (event.id)}
             <div class="history-row">
               <div>
-                <strong>{formatUsdMinor(event.amount_minor)}</strong>
+                <strong>{formatUsdMinor(event.amountMinor)}</strong>
                 <p class="muted">{event.rail} · {event.status}</p>
               </div>
-              <span class="muted">{new Date(event.created_at * 1000).toLocaleString()}</span>
+              <span class="muted">{new Date(event.createdAt).toLocaleString()}</span>
             </div>
           {/each}
         </div>
       {:else}
-        <p class="muted">No {paperEdition ? 'signet ' : ''}funding events yet.</p>
+        <p class="muted">No local funding activity recorded in this browser yet.</p>
       {/if}
     </section>
   {/if}

@@ -6,7 +6,9 @@ use cascade_core::{
     db::CascadeDatabase, market_manager::MarketManager, trade::TradeExecutor, LmsrEngine, LndConfig,
 };
 use cdk::mint::{MintBuilder, UnitConfig};
-use cdk_common::nuts::CurrencyUnit;
+use cdk::Amount;
+use cdk_common::nut04::MintMethodOptions;
+use cdk_common::nuts::{CurrencyUnit, MintMethodSettings, PaymentMethod};
 use cdk_sqlite::MintSqliteDatabase;
 use clap::Parser;
 use config::MintConfig;
@@ -135,7 +137,10 @@ async fn main() -> Result<()> {
     // 8. Build CDK Mint using MintBuilder
     //    MintBuilder::new takes DynMintDatabase = Arc<dyn Database<Error> + Send + Sync>
     //    Arc<MintSqliteDatabase> implements this via MintDatabase<Error>
-    let mut builder = MintBuilder::new(cdk_db.clone());
+    let mut builder = MintBuilder::new(cdk_db.clone())
+        .with_name(config.mint.name.clone())
+        .with_description(config.mint.description.clone())
+        .with_urls(vec![config.mint.url.clone()]);
 
     // Configure SAT unit with standard denominations
     let sat_amounts: Vec<u64> = (0..20).map(|i| 2_u64.pow(i)).collect();
@@ -157,12 +162,50 @@ async fn main() -> Result<()> {
         },
     )?;
 
+    let mut mint_info = builder.current_mint_info();
+    mint_info.nuts.nut04.methods.push(MintMethodSettings {
+        method: PaymentMethod::BOLT11,
+        unit: CurrencyUnit::Usd,
+        min_amount: Some(Amount::from(1_u64)),
+        max_amount: None,
+        options: Some(MintMethodOptions::Bolt11 { description: true }),
+    });
+    mint_info.nuts.nut04.disabled = false;
+    builder = builder.with_mint_info(mint_info);
+
     // Build with seed — this creates the signatory internally via DbSignatory
     // keystore = Arc<dyn MintKeysDatabase> — MintSqliteDatabase implements this
     let mint = builder
         .build_with_seed(cdk_db.clone(), &seed)
         .await
         .context("Failed to build CDK mint")?;
+
+    let mut mint_info = mint
+        .mint_info()
+        .await
+        .context("Failed to load CDK mint info")?;
+    mint_info.name = Some(config.mint.name.clone());
+    mint_info.description = Some(config.mint.description.clone());
+    mint_info.urls = Some(vec![config.mint.url.clone()]);
+    if !mint_info
+        .nuts
+        .nut04
+        .methods
+        .iter()
+        .any(|method| method.method == PaymentMethod::BOLT11 && method.unit == CurrencyUnit::Usd)
+    {
+        mint_info.nuts.nut04.methods.push(MintMethodSettings {
+            method: PaymentMethod::BOLT11,
+            unit: CurrencyUnit::Usd,
+            min_amount: Some(Amount::from(1_u64)),
+            max_amount: None,
+            options: Some(MintMethodOptions::Bolt11 { description: true }),
+        });
+    }
+    mint_info.nuts.nut04.disabled = false;
+    mint.set_mint_info(mint_info)
+        .await
+        .context("Failed to persist CDK mint info")?;
 
     let _mint = Arc::new(mint);
     tracing::info!("CDK Mint initialized");

@@ -509,6 +509,7 @@ dependencies = [
  "cascade-core",
  "cdk",
  "cdk-axum",
+ "cdk-common",
  "cdk-sqlite",
  "chrono",
  "hex",

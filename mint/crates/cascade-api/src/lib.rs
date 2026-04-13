@@ -66,8 +66,7 @@ pub async fn build_server(
     let cascade_routes = routes::build_cascade_routes(state);
 
     // Build CDK mint routes (Cashu standard endpoints)
-    let custom_methods = vec!["bolt11".to_string()]; // Support Lightning BOLT11 invoices
-    let mint_routes = cdk_axum::create_mint_router(mint, custom_methods)
+    let mint_routes = cdk_axum::create_mint_router(mint, Vec::new())
         .await
         .map_err(|e| format!("Failed to create mint router: {}", e))?;
 

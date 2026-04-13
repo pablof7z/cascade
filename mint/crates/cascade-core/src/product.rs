@@ -43,15 +43,6 @@ pub struct MarketLaunchState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WalletBalanceRecord {
-    pub pubkey: String,
-    pub available_minor: u64,
-    pub pending_minor: u64,
-    pub total_deposited_minor: u64,
-    pub updated_at: i64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WalletFundingEvent {
     pub id: String,
     pub pubkey: String,
@@ -63,51 +54,11 @@ pub struct WalletFundingEvent {
     pub created_at: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortfolioProofRecord {
-    pub secret: String,
-    pub keyset_id: String,
-    pub unit: String,
-    pub amount: u64,
-    pub commitment: String,
-    pub market_event_id: Option<String>,
-    pub direction: Option<String>,
-    pub source: String,
-    pub created_at: i64,
-    pub spent_trade_id: Option<String>,
-    pub spent_at: Option<i64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortfolioProofInsert {
-    pub secret: String,
-    pub keyset_id: String,
-    pub unit: String,
-    pub amount: u64,
-    pub commitment: String,
-    pub market_event_id: Option<String>,
-    pub direction: Option<String>,
-    pub source: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortfolioProofSpend {
-    pub secret: String,
-    pub keyset_id: String,
-    pub amount: u64,
-    pub commitment: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortfolioPositionSnapshot {
-    pub quantity: f64,
-    pub cost_basis_minor: u64,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WalletTopupStatus {
     InvoicePending,
+    Paid,
     Complete,
     ReviewRequired,
     Expired,
@@ -118,6 +69,7 @@ impl std::fmt::Display for WalletTopupStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvoicePending => write!(f, "invoice_pending"),
+            Self::Paid => write!(f, "paid"),
             Self::Complete => write!(f, "complete"),
             Self::ReviewRequired => write!(f, "review_required"),
             Self::Expired => write!(f, "expired"),
@@ -132,6 +84,7 @@ impl std::str::FromStr for WalletTopupStatus {
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value.to_lowercase().as_str() {
             "invoice_pending" => Ok(Self::InvoicePending),
+            "paid" => Ok(Self::Paid),
             "complete" => Ok(Self::Complete),
             "review_required" => Ok(Self::ReviewRequired),
             "expired" => Ok(Self::Expired),

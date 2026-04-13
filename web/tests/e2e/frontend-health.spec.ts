@@ -52,3 +52,23 @@ test('home page labels volume-ranked markets as Most Active', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'Most Active' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Trending' })).toHaveCount(0);
 });
+
+test('market builder hides mint routing details from the public form', async ({ page }) => {
+  await page.goto('/builder');
+
+  await page.getByPlaceholder('Market title').fill('Will mint routing stay hidden?');
+  await page
+    .getByPlaceholder('What is this market tracking, and why should someone care?')
+    .fill('This check makes sure market creators are not asked for mint infrastructure details.');
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await page
+    .getByPlaceholder('Lay out the logic, the evidence, and the path you expect reality to take.')
+    .fill('The market builder should focus on the claim and the case, not mint wiring.');
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await expect(page.getByText('Mint URL')).toHaveCount(0);
+  await expect(page.getByText('Mint Pubkey')).toHaveCount(0);
+  await expect(page.getByPlaceholder('https://mint.example.com')).toHaveCount(0);
+  await expect(page.getByPlaceholder('Optional')).toHaveCount(0);
+});

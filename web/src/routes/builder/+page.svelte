@@ -1,6 +1,5 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { env } from '$env/dynamic/public';
   import { goto } from '$app/navigation';
   import {
     buyMarketPosition,
@@ -38,6 +37,7 @@
     prunePendingCreatorMarkets,
     type AuthoredCreatorMarket
   } from '$lib/cascade/builderMarkets';
+  import { buildMarketEventTags } from '$lib/cascade/marketEventTags';
   import { ndk } from '$lib/ndk/client';
   import { parseMarketEvent, type MarketRecord } from '$lib/ndk/cascade';
   import {
@@ -77,8 +77,6 @@
   let body = $state('');
   let category = $state('');
   let topics = $state('');
-  let mintUrl = $state(env.PUBLIC_CASCADE_MINT_URL || '');
-  let mintPubkey = $state(env.PUBLIC_CASCADE_MINT_PUBKEY || '');
   let linkSearch = $state('');
   let linkedMarkets = $state<DraftLink[]>([]);
   let saving = $state(false);
@@ -409,32 +407,14 @@
       const marketEvent = new NDKEvent(ndk);
       marketEvent.kind = 982;
       marketEvent.content = body.trim();
-      marketEvent.tags = [
-        ['title', title.trim()],
-        ['d', slug],
-        ['description', description.trim()],
-        ['status', 'open'],
-        ...category
-          .split(',')
-          .map((item) => item.trim().toLowerCase())
-          .filter(Boolean)
-          .map((item) => ['c', item] as string[]),
-        ...topics
-          .split(',')
-          .map((item) => item.trim().toLowerCase())
-          .filter(Boolean)
-          .map((item) => ['t', item] as string[]),
-        ...(mintUrl.trim() ? ([['mint', mintUrl.trim()]] as string[][]) : []),
-        ...(mintPubkey.trim() ? ([['mint-pubkey', mintPubkey.trim()]] as string[][]) : []),
-        ...linkedMarkets.flatMap((item) => {
-          const tags: string[][] = [
-            ['e', item.id, '', 'reference'],
-            ['signal-direction', item.id, item.direction]
-          ];
-          if (item.note.trim()) tags.push(['signal-note', item.id, item.note.trim()]);
-          return tags;
-        })
-      ];
+      marketEvent.tags = buildMarketEventTags({
+        title,
+        slug,
+        description,
+        category,
+        topics,
+        linkedMarkets
+      });
 
       if (!paperEdition) {
         await marketEvent.publish();
@@ -793,14 +773,6 @@
           <label class="builder-field">
             <span>Topics</span>
             <input bind:value={topics} placeholder="agents, labor, energy" type="text" />
-          </label>
-          <label class="builder-field">
-            <span>Mint URL</span>
-            <input bind:value={mintUrl} placeholder="https://mint.example.com" type="text" />
-          </label>
-          <label class="builder-field">
-            <span>Mint Pubkey</span>
-            <input bind:value={mintPubkey} placeholder="Optional" type="text" />
           </label>
         </div>
       </div>

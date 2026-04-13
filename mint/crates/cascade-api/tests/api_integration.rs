@@ -4,7 +4,11 @@
 //! These tests start a local server and make HTTP requests to it.
 
 use async_trait::async_trait;
-use axum::Router;
+use axum::{
+    extract::{Json, State},
+    http::{HeaderMap, Method, Uri},
+    Router,
+};
 use cdk::amount::{FeeAndAmounts, SplitTarget};
 use cdk::dhke::construct_proofs;
 use cdk::mint::{MintBuilder, MintMeltLimits, UnitConfig};
@@ -24,6 +28,16 @@ use tokio::sync::Mutex;
 
 type HmacSha256 = Hmac<Sha256>;
 type SharedInvoiceService = Arc<Mutex<cascade_core::invoice::InvoiceService>>;
+
+#[derive(Clone)]
+struct ProductTestContext {
+    url: String,
+    invoice_service: SharedInvoiceService,
+    fx_service: Arc<cascade_api::fx::FxQuoteService>,
+    market_manager: Arc<cascade_core::MarketManager>,
+    mint: Arc<cdk::mint::Mint>,
+    cascade_db: Arc<cascade_core::db::CascadeDatabase>,
+}
 
 const TEST_USD_DENOMINATIONS: &[u64] = &[
     1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
@@ -176,6 +190,16 @@ async fn create_product_test_server_bundle_with_funding(
     usdc_config: Option<cascade_api::usdc::UsdcConfig>,
     network_type: &'static str,
 ) -> (String, Arc<Mutex<cascade_core::invoice::InvoiceService>>) {
+    let context =
+        create_product_test_context_with_funding(stripe_config, usdc_config, network_type).await;
+    (context.url, context.invoice_service)
+}
+
+async fn create_product_test_context_with_funding(
+    stripe_config: Option<cascade_api::stripe::StripeConfig>,
+    usdc_config: Option<cascade_api::usdc::UsdcConfig>,
+    network_type: &'static str,
+) -> ProductTestContext {
     let cdk_db = Arc::new(cdk_sqlite::mint::memory::empty().await.unwrap());
     let mut builder = MintBuilder::new(cdk_db.clone());
     builder
@@ -248,13 +272,13 @@ async fn create_product_test_server_bundle_with_funding(
     ));
 
     let app = cascade_api::build_server(
-        market_manager,
+        market_manager.clone(),
         invoice_service.clone(),
-        fx_service,
+        fx_service.clone(),
         stripe_config,
         usdc_config,
-        mint,
-        cascade_db,
+        mint.clone(),
+        cascade_db.clone(),
         network_type,
         "http://127.0.0.1:0",
     )
@@ -264,7 +288,6 @@ async fn create_product_test_server_bundle_with_funding(
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let url = format!("http://{}", addr);
-    let invoice_service_for_return = invoice_service.clone();
     register_test_invoice_service(&url, invoice_service.clone()).await;
 
     tokio::spawn(async move {
@@ -272,7 +295,14 @@ async fn create_product_test_server_bundle_with_funding(
     });
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    (url, invoice_service_for_return)
+    ProductTestContext {
+        url,
+        invoice_service,
+        fx_service,
+        market_manager,
+        mint,
+        cascade_db,
+    }
 }
 
 async fn create_mock_stripe_server() -> String {
@@ -389,7 +419,8 @@ async fn create_wallet_funding_and_get_proofs_with_invoice_service(
         Some(invoice_service) => Some(invoice_service.clone()),
         None => lookup_test_invoice_service(url).await,
     };
-    if let (Some(invoice_service), Some(invoice)) = (invoice_service, quote_payload["request"].as_str())
+    if let (Some(invoice_service), Some(invoice)) =
+        (invoice_service, quote_payload["request"].as_str())
     {
         invoice_service
             .lock()
@@ -1239,18 +1270,16 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .unwrap()
         .get("price_yes_ppm")
         .is_none());
-    let sell_direction_tag = sell_payload["trade"]["tags"]
-        .as_array()
-        .and_then(|tags| {
-            tags.iter().find_map(|tag| {
-                let tag = tag.as_array()?;
-                if tag.first()?.as_str()? == "direction" {
-                    tag.get(1)?.as_str()
-                } else {
-                    None
-                }
-            })
-        });
+    let sell_direction_tag = sell_payload["trade"]["tags"].as_array().and_then(|tags| {
+        tags.iter().find_map(|tag| {
+            let tag = tag.as_array()?;
+            if tag.first()?.as_str()? == "direction" {
+                tag.get(1)?.as_str()
+            } else {
+                None
+            }
+        })
+    });
     assert_eq!(sell_direction_tag, Some("long"));
     let wallet_mint_quote_id = sell_payload["settlement"]["metadata"]["wallet_mint_quote_id"]
         .as_str()
@@ -1272,10 +1301,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .unwrap();
     assert_eq!(wallet_quote_response.status(), 200);
     let wallet_quote_payload: serde_json::Value = wallet_quote_response.json().await.unwrap();
-    assert_eq!(
-        wallet_quote_payload["state"].as_str(),
-        Some("ISSUED")
-    );
+    assert_eq!(wallet_quote_payload["state"].as_str(), Some("ISSUED"));
 
     let sell_request_status_response = client
         .get(format!("{url}/api/trades/requests/paper-sell-request-1"))
@@ -1285,9 +1311,18 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     assert_eq!(sell_request_status_response.status(), 200);
     let sell_request_status_payload: serde_json::Value =
         sell_request_status_response.json().await.unwrap();
-    assert_eq!(sell_request_status_payload["status"].as_str(), Some("complete"));
-    assert_eq!(sell_request_status_payload["issued"], sell_payload["issued"]);
-    assert_eq!(sell_request_status_payload["change"], sell_payload["change"]);
+    assert_eq!(
+        sell_request_status_payload["status"].as_str(),
+        Some("complete")
+    );
+    assert_eq!(
+        sell_request_status_payload["issued"],
+        sell_payload["issued"]
+    );
+    assert_eq!(
+        sell_request_status_payload["change"],
+        sell_payload["change"]
+    );
 
     let replay_sell_response = client
         .post(format!("{url}/api/trades/sell"))
@@ -2663,8 +2698,14 @@ async fn test_trade_request_id_is_idempotent() {
         request_status_payload["trade"]["id"].as_str(),
         Some(trade_id.as_str())
     );
-    assert_eq!(request_status_payload["issued"], first_buy_payload["issued"]);
-    assert_eq!(request_status_payload["change"], first_buy_payload["change"]);
+    assert_eq!(
+        request_status_payload["issued"],
+        first_buy_payload["issued"]
+    );
+    assert_eq!(
+        request_status_payload["change"],
+        first_buy_payload["change"]
+    );
 
     let detail_response = client
         .get(format!("{url}/api/product/markets/slug/{slug}"))
@@ -2677,6 +2718,219 @@ async fn test_trade_request_id_is_idempotent() {
         detail_payload["trades"].as_array().map(|items| items.len()),
         Some(1)
     );
+}
+
+#[tokio::test]
+async fn test_trade_request_replays_buy_after_pre_issuance_checkpoint() {
+    let context = create_product_test_context_with_funding(None, None, "signet").await;
+    let url = context.url.clone();
+    let client = reqwest::Client::new();
+    let creator = "6767676767676767676767676767676767676767676767676767676767676767";
+    let event_id = "8989898989898989898989898989898989898989898989898989898989898989";
+    let slug = "trade-request-buy-restart-replay";
+    let request_id = "req-buy-restart-replay-1";
+    let trade_id = "trade-buy-restart-replay-1";
+
+    client
+        .post(format!("{url}/api/product/markets"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "title": "Trade Request Buy Restart Replay Market",
+            "description": "Replay a persisted buy request after a pre-issuance checkpoint",
+            "slug": slug,
+            "body": "Trade request restart replay body",
+            "creator_pubkey": creator,
+            "raw_event": sample_market_event(event_id, slug, creator),
+            "b": 10.0
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "yes").await;
+    let buy_quote_response = client
+        .post(format!("{url}/api/trades/quote"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "side": "yes",
+            "spend_minor": 4000
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(buy_quote_response.status(), 200);
+    let buy_quote_payload: serde_json::Value = buy_quote_response.json().await.unwrap();
+    let buy_quote: cascade_api::types::ProductTradeQuoteResponse =
+        serde_json::from_value(buy_quote_payload).unwrap();
+    let (issued_outputs, _issued_pre_mint) = prepare_outputs(
+        &market_keyset,
+        buy_quote.quantity_minor,
+        TEST_MARKET_DENOMINATIONS,
+    );
+
+    context
+        .cascade_db
+        .create_trade_execution_request(
+            request_id,
+            creator,
+            event_id,
+            "buy",
+            "yes",
+            Some(4000),
+            None,
+        )
+        .await
+        .unwrap();
+
+    let market = context
+        .cascade_db
+        .get_market(event_id)
+        .await
+        .unwrap()
+        .unwrap();
+    let settlement = cascade_core::product::TradeSettlementInsert {
+        quote_id: buy_quote.quote_id.clone(),
+        pubkey: creator.to_string(),
+        market_event_id: event_id.to_string(),
+        trade_type: "buy".to_string(),
+        side: "yes".to_string(),
+        rail: "lightning".to_string(),
+        mode: "bolt11_wallet_to_market".to_string(),
+        settlement_minor: buy_quote.settlement_minor,
+        settlement_msat: buy_quote.settlement_msat,
+        settlement_fee_msat: buy_quote.settlement_fee_msat,
+        fx_quote_id: buy_quote.fx_quote_id.clone(),
+        invoice: Some("lnbc1tradebuyrestartreplay".to_string()),
+        payment_hash: Some("trade-buy-restart-replay-payment-hash".to_string()),
+        metadata_json: Some(
+            serde_json::json!({
+                "payer_role": "wallet_mint",
+                "receiver_role": "market_mint",
+                "invoice_state": "settled",
+                "issued_bundle_request": {
+                    "unit": format!("long_{slug}"),
+                    "outputs": issued_outputs
+                }
+            })
+            .to_string(),
+        ),
+    };
+    let raw_event_json = serde_json::json!({
+        "id": trade_id,
+        "pubkey": creator,
+        "kind": 983,
+        "content": "",
+        "tags": [
+            ["e", event_id],
+            ["p", creator],
+            ["direction", "long"]
+        ]
+    })
+    .to_string();
+
+    context
+        .cascade_db
+        .apply_trade_execution_snapshots(
+            trade_id,
+            chrono::Utc::now().timestamp(),
+            buy_quote.quote_id.as_deref(),
+            creator,
+            &market,
+            "yes",
+            "buy",
+            buy_quote.spend_minor,
+            buy_quote.fee_minor,
+            buy_quote.quantity,
+            buy_quote.marginal_price_after_ppm,
+            &raw_event_json,
+            market.q_long + buy_quote.quantity,
+            market.q_short,
+            market.reserve_sats.saturating_add(buy_quote.spend_minor),
+            Some(&settlement),
+        )
+        .await
+        .unwrap();
+    context
+        .cascade_db
+        .complete_trade_execution_request(request_id, trade_id, None)
+        .await
+        .unwrap();
+
+    let restarted_state = cascade_api::routes::AppState::new_test(
+        context.market_manager.clone(),
+        context.invoice_service.clone(),
+        context.fx_service.clone(),
+        None,
+        None,
+        context.mint.clone(),
+        context.cascade_db.clone(),
+    );
+    let replay_request = cascade_api::types::ProductCoordinatorBuyRequest {
+        event_id: event_id.to_string(),
+        pubkey: creator.to_string(),
+        side: "yes".to_string(),
+        spend_minor: 4000,
+        proofs: Vec::new(),
+        issued_outputs: Vec::new(),
+        change_outputs: Vec::new(),
+        quote_id: buy_quote.quote_id.clone(),
+        request_id: Some(request_id.to_string()),
+    };
+
+    let (first_status, Json(first_payload)) = cascade_api::handlers::product::buy_trade(
+        State(restarted_state.clone()),
+        HeaderMap::new(),
+        Method::POST,
+        Uri::from_static("/api/trades/buy"),
+        Json(replay_request),
+    )
+    .await;
+    assert_eq!(first_status, axum::http::StatusCode::OK);
+    assert_eq!(first_payload["trade"]["id"].as_str(), Some(trade_id));
+    assert_eq!(
+        first_payload["issued"]["unit"].as_str(),
+        Some(format!("long_{slug}").as_str())
+    );
+    assert!(
+        first_payload["issued"]["signatures"]
+            .as_array()
+            .is_some_and(|items| !items.is_empty()),
+        "buy replay should recover issued signatures: {first_payload}"
+    );
+
+    let replay_response = client
+        .post(format!("{url}/api/trades/buy"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "yes",
+            "spend_minor": 4000,
+            "request_id": request_id,
+            "proofs": [],
+            "issued_outputs": [],
+            "change_outputs": []
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(replay_response.status(), 200);
+    let replay_payload: serde_json::Value = replay_response.json().await.unwrap();
+    assert_eq!(replay_payload["trade"]["id"].as_str(), Some(trade_id));
+    assert_eq!(replay_payload["issued"], first_payload["issued"]);
+
+    let request_status_response = client
+        .get(format!("{url}/api/trades/requests/{request_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(request_status_response.status(), 200);
+    let request_status_payload: serde_json::Value = request_status_response.json().await.unwrap();
+    assert_eq!(request_status_payload["status"].as_str(), Some("complete"));
+    assert_eq!(
+        request_status_payload["trade"]["id"].as_str(),
+        Some(trade_id)
+    );
+    assert_eq!(request_status_payload["issued"], first_payload["issued"]);
 }
 
 #[tokio::test]

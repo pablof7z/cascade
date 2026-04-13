@@ -217,7 +217,9 @@ fn mint_quote_bolt11_response_from_common(
         amount: amount.into(),
         unit,
         state: cdk_mint_quote_state_label(quote.state).to_string(),
-        expiry: quote.expiry.map(|value| i64::try_from(value).unwrap_or(i64::MAX)),
+        expiry: quote
+            .expiry
+            .map(|value| i64::try_from(value).unwrap_or(i64::MAX)),
     })
 }
 
@@ -225,7 +227,8 @@ async fn load_generic_mint_quote_bolt11(
     state: &AppState,
     quote_id: &str,
 ) -> Result<MintQuoteBolt11Response, (StatusCode, String)> {
-    let quote_id = QuoteId::from_str(quote_id).map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()))?;
+    let quote_id = QuoteId::from_str(quote_id)
+        .map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()))?;
     let mint_quote = state
         .mint
         .check_mint_quote(&quote_id)
@@ -250,7 +253,8 @@ async fn recover_mint_quote_signatures(
     state: &AppState,
     quote_id: &str,
 ) -> Result<MintBolt11Response, (StatusCode, String)> {
-    let quote_id = QuoteId::from_str(quote_id).map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()))?;
+    let quote_id = QuoteId::from_str(quote_id)
+        .map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()))?;
     let signatures = state
         .mint
         .localstore()
@@ -700,10 +704,7 @@ fn trade_signature_bundle(
     })
 }
 
-fn trade_signature_bundle_metadata(
-    unit: &str,
-    signatures: &[TokenOutput],
-) -> Option<Value> {
+fn trade_signature_bundle_metadata(unit: &str, signatures: &[TokenOutput]) -> Option<Value> {
     if signatures.is_empty() {
         return None;
     }
@@ -712,6 +713,14 @@ fn trade_signature_bundle_metadata(
         "unit": unit,
         "signatures": signatures
     }))
+}
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+struct TradeIssuedBundleRecoveryRequest {
+    unit: String,
+    outputs: Vec<BlindedMessageInput>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    quote_id: Option<String>,
 }
 
 fn merge_trade_recovery_bundle_metadata(
@@ -740,12 +749,30 @@ fn merge_trade_recovery_bundle_metadata(
     merge_metadata_json(existing, extra).map(Some)
 }
 
+fn merge_trade_issued_bundle_request_metadata(
+    existing: Option<&str>,
+    request: &TradeIssuedBundleRecoveryRequest,
+) -> Result<Option<String>, String> {
+    if request.outputs.is_empty() {
+        return Ok(existing.map(str::to_string));
+    }
+
+    merge_metadata_json(existing, json!({ "issued_bundle_request": request })).map(Some)
+}
+
 fn trade_signature_bundle_from_metadata_value(
     metadata: Option<&Value>,
     key: &str,
 ) -> Option<ProductTradeBlindSignatureBundleResponse> {
     let bundle = metadata?.get(key)?.clone();
     serde_json::from_value(bundle).ok()
+}
+
+fn trade_issued_bundle_request_from_metadata_value(
+    metadata: Option<&Value>,
+) -> Option<TradeIssuedBundleRecoveryRequest> {
+    let request = metadata?.get("issued_bundle_request")?.clone();
+    serde_json::from_value(request).ok()
 }
 
 fn trade_recovery_bundles_from_settlement(
@@ -759,6 +786,106 @@ fn trade_recovery_bundles_from_settlement(
         trade_signature_bundle_from_metadata_value(metadata, "issued_bundle"),
         trade_signature_bundle_from_metadata_value(metadata, "change_bundle"),
     )
+}
+
+fn trade_issued_bundle_request_from_settlement(
+    settlement: Option<&ProductTradeSettlementResponse>,
+) -> Option<TradeIssuedBundleRecoveryRequest> {
+    let metadata = settlement.and_then(|item| item.metadata.as_ref());
+    trade_issued_bundle_request_from_metadata_value(metadata)
+}
+
+async fn recover_or_sign_outputs_and_store(
+    state: &AppState,
+    outputs: &[BlindedMessageInput],
+    payment_method: PaymentMethod,
+) -> Result<Vec<TokenOutput>, String> {
+    let blinded_messages = outputs
+        .iter()
+        .map(cdk_blinded_message_from_input)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if blinded_messages.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let blinded_secrets = blinded_messages
+        .iter()
+        .map(|message| message.blinded_secret)
+        .collect::<Vec<_>>();
+    let existing = state
+        .mint
+        .localstore()
+        .get_blind_signatures(&blinded_secrets)
+        .await
+        .map_err(|error| error.to_string())?;
+
+    if existing.len() == blinded_secrets.len() && existing.iter().all(Option::is_some) {
+        return Ok(existing
+            .into_iter()
+            .flatten()
+            .map(token_output_from_signature)
+            .collect());
+    }
+
+    if existing.iter().any(Option::is_some) {
+        return Err("partial_blind_signature_recovery".to_string());
+    }
+
+    sign_outputs_and_store(state, outputs, payment_method).await
+}
+
+async fn recover_trade_issued_bundle(
+    state: &AppState,
+    settlement: Option<&ProductTradeSettlementResponse>,
+) -> Result<Option<ProductTradeBlindSignatureBundleResponse>, String> {
+    let Some(request) = trade_issued_bundle_request_from_settlement(settlement) else {
+        return Ok(None);
+    };
+
+    let signatures = if let Some(quote_id) = request.quote_id.as_deref() {
+        issue_wallet_funding_quote(
+            state,
+            &MintBolt11Request {
+                quote: quote_id.to_string(),
+                outputs: request.outputs.clone(),
+            },
+            "lightning",
+            "api/trades/sell",
+        )
+        .await
+        .map_err(|(_, detail)| detail)?
+        .signatures
+    } else {
+        recover_or_sign_outputs_and_store(
+            state,
+            &request.outputs,
+            PaymentMethod::Known(KnownMethod::Bolt11),
+        )
+        .await?
+    };
+
+    Ok(trade_signature_bundle(&request.unit, signatures))
+}
+
+async fn recover_trade_recovery_bundles(
+    state: &AppState,
+    settlement: Option<&ProductTradeSettlementResponse>,
+) -> Result<
+    (
+        Option<ProductTradeBlindSignatureBundleResponse>,
+        Option<ProductTradeBlindSignatureBundleResponse>,
+    ),
+    String,
+> {
+    let (issued, change) = trade_recovery_bundles_from_settlement(settlement);
+    let issued = if issued.is_some() {
+        issued
+    } else {
+        recover_trade_issued_bundle(state, settlement).await?
+    };
+
+    Ok((issued, change))
 }
 
 fn market_share_denominations() -> Vec<u64> {
@@ -2002,11 +2129,12 @@ pub async fn get_mint_quote_bolt11(
                 Json(json!({ "detail": error })),
             ),
         },
-        Err((StatusCode::NOT_FOUND, _)) => match load_generic_mint_quote_bolt11(&state, &quote_id).await
-        {
-            Ok(response) => (StatusCode::OK, Json(json!(response))),
-            Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
-        },
+        Err((StatusCode::NOT_FOUND, _)) => {
+            match load_generic_mint_quote_bolt11(&state, &quote_id).await {
+                Ok(response) => (StatusCode::OK, Json(json!(response))),
+                Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
+            }
+        }
         Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
     }
 }
@@ -2023,11 +2151,12 @@ pub async fn get_mint_quote_wallet(
                 Json(json!({ "detail": error })),
             ),
         },
-        Err((StatusCode::NOT_FOUND, _)) => match load_generic_mint_quote_bolt11(&state, &quote_id).await
-        {
-            Ok(response) => (StatusCode::OK, Json(json!(response))),
-            Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
-        },
+        Err((StatusCode::NOT_FOUND, _)) => {
+            match load_generic_mint_quote_bolt11(&state, &quote_id).await {
+                Ok(response) => (StatusCode::OK, Json(json!(response))),
+                Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
+            }
+        }
         Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
     }
 }
@@ -3137,15 +3266,25 @@ async fn load_trade_execution_response_for_request(
         .as_deref()
         .ok_or_else(|| "trade_request_missing_trade_id".to_string())?;
     let trade_status = load_trade_status_response(state, trade_id).await?;
-    let (issued, change) = trade_recovery_bundles_from_settlement(trade_status.settlement.as_ref());
+    let (issued, change) =
+        recover_trade_recovery_bundles(state, trade_status.settlement.as_ref()).await?;
 
-    Ok(ProductTradeExecutionResponse {
+    let response = ProductTradeExecutionResponse {
         market: trade_status.market,
         trade: trade_status.trade,
         settlement: trade_status.settlement,
         issued,
         change,
-    })
+    };
+
+    if let Ok(response_json) = serde_json::to_string(&response) {
+        let _ = state
+            .db
+            .complete_trade_execution_request(&request.request_id, trade_id, Some(&response_json))
+            .await;
+    }
+
+    Ok(response)
 }
 
 async fn quote_trade_by_event(
@@ -3441,30 +3580,33 @@ async fn buy_trade_by_event(
                     return (StatusCode::BAD_GATEWAY, Json(json!({ "error": error })));
                 }
             };
-            let issued_signatures = match sign_outputs_and_store(
-                state,
-                &req.issued_outputs,
-                PaymentMethod::Known(KnownMethod::Bolt11),
-            )
-            .await
-            {
-                Ok(result) => result,
-                Err(error) => {
-                    if let Some(request_id) = request_id {
-                        let _ = state
-                            .db
-                            .fail_trade_execution_request(request_id, &error)
-                            .await;
-                    }
-                    return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
-                }
-            };
-
             if let Some(settlement_record) = settlement.as_mut() {
+                settlement_record.metadata_json = match merge_trade_issued_bundle_request_metadata(
+                    settlement_record.metadata_json.as_deref(),
+                    &TradeIssuedBundleRecoveryRequest {
+                        unit: issued_unit.clone(),
+                        outputs: req.issued_outputs.clone(),
+                        quote_id: None,
+                    },
+                ) {
+                    Ok(metadata_json) => metadata_json,
+                    Err(error) => {
+                        if let Some(request_id) = request_id {
+                            let _ = state
+                                .db
+                                .fail_trade_execution_request(request_id, &error)
+                                .await;
+                        }
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({ "error": error })),
+                        );
+                    }
+                };
                 settlement_record.metadata_json = match merge_trade_recovery_bundle_metadata(
                     settlement_record.metadata_json.as_deref(),
                     &issued_unit,
-                    &issued_signatures,
+                    &[],
                     "usd",
                     &change_signatures,
                 ) {
@@ -3517,6 +3659,32 @@ async fn buy_trade_by_event(
                         })
                         .await;
 
+                    if let Some(request_id) = request_id {
+                        if let Err(error) = state
+                            .db
+                            .complete_trade_execution_request(request_id, &trade_id, None)
+                            .await
+                        {
+                            return (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(json!({ "error": error.to_string() })),
+                            );
+                        }
+                    }
+
+                    let issued_signatures = match sign_outputs_and_store(
+                        state,
+                        &req.issued_outputs,
+                        PaymentMethod::Known(KnownMethod::Bolt11),
+                    )
+                    .await
+                    {
+                        Ok(result) => result,
+                        Err(error) => {
+                            return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
+                        }
+                    };
+
                     let response = match build_trade_execution_response(
                         state,
                         &market,
@@ -3531,12 +3699,6 @@ async fn buy_trade_by_event(
                     {
                         Ok(response) => response,
                         Err(error) => {
-                            if let Some(request_id) = request_id {
-                                let _ = state
-                                    .db
-                                    .fail_trade_execution_request(request_id, &error)
-                                    .await;
-                            }
                             return (
                                 StatusCode::INTERNAL_SERVER_ERROR,
                                 Json(json!({ "error": error })),
@@ -3548,14 +3710,11 @@ async fn buy_trade_by_event(
                         let response_json = match serde_json::to_string(&response) {
                             Ok(response_json) => response_json,
                             Err(error) => {
-                                let error = format!("failed_to_serialize_trade_execution_response: {error}");
-                                let _ = state
-                                    .db
-                                    .fail_trade_execution_request(request_id, &error)
-                                    .await;
                                 return (
                                     StatusCode::INTERNAL_SERVER_ERROR,
-                                    Json(json!({ "error": error })),
+                                    Json(
+                                        json!({ "error": format!("failed_to_serialize_trade_execution_response: {error}") }),
+                                    ),
                                 );
                             }
                         };
@@ -3848,25 +4007,19 @@ async fn sell_trade_by_event(
                 return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
             }
 
-            let (mut settlement, issued_signatures) = match execute_sell_trade_settlement(
-                state,
-                &req.pubkey,
-                &quote,
-                &req.issued_outputs,
-            )
-            .await
-            {
-                Ok(result) => result,
-                Err(error) => {
-                    if let Some(request_id) = request_id {
-                        let _ = state
-                            .db
-                            .fail_trade_execution_request(request_id, &error)
-                            .await;
+            let (mut settlement, wallet_quote_id) =
+                match execute_sell_trade_settlement(state, &req.pubkey, &quote).await {
+                    Ok(result) => result,
+                    Err(error) => {
+                        if let Some(request_id) = request_id {
+                            let _ = state
+                                .db
+                                .fail_trade_execution_request(request_id, &error)
+                                .await;
+                        }
+                        return (StatusCode::BAD_GATEWAY, Json(json!({ "error": error })));
                     }
-                    return (StatusCode::BAD_GATEWAY, Json(json!({ "error": error })));
-                }
-            };
+                };
 
             let (_, change_signatures) = match swap_input_proofs_and_sign_outputs(
                 state,
@@ -3888,10 +4041,32 @@ async fn sell_trade_by_event(
                 }
             };
             if let Some(settlement_record) = settlement.as_mut() {
+                settlement_record.metadata_json = match merge_trade_issued_bundle_request_metadata(
+                    settlement_record.metadata_json.as_deref(),
+                    &TradeIssuedBundleRecoveryRequest {
+                        unit: "usd".to_string(),
+                        outputs: req.issued_outputs.clone(),
+                        quote_id: Some(wallet_quote_id.clone()),
+                    },
+                ) {
+                    Ok(metadata_json) => metadata_json,
+                    Err(error) => {
+                        if let Some(request_id) = request_id {
+                            let _ = state
+                                .db
+                                .fail_trade_execution_request(request_id, &error)
+                                .await;
+                        }
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({ "error": error })),
+                        );
+                    }
+                };
                 settlement_record.metadata_json = match merge_trade_recovery_bundle_metadata(
                     settlement_record.metadata_json.as_deref(),
                     "usd",
-                    &issued_signatures,
+                    &[],
                     &market_unit,
                     &change_signatures,
                 ) {
@@ -3944,6 +4119,36 @@ async fn sell_trade_by_event(
                         })
                         .await;
 
+                    if let Some(request_id) = request_id {
+                        if let Err(error) = state
+                            .db
+                            .complete_trade_execution_request(request_id, &trade_id, None)
+                            .await
+                        {
+                            return (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(json!({ "error": error.to_string() })),
+                            );
+                        }
+                    }
+
+                    let issued_signatures = match issue_wallet_funding_quote(
+                        state,
+                        &MintBolt11Request {
+                            quote: wallet_quote_id.clone(),
+                            outputs: req.issued_outputs.clone(),
+                        },
+                        "lightning",
+                        "api/trades/sell",
+                    )
+                    .await
+                    {
+                        Ok(response) => response.signatures,
+                        Err((status, detail)) => {
+                            return (status, Json(json!({ "error": detail })));
+                        }
+                    };
+
                     let response = match build_trade_execution_response(
                         state,
                         &market,
@@ -3958,12 +4163,6 @@ async fn sell_trade_by_event(
                     {
                         Ok(response) => response,
                         Err(error) => {
-                            if let Some(request_id) = request_id {
-                                let _ = state
-                                    .db
-                                    .fail_trade_execution_request(request_id, &error)
-                                    .await;
-                            }
                             return (
                                 StatusCode::INTERNAL_SERVER_ERROR,
                                 Json(json!({ "error": error })),
@@ -3975,14 +4174,11 @@ async fn sell_trade_by_event(
                         let response_json = match serde_json::to_string(&response) {
                             Ok(response_json) => response_json,
                             Err(error) => {
-                                let error = format!("failed_to_serialize_trade_execution_response: {error}");
-                                let _ = state
-                                    .db
-                                    .fail_trade_execution_request(request_id, &error)
-                                    .await;
                                 return (
                                     StatusCode::INTERNAL_SERVER_ERROR,
-                                    Json(json!({ "error": error })),
+                                    Json(
+                                        json!({ "error": format!("failed_to_serialize_trade_execution_response: {error}") }),
+                                    ),
                                 );
                             }
                         };
@@ -4051,13 +4247,17 @@ async fn load_trade_status_response(
 
     let trade = serde_json::from_str::<Value>(&trade_record.raw_event_json)
         .map_err(|error| format!("invalid_trade_event_json: {error}"))?;
-    let settlement = state
+    let settlement = match state
         .db
         .get_trade_settlement_by_trade_id(trade_id)
         .await
         .map_err(|error| error.to_string())?
-        .as_ref()
-        .map(product_trade_settlement_response);
+    {
+        Some(settlement) => {
+            Some(product_trade_settlement_response_for_state(state, &settlement).await)
+        }
+        None => None,
+    };
 
     Ok(ProductTradeStatusResponse {
         market: summary,
@@ -4153,7 +4353,42 @@ fn product_fx_metadata_response(fx_quote: &FxQuoteSnapshot) -> ProductFxMetadata
     }
 }
 
-fn product_trade_settlement_response(
+async fn synced_trade_settlement_metadata(
+    state: &AppState,
+    settlement: &TradeSettlementRecord,
+) -> Option<Value> {
+    let mut metadata = settlement
+        .metadata_json
+        .as_deref()
+        .and_then(|json| serde_json::from_str::<Value>(json).ok());
+    let Some(metadata_object) = metadata.as_mut().and_then(Value::as_object_mut) else {
+        return metadata;
+    };
+    let Some(wallet_mint_quote_id) = metadata_object
+        .get("wallet_mint_quote_id")
+        .and_then(Value::as_str)
+    else {
+        return metadata;
+    };
+    let Ok(quote_id) = QuoteId::from_str(wallet_mint_quote_id) else {
+        return metadata;
+    };
+    let Ok(checked_quote) = state.mint.check_mint_quote(&quote_id).await else {
+        return metadata;
+    };
+    let Ok(checked_quote) = cdk_common::MintQuoteBolt11Response::<QuoteId>::try_from(checked_quote)
+    else {
+        return metadata;
+    };
+    metadata_object.insert(
+        "wallet_mint_quote_state".to_string(),
+        Value::String(cdk_mint_quote_state_label(checked_quote.state).to_string()),
+    );
+    metadata
+}
+
+async fn product_trade_settlement_response_for_state(
+    state: &AppState,
     settlement: &TradeSettlementRecord,
 ) -> ProductTradeSettlementResponse {
     ProductTradeSettlementResponse {
@@ -4171,10 +4406,7 @@ fn product_trade_settlement_response(
         invoice: settlement.invoice.clone(),
         payment_hash: settlement.payment_hash.clone(),
         status: settlement.status.to_string(),
-        metadata: settlement
-            .metadata_json
-            .as_deref()
-            .and_then(|json| serde_json::from_str(json).ok()),
+        metadata: synced_trade_settlement_metadata(state, settlement).await,
         created_at: settlement.created_at,
         settled_at: settlement.settled_at,
         completed_at: settlement.completed_at,
@@ -4384,15 +4616,37 @@ async fn load_trade_request_status_response(
         return Ok(None);
     };
 
-    let market = load_market_summary_by_event_id(state, &request.market_event_id).await?;
+    let default_market = load_market_summary_by_event_id(state, &request.market_event_id).await?;
 
-    let (trade, settlement, issued, change) = if let Some(trade_id) = request.trade_id.as_deref() {
-        let trade_status = load_trade_status_response(state, trade_id).await?;
-        let (issued, change) = trade_recovery_bundles_from_settlement(trade_status.settlement.as_ref());
-        (Some(trade_status.trade), trade_status.settlement, issued, change)
-    } else {
-        (None, None, None, None)
-    };
+    let (market, trade, settlement, issued, change) =
+        if request.status == TradeExecutionRequestStatus::Complete {
+            if request.trade_id.is_some() {
+                let execution_response =
+                    load_trade_execution_response_for_request(state, &request).await?;
+                (
+                    Some(execution_response.market),
+                    Some(execution_response.trade),
+                    execution_response.settlement,
+                    execution_response.issued,
+                    execution_response.change,
+                )
+            } else {
+                (default_market, None, None, None, None)
+            }
+        } else if let Some(trade_id) = request.trade_id.as_deref() {
+            let trade_status = load_trade_status_response(state, trade_id).await?;
+            let (issued, change) =
+                recover_trade_recovery_bundles(state, trade_status.settlement.as_ref()).await?;
+            (
+                Some(trade_status.market),
+                Some(trade_status.trade),
+                trade_status.settlement,
+                issued,
+                change,
+            )
+        } else {
+            (default_market, None, None, None, None)
+        };
 
     Ok(Some(ProductTradeRequestStatusResponse {
         request_id: request.request_id,
@@ -4417,12 +4671,18 @@ async fn build_trade_execution_response(
     change: Option<ProductTradeBlindSignatureBundleResponse>,
 ) -> Result<ProductTradeExecutionResponse, String> {
     let settlement = if let Some(trade_id) = raw_event.get("id").and_then(Value::as_str) {
-        state
+        match state
             .db
             .get_trade_settlement_by_trade_id(trade_id)
             .await
             .ok()
             .flatten()
+        {
+            Some(settlement) => {
+                Some(product_trade_settlement_response_for_state(state, &settlement).await)
+            }
+            None => None,
+        }
     } else {
         None
     };
@@ -4444,16 +4704,14 @@ async fn build_trade_execution_response(
         .map(|summary| ProductTradeExecutionResponse {
             market: summary,
             trade: raw_event,
-            settlement: settlement.as_ref().map(product_trade_settlement_response),
+            settlement,
             issued,
             change,
         })
         .ok_or_else(|| "failed_to_build_updated_market_summary".to_string())
 }
 
-fn trade_execution_response(
-    response: ProductTradeExecutionResponse,
-) -> (StatusCode, Json<Value>) {
+fn trade_execution_response(response: ProductTradeExecutionResponse) -> (StatusCode, Json<Value>) {
     (StatusCode::CREATED, Json(json!(response)))
 }
 
@@ -5145,14 +5403,17 @@ async fn execute_sell_trade_settlement(
     state: &AppState,
     pubkey: &str,
     quote: &ProductTradeQuoteResponse,
-    issued_outputs: &[BlindedMessageInput],
-) -> Result<(Option<TradeSettlementInsert>, Vec<TokenOutput>), String> {
+) -> Result<(Option<TradeSettlementInsert>, String), String> {
     let wallet_mint_quote = create_trade_settlement_wallet_mint_quote(state, quote).await?;
     let wallet_invoice = Bolt11Invoice::from_str(&wallet_mint_quote.request)
         .map_err(|error| format!("invalid_trade_settlement_wallet_invoice: {error}"))?;
-    let wallet_funding_quote =
-        create_trade_settlement_wallet_funding_quote(state, quote, &wallet_mint_quote, &wallet_invoice)
-            .await?;
+    let wallet_funding_quote = create_trade_settlement_wallet_funding_quote(
+        state,
+        quote,
+        &wallet_mint_quote,
+        &wallet_invoice,
+    )
+    .await?;
 
     store_locked_outgoing_bolt11_payment(
         state.mint.localstore(),
@@ -5225,18 +5486,6 @@ async fn execute_sell_trade_settlement(
         .await
         .map_err(|error| format!("failed_to_mark_trade_settlement_wallet_quote_paid: {error}"))?;
 
-    let mint_response = issue_wallet_funding_quote(
-        state,
-        &MintBolt11Request {
-            quote: wallet_funding_quote.id.clone(),
-            outputs: issued_outputs.to_vec(),
-        },
-        "lightning",
-        "api/trades/sell",
-    )
-    .await
-    .map_err(|(_, detail)| detail)?;
-
     let checked_quote = state
         .mint
         .check_mint_quote(&wallet_mint_quote.quote)
@@ -5284,7 +5533,7 @@ async fn execute_sell_trade_settlement(
                 .to_string(),
             ),
         }),
-        mint_response.signatures,
+        wallet_funding_quote.id,
     ))
 }
 

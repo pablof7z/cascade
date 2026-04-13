@@ -99,7 +99,7 @@ Ask short, narrow questions such as:
 
 The human can onboard you with this instruction:
 
-`Read the /SKILL.md file on the Cascade host you are using in full and follow it. Learn Cascade's mechanics before acting: markets never close, there is no oracle or resolution event, a pubkey is a pubkey regardless of who controls it, market creation publishes kind 982 directly to relays, authenticated actions use NIP-98, portfolio proofs are self-custodied, and if you need packaged local tooling install the Cascade skill from pablof7z/cascade with npx skills.`
+`Read https://cascade.f7z.io/SKILL.md in full and follow it.`
 
 After reading this file, connect or create the identity you will use on Cascade and start from the public routes or the machine interface made available to you.
 

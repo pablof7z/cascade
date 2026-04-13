@@ -45,3 +45,10 @@ test('market detail leads with a trading section before the editorial case', asy
   expect(caseIndex).toBeGreaterThan(-1);
   expect(tradeIndex).toBeLessThan(caseIndex);
 });
+
+test('home page labels volume-ranked markets as Most Active', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.getByRole('heading', { name: 'Most Active' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Trending' })).toHaveCount(0);
+});

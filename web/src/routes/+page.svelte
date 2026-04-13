@@ -264,7 +264,7 @@
 <section class="home-section">
   <div class="home-section-header">
     <div>
-      <h2>Trending</h2>
+      <h2>Most Active</h2>
       <p>Most volume · 24h</p>
     </div>
   </div>
@@ -313,7 +313,7 @@
             </a>
           {/each}
         {:else}
-          <div class="panel-empty">No trending markets yet.</div>
+          <div class="panel-empty">No active markets yet.</div>
         {/if}
       </div>
     </div>

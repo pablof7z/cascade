@@ -2,6 +2,7 @@
   "name": "sveltekit-vercel-ndk-template",
   "version": "0.0.1",
   "private": true,
+  "packageManager": "bun",
   "type": "module",
   "scripts": {
     "dev": "vite dev",

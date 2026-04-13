@@ -24,6 +24,7 @@
   const resolvedProfile = $derived(profileFetcher.profile ?? data.profile ?? undefined);
   const resolvedPubkey = $derived(resolvedUser?.pubkey ?? data.pubkey);
   const resolvedNpub = $derived(resolvedUser?.npub ?? data.npub);
+  const currentUser = $derived(ndk.$currentUser);
   const marketList = $derived(data.markets as MarketRecord[]);
   const positionList = $derived(data.positions as PositionRecord[]);
   const profileLabel = $derived(displayName(resolvedProfile, shortPubkey(resolvedPubkey)));
@@ -38,7 +39,6 @@
     <p>{resolvedProfile?.about || resolvedProfile?.bio || 'No profile summary yet.'}</p>
 
     <div class="profile-meta">
-      <span>{resolvedNpub}</span>
       {#if resolvedProfile?.nip05}
         <span>{resolvedProfile.nip05}</span>
       {/if}
@@ -46,7 +46,9 @@
   </div>
 
   <div class="profile-actions">
-    <a class="button-primary" href="/onboarding">Edit profile</a>
+    {#if currentUser?.pubkey === resolvedPubkey}
+      <a class="button-primary" href="/onboarding">Edit profile</a>
+    {/if}
   </div>
 </section>
 

@@ -6,12 +6,12 @@
   import { displayName, profileIdentifier, shortPubkey } from '$lib/ndk/format';
   import type { PageProps } from './$types';
 
-  type LeaderboardTab = 'Top Predictors' | 'Top Creators' | 'Most Accurate' | 'Most Bookmarked';
+  type LeaderboardTab = 'Top Creators' | 'Most Bookmarked';
 
   let { data }: PageProps = $props();
-  let activeTab = $state<LeaderboardTab>('Top Predictors');
+  let activeTab = $state<LeaderboardTab>('Top Creators');
 
-  const tabs: LeaderboardTab[] = ['Top Predictors', 'Top Creators', 'Most Accurate', 'Most Bookmarked'];
+  const tabs: LeaderboardTab[] = ['Top Creators', 'Most Bookmarked'];
   const profiles = $derived(data.profiles as Record<string, NDKUserProfile>);
   const markets = $derived(
     (data.markets ?? [])
@@ -105,20 +105,6 @@
   {/each}
 </nav>
 
-{#if activeTab === 'Top Predictors'}
-  <section class="leaderboard-empty">
-    <p>No trading data yet.</p>
-    <p>Anonymous mint-published trade records do not expose a public predictor leaderboard yet.</p>
-  </section>
-{/if}
-
-{#if activeTab === 'Most Accurate'}
-  <section class="leaderboard-empty">
-    <p>No trading data yet.</p>
-    <p>Accuracy rankings need a public attribution layer beyond anonymous trade publication.</p>
-  </section>
-{/if}
-
 {#if activeTab === 'Top Creators'}
   <section class="leaderboard-list">
     {#if creatorRows.length > 0}
@@ -127,7 +113,7 @@
           <span class="rank">{index + 1}</span>
           <div class="leaderboard-main">
             <strong>{label(row.pubkey)}</strong>
-            <p>{shortPubkey(row.pubkey)}</p>
+            <p>{row.marketCount} market{row.marketCount === 1 ? '' : 's'} created</p>
           </div>
           <div class="leaderboard-metric">
             <strong>{row.marketCount}</strong>

@@ -530,6 +530,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Trade execution responses return blind signatures, not fully formed proofs.
 - [ ] Trade execution responses do not include a server-authored portfolio balance or open-position snapshot.
 - [ ] The backend never persists or reconstructs a canonical set of the user's unspent proofs.
+- [ ] Legacy backend mirror helpers for wallet balances or open positions have been deleted, not merely bypassed.
 - [ ] Browser-local trade recovery restores deterministic issued/change outputs after an interrupted response instead of depending on a server proof mirror.
 - [ ] Any pubkey-keyed funding-activity endpoint is non-canonical and must not expose or imply server-held proofs.
 - [ ] Open-position cost basis and unrealized PnL come from a browser-local executed-trade position book, not from backend compatibility state.

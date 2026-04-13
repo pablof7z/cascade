@@ -133,6 +133,8 @@ Launch must not persist a canonical per-user portfolio ledger. In particular:
 
 The backend may still persist quote status, request status, settlement status, anti-abuse state, and spent-proof state.
 
+Legacy compatibility code that mutates backend-only portfolio mirrors should be deleted rather than kept dormant. Unused mirror code is still architectural drift.
+
 Actor metadata such as thesis, role, or operator notes is not mint state and should not live in mint tables. The mint only needs market, quote, settlement, and proof data.
 
 Public market projections must exclude markets that do not yet have at least one mint-authored kind `983`. Creator-authenticated reads may include those markets in a pending state.

@@ -26,8 +26,8 @@ pub use lmsr::LmsrEngine;
 pub use market::{Market, MarketStatus, Side};
 pub use market_manager::MarketManager;
 pub use product::{
-    FxQuoteSnapshot, MarketLaunchState, MarketPosition, MarketTradeRecord, MarketVisibility,
-    TradeQuoteSnapshot, WalletFundingEvent, WalletFundingQuote, WalletFundingStatus,
+    FxQuoteSnapshot, MarketLaunchState, MarketTradeRecord, MarketVisibility, TradeQuoteSnapshot,
+    WalletFundingEvent, WalletFundingQuote, WalletFundingStatus,
 };
 pub use trade::TradeExecutor;
 

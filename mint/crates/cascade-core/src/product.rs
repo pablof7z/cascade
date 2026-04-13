@@ -336,14 +336,3 @@ pub struct MarketTradeRecord {
     pub created_at: i64,
     pub raw_event_json: String,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MarketPosition {
-    pub pubkey: String,
-    pub market_event_id: String,
-    pub market_slug: String,
-    pub direction: String,
-    pub quantity: f64,
-    pub cost_basis_minor: u64,
-    pub updated_at: i64,
-}

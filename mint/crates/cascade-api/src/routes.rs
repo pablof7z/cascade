@@ -232,10 +232,15 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             get(product::get_mint_quote_bolt11),
         )
         .route(
+            "/v1/mint/quote/wallet/{quote_id}",
+            get(product::get_mint_quote_wallet),
+        )
+        .route(
             "/v1/mint/quote/stripe/{quote_id}",
             get(product::get_mint_quote_stripe),
         )
         .route("/v1/mint/bolt11", post(product::mint_bolt11))
+        .route("/v1/mint/wallet", post(product::mint_wallet))
         .route("/v1/mint/stripe", post(product::mint_stripe))
         // Health check
         .route("/health", get(health_check))

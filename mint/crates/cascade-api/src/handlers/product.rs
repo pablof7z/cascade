@@ -16,7 +16,8 @@ use crate::types::{
     ProductSellRequest, ProductStripeFundingRequest, ProductTradeBlindSignatureBundleResponse,
     ProductTradeExecutionResponse, ProductTradeQuoteRequest, ProductTradeQuoteResponse,
     ProductTradeRequestStatusResponse, ProductTradeSettlementResponse, ProductTradeStatusResponse,
-    ProofInput, TokenOutput,
+    ProductUsdcDepositIntentRequest, ProductUsdcDepositIntentResponse,
+    ProductUsdcWithdrawalRequest, ProductUsdcWithdrawalResponse, ProofInput, TokenOutput,
 };
 use axum::{
     body::Bytes,
@@ -28,8 +29,9 @@ use bitcoin::secp256k1::{schnorr::Signature, Message, Secp256k1, XOnlyPublicKey}
 use cascade_core::{
     product::{
         FxQuoteSnapshot, MarketLaunchState, TradeExecutionRequest, TradeExecutionRequestStatus,
-        TradeQuoteSnapshot, TradeSettlementInsert, TradeSettlementRecord, WalletFundingQuote,
-        WalletFundingRequest, WalletFundingRequestStatus, WalletFundingStatus,
+        TradeQuoteSnapshot, TradeSettlementInsert, TradeSettlementRecord, UsdcDepositIntent,
+        UsdcWithdrawal, WalletFundingQuote, WalletFundingRequest, WalletFundingRequestStatus,
+        WalletFundingStatus,
     },
     Market, Side,
 };
@@ -134,6 +136,18 @@ fn runtime_response(state: &AppState) -> ProductRuntimeResponse {
                     .map(|_| None)
                     .unwrap_or_else(|| Some("stripe_fundings_unavailable".to_string())),
             },
+            usdc: ProductRuntimeRailResponse {
+                available: !state.paper_mode && state.usdc_wallet.is_some(),
+                reason: if state.paper_mode {
+                    Some("usdc_mainnet_only".to_string())
+                } else {
+                    state
+                        .usdc_wallet
+                        .as_ref()
+                        .map(|_| None)
+                        .unwrap_or_else(|| Some("usdc_fundings_unavailable".to_string()))
+                },
+            },
         },
     }
 }
@@ -184,6 +198,164 @@ fn mint_quote_bolt11_response_from_cdk(
         state: cdk_mint_quote_state_label(quote.state()).to_string(),
         expiry: Some(i64::try_from(quote.expiry).unwrap_or(i64::MAX)),
     })
+}
+
+fn mint_quote_bolt11_response_from_common(
+    quote: cdk_common::MintQuoteBolt11Response<String>,
+) -> Result<MintQuoteBolt11Response, String> {
+    let amount = quote
+        .amount
+        .ok_or_else(|| "mint_quote_amount_missing".to_string())?;
+    let unit = quote
+        .unit
+        .map(|unit| unit.to_string())
+        .ok_or_else(|| "mint_quote_unit_missing".to_string())?;
+
+    Ok(MintQuoteBolt11Response {
+        quote: quote.quote,
+        request: quote.request,
+        amount: amount.into(),
+        unit,
+        state: cdk_mint_quote_state_label(quote.state).to_string(),
+        expiry: quote.expiry.map(|value| i64::try_from(value).unwrap_or(i64::MAX)),
+    })
+}
+
+async fn load_generic_mint_quote_bolt11(
+    state: &AppState,
+    quote_id: &str,
+) -> Result<MintQuoteBolt11Response, (StatusCode, String)> {
+    let quote_id = QuoteId::from_str(quote_id).map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()))?;
+    let mint_quote = state
+        .mint
+        .check_mint_quote(&quote_id)
+        .await
+        .map_err(|error| {
+            let detail = error.to_string();
+            let status = if detail.to_lowercase().contains("unknown")
+                || detail.to_lowercase().contains("not found")
+            {
+                StatusCode::NOT_FOUND
+            } else {
+                StatusCode::BAD_REQUEST
+            };
+            (status, detail)
+        })?;
+    let mint_quote: cdk_common::MintQuoteBolt11Response<String> = mint_quote.into();
+    mint_quote_bolt11_response_from_common(mint_quote)
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error))
+}
+
+async fn recover_mint_quote_signatures(
+    state: &AppState,
+    quote_id: &str,
+) -> Result<MintBolt11Response, (StatusCode, String)> {
+    let quote_id = QuoteId::from_str(quote_id).map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()))?;
+    let signatures = state
+        .mint
+        .localstore()
+        .get_blind_signatures_for_quote(&quote_id)
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+
+    if signatures.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "quote_already_issued_without_recoverable_signatures".to_string(),
+        ));
+    }
+
+    Ok(MintBolt11Response {
+        signatures: signatures
+            .into_iter()
+            .map(token_output_from_signature)
+            .collect(),
+    })
+}
+
+async fn issue_standard_mint_quote(
+    state: &AppState,
+    quote_id: &str,
+    outputs: &[BlindedMessageInput],
+) -> Result<(MintBolt11Response, String), (StatusCode, String)> {
+    if quote_id.trim().is_empty() || outputs.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "quote_and_outputs_are_required".to_string(),
+        ));
+    }
+
+    let quote_id = QuoteId::from_str(quote_id)
+        .map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()))?;
+    let checked_quote = state
+        .mint
+        .check_mint_quote(&quote_id)
+        .await
+        .map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()))?;
+    let checked_quote = cdk_common::MintQuoteBolt11Response::<QuoteId>::try_from(checked_quote)
+        .map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()))?;
+
+    match checked_quote.state {
+        MintQuoteState::Issued => {
+            let response = recover_mint_quote_signatures(state, &quote_id.to_string()).await?;
+            return Ok((response, "ISSUED".to_string()));
+        }
+        MintQuoteState::Unpaid => {
+            return Err((StatusCode::BAD_REQUEST, "Quote not paid".to_string()));
+        }
+        MintQuoteState::Paid => {}
+    }
+
+    let blinded_messages = outputs
+        .iter()
+        .map(cdk_blinded_message_from_input)
+        .collect::<Result<Vec<_>, String>>()
+        .map_err(|error| (StatusCode::BAD_REQUEST, error))?;
+
+    let mint_request = MintRequest {
+        quote: quote_id.clone(),
+        outputs: blinded_messages,
+        signature: None,
+    };
+
+    let mint_response = state
+        .mint
+        .process_mint_request(MintInput::Single(mint_request))
+        .await
+        .map_err(|error| {
+            let detail = error.to_string();
+            let status = if detail.contains("unpaid")
+                || detail.contains("issued")
+                || detail.contains("amount")
+                || detail.contains("keyset")
+                || detail.contains("duplicate")
+                || detail.contains("output")
+            {
+                StatusCode::BAD_REQUEST
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            };
+            (status, detail)
+        })?;
+
+    let checked_quote = state
+        .mint
+        .check_mint_quote(&quote_id)
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+    let checked_quote = cdk_common::MintQuoteBolt11Response::<QuoteId>::try_from(checked_quote)
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+
+    Ok((
+        MintBolt11Response {
+            signatures: mint_response
+                .signatures
+                .into_iter()
+                .map(token_output_from_signature)
+                .collect(),
+        },
+        cdk_mint_quote_state_label(checked_quote.state).to_string(),
+    ))
 }
 
 fn wallet_funding_amount(quote: &WalletFundingQuote) -> Amount<CurrencyUnit> {
@@ -526,6 +698,67 @@ fn trade_signature_bundle(
         unit: unit.to_string(),
         signatures,
     })
+}
+
+fn trade_signature_bundle_metadata(
+    unit: &str,
+    signatures: &[TokenOutput],
+) -> Option<Value> {
+    if signatures.is_empty() {
+        return None;
+    }
+
+    Some(json!({
+        "unit": unit,
+        "signatures": signatures
+    }))
+}
+
+fn merge_trade_recovery_bundle_metadata(
+    existing: Option<&str>,
+    issued_unit: &str,
+    issued_signatures: &[TokenOutput],
+    change_unit: &str,
+    change_signatures: &[TokenOutput],
+) -> Result<Option<String>, String> {
+    let issued_bundle = trade_signature_bundle_metadata(issued_unit, issued_signatures);
+    let change_bundle = trade_signature_bundle_metadata(change_unit, change_signatures);
+    if issued_bundle.is_none() && change_bundle.is_none() {
+        return Ok(existing.map(str::to_string));
+    }
+
+    let mut extra = json!({});
+    if let Some(extra_object) = extra.as_object_mut() {
+        if let Some(issued_bundle) = issued_bundle {
+            extra_object.insert("issued_bundle".to_string(), issued_bundle);
+        }
+        if let Some(change_bundle) = change_bundle {
+            extra_object.insert("change_bundle".to_string(), change_bundle);
+        }
+    }
+
+    merge_metadata_json(existing, extra).map(Some)
+}
+
+fn trade_signature_bundle_from_metadata_value(
+    metadata: Option<&Value>,
+    key: &str,
+) -> Option<ProductTradeBlindSignatureBundleResponse> {
+    let bundle = metadata?.get(key)?.clone();
+    serde_json::from_value(bundle).ok()
+}
+
+fn trade_recovery_bundles_from_settlement(
+    settlement: Option<&ProductTradeSettlementResponse>,
+) -> (
+    Option<ProductTradeBlindSignatureBundleResponse>,
+    Option<ProductTradeBlindSignatureBundleResponse>,
+) {
+    let metadata = settlement.and_then(|item| item.metadata.as_ref());
+    (
+        trade_signature_bundle_from_metadata_value(metadata, "issued_bundle"),
+        trade_signature_bundle_from_metadata_value(metadata, "change_bundle"),
+    )
 }
 
 fn market_share_denominations() -> Vec<u64> {
@@ -975,7 +1208,7 @@ async fn create_lightning_wallet_funding_quote_record(
                 fx_quote.amount_msat,
                 Some(invoice_description),
                 Some(invoice_expiry_seconds),
-                state.paper_mode,
+                false,
             )
             .await
         {
@@ -1022,10 +1255,6 @@ async fn create_lightning_wallet_funding_quote_record(
             }
             (StatusCode::INTERNAL_SERVER_ERROR, error_message)
         })?;
-
-    if state.paper_mode {
-        schedule_signet_funding_payment(state.clone(), invoice.bolt11().to_string());
-    }
 
     Ok(quote)
 }
@@ -1720,7 +1949,7 @@ async fn issue_wallet_funding_quote(
 
     if mint_quote.state() == MintQuoteState::Issued || quote.status == WalletFundingStatus::Complete
     {
-        return Err((StatusCode::BAD_REQUEST, "Quote already issued".to_string()));
+        return recover_mint_quote_signatures(state, &quote.id).await;
     }
 
     if mint_quote.state() != MintQuoteState::Paid {
@@ -1738,40 +1967,7 @@ async fn issue_wallet_funding_quote(
     }
 
     let issue_result = async {
-        let blinded_messages = req
-            .outputs
-            .iter()
-            .map(cdk_blinded_message_from_input)
-            .collect::<Result<Vec<_>, String>>()
-            .map_err(|error| (StatusCode::BAD_REQUEST, error))?;
-
-        let quote_id = QuoteId::from_str(&quote.id)
-            .map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()))?;
-        let mint_request = MintRequest {
-            quote: quote_id,
-            outputs: blinded_messages,
-            signature: None,
-        };
-
-        let mint_response = state
-            .mint
-            .process_mint_request(MintInput::Single(mint_request))
-            .await
-            .map_err(|error| {
-                let detail = error.to_string();
-                let status = if detail.contains("unpaid")
-                    || detail.contains("issued")
-                    || detail.contains("amount")
-                    || detail.contains("keyset")
-                    || detail.contains("duplicate")
-                    || detail.contains("output")
-                {
-                    StatusCode::BAD_REQUEST
-                } else {
-                    StatusCode::INTERNAL_SERVER_ERROR
-                };
-                (status, detail)
-            })?;
+        let (mint_response, _) = issue_standard_mint_quote(state, &quote.id, &req.outputs).await?;
 
         let metadata_json = wallet_funding_completion_metadata(&quote, minted_via)
             .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error))?;
@@ -1782,13 +1978,7 @@ async fn issue_wallet_funding_quote(
             .await
             .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
 
-        Ok(MintBolt11Response {
-            signatures: mint_response
-                .signatures
-                .into_iter()
-                .map(token_output_from_signature)
-                .collect(),
-        })
+        Ok(mint_response)
     }
     .await;
 
@@ -1811,6 +2001,32 @@ pub async fn get_mint_quote_bolt11(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "detail": error })),
             ),
+        },
+        Err((StatusCode::NOT_FOUND, _)) => match load_generic_mint_quote_bolt11(&state, &quote_id).await
+        {
+            Ok(response) => (StatusCode::OK, Json(json!(response))),
+            Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
+        },
+        Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
+    }
+}
+
+pub async fn get_mint_quote_wallet(
+    State(state): State<AppState>,
+    Path(quote_id): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    match load_wallet_funding_quote_for_mint_method(&state, &quote_id, "lightning").await {
+        Ok((_, mint_quote)) => match mint_quote_bolt11_response_from_cdk(&mint_quote) {
+            Ok(response) => (StatusCode::OK, Json(json!(response))),
+            Err(error) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "detail": error })),
+            ),
+        },
+        Err((StatusCode::NOT_FOUND, _)) => match load_generic_mint_quote_bolt11(&state, &quote_id).await
+        {
+            Ok(response) => (StatusCode::OK, Json(json!(response))),
+            Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
         },
         Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
     }
@@ -1838,6 +2054,28 @@ pub async fn mint_bolt11(
 ) -> (StatusCode, Json<Value>) {
     match issue_wallet_funding_quote(&state, &req, "lightning", "v1/mint/bolt11").await {
         Ok(response) => (StatusCode::OK, Json(json!(response))),
+        Err((StatusCode::NOT_FOUND, _)) => {
+            match issue_standard_mint_quote(&state, &req.quote, &req.outputs).await {
+                Ok((response, _)) => (StatusCode::OK, Json(json!(response))),
+                Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
+            }
+        }
+        Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
+    }
+}
+
+pub async fn mint_wallet(
+    State(state): State<AppState>,
+    Json(req): Json<MintBolt11Request>,
+) -> (StatusCode, Json<Value>) {
+    match issue_wallet_funding_quote(&state, &req, "lightning", "v1/mint/wallet").await {
+        Ok(response) => (StatusCode::OK, Json(json!(response))),
+        Err((StatusCode::NOT_FOUND, _)) => {
+            match issue_standard_mint_quote(&state, &req.quote, &req.outputs).await {
+                Ok((response, _)) => (StatusCode::OK, Json(json!(response))),
+                Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
+            }
+        }
         Err((status, detail)) => (status, Json(json!({ "detail": detail }))),
     }
 }
@@ -1857,6 +2095,416 @@ pub async fn get_wallet_funding_status(
     Path(quote_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
     load_wallet_funding_status(State(state), Path(quote_id)).await
+}
+
+pub async fn create_usdc_deposit_intent(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<ProductUsdcDepositIntentRequest>,
+) -> (StatusCode, Json<Value>) {
+    if req.pubkey.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "pubkey_is_required" })),
+        );
+    }
+    if matches!(req.requested_wallet_amount_minor, Some(0)) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "requested_wallet_amount_minor_must_be_greater_than_zero" })),
+        );
+    }
+
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
+    if state.paper_mode {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "error": "usdc_mainnet_only" })),
+        );
+    }
+
+    let Some(usdc_wallet) = state.usdc_wallet.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "error": "usdc_fundings_unavailable" })),
+        );
+    };
+
+    let provider = req
+        .provider
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_ascii_lowercase());
+    let expires_at =
+        chrono::Utc::now().timestamp() + usdc_wallet.deposit_intent_expiry_seconds() as i64;
+    let metadata_json = provider.as_ref().map(|provider| {
+        json!({
+            "provider_hint": provider
+        })
+        .to_string()
+    });
+
+    match state
+        .db
+        .create_usdc_deposit_intent(
+            &req.pubkey,
+            provider.as_deref(),
+            usdc_wallet.network(),
+            usdc_wallet.asset(),
+            usdc_wallet.treasury_address(),
+            req.requested_wallet_amount_minor,
+            Some(expires_at),
+            metadata_json.as_deref(),
+        )
+        .await
+    {
+        Ok(intent) => (
+            StatusCode::CREATED,
+            Json(json!(usdc_deposit_intent_response(&intent))),
+        ),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": error.to_string() })),
+        ),
+    }
+}
+
+pub async fn get_usdc_deposit_intent(
+    State(state): State<AppState>,
+    Path(intent_id): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    match state.db.get_usdc_deposit_intent(&intent_id).await {
+        Ok(Some(intent)) => (
+            StatusCode::OK,
+            Json(json!(usdc_deposit_intent_response(&intent))),
+        ),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "usdc_deposit_intent_not_found" })),
+        ),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": error.to_string() })),
+        ),
+    }
+}
+
+pub async fn create_usdc_withdrawal(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<ProductUsdcWithdrawalRequest>,
+) -> (StatusCode, Json<Value>) {
+    if req.pubkey.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "pubkey_is_required" })),
+        );
+    }
+    if req.amount_minor == 0 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "amount_minor_must_be_greater_than_zero" })),
+        );
+    }
+    if req.proofs.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "input_proofs_required" })),
+        );
+    }
+
+    if let Some(response) = require_client_edition(&headers, &state) {
+        return response;
+    }
+
+    if state.paper_mode {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "error": "usdc_mainnet_only" })),
+        );
+    }
+
+    let Some(usdc_wallet) = state.usdc_wallet.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "error": "usdc_withdrawals_unavailable" })),
+        );
+    };
+
+    if !usdc_wallet.withdrawals_enabled() {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "error": "usdc_withdrawals_unavailable" })),
+        );
+    }
+
+    let destination_address =
+        match usdc_wallet.validate_destination_address(&req.destination_address) {
+            Ok(address) => address,
+            Err(error) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": error }))),
+        };
+
+    let provider = req
+        .provider
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_ascii_lowercase());
+    let request_id = req
+        .request_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string());
+
+    if let Some(request_id) = request_id.as_deref() {
+        match state.db.get_usdc_withdrawal_by_request_id(request_id).await {
+            Ok(Some(existing)) => {
+                if usdc_withdrawal_request_matches(
+                    &existing,
+                    &req.pubkey,
+                    provider.as_deref(),
+                    &destination_address,
+                    req.amount_minor,
+                ) {
+                    return (
+                        StatusCode::OK,
+                        Json(json!(usdc_withdrawal_response(&existing))),
+                    );
+                }
+                return (
+                    StatusCode::CONFLICT,
+                    Json(json!({ "error": "usdc_withdrawal_request_id_conflict" })),
+                );
+            }
+            Ok(None) => {}
+            Err(error) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": error.to_string() })),
+                )
+            }
+        }
+    }
+
+    if let Err(error) = verify_input_proofs(&state, &req.proofs).await {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
+    }
+
+    let input_total_minor = proof_total_amount(&req.proofs);
+    if input_total_minor < req.amount_minor {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "insufficient_input_proofs" })),
+        );
+    }
+
+    let usd_keyset_id = match active_keyset_id_for_unit(&state, &CurrencyUnit::Usd) {
+        Ok(keyset_id) => keyset_id,
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error })),
+            )
+        }
+    };
+    let change_amount_minor = input_total_minor.saturating_sub(req.amount_minor);
+    if let Err(error) = validate_output_amounts(
+        &req.change_outputs,
+        &usd_keyset_id,
+        change_amount_minor,
+        "change_outputs",
+    ) {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
+    }
+
+    let asset_units = match usdc_wallet.asset_units_from_wallet_minor(req.amount_minor) {
+        Ok(asset_units) => asset_units,
+        Err(error) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": error }))),
+    };
+
+    let metadata_json = Some(
+        json!({
+            "execution": "pending_treasury_submission",
+            "provider_hint": provider.as_deref(),
+        })
+        .to_string(),
+    );
+
+    let created = match state
+        .db
+        .create_usdc_withdrawal(
+            request_id.as_deref(),
+            &req.pubkey,
+            provider.as_deref(),
+            usdc_wallet.network(),
+            usdc_wallet.asset(),
+            &destination_address,
+            req.amount_minor,
+            asset_units,
+            metadata_json.as_deref(),
+        )
+        .await
+    {
+        Ok(withdrawal) => withdrawal,
+        Err(error) => {
+            let error_message = error.to_string();
+            if !error_message.contains("UNIQUE constraint failed") {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": error_message })),
+                );
+            }
+
+            if let Some(request_id) = request_id.as_deref() {
+                match state.db.get_usdc_withdrawal_by_request_id(request_id).await {
+                    Ok(Some(existing))
+                        if usdc_withdrawal_request_matches(
+                            &existing,
+                            &req.pubkey,
+                            provider.as_deref(),
+                            &destination_address,
+                            req.amount_minor,
+                        ) =>
+                    {
+                        return (
+                            StatusCode::OK,
+                            Json(json!(usdc_withdrawal_response(&existing))),
+                        );
+                    }
+                    Ok(Some(_)) => {
+                        return (
+                            StatusCode::CONFLICT,
+                            Json(json!({ "error": "usdc_withdrawal_request_id_conflict" })),
+                        )
+                    }
+                    Ok(None) => {}
+                    Err(fetch_error) => {
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({ "error": fetch_error.to_string() })),
+                        )
+                    }
+                }
+            }
+
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error_message })),
+            );
+        }
+    };
+
+    let (_, change_signatures) =
+        match swap_input_proofs_and_sign_outputs(&state, &req.proofs, &[], &req.change_outputs)
+            .await
+        {
+            Ok(result) => result,
+            Err(error) => {
+                let _ = state
+                    .db
+                    .fail_usdc_withdrawal(&created.id, &error, metadata_json.as_deref())
+                    .await;
+                return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
+            }
+        };
+
+    let change_signatures_json = if change_signatures.is_empty() {
+        None
+    } else {
+        match serde_json::to_string(&change_signatures) {
+            Ok(payload) => Some(payload),
+            Err(error) => {
+                let error_message = error.to_string();
+                let _ = state
+                    .db
+                    .fail_usdc_withdrawal(&created.id, &error_message, metadata_json.as_deref())
+                    .await;
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": error_message })),
+                );
+            }
+        }
+    };
+
+    match state
+        .db
+        .set_usdc_withdrawal_change_signatures(
+            &created.id,
+            change_signatures_json.as_deref(),
+            metadata_json.as_deref(),
+        )
+        .await
+    {
+        Ok(Some(withdrawal)) => (
+            StatusCode::ACCEPTED,
+            Json(json!(usdc_withdrawal_response(&withdrawal))),
+        ),
+        Ok(None) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": "usdc_withdrawal_not_found_after_update" })),
+        ),
+        Err(error) => {
+            let error_message = error.to_string();
+            let _ = state
+                .db
+                .fail_usdc_withdrawal(&created.id, &error_message, metadata_json.as_deref())
+                .await;
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error_message })),
+            )
+        }
+    }
+}
+
+pub async fn get_usdc_withdrawal(
+    State(state): State<AppState>,
+    Path(withdrawal_id): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    match state.db.get_usdc_withdrawal(&withdrawal_id).await {
+        Ok(Some(withdrawal)) => (
+            StatusCode::OK,
+            Json(json!(usdc_withdrawal_response(&withdrawal))),
+        ),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "usdc_withdrawal_not_found" })),
+        ),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": error.to_string() })),
+        ),
+    }
+}
+
+pub async fn get_usdc_withdrawal_by_request_id(
+    State(state): State<AppState>,
+    Path(request_id): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    match state
+        .db
+        .get_usdc_withdrawal_by_request_id(&request_id)
+        .await
+    {
+        Ok(Some(withdrawal)) => (
+            StatusCode::OK,
+            Json(json!(usdc_withdrawal_response(&withdrawal))),
+        ),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "usdc_withdrawal_not_found" })),
+        ),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": error.to_string() })),
+        ),
+    }
 }
 
 pub async fn create_market(
@@ -2263,6 +2911,19 @@ fn wallet_funding_request_matches(
     existing.pubkey == pubkey && existing.rail == rail && existing.amount_minor == amount_minor
 }
 
+fn usdc_withdrawal_request_matches(
+    existing: &UsdcWithdrawal,
+    pubkey: &str,
+    provider: Option<&str>,
+    destination_address: &str,
+    amount_minor: u64,
+) -> bool {
+    existing.pubkey == pubkey
+        && existing.provider.as_deref() == provider
+        && existing.destination_address == destination_address
+        && existing.wallet_amount_minor == amount_minor
+}
+
 async fn load_wallet_funding_response_for_request(
     state: &AppState,
     request: &WalletFundingRequest,
@@ -2444,10 +3105,12 @@ fn trade_request_matches(
     spend_minor: Option<u64>,
     quantity: Option<f64>,
 ) -> bool {
+    let existing_side = canonical_side_label(&existing.side);
+    let requested_side = canonical_side_label(side);
     if existing.pubkey != pubkey
         || existing.market_event_id != market_event_id
         || existing.trade_type != trade_type
-        || existing.side != side
+        || existing_side != requested_side
         || existing.spend_minor != spend_minor
     {
         return false;
@@ -2464,18 +3127,24 @@ async fn load_trade_execution_response_for_request(
     state: &AppState,
     request: &TradeExecutionRequest,
 ) -> Result<ProductTradeExecutionResponse, String> {
+    if let Some(response_json) = request.response_json.as_deref() {
+        return serde_json::from_str(response_json)
+            .map_err(|error| format!("invalid_trade_execution_response_json: {error}"));
+    }
+
     let trade_id = request
         .trade_id
         .as_deref()
         .ok_or_else(|| "trade_request_missing_trade_id".to_string())?;
     let trade_status = load_trade_status_response(state, trade_id).await?;
+    let (issued, change) = trade_recovery_bundles_from_settlement(trade_status.settlement.as_ref());
 
     Ok(ProductTradeExecutionResponse {
         market: trade_status.market,
         trade: trade_status.trade,
         settlement: trade_status.settlement,
-        issued: None,
-        change: None,
+        issued,
+        change,
     })
 }
 
@@ -2524,13 +3193,7 @@ async fn buy_trade_by_event(
                 .as_deref()
                 .map(str::trim)
                 .filter(|value| !value.is_empty());
-
-            if req.proofs.is_empty() {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({ "error": "input_proofs_required" })),
-                );
-            }
+            let direction = side_label(side);
 
             match prepare_trade_request(
                 state,
@@ -2538,7 +3201,7 @@ async fn buy_trade_by_event(
                 &req.pubkey,
                 &market.event_id,
                 "buy",
-                &req.side,
+                direction,
                 Some(req.spend_minor),
                 None,
             )
@@ -2562,6 +3225,13 @@ async fn buy_trade_by_event(
                 }
             }
 
+            if req.proofs.is_empty() {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": "input_proofs_required" })),
+                );
+            }
+
             let quote = if let Some(quote_id) = req
                 .quote_id
                 .as_deref()
@@ -2573,7 +3243,7 @@ async fn buy_trade_by_event(
                     quote_id,
                     &market.event_id,
                     "buy",
-                    &req.side,
+                    direction,
                     Some(req.spend_minor),
                     None,
                 )
@@ -2628,18 +3298,14 @@ async fn buy_trade_by_event(
                     }
                 }
             };
-            let direction = side_label(side);
             let (next_q_long, next_q_short) = next_buy_quantities(&market, side, quote.quantity);
             let next_reserve_minor = market.reserve_sats.saturating_add(quote.spend_minor);
             let created_at = chrono::Utc::now().timestamp();
             let trade_id = uuid::Uuid::new_v4().to_string();
             let post_price_ppm = post_trade_price_ppm(state, next_q_long, next_q_short, side)
-                .unwrap_or_else(|_| {
-                    if direction == "yes" {
-                        quote.current_price_yes_ppm
-                    } else {
-                        quote.current_price_no_ppm
-                    }
+                .unwrap_or_else(|_| match side {
+                    Side::Long => quote.current_price_long_ppm,
+                    Side::Short => quote.current_price_short_ppm,
                 });
             let raw_event = build_trade_event(
                 &trade_id,
@@ -2755,7 +3421,7 @@ async fn buy_trade_by_event(
                 return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
             }
 
-            let (settlement, change_signatures) = match execute_trade_settlement(
+            let (mut settlement, change_signatures) = match execute_trade_settlement(
                 state,
                 &req.pubkey,
                 &quote,
@@ -2794,6 +3460,30 @@ async fn buy_trade_by_event(
                 }
             };
 
+            if let Some(settlement_record) = settlement.as_mut() {
+                settlement_record.metadata_json = match merge_trade_recovery_bundle_metadata(
+                    settlement_record.metadata_json.as_deref(),
+                    &issued_unit,
+                    &issued_signatures,
+                    "usd",
+                    &change_signatures,
+                ) {
+                    Ok(metadata_json) => metadata_json,
+                    Err(error) => {
+                        if let Some(request_id) = request_id {
+                            let _ = state
+                                .db
+                                .fail_trade_execution_request(request_id, &error)
+                                .await;
+                        }
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({ "error": error })),
+                        );
+                    }
+                };
+            }
+
             match state
                 .db
                 .apply_trade_execution_snapshots(
@@ -2817,13 +3507,6 @@ async fn buy_trade_by_event(
                 .await
             {
                 Ok(_) => {
-                    if let Some(request_id) = request_id {
-                        let _ = state
-                            .db
-                            .complete_trade_execution_request(request_id, &trade_id)
-                            .await;
-                    }
-
                     state
                         .market_manager
                         .load_market(Market {
@@ -2834,7 +3517,7 @@ async fn buy_trade_by_event(
                         })
                         .await;
 
-                    trade_execution_response(
+                    let response = match build_trade_execution_response(
                         state,
                         &market,
                         next_q_long,
@@ -2845,6 +3528,48 @@ async fn buy_trade_by_event(
                         trade_signature_bundle("usd", change_signatures),
                     )
                     .await
+                    {
+                        Ok(response) => response,
+                        Err(error) => {
+                            if let Some(request_id) = request_id {
+                                let _ = state
+                                    .db
+                                    .fail_trade_execution_request(request_id, &error)
+                                    .await;
+                            }
+                            return (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(json!({ "error": error })),
+                            );
+                        }
+                    };
+
+                    if let Some(request_id) = request_id {
+                        let response_json = match serde_json::to_string(&response) {
+                            Ok(response_json) => response_json,
+                            Err(error) => {
+                                let error = format!("failed_to_serialize_trade_execution_response: {error}");
+                                let _ = state
+                                    .db
+                                    .fail_trade_execution_request(request_id, &error)
+                                    .await;
+                                return (
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                    Json(json!({ "error": error })),
+                                );
+                            }
+                        };
+                        let _ = state
+                            .db
+                            .complete_trade_execution_request(
+                                request_id,
+                                &trade_id,
+                                Some(&response_json),
+                            )
+                            .await;
+                    }
+
+                    trade_execution_response(response)
                 }
                 Err(error) => {
                     let error_message = error.to_string();
@@ -2892,13 +3617,6 @@ async fn sell_trade_by_event(
                 );
             }
 
-            if req.proofs.is_empty() {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({ "error": "input_proofs_required" })),
-                );
-            }
-
             let request_id = req
                 .request_id
                 .as_deref()
@@ -2911,7 +3629,7 @@ async fn sell_trade_by_event(
                 &req.pubkey,
                 &market.event_id,
                 "sell",
-                &req.side,
+                direction,
                 None,
                 Some(req.quantity),
             )
@@ -2935,6 +3653,13 @@ async fn sell_trade_by_event(
                 }
             }
 
+            if req.proofs.is_empty() {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": "input_proofs_required" })),
+                );
+            }
+
             let quote = if let Some(quote_id) = req
                 .quote_id
                 .as_deref()
@@ -2946,7 +3671,7 @@ async fn sell_trade_by_event(
                     quote_id,
                     &market.event_id,
                     "sell",
-                    &req.side,
+                    direction,
                     None,
                     Some(req.quantity),
                 )
@@ -3006,12 +3731,9 @@ async fn sell_trade_by_event(
             let created_at = chrono::Utc::now().timestamp();
             let trade_id = uuid::Uuid::new_v4().to_string();
             let post_price_ppm = post_trade_price_ppm(state, next_q_long, next_q_short, side)
-                .unwrap_or_else(|_| {
-                    if direction == "yes" {
-                        quote.current_price_yes_ppm
-                    } else {
-                        quote.current_price_no_ppm
-                    }
+                .unwrap_or_else(|_| match side {
+                    Side::Long => quote.current_price_long_ppm,
+                    Side::Short => quote.current_price_short_ppm,
                 });
             let raw_event = build_trade_event(
                 &trade_id,
@@ -3126,12 +3848,11 @@ async fn sell_trade_by_event(
                 return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
             }
 
-            let (mut settlement, _) = match execute_trade_settlement(
+            let (mut settlement, issued_signatures) = match execute_sell_trade_settlement(
                 state,
                 &req.pubkey,
                 &quote,
-                &req.proofs,
-                &req.change_outputs,
+                &req.issued_outputs,
             )
             .await
             {
@@ -3146,10 +3867,11 @@ async fn sell_trade_by_event(
                     return (StatusCode::BAD_GATEWAY, Json(json!({ "error": error })));
                 }
             };
-            let (issued_signatures, change_signatures) = match swap_input_proofs_and_sign_outputs(
+
+            let (_, change_signatures) = match swap_input_proofs_and_sign_outputs(
                 state,
                 &req.proofs,
-                &req.issued_outputs,
+                &[],
                 &req.change_outputs,
             )
             .await
@@ -3165,34 +3887,28 @@ async fn sell_trade_by_event(
                     return (StatusCode::BAD_REQUEST, Json(json!({ "error": error })));
                 }
             };
-
             if let Some(settlement_record) = settlement.as_mut() {
-                let wallet_mint_quote_id = settlement_record
-                    .metadata_json
-                    .as_deref()
-                    .and_then(|payload| serde_json::from_str::<Value>(payload).ok())
-                    .and_then(|payload| {
-                        payload
-                            .get("wallet_mint_quote_id")
-                            .and_then(Value::as_str)
-                            .map(str::to_string)
-                    });
-
-                if let Some(wallet_mint_quote_id) = wallet_mint_quote_id {
-                    if let Ok(wallet_mint_quote_state) =
-                        record_full_mint_quote_issuance(state, &wallet_mint_quote_id).await
-                    {
-                        if let Ok(metadata_json) = merge_metadata_json(
-                            settlement_record.metadata_json.as_deref(),
-                            json!({
-                                "wallet_mint_quote_state": wallet_mint_quote_state,
-                                "wallet_mint_quote_issued_via": "sell_trade_execution"
-                            }),
-                        ) {
-                            settlement_record.metadata_json = Some(metadata_json);
+                settlement_record.metadata_json = match merge_trade_recovery_bundle_metadata(
+                    settlement_record.metadata_json.as_deref(),
+                    "usd",
+                    &issued_signatures,
+                    &market_unit,
+                    &change_signatures,
+                ) {
+                    Ok(metadata_json) => metadata_json,
+                    Err(error) => {
+                        if let Some(request_id) = request_id {
+                            let _ = state
+                                .db
+                                .fail_trade_execution_request(request_id, &error)
+                                .await;
                         }
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({ "error": error })),
+                        );
                     }
-                }
+                };
             }
 
             match state
@@ -3218,13 +3934,6 @@ async fn sell_trade_by_event(
                 .await
             {
                 Ok(_) => {
-                    if let Some(request_id) = request_id {
-                        let _ = state
-                            .db
-                            .complete_trade_execution_request(request_id, &trade_id)
-                            .await;
-                    }
-
                     state
                         .market_manager
                         .load_market(Market {
@@ -3235,7 +3944,7 @@ async fn sell_trade_by_event(
                         })
                         .await;
 
-                    trade_execution_response(
+                    let response = match build_trade_execution_response(
                         state,
                         &market,
                         next_q_long,
@@ -3246,6 +3955,48 @@ async fn sell_trade_by_event(
                         trade_signature_bundle(&market_unit, change_signatures),
                     )
                     .await
+                    {
+                        Ok(response) => response,
+                        Err(error) => {
+                            if let Some(request_id) = request_id {
+                                let _ = state
+                                    .db
+                                    .fail_trade_execution_request(request_id, &error)
+                                    .await;
+                            }
+                            return (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(json!({ "error": error })),
+                            );
+                        }
+                    };
+
+                    if let Some(request_id) = request_id {
+                        let response_json = match serde_json::to_string(&response) {
+                            Ok(response_json) => response_json,
+                            Err(error) => {
+                                let error = format!("failed_to_serialize_trade_execution_response: {error}");
+                                let _ = state
+                                    .db
+                                    .fail_trade_execution_request(request_id, &error)
+                                    .await;
+                                return (
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                    Json(json!({ "error": error })),
+                                );
+                            }
+                        };
+                        let _ = state
+                            .db
+                            .complete_trade_execution_request(
+                                request_id,
+                                &trade_id,
+                                Some(&response_json),
+                            )
+                            .await;
+                    }
+
+                    trade_execution_response(response)
                 }
                 Err(error) => {
                     let error_message = error.to_string();
@@ -3451,8 +4202,8 @@ fn product_trade_quote_from_snapshot(
         average_price_ppm: snapshot.average_price_ppm,
         marginal_price_before_ppm: snapshot.marginal_price_before_ppm,
         marginal_price_after_ppm: snapshot.marginal_price_after_ppm,
-        current_price_yes_ppm: snapshot.current_price_yes_ppm,
-        current_price_no_ppm: snapshot.current_price_no_ppm,
+        current_price_long_ppm: snapshot.current_price_yes_ppm,
+        current_price_short_ppm: snapshot.current_price_no_ppm,
         fx_source: fx_quote.map(|quote| quote.source.clone()),
         btc_usd_price: fx_quote.map(|quote| quote.btc_usd_price),
         spread_bps: fx_quote.map(|quote| quote.spread_bps),
@@ -3521,8 +4272,8 @@ async fn create_persisted_trade_quote(
             quote.response.average_price_ppm,
             quote.response.marginal_price_before_ppm,
             quote.response.marginal_price_after_ppm,
-            quote.response.current_price_yes_ppm,
-            quote.response.current_price_no_ppm,
+            quote.response.current_price_long_ppm,
+            quote.response.current_price_short_ppm,
             market.q_long,
             market.q_short,
             market.reserve_sats,
@@ -3545,21 +4296,29 @@ fn quote_snapshot_matches(
     spend_minor: Option<u64>,
     quantity: Option<f64>,
 ) -> bool {
+    let snapshot_side = canonical_side_label(&snapshot.side);
+    let requested_side = canonical_side_label(side);
     if snapshot.market_event_id != market_event_id
         || snapshot.trade_type != trade_type
-        || snapshot.side != side
+        || snapshot_side != requested_side
     {
         return false;
     }
 
     if let Some(spend_minor) = spend_minor {
-        if snapshot.spend_minor != spend_minor {
+        let spend_matches = if snapshot.trade_type == "buy" {
+            snapshot.spend_minor <= spend_minor
+        } else {
+            snapshot.spend_minor == spend_minor
+        };
+        if !spend_matches {
             return false;
         }
     }
 
     if let Some(quantity) = quantity {
-        if (snapshot.quantity - quantity).abs() > f64::EPSILON {
+        let requested_quantity = floor_quantity_to_minor_grid(quantity).unwrap_or(quantity);
+        if (snapshot.quantity - requested_quantity).abs() > f64::EPSILON {
             return false;
         }
     }
@@ -3627,10 +4386,12 @@ async fn load_trade_request_status_response(
 
     let market = load_market_summary_by_event_id(state, &request.market_event_id).await?;
 
-    let trade = if let Some(trade_id) = request.trade_id.as_deref() {
-        Some(load_trade_status_response(state, trade_id).await?.trade)
+    let (trade, settlement, issued, change) = if let Some(trade_id) = request.trade_id.as_deref() {
+        let trade_status = load_trade_status_response(state, trade_id).await?;
+        let (issued, change) = trade_recovery_bundles_from_settlement(trade_status.settlement.as_ref());
+        (Some(trade_status.trade), trade_status.settlement, issued, change)
     } else {
-        None
+        (None, None, None, None)
     };
 
     Ok(Some(ProductTradeRequestStatusResponse {
@@ -3639,10 +4400,13 @@ async fn load_trade_request_status_response(
         error: request.error_message,
         market,
         trade,
+        settlement,
+        issued,
+        change,
     }))
 }
 
-async fn trade_execution_response(
+async fn build_trade_execution_response(
     state: &AppState,
     market: &Market,
     next_q_long: f64,
@@ -3651,7 +4415,7 @@ async fn trade_execution_response(
     raw_event: Value,
     issued: Option<ProductTradeBlindSignatureBundleResponse>,
     change: Option<ProductTradeBlindSignatureBundleResponse>,
-) -> (StatusCode, Json<Value>) {
+) -> Result<ProductTradeExecutionResponse, String> {
     let settlement = if let Some(trade_id) = raw_event.get("id").and_then(Value::as_str) {
         state
             .db
@@ -3676,22 +4440,21 @@ async fn trade_execution_response(
         _ => None,
     };
 
-    match updated_market {
-        Some(summary) => (
-            StatusCode::CREATED,
-            Json(json!(ProductTradeExecutionResponse {
-                market: summary,
-                trade: raw_event,
-                settlement: settlement.as_ref().map(product_trade_settlement_response),
-                issued,
-                change,
-            })),
-        ),
-        None => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": "failed_to_build_updated_market_summary" })),
-        ),
-    }
+    updated_market
+        .map(|summary| ProductTradeExecutionResponse {
+            market: summary,
+            trade: raw_event,
+            settlement: settlement.as_ref().map(product_trade_settlement_response),
+            issued,
+            change,
+        })
+        .ok_or_else(|| "failed_to_build_updated_market_summary".to_string())
+}
+
+fn trade_execution_response(
+    response: ProductTradeExecutionResponse,
+) -> (StatusCode, Json<Value>) {
+    (StatusCode::CREATED, Json(json!(response)))
 }
 
 async fn market_detail_response(
@@ -3806,15 +4569,19 @@ fn parse_side(value: &str) -> Result<Side, String> {
     match value.to_lowercase().as_str() {
         "yes" | "long" => Ok(Side::Long),
         "no" | "short" => Ok(Side::Short),
-        _ => Err("side must be yes/no or long/short".to_string()),
+        _ => Err("side must be long or short".to_string()),
     }
 }
 
 fn side_label(side: Side) -> &'static str {
     match side {
-        Side::Long => "yes",
-        Side::Short => "no",
+        Side::Long => "long",
+        Side::Short => "short",
     }
+}
+
+fn canonical_side_label(value: &str) -> Option<&'static str> {
+    parse_side(value).ok().map(side_label)
 }
 
 fn calculate_fee_minor(amount_minor: u64) -> u64 {
@@ -3989,8 +4756,8 @@ async fn build_quote_response(
                     average_price_ppm,
                     marginal_price_before_ppm,
                     marginal_price_after_ppm,
-                    current_price_yes_ppm: current_yes_ppm,
-                    current_price_no_ppm: current_no_ppm,
+                    current_price_long_ppm: current_yes_ppm,
+                    current_price_short_ppm: current_no_ppm,
                     fx_source: Some(fx_quote.snapshot.source.clone()),
                     btc_usd_price: Some(fx_quote.snapshot.btc_usd_price),
                     spread_bps: Some(fx_quote.snapshot.spread_bps),
@@ -4063,8 +4830,8 @@ async fn build_quote_response(
                     average_price_ppm,
                     marginal_price_before_ppm,
                     marginal_price_after_ppm,
-                    current_price_yes_ppm: current_yes_ppm,
-                    current_price_no_ppm: current_no_ppm,
+                    current_price_long_ppm: current_yes_ppm,
+                    current_price_short_ppm: current_no_ppm,
                     fx_source: Some(fx_quote.snapshot.source.clone()),
                     btc_usd_price: Some(fx_quote.snapshot.btc_usd_price),
                     spread_bps: Some(fx_quote.snapshot.spread_bps),
@@ -4158,34 +4925,58 @@ async fn create_trade_settlement_wallet_mint_quote(
         .map_err(|error| format!("invalid_trade_settlement_wallet_quote: {error}"))
 }
 
-async fn record_full_mint_quote_issuance(
+async fn create_trade_settlement_wallet_funding_quote(
     state: &AppState,
-    quote_id: &str,
-) -> Result<String, String> {
-    let quote_id = QuoteId::from_str(quote_id).map_err(|error| error.to_string())?;
-    let localstore = state.mint.localstore();
-    let mut tx = localstore
-        .begin_transaction()
-        .await
-        .map_err(|error| error.to_string())?;
-    let mut mint_quote = tx
-        .get_mint_quote(&quote_id)
+    quote: &ProductTradeQuoteResponse,
+    wallet_mint_quote: &cdk_common::MintQuoteBolt11Response<QuoteId>,
+    wallet_invoice: &Bolt11Invoice,
+) -> Result<WalletFundingQuote, String> {
+    let wallet_mint_quote_id = wallet_mint_quote.quote.to_string();
+    if let Some(existing) = state
+        .db
+        .get_wallet_funding_quote(&wallet_mint_quote_id)
         .await
         .map_err(|error| error.to_string())?
-        .ok_or_else(|| "trade_settlement_wallet_quote_not_found".to_string())?;
-
-    let remaining = mint_quote.amount_mintable();
-    if remaining.value() > 0 {
-        mint_quote
-            .add_issuance(remaining)
-            .map_err(|error| error.to_string())?;
-        tx.update_mint_quote(&mut mint_quote)
-            .await
-            .map_err(|error| error.to_string())?;
+    {
+        return Ok(existing);
     }
 
-    tx.commit().await.map_err(|error| error.to_string())?;
-    Ok(cdk_mint_quote_state_label(mint_quote.state()).to_string())
+    let fx_quote_id = quote
+        .fx_quote_id
+        .as_deref()
+        .ok_or_else(|| "trade_quote_missing_fx_quote_id".to_string())?;
+    let fx_quote = state
+        .db
+        .get_fx_quote_snapshot(fx_quote_id)
+        .await
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "trade_quote_fx_quote_not_found".to_string())?;
+    let metadata_json = json!({
+        "source": "trade_settlement_wallet_quote",
+        "trade_quote_id": quote.quote_id,
+        "market_event_id": quote.market_event_id,
+        "trade_type": quote.trade_type,
+        "side": quote.side,
+        "wallet_mint_quote_id": wallet_mint_quote_id
+    })
+    .to_string();
+
+    state
+        .db
+        .create_wallet_funding_quote(
+            Some(&wallet_mint_quote.quote.to_string()),
+            "",
+            "lightning",
+            quote.settlement_minor,
+            quote.settlement_msat,
+            Some(&wallet_mint_quote.request),
+            Some(&wallet_invoice.payment_hash().to_string()),
+            Some(&metadata_json),
+            None,
+            &fx_quote,
+        )
+        .await
+        .map_err(|error| format!("failed_to_create_trade_settlement_wallet_funding_quote: {error}"))
 }
 
 fn merge_metadata_json(existing: Option<&str>, extra: Value) -> Result<String, String> {
@@ -4354,10 +5145,14 @@ async fn execute_sell_trade_settlement(
     state: &AppState,
     pubkey: &str,
     quote: &ProductTradeQuoteResponse,
-) -> Result<Option<TradeSettlementInsert>, String> {
+    issued_outputs: &[BlindedMessageInput],
+) -> Result<(Option<TradeSettlementInsert>, Vec<TokenOutput>), String> {
     let wallet_mint_quote = create_trade_settlement_wallet_mint_quote(state, quote).await?;
     let wallet_invoice = Bolt11Invoice::from_str(&wallet_mint_quote.request)
         .map_err(|error| format!("invalid_trade_settlement_wallet_invoice: {error}"))?;
+    let wallet_funding_quote =
+        create_trade_settlement_wallet_funding_quote(state, quote, &wallet_mint_quote, &wallet_invoice)
+            .await?;
 
     store_locked_outgoing_bolt11_payment(
         state.mint.localstore(),
@@ -4414,6 +5209,34 @@ async fn execute_sell_trade_settlement(
         }
         (preimage, invoice_state)
     };
+
+    let paid_metadata_json = merge_metadata_json(
+        wallet_funding_quote.metadata_json.as_deref(),
+        json!({
+            "payment_hash": payment_hash,
+            "funding_quote_id": wallet_funding_quote.id,
+            "settled_via": "trade_settlement_invoice_payment",
+            "settlement_role": "trade_exit"
+        }),
+    )?;
+    state
+        .db
+        .mark_wallet_funding_quote_paid(&wallet_funding_quote.id, Some(&paid_metadata_json))
+        .await
+        .map_err(|error| format!("failed_to_mark_trade_settlement_wallet_quote_paid: {error}"))?;
+
+    let mint_response = issue_wallet_funding_quote(
+        state,
+        &MintBolt11Request {
+            quote: wallet_funding_quote.id.clone(),
+            outputs: issued_outputs.to_vec(),
+        },
+        "lightning",
+        "api/trades/sell",
+    )
+    .await
+    .map_err(|(_, detail)| detail)?;
+
     let checked_quote = state
         .mint
         .check_mint_quote(&wallet_mint_quote.quote)
@@ -4421,44 +5244,48 @@ async fn execute_sell_trade_settlement(
         .map_err(|error| format!("failed_to_check_trade_settlement_wallet_quote: {error}"))?;
     let checked_quote = cdk_common::MintQuoteBolt11Response::<QuoteId>::try_from(checked_quote)
         .map_err(|error| format!("invalid_trade_settlement_wallet_quote_status: {error}"))?;
-    let wallet_mint_quote_state = checked_quote.state.to_string();
 
-    Ok(Some(TradeSettlementInsert {
-        quote_id: quote.quote_id.clone(),
-        pubkey: pubkey.to_string(),
-        market_event_id: quote.market_event_id.clone(),
-        trade_type: quote.trade_type.clone(),
-        side: quote.side.clone(),
-        rail: "lightning".to_string(),
-        mode: "bolt11_market_to_wallet".to_string(),
-        settlement_minor: quote.settlement_minor,
-        settlement_msat: quote.settlement_msat,
-        settlement_fee_msat: quote.settlement_fee_msat,
-        fx_quote_id: quote.fx_quote_id.clone(),
-        invoice: Some(wallet_mint_quote.request.clone()),
-        payment_hash: Some(wallet_invoice.payment_hash().to_string()),
-        metadata_json: Some(
-            json!({
-                "payer_role": "market_mint",
-                "receiver_role": "wallet_mint",
-                "invoice_state": invoice_state,
-                "wallet_mint_quote_id": wallet_mint_quote.quote.to_string(),
-                "wallet_mint_quote_state": wallet_mint_quote_state,
-                "wallet_mint_quote_expiry": wallet_mint_quote.expiry,
-                "invoice_created_at": quote.created_at,
-                "invoice_expiry_seconds": wallet_mint_quote
-                    .expiry
-                    .map(|expiry| expiry.saturating_sub(chrono::Utc::now().timestamp().max(0) as u64)),
-                "fx_source": quote.fx_source,
-                "btc_usd_price": quote.btc_usd_price,
-                "spread_bps": quote.spread_bps,
-                "fx_observations": quote.fx_observations,
-                "payment_preimage": preimage.to_hex(),
-                "payment_execution": "market_reserve_invoice_service"
-            })
-            .to_string(),
-        ),
-    }))
+    Ok((
+        Some(TradeSettlementInsert {
+            quote_id: quote.quote_id.clone(),
+            pubkey: pubkey.to_string(),
+            market_event_id: quote.market_event_id.clone(),
+            trade_type: quote.trade_type.clone(),
+            side: quote.side.clone(),
+            rail: "lightning".to_string(),
+            mode: "bolt11_market_to_wallet".to_string(),
+            settlement_minor: quote.settlement_minor,
+            settlement_msat: quote.settlement_msat,
+            settlement_fee_msat: quote.settlement_fee_msat,
+            fx_quote_id: quote.fx_quote_id.clone(),
+            invoice: Some(wallet_mint_quote.request.clone()),
+            payment_hash: Some(wallet_invoice.payment_hash().to_string()),
+            metadata_json: Some(
+                json!({
+                    "payer_role": "market_mint",
+                    "receiver_role": "wallet_mint",
+                    "invoice_state": invoice_state,
+                    "wallet_mint_quote_id": wallet_mint_quote.quote.to_string(),
+                    "wallet_mint_quote_state": cdk_mint_quote_state_label(checked_quote.state),
+                    "wallet_mint_quote_expiry": wallet_mint_quote.expiry,
+                    "wallet_mint_quote_redeem_route": format!("/v1/mint/quote/bolt11/{}", wallet_mint_quote.quote),
+                    "wallet_mint_issue_route": "/v1/mint/bolt11",
+                    "invoice_created_at": quote.created_at,
+                    "invoice_expiry_seconds": wallet_mint_quote
+                        .expiry
+                        .map(|expiry| expiry.saturating_sub(chrono::Utc::now().timestamp().max(0) as u64)),
+                    "fx_source": quote.fx_source,
+                    "btc_usd_price": quote.btc_usd_price,
+                    "spread_bps": quote.spread_bps,
+                    "fx_observations": quote.fx_observations,
+                    "payment_preimage": preimage.to_hex(),
+                    "payment_execution": "market_reserve_invoice_service"
+                })
+                .to_string(),
+            ),
+        }),
+        mint_response.signatures,
+    ))
 }
 
 async fn execute_trade_settlement(
@@ -4472,10 +5299,7 @@ async fn execute_trade_settlement(
         "buy" => {
             execute_buy_trade_settlement(state, pubkey, quote, input_proofs, change_outputs).await
         }
-        "sell" => Ok((
-            execute_sell_trade_settlement(state, pubkey, quote).await?,
-            Vec::new(),
-        )),
+        "sell" => Err("sell_trade_settlement_requires_direct_wallet_quote_execution".to_string()),
         _ => Err("unsupported_trade_type_for_settlement".to_string()),
     }
 }
@@ -4595,6 +5419,54 @@ fn wallet_funding_response(
     }
 }
 
+fn usdc_deposit_intent_response(intent: &UsdcDepositIntent) -> ProductUsdcDepositIntentResponse {
+    ProductUsdcDepositIntentResponse {
+        id: intent.id.clone(),
+        asset: intent.asset.clone(),
+        network: intent.network.clone(),
+        destination_address: intent.destination_address.clone(),
+        requested_wallet_amount_minor: intent.requested_wallet_amount_minor,
+        received_asset_units: intent.received_asset_units,
+        provider: intent.provider.clone(),
+        provider_session_id: intent.provider_session_id.clone(),
+        provider_redirect_url: intent.provider_redirect_url.clone(),
+        onchain_tx_id: intent.onchain_tx_id.clone(),
+        status: intent.status.to_string(),
+        created_at: intent.created_at,
+        expires_at: intent.expires_at,
+        confirmed_at: intent.confirmed_at,
+        credited_at: intent.credited_at,
+    }
+}
+
+fn usdc_withdrawal_response(withdrawal: &UsdcWithdrawal) -> ProductUsdcWithdrawalResponse {
+    let change = withdrawal
+        .change_signatures_json
+        .as_deref()
+        .and_then(|payload| serde_json::from_str::<Vec<TokenOutput>>(payload).ok())
+        .and_then(|signatures| trade_signature_bundle("usd", signatures));
+
+    ProductUsdcWithdrawalResponse {
+        id: withdrawal.id.clone(),
+        request_id: withdrawal.request_id.clone(),
+        asset: withdrawal.asset.clone(),
+        network: withdrawal.network.clone(),
+        destination_address: withdrawal.destination_address.clone(),
+        amount_minor: withdrawal.wallet_amount_minor,
+        asset_units: withdrawal.asset_units,
+        provider: withdrawal.provider.clone(),
+        provider_payout_id: withdrawal.provider_payout_id.clone(),
+        onchain_tx_id: withdrawal.onchain_tx_id.clone(),
+        status: withdrawal.status.to_string(),
+        error: withdrawal.error_message.clone(),
+        change,
+        created_at: withdrawal.created_at,
+        submitted_at: withdrawal.submitted_at,
+        completed_at: withdrawal.completed_at,
+        failed_at: withdrawal.failed_at,
+    }
+}
+
 async fn wallet_funding_response_for_state(
     state: &AppState,
     quote: &WalletFundingQuote,
@@ -4666,21 +5538,13 @@ async fn sync_wallet_funding_quote_best_effort(
     }
 }
 
-fn schedule_signet_funding_payment(state: AppState, invoice: String) {
-    tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-        let invoice_service = state.invoice_service.lock().await;
-        let _ = invoice_service.pay_invoice(&invoice).await;
-    });
-}
-
 fn product_market_summary(
     state: &AppState,
     market: &Market,
     launch: &MarketLaunchState,
 ) -> Option<ProductMarketSummary> {
     let raw_event: Value = serde_json::from_str(&launch.raw_event_json).ok()?;
-    let (price_yes_ppm, price_no_ppm) = current_prices_ppm(state, market);
+    let (price_long_ppm, price_short_ppm) = current_prices_ppm(state, market);
     Some(ProductMarketSummary {
         event_id: market.event_id.clone(),
         slug: market.slug.clone(),
@@ -4690,8 +5554,8 @@ fn product_market_summary(
         visibility: launch.visibility.to_string(),
         created_at: market.created_at,
         first_trade_at: launch.first_trade_at,
-        price_yes_ppm,
-        price_no_ppm,
+        price_long_ppm,
+        price_short_ppm,
         volume_minor: launch.volume_minor,
         trade_count: launch.trade_count,
         reserve_minor: market.reserve_sats,

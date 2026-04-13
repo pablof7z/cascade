@@ -10,8 +10,9 @@ use cascade_api::types::{
     MintQuoteBolt11Request, MintQuoteBolt11Response, ProductCoordinatorBuyRequest,
     ProductCoordinatorSellRequest, ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest,
     ProductFeedResponse, ProductMarketDetailResponse, ProductMarketSummary,
-    ProductTradeExecutionResponse, ProductTradeQuoteResponse, ProductTradeRequestStatusResponse,
-    ProductPortfolioFundingRequestStatusResponse, ProductTradeStatusResponse, TokenOutput,
+    ProductPortfolioFundingRequestStatusResponse, ProductTradeExecutionResponse,
+    ProductTradeQuoteResponse, ProductTradeRequestStatusResponse, ProductTradeStatusResponse,
+    TokenOutput,
 };
 use cdk::amount::{FeeAndAmounts, SplitTarget};
 use cdk::dhke::construct_proofs;
@@ -1847,10 +1848,10 @@ async fn build_portfolio_view(ctx: &AppContext, loaded: &LoadedConfig) -> Result
             .await?;
         let quantity_minor: u64 = wallet.proofs.iter().map(|proof| proof.amount).sum();
         let quantity = share_minor_to_quantity(quantity_minor);
-        let current_price_ppm = if side == "yes" {
-            detail.market.price_yes_ppm
+        let current_price_ppm = if side == "long" {
+            detail.market.price_long_ppm
         } else {
-            detail.market.price_no_ppm
+            detail.market.price_short_ppm
         };
         let market_value_minor =
             ((quantity * current_price_ppm as f64) / 1_000_000.0).round() as u64;
@@ -2500,20 +2501,20 @@ fn is_hex_event_id(value: &str) -> bool {
 }
 
 fn market_unit_for_side(slug: &str, side: &str) -> Result<String> {
-    match side {
-        "yes" => Ok(format!("long_{slug}")),
-        "no" => Ok(format!("short_{slug}")),
-        other => bail!("unsupported side {other}; expected yes or no"),
+    match side.to_ascii_lowercase().as_str() {
+        "yes" | "long" => Ok(format!("long_{slug}")),
+        "no" | "short" => Ok(format!("short_{slug}")),
+        other => bail!("unsupported side {other}; expected long or short"),
     }
 }
 
 fn parse_market_unit(unit: &str) -> Option<(String, &'static str)> {
     let unit = normalize_unit(unit);
     if let Some(slug) = unit.strip_prefix("long_") {
-        return Some((slug.to_string(), "yes"));
+        return Some((slug.to_string(), "long"));
     }
     if let Some(slug) = unit.strip_prefix("short_") {
-        return Some((slug.to_string(), "no"));
+        return Some((slug.to_string(), "short"));
     }
     None
 }

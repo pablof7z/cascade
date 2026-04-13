@@ -40,6 +40,8 @@ pub struct MintConfig {
     pub fx: FxSettings,
     #[serde(default)]
     pub stripe: StripeSettings,
+    #[serde(default)]
+    pub usdc: UsdcSettings,
     pub network: NetworkSettings,
     pub server: ServerSettings,
     pub fees: FeeSettings,
@@ -94,8 +96,6 @@ pub struct FxSettings {
     pub usd_to_msat_spread_bps: u64,
     #[serde(default = "default_fx_msat_to_usd_spread_bps")]
     pub msat_to_usd_spread_bps: u64,
-    #[serde(default = "default_fx_signet_fallback_btc_usd_price")]
-    pub signet_fallback_btc_usd_price: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -125,6 +125,22 @@ pub struct StripeSettings {
     pub window_seconds: i64,
     #[serde(default = "default_stripe_allowed_risk_levels")]
     pub allowed_risk_levels: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UsdcSettings {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub withdrawals_enabled: bool,
+    #[serde(default = "default_usdc_network")]
+    pub network: String,
+    #[serde(default = "default_usdc_asset")]
+    pub asset: String,
+    #[serde(default)]
+    pub treasury_address: String,
+    #[serde(default = "default_usdc_deposit_intent_expiry_seconds")]
+    pub deposit_intent_expiry_seconds: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -180,10 +196,6 @@ fn default_fx_msat_to_usd_spread_bps() -> u64 {
     100
 }
 
-fn default_fx_signet_fallback_btc_usd_price() -> f64 {
-    50_000.0
-}
-
 fn default_stripe_base_url() -> String {
     "https://api.stripe.com".to_string()
 }
@@ -210,6 +222,18 @@ fn default_stripe_window_seconds() -> i64 {
 
 fn default_stripe_allowed_risk_levels() -> Vec<String> {
     vec!["normal".to_string()]
+}
+
+fn default_usdc_network() -> String {
+    "base".to_string()
+}
+
+fn default_usdc_asset() -> String {
+    "USDC".to_string()
+}
+
+fn default_usdc_deposit_intent_expiry_seconds() -> u64 {
+    24 * 60 * 60
 }
 
 impl MintConfig {
@@ -303,12 +327,6 @@ impl MintConfig {
                 .parse()
                 .unwrap_or(config.fx.msat_to_usd_spread_bps);
         }
-        if let Ok(signet_fallback_btc_usd_price) = std::env::var("FX_SIGNET_FALLBACK_BTC_USD_PRICE")
-        {
-            config.fx.signet_fallback_btc_usd_price = signet_fallback_btc_usd_price
-                .parse()
-                .unwrap_or(config.fx.signet_fallback_btc_usd_price);
-        }
         if let Ok(secret_key) = std::env::var("STRIPE_SECRET_KEY") {
             config.stripe.secret_key = secret_key;
         }
@@ -357,6 +375,32 @@ impl MintConfig {
                 .map(|value| value.trim().to_ascii_lowercase())
                 .filter(|value| !value.is_empty())
                 .collect();
+        }
+        if let Ok(enabled) = std::env::var("USDC_ENABLED") {
+            config.usdc.enabled = matches!(
+                enabled.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes"
+            );
+        }
+        if let Ok(enabled) = std::env::var("USDC_WITHDRAWALS_ENABLED") {
+            config.usdc.withdrawals_enabled = matches!(
+                enabled.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes"
+            );
+        }
+        if let Ok(network) = std::env::var("USDC_NETWORK") {
+            config.usdc.network = network;
+        }
+        if let Ok(asset) = std::env::var("USDC_ASSET") {
+            config.usdc.asset = asset;
+        }
+        if let Ok(treasury_address) = std::env::var("USDC_TREASURY_ADDRESS") {
+            config.usdc.treasury_address = treasury_address;
+        }
+        if let Ok(expiry_seconds) = std::env::var("USDC_DEPOSIT_INTENT_EXPIRY_SECONDS") {
+            config.usdc.deposit_intent_expiry_seconds = expiry_seconds
+                .parse()
+                .unwrap_or(config.usdc.deposit_intent_expiry_seconds);
         }
         if let Ok(host) = std::env::var("LISTEN_HOST") {
             config.server.host = host;
@@ -411,9 +455,6 @@ impl MintConfig {
         if self.fx.usd_to_msat_spread_bps >= 10_000 || self.fx.msat_to_usd_spread_bps >= 10_000 {
             anyhow::bail!("fx execution spreads must be below 10000 bps");
         }
-        if self.fx.signet_fallback_btc_usd_price <= 0.0 {
-            anyhow::bail!("fx.signet_fallback_btc_usd_price must be greater than zero");
-        }
         if self.stripe.is_partially_configured() && !self.stripe.is_enabled() {
             anyhow::bail!(
                 "stripe must set secret_key, webhook_secret, success_url, and cancel_url together"
@@ -431,6 +472,23 @@ impl MintConfig {
             if self.stripe.allowed_risk_levels.is_empty() {
                 anyhow::bail!("stripe.allowed_risk_levels must contain at least one value");
             }
+        }
+        if self.usdc.is_enabled() {
+            if self.network.network_type != "mainnet" {
+                anyhow::bail!("usdc wallet support is mainnet-only");
+            }
+            if self.usdc.treasury_address.trim().is_empty() {
+                anyhow::bail!("usdc.treasury_address is required when usdc is enabled");
+            }
+            if self.usdc.asset.trim().to_ascii_uppercase() != "USDC" {
+                anyhow::bail!("usdc.asset must be USDC");
+            }
+            if self.usdc.deposit_intent_expiry_seconds == 0 {
+                anyhow::bail!("usdc.deposit_intent_expiry_seconds must be greater than zero");
+            }
+        }
+        if self.usdc.withdrawals_enabled && !self.usdc.is_enabled() {
+            anyhow::bail!("usdc.withdrawals_enabled requires usdc.enabled");
         }
         Ok(())
     }
@@ -459,6 +517,7 @@ impl Default for MintConfig {
             },
             fx: FxSettings::default(),
             stripe: StripeSettings::default(),
+            usdc: UsdcSettings::default(),
             network: NetworkSettings {
                 network_type: "testnet".to_string(),
             },
@@ -498,7 +557,6 @@ impl Default for FxSettings {
             min_provider_count: default_fx_min_provider_count(),
             usd_to_msat_spread_bps: default_fx_usd_to_msat_spread_bps(),
             msat_to_usd_spread_bps: default_fx_msat_to_usd_spread_bps(),
-            signet_fallback_btc_usd_price: default_fx_signet_fallback_btc_usd_price(),
         }
     }
 }
@@ -517,6 +575,25 @@ impl Default for StripeSettings {
             window_limit_minor: default_stripe_window_limit_minor(),
             window_seconds: default_stripe_window_seconds(),
             allowed_risk_levels: default_stripe_allowed_risk_levels(),
+        }
+    }
+}
+
+impl UsdcSettings {
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+}
+
+impl Default for UsdcSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            withdrawals_enabled: false,
+            network: default_usdc_network(),
+            asset: default_usdc_asset(),
+            treasury_address: String::new(),
+            deposit_intent_expiry_seconds: default_usdc_deposit_intent_expiry_seconds(),
         }
     }
 }

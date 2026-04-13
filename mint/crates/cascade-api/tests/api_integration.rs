@@ -3,6 +3,7 @@
 //! Tests that verify the Cashu API endpoints work correctly.
 //! These tests start a local server and make HTTP requests to it.
 
+use async_trait::async_trait;
 use axum::Router;
 use cdk::amount::{FeeAndAmounts, SplitTarget};
 use cdk::dhke::construct_proofs;
@@ -15,12 +16,14 @@ use cdk_common::Bolt11Invoice;
 use hmac::{Hmac, Mac};
 use serde_json::{json, Value};
 use sha2::Sha256;
+use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
 type HmacSha256 = Hmac<Sha256>;
+type SharedInvoiceService = Arc<Mutex<cascade_core::invoice::InvoiceService>>;
 
 const TEST_USD_DENOMINATIONS: &[u64] = &[
     1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
@@ -29,6 +32,82 @@ const TEST_MARKET_DENOMINATIONS: &[u64] = &[
     1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072,
     262144, 524288, 1048576,
 ];
+static TEST_INVOICE_SERVICES: OnceLock<Mutex<HashMap<String, SharedInvoiceService>>> =
+    OnceLock::new();
+
+#[derive(Debug)]
+struct TestQuoteSource {
+    id: &'static str,
+    price: f64,
+    observed_at: i64,
+}
+
+#[async_trait]
+impl cascade_api::fx::QuoteSource for TestQuoteSource {
+    fn id(&self) -> &'static str {
+        self.id
+    }
+
+    async fn fetch_observation(
+        &self,
+        _client: &reqwest::Client,
+    ) -> Result<cascade_core::product::FxQuoteObservation, String> {
+        Ok(cascade_core::product::FxQuoteObservation {
+            source: self.id.to_string(),
+            btc_usd_price: self.price,
+            observed_at: self.observed_at,
+        })
+    }
+}
+
+fn test_invoice_services() -> &'static Mutex<HashMap<String, SharedInvoiceService>> {
+    TEST_INVOICE_SERVICES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+async fn register_test_invoice_service(url: &str, invoice_service: SharedInvoiceService) {
+    test_invoice_services()
+        .lock()
+        .await
+        .insert(url.to_string(), invoice_service);
+}
+
+async fn lookup_test_invoice_service(url: &str) -> Option<SharedInvoiceService> {
+    test_invoice_services().lock().await.get(url).cloned()
+}
+
+fn test_fx_service() -> Arc<cascade_api::fx::FxQuoteService> {
+    let now = chrono::Utc::now().timestamp();
+    Arc::new(
+        cascade_api::fx::FxQuoteService::with_sources(
+            vec![
+                Arc::new(TestQuoteSource {
+                    id: "test-a",
+                    price: 49_900.0,
+                    observed_at: now,
+                }),
+                Arc::new(TestQuoteSource {
+                    id: "test-b",
+                    price: 50_000.0,
+                    observed_at: now,
+                }),
+                Arc::new(TestQuoteSource {
+                    id: "test-c",
+                    price: 50_100.0,
+                    observed_at: now,
+                }),
+            ],
+            cascade_api::fx::FxQuotePolicy {
+                quote_ttl_seconds: 900,
+                max_provider_spread_bps: 500,
+                max_observation_age_seconds: 60,
+                min_provider_count: 2,
+                usd_to_msat_spread_bps: 100,
+                msat_to_usd_spread_bps: 100,
+            },
+        )
+        .unwrap(),
+    )
+}
 
 /// Test helper to create a test server
 async fn create_test_server() -> String {
@@ -133,7 +212,7 @@ async fn create_product_test_server_bundle_with_funding(
     let invoice_service = Arc::new(Mutex::new(cascade_core::invoice::InvoiceService::new(
         lnd_client, 3600, 40,
     )));
-    let fx_service = Arc::new(cascade_api::fx::FxQuoteService::for_network(network_type).unwrap());
+    let fx_service = test_fx_service();
     builder
         .add_payment_processor(
             CurrencyUnit::Usd,
@@ -186,6 +265,7 @@ async fn create_product_test_server_bundle_with_funding(
     let addr = listener.local_addr().unwrap();
     let url = format!("http://{}", addr);
     let invoice_service_for_return = invoice_service.clone();
+    register_test_invoice_service(&url, invoice_service.clone()).await;
 
     tokio::spawn(async move {
         axum::serve(listener, app).await.unwrap();
@@ -288,7 +368,7 @@ async fn create_wallet_funding_and_get_proofs_with_invoice_service(
     pubkey: &str,
     amount_minor: u64,
     edition: &str,
-    invoice_service: Option<&Arc<Mutex<cascade_core::invoice::InvoiceService>>>,
+    invoice_service: Option<&SharedInvoiceService>,
 ) -> serde_json::Value {
     let quote_response = client
         .post(format!("{url}/v1/mint/quote/bolt11"))
@@ -305,17 +385,18 @@ async fn create_wallet_funding_and_get_proofs_with_invoice_service(
     let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
     let quote_id = quote_payload["quote"].as_str().unwrap();
 
-    if edition == "mainnet" {
-        if let (Some(invoice_service), Some(invoice)) =
-            (invoice_service, quote_payload["request"].as_str())
-        {
-            invoice_service
-                .lock()
-                .await
-                .pay_invoice(invoice)
-                .await
-                .unwrap();
-        }
+    let invoice_service = match invoice_service {
+        Some(invoice_service) => Some(invoice_service.clone()),
+        None => lookup_test_invoice_service(url).await,
+    };
+    if let (Some(invoice_service), Some(invoice)) = (invoice_service, quote_payload["request"].as_str())
+    {
+        invoice_service
+            .lock()
+            .await
+            .pay_invoice(invoice)
+            .await
+            .unwrap();
     }
 
     let paid_quote = wait_for_mint_quote_state(client, url, quote_id, &["PAID"]).await;
@@ -1061,6 +1142,16 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .unwrap();
     assert_eq!(sell_quote_response.status(), 200);
     let sell_quote_payload: serde_json::Value = sell_quote_response.json().await.unwrap();
+    assert!(sell_quote_payload
+        .as_object()
+        .unwrap()
+        .get("current_price_long_ppm")
+        .is_some());
+    assert!(sell_quote_payload
+        .as_object()
+        .unwrap()
+        .get("current_price_yes_ppm")
+        .is_none());
     let (sell_issued_outputs, sell_issued_pre_mint) = prepare_outputs(
         &usd_keyset,
         sell_quote_payload["net_minor"].as_u64().unwrap(),
@@ -1072,6 +1163,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
             .saturating_sub(sell_quote_payload["quantity_minor"].as_u64().unwrap()),
         TEST_MARKET_DENOMINATIONS,
     );
+    let sell_input_proofs = issued_market_proofs.clone();
 
     let sell_response = client
         .post(format!("{url}/api/trades/sell"))
@@ -1080,9 +1172,10 @@ async fn test_paper_wallet_buy_and_sell_flow() {
             "pubkey": creator,
             "side": "yes",
             "quantity": first_quantity / 2.0,
-            "proofs": issued_market_proofs,
-            "issued_outputs": sell_issued_outputs,
-            "change_outputs": sell_change_outputs
+            "request_id": "paper-sell-request-1",
+            "proofs": sell_input_proofs.clone(),
+            "issued_outputs": sell_issued_outputs.clone(),
+            "change_outputs": sell_change_outputs.clone()
         }))
         .send()
         .await
@@ -1136,6 +1229,77 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         sell_payload["settlement"]["metadata"]["payment_execution"].as_str(),
         Some("market_reserve_invoice_service")
     );
+    assert!(sell_payload["market"]
+        .as_object()
+        .unwrap()
+        .get("price_long_ppm")
+        .is_some());
+    assert!(sell_payload["market"]
+        .as_object()
+        .unwrap()
+        .get("price_yes_ppm")
+        .is_none());
+    let sell_direction_tag = sell_payload["trade"]["tags"]
+        .as_array()
+        .and_then(|tags| {
+            tags.iter().find_map(|tag| {
+                let tag = tag.as_array()?;
+                if tag.first()?.as_str()? == "direction" {
+                    tag.get(1)?.as_str()
+                } else {
+                    None
+                }
+            })
+        });
+    assert_eq!(sell_direction_tag, Some("long"));
+    let wallet_mint_quote_id = sell_payload["settlement"]["metadata"]["wallet_mint_quote_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let wallet_quote_response = client
+        .get(format!("{url}/v1/mint/quote/wallet/{wallet_mint_quote_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(wallet_quote_response.status(), 200);
+    let wallet_quote_payload: serde_json::Value = wallet_quote_response.json().await.unwrap();
+    assert_eq!(
+        wallet_quote_payload["state"].as_str(),
+        Some("ISSUED")
+    );
+
+    let sell_request_status_response = client
+        .get(format!("{url}/api/trades/requests/paper-sell-request-1"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(sell_request_status_response.status(), 200);
+    let sell_request_status_payload: serde_json::Value =
+        sell_request_status_response.json().await.unwrap();
+    assert_eq!(sell_request_status_payload["status"].as_str(), Some("complete"));
+    assert_eq!(sell_request_status_payload["issued"], sell_payload["issued"]);
+    assert_eq!(sell_request_status_payload["change"], sell_payload["change"]);
+
+    let replay_sell_response = client
+        .post(format!("{url}/api/trades/sell"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "yes",
+            "quantity": first_quantity / 2.0,
+            "request_id": "paper-sell-request-1",
+            "proofs": sell_input_proofs,
+            "issued_outputs": [],
+            "change_outputs": []
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(replay_sell_response.status(), 200);
+    let replay_sell_payload: serde_json::Value = replay_sell_response.json().await.unwrap();
+    assert_eq!(replay_sell_payload["issued"], sell_payload["issued"]);
+    assert_eq!(replay_sell_payload["change"], sell_payload["change"]);
 
     let detail_response = client
         .get(format!("{url}/api/product/markets/slug/{slug}"))
@@ -1450,7 +1614,8 @@ async fn test_coordinator_trade_routes_and_status() {
 
 #[tokio::test]
 async fn test_lightning_funding_quote_settles_after_status_poll() {
-    let url = create_product_test_server().await;
+    let (url, invoice_service) =
+        create_product_test_server_bundle_with_funding(None, None, "signet").await;
     let client = reqwest::Client::new();
     let pubkey = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
@@ -1483,6 +1648,23 @@ async fn test_lightning_funding_quote_settles_after_status_poll() {
     let get_quote_payload: serde_json::Value = get_quote_response.json().await.unwrap();
     assert_eq!(get_quote_payload["quote"].as_str(), Some(quote_id.as_str()));
     assert_eq!(get_quote_payload["state"].as_str(), Some("UNPAID"));
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(400)).await;
+    let still_unpaid_response = client
+        .get(format!("{url}/v1/mint/quote/bolt11/{quote_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(still_unpaid_response.status(), 200);
+    let still_unpaid_payload: serde_json::Value = still_unpaid_response.json().await.unwrap();
+    assert_eq!(still_unpaid_payload["state"].as_str(), Some("UNPAID"));
+
+    invoice_service
+        .lock()
+        .await
+        .pay_invoice(invoice)
+        .await
+        .unwrap();
 
     let paid_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["PAID"]).await;
     assert_eq!(paid_quote["quote"].as_str(), Some(quote_id.as_str()));
@@ -1676,7 +1858,8 @@ async fn test_lightning_funding_rejects_client_edition_mismatch() {
 
 #[tokio::test]
 async fn test_lightning_funding_request_id_is_idempotent() {
-    let url = create_product_test_server().await;
+    let (url, invoice_service) =
+        create_product_test_server_bundle_with_funding(None, None, "signet").await;
     let client = reqwest::Client::new();
     let pubkey = "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef";
     let request_id = "funding-request-idempotent-1";
@@ -1730,6 +1913,13 @@ async fn test_lightning_funding_request_id_is_idempotent() {
         Some(quote_id.as_str())
     );
 
+    invoice_service
+        .lock()
+        .await
+        .pay_invoice(&invoice)
+        .await
+        .unwrap();
+
     let paid_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["PAID"]).await;
     assert_eq!(paid_quote["state"].as_str(), Some("PAID"));
     let minted_proofs = mint_funding_quote_and_get_proofs(&client, &url, &paid_quote, 2500).await;
@@ -1737,6 +1927,69 @@ async fn test_lightning_funding_request_id_is_idempotent() {
 
     let issued_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["ISSUED"]).await;
     assert_eq!(issued_quote["state"].as_str(), Some("ISSUED"));
+}
+
+#[tokio::test]
+async fn test_lightning_funding_mint_replays_issued_signatures() {
+    let (url, invoice_service) =
+        create_product_test_server_bundle_with_funding(None, None, "signet").await;
+    let client = reqwest::Client::new();
+
+    let quote_response = client
+        .post(format!("{url}/v1/mint/quote/bolt11"))
+        .header("x-cascade-edition", "signet")
+        .json(&serde_json::json!({
+            "pubkey": "replay-issued-funding-user",
+            "amount": 2500,
+            "unit": "usd"
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(quote_response.status(), 200);
+    let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
+    let quote_id = quote_payload["quote"].as_str().unwrap().to_string();
+    let invoice = quote_payload["request"].as_str().unwrap().to_string();
+
+    invoice_service
+        .lock()
+        .await
+        .pay_invoice(&invoice)
+        .await
+        .unwrap();
+
+    let paid_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["PAID"]).await;
+    let keyset = fetch_active_usd_keyset(&client, &url).await;
+    let (outputs, pre_mint) = prepare_outputs(&keyset, 2500, TEST_USD_DENOMINATIONS);
+
+    let first_mint_response = client
+        .post(format!("{url}/v1/mint/bolt11"))
+        .json(&serde_json::json!({
+            "quote": quote_id,
+            "outputs": outputs.clone()
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(first_mint_response.status(), 200);
+    let first_mint_payload: serde_json::Value = first_mint_response.json().await.unwrap();
+    let _proofs = proofs_from_signatures(&first_mint_payload["signatures"], &pre_mint, &keyset);
+
+    let second_mint_response = client
+        .post(format!("{url}/v1/mint/bolt11"))
+        .json(&serde_json::json!({
+            "quote": paid_quote["quote"].as_str().unwrap(),
+            "outputs": outputs
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(second_mint_response.status(), 200);
+    let second_mint_payload: serde_json::Value = second_mint_response.json().await.unwrap();
+    assert_eq!(
+        second_mint_payload["signatures"],
+        first_mint_payload["signatures"]
+    );
 }
 
 #[tokio::test]
@@ -2387,6 +2640,8 @@ async fn test_trade_request_id_is_idempotent() {
         second_buy_payload["trade"]["id"].as_str(),
         Some(trade_id.as_str())
     );
+    assert_eq!(second_buy_payload["issued"], first_buy_payload["issued"]);
+    assert_eq!(second_buy_payload["change"], first_buy_payload["change"]);
 
     let request_status_response = client
         .get(format!("{url}/api/trades/requests/{request_id}"))
@@ -2400,6 +2655,8 @@ async fn test_trade_request_id_is_idempotent() {
         request_status_payload["trade"]["id"].as_str(),
         Some(trade_id.as_str())
     );
+    assert_eq!(request_status_payload["issued"], first_buy_payload["issued"]);
+    assert_eq!(request_status_payload["change"], first_buy_payload["change"]);
 
     let detail_response = client
         .get(format!("{url}/api/product/markets/slug/{slug}"))

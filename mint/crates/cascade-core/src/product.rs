@@ -424,6 +424,7 @@ pub struct TradeExecutionRequest {
     pub status: TradeExecutionRequestStatus,
     pub error_message: Option<String>,
     pub trade_id: Option<String>,
+    pub response_json: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
     pub completed_at: Option<i64>,

@@ -12,7 +12,6 @@ use tracing::warn;
 use uuid::Uuid;
 
 const COMBINATION_POLICY: &str = "median_non_stale_major_providers_v1";
-const SIGNET_FALLBACK_SOURCE: &str = "signet-static";
 
 #[derive(Debug, Clone)]
 pub struct FxQuoteEnvelope {
@@ -28,11 +27,10 @@ pub struct FxQuotePolicy {
     pub min_provider_count: usize,
     pub usd_to_msat_spread_bps: u64,
     pub msat_to_usd_spread_bps: u64,
-    pub fallback_btc_usd_price: Option<f64>,
 }
 
 impl FxQuotePolicy {
-    pub fn for_network(network_type: &str) -> Self {
+    pub fn for_network(_network_type: &str) -> Self {
         Self {
             quote_ttl_seconds: 900,
             max_provider_spread_bps: 500,
@@ -40,7 +38,6 @@ impl FxQuotePolicy {
             min_provider_count: 2,
             usd_to_msat_spread_bps: 100,
             msat_to_usd_spread_bps: 100,
-            fallback_btc_usd_price: (network_type == "signet").then_some(50_000.0),
         }
     }
 
@@ -94,11 +91,11 @@ impl FxQuoteService {
         )
     }
 
-    pub fn static_only(btc_usd_price: f64) -> Result<Self, reqwest::Error> {
-        let mut policy = FxQuotePolicy::for_network("signet");
-        policy.fallback_btc_usd_price = Some(btc_usd_price);
-        policy.min_provider_count = 1;
-        Self::new(Vec::new(), policy)
+    pub fn with_sources(
+        sources: Vec<Arc<dyn QuoteSource>>,
+        policy: FxQuotePolicy,
+    ) -> Result<Self, reqwest::Error> {
+        Self::new(sources, policy)
     }
 
     fn new(
@@ -125,41 +122,25 @@ impl FxQuoteService {
         observations.retain(|observation| self.is_observation_fresh(observation, now));
         observations.sort_by(|left, right| left.btc_usd_price.total_cmp(&right.btc_usd_price));
 
-        let fallback_used = observations.len() < self.policy.min_provider_count;
-        if fallback_used {
-            let fallback_btc_usd_price = self.policy.fallback_btc_usd_price.ok_or_else(|| {
-                format!(
-                    "insufficient_fresh_fx_observations:required={}:got={}",
-                    self.policy.min_provider_count,
-                    observations.len()
-                )
-            })?;
-            observations = vec![FxQuoteObservation {
-                source: SIGNET_FALLBACK_SOURCE.to_string(),
-                btc_usd_price: fallback_btc_usd_price,
-                observed_at: now,
-            }];
+        if observations.len() < self.policy.min_provider_count {
+            return Err(format!(
+                "insufficient_fresh_fx_observations:required={}:got={}",
+                self.policy.min_provider_count,
+                observations.len()
+            ));
         }
 
         let reference_btc_usd_price =
             median_price(&observations).ok_or_else(|| "no_fresh_fx_observations".to_string())?;
         let provider_spread_bps = provider_spread_bps(&observations, reference_btc_usd_price);
 
-        if !fallback_used
-            && observations.len() > 1
-            && provider_spread_bps > self.policy.max_provider_spread_bps
-        {
+        if observations.len() > 1 && provider_spread_bps > self.policy.max_provider_spread_bps {
             return Err(format!(
                 "fx_provider_disagreement_too_large:{provider_spread_bps}bps"
             ));
         }
 
-        Ok((
-            observations,
-            reference_btc_usd_price,
-            provider_spread_bps,
-            fallback_used,
-        ))
+        Ok((observations, reference_btc_usd_price, provider_spread_bps, false))
     }
 
     pub async fn quote_minor_to_msat(&self, amount_minor: u64) -> Result<FxQuoteEnvelope, String> {
@@ -488,7 +469,6 @@ fn provider_spread_bps(observations: &[FxQuoteObservation], reference_btc_usd_pr
 mod tests {
     use super::{
         median_price, provider_spread_bps, FxQuotePolicy, FxQuoteService, QuoteSource,
-        COMBINATION_POLICY,
     };
     use async_trait::async_trait;
     use cascade_core::product::FxQuoteDirection;
@@ -519,7 +499,7 @@ mod tests {
         }
     }
 
-    fn test_policy(now: i64) -> FxQuotePolicy {
+    fn test_policy(_now: i64) -> FxQuotePolicy {
         FxQuotePolicy {
             quote_ttl_seconds: 30,
             max_provider_spread_bps: 500,
@@ -527,7 +507,6 @@ mod tests {
             min_provider_count: 2,
             usd_to_msat_spread_bps: 100,
             msat_to_usd_spread_bps: 100,
-            fallback_btc_usd_price: Some(50_000.0 + now as f64 * 0.0),
         }
     }
 
@@ -536,32 +515,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn static_fallback_quotes_msat() {
-        let service = FxQuoteService::static_only(50_000.0).unwrap();
-        let quote = service.quote_wallet_funding(2_500).await.unwrap();
-        assert_eq!(quote.snapshot.amount_minor, 2_500);
-        assert_eq!(quote.snapshot.amount_msat, 50_505_051);
-        assert_eq!(quote.snapshot.reference_btc_usd_price, 50_000.0);
-        assert_eq!(quote.snapshot.btc_usd_price, 49_500.0);
-        assert!(quote.fallback_used);
-        assert_eq!(quote.snapshot.observations.len(), 1);
-        assert_eq!(
-            quote.snapshot.source_metadata.combination_policy,
-            COMBINATION_POLICY
-        );
-        assert_eq!(
-            quote.snapshot.source_metadata.quote_direction,
-            FxQuoteDirection::UsdToMsat
-        );
+    async fn quote_service_rejects_missing_providers_without_fallback() {
+        let service = test_service(Vec::new(), test_policy(chrono::Utc::now().timestamp()));
+        let error = service.quote_wallet_funding(2_500).await.unwrap_err();
+        assert_eq!(error, "insufficient_fresh_fx_observations:required=2:got=0");
     }
 
     #[tokio::test]
     async fn quote_service_uses_median_reference_rate_and_directional_spread() {
         let now = chrono::Utc::now().timestamp();
-        let policy = FxQuotePolicy {
-            fallback_btc_usd_price: None,
-            ..test_policy(now)
-        };
+        let policy = test_policy(now);
         let service = test_service(
             vec![
                 Arc::new(FixedQuoteSource {
@@ -607,10 +570,7 @@ mod tests {
                     observed_at: now - 121,
                 }),
             ],
-            FxQuotePolicy {
-                fallback_btc_usd_price: None,
-                ..test_policy(now)
-            },
+            test_policy(now),
         );
 
         let error = service.quote_wallet_funding(2_500).await.unwrap_err();
@@ -633,10 +593,7 @@ mod tests {
                     observed_at: now,
                 }),
             ],
-            FxQuotePolicy {
-                fallback_btc_usd_price: None,
-                ..test_policy(now)
-            },
+            test_policy(now),
         );
 
         let error = service.quote_wallet_funding(2_500).await.unwrap_err();
@@ -654,7 +611,6 @@ mod tests {
             })],
             FxQuotePolicy {
                 min_provider_count: 1,
-                fallback_btc_usd_price: None,
                 ..test_policy(now)
             },
         );

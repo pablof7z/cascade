@@ -190,8 +190,6 @@ async fn main() -> Result<()> {
         min_provider_count: config.fx.min_provider_count,
         usd_to_msat_spread_bps: config.fx.usd_to_msat_spread_bps,
         msat_to_usd_spread_bps: config.fx.msat_to_usd_spread_bps,
-        fallback_btc_usd_price: (config.network.network_type == "signet")
-            .then_some(config.fx.signet_fallback_btc_usd_price),
     };
     let fx_service = Arc::new(
         FxQuoteService::with_policy(fx_policy).context("Failed to initialize FX quote service")?,

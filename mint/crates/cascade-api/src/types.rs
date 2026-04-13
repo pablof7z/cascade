@@ -115,8 +115,10 @@ pub struct ProductMarketSummary {
     pub visibility: String,
     pub created_at: i64,
     pub first_trade_at: Option<i64>,
-    pub price_yes_ppm: u64,
-    pub price_no_ppm: u64,
+    #[serde(alias = "price_yes_ppm")]
+    pub price_long_ppm: u64,
+    #[serde(alias = "price_no_ppm")]
+    pub price_short_ppm: u64,
     pub volume_minor: u64,
     pub trade_count: u64,
     pub reserve_minor: u64,
@@ -177,6 +179,9 @@ pub struct ProductTradeRequestStatusResponse {
     pub error: Option<String>,
     pub market: Option<ProductMarketSummary>,
     pub trade: Option<Value>,
+    pub settlement: Option<ProductTradeSettlementResponse>,
+    pub issued: Option<ProductTradeBlindSignatureBundleResponse>,
+    pub change: Option<ProductTradeBlindSignatureBundleResponse>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -412,8 +417,10 @@ pub struct ProductTradeQuoteResponse {
     pub average_price_ppm: u64,
     pub marginal_price_before_ppm: u64,
     pub marginal_price_after_ppm: u64,
-    pub current_price_yes_ppm: u64,
-    pub current_price_no_ppm: u64,
+    #[serde(alias = "current_price_yes_ppm")]
+    pub current_price_long_ppm: u64,
+    #[serde(alias = "current_price_no_ppm")]
+    pub current_price_short_ppm: u64,
     pub fx_source: Option<String>,
     pub btc_usd_price: Option<f64>,
     pub spread_bps: Option<u64>,

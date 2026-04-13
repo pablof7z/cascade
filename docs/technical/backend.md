@@ -140,6 +140,7 @@ Standard-first backend rule:
 - prefer CDK's canonical mint/melt quote state for standard Cashu operations
 - when Cascade needs extra product metadata, attach it to the canonical quote or operation id instead of replacing the standard flow
 - add a custom backend table or route only when the behavior is outside the standard mint contract and the justification is documented
+- when the coordinator spends proofs for a product trade, it should do so through the same in-process CDK mint or melt primitives that back the public standard routes, not through direct invoice-service shortcuts
 
 Actor metadata such as thesis, role, or operator notes is not mint state and should not live in mint tables. The mint only needs market, quote, settlement, and proof data.
 

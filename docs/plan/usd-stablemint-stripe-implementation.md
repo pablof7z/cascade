@@ -230,3 +230,24 @@ USDC is defined separately in [usdc-wallet-rail-addendum.md](./usdc-wallet-rail-
 - Scope note: `mint/migrations/017_fx_quote_source_metadata.sql` records the schema change, and runtime upgrades currently rely on `ensure_fx_quote_source_metadata_columns()` for compatibility with the active SQLite test matrix.
 - Workstream 4 now has a shared post-payment recovery model across Lightning and Stripe: persisted funding reads reconcile mirrored CDK mint-quote state, Lightning funding status now moves to `complete` after standard quote issuance, and verified Stripe webhooks now leave the funding in redeemable `PAID` state until the browser mints proofs through `/v1/mint/stripe`.
 - Stripe funding creation now mirrors each funding id into mint localstore immediately so webhook completion, later minting, and interrupted client recovery all reference one durable quote id instead of a Stripe-only saga row.
+
+### 2026-04-13 Review Addendum
+
+- Workstream 2 is not complete while signet can silently quote against a hard-coded BTC/USD fallback. Launch signet and mainnet must both exercise the live multi-provider quote path. If a manual fallback is kept for local development, it must be opt-in, visibly degraded, and excluded from launch completion.
+- Workstream 3 is not complete while signet Lightning funding auto-settles invoices inside the backend. Paper funding must still use a real signet-value payment loop and the same `quote -> pay -> PAID -> mint` lifecycle as mainnet.
+- Workstream 4 is not complete until the new sell-side wallet quote is actually recoverable. Persisting `wallet_mint_quote_id`, state, and expiry in trade metadata is not enough if the standard mint-quote routes cannot read or redeem that quote after interruption.
+- Do not manually force a wallet mint quote to `ISSUED` unless the corresponding blinded-output recovery path is durable and externally reachable.
+- Request-id idempotency must cover response loss, not only duplicate execution. After successful funding or sell issuance, the client must be able to recover the same outputs or resume through a documented redeemable quote path.
+- Outbound product APIs should emit `long` and `short`, not `yes` and `no`, and should avoid `settlement` language when the user-facing behavior is wallet funding, market minting, or withdrawal.
+Required test additions:
+- duplicate Stripe webhook delivery after `paid`, `complete`, and `review_required`
+- interrupted sell after wallet invoice payment but before client receipt of proofs
+- interrupted funding after `PAID` and after successful proof issuance
+- signet paper funding without backend auto-payment
+- launch checks that fail when FX fallback mode is active
+
+### 2026-04-13 Round 3
+
+- Workstream 2 now rejects missing or stale provider observations in every edition instead of silently falling back to a static signet BTC/USD rate, so launch completion depends on the live multi-provider quote path for both signet and mainnet.
+- Workstream 3 no longer auto-pays signet Lightning funding invoices in the product layer. Funding remains `quote -> pay -> PAID -> mint`, and the integration tests now explicitly drive payment before asserting `PAID` and `ISSUED`.
+- Workstream 4 recovery is now externally replayable end to end: sell-created wallet quotes are recoverable through the standard `bolt11` quote and mint routes, and completed trade request retries can return the same issued/change bundles without re-executing the trade.

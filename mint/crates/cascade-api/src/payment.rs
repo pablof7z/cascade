@@ -349,7 +349,7 @@ impl MintPayment for UsdBolt11PaymentProcessor {
                     fx_quote.snapshot.amount_msat,
                     bolt11_options.description.clone(),
                     Some(expiry_seconds),
-                    self.paper_mode,
+                    false,
                 )
                 .await
                 .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?

@@ -206,6 +206,14 @@ For clarity, that means the internal Lightning settlement choreography should be
 
 If the codebase still uses a custom route for one of those jobs, that route is migration debt unless it has a documented product-specific justification.
 
+The coordinator may invoke those standard primitives in-process through CDK instead of literally calling its own HTTP routes. That is still standard behavior only if it persists and executes the same canonical quote state:
+
+- real standard mint or melt quote creation
+- real standard proof spending or issuance
+- real standard quote ids for recovery and auditing
+
+What is not acceptable is bypassing the standard quote state by creating and paying invoices through a bespoke helper and only writing a synthetic settlement record afterwards.
+
 ## Recovery And State
 
 This is not a single on-chain atomic transaction. It is a quote-based saga and must be treated that way.
@@ -219,6 +227,11 @@ Launch requires persisted state for:
 - melt quotes
 - payment identifiers
 - trade execution records
+
+Trade settlement records must keep product and standard quote ids distinct:
+
+- the product trade `quote_id` remains the executable LMSR quote id
+- underlying standard mint or melt quote ids should be persisted alongside settlement metadata rather than replacing the product quote id
 
 Launch also requires:
 

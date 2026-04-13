@@ -25,7 +25,6 @@ max_observation_age_seconds = 60
 min_provider_count = 2
 usd_to_msat_spread_bps = 100
 msat_to_usd_spread_bps = 100
-signet_fallback_btc_usd_price = 50000.0
 
 [stripe]
 secret_key = ""
@@ -39,6 +38,14 @@ max_funding_minor = 10000
 window_limit_minor = 25000
 window_seconds = 86400
 allowed_risk_levels = ["normal"]
+
+[usdc]
+enabled = false
+withdrawals_enabled = false
+network = "base"
+asset = "USDC"
+treasury_address = ""
+deposit_intent_expiry_seconds = 86400
 
 [network]
 network_type = "testnet"

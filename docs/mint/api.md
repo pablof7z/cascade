@@ -147,6 +147,8 @@ If Cascade needs extra product metadata for one of these flows, that metadata sh
 
 At the implementation level, the public `bolt11` mint and melt routes are backed by the shared USD/BOLT11 payment processor and standard Cashu wire contract. Cascade-specific code is still allowed to reconcile quote state or attach recovery metadata around that standard contract, but not to replace it with a different route shape.
 
+That same rule applies when the coordinator executes a trade internally. It may call CDK mint or melt primitives directly inside the process, but the persisted state must still reflect the standard Cashu quote that was actually used.
+
 ### Justified Custom Cascade Surface
 
 These routes are justified because they express product behavior that the standard mint surface does not express on its own:
@@ -345,7 +347,12 @@ The persisted quote is also the settlement contract for the coordinator. It shou
 - `spread_bps`
 - `fx_observations[]`
 
-Executed trade responses and `GET /api/trades/{trade_id}` should also expose a settlement object when one exists. The canonical launch shape is a completed BOLT11 settlement record: the mint creates the invoice for the receiving side, pays it over the Lightning abstraction, and records the invoice, payment hash, and FX snapshot so recovery and auditing can reason about the internal rail step without inventing a bespoke public swap primitive.
+Executed trade responses and `GET /api/trades/{trade_id}` should also expose a settlement object when one exists. The canonical launch shape is a completed BOLT11 settlement record: the mint creates the invoice for the receiving side, pays it through the standard Cashu melt path, and records the invoice, payment hash, FX snapshot, and underlying standard quote id so recovery and auditing can reason about the internal rail step without inventing a bespoke public swap primitive.
+
+Within that settlement object:
+
+- top-level `quote_id` is the product trade quote id
+- underlying standard Cashu quote ids belong in settlement metadata until or unless there is a dedicated typed field for them
 
 The settlement record must describe the logical direction explicitly instead of using a vague internal label:
 

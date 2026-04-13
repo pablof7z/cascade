@@ -542,3 +542,24 @@ Launch should fail this gate if:
 - Scope note: schema history now includes `mint/migrations/017_fx_quote_source_metadata.sql`, while runtime upgrade safety currently comes from `ensure_fx_quote_source_metadata_columns()` because `ADD COLUMN IF NOT EXISTS` was not reliable across the current SQLite test matrix.
 - Milestone 4 funding recovery is now rail-aware instead of Lightning-only: Stripe funding rows are mirrored into CDK mint-quote state at creation time, verified webhook completion moves them into redeemable `PAID` state, `/v1/mint/stripe` issues proofs through the same blind-output flow as Lightning, and persisted funding-status reads now reconcile `ISSUED -> complete` for both rails without returning bearer proofs.
 - Milestone 5 sell execution now creates a real incoming wallet mint quote before the hidden BOLT11 payment step, then persists the underlying wallet quote id and quote-state metadata on the resulting trade settlement record so wallet-side exit recovery and audit no longer depend on a bespoke raw invoice alone.
+
+### 2026-04-13 Review Addendum
+
+- Milestone 3 is not complete while signet can silently fall back to a static BTC/USD rate. Launch signet and mainnet must both use the live multi-provider quote policy. If a manual fallback remains for local development, gate it behind an explicit non-launch flag, surface it as degraded mode, and exclude it from milestone completion.
+- Milestone 4 is not complete while signet Lightning funding auto-pays invoices inside the backend. Replace the auto-settle shortcut with an actual signet-value payment loop that preserves the normal `quote -> pay -> PAID -> mint` lifecycle and the same recovery semantics expected on mainnet.
+- Milestone 5 is not complete until sell exits are genuinely recoverable after interruption. A sell-created wallet mint quote must be readable and redeemable through the standard mint-quote contract, or an equivalently standard documented recovery contract. Do not mark a wallet mint quote `ISSUED` manually unless the blinded-output recovery path is durable and externally recoverable.
+- Request-id idempotency is not sufficient by itself. For buy, sell, Lightning funding, and Stripe funding, a client that loses the success response after proof issuance must be able to recover the issued outputs or resume through a documented redeemable quote path without double execution or stranded value.
+- Public product APIs and mint-authored trade payloads must emit `long` and `short`, not `yes` and `no`. If compatibility aliases are needed, keep `yes` and `no` as inbound-only parsing aliases and add an explicit follow-up to remove them from outbound responses, trade events, and price field names.
+- User-facing product APIs should avoid `settlement` terminology when the behavior is actually funding, minting, or withdrawal. Internal implementation terms can remain, but the external contract should use product language consistently.
+Required tests before closing M3, M4, or M5:
+- duplicate Stripe webhook delivery remains idempotent and cannot move a funding back out of `complete` or `review_required`
+- sell interrupted after wallet-invoice payment but before client response can be recovered end to end
+- trade and funding request-id retries after a lost success response recover the same issued outputs or an equivalent redeemable quote path
+- signet paper funding no longer relies on backend auto-payment
+- launch signet and mainnet completion checks fail if FX fallback mode is active
+
+### 2026-04-13 Round 3
+
+- Review finding 1 is now closed in the mint surface: sell-created wallet quotes remain readable on the standard `bolt11` quote routes, `POST /v1/mint/bolt11` replays issued signatures for the same quote id, and trade request replay can recover completed buy and sell responses without resubmitting proofs.
+- Review finding 2 is now closed for launch paths: the signet-only auto-payment shortcut was removed from portfolio Lightning funding, and the FX service now hard-fails when live provider observations are missing or stale instead of silently quoting against a static signet fallback.
+- Review finding 3 is now closed in the product contract: outbound trade and market payloads use `long` and `short`, while `yes` and `no` remain inbound-only parsing aliases for compatibility.

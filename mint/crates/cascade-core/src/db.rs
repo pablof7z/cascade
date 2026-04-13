@@ -133,6 +133,8 @@ impl CascadeDatabase {
         self.ensure_wallet_funding_quote_metadata_column().await?;
         self.ensure_trade_quote_settlement_columns().await?;
         self.ensure_fx_quote_source_metadata_columns().await?;
+        self.ensure_trade_execution_request_response_column()
+            .await?;
 
         sqlx::query(include_str!(
             "../../../migrations/009_trade_settlements.sql"
@@ -396,6 +398,25 @@ impl CascadeDatabase {
         .execute(&self.pool)
         .await
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn ensure_trade_execution_request_response_column(&self) -> Result<()> {
+        if self
+            .table_exists("trade_execution_requests")
+            .await?
+            && !self
+                .column_exists("trade_execution_requests", "response_json")
+                .await?
+        {
+            sqlx::query(include_str!(
+                "../../../migrations/018_trade_request_response_json.sql"
+            ))
+            .execute(&self.pool)
+            .await
+            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+        }
 
         Ok(())
     }
@@ -2512,6 +2533,7 @@ impl CascadeDatabase {
                 String,
                 Option<String>,
                 Option<String>,
+                Option<String>,
                 i64,
                 i64,
                 Option<i64>,
@@ -2529,6 +2551,7 @@ impl CascadeDatabase {
                 status,
                 error_message,
                 trade_id,
+                response_json,
                 created_at,
                 updated_at,
                 completed_at
@@ -2554,6 +2577,7 @@ impl CascadeDatabase {
                 status,
                 error_message,
                 trade_id,
+                response_json,
                 created_at,
                 updated_at,
                 completed_at,
@@ -2570,6 +2594,7 @@ impl CascadeDatabase {
                     .unwrap_or(TradeExecutionRequestStatus::Pending),
                 error_message,
                 trade_id,
+                response_json,
                 created_at,
                 updated_at,
                 completed_at,
@@ -2581,6 +2606,7 @@ impl CascadeDatabase {
         &self,
         request_id: &str,
         trade_id: &str,
+        response_json: Option<&str>,
     ) -> Result<Option<TradeExecutionRequest>> {
         let now = chrono::Utc::now().timestamp();
         sqlx::query(
@@ -2588,6 +2614,7 @@ impl CascadeDatabase {
             UPDATE trade_execution_requests
             SET status = 'complete',
                 trade_id = ?,
+                response_json = ?,
                 error_message = NULL,
                 updated_at = ?,
                 completed_at = ?
@@ -2595,6 +2622,7 @@ impl CascadeDatabase {
             "#,
         )
         .bind(trade_id)
+        .bind(response_json)
         .bind(now)
         .bind(now)
         .bind(request_id)

@@ -328,6 +328,14 @@ The mint plan required explicit sign-off before implementation. This principle e
 
 ## 8. Visual Design
 
+### Component Framework: Tailwind v4 + DaisyUI
+
+Use **Tailwind CSS v4** with **DaisyUI** for all UI components. No hand-rolled component CSS for things DaisyUI provides (`btn`, `card`, `modal`, `tab`, `badge`, `alert`, `input`, `select`, `textarea`, `toggle`, `dropdown`, etc.).
+
+**bits-ui** remains for headless accessibility primitives (tabs, dialogs, dropdowns) — style them with DaisyUI classes.
+
+This replaces any prior shadcn-svelte or custom CSS approaches.
+
 ### Editorial Minimalism
 
 Dark theme on `neutral-950`. Accents: only `emerald` (bullish/YES) and `rose` (bearish/NO). No other accent colors.

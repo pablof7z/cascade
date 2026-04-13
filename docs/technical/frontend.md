@@ -11,7 +11,8 @@ The active frontend implementation lives in `web/`.
 | Layer | Technology |
 |-------|-----------|
 | Framework | SvelteKit + Svelte 5 |
-| Styling | Tailwind CSS |
+| Styling | Tailwind CSS v4 + DaisyUI |
+| Component primitives | bits-ui (headless, for accessibility — tabs, dialogs, dropdowns) |
 | Nostr client | NDK (Nostr Dev Kit) |
 | Deployment | Vercel at `cascade.f7z.io`, plus a local node-runtime path for supervised signet/mainnet editions |
 | Repository | `git@github.com:pablof7z/cascade.git` |
@@ -267,13 +268,36 @@ It is not a private custody dashboard backed by server-held proofs.
 
 ## Styling Rules
 
-- Tailwind CSS with `neutral-*` colors only
-- page background `neutral-950`
-- accents only `emerald-*` and `rose-*`
-- numbers and money use `font-mono`
-- text and UI use `font-sans`
-- no rounded pills, no gradients, no emojis in UI chrome
-- no gratuitous cards
+### Stack
+- **Tailwind CSS v4** — native CSS-based config, `@import "tailwindcss"` in `app.css`, no `tailwind.config.js`
+- **DaisyUI** — component classes (`btn`, `card`, `modal`, `tab`, etc.) for consistent, pre-styled UI
+- **bits-ui** — headless Svelte primitives for accessibility (tabs, dialogs, dropdowns); style with DaisyUI classes
+
+### DaisyUI Theme
+- Use a single dark theme customized to Cascade's palette
+- Base: `neutral-950` page background, pure neutral grays (no blue tint)
+- Primary accent: `emerald` family
+- Error/negative accent: `rose` family
+- Configure via DaisyUI theme customization in CSS, not arbitrary Tailwind overrides
+
+### Component Rules
+- **Use DaisyUI component classes first.** `btn`, `btn-primary`, `card`, `modal`, `tab`, `badge`, `alert`, `input`, `select`, `textarea`, `toggle`, `dropdown`, etc.
+- **Do not reinvent components that DaisyUI provides.** If DaisyUI has a class for it, use it.
+- **bits-ui for behavior, DaisyUI for style.** When using bits-ui primitives (e.g., `Tabs.Root`), apply DaisyUI classes to the rendered elements.
+- No hand-rolled CSS for things DaisyUI covers. Custom CSS only for genuinely unique Cascade elements.
+
+### Typography
+- Numbers and money: `font-mono`
+- Text and UI: `font-sans`
+- Headings: `font-heading` (via global CSS)
+
+### Visual Constraints
+- No rounded pills, no gradients, no emojis in UI chrome
+- No gratuitous cards — use cards only when content grouping adds clarity
+- `neutral-*` for all grays — never `gray-*` (which has a blue tint)
+
+### Migration Note
+The codebase currently uses hand-written CSS variables and custom styles in `app.css`. These must be migrated to Tailwind v4 + DaisyUI. The existing `src/lib/components/ui/` directory contains bits-ui wrappers (tabs, dialog, dropdown-menu, avatar, navigation-menu) that should be restyled with DaisyUI classes rather than custom CSS.
 
 See [style-guide.md](../design/style-guide.md) for the full reference.
 

@@ -4,6 +4,16 @@
 
 ---
 
+## Styling Stack
+
+- **Tailwind CSS v4** — utility classes, native CSS config via `@import "tailwindcss"` in `app.css`
+- **DaisyUI** — component classes for buttons, cards, modals, tabs, inputs, badges, alerts, etc.
+- **bits-ui** — headless Svelte 5 primitives for accessible behavior (tabs, dialogs, dropdowns); styled with DaisyUI/Tailwind classes
+
+**Rule: Use DaisyUI component classes first.** If DaisyUI has a class for it (`btn`, `card`, `modal`, `tab`, `input`, `badge`, `alert`, `toggle`, `dropdown`, etc.), use it. Do not hand-roll CSS for things DaisyUI covers. Custom CSS only for genuinely unique Cascade elements.
+
+---
+
 ## Design Direction
 
 **Aesthetic:** Editorial authority. Professional minimalist dark theme. Think Bloomberg meets The Economist in dark mode.
@@ -21,21 +31,22 @@
 
 ---
 
-## Colors
+## DaisyUI Theme
 
-| Role | Token | Hex |
-|------|-------|-----|
-| Page background | `neutral-950` | `#0a0a0a` |
-| Elevated surface | `neutral-900` | `#171717` |
-| Interactive / hover | `neutral-800` | `#262626` |
-| Primary text | `white` | `#ffffff` |
-| Secondary text | `neutral-300` | `#d4d4d4` |
-| Tertiary text | `neutral-400` | `#a3a3a3` |
-| Muted / disabled | `neutral-500` | `#737373` |
-| Strong border | `neutral-700` | `#404040` |
-| Subtle border | `neutral-800` | `#262626` |
-| Bullish / positive / YES side | `emerald-*` | — |
-| Bearish / negative / NO side | `rose-*` | — |
+Configure a custom dark theme in `app.css` using DaisyUI's CSS variable theming. Map Cascade's palette:
+
+| Role | DaisyUI variable | Value | Notes |
+|------|-----------------|-------|-------|
+| Page background | `--b1` | `#0a0a0a` (neutral-950) | |
+| Elevated surface | `--b2` | `#171717` (neutral-900) | |
+| Interactive / hover | `--b3` | `#262626` (neutral-800) | |
+| Primary text | `--bc` | `#ffffff` | Base content color |
+| Primary accent | `--p` | emerald-500 | YES side, positive, CTAs |
+| Primary content | `--pc` | white | Text on primary |
+| Error accent | `--er` | rose-500 | NO side, negative, errors |
+| Error content | `--erc` | white | Text on error |
+| Neutral | `--n` | `#404040` (neutral-700) | Borders, secondary surfaces |
+| Neutral content | `--nc` | `#d4d4d4` (neutral-300) | Secondary text |
 
 **No other accent colors without explicit approval.**
 
@@ -86,36 +97,81 @@ JetBrains Mono is for any number that represents a quantity, price, percentage, 
 
 ## Key Components
 
-### Tabs
-
-Underline style only. No pill tabs, no background-fill tabs.
-
-```
-Container: flex gap-1 border-b border-neutral-800
-Active:    -mb-px border-b-2 border-white text-white
-Inactive:  text-neutral-500 hover:text-neutral-300
-```
-
-Reference: `webapp/src/lib/components/ui/MarketTabsShell.svelte`
-Reference note: the old `webapp/` path is legacy only. Recreate this tab pattern in `web/` rather than treating `webapp/` as the active source tree.
-
 ### Buttons
 
-| Variant | Classes |
-|---------|---------|
-| Primary | `bg-white text-neutral-950 hover:bg-neutral-200 text-sm font-medium px-4 py-2` |
-| Secondary | `border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white text-sm font-medium px-4 py-2` |
-| Ghost | `text-neutral-400 hover:text-white text-sm font-medium px-3 py-1.5` |
+Use DaisyUI `btn` classes:
 
-No rounded pills. Maximum `rounded-md` if rounding is used at all.
+| Variant | DaisyUI classes |
+|---------|-----------------|
+| Primary | `btn btn-primary` |
+| Secondary | `btn btn-outline` |
+| Ghost | `btn btn-ghost` |
+| Danger | `btn btn-error` |
+
+Size: `btn-sm` for compact UI, default for standard. No rounded pills — override DaisyUI's default border-radius to `rounded-md` max in the theme.
+
+### Tabs
+
+Use DaisyUI `tabs` with `tabs-bordered` variant. Underline style only — no boxed/lifted tabs.
+
+```html
+<div class="tabs tabs-bordered">
+  <a class="tab tab-active">Active</a>
+  <a class="tab">Inactive</a>
+</div>
+```
+
+When using bits-ui `Tabs` primitives for keyboard navigation, apply DaisyUI tab classes to the rendered elements.
 
 ### Inputs
 
-```
-bg-neutral-900 border border-neutral-800 focus:border-neutral-600 text-white placeholder:text-neutral-500
+Use DaisyUI `input` class:
+
+```html
+<input class="input input-bordered w-full" />
+<select class="select select-bordered" />
+<textarea class="textarea textarea-bordered" />
 ```
 
-No outer glow effects. Minimal borders.
+The DaisyUI theme variables handle the colors. No outer glow effects.
+
+### Modals / Dialogs
+
+Use DaisyUI `modal` class for styling, bits-ui `Dialog` for behavior:
+
+```html
+<dialog class="modal">
+  <div class="modal-box">
+    <!-- content -->
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+```
+
+### Badges / Labels
+
+Use DaisyUI `badge` class:
+
+```html
+<span class="badge badge-primary">LIVE</span>
+<span class="badge badge-error">CLOSED</span>
+<span class="badge badge-ghost">PENDING</span>
+```
+
+### Dropdowns
+
+Use DaisyUI `dropdown` class for styling, bits-ui `DropdownMenu` for behavior and accessibility.
+
+### Cards
+
+**Avoid.** Use spacing and subtle dividers instead of boxing content in cards. Cards add visual noise without adding information.
+
+If a card is genuinely necessary, use DaisyUI `card`:
+- `card bg-base-200` — no shadow
+- No rounded corners greater than `rounded-md`
+- Absolutely no nested cards
 
 ### Lists and Tables
 
@@ -123,16 +179,7 @@ No outer glow effects. Minimal borders.
 - No outer `border-y` on the wrapper — surrounding spacing is sufficient
 - Table headers: `text-xs text-neutral-500 uppercase tracking-wide` (exception to the no-uppercase rule)
 - No stacked borders (e.g., `border-t` immediately after a `border-b` container)
-
-### Cards
-
-**Avoid.** Use spacing and subtle dividers instead of boxing content in cards. Cards add visual noise without adding information.
-
-If a card is genuinely necessary:
-- No rounded corners greater than `rounded-md`
-- Background `neutral-900` at most
-- No shadow effects
-- Absolutely no nested cards
+- For data tables, use DaisyUI `table` class
 
 ---
 
@@ -142,8 +189,8 @@ If a card is genuinely necessary:
 - Percentages: `72%` not `72.0%` unless precision is meaningful
 - Monetary values: display in USD in the normal product UI, formatted with `font-mono`
 - Never expose sats or msats in the normal product UI
-- YES side color: `emerald-*`
-- NO side color: `rose-*`
+- YES side color: `text-primary` (emerald via theme)
+- NO side color: `text-error` (rose via theme)
 
 ---
 

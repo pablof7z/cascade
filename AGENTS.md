@@ -52,6 +52,16 @@ See `docs/design/style-guide.md` for the full brand style guide.
 
 ---
 
+# Deployment
+
+- The web app (`web/`) is deployed on **Vercel** and auto-deploys on every push to `main`. No manual deploy step needed.
+- Production URL: **https://cascade.f7z.io**
+- Vercel project: `cascade-8f3k2m` (org: `pablof7zs-projects`). Config: `web/.vercel/project.json`.
+- To inspect deployments: `cd web && vercel ls`
+- The `web/deploy/` directory and `web/scripts/run-node-edition.sh` are for **local development only**, not production.
+
+---
+
 # Repository Layout
 
 - The active Svelte 5 web app lives in `web/`.

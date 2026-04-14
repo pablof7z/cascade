@@ -71,7 +71,7 @@
   const paperEdition = isPaperEdition();
   const stripeFundingEnabled = isStripeFundingEnabled();
   const editionLabel = paperEdition ? 'Signet' : 'Mainnet';
-  const portfolioLabel = paperEdition ? 'signet portfolio' : 'portfolio';
+  const portfolioLabel = paperEdition ? 'practice portfolio' : 'portfolio';
 
   const proofUnit = 'usd';
   const signetFundingSingleLimitMinor = 10000;
@@ -252,7 +252,7 @@
   );
 
   function runtimeMismatchMessage(actualEdition: string): string {
-    return `This ${portfolioLabel} is pointed at a ${actualEdition} mint. Funding and trading stay disabled until the API target is corrected.`;
+    return `This ${portfolioLabel} is pointed at a ${actualEdition} server. Funding and trading stay disabled until the API target is corrected.`;
   }
 
   function railUnavailableMessage(rail: 'lightning' | 'stripe'): string {
@@ -314,17 +314,17 @@
     localBalanceMinor = snapshot.proofs.reduce((sum, proof) => sum + proof.amount, 0);
     localProofCount = snapshot.proofs.length;
     void loadLocalPositionMarks();
-    status = `${sourceLabel} added ${formatUsdMinor(proofs.reduce((sum, proof) => sum + proof.amount, 0))} of browser-local proofs.`;
+    status = `${sourceLabel} added ${formatUsdMinor(proofs.reduce((sum, proof) => sum + proof.amount, 0))} to your browser-local funds.`;
     return true;
   }
 
   function formatSignetFundingError(message: string): string {
     if (message.startsWith('signet_funding_single_limit_exceeded')) {
-      return `Signet funding is capped at ${formatUsdMinor(signetFundingSingleLimitMinor)} per funding request.`;
+      return `Practice mode funding is capped at ${formatUsdMinor(signetFundingSingleLimitMinor)} per funding request.`;
     }
 
     if (message.startsWith('signet_funding_window_limit_exceeded')) {
-      return `Signet funding is capped at ${formatUsdMinor(signetFundingWindowLimitMinor)} per 24 hours.`;
+      return `Practice mode funding is capped at ${formatUsdMinor(signetFundingWindowLimitMinor)} per 24 hours.`;
     }
 
     return message;
@@ -402,7 +402,7 @@
       return;
     }
 
-    status = `Creating a Lightning mint quote for ${formatUsdMinor(amountMinor)}.`;
+    status = `Creating a Lightning deposit for ${formatUsdMinor(amountMinor)}.`;
     errorMessage = '';
     const requestId = crypto.randomUUID();
     trackPendingFunding({
@@ -502,7 +502,7 @@
         });
         clearPendingFunding(requestId);
         refreshLocalFundingState();
-        status = `Stripe funding settled for ${formatUsdMinor(amountMinor)}. Claiming browser-local proofs for card funding is not enabled yet.`;
+        status = `Stripe funding settled for ${formatUsdMinor(amountMinor)}. Claiming browser-local funds for card funding is not enabled yet.`;
         return;
       }
 
@@ -629,7 +629,7 @@
               });
               clearPendingFunding(trackedFunding.id);
               walletNeedsRefresh = true;
-              status = `Recovered issued Lightning funding for ${formatUsdMinor(trackedFunding.amountMinor)}, but this browser no longer has the local mint recovery data.`;
+              status = `Recovered issued Lightning funding for ${formatUsdMinor(trackedFunding.amountMinor)}, but this browser no longer has the local recovery data.`;
               continue;
             }
 
@@ -746,11 +746,11 @@
         walletNeedsRefresh = true;
 
         if (funding.status === 'complete') {
-          status = `Recovered ${fundingLabel(funding.rail).toLowerCase()} settlement for ${formatUsdMinor(funding.amount_minor)}. Browser-local proof claiming for this rail is not enabled yet.`;
+          status = `Recovered ${fundingLabel(funding.rail).toLowerCase()} settlement for ${formatUsdMinor(funding.amount_minor)}. Browser-local fund claiming for this rail is not enabled yet.`;
         } else {
           status =
             funding.status === 'review_required'
-              ? `Recovered ${fundingLabel(funding.rail).toLowerCase()} under review for ${formatUsdMinor(funding.amount_minor)}. No proofs were issued.`
+              ? `Recovered ${fundingLabel(funding.rail).toLowerCase()} under review for ${formatUsdMinor(funding.amount_minor)}. No funds were issued.`
               : `Recovered ${funding.status.replace(/_/g, ' ')} ${fundingLabel(funding.rail).toLowerCase()} for ${formatUsdMinor(funding.amount_minor)}.`;
         }
       } catch (error) {
@@ -817,7 +817,7 @@
       <article class="wallet-panel">
         <span class="label">Your balance</span>
         <strong>{formatUsdMinor(localBalanceMinor)}</strong>
-        <p class="muted">{localProofCount} funds in this browser.</p>
+        <p class="muted">Your holdings in this browser.</p>
       </article>
 
       <article class="wallet-panel">
@@ -836,7 +836,7 @@
         <span class="label">Current Value</span>
         <strong>{formatUsdMinor(displayedTotalValueMinor)}</strong>
         <p class="muted">
-          Cash plus current position marks. Exact withdrawal proceeds can differ based on trade size.
+          Cash plus current position marks. Exact sale proceeds can differ based on trade size.
         </p>
       </article>
     </section>

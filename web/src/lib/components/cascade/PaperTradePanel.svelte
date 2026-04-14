@@ -309,7 +309,7 @@
       const lockedQuoteId = quote.quote_id;
       const spendProofs = selectLocalProofsForAmount(proofMintUrl(), 'usd', quote.spend_minor);
       if (!spendProofs.length) {
-        throw new Error('Not enough local USD proofs to cover this trade.');
+        throw new Error('Not enough local USD funds to cover this trade.');
       }
       const marketUnit = marketUnitForSide((quote.side as 'long' | 'short') ?? buySide);
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
@@ -435,7 +435,7 @@
         quote.quantity_minor
       );
       if (!spendProofs.length) {
-        throw new Error(`Not enough local ${sellSide.toUpperCase()} proofs to withdraw.`);
+        throw new Error(`Not enough local ${sellSide.toUpperCase()} funds to sell.`);
       }
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
         proofMintUrl(),

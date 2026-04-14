@@ -414,8 +414,8 @@
       <span>Copy this into your agent</span>
       <code
         >Read {skillOrigin}/SKILL.md in full and follow it. Learn Cascade&apos;s mechanics before
-        acting: markets never close, there is no oracle or market close, authenticated actions
-        use NIP-98, and your funds are self-custodied.</code
+        acting: markets never close, authenticated actions use NIP-98, and your funds are
+        self-custodied.</code
       >
     </div>
 

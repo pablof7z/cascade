@@ -120,7 +120,7 @@
     return true;
   });
   const paperEdition = $derived(isPaperEdition());
-  const portfolioLabel = $derived(paperEdition ? 'signet portfolio' : 'portfolio');
+  const portfolioLabel = $derived(paperEdition ? 'practice portfolio' : 'portfolio');
   const parsedSeedAmount = $derived(Number.parseInt(seedAmount, 10) || 0);
 
   const creatorMarketFeed = ndk.$subscribe(() => {
@@ -307,7 +307,7 @@
       const lockedQuoteId = quote.quote_id;
       const spendProofs = selectLocalProofsForAmount(proofMintUrl(), 'usd', quote.spend_minor);
       if (!spendProofs.length) {
-        throw new Error(`Your ${portfolioLabel} no longer has enough local proofs for this seed.`);
+        throw new Error(`Your ${portfolioLabel} no longer has enough local funds for this seed.`);
       }
       const issuedUnit = marketUnitForSide(slug, (quote.side as 'long' | 'short') ?? seedSide);
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(

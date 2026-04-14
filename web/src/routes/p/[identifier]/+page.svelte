@@ -1,10 +1,17 @@
 <script lang="ts">
   import { untrack } from 'svelte';
+  import {
+    buildPublicProfileDiscussionEntries,
+    buildPublicProfilePositionStats,
+    formatProfilePositionSummary,
+    formatProfileProbability
+  } from '$lib/cascade/profile';
   import { displayName, shortPubkey } from '$lib/ndk/format';
   import {
     formatRelativeTime,
     marketUrl,
     sanitizeMarketCopy,
+    type DiscussionRecord,
     type MarketRecord,
     type PositionRecord
   } from '$lib/ndk/cascade';
@@ -23,17 +30,25 @@
   const resolvedUser = $derived(profileFetcher.user ?? null);
   const resolvedProfile = $derived(profileFetcher.profile ?? data.profile ?? undefined);
   const resolvedPubkey = $derived(resolvedUser?.pubkey ?? data.pubkey);
-  const resolvedNpub = $derived(resolvedUser?.npub ?? data.npub);
   const currentUser = $derived(ndk.$currentUser);
   const marketList = $derived(data.markets as MarketRecord[]);
+  const discussionMarketList = $derived(data.discussionMarkets as MarketRecord[]);
   const positionList = $derived(data.positions as PositionRecord[]);
+  const discussionList = $derived(data.discussions as DiscussionRecord[]);
   const profileLabel = $derived(displayName(resolvedProfile, shortPubkey(resolvedPubkey)));
+  const relatedMarketList = $derived.by(() => {
+    const deduped = new Map<string, MarketRecord>();
+    for (const market of [...marketList, ...discussionMarketList]) {
+      deduped.set(market.id, market);
+    }
+    return [...deduped.values()];
+  });
+  const positionStats = $derived(buildPublicProfilePositionStats(positionList));
+  const discussionEntries = $derived(buildPublicProfileDiscussionEntries(discussionList, relatedMarketList));
   let avatarLoadFailed = $state(false);
   const avatarPicture = $derived(resolvedProfile?.picture?.trim() || undefined);
   const avatarUrl = $derived(avatarLoadFailed ? undefined : avatarPicture);
   const avatarMonogram = $derived((profileLabel.trim()[0] ?? '?').toUpperCase());
-  const longCount = $derived(positionList.filter((position) => position.direction === 'long').length);
-  const shortCount = $derived(positionList.filter((position) => position.direction === 'short').length);
 
   $effect(() => {
     avatarPicture;
@@ -47,6 +62,10 @@
     if (image instanceof HTMLImageElement) {
       image.onerror = null;
     }
+  }
+
+  function positionDirectionLabel(position: Pick<PositionRecord, 'direction'>): 'YES' | 'NO' {
+    return position.direction === 'long' ? 'YES' : 'NO';
   }
 </script>
 
@@ -89,16 +108,16 @@
     <strong>{marketList.length}</strong>
   </div>
   <div>
-    <span>Public positions</span>
-    <strong>{positionList.length}</strong>
+    <span>Positions</span>
+    <strong>{positionStats.total}</strong>
   </div>
   <div>
-    <span>YES positions</span>
-    <strong>{longCount}</strong>
+    <span>YES/NO split</span>
+    <strong>{positionStats.splitLabel}</strong>
   </div>
   <div>
-    <span>NO positions</span>
-    <strong>{shortCount}</strong>
+    <span>Avg entry</span>
+    <strong>{formatProfileProbability(positionStats.averageEntryPrice)}</strong>
   </div>
 </section>
 
@@ -141,14 +160,56 @@
         {#each positionList as position (position.id)}
           <div class="profile-row">
             <div>
-              <strong>{position.marketTitle || position.marketId}</strong>
-              <p>{position.direction === 'long' ? 'YES' : 'NO'} · {position.quantity} units</p>
+              <strong title={positionDirectionLabel(position)}>{position.marketTitle || position.marketId}</strong>
+              <p>{formatProfilePositionSummary(position)}</p>
             </div>
             <span>{formatRelativeTime(Math.floor(position.createdAt / 1000))}</span>
           </div>
         {/each}
       {:else}
         <div class="profile-empty">No public position records yet.</div>
+      {/if}
+    </div>
+  </article>
+
+  <article class="profile-section">
+    <div class="section-header">
+      <div>
+        <div class="section-kicker">Discussion</div>
+        <h2>Discussions</h2>
+      </div>
+    </div>
+
+    <div class="profile-list">
+      {#if discussionEntries.length > 0}
+        {#each discussionEntries as discussion (discussion.id)}
+          <div class="profile-row">
+            <div>
+              <strong>
+                {#if discussion.threadHref}
+                  <a class="profile-link" href={discussion.threadHref}>{discussion.title}</a>
+                {:else}
+                  {discussion.title}
+                {/if}
+              </strong>
+              <p>
+                {#if discussion.marketHref}
+                  <a class="profile-link profile-inline-link" href={discussion.marketHref}>
+                    {discussion.marketLabel}
+                  </a>
+                {:else}
+                  {discussion.marketLabel}
+                {/if}
+                {#if discussion.preview}
+                  · {discussion.preview}
+                {/if}
+              </p>
+            </div>
+            <span>{formatRelativeTime(discussion.createdAt)}</span>
+          </div>
+        {/each}
+      {:else}
+        <div class="profile-empty">No discussion threads started yet.</div>
       {/if}
     </div>
   </article>
@@ -259,7 +320,7 @@
 
   .profile-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 2.5rem;
     padding-top: 2rem;
   }
@@ -307,9 +368,33 @@
     font-size: 0.78rem;
   }
 
+  .profile-link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .profile-link:hover {
+    color: white;
+  }
+
+  .profile-inline-link {
+    text-decoration: underline;
+    text-underline-offset: 0.14em;
+  }
+
   .profile-empty {
     padding: 1rem 0;
     color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
+  }
+
+  @media (max-width: 1100px) {
+    .profile-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .profile-section:last-child {
+      grid-column: 1 / -1;
+    }
   }
 
   @media (max-width: 900px) {

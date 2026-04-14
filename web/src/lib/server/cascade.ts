@@ -116,6 +116,29 @@ export async function fetchMarketsByAuthor(pubkey: string, limit = 48): Promise<
     .slice(0, limit);
 }
 
+export async function fetchMarketsByIds(marketIds: readonly string[]): Promise<MarketRecord[]> {
+  const ids = [...new Set(marketIds.filter(Boolean))];
+  if (ids.length === 0) return [];
+
+  const ndk = await getServerNdkClient();
+  const events = await withRelayEventTimeout(
+    ndk.fetchEvents(
+      {
+        kinds: [982 as NDKKind],
+        ids,
+        limit: ids.length
+      } satisfies NDKFilter,
+      { closeOnEose: true }
+    ),
+    `fetchMarketsByIds(${ids.length})`
+  );
+
+  return Array.from(events)
+    .map((event) => parseMarketEvent(event.rawEvent()))
+    .filter((market): market is MarketRecord => Boolean(market))
+    .sort((left, right) => right.createdAt - left.createdAt);
+}
+
 export async function fetchRecentDiscussions(limit = 80): Promise<DiscussionRecord[]> {
   const stale = Date.now() - discussionCacheUpdatedAt > DISCUSSION_CACHE_TTL_MS;
   const underfilled = discussionCache.length < limit;
@@ -148,6 +171,27 @@ export async function fetchMarketDiscussions(marketId: string, limit = 200): Pro
     .map(parseDiscussionEvent)
     .filter((record): record is DiscussionRecord => Boolean(record))
     .filter((record) => record.marketId === marketId)
+    .sort((left, right) => right.createdAt - left.createdAt);
+}
+
+export async function fetchDiscussionsByPubkey(pubkey: string, limit = 50): Promise<DiscussionRecord[]> {
+  const ndk = await getServerNdkClient();
+  const events = await withRelayEventTimeout(
+    ndk.fetchEvents(
+      {
+        kinds: [1111 as NDKKind],
+        authors: [pubkey],
+        limit
+      } satisfies NDKFilter,
+      { closeOnEose: true }
+    ),
+    `fetchDiscussionsByPubkey(${pubkey})`
+  );
+
+  return Array.from(events)
+    .map(parseDiscussionEvent)
+    .filter((record): record is DiscussionRecord => Boolean(record))
+    .filter((record) => record.pubkey === pubkey)
     .sort((left, right) => right.createdAt - left.createdAt);
 }
 

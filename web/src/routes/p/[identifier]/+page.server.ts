@@ -1,7 +1,13 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { buildProfileSeo } from '$lib/seo';
-import { fetchMarketsByAuthor, fetchPositionsByPubkey, fetchProfileContext } from '$lib/server/cascade';
+import {
+  fetchDiscussionsByPubkey,
+  fetchMarketsByAuthor,
+  fetchMarketsByIds,
+  fetchPositionsByPubkey,
+  fetchProfileContext
+} from '$lib/server/cascade';
 
 export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
   setHeaders({
@@ -13,10 +19,13 @@ export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
     error(404, 'Profile not found');
   }
 
-  const [markets, positions] = await Promise.all([
+  const discussionsPromise = fetchDiscussionsByPubkey(user.pubkey, 50);
+  const [markets, positions, discussions] = await Promise.all([
     fetchMarketsByAuthor(user.pubkey, 48),
-    fetchPositionsByPubkey(user.pubkey, 120)
+    fetchPositionsByPubkey(user.pubkey, 120),
+    discussionsPromise
   ]);
+  const discussionMarkets = await fetchMarketsByIds(discussions.map((discussion) => discussion.marketId));
 
   return {
     identifier: params.identifier,
@@ -26,6 +35,8 @@ export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
     profile,
     markets,
     positions,
+    discussions,
+    discussionMarkets,
     seo: buildProfileSeo({ url, pubkey: user.pubkey, profile })
   };
 };

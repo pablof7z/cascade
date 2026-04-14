@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "start:node": "node build/index.js",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "bun run test:unit",
     "test:unit": "node --test tests/unit/*.test.mjs",
     "test:e2e": "playwright test"
   },

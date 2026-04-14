@@ -2,7 +2,7 @@
   import { NDKEvent } from '@nostr-dev-kit/ndk';
   import { invalidateAll } from '$app/navigation';
   import type { DiscussionThread } from '$lib/ndk/cascade';
-  import { buildThreadReplyTags, formatRelativeTime, marketDiscussionUrl } from '$lib/ndk/cascade';
+  import { buildThreadReplyTags, buildTradeSummary, formatProbability, formatRelativeTime, marketDiscussionUrl } from '$lib/ndk/cascade';
   import { displayName, shortPubkey } from '$lib/ndk/format';
   import { ndk } from '$lib/ndk/client';
   import type { PageProps } from './$types';
@@ -10,6 +10,8 @@
   let { data }: PageProps = $props();
 
   const currentUser = $derived(ndk.$currentUser);
+  const tradeSummary = $derived(buildTradeSummary(data.trades));
+  const impliedProbability = $derived((tradeSummary.latestPricePpm ?? 500_000) / 1_000_000);
 
   function authorLabel(pubkey: string): string {
     return displayName(data.profiles[pubkey], shortPubkey(pubkey));
@@ -50,22 +52,32 @@
       <a class="button-secondary" href={marketDiscussionUrl(data.market.slug)}>Back to discussion</a>
     </div>
   </div>
+
+  <div class="market-context-bar">
+    <a href="/market/{data.market.slug}" class="market-context-market">{data.market.title}</a>
+    <span class:positive={impliedProbability >= 0.5} class:negative={impliedProbability < 0.5}>
+      {formatProbability(impliedProbability)} YES
+    </span>
+    <a class="button-secondary" href="/market/{data.market.slug}">Buy YES / Buy NO</a>
+  </div>
 </section>
 
 <section class="section">
-  {@render renderThread(data.thread)}
+  {@render renderThread(data.thread, true)}
 </section>
 
-{#snippet renderThread(node: DiscussionThread)}
+{#snippet renderThread(node: DiscussionThread, isRoot: boolean = false)}
   <article class="surface panel">
     <div class="eyebrow">{authorLabel(node.post.pubkey)} · {formatRelativeTime(node.post.createdAt)}</div>
-    <h2 class="section-title">{node.post.subject || 'Reply'}</h2>
+    {#if isRoot && node.post.subject}
+      <h2 class="section-title">{node.post.subject}</h2>
+    {/if}
     <p class="page-subtitle">{node.post.content}</p>
 
     {#if node.replies.length > 0}
       <div class="section" style="margin-top: 1rem; padding-left: 1rem; border-left: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);">
         {#each node.replies as reply (reply.post.id)}
-          {@render renderThread(reply)}
+          {@render renderThread(reply, false)}
         {/each}
       </div>
     {/if}
@@ -99,6 +111,30 @@
 </section>
 
 <style>
+  .market-context-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
+  }
+
+  .market-context-market {
+    color: white;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .market-context-market:hover,
+  .market-context-market:focus-visible {
+    color: white;
+    outline: none;
+  }
+
   .reply-compose {
     display: flex;
     flex-direction: column;
@@ -137,5 +173,12 @@
   .reply-signin {
     color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     font-size: 0.875rem;
+  }
+
+  @media (max-width: 720px) {
+    .market-context-bar {
+      flex-direction: column;
+      align-items: flex-start;
+    }
   }
 </style>

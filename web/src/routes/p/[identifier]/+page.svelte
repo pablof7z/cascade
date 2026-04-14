@@ -78,7 +78,7 @@
 
   <div class="profile-actions">
     {#if currentUser?.pubkey === resolvedPubkey}
-      <a class="button-primary" href="/onboarding">Edit profile</a>
+      <a class="button-primary" href="/profile/edit">Edit profile</a>
     {/if}
   </div>
 </section>

@@ -32,6 +32,7 @@
     socialProviderLabel,
     type SocialProfilePrefill
   } from '$lib/features/auth/social-prefill';
+  import { onboardingCompletionTarget } from '$lib/features/auth/onboardingRedirect';
 
   type Nip05Status = 'idle' | 'checking' | 'available' | 'owned' | 'taken' | 'error';
 
@@ -423,7 +424,7 @@
       await nextBlossom.publish();
       session?.events.set(NDKKind.BlossomList, nextBlossom);
 
-      await goto('/');
+      await goto(onboardingCompletionTarget(window.location.search));
     } catch (caught) {
       saveError = caught instanceof Error ? caught.message : "Couldn't publish your profile.";
     } finally {

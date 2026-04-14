@@ -49,7 +49,7 @@
       Attached to <a href="/market/{data.market.slug}" class="positive">{data.market.title}</a>.
     </p>
     <div class="button-row">
-      <a class="button-secondary" href={marketDiscussionUrl(data.market.slug)}>Back to discussion</a>
+      <a class="btn btn-outline" href={marketDiscussionUrl(data.market.slug)}>Back to discussion</a>
     </div>
   </div>
 
@@ -58,7 +58,7 @@
     <span class:positive={impliedProbability >= 0.5} class:negative={impliedProbability < 0.5}>
       {formatProbability(impliedProbability)} YES
     </span>
-    <a class="button-secondary" href="/market/{data.market.slug}">Buy YES / Buy NO</a>
+    <a class="btn btn-outline" href="/market/{data.market.slug}">Buy YES / Buy NO</a>
   </div>
 </section>
 
@@ -88,7 +88,7 @@
   {#if currentUser}
     <div class="reply-compose">
       <textarea
-        class="reply-body"
+        class="textarea textarea-bordered reply-body"
         rows={4}
         placeholder="Write a reply…"
         bind:value={replyBody}
@@ -98,7 +98,7 @@
         <p class="reply-error">{replyError}</p>
       {/if}
       <div class="reply-actions">
-        <button class="button-primary" onclick={postReply} disabled={replySubmitting || !replyBody.trim()}>
+        <button class="btn btn-primary" onclick={postReply} disabled={replySubmitting || !replyBody.trim()}>
           {replySubmitting ? 'Posting…' : 'Post reply'}
         </button>
       </div>

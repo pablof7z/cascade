@@ -394,23 +394,32 @@
 </script>
 
 {#if !currentUser}
-  <section class="profile-container">
-    <p class="muted">Log in to edit your profile.</p>
+  <section class="section">
+    <p class="page-subtitle">Log in to edit your profile.</p>
   </section>
 {:else}
-  <div class="pe-shell">
-    <div class="pe-form">
-      <h1 class="pe-title">Edit profile</h1>
+  <div class="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+    <div class="grid gap-8">
+      <header class="grid gap-3">
+        <div class="eyebrow">Profile</div>
+        <h1 class="text-3xl font-semibold tracking-[-0.04em] text-white">Edit profile</h1>
+      </header>
 
       <!-- Section: Identity -->
-      <div class="pe-section">
-        <div class="pe-section-label">Identity</div>
+      <div class="grid gap-4 border-t border-neutral-800 pt-5">
+        <div class="eyebrow">Identity</div>
 
-        <div class="pe-banner-zone" role="button" tabindex="0" onclick={handleBannerClick} onkeydown={(e) => e.key === 'Enter' && handleBannerClick()}>
+        <div
+          class="group relative grid h-40 w-full place-items-center overflow-hidden rounded-md border border-neutral-800 bg-base-200"
+          role="button"
+          tabindex="0"
+          onclick={handleBannerClick}
+          onkeydown={(e) => e.key === 'Enter' && handleBannerClick()}
+        >
           {#if bannerDisplayUrl}
-            <img src={bannerDisplayUrl} alt="Banner" class="pe-banner-img" />
+            <img src={bannerDisplayUrl} alt="Banner" class="h-full w-full object-cover" />
           {:else}
-            <div class="pe-banner-placeholder">
+            <div class="grid gap-2 justify-items-center text-neutral-500">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                 <rect x="3" y="3" width="18" height="18" rx="2" />
                 <circle cx="8.5" cy="8.5" r="1.5" />
@@ -419,31 +428,39 @@
               <span>Upload banner</span>
             </div>
           {/if}
-          <input bind:this={bannerFileInput} type="file" accept="image/*" onchange={handleBannerSelection} class="ob-file-input" tabindex="-1" />
+          <input bind:this={bannerFileInput} type="file" accept="image/*" onchange={handleBannerSelection} class="hidden" tabindex="-1" />
         </div>
 
-        <div class="pe-avatar-row">
-          <button class="ob-avatar-btn" type="button" onclick={handleAvatarClick} aria-label="Upload avatar">
+        <div class="flex flex-wrap items-center gap-3">
+          <button
+            class="group relative grid size-28 place-items-center overflow-hidden rounded-md border border-neutral-800 bg-base-200"
+            type="button"
+            onclick={handleAvatarClick}
+            aria-label="Upload avatar"
+          >
             {#if avatarDisplayUrl}
-              <img src={avatarDisplayUrl} alt="Your avatar" class="ob-avatar-img" />
+              <img src={avatarDisplayUrl} alt="Your avatar" class="h-full w-full object-cover" />
             {:else}
-              <div class="ob-avatar-placeholder">
+              <div class="grid gap-2 justify-items-center text-neutral-500">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                   <circle cx="12" cy="8" r="4" />
                   <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                 </svg>
               </div>
             {/if}
-            <div class="ob-avatar-overlay" aria-hidden="true">
+            <div
+              class="pointer-events-none absolute inset-0 grid place-items-center bg-black/50 text-white opacity-0 transition group-hover:opacity-100"
+              aria-hidden="true"
+            >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
               </svg>
             </div>
           </button>
-          <input bind:this={avatarFileInput} type="file" accept="image/*" onchange={handleAvatarSelection} class="ob-file-input" tabindex="-1" />
+          <input bind:this={avatarFileInput} type="file" accept="image/*" onchange={handleAvatarSelection} class="hidden" tabindex="-1" />
 
           {#if avatarDisplayUrl}
-            <button class="ob-avatar-remove" type="button" onclick={() => {
+            <button class="btn btn-ghost btn-sm" type="button" onclick={() => {
               avatarUrl = '';
               avatarFile = null;
               clearAvatarPreview();
@@ -452,7 +469,7 @@
             }}>Remove avatar</button>
           {/if}
           {#if bannerDisplayUrl}
-            <button class="ob-avatar-remove" type="button" onclick={() => {
+            <button class="btn btn-ghost btn-sm" type="button" onclick={() => {
               bannerUrl = '';
               bannerFile = null;
               clearBannerPreview();
@@ -463,88 +480,89 @@
         </div>
 
         {#if uploadError}
-          <p class="ob-error">{uploadError}</p>
+          <p class="text-sm text-error">{uploadError}</p>
         {/if}
 
-        <div class="ob-fields">
-          <div class="ob-field-row">
-            <label class="ob-field">
-              <span>Display name</span>
-              <input bind:value={display} oninput={() => { profileTouched = true; }} placeholder="Your full name" />
+        <div class="grid gap-4">
+          <div class="grid gap-4 md:grid-cols-2">
+            <label class="grid gap-2">
+              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Display name</span>
+              <input class="input input-bordered" bind:value={display} oninput={() => { profileTouched = true; }} placeholder="Your full name" />
             </label>
-            <label class="ob-field">
-              <span>Username</span>
-              <input bind:value={name} oninput={() => { profileTouched = true; }} placeholder="username" />
+            <label class="grid gap-2">
+              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Username</span>
+              <input class="input input-bordered" bind:value={name} oninput={() => { profileTouched = true; }} placeholder="username" />
             </label>
           </div>
 
-          <label class="ob-field">
-            <span>Bio</span>
-            <textarea bind:value={about} oninput={() => { profileTouched = true; }} placeholder="Tell people about yourself" rows="3"></textarea>
+          <label class="grid gap-2">
+            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Bio</span>
+            <textarea class="textarea textarea-bordered min-h-32" bind:value={about} oninput={() => { profileTouched = true; }} placeholder="Tell people about yourself" rows="3"></textarea>
           </label>
         </div>
       </div>
 
       <!-- Section: Links & Verification -->
-      <div class="pe-section">
-        <div class="pe-section-label">Links & Verification</div>
+      <div class="grid gap-4 border-t border-neutral-800 pt-5">
+        <div class="eyebrow">Links & Verification</div>
 
-        <div class="ob-fields">
-          <label class="ob-field">
-            <span>NIP-05</span>
-            <input bind:value={nip05} oninput={() => { profileTouched = true; }} placeholder="you@example.com" />
+        <div class="grid gap-4">
+          <label class="grid gap-2">
+            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">NIP-05</span>
+            <input class="input input-bordered" bind:value={nip05} oninput={() => { profileTouched = true; }} placeholder="you@example.com" />
           </label>
 
-          <label class="ob-field">
-            <span>Lightning address</span>
-            <input bind:value={lud16} oninput={() => { profileTouched = true; }} placeholder="you@wallet.com" />
+          <label class="grid gap-2">
+            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Lightning address</span>
+            <input class="input input-bordered" bind:value={lud16} oninput={() => { profileTouched = true; }} placeholder="you@wallet.com" />
           </label>
 
-          <label class="ob-field">
-            <span>Website</span>
-            <input bind:value={website} oninput={() => { profileTouched = true; }} placeholder="https://yoursite.com" type="url" />
+          <label class="grid gap-2">
+            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Website</span>
+            <input class="input input-bordered" bind:value={website} oninput={() => { profileTouched = true; }} placeholder="https://yoursite.com" type="url" />
           </label>
         </div>
       </div>
 
       <!-- Section: Appearance (NIP-F1) -->
-      <div class="pe-section">
-        <div class="pe-section-label">Appearance</div>
+      <div class="grid gap-4 border-t border-neutral-800 pt-5">
+        <div class="eyebrow">Appearance</div>
 
-        <div class="ob-fields">
-          <div class="ob-field-row">
-            <label class="ob-field">
-              <span>Background color</span>
-              <div class="pe-color-field">
-                <input type="color" value={backgroundColor || '#ffffff'} oninput={(e) => { backgroundColor = (e.currentTarget as HTMLInputElement).value; nipF1Touched = true; }} />
-                <input type="text" bind:value={backgroundColor} oninput={() => { nipF1Touched = true; }} placeholder="#ffffff" />
+        <div class="grid gap-4">
+          <div class="grid gap-4 md:grid-cols-2">
+            <label class="grid gap-2">
+              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Background color</span>
+              <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+                <input class="h-12 w-12 rounded-md border border-neutral-800 bg-base-100 p-1" type="color" value={backgroundColor || '#ffffff'} oninput={(e) => { backgroundColor = (e.currentTarget as HTMLInputElement).value; nipF1Touched = true; }} />
+                <input class="input input-bordered" type="text" bind:value={backgroundColor} oninput={() => { nipF1Touched = true; }} placeholder="#ffffff" />
               </div>
             </label>
-            <label class="ob-field">
-              <span>Text color</span>
-              <div class="pe-color-field">
-                <input type="color" value={foregroundColor || '#000000'} oninput={(e) => { foregroundColor = (e.currentTarget as HTMLInputElement).value; nipF1Touched = true; }} />
-                <input type="text" bind:value={foregroundColor} oninput={() => { nipF1Touched = true; }} placeholder="#000000" />
+            <label class="grid gap-2">
+              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Text color</span>
+              <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+                <input class="h-12 w-12 rounded-md border border-neutral-800 bg-base-100 p-1" type="color" value={foregroundColor || '#000000'} oninput={(e) => { foregroundColor = (e.currentTarget as HTMLInputElement).value; nipF1Touched = true; }} />
+                <input class="input input-bordered" type="text" bind:value={foregroundColor} oninput={() => { nipF1Touched = true; }} placeholder="#000000" />
               </div>
             </label>
           </div>
 
-          <label class="ob-field">
-            <span>Background music URL</span>
-            <input bind:value={backgroundMusic} oninput={() => { nipF1Touched = true; }} placeholder="https://example.com/ambient.mp3" type="url" />
+          <label class="grid gap-2">
+            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Background music URL</span>
+            <input class="input input-bordered" bind:value={backgroundMusic} oninput={() => { nipF1Touched = true; }} placeholder="https://example.com/ambient.mp3" type="url" />
           </label>
 
-          <div class="ob-field">
-            <span>Priority kinds</span>
-            <div class="pe-kind-checks">
+          <div class="grid gap-2">
+            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Priority kinds</span>
+            <div class="grid gap-2">
               {#each PRIORITY_KIND_OPTIONS as opt (opt.kind)}
-                <label class="pe-kind-check">
+                <label class="flex items-center gap-3 rounded-md border border-neutral-800 bg-base-200 px-3 py-2">
                   <input
+                    class="checkbox checkbox-sm border-neutral-700"
                     type="checkbox"
                     checked={priorityKinds.includes(opt.kind)}
                     onchange={() => togglePriorityKind(opt.kind)}
                   />
-                  <span>{opt.label} <em class="muted">(kind:{opt.kind})</em></span>
+                  <span class="text-sm text-neutral-200">{opt.label} <em class="text-neutral-500">(kind:{opt.kind})</em></span>
                 </label>
               {/each}
             </div>
@@ -553,49 +571,49 @@
       </div>
 
       <!-- Section: Custom Fields (NIP-F1) -->
-      <div class="pe-section">
-        <div class="pe-section-label">Custom Fields</div>
+      <div class="grid gap-4 border-t border-neutral-800 pt-5">
+        <div class="eyebrow">Custom Fields</div>
 
-        <div class="pe-custom-fields">
+        <div class="grid gap-3">
           {#each customFields as field, index (index)}
-            <div class="pe-custom-field-row">
+            <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
               <input
+                class="input input-bordered"
                 type="text"
                 placeholder="Key"
                 bind:value={field.key}
                 oninput={() => { nipF1Touched = true; }}
-                class="pe-custom-key-input"
               />
               <input
+                class="input input-bordered"
                 type="text"
                 placeholder="Value"
                 bind:value={field.value}
                 oninput={() => { nipF1Touched = true; }}
-                class="pe-custom-value-input"
               />
-              <button type="button" class="pe-custom-remove" onclick={() => removeCustomField(index)} aria-label="Remove field">
+              <button type="button" class="btn btn-ghost btn-square" onclick={() => removeCustomField(index)} aria-label="Remove field">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 6 6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
           {/each}
-          <button type="button" class="button-secondary" onclick={addCustomField}>
+          <button type="button" class="btn btn-outline w-fit" onclick={addCustomField}>
             Add field
           </button>
         </div>
       </div>
 
       <!-- Sticky footer -->
-      <div class="pe-footer">
+      <div class="flex flex-col gap-3 border-t border-neutral-800 pt-5 sm:flex-row sm:items-center sm:justify-between">
         {#if saveError}
-          <p class="ob-error">{saveError}</p>
+          <p class="text-sm text-error">{saveError}</p>
         {/if}
-        <div class="pe-footer-actions">
-          <button class="button" type="button" disabled={!canPublish} onclick={() => void publish()}>
+        <div class="flex flex-wrap items-center gap-3">
+          <button class="btn btn-primary" type="button" disabled={!canPublish} onclick={() => void publish()}>
             {saving ? 'Saving…' : uploadingAvatar || uploadingBanner ? 'Uploading…' : 'Save profile'}
           </button>
-          <a href="/p/{profileIdentifier(currentUser.profile, currentUser.npub)}" class="button-secondary">
+          <a href="/p/{profileIdentifier(currentUser.profile, currentUser.npub)}" class="btn btn-outline">
             View profile
           </a>
         </div>
@@ -603,11 +621,15 @@
     </div>
 
     <!-- Live Preview -->
-    <div class="pe-preview-wrap">
-      <button class="pe-preview-toggle" type="button" onclick={() => { previewOpen = !previewOpen; }}>
+    <div class="grid gap-3 lg:sticky lg:top-24">
+      <button class="btn btn-outline w-fit lg:hidden" type="button" onclick={() => { previewOpen = !previewOpen; }}>
         {previewOpen ? 'Hide preview' : 'Show preview'}
       </button>
-      <div class="pe-preview" class:pe-preview-open={previewOpen}>
+      <div
+        class={`overflow-hidden rounded-md border border-neutral-800 bg-base-200 ${
+          previewOpen ? 'block' : 'hidden lg:block'
+        }`}
+      >
         <ProfilePreview
           name={previewName}
           bio={cleanText(about)}

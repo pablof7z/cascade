@@ -13,12 +13,19 @@
     color-scheme: dark;
     --color-base-100: #0a0a0a;
     --color-base-200: #171717;
-    --color-base-300: #1c1c1c;
-    --color-base-content: #d4d4d4;
-    --color-neutral: #262626;
+    --color-base-300: #262626;
+    --color-base-content: #ffffff;
+    --color-neutral: #404040;
     --color-neutral-content: #d4d4d4;
+    --color-primary: #10b981;
+    --color-primary-content: #ffffff;
     --color-success: #22c55e;
+    --color-success-content: #ffffff;
     --color-error: #f43f5e;
+    --color-error-content: #ffffff;
+    --radius-selector: 0.375rem;
+    --radius-field: 0.375rem;
+    --radius-box: 0.375rem;
   }
 
   html,
@@ -261,111 +268,6 @@
     flex-wrap: wrap;
   }
 
-  .button,
-  .button-primary,
-  .button-secondary,
-  .button-ghost {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.5rem;
-    padding: 0 1rem;
-    border: 1px solid transparent;
-    border-radius: 0.5rem;
-    font-size: 0.92rem;
-    font-weight: 500;
-    transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
-    cursor: pointer;
-  }
-
-  .button:disabled,
-  .button-primary:disabled,
-  .button-secondary:disabled,
-  .button-ghost:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-
-  .button,
-  .button-primary {
-    background: white;
-    color: var(--color-base-100);
-  }
-
-  .button:hover,
-  .button:focus-visible,
-  .button-primary:hover,
-  .button-primary:focus-visible {
-    background: color-mix(in srgb, white 88%, transparent);
-    outline: none;
-  }
-
-  .button-secondary {
-    border-color: color-mix(in srgb, var(--color-neutral) 100%, transparent);
-    color: var(--color-base-content);
-    background: transparent;
-  }
-
-  .button-secondary:hover,
-  .button-secondary:focus-visible {
-    border-color: color-mix(in srgb, var(--color-neutral-content) 85%, transparent);
-    color: white;
-    outline: none;
-  }
-
-  .button-ghost {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .button-ghost:hover,
-  .button-ghost:focus-visible {
-    color: white;
-    outline: none;
-  }
-
-  .field {
-    display: grid;
-    gap: 0.45rem;
-  }
-
-  .field label,
-  .field span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.76rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .field input,
-  .field textarea,
-  .field select {
-    width: 100%;
-    box-sizing: border-box;
-    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    border-radius: 0.5rem;
-    background: var(--color-base-100);
-    color: white;
-    padding: 0.8rem 0.9rem;
-  }
-
-  .field textarea {
-    min-height: 8rem;
-    resize: vertical;
-  }
-
-  .field input:focus,
-  .field textarea:focus,
-  .field select:focus {
-    border-color: color-mix(in srgb, white 32%, var(--color-neutral) 68%);
-    outline: none;
-  }
-
-  .field input::placeholder,
-  .field textarea::placeholder {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-  }
-
   .tag-list {
     display: flex;
     flex-wrap: wrap;
@@ -471,6 +373,63 @@
   .dashboard-main {
     display: grid;
     gap: 2rem;
+  }
+
+  .btn {
+    border-radius: 0.375rem;
+    box-shadow: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .btn-primary {
+    border-color: transparent;
+    color: var(--color-primary-content);
+  }
+
+  .btn-outline {
+    border-color: color-mix(in srgb, var(--color-neutral) 100%, transparent);
+    color: color-mix(in srgb, var(--color-neutral-content) 92%, transparent);
+    background: transparent;
+  }
+
+  .btn-outline:hover,
+  .btn-outline:focus-visible {
+    border-color: color-mix(in srgb, var(--color-neutral-content) 85%, transparent);
+    background: color-mix(in srgb, var(--color-base-300) 45%, transparent);
+    color: white;
+  }
+
+  .btn-ghost:hover,
+  .btn-ghost:focus-visible {
+    background: color-mix(in srgb, var(--color-base-300) 45%, transparent);
+  }
+
+  .input,
+  .select,
+  .textarea {
+    width: 100%;
+    border-color: color-mix(in srgb, var(--color-neutral) 100%, transparent);
+    border-radius: 0.375rem;
+    background: var(--color-base-100);
+    box-shadow: none;
+    color: white;
+  }
+
+  .input::placeholder,
+  .textarea::placeholder {
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
+  }
+
+  .input:focus,
+  .select:focus,
+  .textarea:focus {
+    outline: none;
+  }
+
+  .badge {
+    border-radius: 0.375rem;
+    box-shadow: none;
   }
 }
 

@@ -198,7 +198,7 @@
       <p>Prove it. Take a position.</p>
 
       <div class="hero-actions">
-        <a class="button-primary hero-primary" href="/join">Start Trading</a>
+        <a class="btn btn-primary hero-primary" href="/join">Start Trading</a>
         <a class="hero-secondary" href="/how-it-works">How it works →</a>
       </div>
     </div>
@@ -227,7 +227,7 @@
           <h2>Be the first to create a market</h2>
           <p>No markets yet. Create the first public market and start the book.</p>
           <div class="hero-actions">
-            <a class="button-primary hero-primary" href="/builder">Create a Market</a>
+            <a class="btn btn-primary hero-primary" href="/builder">Create a Market</a>
           </div>
         </div>
       {/if}
@@ -518,8 +518,8 @@
   </div>
 
   <div class="hero-actions">
-    <a class="button-primary hero-primary" href="/builder">Create market</a>
-    <a class="button-secondary" href="/how-it-works">How it works</a>
+    <a class="btn btn-primary hero-primary" href="/builder">Create market</a>
+    <a class="btn btn-outline" href="/how-it-works">How it works</a>
   </div>
 </section>
 

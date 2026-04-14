@@ -310,8 +310,8 @@
       </div>
 
       <div class="join-actions">
-        <a class="button-primary" href="/onboarding">Continue setup</a>
-        <a class="button-secondary" href="/portfolio">Open portfolio</a>
+        <a class="btn btn-primary" href="/onboarding">Continue setup</a>
+        <a class="btn btn-outline" href="/portfolio">Open portfolio</a>
       </div>
     {:else}
       <div class="join-social">
@@ -327,7 +327,7 @@
             { provider: 'telegram', label: 'Continue with Telegram' }
           ] satisfies Array<{ provider: SocialProvider; label: string }>) as option (option.provider)}
             <button
-              class="button-secondary join-social-button"
+              class="btn btn-outline join-social-button"
               type="button"
               disabled={socialAuthPending}
               onclick={() => startSocialProfileBootstrap(option.provider)}
@@ -347,10 +347,10 @@
       </div>
 
       <div class="join-actions">
-        <button class="button-primary" type="button" onclick={() => void createAccount()} disabled={pending || socialAuthPending}>
+        <button class="btn btn-primary" type="button" onclick={() => void createAccount()} disabled={pending || socialAuthPending}>
           {pending ? 'Creating account...' : 'Create account'}
         </button>
-        <a class="button-secondary" href="/how-it-works">How Cascade works</a>
+        <a class="btn btn-outline" href="/how-it-works">How Cascade works</a>
       </div>
 
       <div class="join-login">
@@ -427,8 +427,8 @@
     </div>
 
     <div class="join-actions">
-      <a class="button-primary" href="/SKILL.md">Open SKILL.md</a>
-      <a class="button-secondary" href="/how-it-works">How Cascade works</a>
+      <a class="btn btn-primary" href="/SKILL.md">Open SKILL.md</a>
+      <a class="btn btn-outline" href="/how-it-works">How Cascade works</a>
     </div>
   </article>
 </section>

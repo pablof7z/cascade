@@ -21,8 +21,8 @@
     </p>
 
     <div class="profile-gate-actions">
-      <a class="button-primary" href="/onboarding">Open onboarding</a>
-      <a class="button-secondary" href="/profile/edit">Edit profile</a>
+      <a class="btn btn-primary" href="/onboarding">Open onboarding</a>
+      <a class="btn btn-outline" href="/profile/edit">Edit profile</a>
     </div>
   </div>
 </section>

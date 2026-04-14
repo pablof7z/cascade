@@ -810,7 +810,7 @@
     <section class="wallet-panel">
       <h2>Connect to view your portfolio</h2>
       <p class="muted">Your positions, your P&amp;L, this device.</p>
-      <a class="button-primary" href="/join">Connect</a>
+      <a class="btn btn-primary w-fit" href="/join">Connect</a>
     </section>
   {:else}
     <section class="wallet-grid">
@@ -861,9 +861,10 @@
       </div>
 
       <div class="funding-row">
-        <label class="field">
-          <span>Amount</span>
+        <label class="grid w-full max-w-64 gap-2">
+          <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Amount</span>
           <input
+            class="input input-bordered"
             aria-label="Amount"
             bind:value={fundingAmount}
             min="100"
@@ -873,7 +874,7 @@
         </label>
         {#if stripeFundingEnabled}
           <button
-            class="button-primary"
+            class="btn btn-primary"
             disabled={!stripeFundingAvailable}
             onclick={createStripeCheckout}
             type="button"
@@ -882,7 +883,7 @@
           </button>
         {/if}
         <button
-          class="button-secondary"
+          class="btn btn-outline"
           disabled={!lightningFundingAvailable}
           onclick={createLightningFunding}
           type="button"
@@ -909,9 +910,9 @@
               </div>
               <div class="proof-transfer-actions">
                 {#if funding.checkout_url}
-                  <a class="button-secondary" href={funding.checkout_url}>Open checkout</a>
+                  <a class="btn btn-outline" href={funding.checkout_url}>Open checkout</a>
                 {/if}
-                <button class="button-secondary" onclick={refreshPendingFundings} type="button">
+                <button class="btn btn-outline" onclick={refreshPendingFundings} type="button">
                   Refresh status
                 </button>
               </div>
@@ -935,7 +936,7 @@
             {/if}
           </p>
         </div>
-        <a class="button-secondary" href="/builder">Create market</a>
+        <a class="btn btn-outline" href="/builder">Create market</a>
       </div>
 
       {#if localPositions.length}
@@ -1037,8 +1038,7 @@
     font-family: var(--font-mono);
   }
 
-  .label,
-  .field span {
+  .label {
     color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.76rem;
     font-weight: 600;
@@ -1058,22 +1058,6 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-  }
-
-  .field {
-    display: grid;
-    gap: 0.45rem;
-    width: 100%;
-    max-width: 16rem;
-  }
-
-  .field input {
-    width: 100%;
-    box-sizing: border-box;
-    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    background: var(--color-base-100);
-    color: white;
-    padding: 0.85rem 0.95rem;
   }
 
   .position-list,

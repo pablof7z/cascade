@@ -108,7 +108,7 @@
                 <strong>{market.title}</strong>
                 <p>{market.description || market.body || 'No summary yet.'}</p>
               </a>
-              <button class="button-ghost" onclick={() => removeBookmark(market.id)}>Remove</button>
+              <button class="btn btn-ghost btn-sm" onclick={() => removeBookmark(market.id)}>Remove</button>
             </div>
           {/each}
         {:else if myMarketIds.length > 0}
@@ -117,7 +117,7 @@
           <div class="bookmark-empty">
             <strong>No bookmarks yet</strong>
             <p>Bookmark markets you want to track. Click the bookmark icon on any market card.</p>
-            <a class="button-primary" href="/">Browse Markets</a>
+            <a class="btn btn-primary" href="/">Browse Markets</a>
           </div>
         {/if}
       </div>

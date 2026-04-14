@@ -340,11 +340,11 @@
             noProbability={oppositeProbability}
           />
         {:else if currentUser}
-          <a class="button-primary" href="/portfolio">Add funds to trade</a>
+          <a class="btn btn-primary w-fit" href="/portfolio">Add funds to trade</a>
           <a href={marketActivityUrl(market.slug)}>See all trades on this market →</a>
           <p class="trade-focus-copy"><small>Fund your portfolio via Lightning or card to take a position.</small></p>
         {:else}
-          <a class="button-primary" href="/join?from=/market/{market.slug}">Take a position</a>
+          <a class="btn btn-primary w-fit" href="/join?from=/market/{market.slug}">Take a position</a>
         {/if}
       </div>
 
@@ -603,14 +603,14 @@
     {#if currentUser}
       <div class="compose-area">
         <input
-          class="compose-subject"
+          class="input input-bordered compose-subject"
           type="text"
           placeholder="Subject (optional)"
           bind:value={composeSubject}
           disabled={composeSubmitting}
         />
         <textarea
-          class="compose-body"
+          class="textarea textarea-bordered compose-body"
           rows={4}
           placeholder="Start a thread…"
           bind:value={composeBody}
@@ -620,7 +620,7 @@
           <p class="compose-error">{composeError}</p>
         {/if}
         <div class="compose-actions">
-          <button class="button-primary" onclick={postThread} disabled={composeSubmitting || !composeBody.trim()}>
+          <button class="btn btn-primary" onclick={postThread} disabled={composeSubmitting || !composeBody.trim()}>
             {composeSubmitting ? 'Posting…' : 'Post thread'}
           </button>
         </div>
@@ -987,7 +987,7 @@
   }
 
   .detail-header a,
-  .trade-focus-actions a:not(.button-primary) {
+  .trade-focus-actions a:not(.btn) {
     color: var(--color-base-content);
     font-size: 0.84rem;
     font-weight: 500;
@@ -995,8 +995,8 @@
 
   .detail-header a:hover,
   .detail-header a:focus-visible,
-  .trade-focus-actions a:not(.button-primary):hover,
-  .trade-focus-actions a:not(.button-primary):focus-visible {
+  .trade-focus-actions a:not(.btn):hover,
+  .trade-focus-actions a:not(.btn):focus-visible {
     color: white;
     outline: none;
   }

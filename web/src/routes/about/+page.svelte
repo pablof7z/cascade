@@ -46,8 +46,8 @@
     <h2>Start trading or explore the markets.</h2>
     <p>Cascade is open to everyone.</p>
     <div class="about-actions">
-      <a class="button-primary" href="/join">Get started</a>
-      <a class="button-secondary" href="/">Explore markets</a>
+      <a class="btn btn-primary" href="/join">Get started</a>
+      <a class="btn btn-outline" href="/">Explore markets</a>
     </div>
   </section>
 </section>

@@ -21,6 +21,7 @@
   import { NDKEvent, type NostrEvent } from '@nostr-dev-kit/ndk';
   import { formatUsdMinor } from '$lib/cascade/format';
   import { getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
+  import { normalizeProductTradeSide } from '$lib/cascade/tradeSide';
   import {
     clearPendingCreatorMarket,
     attachTradeReceiptQuoteId,
@@ -309,7 +310,8 @@
       if (!spendProofs.length) {
         throw new Error(`Your ${portfolioLabel} no longer has enough local funds for this seed.`);
       }
-      const issuedUnit = marketUnitForSide(slug, (quote.side as 'long' | 'short') ?? seedSide);
+      const tradeSide = normalizeProductTradeSide(quote.side, seedSide);
+      const issuedUnit = marketUnitForSide(slug, tradeSide);
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
         proofMintUrl(),
         issuedUnit,
@@ -328,7 +330,7 @@
         eventId,
         marketSlug: slug,
         action: 'seed',
-        side: seedSide,
+        side: tradeSide,
         spentUnit: 'usd',
         spentProofs: spendProofs,
         issuedPreparation,
@@ -338,7 +340,7 @@
       const seed = await buyMarketPosition({
         eventId,
         pubkey: currentUser.pubkey,
-        side: (quote.side as 'long' | 'short') ?? seedSide,
+        side: tradeSide,
         spendMinor: quote.spend_minor,
         proofs: spendProofs,
         issuedOutputs,
@@ -661,7 +663,7 @@
       <div class="builder-section">
         <input
           bind:value={title}
-          class="builder-title"
+          class="builder-title input input-bordered rounded-none px-0 shadow-none"
           placeholder="Market title"
           type="text"
         />
@@ -670,7 +672,9 @@
           <span>Examples</span>
           <div class="builder-chip-row">
             {#each examples as example}
-              <button class="builder-chip" onclick={() => (title = example)} type="button">{example}</button>
+              <button class="builder-chip btn btn-outline btn-sm" onclick={() => (title = example)} type="button">
+                {example}
+              </button>
             {/each}
           </div>
         </div>
@@ -679,7 +683,7 @@
           <span>Summary</span>
           <textarea
             bind:value={description}
-            class="builder-summary"
+            class="builder-summary textarea textarea-bordered"
             placeholder="What is this market tracking, and why should someone care?"
           ></textarea>
         </div>
@@ -701,7 +705,7 @@
 
         <textarea
           bind:value={body}
-          class="builder-body"
+          class="builder-body textarea textarea-bordered"
           placeholder="Lay out the logic, the evidence, and the path you expect reality to take."
         ></textarea>
       </div>
@@ -718,7 +722,12 @@
         </div>
 
         <div class="builder-search">
-          <input bind:value={linkSearch} placeholder="Search markets to add as references" type="text" />
+          <input
+            class="input input-bordered"
+            bind:value={linkSearch}
+            placeholder="Search markets to add as references"
+            type="text"
+          />
         </div>
 
         <div class="builder-link-results">
@@ -744,17 +753,26 @@
                 </div>
 
                 <div class="builder-selected-controls">
-                  <select bind:value={item.direction} onchange={(event) => updateLinkDirection(item.id, (event.currentTarget as HTMLSelectElement).value as 'long' | 'short')}>
+                  <select
+                    class="select select-bordered"
+                    bind:value={item.direction}
+                    onchange={(event) =>
+                      updateLinkDirection(
+                        item.id,
+                        (event.currentTarget as HTMLSelectElement).value as 'long' | 'short'
+                      )}
+                  >
                     <option value="long">Supports YES</option>
                     <option value="short">Supports NO</option>
                   </select>
                   <input
+                    class="input input-bordered"
                     oninput={(event) => updateLinkNote(item.id, (event.currentTarget as HTMLInputElement).value)}
                     placeholder="Why this link matters"
                     type="text"
                     value={item.note}
                   />
-                  <button class="button-ghost" onclick={() => removeLink(item.id)} type="button">Remove</button>
+                  <button class="btn btn-ghost" onclick={() => removeLink(item.id)} type="button">Remove</button>
                 </div>
               </div>
             {/each}
@@ -767,12 +785,12 @@
 
         <div class="builder-meta-grid">
           <label class="builder-field">
-            <span>Categories</span>
-            <input bind:value={category} placeholder="ai, economics" type="text" />
+            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Categories</span>
+            <input class="input input-bordered" bind:value={category} placeholder="ai, economics" type="text" />
           </label>
           <label class="builder-field">
-            <span>Topics</span>
-            <input bind:value={topics} placeholder="agents, labor, energy" type="text" />
+            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Topics</span>
+            <input class="input input-bordered" bind:value={topics} placeholder="agents, labor, energy" type="text" />
           </label>
         </div>
       </div>
@@ -806,12 +824,12 @@
             <span>Opening stake</span>
             <div class="builder-launch-grid">
               <label class="builder-field">
-                <span>Initial funding</span>
-                <input bind:value={seedAmount} min="100" step="100" type="number" />
+                <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Initial funding</span>
+                <input class="input input-bordered" bind:value={seedAmount} min="100" step="100" type="number" />
               </label>
               <label class="builder-field">
-                <span>Your position</span>
-                <select bind:value={seedSide}>
+                <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Your position</span>
+                <select class="select select-bordered" bind:value={seedSide}>
                   <option value="long">YES</option>
                   <option value="short">NO</option>
                 </select>
@@ -845,14 +863,14 @@
                 <p>{market.visibility === 'public' ? 'Public' : 'Pending'}</p>
               </div>
               <div class="builder-selected-controls">
-                <input readonly type="text" value={market.slug} />
+                <input class="input input-bordered" readonly type="text" value={market.slug} />
                 {#if market.visibility === 'public'}
-                  <a class="button-secondary" href={`/market/${market.slug}`}>Open market</a>
+                  <a class="btn btn-outline" href={`/market/${market.slug}`}>Open market</a>
                 {:else}
-                  <button class="button-secondary" disabled={saving || parsedSeedAmount <= 0} onclick={() => void seedPendingMarket(market.event_id, market.slug)} type="button">
+                  <button class="btn btn-outline" disabled={saving || parsedSeedAmount <= 0} onclick={() => void seedPendingMarket(market.event_id, market.slug)} type="button">
                     Seed now
                   </button>
-                  <a class="button-secondary" href="/portfolio">Fund portfolio</a>
+                  <a class="btn btn-outline" href="/portfolio">Fund portfolio</a>
                 {/if}
               </div>
             </div>
@@ -863,18 +881,18 @@
 
     <div class="builder-actions">
       {#if step > 0}
-        <button class="button-secondary" onclick={previousStep} type="button">Back</button>
+        <button class="btn btn-outline" onclick={previousStep} type="button">Back</button>
       {/if}
 
       {#if step < 3}
-        <button class="button-primary" disabled={!canAdvance} onclick={nextStep} type="button">Continue</button>
+        <button class="btn btn-primary" disabled={!canAdvance} onclick={nextStep} type="button">Continue</button>
       {:else}
-        <button class="button-primary" disabled={saving} onclick={publishMarket} type="button">
+        <button class="btn btn-primary" disabled={saving} onclick={publishMarket} type="button">
           {saving ? 'Publishing...' : 'Create Market'}
         </button>
       {/if}
 
-      <a class="button-ghost" href="/">Back to Markets</a>
+      <a class="btn btn-ghost" href="/">Back to Markets</a>
     </div>
   </section>
 </section>
@@ -939,24 +957,11 @@
     gap: 1.5rem;
   }
 
-  .builder-title,
-  .builder-summary,
-  .builder-body,
-  .builder-search input,
-  .builder-field input,
-  .builder-selected-controls input,
-  .builder-selected-controls select {
-    width: 100%;
-    box-sizing: border-box;
-    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    background: var(--color-base-100);
-    color: white;
-    padding: 0.85rem 0.95rem;
-  }
-
   .builder-title {
-    border-width: 0 0 1px;
-    padding: 0 0 1rem;
+    min-height: auto;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 1rem;
     font-size: clamp(2.2rem, 4vw, 3.2rem);
     letter-spacing: -0.05em;
   }
@@ -994,14 +999,6 @@
     gap: 0.65rem;
   }
 
-  .builder-chip {
-    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    background: transparent;
-    color: var(--color-base-content);
-    padding: 0.5rem 0.8rem;
-  }
-
-  .builder-chip:hover,
   .builder-result:hover {
     border-color: var(--color-neutral);
     color: white;

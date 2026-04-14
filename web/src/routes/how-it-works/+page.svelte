@@ -119,8 +119,8 @@
       </p>
     </div>
     <div class="button-row">
-      <a class="button-primary" href="/join">Start Trading</a>
-      <a class="button-secondary" href="/">Explore Markets</a>
+      <a class="btn btn-primary" href="/join">Start Trading</a>
+      <a class="btn btn-outline" href="/">Explore Markets</a>
     </div>
   </section>
 </section>

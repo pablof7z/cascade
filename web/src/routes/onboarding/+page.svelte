@@ -560,30 +560,40 @@
   });
 </script>
 
-<div class="ob-shell">
-  <nav class="ob-progress" aria-label="Setup steps">
+<div class="mx-auto grid w-full max-w-5xl gap-8">
+  <nav class="grid gap-3 border-b border-neutral-800 pb-5 sm:grid-cols-2" aria-label="Setup steps">
     {#each [1, 2] as s (s)}
       <button
-        class="ob-progress-step"
-        class:active={step === s}
-        class:done={step > s}
+        class={`flex items-center gap-3 rounded-md border px-4 py-3 text-left transition ${
+          step === s
+            ? 'border-white bg-base-200 text-white'
+            : step > s
+              ? 'border-neutral-700 bg-base-200 text-neutral-300'
+              : 'border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300'
+        }`}
         type="button"
         onclick={() => {
           if (s < step || (s === 2 && step1Valid)) step = s as 1 | 2;
         }}
         aria-current={step === s ? 'step' : undefined}
       >
-        <span class="ob-progress-dot"></span>
-        <span class="ob-progress-label">{['About you', 'Public profile'][s - 1]}</span>
+        <span
+          class={`size-2 rounded-full ${
+            step === s ? 'bg-white' : step > s ? 'bg-primary' : 'bg-neutral-700'
+          }`}
+        ></span>
+        <span class="text-sm font-medium">{['About you', 'Public profile'][s - 1]}</span>
       </button>
     {/each}
   </nav>
 
   {#if step === 1}
-    <div class="ob-step reveal">
-      <div class="ob-step-head">
+    <div class="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start">
+      <div class="grid gap-3">
         <h1>Tell people who you are.</h1>
-        <p>Set the basics for the public profile other traders and agents will see.</p>
+        <p class="text-base leading-7 text-neutral-400">
+          Set the basics for the public profile other traders and agents will see.
+        </p>
         {#if importedSocialPrefill}
           <div class="ob-prefill-note">
             <strong>Imported from {socialProviderLabel(importedSocialPrefill.provider)}.</strong>
@@ -592,34 +602,45 @@
         {/if}
       </div>
 
-      <div class="ob-step-body">
-        <div class="ob-avatar-zone">
-          <button class="ob-avatar-btn" type="button" onclick={handleAvatarClick} aria-label="Upload your own photo">
+      <div class="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start">
+        <div class="grid gap-4">
+          <button
+            class="group relative grid aspect-square w-full max-w-56 place-items-center overflow-hidden rounded-md border border-neutral-800 bg-base-200"
+            type="button"
+            onclick={handleAvatarClick}
+            aria-label="Upload your own photo"
+          >
             {#if avatarDisplayUrl}
-              <img src={avatarDisplayUrl} alt="Your avatar" class="ob-avatar-img" />
+              <img src={avatarDisplayUrl} alt="Your avatar" class="h-full w-full object-cover" />
             {:else}
-              <div class="ob-avatar-placeholder">
+              <div class="grid gap-2 justify-items-center text-neutral-500">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                   <circle cx="12" cy="8" r="4" />
                   <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                 </svg>
               </div>
             {/if}
-            <div class="ob-avatar-overlay" aria-hidden="true">
+            <div
+              class="pointer-events-none absolute inset-0 grid place-items-center bg-black/50 text-white opacity-0 transition group-hover:opacity-100"
+              aria-hidden="true"
+            >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
               </svg>
             </div>
           </button>
-          <input bind:this={fileInput} type="file" accept="image/*" onchange={handleAvatarSelection} class="ob-file-input" tabindex="-1" />
+          <input bind:this={fileInput} type="file" accept="image/*" onchange={handleAvatarSelection} class="hidden" tabindex="-1" />
 
-          <div class="ob-dicebear-wrap">
-            <p class="ob-dicebear-label">Or pick one</p>
-            <div class="ob-dicebear-track" role="listbox" aria-label="Avatar options">
+          <div class="grid gap-3">
+            <p class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Or pick one</p>
+            <div class="grid grid-cols-4 gap-2 sm:grid-cols-6" role="listbox" aria-label="Avatar options">
               {#each DICEBEAR_AVATARS as avatar (avatar.url)}
                 <button
-                  class="ob-dicebear-item"
-                  class:selected={selectedDicebear === avatar.url}
+                  class={`overflow-hidden rounded-md border ${
+                    selectedDicebear === avatar.url
+                      ? 'border-white'
+                      : 'border-neutral-800 hover:border-neutral-700'
+                  }`}
                   type="button"
                   role="option"
                   aria-selected={selectedDicebear === avatar.url}
@@ -632,7 +653,7 @@
                     profileTouched = true;
                   }}
                 >
-                  <img src={avatar.url} alt={avatar.seed} loading="lazy" />
+                  <img src={avatar.url} alt={avatar.seed} loading="lazy" class="h-full w-full bg-base-100 object-cover" />
                 </button>
               {/each}
             </div>
@@ -640,7 +661,7 @@
 
           {#if avatarDisplayUrl}
             <button
-              class="ob-avatar-remove"
+              class="btn btn-ghost w-fit px-0 text-neutral-400 hover:bg-transparent hover:text-white"
               type="button"
               onclick={() => {
                 avatarUrl = '';
@@ -654,15 +675,16 @@
             </button>
           {/if}
           {#if uploadError}
-            <p class="ob-error">{uploadError}</p>
+            <p class="text-sm text-error">{uploadError}</p>
           {/if}
         </div>
 
-        <div class="ob-fields">
-          <div class="ob-field-row">
-            <label class="ob-field">
-              <span>Username</span>
+        <div class="grid gap-4">
+          <div class="grid gap-4 md:grid-cols-2">
+            <label class="grid gap-2">
+              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Username</span>
               <input
+                class="input input-bordered"
                 bind:value={name}
                 oninput={() => {
                   profileTouched = true;
@@ -671,9 +693,10 @@
                 autocomplete="username"
               />
             </label>
-            <label class="ob-field">
-              <span>Name <em>(optional)</em></span>
+            <label class="grid gap-2">
+              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Name <em class="normal-case tracking-normal text-neutral-400">(optional)</em></span>
               <input
+                class="input input-bordered"
                 bind:value={display}
                 oninput={() => {
                   profileTouched = true;
@@ -684,9 +707,10 @@
             </label>
           </div>
 
-          <label class="ob-field">
-            <span>Bio <em>(optional)</em></span>
+          <label class="grid gap-2">
+            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Bio <em class="normal-case tracking-normal text-neutral-400">(optional)</em></span>
             <textarea
+              class="textarea textarea-bordered min-h-32"
               bind:value={about}
               oninput={() => {
                 profileTouched = true;
@@ -698,9 +722,9 @@
         </div>
       </div>
 
-      <div class="ob-step-footer">
+      <div class="flex flex-col gap-3 border-t border-neutral-800 pt-5 sm:flex-row sm:items-center sm:justify-between">
         <button
-          class="button ob-next"
+          class="btn btn-primary w-fit"
           type="button"
           disabled={!step1Valid}
           onclick={() => {
@@ -710,28 +734,30 @@
           Next — public profile details
         </button>
         {#if !step1Valid}
-          <p class="ob-hint">Add a username or name to continue.</p>
+          <p class="text-sm text-neutral-500">Add a username or name to continue.</p>
         {/if}
       </div>
     </div>
   {:else if step === 2}
-    <div class="ob-step reveal">
-      <div class="ob-step-head">
+    <div class="grid gap-6">
+      <div class="grid gap-3">
         <h1>Finish your public profile.</h1>
-        <p>Add a site or claim a verified handle. Both are optional.</p>
+        <p class="text-base leading-7 text-neutral-400">
+          Add a site or claim a verified handle. Both are optional.
+        </p>
       </div>
 
-      <div class="ob-step-body">
-        <div class="ob-fields">
+      <div class="grid gap-4">
           <div class="ob-profile-summary">
             <span>Public name</span>
             <strong>{writerLabel}</strong>
             <p>This is the identity people will see when they open your public profile.</p>
           </div>
 
-          <label class="ob-field">
-            <span>Website <em>(optional)</em></span>
+          <label class="grid gap-2">
+            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Website <em class="normal-case tracking-normal text-neutral-400">(optional)</em></span>
             <input
+              class="input input-bordered"
               bind:value={website}
               oninput={() => {
                 profileTouched = true;
@@ -742,10 +768,11 @@
           </label>
 
           {#if managedNip05Enabled && managedNip05Domain}
-            <label class="ob-field">
-              <span>Verified handle <em>(optional)</em></span>
+            <label class="grid gap-2">
+              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Verified handle <em class="normal-case tracking-normal text-neutral-400">(optional)</em></span>
               <div class="ob-managed-nip05-input">
                 <input
+                  class="input input-bordered"
                   bind:value={managedNip05Name}
                   oninput={() => {
                     managedNip05Touched = true;
@@ -781,14 +808,13 @@
               {/if}
             </label>
           {/if}
-        </div>
       </div>
 
-      <div class="ob-step-footer">
-        <div class="ob-footer-row">
-          <button class="button-secondary" type="button" onclick={() => { step = 1; }}>Back</button>
+      <div class="flex flex-col gap-3 border-t border-neutral-800 pt-5">
+        <div class="flex flex-wrap items-center gap-3">
+          <button class="btn btn-outline" type="button" onclick={() => { step = 1; }}>Back</button>
           <button
-            class="button ob-next"
+            class="btn btn-primary"
             type="button"
             disabled={!canPublish}
             onclick={() => void publish()}
@@ -797,7 +823,7 @@
           </button>
         </div>
         {#if saveError}
-          <p class="ob-error">{saveError}</p>
+          <p class="text-sm text-error">{saveError}</p>
         {/if}
       </div>
     </div>

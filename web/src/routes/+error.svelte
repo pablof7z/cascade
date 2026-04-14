@@ -8,7 +8,7 @@
     <h1 class="page-title">Page not found.</h1>
     <p class="page-subtitle">No route matched <span class="mono">{page.url.pathname}</span>.</p>
     <div class="button-row">
-      <a class="button-primary" href="/">Back to markets</a>
+      <a class="btn btn-primary" href="/">Back to markets</a>
     </div>
   </div>
 </section>

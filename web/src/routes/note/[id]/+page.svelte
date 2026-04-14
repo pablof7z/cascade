@@ -412,7 +412,7 @@
                   ></textarea>
                   <div class="comment-compose-actions">
                     <button
-                      class="button"
+                      class="btn btn-primary"
                       disabled={submitting || !replyText.trim()}
                       onclick={() => submitComment(null)}
                     >
@@ -472,7 +472,7 @@
                             ></textarea>
                             <div class="comment-compose-actions">
                               <button
-                                class="button"
+                                class="btn btn-primary"
                                 disabled={submitting || !replyText.trim()}
                                 onclick={() => submitComment(node.event)}
                               >

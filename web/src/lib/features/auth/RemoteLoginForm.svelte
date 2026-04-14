@@ -22,47 +22,57 @@
   }: Props = $props();
 </script>
 
-<div class="stack">
-  <p class="muted" style="margin: 0;">
+<div class="grid gap-4">
+  <p class="text-sm leading-6 text-neutral-400">
     Pair with another app. Show a QR code to approve this session, or paste a connection link.
   </p>
 
   {#if remoteSignerReady}
-    <div class="auth-qr-shell">
-      <a class="auth-qr-button" href={nostrConnectUri} title="Open in app">
-        <img class="auth-qr-image" src={qrCodeDataUrl} alt="Connection QR code" />
+    <div class="grid justify-items-center gap-3 rounded-md border border-neutral-800 bg-base-100 p-4">
+      <a
+        class="inline-flex rounded-md border border-neutral-800 bg-white p-4 transition hover:border-neutral-700"
+        href={nostrConnectUri}
+        title="Open in app"
+      >
+        <img class="block h-auto w-full max-w-60 rounded-md" src={qrCodeDataUrl} alt="Connection QR code" />
       </a>
-      <div class="status-pill status-blue auth-qr-status">Waiting for approval</div>
-      <p class="caption auth-qr-caption">
+      <div class="badge badge-outline border-primary/40 px-3 py-3 text-xs font-medium text-primary">
+        Waiting for approval
+      </div>
+      <p class="m-0 text-center text-xs leading-5 text-neutral-400">
         Open the QR in another app on this device, or scan it from another one.
       </p>
     </div>
   {:else}
-    <div class="stack tight">
+    <div class="grid gap-2">
       <button
-        class="button auth-action"
+        class="btn btn-primary w-full justify-center"
         type="button"
         onclick={() => void onStartRemoteSigner?.()}
         disabled={preparingRemoteSigner || connectingBunker}
       >
         {preparingRemoteSigner ? 'Preparing QR...' : 'Show QR code'}
       </button>
-      <p class="caption auth-qr-caption">
+      <p class="m-0 text-center text-xs leading-5 text-neutral-400">
         This starts a one-time pairing request and waits for approval.
       </p>
     </div>
   {/if}
 
-  <div class="auth-divider">
+  <div class="flex items-center gap-3 text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase before:h-px before:flex-1 before:bg-neutral-800 after:h-px after:flex-1 after:bg-neutral-800">
     <span>Or paste a link</span>
   </div>
 
-  <label class="field">
-    <span class="muted">Connection link</span>
-    <input bind:value={bunkerUri} placeholder="Paste a connection link" />
+  <label class="grid gap-2">
+    <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Connection link</span>
+    <input
+      class="input input-bordered"
+      bind:value={bunkerUri}
+      placeholder="Paste a connection link"
+    />
   </label>
   <button
-    class="button auth-action"
+    class="btn btn-primary w-full justify-center"
     type="button"
     onclick={() => void onLoginWithBunker?.()}
     disabled={connectingBunker || !bunkerUri.trim().startsWith('bunker://')}

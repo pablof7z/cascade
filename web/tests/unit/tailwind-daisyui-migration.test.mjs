@@ -70,7 +70,12 @@ test('app css imports Tailwind and DaisyUI and defines the Cascade dark theme', 
   assert.match(appCss, /@import\s+['\"]tailwindcss['\"]/);
   assert.match(appCss, /@plugin\s+['\"]daisyui['\"]/);
   assert.match(appCss, /\[data-theme=['\"]dark['\"]\][\s\S]*--color-base-100:/);
+  assert.match(appCss, /--color-primary:\s*#10b981/i);
   assert.doesNotMatch(appCss, /:root\s*\{/);
+  assert.doesNotMatch(appCss, /\.button-primary\b/);
+  assert.doesNotMatch(appCss, /\.button-secondary\b/);
+  assert.doesNotMatch(appCss, /\.button-ghost\b/);
+  assert.doesNotMatch(appCss, /\.field\b(?!-)/);
 });
 
 test('shared UI wrappers use DaisyUI classes for tabs, dialog, dropdowns, and avatar', () => {
@@ -103,6 +108,30 @@ test('legacy Cascade CSS variable tokens are removed from the web source tree', 
       const content = readFileSync(filePath, 'utf8');
       const foundToken = legacyTokens.find((token) => content.includes(token));
       return foundToken ? `${relativeFromWeb(filePath)} (${foundToken})` : null;
+    })
+    .filter(Boolean);
+
+  assert.deepEqual(offenders, []);
+});
+
+test('legacy button/field abstractions are removed from the active web source tree', () => {
+  const bannedPatterns = [
+    /class=["'](?:[^"']*\s)?button-primary(?:\s[^"']*)?["']/,
+    /class=["'](?:[^"']*\s)?button-secondary(?:\s[^"']*)?["']/,
+    /class=["'](?:[^"']*\s)?button-ghost(?:\s[^"']*)?["']/,
+    /class=["'](?:[^"']*\s)?button(?:\s[^"']*)?["']/,
+    /class=["'](?:[^"']*\s)?field(?:\s[^"']*)?["']/,
+    /\.button-primary\s*\{/,
+    /\.button-secondary\s*\{/,
+    /\.button-ghost\s*\{/,
+    /\.field\s*\{/
+  ];
+
+  const offenders = walk(srcRoot)
+    .map((filePath) => {
+      const content = readFileSync(filePath, 'utf8');
+      const matched = bannedPatterns.find((pattern) => pattern.test(content));
+      return matched ? relativeFromWeb(filePath) : null;
     })
     .filter(Boolean);
 

@@ -156,8 +156,8 @@
 <div class="auth-panel">
   <Dialog.Root bind:open>
     <div class="auth-guest-actions">
-      <button class="button auth-join" type="button" onclick={startJoin}>Join</button>
-      <Dialog.Trigger class="button-secondary auth-trigger">Log in</Dialog.Trigger>
+      <button class="btn btn-primary auth-join" type="button" onclick={startJoin}>Join</button>
+      <Dialog.Trigger class="btn btn-outline auth-trigger">Log in</Dialog.Trigger>
     </div>
 
     <Dialog.Content class="auth-dialog">

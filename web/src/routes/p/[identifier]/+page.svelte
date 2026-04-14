@@ -102,7 +102,7 @@
 
   <div class="profile-actions">
     {#if currentUser?.pubkey === resolvedPubkey}
-      <a class="button-primary" href="/profile/edit">Edit profile</a>
+      <a class="btn btn-primary" href="/profile/edit">Edit profile</a>
     {/if}
   </div>
 </section>
@@ -262,7 +262,6 @@
     max-width: 42rem;
   }
 
-  .profile-kicker,
   .section-kicker {
     color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.72rem;

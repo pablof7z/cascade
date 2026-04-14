@@ -8,13 +8,17 @@
   let { pending, secretKey = $bindable(''), onLogin }: Props = $props();
 </script>
 
-<div class="stack">
-  <label class="field">
-    <span class="muted">Account key</span>
-    <textarea bind:value={secretKey} placeholder="Paste your account key"></textarea>
+<div class="grid gap-3">
+  <label class="grid gap-2">
+    <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Account key</span>
+    <textarea
+      class="textarea textarea-bordered min-h-32"
+      bind:value={secretKey}
+      placeholder="Paste your account key"
+    ></textarea>
   </label>
   <button
-    class="button auth-action"
+    class="btn btn-primary w-full justify-center"
     type="button"
     onclick={() => void onLogin?.()}
     disabled={pending || !secretKey.trim()}

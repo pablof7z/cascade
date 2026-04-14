@@ -20,6 +20,7 @@
   import { getProductApiUrl } from '$lib/cascade/config';
   import { formatUsdMinor } from '$lib/cascade/format';
   import { shareMinorToQuantity } from '$lib/cascade/shares';
+  import { normalizeProductTradeSide } from '$lib/cascade/tradeSide';
   import {
     attachTradeReceiptQuoteId,
     clearTradeReceipt,
@@ -311,7 +312,8 @@
       if (!spendProofs.length) {
         throw new Error('Not enough local USD funds to cover this trade.');
       }
-      const marketUnit = marketUnitForSide((quote.side as 'long' | 'short') ?? buySide);
+      const tradeSide = normalizeProductTradeSide(quote.side, buySide);
+      const marketUnit = marketUnitForSide(tradeSide);
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
         proofMintUrl(),
         marketUnit,
@@ -337,7 +339,7 @@
         eventId: marketId,
         marketSlug,
         action: 'buy',
-        side: buySide,
+        side: tradeSide,
         spentUnit: 'usd',
         spentProofs: spendProofs,
         issuedPreparation,
@@ -347,7 +349,7 @@
       const response = await buyMarketPosition({
         eventId: marketId,
         pubkey: currentUser.pubkey,
-        side: (quote.side as 'long' | 'short') ?? buySide,
+        side: tradeSide,
         spendMinor: quote.spend_minor,
         proofs: spendProofs,
         issuedOutputs,
@@ -428,7 +430,8 @@
         throw new Error('Sell quote is missing a quote id.');
       }
       const lockedQuoteId = quote.quote_id;
-      const marketUnit = marketUnitForSide((quote.side as 'long' | 'short') ?? sellSide);
+      const tradeSide = normalizeProductTradeSide(quote.side, sellSide);
+      const marketUnit = marketUnitForSide(tradeSide);
       const spendProofs = selectLocalProofsForAmount(
         proofMintUrl(),
         marketUnit,
@@ -462,7 +465,7 @@
         eventId: marketId,
         marketSlug,
         action: 'sell',
-        side: sellSide,
+        side: tradeSide,
         spentUnit: marketUnit,
         spentProofs: spendProofs,
         issuedPreparation,
@@ -472,7 +475,7 @@
       const response = await sellMarketPosition({
         eventId: marketId,
         pubkey: currentUser.pubkey,
-        side: (quote.side as 'long' | 'short') ?? sellSide,
+        side: tradeSide,
         quantity: quote.quantity,
         proofs: spendProofs,
         issuedOutputs,
@@ -547,10 +550,18 @@
     <div class="trade-field">
       <span>Side</span>
       <div class="trade-side-row">
-        <button class:active={buySide === 'long'} type="button" onclick={() => (buySide = 'long')}>
+        <button
+          class={buySide === 'long' ? 'btn btn-primary' : 'btn btn-outline'}
+          type="button"
+          onclick={() => (buySide = 'long')}
+        >
           YES {formatProbability(yesProbability)}
         </button>
-        <button class:active={buySide === 'short'} type="button" onclick={() => (buySide = 'short')}>
+        <button
+          class={buySide === 'short' ? 'btn btn-error' : 'btn btn-outline'}
+          type="button"
+          onclick={() => (buySide = 'short')}
+        >
           NO {formatProbability(noProbability)}
         </button>
       </div>
@@ -558,15 +569,17 @@
 
     <div class="trade-field">
       <span>Amount</span>
-      <input bind:value={buySpend} min="100" step="100" type="number" />
-      <button class="button-primary" type="button" onclick={buy}>Buy {buySide === 'long' ? 'YES' : 'NO'}</button>
+      <input class="input input-bordered" bind:value={buySpend} min="100" step="100" type="number" />
+      <button class="btn btn-primary" type="button" onclick={buy}>
+        Buy {buySide === 'long' ? 'YES' : 'NO'}
+      </button>
     </div>
 
     <div class="trade-field">
       <span>Current position</span>
       <strong>{currentPosition ? `${currentPosition.quantity.toFixed(2)} shares` : 'None yet'}</strong>
-      <input bind:value={sellQuantity} min="0" step="0.1" type="number" />
-      <button class="button-secondary" disabled={!currentPosition} type="button" onclick={sell}>
+      <input class="input input-bordered" bind:value={sellQuantity} min="0" step="0.1" type="number" />
+      <button class="btn btn-outline" disabled={!currentPosition} type="button" onclick={sell}>
         Sell {currentPosition ? (currentPosition.side === 'long' ? 'YES' : 'NO') : (buySide === 'long' ? 'YES' : 'NO')}
       </button>
     </div>
@@ -610,20 +623,6 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.75rem;
-  }
-
-  .trade-side-row button,
-  .trade-field input {
-    width: 100%;
-    box-sizing: border-box;
-    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    background: transparent;
-    color: white;
-    padding: 0.85rem 0.95rem;
-  }
-
-  .trade-side-row button.active {
-    border-color: white;
   }
 
   .trade-error {

@@ -676,24 +676,28 @@
         <h3>Last executed trade</h3>
       </div>
 
-      <dl class="summary-list">
-        <div>
-          <dt>Current YES</dt>
-          <dd>{priceCents(impliedProbability)}</dd>
-        </div>
-        <div>
-          <dt>Current NO</dt>
-          <dd>{priceCents(oppositeProbability)}</dd>
-        </div>
-        <div>
-          <dt>Trades</dt>
-          <dd>{tradeSummary.tradeCount}</dd>
-        </div>
-        <div>
-          <dt>Current price</dt>
-          <dd>{formatProbability(impliedProbability)}</dd>
-        </div>
-      </dl>
+      {#if latestTrade}
+        <dl class="summary-list">
+          <div>
+            <dt>Direction</dt>
+            <dd>{latestTrade.direction === 'long' ? 'YES' : 'NO'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}</dd>
+          </div>
+          <div>
+            <dt>Price</dt>
+            <dd>{priceCents(latestTrade.probability)}</dd>
+          </div>
+          <div>
+            <dt>Size</dt>
+            <dd>{formatProductAmount(latestTrade.amount, latestTrade.unit)} {productUnitLabel(latestTrade.unit)}</dd>
+          </div>
+          <div>
+            <dt>When</dt>
+            <dd>{formatRelativeTime(latestTrade.createdAt)}</dd>
+          </div>
+        </dl>
+      {:else}
+        <div class="panel-empty">No trades yet.</div>
+      {/if}
     </article>
   </section>
 {/if}

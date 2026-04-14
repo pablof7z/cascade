@@ -40,6 +40,26 @@ test('charts tab removes the legacy CSS bar chart markup and styles', () => {
   assert.doesNotMatch(source, /\.chart-fill\s*\{/);
 });
 
+test('charts tab last executed trade panel shows latest trade details and empty state', () => {
+  const source = read('src/lib/components/cascade/MarketSurface.svelte');
+
+  assert.match(source, /<h3>Last executed trade<\/h3>/);
+  assert.match(
+    source,
+    /<h3>Last executed trade<\/h3>[\s\S]*\{#if latestTrade\}[\s\S]*<dt>Direction<\/dt>[\s\S]*latestTrade\.direction === 'long' \? 'YES' : 'NO'[\s\S]*latestTrade\.type === 'buy' \? 'Buy' : 'Sell'/
+  );
+  assert.match(source, /<dt>Price<\/dt>[\s\S]*priceCents\(latestTrade\.probability\)/);
+  assert.match(
+    source,
+    /<dt>Size<\/dt>[\s\S]*formatProductAmount\(latestTrade\.amount, latestTrade\.unit\)[\s\S]*productUnitLabel\(latestTrade\.unit\)/
+  );
+  assert.match(source, /<dt>When<\/dt>[\s\S]*formatRelativeTime\(latestTrade\.createdAt\)/);
+  assert.match(source, /\{:else\}[\s\S]*No trades yet\./);
+  assert.doesNotMatch(source, /<h3>Last executed trade<\/h3>[\s\S]*<dt>Current YES<\/dt>/);
+  assert.doesNotMatch(source, /<h3>Last executed trade<\/h3>[\s\S]*<dt>Current NO<\/dt>/);
+  assert.doesNotMatch(source, /<h3>Last executed trade<\/h3>[\s\S]*<dt>Current price<\/dt>/);
+});
+
 test('market surface presents prediction market copy as YES/NO while preserving internal long/short data model', () => {
   const source = read('src/lib/components/cascade/MarketSurface.svelte');
 
@@ -81,6 +101,6 @@ test('market surface presents prediction market copy as YES/NO while preserving 
   assert.match(source, /\{formatProbability\(flowLong\)\} YES/);
   assert.match(source, /<span>NO share<\/span>/);
   assert.match(source, /\{formatProbability\(flowShort\)\} NO/);
-  assert.match(source, /<dt>Current YES<\/dt>/);
-  assert.match(source, /<dt>Current NO<\/dt>/);
+  assert.match(source, /<dt>Direction<\/dt>/);
+  assert.match(source, /<dt>Price<\/dt>/);
 });

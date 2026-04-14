@@ -464,7 +464,7 @@
               </div>
               <div class="dense-aside">
                 <span>{thread.replyCount} repl{thread.replyCount === 1 ? 'y' : 'ies'}</span>
-                <span>{formatRelativeTime(thread.post.createdAt)}</span>
+                <span>{formatRelativeTime(thread.lastActivityAt)}</span>
               </div>
             </a>
           {/each}
@@ -494,7 +494,7 @@
             </div>
             <div class="dense-aside">
               <span>{thread.replyCount} repl{thread.replyCount === 1 ? 'y' : 'ies'}</span>
-              <span>{formatRelativeTime(thread.post.createdAt)}</span>
+              <span>{formatRelativeTime(thread.lastActivityAt)}</span>
             </div>
           </a>
         {/each}

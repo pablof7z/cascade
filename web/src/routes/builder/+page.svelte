@@ -693,7 +693,7 @@
     {#if step === 1}
       <div class="builder-section">
         <div class="builder-copy">
-          <h2>Go on record</h2>
+          <h2>Make your claim</h2>
           <p>
             This is your public argument. Write it as if the other side is already reading and looking for weak links.
           </p>
@@ -710,7 +710,7 @@
     {#if step === 2}
       <div class="builder-section">
         <div class="builder-copy">
-          <h2>Map the context</h2>
+          <h2>Link related markets</h2>
           <p>
             Attach related markets that strengthen or challenge the case. These are references for readers, not
             pricing dependencies.
@@ -782,7 +782,7 @@
       <div class="builder-section">
         <div class="builder-copy">
           <h2>Review</h2>
-          <p>Check the public framing before you publish.</p>
+          <p>Review how this will appear before you go live.</p>
         </div>
 
         <div class="review-block">
@@ -803,14 +803,14 @@
         </div>
         {#if paperEdition}
           <div class="review-block">
-            <span>Launch spend</span>
+            <span>Opening stake</span>
             <div class="builder-launch-grid">
               <label class="builder-field">
-                <span>Seed spend</span>
+                <span>Initial funding</span>
                 <input bind:value={seedAmount} min="100" step="100" type="number" />
               </label>
               <label class="builder-field">
-                <span>Opening side</span>
+                <span>Your position</span>
                 <select bind:value={seedSide}>
                   <option value="long">LONG</option>
                   <option value="short">SHORT</option>
@@ -834,7 +834,7 @@
       <section class="builder-section">
         <div class="builder-copy">
           <h2>Your markets</h2>
-          <p>Pending markets stay private until the mint records the first trade.</p>
+          <p>Your market goes live with the first trade.</p>
         </div>
 
         <div class="builder-selected">

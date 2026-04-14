@@ -156,7 +156,7 @@
       {
         eyebrow: 'Flow',
         title: latestTrade
-          ? `${latestTrade.type === 'buy' ? 'Mint' : 'Withdraw'} on ${latestTrade.direction === 'long' ? 'LONG' : 'SHORT'}`
+          ? `${latestTrade.type === 'buy' ? 'Buy' : 'Sell'} on ${latestTrade.direction === 'long' ? 'LONG' : 'SHORT'}`
           : 'No visible fills yet',
         detail: latestTrade
           ? `${formatProductAmount(latestTrade.amount, latestTrade.unit)} moved ${formatRelativeTime(latestTrade.createdAt)}.`

@@ -92,8 +92,8 @@
 <section class="leaderboard-header">
   <div class="leaderboard-copy">
     <div class="leaderboard-kicker">Leaderboard</div>
-    <h1>Top performers on Cascade</h1>
-    <p>Competitive browsing and social proof, rebuilt around the data that is public today.</p>
+    <h1>Who's winning</h1>
+    <p>The traders with the best track record. Public positions, real results.</p>
   </div>
 </section>
 

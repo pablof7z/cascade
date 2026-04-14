@@ -1,10 +1,12 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { invalidateAll } from '$app/navigation';
+  import { page } from '$app/stores';
   import type { NDKUserProfile } from '@nostr-dev-kit/ndk';
   import { NDKEvent } from '@nostr-dev-kit/ndk';
-  import { invalidateAll } from '$app/navigation';
   import type { NostrEvent } from 'nostr-tools';
   import BookmarkIcon from '$lib/components/BookmarkIcon.svelte';
+  import SharePopover from '$lib/components/SharePopover.svelte';
   import PaperTradePanel from '$lib/components/cascade/PaperTradePanel.svelte';
   import { isPaperEdition } from '$lib/cascade/config';
   import { formatProductAmount, productUnitLabel } from '$lib/cascade/format';
@@ -331,8 +333,9 @@
         {/if}
       </div>
 
-      {#if currentUser}
-        <div class="market-header-actions">
+      <div class="market-header-actions">
+        <SharePopover url={$page.url.href} title={market.title} />
+        {#if currentUser}
           <button
             class="market-bookmark-button"
             class:bookmarked={isBookmarked}
@@ -343,8 +346,8 @@
             <BookmarkIcon size={14} filled={isBookmarked} />
             <span>{isBookmarked ? 'Saved' : 'Save'}</span>
           </button>
-        </div>
-      {/if}
+        {/if}
+      </div>
     </div>
 
     <div class="market-header-side">

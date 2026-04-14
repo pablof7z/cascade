@@ -56,6 +56,7 @@
   ]);
 
   const orderedTrades = $derived([...trades].sort((left, right) => right.createdAt - left.createdAt));
+  const chronologicalTrades = $derived([...orderedTrades].reverse());
   const latestTrade = $derived(orderedTrades[0] ?? null);
   const earliestTrade = $derived([...trades].sort((left, right) => left.createdAt - right.createdAt)[0] ?? null);
   const impliedProbability = $derived((tradeSummary.latestPricePpm ?? 500_000) / 1_000_000);
@@ -67,6 +68,38 @@
     tradeSummary.grossVolume > 0 ? tradeSummary.longVolume / tradeSummary.grossVolume : impliedProbability
   );
   const flowShort = $derived(1 - flowLong);
+  const chartWidth = 640;
+  const chartHeight = 320;
+  const chartMargin = { top: 16, right: 12, bottom: 20, left: 52 };
+  const chartGridLevels = [0, 0.25, 0.5, 0.75, 1];
+  const chartPlotWidth = chartWidth - chartMargin.left - chartMargin.right;
+  const chartPlotHeight = chartHeight - chartMargin.top - chartMargin.bottom;
+  const chartStartTrade = $derived(chronologicalTrades[0] ?? null);
+  const chartEndTrade = $derived(chronologicalTrades[chronologicalTrades.length - 1] ?? null);
+  const chartTrendClass = $derived((chartEndTrade?.probability ?? impliedProbability) >= 0.5 ? 'positive' : 'negative');
+  const chartPoints = $derived.by(() => {
+    if (chronologicalTrades.length === 0) {
+      return [];
+    }
+
+    const startTime = chartStartTrade?.createdAt ?? 0;
+    const endTime = chartEndTrade?.createdAt ?? startTime;
+    const timeSpan = endTime - startTime;
+
+    return chronologicalTrades.map((trade, index) => {
+      const fallbackRatio = chronologicalTrades.length === 1 ? 0.5 : index / (chronologicalTrades.length - 1);
+      const timeRatio = timeSpan === 0 ? fallbackRatio : (trade.createdAt - startTime) / timeSpan;
+      const x = chartMargin.left + timeRatio * chartPlotWidth;
+      const y = chartMargin.top + (1 - trade.probability) * chartPlotHeight;
+
+      return {
+        id: trade.id,
+        x: Number(x.toFixed(2)),
+        y: Number(y.toFixed(2))
+      };
+    });
+  });
+  const chartPolylinePoints = $derived(chartPoints.map((point) => `${point.x},${point.y}`).join(' '));
 
   const caseParagraphs = $derived(
     market.body
@@ -178,6 +211,10 @@
 
   function priceCents(probability: number): string {
     return `${Math.round(probability * 100)}¢`;
+  }
+
+  function chartLevelY(level: number): number {
+    return Number((chartMargin.top + (1 - level) * chartPlotHeight).toFixed(2));
   }
 
   let composeSubject = $state('');
@@ -544,28 +581,47 @@
         <span>Based on public trade history</span>
       </div>
 
-      <div class="chart-shell">
-        {#if orderedTrades.length > 0}
-          {#each [...orderedTrades].reverse() as trade (trade.id)}
-            <div class="chart-step">
-              <span>{formatRelativeTime(trade.createdAt)}</span>
-              <div class="chart-line">
-                <div class="chart-dot" class:negative-dot={trade.direction === 'short'}></div>
-                <div class="chart-bar">
-                  <div
-                    class="chart-fill"
-                    class:negative-fill={trade.direction === 'short'}
-                    style:width={`${trade.probability * 100}%`}
-                  ></div>
-                </div>
-              </div>
-              <strong>{formatProbability(trade.probability)}</strong>
-            </div>
-          {/each}
+      {#if chronologicalTrades.length > 0}
+        <div class="price-chart">
+          <svg
+            class="price-chart-svg"
+            viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+            role="img"
+            aria-label="Probability over time based on public trade history"
+          >
+            {#each chartGridLevels as level (level)}
+              {@const y = chartLevelY(level)}
+              <line
+                class="price-chart-gridline"
+                x1={chartMargin.left}
+                x2={chartWidth - chartMargin.right}
+                y1={y}
+                y2={y}
+              ></line>
+              <text class="price-chart-axis-label" x={chartMargin.left - 10} y={y + 4} text-anchor="end">
+                {formatProbability(level)}
+              </text>
+            {/each}
+
+            <polyline
+              class={`price-chart-line ${chartTrendClass}`}
+              fill="none"
+              points={chartPolylinePoints}
+            ></polyline>
+
+            {#each chartPoints as point (point.id)}
+              <circle class={`price-chart-point ${chartTrendClass}`} cx={point.x} cy={point.y} r="3.5"></circle>
+            {/each}
+          </svg>
+
+          <div class="price-chart-timestamps">
+            <span>{formatRelativeTime(chartStartTrade.createdAt)}</span>
+            <span>{formatRelativeTime(chartEndTrade.createdAt)}</span>
+          </div>
+        </div>
         {:else}
           <div class="panel-empty">No trade history has been published for this market yet.</div>
-        {/if}
-      </div>
+      {/if}
     </article>
 
     <article class="detail-section">
@@ -983,54 +1039,52 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .chart-shell {
+  .price-chart {
     display: grid;
     gap: 0.85rem;
   }
 
-  .chart-step {
-    display: grid;
-    grid-template-columns: 5.5rem minmax(0, 1fr) auto;
-    gap: 1rem;
-    align-items: center;
+  .price-chart-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    overflow: visible;
   }
 
-  .chart-step span {
+  .price-chart-gridline {
+    stroke: color-mix(in srgb, var(--color-neutral-content) 16%, transparent);
+    stroke-width: 1;
+    shape-rendering: crispEdges;
+  }
+
+  .price-chart-axis-label {
+    fill: color-mix(in srgb, var(--color-neutral-content) 64%, transparent);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .price-chart-line {
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .price-chart-point {
+    fill: currentColor;
+    stroke: var(--color-base-100);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .price-chart-timestamps {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
     color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.78rem;
-  }
-
-  .chart-step strong {
     font-family: var(--font-mono);
-    font-size: 0.9rem;
-  }
-
-  .chart-line {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .chart-dot {
-    width: 0.5rem;
-    height: 0.5rem;
-    background: var(--color-success);
-    border-radius: 999px;
-  }
-
-  .negative-dot {
-    background: var(--color-error);
-  }
-
-  .chart-bar {
-    flex: 1;
-    height: 0.35rem;
-    background: var(--color-base-200);
-  }
-
-  .chart-fill {
-    height: 100%;
-    background: var(--color-success);
   }
 
   .negative {
@@ -1071,8 +1125,7 @@
     }
 
     .dense-row,
-    .dense-row-link,
-    .chart-step {
+    .dense-row-link {
       grid-template-columns: 1fr;
       flex-direction: column;
     }

@@ -282,6 +282,7 @@
         <span>Price</span>
         <span>Vol</span>
         <span>Trades</span>
+        <span>Threads</span>
         <span>Time</span>
       </div>
 
@@ -297,6 +298,7 @@
             <span class="mono-cell">{centsForMarket(market.id)}</span>
             <span class="mono-cell">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</span>
             <span class="mono-cell">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
+            <span class="mono-cell">{discussionCounts.get(market.id) ?? 0}</span>
             <span class="search-time">{formatRelativeTime(market.createdAt)}</span>
           </a>
         {/each}
@@ -339,6 +341,7 @@
               <span>Price</span>
               <span>Vol</span>
               <span>Trades</span>
+              <span>Threads</span>
             </div>
 
             {#if rankedTrending.length > 0}
@@ -354,6 +357,7 @@
                   <span class="mono-cell">{centsForMarket(market.id)}</span>
                   <span class="mono-cell">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</span>
                   <span class="mono-cell">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
+                  <span class="mono-cell">{discussionCounts.get(market.id) ?? 0}</span>
                 </a>
               {/each}
             {:else}
@@ -827,7 +831,7 @@
   .rank-head,
   .rank-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.7fr) 0.55fr 0.6fr 0.55fr;
+    grid-template-columns: minmax(0, 1.7fr) 0.55fr 0.6fr 0.55fr 0.55fr;
     gap: 1rem;
     align-items: center;
   }
@@ -844,7 +848,7 @@
   .search-head,
   .search-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.9fr) 0.55fr 0.6fr 0.55fr 0.7fr;
+    grid-template-columns: minmax(0, 1.9fr) 0.55fr 0.6fr 0.55fr 0.55fr 0.7fr;
     gap: 1rem;
     align-items: center;
   }

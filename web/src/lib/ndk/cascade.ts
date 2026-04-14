@@ -72,6 +72,7 @@ export type DiscussionThread = {
   post: DiscussionRecord;
   replies: DiscussionThread[];
   replyCount: number;
+  lastActivityAt: number;
 };
 
 export function buildThreadReplyTags(marketId: string, threadId: string): string[][] {
@@ -291,7 +292,12 @@ export function buildDiscussionThreads(records: DiscussionRecord[], marketId: st
 
   const nodeMap = new Map<string, DiscussionThread>();
   for (const record of relevant) {
-    nodeMap.set(record.id, { post: record, replies: [], replyCount: 0 });
+    nodeMap.set(record.id, {
+      post: record,
+      replies: [],
+      replyCount: 0,
+      lastActivityAt: record.createdAt
+    });
   }
 
   const roots: DiscussionThread[] = [];
@@ -318,10 +324,10 @@ export function buildDiscussionThreads(records: DiscussionRecord[], marketId: st
   }
 
   for (const root of roots) {
-    annotateReplyCount(root);
+    annotateThreadMeta(root);
   }
 
-  return roots.sort((left, right) => right.post.createdAt - left.post.createdAt);
+  return roots.sort((left, right) => right.lastActivityAt - left.lastActivityAt);
 }
 
 export function marketUrl(slug: string): string {
@@ -383,14 +389,21 @@ export function sanitizeMarketCopy(value: string): string {
     .replace(/\bresolution\b/gi, 'market state');
 }
 
-function annotateReplyCount(node: DiscussionThread): number {
-  let count = 0;
+function annotateThreadMeta(node: DiscussionThread): { replyCount: number; lastActivityAt: number } {
+  let replyCount = 0;
+  let lastActivityAt = node.post.createdAt;
+
   for (const reply of node.replies) {
-    count += 1 + annotateReplyCount(reply);
+    const replyMeta = annotateThreadMeta(reply);
+    replyCount += 1 + replyMeta.replyCount;
+    lastActivityAt = Math.max(lastActivityAt, replyMeta.lastActivityAt);
   }
-  node.replyCount = count;
+
+  node.replyCount = replyCount;
+  node.lastActivityAt = lastActivityAt;
   node.replies.sort((left, right) => left.post.createdAt - right.post.createdAt);
-  return count;
+
+  return { replyCount, lastActivityAt };
 }
 
 function firstTagValue(tags: string[][], name: string): string | undefined {

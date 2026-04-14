@@ -2,11 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  CASCADE_DISCUSSION_KIND,
   CASCADE_POSITION_KIND,
   CASCADE_TRADE_KIND,
+  buildDiscussionThreads,
   buildThreadReplyTags,
   parsePositionEvent,
-  parseTradeEvent
+  parseTradeEvent,
+  type DiscussionRecord
 } from './cascade.ts';
 
 test('parseTradeEvent accepts long and short directions', () => {
@@ -105,3 +108,89 @@ test('buildThreadReplyTags scopes replies to the market root and thread parent',
     ['k', '1111']
   ]);
 });
+
+test('buildDiscussionThreads sorts threads by last activity and annotates nested activity', () => {
+  const marketId = 'market-1';
+  const records: DiscussionRecord[] = [
+    makeDiscussionRecord({
+      id: 'thread-older-active',
+      marketId,
+      rootId: marketId,
+      replyTo: marketId,
+      createdAt: 1_700_000_000,
+      subject: 'Older thread'
+    }),
+    makeDiscussionRecord({
+      id: 'thread-newer-idle',
+      marketId,
+      rootId: marketId,
+      replyTo: marketId,
+      createdAt: 1_700_000_100,
+      subject: 'Newer idle thread'
+    }),
+    makeDiscussionRecord({
+      id: 'reply-1',
+      marketId,
+      rootId: marketId,
+      replyTo: 'thread-older-active',
+      createdAt: 1_700_000_200
+    }),
+    makeDiscussionRecord({
+      id: 'reply-2',
+      marketId,
+      rootId: marketId,
+      replyTo: 'reply-1',
+      createdAt: 1_700_000_300
+    })
+  ];
+
+  const threads = buildDiscussionThreads(records, marketId);
+
+  assert.deepEqual(
+    threads.map((thread) => thread.post.id),
+    ['thread-older-active', 'thread-newer-idle']
+  );
+  assert.equal(threads[0]?.replyCount, 2);
+  assert.equal(threads[0]?.lastActivityAt, 1_700_000_300);
+  assert.equal(threads[0]?.replies[0]?.lastActivityAt, 1_700_000_300);
+  assert.equal(threads[0]?.replies[0]?.replies[0]?.lastActivityAt, 1_700_000_300);
+  assert.equal(threads[1]?.lastActivityAt, 1_700_000_100);
+});
+
+function makeDiscussionRecord({
+  id,
+  marketId,
+  rootId,
+  replyTo,
+  createdAt,
+  subject,
+  content = ''
+}: {
+  id: string;
+  marketId: string;
+  rootId: string;
+  replyTo?: string;
+  createdAt: number;
+  subject?: string;
+  content?: string;
+}): DiscussionRecord {
+  return {
+    id,
+    pubkey: 'a'.repeat(64),
+    marketId,
+    rootId,
+    replyTo,
+    subject,
+    content,
+    createdAt,
+    rawEvent: {
+      id,
+      kind: CASCADE_DISCUSSION_KIND,
+      pubkey: 'a'.repeat(64),
+      created_at: createdAt,
+      content,
+      sig: 'b'.repeat(128),
+      tags: []
+    }
+  };
+}

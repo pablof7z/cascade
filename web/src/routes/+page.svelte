@@ -191,43 +191,49 @@
   }
 </script>
 
-<section class="home-hero">
+<!-- ============================================================ -->
+<!-- HERO                                                          -->
+<!-- ============================================================ -->
+<section class="py-16 max-md:py-10">
   <div class="hero-grid">
-    <div class="hero-copy">
-      <h1>The Market Thinks You're Wrong</h1>
-      <p>Prove it. Take a position.</p>
+    <div>
+      <h1 class="hero-h1">The crowd has a price. Prove it wrong.</h1>
+      <p class="mt-6 max-w-lg text-neutral-400 text-lg leading-relaxed">
+        Cascade is a prediction market where positions stay open forever.
+        No expiry, no oracle. Create a market, defend your thesis, and trade on your conviction.
+      </p>
 
-      <div class="hero-actions">
-        <a class="btn btn-primary hero-primary" href="/join">Start Trading</a>
-        <a class="hero-secondary" href="/how-it-works">How it works →</a>
+      <div class="mt-8 flex items-center gap-4 flex-wrap">
+        <a class="btn btn-primary btn-lg" href="/join">Start Trading</a>
+        <a class="text-sm text-neutral-400 hover:text-white transition-colors" href="/how-it-works">How it works →</a>
       </div>
     </div>
 
-    <div class="hero-feature">
-      <div class="hero-kicker">Featured Thesis</div>
+    <div class="grid gap-4 content-center">
+      <div class="text-xs text-neutral-500 uppercase tracking-widest font-semibold">Featured Thesis</div>
 
       {#if featuredMarket}
-        <a class="featured-market" href={marketUrl(featuredMarket.slug)}>
-          <h2>{featuredMarket.title}</h2>
+        <a class="featured-market border-l-2 border-primary pl-6 grid gap-4 transition-colors hover:bg-base-200" href={marketUrl(featuredMarket.slug)}>
+          <h2 class="max-w-[14ch] text-3xl font-bold leading-tight transition-colors group-hover:text-success">{featuredMarket.title}</h2>
 
-          <div class="featured-price-row">
-            <span class="featured-price">{centsForMarket(featuredMarket.id)}</span>
-            <span class="featured-side">{probabilityForMarket(featuredMarket.id) >= 0.5 ? 'YES' : 'NO'}</span>
+          <div class="flex items-baseline gap-3">
+            <span class="text-success font-mono text-5xl font-bold tracking-tight">{centsForMarket(featuredMarket.id)}</span>
+            <span class="badge badge-success badge-outline">{probabilityForMarket(featuredMarket.id) >= 0.5 ? 'YES' : 'NO'}</span>
           </div>
 
-          <div class="featured-meta">
+          <div class="flex flex-wrap gap-5 text-sm text-neutral-500">
             <span>{formatSats(tradeSummaries.get(featuredMarket.id)?.grossVolume ?? 0)} vol</span>
             <span>{tradeSummaries.get(featuredMarket.id)?.tradeCount ?? 0} trades</span>
           </div>
 
-          <p>{truncateText(sanitizeMarketCopy(featuredMarket.description || featuredMarket.body), 180)}</p>
+          <p class="max-w-prose text-neutral-400 leading-relaxed">{truncateText(sanitizeMarketCopy(featuredMarket.description || featuredMarket.body), 180)}</p>
         </a>
       {:else}
-        <div class="featured-market featured-empty">
-          <h2>Be the first to create a market</h2>
-          <p>No markets yet. Create the first public market and start the book.</p>
-          <div class="hero-actions">
-            <a class="btn btn-primary hero-primary" href="/builder">Create a Market</a>
+        <div class="border-l-2 border-primary pl-6 grid gap-4">
+          <h2 class="max-w-[12ch] text-3xl font-bold leading-tight">Be the first to create a market</h2>
+          <p class="text-neutral-400">No markets yet. Create the first public market and start the book.</p>
+          <div class="flex items-center gap-4">
+            <a class="btn btn-primary" href="/builder">Create a Market</a>
           </div>
         </div>
       {/if}
@@ -235,49 +241,116 @@
   </div>
 </section>
 
-<section class="live-strip" aria-label="Live market strip">
-  <div class="live-label">
-    <span class="live-dot"></span>
-    <span>Live</span>
-  </div>
-
-  <div class="ticker-shell">
-    {#if tickerMarkets.length > 0}
-      <div class="ticker-track">
-        {#each [...tickerMarkets, ...tickerMarkets] as market, index (`${market.id}-${index}`)}
-          <a class="ticker-item" href={marketUrl(market.slug)}>
-            <span class="ticker-category">{market.categories[0] || 'Market'}</span>
-            <span class="ticker-title">{market.title}</span>
-            <span class:positive={probabilityForMarket(market.id) >= 0.5} class:negative={probabilityForMarket(market.id) < 0.5}>
-              {centsForMarket(market.id)}
-            </span>
-          </a>
-        {/each}
-      </div>
-    {:else}
-      <div class="ticker-empty">Markets appear here as they stream in.</div>
-    {/if}
+<!-- ============================================================ -->
+<!-- HOW IT WORKS STRIP (NEW)                                      -->
+<!-- ============================================================ -->
+<section class="full-bleed bg-base-200 py-10">
+  <div class="shell how-steps">
+    <div class="flex items-start gap-3">
+      <span class="font-mono text-sm text-neutral-500">01</span>
+      <p class="text-sm text-neutral-300">Pick a question</p>
+    </div>
+    <div class="flex items-start gap-3">
+      <span class="font-mono text-sm text-neutral-500">02</span>
+      <p class="text-sm text-neutral-300">Buy YES or NO</p>
+    </div>
+    <div class="flex items-start gap-3">
+      <span class="font-mono text-sm text-neutral-500">03</span>
+      <p class="text-sm text-neutral-300">Exit anytime</p>
+    </div>
   </div>
 </section>
 
-<div class="mkts-table">
-  <div class="mkts-search">
+<!-- ============================================================ -->
+<!-- VALUE PROPS (MOVED UP)                                        -->
+<!-- ============================================================ -->
+<section class="py-12 grid gap-8">
+  <div>
+    <h2 class="text-3xl font-bold tracking-tight">Markets that never close.</h2>
+    <p class="mt-1 text-sm text-neutral-500">
+      Traditional markets end. Cascade stays open. You can publish a market, defend the case in public,
+      and exit when the price makes sense for you.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+    <article class="grid gap-3 content-start pt-2">
+      <span class="text-lg text-neutral-400">∞</span>
+      <h3 class="font-semibold">No expiry</h3>
+      <p class="text-sm text-neutral-500 leading-relaxed">Take a position today. The market stays open until the question is settled — or forever.</p>
+    </article>
+
+    <article class="grid gap-3 content-start pt-2">
+      <span class="text-lg text-neutral-400">◆</span>
+      <h3 class="font-semibold">Linked beliefs</h3>
+      <p class="text-sm text-neutral-500 leading-relaxed">Connect related markets. Build a thesis. Each bet stands on its own.</p>
+    </article>
+
+    <article class="grid gap-3 content-start pt-2">
+      <span class="text-lg text-neutral-400">→</span>
+      <h3 class="font-semibold">On the record</h3>
+      <p class="text-sm text-neutral-500 leading-relaxed">Anyone can publish a market. Every trade is public. Your conviction is on record.</p>
+    </article>
+  </div>
+
+  <div class="flex items-center gap-4 flex-wrap">
+    <a class="btn btn-primary" href="/builder">Create market</a>
+    <a class="btn btn-outline" href="/how-it-works">How it works</a>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- LIVE TICKER                                                   -->
+<!-- ============================================================ -->
+<section class="full-bleed bg-base-200" aria-label="Live market strip">
+  <div class="shell live-strip">
+    <div class="live-label">
+      <span class="live-dot"></span>
+      <span>Live</span>
+    </div>
+
+    <div class="ticker-shell">
+      {#if tickerMarkets.length > 0}
+        <div class="ticker-track">
+          {#each [...tickerMarkets, ...tickerMarkets] as market, index (`${market.id}-${index}`)}
+            <a class="ticker-item" href={marketUrl(market.slug)}>
+              <span class="font-mono text-xs text-neutral-500 uppercase">{market.categories[0] || 'Market'}</span>
+              <span class="text-base-content">{market.title}</span>
+              <span class:positive={probabilityForMarket(market.id) >= 0.5} class:negative={probabilityForMarket(market.id) < 0.5}>
+                {centsForMarket(market.id)}
+              </span>
+            </a>
+          {/each}
+        </div>
+      {:else}
+        <div class="text-sm text-neutral-500">Markets appear here as they stream in.</div>
+      {/if}
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- MARKET DISCOVERY                                              -->
+<!-- ============================================================ -->
+<div class="grid gap-6 pt-12">
+  <div class="grid gap-2 justify-items-start">
     <input
       type="search"
       name="market-search"
+      class="input input-bordered w-full max-w-md bg-base-100"
       placeholder="Search markets…"
       aria-label="Search markets"
       bind:value={searchQuery}
     />
 
     {#if hasActiveMarketSearch}
-      <p class="mkts-search-count">{searchResultCountLabel}</p>
+      <p class="text-sm text-neutral-500">{searchResultCountLabel}</p>
     {/if}
   </div>
 
   {#if hasActiveMarketSearch}
-    <div class="search-panel">
-      <div class="search-head">
+    <div class="divide-y divide-neutral-800 border-y border-neutral-800">
+      <div class="search-head text-xs text-neutral-500 uppercase tracking-wide font-semibold">
         <span>Market</span>
         <span>Price</span>
         <span>Vol</span>
@@ -288,55 +361,54 @@
 
       {#if filteredMarkets.length > 0}
         {#each filteredMarkets as market (market.id)}
-          <a class="search-row" href={marketUrl(market.slug)}>
-            <div class="search-market">
-              <span class="rank-title">{market.title}</span>
-              <span class="search-description">
+          <a class="search-row transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
+            <div class="min-w-0 grid gap-1">
+              <span class="truncate text-white font-semibold">{market.title}</span>
+              <span class="text-sm text-neutral-500 truncate">
                 {truncateText(sanitizeMarketCopy(market.description || market.body), 120)}
               </span>
             </div>
-            <span class="mono-cell">{centsForMarket(market.id)}</span>
-            <span class="mono-cell">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</span>
-            <span class="mono-cell">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
-            <span class="mono-cell">{discussionCounts.get(market.id) ?? 0}</span>
-            <span class="search-time">{formatRelativeTime(market.createdAt)}</span>
+            <span class="font-mono text-sm">{centsForMarket(market.id)}</span>
+            <span class="font-mono text-sm">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</span>
+            <span class="font-mono text-sm">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
+            <span class="font-mono text-sm">{discussionCounts.get(market.id) ?? 0}</span>
+            <span class="text-sm text-neutral-500 text-right">{formatRelativeTime(market.createdAt)}</span>
           </a>
         {/each}
       {:else}
-        <div class="panel-empty">No markets matched your search.</div>
+        <div class="py-4 text-sm text-neutral-500">No markets matched your search.</div>
       {/if}
     </div>
   {:else}
-    <section class="home-section home-section-leading">
-      <div class="home-section-header">
-        <div>
-          <h2>Most Active</h2>
-          <p>Most volume · 24h</p>
-        </div>
+    <!-- ====== MOST ACTIVE (sidebar split — keep) ====== -->
+    <section class="grid gap-6">
+      <div>
+        <h2 class="text-3xl font-bold tracking-tight">Most Active</h2>
+        <p class="mt-1 text-sm text-neutral-500">Most volume · 24h</p>
       </div>
 
       {#if primaryTrending}
-        <div class="trending-layout">
-          <a class="trending-lead" href={marketUrl(primaryTrending.slug)}>
-            <span class="section-kicker positive">#1 by volume</span>
-            <h3>{primaryTrending.title}</h3>
+        <div class="trending-layout border-y border-neutral-800">
+          <a class="trending-lead transition-colors duration-150 hover:bg-base-200" href={marketUrl(primaryTrending.slug)}>
+            <span class="text-xs text-neutral-500 uppercase tracking-wide font-semibold positive">#1 by volume</span>
+            <h3 class="max-w-[14ch] text-3xl font-bold leading-tight">{primaryTrending.title}</h3>
 
-            <div class="lead-price-row">
-              <span class="lead-price">{centsForMarket(primaryTrending.id)}</span>
-              <span class="lead-side">{probabilityForMarket(primaryTrending.id) >= 0.5 ? 'YES' : 'NO'}</span>
+            <div class="flex items-baseline gap-3">
+              <span class="text-success font-mono text-5xl font-bold tracking-tight">{centsForMarket(primaryTrending.id)}</span>
+              <span class="badge badge-success badge-outline">{probabilityForMarket(primaryTrending.id) >= 0.5 ? 'YES' : 'NO'}</span>
             </div>
 
-            <p>{truncateText(sanitizeMarketCopy(primaryTrending.description || primaryTrending.body), 180)}</p>
+            <p class="max-w-prose text-neutral-400 leading-relaxed">{truncateText(sanitizeMarketCopy(primaryTrending.description || primaryTrending.body), 180)}</p>
 
-            <div class="lead-meta">
+            <div class="flex flex-wrap gap-5 text-sm text-neutral-500">
               <span>{formatSats(tradeSummaries.get(primaryTrending.id)?.grossVolume ?? 0)} vol</span>
               <span>{tradeSummaries.get(primaryTrending.id)?.tradeCount ?? 0} trades</span>
               <span>{discussionCounts.get(primaryTrending.id) ?? 0} posts</span>
             </div>
           </a>
 
-          <div class="rank-panel">
-            <div class="rank-head">
+          <div class="grid content-start">
+            <div class="rank-head text-xs text-neutral-500 uppercase tracking-wide font-semibold">
               <span>Market</span>
               <span>Price</span>
               <span>Vol</span>
@@ -346,141 +418,166 @@
 
             {#if rankedTrending.length > 0}
               {#each rankedTrending as market, index (market.id)}
-                <a class="rank-row" href={marketUrl(market.slug)}>
-                  <div class="rank-market">
-                    <span class="rank-number">{String(index + 2).padStart(2, '0')}</span>
-                    <div>
-                      <span class="rank-title">{market.title}</span>
-                      <span class="rank-subtitle">{authorLabel(market.pubkey)}</span>
+                <a class="rank-row border-t border-neutral-800 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
+                  <div class="min-w-0 flex items-start gap-4">
+                    <span class="font-mono text-sm text-neutral-500 leading-relaxed">{String(index + 2).padStart(2, '0')}</span>
+                    <div class="min-w-0 grid">
+                      <span class="truncate text-white font-semibold">{market.title}</span>
+                      <span class="text-sm text-neutral-500">{authorLabel(market.pubkey)}</span>
                     </div>
                   </div>
-                  <span class="mono-cell">{centsForMarket(market.id)}</span>
-                  <span class="mono-cell">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</span>
-                  <span class="mono-cell">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
-                  <span class="mono-cell">{discussionCounts.get(market.id) ?? 0}</span>
+                  <span class="font-mono text-sm">{centsForMarket(market.id)}</span>
+                  <span class="font-mono text-sm">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</span>
+                  <span class="font-mono text-sm">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
+                  <span class="font-mono text-sm">{discussionCounts.get(market.id) ?? 0}</span>
                 </a>
               {/each}
             {:else}
-              <div class="panel-empty">No active markets yet.</div>
+              <div class="py-4 text-sm text-neutral-500">No active markets yet. <a class="link link-primary" href="/builder">Create the first one</a></div>
             {/if}
           </div>
         </div>
       {:else}
-        <div class="panel-empty">No markets yet. Publish the first market from the builder.</div>
+        <div class="py-4 text-sm text-neutral-500">No markets yet. <a class="link link-primary" href="/builder">Publish the first market from the builder</a></div>
       {/if}
     </section>
 
     <div class="home-split">
-      <section class="home-section">
-        <div class="home-section-header">
-          <div>
-            <h2>Under the radar</h2>
-            <p>Less traffic. More opportunity — if you're right.</p>
-          </div>
+      <!-- ====== UNDER THE RADAR (Bloomberg data table) ====== -->
+      <section class="grid gap-6 pt-12">
+        <div>
+          <h2 class="text-3xl font-bold tracking-tight">Under the radar</h2>
+          <p class="mt-1 text-sm text-neutral-500">Less traffic. More opportunity — if you're right.</p>
         </div>
 
-        <div class="stack-list">
-          {#if lowVolumeMarkets.length > 0}
-            {#each lowVolumeMarkets as market (market.id)}
-              <a class="stack-row" href={marketUrl(market.slug)}>
-                <div>
-                  <h3>{market.title}</h3>
-                  <p>{truncateText(sanitizeMarketCopy(market.description || market.body), 120)}</p>
-                </div>
-                <div class="stack-aside">
-                  <span class="mono-cell">{centsForMarket(market.id)}</span>
-                  <span>{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)} vol · {discussionCounts.get(market.id) ?? 0} posts</span>
-                </div>
-              </a>
-            {/each}
-          {:else}
-            <div class="panel-empty">No markets in this category yet.</div>
-          {/if}
+        <div class="overflow-x-auto">
+          <table class="table table-sm w-full">
+            <thead>
+              <tr class="text-xs text-neutral-500 uppercase tracking-wide border-neutral-800">
+                <th class="font-semibold">Market</th>
+                <th class="font-semibold text-right">Price</th>
+                <th class="font-semibold text-right">Vol</th>
+                <th class="font-semibold text-right">Posts</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-neutral-800">
+              {#if lowVolumeMarkets.length > 0}
+                {#each lowVolumeMarkets as market (market.id)}
+                  <tr class="transition-colors duration-150 hover:bg-base-300/50 hover">
+                    <td>
+                      <a class="block hover:text-white" href={marketUrl(market.slug)}>
+                        <span class="font-semibold text-white">{market.title}</span>
+                        <span class="block text-xs text-neutral-500 mt-0.5 truncate max-w-sm">{truncateText(sanitizeMarketCopy(market.description || market.body), 80)}</span>
+                      </a>
+                    </td>
+                    <td class="font-mono text-right">{centsForMarket(market.id)}</td>
+                    <td class="font-mono text-right">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</td>
+                    <td class="font-mono text-right">{discussionCounts.get(market.id) ?? 0}</td>
+                  </tr>
+                {/each}
+              {:else}
+                <tr>
+                  <td colspan="4" class="text-sm text-neutral-500">No markets in this category yet. <a class="link link-primary" href="/builder">Create the first one</a></td>
+                </tr>
+              {/if}
+            </tbody>
+          </table>
         </div>
       </section>
 
-      <section class="home-section">
-        <div class="home-section-header">
-          <div>
-            <h2>Most Contested</h2>
-            <p>The crowd is split. Someone's going to be wrong.</p>
-          </div>
+      <!-- ====== MOST CONTESTED (asymmetric dominant + list) ====== -->
+      <section class="grid gap-6 pt-12">
+        <div>
+          <h2 class="text-3xl font-bold tracking-tight">Most Contested</h2>
+          <p class="mt-1 text-sm text-neutral-500">The crowd is split. Someone's going to be wrong.</p>
         </div>
 
-        <div class="stack-list">
-          {#if disputedMarkets.length > 0}
-            {#each disputedMarkets as market (market.id)}
-              <a class="stack-row" href={marketUrl(market.slug)}>
-                <div>
-                  <h3>{market.title}</h3>
-                  <p>{discussionCounts.get(market.id) ?? 0} posts · {authorLabel(market.pubkey)}</p>
-                </div>
-                <div class="stack-aside">
-                  <span class="mono-cell">{centsForMarket(market.id)}</span>
-                  <span>Tight spread {spreadForMarket(market.id)} · {tradeSummaries.get(market.id)?.tradeCount ?? 0} trades</span>
-                </div>
-              </a>
-            {/each}
-          {:else}
-            <div class="panel-empty">No disputed markets yet.</div>
-          {/if}
-        </div>
+        {#if disputedMarkets.length > 0}
+          {@const topDisputed = disputedMarkets[0]}
+          {@const restDisputed = disputedMarkets.slice(1)}
+
+          <div class="grid gap-4">
+            <!-- Dominant item -->
+            <a class="block border-y border-neutral-800 py-5 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(topDisputed.slug)}>
+              <h3 class="text-lg font-bold">{topDisputed.title}</h3>
+              <div class="mt-2 flex items-baseline gap-3">
+                <span class="text-success font-mono text-4xl font-bold tracking-tight">{centsForMarket(topDisputed.id)}</span>
+                <span class="text-sm text-neutral-500">Spread {spreadForMarket(topDisputed.id)}</span>
+                <span class="badge badge-success badge-outline badge-sm">{probabilityForMarket(topDisputed.id) >= 0.5 ? 'YES' : 'NO'}</span>
+              </div>
+              <div class="mt-2 flex gap-4 text-sm text-neutral-500">
+                <span>{tradeSummaries.get(topDisputed.id)?.tradeCount ?? 0} trades</span>
+                <span>{discussionCounts.get(topDisputed.id) ?? 0} posts</span>
+              </div>
+            </a>
+
+            <!-- Compact numbered list -->
+            <div class="divide-y divide-neutral-800">
+              {#each restDisputed as market, index (market.id)}
+                <a class="flex items-center justify-between gap-4 py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="font-mono text-sm text-neutral-500">{String(index + 2).padStart(2, '0')}</span>
+                    <span class="font-semibold truncate">{market.title}</span>
+                  </div>
+                  <div class="flex items-center gap-3 shrink-0">
+                    <span class="font-mono text-sm">{centsForMarket(market.id)}</span>
+                    <span class="text-xs text-neutral-500">{spreadForMarket(market.id)}</span>
+                  </div>
+                </a>
+              {/each}
+            </div>
+          </div>
+        {:else}
+          <div class="py-4 text-sm text-neutral-500">No disputed markets yet. <a class="link link-primary" href="/builder">Create the first one</a></div>
+        {/if}
       </section>
     </div>
 
     <div class="home-split">
-      <section class="home-section">
-        <div class="home-section-header">
-          <div>
-            <h2>New This Week</h2>
-            <p>Recently created</p>
-          </div>
+      <!-- ====== NEW THIS WEEK (HN/Reddit numbered list) ====== -->
+      <section class="grid gap-6 pt-12">
+        <div>
+          <h2 class="text-3xl font-bold tracking-tight">New This Week</h2>
+          <p class="mt-1 text-sm text-neutral-500">Recently created</p>
         </div>
 
-        <div class="stack-list">
+        <div class="divide-y divide-neutral-800 border-t border-neutral-800">
           {#if newThisWeek.length > 0}
-            {#each newThisWeek as market (market.id)}
-              <a class="stack-row" href={marketUrl(market.slug)}>
-                <div>
-                  <h3>{market.title}</h3>
-                  <p>by {authorLabel(market.pubkey)}</p>
-                </div>
-                <div class="stack-aside">
-                  <span class="mono-cell">{centsForMarket(market.id)}</span>
-                  <span>{formatRelativeTime(market.createdAt)} · {tradeSummaries.get(market.id)?.tradeCount ?? 0} trades</span>
-                </div>
+            {#each newThisWeek as market, index (market.id)}
+              <a class="flex items-baseline gap-3 py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
+                <span class="font-mono text-sm text-neutral-500 shrink-0">{String(index + 1).padStart(2, '0')}</span>
+                <span class="font-semibold truncate">{market.title}</span>
+                <span class="text-xs text-neutral-500 shrink-0 ml-auto whitespace-nowrap">by {authorLabel(market.pubkey)} · {formatRelativeTime(market.createdAt)}</span>
               </a>
             {/each}
           {:else}
-            <div class="panel-empty">No new markets this week.</div>
+            <div class="py-4 text-sm text-neutral-500">No new markets this week. <a class="link link-primary" href="/builder">Create the first one</a></div>
           {/if}
         </div>
       </section>
 
-      <section class="home-section">
-        <div class="home-section-header">
-          <div>
-            <h2>Live Debate</h2>
-            <p>The argument, in real time.</p>
-          </div>
+      <!-- ====== LIVE DEBATE (Reddit flat list) ====== -->
+      <section class="grid gap-6 pt-12">
+        <div>
+          <h2 class="text-3xl font-bold tracking-tight">Live Debate</h2>
+          <p class="mt-1 text-sm text-neutral-500">The argument, in real time.</p>
         </div>
 
-        <div class="stack-list">
+        <div class="divide-y divide-neutral-800 border-t border-neutral-800">
           {#if latestDiscussions.length > 0}
             {#each latestDiscussions as entry (entry.discussion.id)}
-              <a class="stack-row" href={marketDiscussionUrl(entry.market.slug)}>
-                <div>
-                  <h3>{entry.market.title}</h3>
-                  <p>{truncateText(entry.discussion.content, 120)}</p>
-                  <p class="discussion-author">@{authorLabel(entry.discussion.pubkey)}</p>
-                </div>
-                <div class="stack-aside">
-                  <span>{formatRelativeTime(entry.discussion.createdAt)}</span>
+              <a class="block py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketDiscussionUrl(entry.market.slug)}>
+                <p class="text-sm text-neutral-300 leading-relaxed">{truncateText(entry.discussion.content, 120)}</p>
+                <div class="mt-1 flex items-center gap-2 text-xs text-neutral-500">
+                  <span class="text-neutral-400">@{authorLabel(entry.discussion.pubkey)}</span>
+                  <span>in</span>
+                  <span class="text-neutral-400 truncate">{entry.market.title}</span>
+                  <span class="ml-auto shrink-0">{formatRelativeTime(entry.discussion.createdAt)}</span>
                 </div>
               </a>
             {/each}
           {:else}
-            <div class="panel-empty">No discussion yet.</div>
+            <div class="py-4 text-sm text-neutral-500">No discussion yet. <a class="link link-primary" href="/builder">Create a market to start the debate</a></div>
           {/if}
         </div>
       </section>
@@ -488,191 +585,75 @@
   {/if}
 </div>
 
-<section class="why-section">
-  <div class="why-copy">
-    <h2>Markets that never close.</h2>
-    <p>
-      Traditional markets end. Cascade stays open. You can publish a market, defend the case in public,
-      and exit when the price makes sense for you.
+<!-- ============================================================ -->
+<!-- BOTTOM CTA (NEW)                                              -->
+<!-- ============================================================ -->
+<section class="full-bleed bg-base-200 py-16 mt-16">
+  <div class="shell text-center">
+    <h2 class="text-3xl font-bold tracking-tight">Ready to put money behind your beliefs?</h2>
+    <p class="mt-2 text-sm text-neutral-500 max-w-md mx-auto">
+      Create a market, take a position, and defend it in public. Every trade is on the record.
     </p>
-  </div>
-
-  <div class="why-grid">
-    <article>
-      <span>∞</span>
-      <h3>No expiry</h3>
-      <p>Take a position today. The market stays open until the question is settled — or forever.</p>
-    </article>
-
-    <article>
-      <span>◆</span>
-      <h3>Linked beliefs</h3>
-      <p>Connect related markets. Build a thesis. Each bet stands on its own.</p>
-    </article>
-
-    <article>
-      <span>→</span>
-      <h3>On the record</h3>
-      <p>Anyone can publish a market. Every trade is public. Your conviction is on record.</p>
-    </article>
-  </div>
-
-  <div class="hero-actions">
-    <a class="btn btn-primary hero-primary" href="/builder">Create market</a>
-    <a class="btn btn-outline" href="/how-it-works">How it works</a>
+    <div class="mt-8 flex items-center justify-center gap-4 flex-wrap">
+      <a class="btn btn-primary btn-lg" href="/join">Start Trading</a>
+      <a class="btn btn-outline" href="/builder">Create a Market</a>
+    </div>
   </div>
 </section>
 
 <style>
-  .home-hero {
-    padding: 3.5rem 0 2.5rem;
+  /* ── Full-bleed breakout ────────────────────────────────────── */
+  .full-bleed {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
   }
 
+  /* ── Hero grid ─────────────────────────────────────────────── */
   .hero-grid {
-    min-height: 64vh;
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
     gap: 5rem;
     align-items: center;
   }
 
-  .hero-copy h1 {
-    max-width: 10ch;
-    font-size: clamp(3.4rem, 7.5vw, 5.8rem);
+  .hero-h1 {
+    max-width: 16ch;
+    font-size: clamp(3rem, 7vw, 5.2rem);
     font-weight: 700;
     letter-spacing: -0.06em;
     line-height: 0.98;
   }
 
-  .hero-copy p {
-    max-width: 30rem;
-    margin-top: 1.5rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: clamp(1.15rem, 2vw, 1.55rem);
-    line-height: 1.55;
-  }
-
-  .hero-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-top: 2rem;
-  }
-
-  .hero-primary {
-    min-height: 3.25rem;
-    padding: 0 1.75rem;
-    font-size: 1rem;
-    font-weight: 600;
-  }
-
-  .hero-secondary {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.86rem;
-    font-weight: 500;
-  }
-
-  .hero-secondary:hover,
-  .hero-secondary:focus-visible {
-    color: var(--color-base-content);
-    outline: none;
-  }
-
-  .hero-feature {
+  /* ── How-it-works steps ────────────────────────────────────── */
+  .how-steps {
     display: grid;
-    gap: 1rem;
-    align-content: center;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
   }
 
-  .hero-kicker,
-  .section-kicker {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-  }
-
-  .featured-market {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .featured-market h2 {
-    max-width: 14ch;
-    font-size: clamp(2rem, 3vw, 2.85rem);
-    line-height: 1.08;
-    transition: color 140ms ease;
-  }
-
-  .featured-market:hover h2,
-  .featured-market:focus-visible h2 {
-    color: var(--color-success);
-    outline: none;
-  }
-
-  .featured-price-row,
-  .lead-price-row {
-    display: flex;
-    align-items: baseline;
-    gap: 0.9rem;
-  }
-
-  .featured-price {
-    color: var(--color-success);
-    font-family: var(--font-mono);
-    font-size: clamp(3rem, 5vw, 4.5rem);
-    font-weight: 700;
-    letter-spacing: -0.05em;
-  }
-
-  .featured-side,
-  .lead-side {
-    color: rgba(52, 211, 153, 0.7);
-    font-size: 1rem;
-    letter-spacing: 0.08em;
-  }
-
-  .featured-meta,
-  .lead-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.2rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.84rem;
-  }
-
-  .featured-market p,
-  .trending-lead p {
-    max-width: 34rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    line-height: 1.7;
-  }
-
-  .featured-empty h2 {
-    max-width: 12ch;
-  }
-
+  /* ── Live ticker strip ─────────────────────────────────────── */
   .live-strip {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 1rem;
     align-items: center;
-    padding: 0.85rem 0;
-    border-top: 1px solid rgba(38, 38, 38, 0.7);
-    border-bottom: 1px solid rgba(38, 38, 38, 0.7);
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
   }
 
   .live-label {
     display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
+    gap: 0.5rem;
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
+    color: var(--color-neutral-500, oklch(0.556 0 0));
   }
 
   .live-dot {
@@ -701,132 +682,23 @@
     display: inline-flex;
     align-items: center;
     gap: 0.65rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 0.86rem;
+    font-size: 0.875rem;
     white-space: nowrap;
+    color: var(--color-neutral-400, oklch(0.556 0 0));
   }
 
-  .ticker-category {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.7rem;
-    font-family: var(--font-mono);
-    text-transform: uppercase;
-  }
-
-  .ticker-title {
-    color: var(--color-base-content);
-  }
-
-  .ticker-empty {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.86rem;
-  }
-
-  .home-section {
-    display: grid;
-    gap: 1.5rem;
-    padding-top: 2.8rem;
-  }
-
-  .home-section-leading {
-    padding-top: 0;
-  }
-
-  .mkts-table {
-    display: grid;
-    gap: 1.5rem;
-    padding-top: 2.8rem;
-  }
-
-  .mkts-search {
-    display: grid;
-    gap: 0.45rem;
-    justify-items: start;
-  }
-
-  .mkts-search input {
-    width: 100%;
-    max-width: 28rem;
-    box-sizing: border-box;
-    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    border-radius: 0;
-    background: var(--color-base-100);
-    color: white;
-    padding: 0.85rem 0.95rem;
-  }
-
-  .mkts-search input::placeholder {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-  }
-
-  .mkts-search input:focus-visible {
-    outline: 1px solid color-mix(in srgb, white 68%, transparent);
-    outline-offset: 2px;
-  }
-
-  .mkts-search-count {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.82rem;
-  }
-
-  .home-section-header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .home-section-header h2,
-  .why-copy h2 {
-    font-size: clamp(1.8rem, 2.6vw, 2.4rem);
-    font-weight: 700;
-    letter-spacing: -0.05em;
-  }
-
-  .home-section-header p,
-  .why-copy p {
-    margin-top: 0.25rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.86rem;
-  }
-
+  /* ── Trending sidebar layout (Most Active) ─────────────────── */
   .trending-layout {
     display: grid;
     grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
     gap: 0;
-    border-top: 1px solid rgba(38, 38, 38, 0.7);
-    border-bottom: 1px solid rgba(38, 38, 38, 0.7);
   }
 
   .trending-lead {
     display: grid;
     gap: 1rem;
-    padding: 1.9rem 2.3rem 1.9rem 0;
-    border-right: 1px solid rgba(38, 38, 38, 0.7);
-  }
-
-  .trending-lead h3 {
-    max-width: 14ch;
-    font-size: clamp(2rem, 3vw, 2.8rem);
-    line-height: 1.08;
-  }
-
-  .lead-price {
-    color: var(--color-success);
-    font-family: var(--font-mono);
-    font-size: clamp(2.8rem, 4vw, 4rem);
-    font-weight: 700;
-    letter-spacing: -0.05em;
-  }
-
-  .rank-panel {
-    display: grid;
-    align-content: start;
-  }
-
-  .search-panel {
-    border-top: 1px solid rgba(38, 38, 38, 0.7);
-    border-bottom: 1px solid rgba(38, 38, 38, 0.7);
+    padding: 1.25rem 1.5rem 1.25rem 0;
+    border-right: 1px solid oklch(0.3 0 0);
   }
 
   .rank-head,
@@ -838,14 +710,14 @@
   }
 
   .rank-head {
-    padding: 1rem 0 0.85rem 2rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    padding: 1rem 0 0.75rem 1.5rem;
   }
 
+  .rank-row {
+    padding: 0.75rem 0 0.75rem 1.5rem;
+  }
+
+  /* ── Search results grid ───────────────────────────────────── */
   .search-head,
   .search-row {
     display: grid;
@@ -855,179 +727,34 @@
   }
 
   .search-head {
-    padding: 1rem 0 0.85rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .rank-row {
-    padding: 1rem 0 1rem 2rem;
-    border-top: 1px solid rgba(38, 38, 38, 0.7);
+    padding: 0.75rem 0;
   }
 
   .search-row {
-    padding: 1rem 0;
-    border-top: 1px solid rgba(38, 38, 38, 0.7);
+    padding: 0.75rem 0;
   }
 
-  .rank-row:hover,
-  .rank-row:focus-visible,
-  .search-row:hover,
-  .search-row:focus-visible,
-  .stack-row:hover,
-  .stack-row:focus-visible {
-    color: white;
-    outline: none;
-  }
-
-  .rank-market {
-    min-width: 0;
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .rank-number {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-family: var(--font-mono);
-    font-size: 0.82rem;
-    line-height: 1.6;
-  }
-
-  .rank-market > div {
-    min-width: 0;
-    display: grid;
-  }
-
-  .rank-title {
-    overflow: hidden;
-    color: white;
-    font-size: 1rem;
-    font-weight: 600;
-    line-height: 1.4;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .rank-subtitle {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.8rem;
-  }
-
-  .search-market {
-    min-width: 0;
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  .search-description,
-  .search-time {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.8rem;
-  }
-
-  .search-time {
-    text-align: right;
-  }
-
-  .mono-cell {
-    font-family: var(--font-mono);
-    font-size: 0.86rem;
-  }
-
+  /* ── Two-column market splits ──────────────────────────────── */
   .home-split {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 2.5rem;
   }
 
-  .stack-list {
-    border-top: 1px solid rgba(38, 38, 38, 0.7);
+  /* ── Price direction ───────────────────────────────────────── */
+  .positive {
+    color: var(--color-success);
   }
 
-  .stack-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid rgba(38, 38, 38, 0.7);
+  .negative {
+    color: var(--color-error);
   }
 
-  .stack-row h3 {
-    font-size: 1rem;
-    line-height: 1.4;
-  }
-
-  .stack-row p {
-    margin-top: 0.25rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.83rem;
-    line-height: 1.55;
-  }
-
-  .stack-aside {
-    display: grid;
-    justify-items: end;
-    gap: 0.25rem;
-    flex: 0 0 auto;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.8rem;
-    text-align: right;
-  }
-
-  .discussion-author {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .panel-empty {
-    padding: 1.1rem 0;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .why-section {
-    display: grid;
-    gap: 2rem;
-    padding: 3rem 0 0.5rem;
-    border-top: 1px solid rgba(38, 38, 38, 0.7);
-  }
-
-  .why-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.5rem;
-  }
-
-  .why-grid article {
-    display: grid;
-    gap: 0.75rem;
-    align-content: start;
-    padding-top: 0.5rem;
-  }
-
-  .why-grid article span {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 1.2rem;
-  }
-
-  .why-grid article h3 {
-    font-size: 1.05rem;
-  }
-
-  .why-grid article p {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.88rem;
-    line-height: 1.7;
-  }
-
+  /* ── Keyframes ─────────────────────────────────────────────── */
   @keyframes ticker {
     from {
       transform: translateX(0);
     }
-
     to {
       transform: translateX(-50%);
     }
@@ -1038,12 +765,12 @@
     100% {
       box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5);
     }
-
     50% {
       box-shadow: 0 0 0 0.45rem rgba(52, 211, 153, 0);
     }
   }
 
+  /* ── Responsive ────────────────────────────────────────────── */
   @media (max-width: 1024px) {
     .hero-grid,
     .trending-layout,
@@ -1054,30 +781,18 @@
     .trending-lead {
       padding-right: 0;
       border-right: none;
-      border-bottom: 1px solid rgba(38, 38, 38, 0.7);
+      border-bottom: 1px solid oklch(0.3 0 0);
     }
 
     .rank-head,
     .rank-row {
       padding-left: 0;
     }
-
-    .why-grid {
-      grid-template-columns: 1fr;
-    }
   }
 
   @media (max-width: 720px) {
-    .home-hero {
-      padding-top: 1rem;
-    }
-
-    .hero-grid {
-      min-height: auto;
-      gap: 2.5rem;
-    }
-
-    .rank-head {
+    .rank-head,
+    .search-head {
       display: none;
     }
 
@@ -1086,22 +801,12 @@
       grid-template-columns: 1fr;
       gap: 0.5rem;
     }
+  }
 
-    .search-head {
-      display: none;
-    }
-
-    .stack-row {
-      flex-direction: column;
-    }
-
-    .stack-aside {
-      justify-items: start;
-      text-align: left;
-    }
-
-    .search-time {
-      text-align: left;
+  @media (max-width: 640px) {
+    .how-steps {
+      grid-template-columns: 1fr;
+      gap: 1rem;
     }
   }
 </style>

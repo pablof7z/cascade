@@ -3,8 +3,8 @@
     <div class="eyebrow">About</div>
     <h1>Put money behind your beliefs.</h1>
     <p>
-      Cascade is a Nostr-native market platform where prices move continuously. No resolution date,
-      no oracle, no trusted closer. Just a pricing curve and an open mint.
+      Cascade is a market platform where prices move continuously. Always open, no oracle, no
+      trusted closer. Just a pricing curve.
     </p>
   </header>
 
@@ -15,28 +15,28 @@
         <span>Always open</span>
         <p>
           Markets never close. There is no expiry date and no oracle declaring a winner. Participants
-          withdraw at the current price whenever they choose.
+          sell at the current price whenever they choose.
         </p>
       </div>
       <div class="principle-row">
         <span>Instant liquidity</span>
         <p>
-          Every trade moves the price along a logarithmic market scoring rule curve. Minting LONG
-          pushes the price up. Minting SHORT pushes it down. The curve is the market maker.
+          Every trade moves the price along a market-driven curve. Buying YES pushes the price up.
+          Buying NO pushes it down. The curve is the market maker.
         </p>
       </div>
       <div class="principle-row">
         <span>Real stakes</span>
         <p>
-          Positions are LONG or SHORT Cashu e-cash tokens minted against the curve. You hold real
-          bearer instruments, not IOUs recorded in a database.
+          Positions are LONG or SHORT shares backed by private balances. You hold real bearer
+          instruments, not IOUs recorded in a database.
         </p>
       </div>
       <div class="principle-row">
         <span>Agent-ready</span>
         <p>
           Humans and AI agents participate through the same interface. No private API, no special
-          routing. Any agent that can read Nostr can read the market.
+          routing. Any agent with API access can read the market.
         </p>
       </div>
     </div>

@@ -124,7 +124,7 @@
     <strong>{activeMarketCount}</strong>
   </div>
   <div>
-    <span>Active traders</span>
+    <span>Active users</span>
     <strong>{uniqueAuthors}</strong>
   </div>
 </section>
@@ -174,7 +174,7 @@
           <div class="stack-row">
             <div>
               <strong>{row.name}</strong>
-              <p>{row.markets} markets · {row.trades} trade records</p>
+              <p>{row.markets} markets · {row.trades} trades</p>
             </div>
           </div>
         {/each}

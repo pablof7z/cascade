@@ -160,7 +160,7 @@
           : 'No visible fills yet',
         detail: latestTrade
           ? `${formatProductAmount(latestTrade.amount, latestTrade.unit)} moved ${formatRelativeTime(latestTrade.createdAt)}.`
-          : 'This will update as soon as the mint publishes trade records.'
+          : 'This will update as soon as trade records are public.'
       },
       {
         eyebrow: 'Debate',
@@ -292,17 +292,17 @@
         </div>
         <div>
           <dt>LONG flow</dt>
-          <dd>{formatProductAmount(tradeSummary.buyVolume, 'usd')} {valueUnitLabel}</dd>
+          <dd>{formatProductAmount(tradeSummary.longVolume, 'usd')} {valueUnitLabel}</dd>
         </div>
         <div>
           <dt>SHORT flow</dt>
-          <dd>{formatProductAmount(tradeSummary.sellVolume, 'usd')} {valueUnitLabel}</dd>
+          <dd>{formatProductAmount(tradeSummary.shortVolume, 'usd')} {valueUnitLabel}</dd>
         </div>
         <div>
           <dt>Last trade</dt>
           <dd>
             {#if latestTrade}
-              {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'mint' : 'withdraw'}
+              {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}
             {:else}
               None
             {/if}

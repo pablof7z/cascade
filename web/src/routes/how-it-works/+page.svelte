@@ -69,7 +69,7 @@
       <div class="eyebrow">Market Mechanics</div>
       <h2>Buy in. Cash out.</h2>
       <p>
-        Taking a position means minting LONG or SHORT. Exiting means withdrawing when the price makes sense for you.
+        Taking a position means buying LONG or SHORT. Exiting means selling when the price makes sense for you.
         There is no close button and no trusted party declaring a winner.
       </p>
       <ol>

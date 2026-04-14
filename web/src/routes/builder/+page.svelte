@@ -120,7 +120,7 @@
     return true;
   });
   const paperEdition = $derived(isPaperEdition());
-  const portfolioLabel = $derived(paperEdition ? 'signet portfolio' : 'portfolio');
+  const portfolioLabel = $derived(paperEdition ? 'practice portfolio' : 'portfolio');
   const parsedSeedAmount = $derived(Number.parseInt(seedAmount, 10) || 0);
 
   const creatorMarketFeed = ndk.$subscribe(() => {
@@ -307,7 +307,7 @@
       const lockedQuoteId = quote.quote_id;
       const spendProofs = selectLocalProofsForAmount(proofMintUrl(), 'usd', quote.spend_minor);
       if (!spendProofs.length) {
-        throw new Error(`Your ${portfolioLabel} no longer has enough local proofs for this seed.`);
+        throw new Error(`Your ${portfolioLabel} no longer has enough local funds for this seed.`);
       }
       const issuedUnit = marketUnitForSide(slug, (quote.side as 'long' | 'short') ?? seedSide);
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
@@ -429,7 +429,7 @@
         throw new Error('Published market is missing an event id.');
       }
 
-      builderStatus = 'Market published. Registering it with the mint.';
+      builderStatus = 'Market published. Creating the market.';
       const created = await createProductMarket({
         eventId,
         title: title.trim(),
@@ -446,7 +446,7 @@
         createdMarket = (await created.json()) as ProductMarketSummary;
       } else if (created.status !== 409) {
         const payload = (await created.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error || 'Failed to register market with the mint.');
+        throw new Error(payload?.error || 'Failed to create market.');
       }
 
       if (createdMarket && createdMarket.visibility !== 'public') {
@@ -685,7 +685,7 @@
         </div>
 
         <div class="builder-note">
-          Markets stay open. Price changes as people mint into a side or withdraw at a new level.
+          Markets stay open. Price changes as people buy or sell.
         </div>
       </div>
     {/if}

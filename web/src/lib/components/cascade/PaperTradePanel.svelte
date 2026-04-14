@@ -309,7 +309,7 @@
       const lockedQuoteId = quote.quote_id;
       const spendProofs = selectLocalProofsForAmount(proofMintUrl(), 'usd', quote.spend_minor);
       if (!spendProofs.length) {
-        throw new Error('Not enough local USD proofs to cover this trade.');
+        throw new Error('Not enough local USD funds to cover this trade.');
       }
       const marketUnit = marketUnitForSide((quote.side as 'long' | 'short') ?? buySide);
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
@@ -401,7 +401,7 @@
 
     const sellSide = currentPosition?.side;
     if (!sellSide) {
-      errorMessage = 'No current position is available to withdraw.';
+      errorMessage = 'No current position is available to sell.';
       return;
     }
 
@@ -411,7 +411,7 @@
       return;
     }
 
-    status = `Withdrawing ${quantity.toFixed(2)} ${sellSide.toUpperCase()} shares.`;
+    status = `Selling ${quantity.toFixed(2)} ${sellSide.toUpperCase()} shares.`;
     errorMessage = '';
 
     try {
@@ -422,7 +422,7 @@
       });
       const quote = await parseJson<ProductTradeQuote>(
         quoteResponse,
-        'Failed to lock a withdrawal quote.'
+        'Failed to lock a sell quote.'
       );
       if (!quote.quote_id) {
         throw new Error('Sell quote is missing a quote id.');
@@ -435,7 +435,7 @@
         quote.quantity_minor
       );
       if (!spendProofs.length) {
-        throw new Error(`Not enough local ${sellSide.toUpperCase()} proofs to withdraw.`);
+        throw new Error(`Not enough local ${sellSide.toUpperCase()} funds to sell.`);
       }
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
         proofMintUrl(),
@@ -509,7 +509,7 @@
         clearTradeReceipt(requestId);
         status = `Sold ${sellSide.toUpperCase()} on ${marketSlug}.`;
       } else {
-        status = `Withdrawal submitted on ${marketSlug}. Waiting for settlement.`;
+        status = `Sell submitted on ${marketSlug}. Waiting for settlement.`;
       }
       sellQuantity = '';
       await invalidateAll();
@@ -537,7 +537,7 @@
   </div>
 
   {#if !currentUser}
-    <p class="trade-muted">Sign in to buy or withdraw positions.</p>
+    <p class="trade-muted">Sign in to buy or sell positions.</p>
   {:else}
     <div class="trade-balance">
       <span>Available</span>
@@ -559,7 +559,7 @@
     <div class="trade-field">
       <span>Amount</span>
       <input bind:value={buySpend} min="100" step="100" type="number" />
-      <button class="button-primary" type="button" onclick={buy}>Mint {buySide === 'long' ? 'LONG' : 'SHORT'}</button>
+      <button class="button-primary" type="button" onclick={buy}>Buy {buySide === 'long' ? 'YES' : 'NO'}</button>
     </div>
 
     <div class="trade-field">
@@ -567,7 +567,7 @@
       <strong>{currentPosition ? `${currentPosition.quantity.toFixed(2)} shares` : 'None yet'}</strong>
       <input bind:value={sellQuantity} min="0" step="0.1" type="number" />
       <button class="button-secondary" disabled={!currentPosition} type="button" onclick={sell}>
-        Withdraw {currentPosition ? (currentPosition.side === 'long' ? 'LONG' : 'SHORT') : (buySide === 'long' ? 'LONG' : 'SHORT')}
+        Sell {currentPosition ? (currentPosition.side === 'long' ? 'LONG' : 'SHORT') : (buySide === 'long' ? 'LONG' : 'SHORT')}
       </button>
     </div>
   {/if}

@@ -8,5 +8,5 @@
 
 <section class="surface panel content-prose">
   <p>Profile and market data published through the app are public by design.</p>
-  <p>Trades are recorded publicly — what you bought, not who you are. Everything else stays on your device.</p>
+  <p>Trades are recorded publicly — what you traded, not who you are. Everything else stays on your device.</p>
 </section>

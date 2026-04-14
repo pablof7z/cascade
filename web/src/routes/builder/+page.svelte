@@ -429,7 +429,7 @@
         throw new Error('Published market is missing an event id.');
       }
 
-      builderStatus = 'Market published. Registering it with the mint.';
+      builderStatus = 'Market published. Creating the market.';
       const created = await createProductMarket({
         eventId,
         title: title.trim(),
@@ -446,7 +446,7 @@
         createdMarket = (await created.json()) as ProductMarketSummary;
       } else if (created.status !== 409) {
         const payload = (await created.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error || 'Failed to register market with the mint.');
+        throw new Error(payload?.error || 'Failed to create market.');
       }
 
       if (createdMarket && createdMarket.visibility !== 'public') {
@@ -685,7 +685,7 @@
         </div>
 
         <div class="builder-note">
-          Markets stay open. Price changes as people mint into a side or withdraw at a new level.
+          Markets stay open. Price changes as people buy or sell.
         </div>
       </div>
     {/if}

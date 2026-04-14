@@ -794,12 +794,12 @@
 
 <section class="wallet-page">
   <header class="wallet-header">
-    <div class="eyebrow">{editionLabel} Portfolio</div>
+    <div class="eyebrow">Portfolio</div>
     <h1>Your portfolio</h1>
     <p>
-      Portfolio proofs are stored in this browser in both signet and mainnet. Liquid cash comes
-      from local USD proofs. Current position value is marked from public market prices, and exact
-      exits still come from fresh withdrawal quotes.
+      Your funds are stored in this browser. Your balance is liquid and ready to trade. Current
+      position value is marked from public market prices, and exact sell proceeds can differ based
+      on trade size.
     </p>
     {#if runtimeNotice}
       <p class="muted">{runtimeNotice}</p>
@@ -817,7 +817,7 @@
       <article class="wallet-panel">
         <span class="label">Your balance</span>
         <strong>{formatUsdMinor(localBalanceMinor)}</strong>
-        <p class="muted">{localProofCount} proofs stored in this browser.</p>
+        <p class="muted">{localProofCount} funds in this browser.</p>
       </article>
 
       <article class="wallet-panel">
@@ -825,9 +825,9 @@
         <strong>{formatUsdMinor(displayedPositionValueMinor)}</strong>
         <p class="muted">
           {#if usingLocalPositionMarks}
-            Derived from local market-proof holdings, the browser-local trade book, and current public market prices.
+            Derived from local market positions, the browser-local trade book, and current public market prices.
           {:else}
-            No local market proofs found in this browser yet.
+            No local holdings found in this browser yet.
           {/if}
         </p>
       </article>
@@ -846,9 +846,9 @@
         <div>
           <h2>Add funds</h2>
           <p class="muted">
-            Fund browser-local USD proofs with Stripe or Lightning.
+            Add funds to your balance with Stripe or Lightning.
             {#if paperEdition}
-              In signet, funding still follows the normal pending-funding lifecycle. Limit {formatUsdMinor(signetFundingSingleLimitMinor)}
+              In practice mode, funding follows the normal pending-funding lifecycle. Limit {formatUsdMinor(signetFundingSingleLimitMinor)}
               per funding request and {formatUsdMinor(signetFundingWindowLimitMinor)} per 24 hours.
             {/if}
           </p>
@@ -929,9 +929,9 @@
           <h2>Open positions</h2>
           <p class="muted">
             {#if usingLocalPositionMarks}
-              Position quantity comes from local proofs. Cost basis comes from trades executed in this browser. Current USD value uses public market prices.
+              Position quantity comes from local holdings. Cost basis comes from trades executed in this browser. Current USD value uses public market prices.
             {:else}
-              No local market proofs found in this browser yet.
+              No local holdings found in this browser yet.
             {/if}
           </p>
         </div>

@@ -39,3 +39,48 @@ test('charts tab removes the legacy CSS bar chart markup and styles', () => {
   assert.doesNotMatch(source, /\.chart-bar\s*\{/);
   assert.doesNotMatch(source, /\.chart-fill\s*\{/);
 });
+
+test('market surface presents prediction market copy as YES/NO while preserving internal long/short data model', () => {
+  const source = read('src/lib/components/cascade/MarketSurface.svelte');
+
+  const legacyVisibleCopy = [
+    'Strong LONG consensus',
+    'Most visible capital leans LONG. New flow needs fresh evidence rather than repetition.',
+    'Strong SHORT consensus',
+    'Most visible capital leans SHORT. A reversal needs a catalyst, not sentiment alone.',
+    'LONG is crowded. New buyers need information the market has not absorbed yet.',
+    'SHORT becomes more attractive if the current thesis is overstated.',
+    'SHORT is crowded. Further downside requires genuinely new evidence.',
+    'LONG offers value only if the current skepticism is wrong.',
+    'LONG works if the case is underpriced relative to current debate.',
+    'SHORT works if the visible enthusiasm is getting ahead of itself.',
+    'Visible pricing favors LONG right now.',
+    'Visible pricing favors SHORT right now.',
+    'LONG flow',
+    'SHORT flow',
+    'Current LONG',
+    'Current SHORT'
+  ];
+
+  for (const snippet of legacyVisibleCopy) {
+    assert.equal(source.includes(snippet), false, `expected visible copy to remove: ${snippet}`);
+  }
+
+  assert.match(source, /trade\.direction === 'long' \? 'YES' : 'NO'/);
+  assert.match(source, /latestTrade\.direction === 'long' \? 'YES' : 'NO'/);
+  assert.match(source, /trade\.direction === 'long' \? 'YES' : 'NO'/);
+  assert.match(source, /impliedProbability >= 0\.5 \? `\$\{priceCents\(impliedProbability\)\} YES leaning` : `\$\{priceCents\(oppositeProbability\)\} NO leaning`/);
+  assert.match(source, /latestTrade\.direction === 'long' \? 'YES' : 'NO'/);
+  assert.match(source, /market-header-side-label">YES<\/span>/);
+  assert.match(source, /<span>YES<\/span>[\s\S]*<strong class="positive">\{priceCents\(impliedProbability\)\}<\/strong>/);
+  assert.match(source, /<span>NO<\/span>[\s\S]*<strong class="negative">\{priceCents\(oppositeProbability\)\}<\/strong>/);
+  assert.match(source, /<dt>YES flow<\/dt>/);
+  assert.match(source, /<dt>NO flow<\/dt>/);
+  assert.match(source, /\{formatProbability\(impliedProbability\)\} YES/);
+  assert.match(source, /<span>YES share<\/span>/);
+  assert.match(source, /\{formatProbability\(flowLong\)\} YES/);
+  assert.match(source, /<span>NO share<\/span>/);
+  assert.match(source, /\{formatProbability\(flowShort\)\} NO/);
+  assert.match(source, /<dt>Current YES<\/dt>/);
+  assert.match(source, /<dt>Current NO<\/dt>/);
+});

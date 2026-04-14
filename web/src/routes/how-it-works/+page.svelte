@@ -26,15 +26,15 @@
     <div class="how-stack">
       <article>
         <strong>Will AGI emerge before 2030?</strong>
-        <span>LONG 41¢</span>
+        <span>YES 41¢</span>
       </article>
       <article>
         <strong>Will Europe avoid a recession through 2027?</strong>
-        <span>LONG 58¢</span>
+        <span>YES 58¢</span>
       </article>
       <article>
         <strong>Will open models overtake frontier closed models in daily usage?</strong>
-        <span>LONG 49¢</span>
+        <span>YES 49¢</span>
       </article>
     </div>
   </section>
@@ -69,21 +69,21 @@
       <div class="eyebrow">Market Mechanics</div>
       <h2>Buy in. Cash out.</h2>
       <p>
-        Taking a position means buying LONG or SHORT. Exiting means selling when the price makes sense for you.
+        Taking a position means buying YES or NO. Exiting means selling when the price makes sense for you.
         There is no close button and no trusted party declaring a winner.
       </p>
       <ol>
         <li>Publish a claim and fund the opening position.</li>
-        <li>Anyone goes LONG or SHORT.</li>
+        <li>Anyone buys YES or NO.</li>
         <li>Every trade is recorded publicly.</li>
         <li>Exit whenever you want.</li>
       </ol>
     </div>
 
     <div class="how-curve">
-      <div><span>0¢</span><strong>Deep SHORT</strong></div>
+      <div><span>0¢</span><strong>Strongly No</strong></div>
       <div><span>50¢</span><strong>Split market</strong></div>
-      <div><span>100¢</span><strong>Deep LONG</strong></div>
+      <div><span>100¢</span><strong>Strongly Yes</strong></div>
     </div>
   </section>
 

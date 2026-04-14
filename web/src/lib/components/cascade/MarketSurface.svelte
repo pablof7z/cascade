@@ -340,9 +340,9 @@
             noProbability={oppositeProbability}
           />
         {:else if currentUser}
-          <a class="button-primary" href="/portfolio">View my portfolio</a>
+          <a class="button-primary" href="/portfolio">Add funds to trade</a>
           <a href={marketActivityUrl(market.slug)}>See all trades on this market →</a>
-          <p class="trade-focus-copy"><small>Trading requires a connected wallet. Manage positions in your portfolio.</small></p>
+          <p class="trade-focus-copy"><small>Fund your portfolio via Lightning or card to take a position.</small></p>
         {:else}
           <a class="button-primary" href="/join?from=/market/{market.slug}">Take a position</a>
         {/if}

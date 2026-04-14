@@ -745,8 +745,8 @@
 
                 <div class="builder-selected-controls">
                   <select bind:value={item.direction} onchange={(event) => updateLinkDirection(item.id, (event.currentTarget as HTMLSelectElement).value as 'long' | 'short')}>
-                    <option value="long">Supports LONG</option>
-                    <option value="short">Supports SHORT</option>
+                    <option value="long">Supports YES</option>
+                    <option value="short">Supports NO</option>
                   </select>
                   <input
                     oninput={(event) => updateLinkNote(item.id, (event.currentTarget as HTMLInputElement).value)}
@@ -812,8 +812,8 @@
               <label class="builder-field">
                 <span>Your position</span>
                 <select bind:value={seedSide}>
-                  <option value="long">LONG</option>
-                  <option value="short">SHORT</option>
+                  <option value="long">YES</option>
+                  <option value="short">NO</option>
                 </select>
               </label>
             </div>

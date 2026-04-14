@@ -1,5 +1,5 @@
 import type { RequestHandler } from './$types';
-import { fetchRecentMarkets } from '$lib/server/cascade';
+import { fetchSitemapMarkets } from '$lib/server/cascade';
 
 type SitemapPage = {
   loc: string;
@@ -27,7 +27,7 @@ export const GET: RequestHandler = async ({ url }) => {
     { loc: `${origin}/leaderboard`, priority: '0.6', changefreq: 'daily' }
   ];
 
-  const markets = await fetchRecentMarkets(500);
+  const markets = await fetchSitemapMarkets(500);
   const marketPages: SitemapPage[] = markets.map((market) => ({
     loc: `${origin}/market/${encodeURIComponent(market.slug)}`,
     priority: '0.9',

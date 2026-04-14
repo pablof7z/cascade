@@ -49,6 +49,11 @@ type FetchMarketBySlugDeps = {
   fetchRelayMarketBySlug?: typeof fetchRelayMarketBySlug;
 };
 
+type FetchSitemapMarketsDeps = {
+  fetchRecentMarkets?: typeof fetchRecentMarkets;
+  fetchRecentRelayMarkets?: typeof fetchRecentRelayMarkets;
+};
+
 export async function fetchRecentMarkets(limit = 80): Promise<MarketRecord[]> {
   const stale = Date.now() - marketCacheUpdatedAt > MARKET_CACHE_TTL_MS;
   const underfilled = marketCache.length < limit;
@@ -61,6 +66,17 @@ export async function fetchRecentMarkets(limit = 80): Promise<MarketRecord[]> {
   }
 
   return marketCache.slice(0, limit);
+}
+
+export async function fetchSitemapMarkets(
+  limit = 80,
+  deps: FetchSitemapMarketsDeps = {}
+): Promise<MarketRecord[]> {
+  const markets = await (deps.fetchRecentMarkets ?? fetchRecentMarkets)(limit);
+  if (markets.length > 0) return markets;
+
+  console.warn(`fetchSitemapMarkets fell back to relays because product feed returned no markets`);
+  return (deps.fetchRecentRelayMarkets ?? fetchRecentRelayMarkets)(limit);
 }
 
 export async function fetchMarketBySlug(
@@ -304,6 +320,26 @@ async function refreshRecentDiscussions(limit: number): Promise<void> {
   });
 
   return discussionRefresh;
+}
+
+async function fetchRecentRelayMarkets(limit: number): Promise<MarketRecord[]> {
+  const ndk = await getServerNdkClient();
+  const events = await withRelayEventTimeout(
+    ndk.fetchEvents(
+      {
+        kinds: [982 as NDKKind],
+        limit
+      } satisfies NDKFilter,
+      { closeOnEose: true }
+    ),
+    `fetchRecentRelayMarkets(${limit})`
+  );
+
+  return Array.from(events)
+    .map((event) => parseMarketEvent(event.rawEvent()))
+    .filter((market): market is MarketRecord => Boolean(market))
+    .sort((left, right) => right.createdAt - left.createdAt)
+    .slice(0, limit);
 }
 
 async function fetchRelayMarketBySlug(slug: string): Promise<NostrEvent | null> {

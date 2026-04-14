@@ -19,9 +19,11 @@
     type TradeRecord
   } from '$lib/ndk/cascade';
   import { displayName, shortPubkey } from '$lib/ndk/format';
+  import { filterHomepageMarkets, formatHomepageMarketMatchCount } from './homepage-market-search';
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
+  let searchQuery = $state('');
 
   const discussionFeed = ndk.$subscribe(() => {
     if (!browser) return undefined;
@@ -149,6 +151,10 @@
     return deduped;
   });
 
+  const filteredMarkets = $derived.by(() => filterHomepageMarkets(markets, searchQuery));
+  const hasActiveMarketSearch = $derived(searchQuery.trim().length > 0);
+  const searchResultCountLabel = $derived(formatHomepageMarketMatchCount(filteredMarkets.length));
+
   function compareByVolumeThenRecency(left: MarketRecord, right: MarketRecord): number {
     const leftVolume = tradeSummaries.get(left.id)?.grossVolume ?? 0;
     const rightVolume = tradeSummaries.get(right.id)?.grossVolume ?? 0;
@@ -254,180 +260,227 @@
   </div>
 </section>
 
-<section class="home-section">
-  <div class="home-section-header">
-    <div>
-      <h2>Most Active</h2>
-      <p>Most volume · 24h</p>
-    </div>
+<div class="mkts-table">
+  <div class="mkts-search">
+    <input
+      type="search"
+      name="market-search"
+      placeholder="Search markets…"
+      aria-label="Search markets"
+      bind:value={searchQuery}
+    />
+
+    {#if hasActiveMarketSearch}
+      <p class="mkts-search-count">{searchResultCountLabel}</p>
+    {/if}
   </div>
 
-  {#if primaryTrending}
-    <div class="trending-layout">
-      <a class="trending-lead" href={marketUrl(primaryTrending.slug)}>
-        <span class="section-kicker positive">#1 by volume</span>
-        <h3>{primaryTrending.title}</h3>
-
-        <div class="lead-price-row">
-          <span class="lead-price">{centsForMarket(primaryTrending.id)}</span>
-          <span class="lead-side">LONG</span>
-        </div>
-
-        <p>{truncateText(sanitizeMarketCopy(primaryTrending.description || primaryTrending.body), 180)}</p>
-
-        <div class="lead-meta">
-          <span>{formatSats(tradeSummaries.get(primaryTrending.id)?.grossVolume ?? 0)} vol</span>
-          <span>{tradeSummaries.get(primaryTrending.id)?.tradeCount ?? 0} trades</span>
-          <span>{discussionCounts.get(primaryTrending.id) ?? 0} posts</span>
-        </div>
-      </a>
-
-      <div class="rank-panel">
-        <div class="rank-head">
-          <span>Market</span>
-          <span>Price</span>
-          <span>Vol</span>
-          <span>Trades</span>
-        </div>
-
-        {#if rankedTrending.length > 0}
-          {#each rankedTrending as market, index (market.id)}
-            <a class="rank-row" href={marketUrl(market.slug)}>
-              <div class="rank-market">
-                <span class="rank-number">{String(index + 2).padStart(2, '0')}</span>
-                <div>
-                  <span class="rank-title">{market.title}</span>
-                  <span class="rank-subtitle">{authorLabel(market.pubkey)}</span>
-                </div>
-              </div>
-              <span class="mono-cell">{centsForMarket(market.id)}</span>
-              <span class="mono-cell">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</span>
-              <span class="mono-cell">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
-            </a>
-          {/each}
-        {:else}
-          <div class="panel-empty">No active markets yet.</div>
-        {/if}
+  {#if hasActiveMarketSearch}
+    <div class="search-panel">
+      <div class="search-head">
+        <span>Market</span>
+        <span>Price</span>
+        <span>Vol</span>
+        <span>Trades</span>
+        <span>Time</span>
       </div>
+
+      {#if filteredMarkets.length > 0}
+        {#each filteredMarkets as market (market.id)}
+          <a class="search-row" href={marketUrl(market.slug)}>
+            <div class="search-market">
+              <span class="rank-title">{market.title}</span>
+              <span class="search-description">
+                {truncateText(sanitizeMarketCopy(market.description || market.body), 120)}
+              </span>
+            </div>
+            <span class="mono-cell">{centsForMarket(market.id)}</span>
+            <span class="mono-cell">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</span>
+            <span class="mono-cell">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
+            <span class="search-time">{formatRelativeTime(market.createdAt)}</span>
+          </a>
+        {/each}
+      {:else}
+        <div class="panel-empty">No markets matched your search.</div>
+      {/if}
     </div>
   {:else}
-    <div class="panel-empty">No markets yet. Publish the first market from the builder.</div>
+    <section class="home-section home-section-leading">
+      <div class="home-section-header">
+        <div>
+          <h2>Most Active</h2>
+          <p>Most volume · 24h</p>
+        </div>
+      </div>
+
+      {#if primaryTrending}
+        <div class="trending-layout">
+          <a class="trending-lead" href={marketUrl(primaryTrending.slug)}>
+            <span class="section-kicker positive">#1 by volume</span>
+            <h3>{primaryTrending.title}</h3>
+
+            <div class="lead-price-row">
+              <span class="lead-price">{centsForMarket(primaryTrending.id)}</span>
+              <span class="lead-side">LONG</span>
+            </div>
+
+            <p>{truncateText(sanitizeMarketCopy(primaryTrending.description || primaryTrending.body), 180)}</p>
+
+            <div class="lead-meta">
+              <span>{formatSats(tradeSummaries.get(primaryTrending.id)?.grossVolume ?? 0)} vol</span>
+              <span>{tradeSummaries.get(primaryTrending.id)?.tradeCount ?? 0} trades</span>
+              <span>{discussionCounts.get(primaryTrending.id) ?? 0} posts</span>
+            </div>
+          </a>
+
+          <div class="rank-panel">
+            <div class="rank-head">
+              <span>Market</span>
+              <span>Price</span>
+              <span>Vol</span>
+              <span>Trades</span>
+            </div>
+
+            {#if rankedTrending.length > 0}
+              {#each rankedTrending as market, index (market.id)}
+                <a class="rank-row" href={marketUrl(market.slug)}>
+                  <div class="rank-market">
+                    <span class="rank-number">{String(index + 2).padStart(2, '0')}</span>
+                    <div>
+                      <span class="rank-title">{market.title}</span>
+                      <span class="rank-subtitle">{authorLabel(market.pubkey)}</span>
+                    </div>
+                  </div>
+                  <span class="mono-cell">{centsForMarket(market.id)}</span>
+                  <span class="mono-cell">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</span>
+                  <span class="mono-cell">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
+                </a>
+              {/each}
+            {:else}
+              <div class="panel-empty">No active markets yet.</div>
+            {/if}
+          </div>
+        </div>
+      {:else}
+        <div class="panel-empty">No markets yet. Publish the first market from the builder.</div>
+      {/if}
+    </section>
+
+    <div class="home-split">
+      <section class="home-section">
+        <div class="home-section-header">
+          <div>
+            <h2>Low Volume</h2>
+            <p>Smaller markets with lower volume and less attention.</p>
+          </div>
+        </div>
+
+        <div class="stack-list">
+          {#if lowVolumeMarkets.length > 0}
+            {#each lowVolumeMarkets as market (market.id)}
+              <a class="stack-row" href={marketUrl(market.slug)}>
+                <div>
+                  <h3>{market.title}</h3>
+                  <p>{truncateText(sanitizeMarketCopy(market.description || market.body), 120)}</p>
+                </div>
+                <div class="stack-aside">
+                  <span class="mono-cell">{centsForMarket(market.id)}</span>
+                  <span>{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)} vol</span>
+                </div>
+              </a>
+            {/each}
+          {:else}
+            <div class="panel-empty">No markets in this category yet.</div>
+          {/if}
+        </div>
+      </section>
+
+      <section class="home-section">
+        <div class="home-section-header">
+          <div>
+            <h2>Most Disputed</h2>
+            <p>Markets where the odds are close and opinion is split.</p>
+          </div>
+        </div>
+
+        <div class="stack-list">
+          {#if disputedMarkets.length > 0}
+            {#each disputedMarkets as market (market.id)}
+              <a class="stack-row" href={marketUrl(market.slug)}>
+                <div>
+                  <h3>{market.title}</h3>
+                  <p>{discussionCounts.get(market.id) ?? 0} posts · {authorLabel(market.pubkey)}</p>
+                </div>
+                <div class="stack-aside">
+                  <span class="mono-cell">{centsForMarket(market.id)}</span>
+                  <span>Tight spread {spreadForMarket(market.id)}</span>
+                </div>
+              </a>
+            {/each}
+          {:else}
+            <div class="panel-empty">No disputed markets yet.</div>
+          {/if}
+        </div>
+      </section>
+    </div>
+
+    <div class="home-split">
+      <section class="home-section">
+        <div class="home-section-header">
+          <div>
+            <h2>New This Week</h2>
+            <p>Recently created</p>
+          </div>
+        </div>
+
+        <div class="stack-list">
+          {#if newThisWeek.length > 0}
+            {#each newThisWeek as market (market.id)}
+              <a class="stack-row" href={marketUrl(market.slug)}>
+                <div>
+                  <h3>{market.title}</h3>
+                  <p>by {authorLabel(market.pubkey)}</p>
+                </div>
+                <div class="stack-aside">
+                  <span>{formatRelativeTime(market.createdAt)}</span>
+                </div>
+              </a>
+            {/each}
+          {:else}
+            <div class="panel-empty">No new markets this week.</div>
+          {/if}
+        </div>
+      </section>
+
+      <section class="home-section">
+        <div class="home-section-header">
+          <div>
+            <h2>Latest Discussions</h2>
+            <p>Recent posts and replies across the markets.</p>
+          </div>
+        </div>
+
+        <div class="stack-list">
+          {#if latestDiscussions.length > 0}
+            {#each latestDiscussions as entry (entry.discussion.id)}
+              <a class="stack-row" href={marketDiscussionUrl(entry.market.slug)}>
+                <div>
+                  <h3>{entry.market.title}</h3>
+                  <p>{truncateText(entry.discussion.content, 120)}</p>
+                  <p class="discussion-author">@{authorLabel(entry.discussion.pubkey)}</p>
+                </div>
+                <div class="stack-aside">
+                  <span>{formatRelativeTime(entry.discussion.createdAt)}</span>
+                </div>
+              </a>
+            {/each}
+          {:else}
+            <div class="panel-empty">No discussion yet.</div>
+          {/if}
+        </div>
+      </section>
+    </div>
   {/if}
-</section>
-
-<div class="home-split">
-  <section class="home-section">
-    <div class="home-section-header">
-      <div>
-        <h2>Low Volume</h2>
-        <p>Smaller markets with lower volume and less attention.</p>
-      </div>
-    </div>
-
-    <div class="stack-list">
-      {#if lowVolumeMarkets.length > 0}
-        {#each lowVolumeMarkets as market (market.id)}
-          <a class="stack-row" href={marketUrl(market.slug)}>
-            <div>
-              <h3>{market.title}</h3>
-              <p>{truncateText(sanitizeMarketCopy(market.description || market.body), 120)}</p>
-            </div>
-            <div class="stack-aside">
-              <span class="mono-cell">{centsForMarket(market.id)}</span>
-              <span>{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)} vol</span>
-            </div>
-          </a>
-        {/each}
-      {:else}
-        <div class="panel-empty">No markets in this category yet.</div>
-      {/if}
-    </div>
-  </section>
-
-  <section class="home-section">
-    <div class="home-section-header">
-      <div>
-        <h2>Most Disputed</h2>
-        <p>Markets where the odds are close and opinion is split.</p>
-      </div>
-    </div>
-
-    <div class="stack-list">
-      {#if disputedMarkets.length > 0}
-        {#each disputedMarkets as market (market.id)}
-          <a class="stack-row" href={marketUrl(market.slug)}>
-            <div>
-              <h3>{market.title}</h3>
-              <p>{discussionCounts.get(market.id) ?? 0} posts · {authorLabel(market.pubkey)}</p>
-            </div>
-            <div class="stack-aside">
-              <span class="mono-cell">{centsForMarket(market.id)}</span>
-              <span>Tight spread {spreadForMarket(market.id)}</span>
-            </div>
-          </a>
-        {/each}
-      {:else}
-        <div class="panel-empty">No disputed markets yet.</div>
-      {/if}
-    </div>
-  </section>
-</div>
-
-<div class="home-split">
-  <section class="home-section">
-    <div class="home-section-header">
-      <div>
-        <h2>New This Week</h2>
-        <p>Recently created</p>
-      </div>
-    </div>
-
-    <div class="stack-list">
-      {#if newThisWeek.length > 0}
-        {#each newThisWeek as market (market.id)}
-          <a class="stack-row" href={marketUrl(market.slug)}>
-            <div>
-              <h3>{market.title}</h3>
-              <p>by {authorLabel(market.pubkey)}</p>
-            </div>
-            <div class="stack-aside">
-              <span>{formatRelativeTime(market.createdAt)}</span>
-            </div>
-          </a>
-        {/each}
-      {:else}
-        <div class="panel-empty">No new markets this week.</div>
-      {/if}
-    </div>
-  </section>
-
-  <section class="home-section">
-    <div class="home-section-header">
-      <div>
-        <h2>Latest Discussions</h2>
-        <p>Recent posts and replies across the markets.</p>
-      </div>
-    </div>
-
-    <div class="stack-list">
-      {#if latestDiscussions.length > 0}
-        {#each latestDiscussions as entry (entry.discussion.id)}
-          <a class="stack-row" href={marketDiscussionUrl(entry.market.slug)}>
-            <div>
-              <h3>{entry.market.title}</h3>
-              <p>{truncateText(entry.discussion.content, 120)}</p>
-              <p class="discussion-author">@{authorLabel(entry.discussion.pubkey)}</p>
-            </div>
-            <div class="stack-aside">
-              <span>{formatRelativeTime(entry.discussion.createdAt)}</span>
-            </div>
-          </a>
-        {/each}
-      {:else}
-        <div class="panel-empty">No discussion yet.</div>
-      {/if}
-    </div>
-  </section>
 </div>
 
 <section class="why-section">
@@ -670,6 +723,47 @@
     padding-top: 2.8rem;
   }
 
+  .home-section-leading {
+    padding-top: 0;
+  }
+
+  .mkts-table {
+    display: grid;
+    gap: 1.5rem;
+    padding-top: 2.8rem;
+  }
+
+  .mkts-search {
+    display: grid;
+    gap: 0.45rem;
+    justify-items: start;
+  }
+
+  .mkts-search input {
+    width: 100%;
+    max-width: 28rem;
+    box-sizing: border-box;
+    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
+    border-radius: 0;
+    background: var(--color-base-100);
+    color: white;
+    padding: 0.85rem 0.95rem;
+  }
+
+  .mkts-search input::placeholder {
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
+  }
+
+  .mkts-search input:focus-visible {
+    outline: 1px solid color-mix(in srgb, white 68%, transparent);
+    outline-offset: 2px;
+  }
+
+  .mkts-search-count {
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
+    font-size: 0.82rem;
+  }
+
   .home-section-header {
     display: flex;
     align-items: flex-end;
@@ -725,6 +819,11 @@
     align-content: start;
   }
 
+  .search-panel {
+    border-top: 1px solid rgba(38, 38, 38, 0.7);
+    border-bottom: 1px solid rgba(38, 38, 38, 0.7);
+  }
+
   .rank-head,
   .rank-row {
     display: grid;
@@ -742,13 +841,37 @@
     text-transform: uppercase;
   }
 
+  .search-head,
+  .search-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.9fr) 0.55fr 0.6fr 0.55fr 0.7fr;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .search-head {
+    padding: 1rem 0 0.85rem;
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   .rank-row {
     padding: 1rem 0 1rem 2rem;
     border-top: 1px solid rgba(38, 38, 38, 0.7);
   }
 
+  .search-row {
+    padding: 1rem 0;
+    border-top: 1px solid rgba(38, 38, 38, 0.7);
+  }
+
   .rank-row:hover,
   .rank-row:focus-visible,
+  .search-row:hover,
+  .search-row:focus-visible,
   .stack-row:hover,
   .stack-row:focus-visible {
     color: white;
@@ -787,6 +910,22 @@
   .rank-subtitle {
     color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.8rem;
+  }
+
+  .search-market {
+    min-width: 0;
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .search-description,
+  .search-time {
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
+    font-size: 0.8rem;
+  }
+
+  .search-time {
+    text-align: right;
   }
 
   .mono-cell {
@@ -937,9 +1076,14 @@
       display: none;
     }
 
-    .rank-row {
+    .rank-row,
+    .search-row {
       grid-template-columns: 1fr;
       gap: 0.5rem;
+    }
+
+    .search-head {
+      display: none;
     }
 
     .stack-row {
@@ -948,6 +1092,10 @@
 
     .stack-aside {
       justify-items: start;
+      text-align: left;
+    }
+
+    .search-time {
       text-align: left;
     }
   }

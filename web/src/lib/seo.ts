@@ -92,7 +92,7 @@ export function buildAboutSeo(url: URL): SeoMetadata {
   return {
     title: `About ${SITE_NAME}`,
     description:
-      'Cascade is a perpetual prediction market. Markets never close — mint LONG or SHORT tokens and exit at any time.',
+      'Cascade is a perpetual prediction market. Markets never close — buy YES or NO and exit at any time.',
     canonical: canonicalUrl(url),
     type: 'website',
     image: defaultImage(url, `${SITE_NAME} preview`)

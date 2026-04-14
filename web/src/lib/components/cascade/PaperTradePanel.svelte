@@ -507,7 +507,7 @@
 
       if (hasCompletedTradeSettlement(payload)) {
         clearTradeReceipt(requestId);
-        status = `Withdrew ${sellSide.toUpperCase()} on ${marketSlug}.`;
+        status = `Sold ${sellSide.toUpperCase()} on ${marketSlug}.`;
       } else {
         status = `Withdrawal submitted on ${marketSlug}. Waiting for settlement.`;
       }
@@ -531,8 +531,8 @@
 <aside class="trade-panel">
   <div class="trade-panel-head">
     <div>
-      <h3>Paper trade</h3>
-      <p>Trade this market from your signet portfolio.</p>
+      <h3>Practice trade</h3>
+      <p>Trade with no real money. Test your conviction first.</p>
     </div>
   </div>
 
@@ -557,7 +557,7 @@
     </div>
 
     <div class="trade-field">
-      <span>Buy spend</span>
+      <span>Amount</span>
       <input bind:value={buySpend} min="100" step="100" type="number" />
       <button class="button-primary" type="button" onclick={buy}>Mint {buySide === 'long' ? 'LONG' : 'SHORT'}</button>
     </div>

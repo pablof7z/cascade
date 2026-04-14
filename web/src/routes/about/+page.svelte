@@ -1,7 +1,7 @@
 <section class="about-page">
   <header class="about-hero">
     <div class="eyebrow">About</div>
-    <h1>A perpetual prediction market for any claim worth trading.</h1>
+    <h1>Put money behind your beliefs.</h1>
     <p>
       Cascade is a Nostr-native market platform where prices move continuously. No resolution date,
       no oracle, no trusted closer. Just a pricing curve and an open mint.
@@ -12,28 +12,28 @@
     <div class="eyebrow">How it's different</div>
     <div class="about-principles">
       <div class="principle-row">
-        <span>Perpetual</span>
+        <span>Always open</span>
         <p>
           Markets never close. There is no expiry date and no oracle declaring a winner. Participants
           withdraw at the current price whenever they choose.
         </p>
       </div>
       <div class="principle-row">
-        <span>LMSR pricing</span>
+        <span>Instant liquidity</span>
         <p>
           Every trade moves the price along a logarithmic market scoring rule curve. Minting LONG
           pushes the price up. Minting SHORT pushes it down. The curve is the market maker.
         </p>
       </div>
       <div class="principle-row">
-        <span>Cashu tokens</span>
+        <span>Real stakes</span>
         <p>
           Positions are LONG or SHORT Cashu e-cash tokens minted against the curve. You hold real
           bearer instruments, not IOUs recorded in a database.
         </p>
       </div>
       <div class="principle-row">
-        <span>Agent-native</span>
+        <span>Agent-ready</span>
         <p>
           Humans and AI agents participate through the same interface. No private API, no special
           routing. Any agent that can read Nostr can read the market.
@@ -44,7 +44,7 @@
 
   <section class="about-cta">
     <h2>Start trading or explore the markets.</h2>
-    <p>Cascade is open to anyone with a Nostr identity.</p>
+    <p>Cascade is open to everyone.</p>
     <div class="about-actions">
       <a class="button-primary" href="/join">Get started</a>
       <a class="button-secondary" href="/">Explore markets</a>

@@ -97,8 +97,8 @@
 <section class="analytics-header">
   <div class="analytics-copy">
     <div class="analytics-kicker">Analytics</div>
-    <h1>Network monitoring</h1>
-    <p>A dense read of the visible market, trade, and discussion graph.</p>
+    <h1>Market activity</h1>
+    <p>Trades, markets, and debate — everything happening across Cascade.</p>
   </div>
 </section>
 
@@ -108,7 +108,7 @@
     <strong>{markets.length}</strong>
   </div>
   <div>
-    <span>Trade Records</span>
+    <span>Trades</span>
     <strong>{trades.length}</strong>
   </div>
   <div>
@@ -116,7 +116,7 @@
     <strong>{discussions.length}</strong>
   </div>
   <div>
-    <span>Visible Volume</span>
+    <span>Volume</span>
     <strong>{formatProductAmount(visibleVolume, 'sat')} {productUnitLabel('sat')}</strong>
   </div>
   <div>
@@ -124,7 +124,7 @@
     <strong>{activeMarketCount}</strong>
   </div>
   <div>
-    <span>Visible Authors</span>
+    <span>Active traders</span>
     <strong>{uniqueAuthors}</strong>
   </div>
 </section>
@@ -133,7 +133,7 @@
   <article class="analytics-panel">
     <div class="panel-header">
       <h2>Most active markets</h2>
-      <span>Visible volume</span>
+      <span>Volume</span>
     </div>
 
     <div class="analytics-table">
@@ -187,7 +187,7 @@
 
 <section class="analytics-panel analytics-panel-wide">
   <div class="panel-header">
-    <h2>Recent network events</h2>
+    <h2>Recent activity</h2>
     <span>Generated now</span>
   </div>
 

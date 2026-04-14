@@ -8,5 +8,5 @@
 
 <section class="surface panel content-prose">
   <p>Profile and market data published through the app are public by design.</p>
-  <p>Trading records are mint-published and omit trader identity. Session storage and signer choices remain on the client.</p>
+  <p>Trades are recorded publicly — what you bought, not who you are. Everything else stays on your device.</p>
 </section>

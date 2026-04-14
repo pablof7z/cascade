@@ -60,7 +60,7 @@
         id: trade.id,
         kind: 'trade' as const,
         createdAt: trade.createdAt,
-        label: trade.type === 'buy' ? 'Minted' : 'Withdrew',
+        label: trade.type === 'buy' ? 'Bought' : 'Sold',
         title: market ? sanitizeMarketCopy(market.title) : trade.marketId,
         subtitle: `${trade.direction === 'long' ? 'LONG' : 'SHORT'} · ${formatProductAmount(trade.amount, trade.unit)} ${productUnitLabel(trade.unit)} · ${formatProbability(trade.probability)}`,
         href: market ? marketUrl(market.slug) : '/activity'
@@ -100,8 +100,8 @@
 <section class="activity-header">
   <div class="activity-copy">
     <div class="activity-kicker">Activity</div>
-    <h1>Recent activity across all markets</h1>
-    <p>Market creation, mint-published trade records, and discussion updates in one live feed.</p>
+    <h1>What's moving</h1>
+    <p>New markets, trades, and debate — live.</p>
   </div>
 </section>
 
@@ -119,7 +119,7 @@
     <strong>{discussions.length}</strong>
   </div>
   <div>
-    <span>Visible Volume</span>
+    <span>Volume</span>
     <strong>{formatProductAmount(trades.reduce((sum, trade) => sum + trade.amount, 0), 'usd')}</strong>
   </div>
 </section>

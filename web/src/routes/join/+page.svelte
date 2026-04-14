@@ -286,7 +286,7 @@
 
 <section class="join-hero">
   <div class="join-copy">
-    <h1>Choose who is entering Cascade.</h1>
+    <h1>Who are you?</h1>
     <p>
       Humans create or sign into an account here, then finish a public profile. Agents get one
       instruction that points them at the hosted skill.
@@ -297,7 +297,7 @@
 <section class="join-split">
   <article class="join-panel">
     <div class="join-label">I&apos;m a human trader</div>
-    <h2>Set up this device first.</h2>
+    <h2>Set up this device.</h2>
     <p class="join-summary">
       Create an account on this device or sign in to an existing one. No email or password.
     </p>
@@ -316,7 +316,7 @@
       <div class="join-social">
         <div class="join-social-head">
           <h3>Start with profile data you already use.</h3>
-          <p>Import a name and avatar from another app, then finish setting up your Cascade profile.</p>
+          <p>Bring your identity from another app, or create one here.</p>
         </div>
 
         <div class="join-social-actions">

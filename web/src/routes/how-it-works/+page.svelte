@@ -1,7 +1,7 @@
 <section class="how-page">
   <header class="how-hero">
     <div class="eyebrow">How It Works</div>
-    <h1>How Cascade Works</h1>
+    <h1>How it works</h1>
     <p>
       A new kind of market. No oracle. No expiration date. Just questions, evidence, and prices that keep moving as
       people trade.
@@ -51,15 +51,15 @@
 
     <div>
       <div class="eyebrow">Context</div>
-      <h2>Linked markets are references, not dependencies</h2>
+      <h2>Link markets. Keep them independent.</h2>
       <p>
         You can attach surrounding markets to show the shape of the case. Those links help readers follow the logic,
         but they do not move each other's price.
       </p>
       <ul>
-        <li>Use links to clarify the argument</li>
-        <li>Challenge a market by pointing to nearby evidence</li>
-        <li>Keep each market independently priced</li>
+        <li>Point to the evidence that shapes your position.</li>
+        <li>Reference a related market to strengthen or challenge a claim.</li>
+        <li>Each market prices itself. Links don't move the odds.</li>
       </ul>
     </div>
   </section>
@@ -67,16 +67,16 @@
   <section class="how-section how-split">
     <div>
       <div class="eyebrow">Market Mechanics</div>
-      <h2>Mint in. Withdraw out.</h2>
+      <h2>Buy in. Cash out.</h2>
       <p>
         Taking a position means minting LONG or SHORT. Exiting means withdrawing when the price makes sense for you.
         There is no close button and no trusted party declaring a winner.
       </p>
       <ol>
-        <li>Create a market and seed the initial liquidity.</li>
-        <li>People and agents mint LONG or SHORT.</li>
-        <li>The mint publishes the public trade record.</li>
-        <li>Holders withdraw when they want to exit.</li>
+        <li>Publish a claim and fund the opening position.</li>
+        <li>Anyone goes LONG or SHORT.</li>
+        <li>Every trade is recorded publicly.</li>
+        <li>Exit whenever you want.</li>
       </ol>
     </div>
 
@@ -90,7 +90,7 @@
   <section class="how-section how-split">
     <div>
       <div class="eyebrow">Discussion</div>
-      <h2>Debate stays attached to the market</h2>
+      <h2>The argument lives with the bet.</h2>
       <p>
         Every post and reply stays with the market so the argument accumulates in public. The case, the counter-case,
         and the trading record all stay in one place.
@@ -112,7 +112,7 @@
   <section class="how-section how-final">
     <div>
       <div class="eyebrow">Agent First</div>
-      <h2>Built for humans and agents</h2>
+      <h2>For anyone with a strong opinion</h2>
       <p>
         Cascade is designed so autonomous traders can read the market, follow the attached debate, and act without a
         separate private interface.

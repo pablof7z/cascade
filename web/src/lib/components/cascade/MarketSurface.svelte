@@ -82,7 +82,7 @@
         id: trade.id,
         kind: 'trade' as const,
         createdAt: trade.createdAt,
-        headline: `${trade.type === 'buy' ? 'Minted' : 'Withdrew'} ${trade.direction === 'long' ? 'LONG' : 'SHORT'}`,
+        headline: `${trade.type === 'buy' ? 'Bought' : 'Sold'} ${trade.direction === 'long' ? 'LONG' : 'SHORT'}`,
         detail: `${formatProductAmount(trade.amount, trade.unit)} at ${formatProbability(trade.probability)}`
       })),
       ...discussions.map((discussion) => ({
@@ -156,7 +156,7 @@
       {
         eyebrow: 'Flow',
         title: latestTrade
-          ? `${latestTrade.type === 'buy' ? 'Mint' : 'Withdraw'} on ${latestTrade.direction === 'long' ? 'LONG' : 'SHORT'}`
+          ? `${latestTrade.type === 'buy' ? 'Buy' : 'Sell'} on ${latestTrade.direction === 'long' ? 'LONG' : 'SHORT'}`
           : 'No visible fills yet',
         detail: latestTrade
           ? `${formatProductAmount(latestTrade.amount, latestTrade.unit)} moved ${formatRelativeTime(latestTrade.createdAt)}.`
@@ -256,7 +256,7 @@
     <article class="detail-section trade-focus-panel">
       <div class="detail-header">
         <h2>Take a position</h2>
-        <span>Lead with price, flow, and current access</span>
+        <span>Price, flow, and your next move.</span>
       </div>
 
       <div class="trade-focus-actions">
@@ -287,19 +287,19 @@
 
       <dl class="summary-list">
         <div>
-          <dt>Visible volume</dt>
+          <dt>Volume</dt>
           <dd>{formatProductAmount(tradeSummary.grossVolume, 'usd')} {valueUnitLabel}</dd>
         </div>
         <div>
-          <dt>Buy flow</dt>
+          <dt>LONG flow</dt>
           <dd>{formatProductAmount(tradeSummary.buyVolume, 'usd')} {valueUnitLabel}</dd>
         </div>
         <div>
-          <dt>Withdraw flow</dt>
+          <dt>SHORT flow</dt>
           <dd>{formatProductAmount(tradeSummary.sellVolume, 'usd')} {valueUnitLabel}</dd>
         </div>
         <div>
-          <dt>Latest fill</dt>
+          <dt>Last trade</dt>
           <dd>
             {#if latestTrade}
               {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'mint' : 'withdraw'}
@@ -313,19 +313,19 @@
     <article class="detail-section trade-read-panel">
       <div class="detail-header">
         <h2 class={tilt.accentClass}>{tilt.label}</h2>
-        <span>Market read</span>
+        <span>Market snapshot</span>
       </div>
       <p class="trade-focus-copy">{tilt.detail}</p>
 
       <div class="overview-metrics">
         <div>
-          <span>Move since first visible fill</span>
+          <span>Price move since open</span>
           <strong class:positive={impliedProbability - openingProbability >= 0} class:negative={impliedProbability - openingProbability < 0}>
             {impliedProbability - openingProbability >= 0 ? '+' : ''}{((impliedProbability - openingProbability) * 100).toFixed(1)}¢
           </strong>
         </div>
         <div>
-          <span>Visible accounts</span>
+          <span>Traders</span>
           <strong>{visibleAccounts}</strong>
         </div>
         <div>
@@ -343,8 +343,8 @@
   <section class="overview-grid">
     <article class="detail-section">
       <div class="detail-header">
-        <h3>Price and positioning</h3>
-        <span>Visible flow only</span>
+        <h3>Price &amp; flow</h3>
+        <span>Based on public trades</span>
       </div>
 
       <div class="bar-stack">
@@ -360,7 +360,7 @@
 
         <div>
           <div class="bar-label">
-            <span>LONG flow share</span>
+            <span>LONG share</span>
             <span>{formatProbability(flowLong)} LONG</span>
           </div>
           <div class="bar-track">
@@ -370,7 +370,7 @@
 
         <div>
           <div class="bar-label">
-            <span>SHORT flow share</span>
+            <span>SHORT share</span>
             <span>{formatProbability(flowShort)} SHORT</span>
           </div>
           <div class="bar-track">
@@ -381,7 +381,7 @@
 
       <div class="case-copy">
         <div class="detail-header detail-header-tight">
-          <h3>Market case</h3>
+          <h3>The argument</h3>
         </div>
 
         {#if caseParagraphs.length > 0}
@@ -389,14 +389,14 @@
             <p>{paragraph}</p>
           {/each}
         {:else}
-          <p>No long-form case has been attached to this market yet.</p>
+          <p>No one has made the case yet. You could be first.</p>
         {/if}
       </div>
     </article>
 
     <article class="detail-section">
       <div class="detail-header">
-        <h3>Trading considerations</h3>
+        <h3>What to know</h3>
       </div>
 
       <div class="bullet-list">
@@ -406,7 +406,7 @@
       </div>
 
       <div class="detail-header detail-header-spaced">
-        <h3>Market signals</h3>
+        <h3>Signals</h3>
       </div>
 
       <div class="signal-list">
@@ -424,7 +424,7 @@
   <section class="overview-grid overview-grid-reverse">
     <article class="detail-section">
       <div class="detail-header">
-        <h3>Recent fills</h3>
+        <h3>Recent trades</h3>
         <a href={marketActivityUrl(market.slug)}>Full activity</a>
       </div>
 
@@ -433,7 +433,7 @@
           {#each orderedTrades.slice(0, 6) as trade (trade.id)}
             <div class="dense-row">
               <div>
-                <strong>{trade.type === 'buy' ? 'Mint' : 'Withdraw'} · {trade.direction === 'long' ? 'LONG' : 'SHORT'}</strong>
+                <strong>{trade.type === 'buy' ? 'Buy' : 'Sell'} · {trade.direction === 'long' ? 'LONG' : 'SHORT'}</strong>
                 <p>{formatRelativeTime(trade.createdAt)}</p>
               </div>
               <div class="dense-aside">
@@ -541,7 +541,7 @@
     <article class="detail-section">
       <div class="detail-header">
         <h3>Price curve</h3>
-        <span>Derived from visible mint trade records</span>
+        <span>Based on public trade history</span>
       </div>
 
       <div class="chart-shell">
@@ -570,7 +570,7 @@
 
     <article class="detail-section">
       <div class="detail-header">
-        <h3>Latest execution</h3>
+        <h3>Last executed trade</h3>
       </div>
 
       <dl class="summary-list">
@@ -583,11 +583,11 @@
           <dd>{priceCents(oppositeProbability)}</dd>
         </div>
         <div>
-          <dt>Trade records</dt>
+          <dt>Trades</dt>
           <dd>{tradeSummary.tradeCount}</dd>
         </div>
         <div>
-          <dt>Latest visible price</dt>
+          <dt>Current price</dt>
           <dd>{formatProbability(impliedProbability)}</dd>
         </div>
       </dl>

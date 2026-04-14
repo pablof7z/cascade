@@ -374,8 +374,8 @@
       <section class="home-section">
         <div class="home-section-header">
           <div>
-            <h2>Low Volume</h2>
-            <p>Smaller markets with lower volume and less attention.</p>
+            <h2>Under the radar</h2>
+            <p>Less traffic. More opportunity — if you're right.</p>
           </div>
         </div>
 
@@ -402,8 +402,8 @@
       <section class="home-section">
         <div class="home-section-header">
           <div>
-            <h2>Most Disputed</h2>
-            <p>Markets where the odds are close and opinion is split.</p>
+            <h2>Most Contested</h2>
+            <p>The crowd is split. Someone's going to be wrong.</p>
           </div>
         </div>
 
@@ -459,8 +459,8 @@
       <section class="home-section">
         <div class="home-section-header">
           <div>
-            <h2>Latest Discussions</h2>
-            <p>Recent posts and replies across the markets.</p>
+            <h2>Live Debate</h2>
+            <p>The argument, in real time.</p>
           </div>
         </div>
 
@@ -489,7 +489,7 @@
 
 <section class="why-section">
   <div class="why-copy">
-    <h2>Not another prediction market.</h2>
+    <h2>Markets that never close.</h2>
     <p>
       Traditional markets end. Cascade stays open. You can publish a market, defend the case in public,
       and exit when the price makes sense for you.
@@ -499,20 +499,20 @@
   <div class="why-grid">
     <article>
       <span>∞</span>
-      <h3>Infinite games</h3>
-      <p>Markets never close. Price tracks evolving probability as evidence accumulates.</p>
+      <h3>No expiry</h3>
+      <p>Take a position today. The market stays open until the question is settled — or forever.</p>
     </article>
 
     <article>
       <span>◆</span>
-      <h3>Modular theses</h3>
-      <p>Connect markets into a broader view without forcing a single synthetic outcome.</p>
+      <h3>Linked beliefs</h3>
+      <p>Connect related markets. Build a thesis. Each bet stands on its own.</p>
     </article>
 
     <article>
       <span>→</span>
-      <h3>Public commitments</h3>
-      <p>Anyone can publish a market. The mint records visible trading activity in the public market feed.</p>
+      <h3>On the record</h3>
+      <p>Anyone can publish a market. Every trade is public. Your conviction is on record.</p>
     </article>
   </div>
 

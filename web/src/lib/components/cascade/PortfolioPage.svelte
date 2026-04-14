@@ -257,7 +257,7 @@
 
   function railUnavailableMessage(rail: 'lightning' | 'stripe'): string {
     if (!runtime) {
-      return 'Funding is unavailable until the portfolio can verify the mint runtime.';
+      return 'Funding unavailable. Check your connection and try again.';
     }
 
     if (runtimeEditionMismatch) {
@@ -795,7 +795,7 @@
 <section class="wallet-page">
   <header class="wallet-header">
     <div class="eyebrow">{editionLabel} Portfolio</div>
-    <h1>Browser-local proof portfolio</h1>
+    <h1>Your portfolio</h1>
     <p>
       Portfolio proofs are stored in this browser in both signet and mainnet. Liquid cash comes
       from local USD proofs. Current position value is marked from public market prices, and exact
@@ -809,13 +809,13 @@
   {#if !currentUser}
     <section class="wallet-panel">
       <h2>Connect to view your portfolio</h2>
-      <p class="muted">Trade markets, track your positions, and keep your proofs in this browser.</p>
+      <p class="muted">Your positions, your P&amp;L, this device.</p>
       <a class="button-primary" href="/join">Connect</a>
     </section>
   {:else}
     <section class="wallet-grid">
       <article class="wallet-panel">
-        <span class="label">Local Proofs</span>
+        <span class="label">Your balance</span>
         <strong>{formatUsdMinor(localBalanceMinor)}</strong>
         <p class="muted">{localProofCount} proofs stored in this browser.</p>
       </article>
@@ -836,7 +836,7 @@
         <span class="label">Current Value</span>
         <strong>{formatUsdMinor(displayedTotalValueMinor)}</strong>
         <p class="muted">
-          Cash plus current position marks. Exact withdrawal proceeds can differ because LMSR pricing is size-dependent.
+          Cash plus current position marks. Exact withdrawal proceeds can differ based on trade size.
         </p>
       </article>
     </section>
@@ -862,9 +862,9 @@
 
       <div class="funding-row">
         <label class="field">
-          <span>Funding amount</span>
+          <span>Amount</span>
           <input
-            aria-label="Funding amount"
+            aria-label="Amount"
             bind:value={fundingAmount}
             min="100"
             step="100"
@@ -969,7 +969,7 @@
     <section class="wallet-panel">
       <div class="panel-header">
         <div>
-          <h2>Recent funding activity</h2>
+          <h2>Funding history</h2>
         </div>
       </div>
 
@@ -986,7 +986,7 @@
           {/each}
         </div>
       {:else}
-        <p class="muted">No local funding activity recorded in this browser yet.</p>
+        <p class="muted">No funding activity yet.</p>
       {/if}
     </section>
   {/if}

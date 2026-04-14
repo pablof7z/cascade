@@ -115,7 +115,7 @@ test('public profile helpers build discussion rows for threads the user started'
   );
 });
 
-test('public profile page wires richer stats, entry pricing, and discussions into the route', () => {
+test('public profile page wires richer stats, entry pricing, and market links into the route', () => {
   const pageSource = read('src/routes/p/[identifier]/+page.svelte');
   const serverSource = read('src/routes/p/[identifier]/+page.server.ts');
   const cascadeServerSource = read('src/lib/server/cascade.ts');
@@ -127,11 +127,17 @@ test('public profile page wires richer stats, entry pricing, and discussions int
   assert.match(pageSource, /<span>Avg entry<\/span>/);
   assert.match(pageSource, /<h2>Discussions<\/h2>/);
   assert.match(pageSource, /discussionEntries/);
+  assert.match(pageSource, /const positionMarketList = \$derived\(data\.positionMarkets as MarketRecord\[\]\);/);
+  assert.match(pageSource, /const positionMarketMap = \$derived\.by\(\(\) => \{[\s\S]*map\.set\(m\.id, m\);[\s\S]*\}\);/);
+  assert.match(pageSource, /\{@const positionMarket = positionMarketMap\.get\(position\.marketId\)\}[\s\S]*<a class="profile-row" href=\{positionMarket \? marketUrl\(positionMarket\.slug\) : undefined\}>/);
+  assert.doesNotMatch(pageSource, /<div class="profile-kicker">Profile<\/div>/);
 
   assert.match(serverSource, /fetchDiscussionsByPubkey/);
   assert.match(serverSource, /fetchDiscussionsByPubkey\(user\.pubkey,\s*50\)/);
   assert.match(serverSource, /fetchMarketsByIds/);
   assert.match(serverSource, /discussionMarkets/);
+  assert.match(serverSource, /const positionMarkets = await fetchMarketsByIds\(positions\.map\(\(p\) => p\.marketId\)\);/);
+  assert.match(serverSource, /positionMarkets,/);
 
   assert.match(cascadeServerSource, /export async function fetchDiscussionsByPubkey\(pubkey: string, limit = 50\)/);
   assert.match(cascadeServerSource, /export async function fetchMarketsByIds\(marketIds: readonly string\[\]\)/);

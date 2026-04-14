@@ -33,6 +33,7 @@
   const currentUser = $derived(ndk.$currentUser);
   const marketList = $derived(data.markets as MarketRecord[]);
   const discussionMarketList = $derived(data.discussionMarkets as MarketRecord[]);
+  const positionMarketList = $derived(data.positionMarkets as MarketRecord[]);
   const positionList = $derived(data.positions as PositionRecord[]);
   const discussionList = $derived(data.discussions as DiscussionRecord[]);
   const profileLabel = $derived(displayName(resolvedProfile, shortPubkey(resolvedPubkey)));
@@ -42,6 +43,11 @@
       deduped.set(market.id, market);
     }
     return [...deduped.values()];
+  });
+  const positionMarketMap = $derived.by(() => {
+    const map = new Map<string, MarketRecord>();
+    for (const m of positionMarketList) map.set(m.id, m);
+    return map;
   });
   const positionStats = $derived(buildPublicProfilePositionStats(positionList));
   const discussionEntries = $derived(buildPublicProfileDiscussionEntries(discussionList, relatedMarketList));
@@ -84,7 +90,6 @@
   {/if}
 
   <div class="profile-copy">
-    <div class="profile-kicker">Profile</div>
     <h1>{profileLabel}</h1>
     <p>{resolvedProfile?.about || resolvedProfile?.bio || 'No profile summary yet.'}</p>
 
@@ -158,13 +163,14 @@
     <div class="profile-list">
       {#if positionList.length > 0}
         {#each positionList as position (position.id)}
-          <div class="profile-row">
+          {@const positionMarket = positionMarketMap.get(position.marketId)}
+          <a class="profile-row" href={positionMarket ? marketUrl(positionMarket.slug) : undefined}>
             <div>
               <strong title={positionDirectionLabel(position)}>{position.marketTitle || position.marketId}</strong>
               <p>{formatProfilePositionSummary(position)}</p>
             </div>
             <span>{formatRelativeTime(Math.floor(position.createdAt / 1000))}</span>
-          </div>
+          </a>
         {/each}
       {:else}
         <div class="profile-empty">No public position records yet.</div>

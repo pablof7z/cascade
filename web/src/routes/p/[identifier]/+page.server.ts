@@ -26,6 +26,7 @@ export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
     discussionsPromise
   ]);
   const discussionMarkets = await fetchMarketsByIds(discussions.map((discussion) => discussion.marketId));
+  const positionMarkets = await fetchMarketsByIds(positions.map((p) => p.marketId));
 
   return {
     identifier: params.identifier,
@@ -37,6 +38,7 @@ export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
     positions,
     discussions,
     discussionMarkets,
+    positionMarkets,
     seo: buildProfileSeo({ url, pubkey: user.pubkey, profile })
   };
 };

@@ -28,7 +28,7 @@
       <div class="principle-row">
         <span>Real stakes</span>
         <p>
-          Positions are LONG or SHORT shares backed by private balances. You hold real bearer
+          Positions are YES or NO shares backed by private balances. You hold real bearer
           instruments, not IOUs recorded in a database.
         </p>
       </div>

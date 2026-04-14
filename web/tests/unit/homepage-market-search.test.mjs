@@ -68,3 +68,17 @@ test('homepage source wires client-side search state, input UI, and filtered res
   assert.match(source, /mkts-search-count[\s\S]*\{searchResultCountLabel\}/);
   assert.match(source, /\{#if hasActiveMarketSearch\}[\s\S]*\{#each filteredMarkets as market \(market\.id\)\}[\s\S]*\{:else\}[\s\S]*<h2>Most Active<\/h2>/);
 });
+
+test('homepage source uses how-it-works CTA and probability-driven YES/NO labels', () => {
+  const source = read('src/routes/+page.svelte');
+
+  assert.match(source, /<a class="hero-secondary" href="\/how-it-works">How it works →<\/a>/);
+  assert.match(
+    source,
+    /<span class="featured-side">\{probabilityForMarket\(featuredMarket\.id\) >= 0\.5 \? 'YES' : 'NO'\}<\/span>/
+  );
+  assert.match(
+    source,
+    /<span class="lead-side">\{probabilityForMarket\(primaryTrending\.id\) >= 0\.5 \? 'YES' : 'NO'\}<\/span>/
+  );
+});

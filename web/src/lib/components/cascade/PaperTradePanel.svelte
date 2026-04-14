@@ -548,10 +548,10 @@
       <span>Side</span>
       <div class="trade-side-row">
         <button class:active={buySide === 'long'} type="button" onclick={() => (buySide = 'long')}>
-          LONG {formatProbability(yesProbability)}
+          YES {formatProbability(yesProbability)}
         </button>
         <button class:active={buySide === 'short'} type="button" onclick={() => (buySide = 'short')}>
-          SHORT {formatProbability(noProbability)}
+          NO {formatProbability(noProbability)}
         </button>
       </div>
     </div>
@@ -567,7 +567,7 @@
       <strong>{currentPosition ? `${currentPosition.quantity.toFixed(2)} shares` : 'None yet'}</strong>
       <input bind:value={sellQuantity} min="0" step="0.1" type="number" />
       <button class="button-secondary" disabled={!currentPosition} type="button" onclick={sell}>
-        Sell {currentPosition ? (currentPosition.side === 'long' ? 'LONG' : 'SHORT') : (buySide === 'long' ? 'LONG' : 'SHORT')}
+        Sell {currentPosition ? (currentPosition.side === 'long' ? 'YES' : 'NO') : (buySide === 'long' ? 'YES' : 'NO')}
       </button>
     </div>
   {/if}

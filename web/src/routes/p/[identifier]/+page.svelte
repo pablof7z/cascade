@@ -93,11 +93,11 @@
     <strong>{positionList.length}</strong>
   </div>
   <div>
-    <span>LONG positions</span>
+    <span>YES positions</span>
     <strong>{longCount}</strong>
   </div>
   <div>
-    <span>SHORT positions</span>
+    <span>NO positions</span>
     <strong>{shortCount}</strong>
   </div>
 </section>
@@ -142,7 +142,7 @@
           <div class="profile-row">
             <div>
               <strong>{position.marketTitle || position.marketId}</strong>
-              <p>{position.direction === 'long' ? 'LONG' : 'SHORT'} · {position.quantity} units</p>
+              <p>{position.direction === 'long' ? 'YES' : 'NO'} · {position.quantity} units</p>
             </div>
             <span>{formatRelativeTime(Math.floor(position.createdAt / 1000))}</span>
           </div>

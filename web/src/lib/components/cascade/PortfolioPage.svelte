@@ -944,7 +944,7 @@
             <a class="position-row" href={`/market/${position.market_slug}`}>
               <div class="position-copy">
                 <strong>{position.market_title}</strong>
-                <p>{position.direction === 'long' ? 'LONG' : 'SHORT'} · {position.quantity.toFixed(2)} shares · {describePositionPrice(position)}</p>
+                <p>{position.direction === 'long' ? 'YES' : 'NO'} · {position.quantity.toFixed(2)} shares · {describePositionPrice(position)}</p>
               </div>
               <div class="position-metrics">
                 <span>{formatUsdMinor(position.market_value_minor)}</span>

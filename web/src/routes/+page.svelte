@@ -212,7 +212,7 @@
 
           <div class="featured-price-row">
             <span class="featured-price">{centsForMarket(featuredMarket.id)}</span>
-            <span class="featured-side">LONG</span>
+            <span class="featured-side">{probabilityForMarket(featuredMarket.id) >= 0.5 ? 'YES' : 'NO'}</span>
           </div>
 
           <div class="featured-meta">
@@ -323,7 +323,7 @@
 
             <div class="lead-price-row">
               <span class="lead-price">{centsForMarket(primaryTrending.id)}</span>
-              <span class="lead-side">LONG</span>
+              <span class="lead-side">{probabilityForMarket(primaryTrending.id) >= 0.5 ? 'YES' : 'NO'}</span>
             </div>
 
             <p>{truncateText(sanitizeMarketCopy(primaryTrending.description || primaryTrending.body), 180)}</p>

@@ -13,7 +13,6 @@
     buildTradeSummary,
     formatProbability,
     formatRelativeTime,
-    formatSats,
     marketActivityUrl,
     marketChartsUrl,
     marketDiscussionUrl,
@@ -117,11 +116,19 @@
   });
   const chartPolylinePoints = $derived(chartPoints.map((point) => `${point.x},${point.y}`).join(' '));
 
-  const caseParagraphs = $derived(
-    market.body
+  const bodyParagraphs = $derived(
+    (market.body ?? '')
       .split(/\n+/)
       .map((chunk) => sanitizeMarketCopy(chunk.replace(/^#+\s*/, '').replace(/\*\*/g, '').trim()))
       .filter(Boolean)
+  );
+  const resolutionCriteria = $derived(
+    bodyParagraphs
+      .map((chunk) => chunk.match(/^(?:resolution criteria|market criteria):\s*(.+)$/i)?.[1]?.trim())
+      .filter((chunk): chunk is string => Boolean(chunk))
+  );
+  const caseParagraphs = $derived(
+    bodyParagraphs
       .filter((chunk) => !/^(resolution criteria|market criteria):/i.test(chunk))
   );
 
@@ -333,7 +340,9 @@
             noProbability={oppositeProbability}
           />
         {:else if currentUser}
-          <a class="button-primary" href="/portfolio">Open portfolio</a>
+          <a class="button-primary" href="/portfolio">View my portfolio</a>
+          <a href={marketActivityUrl(market.slug)}>See all trades on this market →</a>
+          <p class="trade-focus-copy"><small>Trading requires a connected wallet. Manage positions in your portfolio.</small></p>
         {:else}
           <a class="button-primary" href="/join?from=/market/{market.slug}">Take a position</a>
         {/if}
@@ -455,6 +464,16 @@
           {/each}
         {:else}
           <p>No one has made the case yet. You could be first.</p>
+        {/if}
+
+        {#if resolutionCriteria.length > 0}
+          <div class="detail-header detail-header-tight">
+            <h3>Resolution</h3>
+          </div>
+
+          {#each resolutionCriteria as criteria}
+            <p>{criteria}</p>
+          {/each}
         {/if}
       </div>
     </article>
@@ -950,14 +969,17 @@
     gap: 1rem;
   }
 
-  .detail-header a {
+  .detail-header a,
+  .trade-focus-actions a:not(.button-primary) {
     color: var(--color-base-content);
     font-size: 0.84rem;
     font-weight: 500;
   }
 
   .detail-header a:hover,
-  .detail-header a:focus-visible {
+  .detail-header a:focus-visible,
+  .trade-focus-actions a:not(.button-primary):hover,
+  .trade-focus-actions a:not(.button-primary):focus-visible {
     color: white;
     outline: none;
   }

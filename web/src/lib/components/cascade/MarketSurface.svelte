@@ -583,7 +583,20 @@
           </a>
         {/each}
       {:else}
-        <div class="panel-empty">No discussion threads yet.</div>
+        {#if currentUser}
+          <div class="discussion-empty-state">
+            <p class="discussion-empty-prompt">No threads yet — be first to make a case.</p>
+          </div>
+        {:else}
+          <div class="discussion-empty-state">
+            <p class="discussion-empty-prompt">No threads yet.</p>
+            <p class="discussion-empty-detail">
+              Discussion is where traders put their reasoning on record — the argument behind the bet.
+              <a href="/join?from=/market/{market.slug}/discussion">Sign in</a>
+              to start one.
+            </p>
+          </div>
+        {/if}
       {/if}
     </div>
 
@@ -1152,6 +1165,22 @@
   .panel-empty {
     padding: 1rem 0;
     color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
+  }
+
+  .discussion-empty-state {
+    padding: 1rem 0;
+  }
+
+  .discussion-empty-prompt {
+    margin: 0 0 0.25rem;
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
+    font-size: 0.9rem;
+  }
+
+  .discussion-empty-detail {
+    margin: 0;
+    color: color-mix(in srgb, var(--color-neutral-content) 60%, transparent);
+    font-size: 0.85rem;
   }
 
   @media (max-width: 1024px) {

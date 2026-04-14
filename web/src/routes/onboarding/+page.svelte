@@ -12,7 +12,7 @@
   } from '@nostr-dev-kit/ndk';
   import { onDestroy } from 'svelte';
   import { ndk, ensureClientNdk } from '$lib/ndk/client';
-  import { cleanText, displayName, profileIdentifier } from '$lib/ndk/format';
+  import { cleanText, displayName } from '$lib/ndk/format';
   import {
     NIP05_REGISTRATION_AUTH_KIND,
     formatManagedNip05Identifier,
@@ -423,7 +423,7 @@
       await nextBlossom.publish();
       session?.events.set(NDKKind.BlossomList, nextBlossom);
 
-      await goto(`/p/${profileIdentifier(nextProfile, publishingUser.npub)}`);
+      await goto('/');
     } catch (caught) {
       saveError = caught instanceof Error ? caught.message : "Couldn't publish your profile.";
     } finally {

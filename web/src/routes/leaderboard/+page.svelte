@@ -1,17 +1,27 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import type { NDKUserProfile } from '@nostr-dev-kit/ndk';
+  import type { NDKEvent, NDKUserProfile, NostrEvent } from '@nostr-dev-kit/ndk';
   import { ndk } from '$lib/ndk/client';
-  import { parseDiscussionEvent, parseMarketEvent, type DiscussionRecord, type MarketRecord } from '$lib/ndk/cascade';
+  import {
+    CASCADE_BOOKMARK_KIND,
+    CASCADE_MARKET_KIND,
+    CASCADE_TRADE_KIND,
+    parseDiscussionEvent,
+    parseMarketEvent,
+    parseTradeEvent,
+    type DiscussionRecord,
+    type MarketRecord,
+    type TradeRecord
+  } from '$lib/ndk/cascade';
   import { displayName, profileIdentifier, shortPubkey } from '$lib/ndk/format';
   import type { PageProps } from './$types';
 
-  type LeaderboardTab = 'Top Creators' | 'Most Bookmarked';
+  type LeaderboardTab = 'Top Creators' | 'Top Traders' | 'Most Bookmarked';
 
   let { data }: PageProps = $props();
   let activeTab = $state<LeaderboardTab>('Top Creators');
 
-  const tabs: LeaderboardTab[] = ['Top Creators', 'Most Bookmarked'];
+  const tabs: LeaderboardTab[] = ['Top Creators', 'Top Traders', 'Most Bookmarked'];
   const profiles = $derived(data.profiles as Record<string, NDKUserProfile>);
   const markets = $derived(
     (data.markets ?? [])
@@ -24,19 +34,41 @@
       .filter((discussion): discussion is DiscussionRecord => Boolean(discussion))
   );
 
+  const tradeFeed = ndk.$subscribe(() => {
+    if (!browser) return undefined;
+    return { filters: [{ kinds: [CASCADE_TRADE_KIND], limit: 240 }] };
+  });
+
+  const trades = $derived.by(() => {
+    return mergeRawEvents(data.trades ?? [], tradeFeed.events)
+      .map(parseTradeEvent)
+      .filter((trade): trade is TradeRecord => Boolean(trade))
+      .sort((left, right) => right.createdAt - left.createdAt);
+  });
+
   const creatorRows = $derived.by(() => {
-    return [...new Set(markets.map((market) => market.pubkey))]
-      .map((pubkey) => ({
-        pubkey,
-        marketCount: markets.filter((market) => market.pubkey === pubkey).length
+    return rankPubkeysByCount(markets)
+      .map((row) => ({
+        pubkey: row.pubkey,
+        marketCount: row.count
       }))
       .sort((left, right) => right.marketCount - left.marketCount)
       .slice(0, 20);
   });
 
+  const traderRows = $derived.by(() => {
+    return rankPubkeysByCount(trades)
+      .map((row) => ({
+        pubkey: row.pubkey,
+        tradeCount: row.count
+      }))
+      .sort((left, right) => right.tradeCount - left.tradeCount)
+      .slice(0, 20);
+  });
+
   const networkBookmarks = ndk.$subscribe(() => {
     if (!browser) return undefined;
-    return { filters: [{ kinds: [10003], limit: 200 }] };
+    return { filters: [{ kinds: [CASCADE_BOOKMARK_KIND], limit: 200 }] };
   });
 
   const bookmarkedCounts = $derived.by(() => {
@@ -52,7 +84,7 @@
 
   const bookmarkedMarkets = ndk.$subscribe(() => {
     if (!browser || bookmarkedCounts.length === 0) return undefined;
-    return { filters: [{ kinds: [982], ids: bookmarkedCounts.map(([id]) => id) }] };
+    return { filters: [{ kinds: [CASCADE_MARKET_KIND], ids: bookmarkedCounts.map(([id]) => id) }] };
   });
 
   const bookmarkedLookup = $derived.by(() => {
@@ -87,13 +119,40 @@
   function profileHref(pubkey: string): string {
     return `/p/${profileIdentifier(profiles[pubkey], pubkey)}`;
   }
+
+  function rankPubkeysByCount(records: Array<{ pubkey: string }>): Array<{ pubkey: string; count: number }> {
+    const counts = new Map<string, number>();
+
+    for (const record of records) {
+      counts.set(record.pubkey, (counts.get(record.pubkey) ?? 0) + 1);
+    }
+
+    return [...counts.entries()]
+      .map(([pubkey, count]) => ({ pubkey, count }))
+      .sort((left, right) => right.count - left.count);
+  }
+
+  function mergeRawEvents(seed: NostrEvent[], live: NDKEvent[]): NostrEvent[] {
+    const merged = new Map<string, NostrEvent>();
+
+    for (const event of live) {
+      const raw = event.rawEvent() as NostrEvent;
+      if (raw.id) merged.set(raw.id, raw);
+    }
+
+    for (const event of seed) {
+      if (event.id && !merged.has(event.id)) merged.set(event.id, event);
+    }
+
+    return [...merged.values()];
+  }
 </script>
 
 <section class="leaderboard-header">
   <div class="leaderboard-copy">
     <div class="leaderboard-kicker">Leaderboard</div>
-    <h1>Who's winning</h1>
-    <p>The traders with the best track record. Public positions, real results.</p>
+    <h1>Leaderboard</h1>
+    <p>Top market creators and the most-followed questions on Cascade.</p>
   </div>
 </section>
 
@@ -123,6 +182,28 @@
       {/each}
     {:else}
       <div class="leaderboard-empty-inline">No creator data yet.</div>
+    {/if}
+  </section>
+{/if}
+
+{#if activeTab === 'Top Traders'}
+  <section class="leaderboard-list">
+    {#if traderRows.length > 0}
+      {#each traderRows as row, index (row.pubkey)}
+        <a class="leaderboard-row" href={profileHref(row.pubkey)}>
+          <span class="rank">{index + 1}</span>
+          <div class="leaderboard-main">
+            <strong>{label(row.pubkey)}</strong>
+            <p>{row.tradeCount} trade{row.tradeCount === 1 ? '' : 's'} placed</p>
+          </div>
+          <div class="leaderboard-metric">
+            <strong>{row.tradeCount}</strong>
+            <span>Trades</span>
+          </div>
+        </a>
+      {/each}
+    {:else}
+      <div class="leaderboard-empty-inline">No trader data yet.</div>
     {/if}
   </section>
 {/if}

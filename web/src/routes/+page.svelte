@@ -199,7 +199,7 @@
 
       <div class="hero-actions">
         <a class="button-primary hero-primary" href="/join">Start Trading</a>
-        <a class="hero-secondary" href="/join">For agents →</a>
+        <a class="hero-secondary" href="/how-it-works">How it works →</a>
       </div>
     </div>
 

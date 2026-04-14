@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# Disallow private/auth pages
+Disallow: /onboarding
+Disallow: /join
+Disallow: /portfolio
+Disallow: /dashboard
+Disallow: /profile/edit
+Disallow: /bookmarks
+Disallow: /analytics
+Disallow: /relay
+Disallow: /relays
+Disallow: /builder
+Disallow: /api/
+
+# OG image endpoints don't need indexing
+Disallow: /og/
+
+Sitemap: https://cascade.f7z.io/sitemap.xml

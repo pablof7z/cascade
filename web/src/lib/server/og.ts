@@ -2,6 +2,7 @@ import { access, writeFile } from 'node:fs/promises';
 import type { NDKUserProfile, NostrEvent } from '@nostr-dev-kit/ndk';
 import sharp from 'sharp';
 import { APP_NAME } from '$lib/ndk/config';
+import type { MarketRecord } from '$lib/ndk/cascade';
 import interFontDataUrl from './fonts/InterVariable.ttf?inline';
 import {
   articlePublishedAt,
@@ -193,6 +194,101 @@ export async function renderNoteOgImage(args: OgRenderArgs): Promise<Buffer> {
       width: 440,
       left: 214,
       top: footerY + 36
+    })
+  ]);
+
+  return await base.composite(overlays).png().toBuffer();
+}
+
+export async function renderMarketOgImage(args: {
+  market: MarketRecord;
+}): Promise<Buffer> {
+  const fontfile = await ensureInterFontFile();
+  const palette = paletteFor(args.market.id);
+  const badge = args.market.latestPricePpm ? `${Math.round(args.market.latestPricePpm / 10000)}%` : 'OPEN';
+  const titleLines = wrapText(args.market.title, 28, 3);
+  const summary = previewSnippet(args.market.description || args.market.body, 'Prediction market on Cascade.');
+  const summaryLines = wrapText(summary, 52, 2);
+  const titleBlockHeight = titleLines.length * 60;
+  const summaryY = 246 + titleBlockHeight;
+  const footerY = 540;
+  const base = sharp(
+    Buffer.from(`
+      <svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="${WIDTH}" height="${HEIGHT}" fill="${palette.paper}" />
+        <circle cx="1048" cy="118" r="188" fill="${palette.accentSoft}" opacity="0.82" />
+        <circle cx="1142" cy="584" r="176" fill="${palette.accentSoft}" opacity="0.42" />
+        <circle cx="934" cy="504" r="102" fill="${palette.accentSoft}" opacity="0.22" />
+        <rect x="44" y="40" width="1112" height="550" rx="34" fill="${palette.panel}" stroke="${palette.border}" stroke-width="2" />
+        <rect x="44" y="40" width="18" height="550" rx="9" fill="${palette.accent}" />
+        <rect x="944" y="70" width="162" height="54" rx="27" fill="${palette.accent}" />
+        <rect x="108" y="498" width="312" height="1" fill="${palette.border}" />
+      </svg>
+    `)
+  );
+
+  const overlays = await Promise.all([
+    createTextOverlay({
+      text: 'CASCADE',
+      color: palette.accent,
+      font: 'Inter OG Bold 20',
+      fontfile,
+      left: 108,
+      top: 72
+    }),
+    createTextOverlay({
+      text: 'Prediction Market',
+      color: palette.muted,
+      font: 'Inter OG 18',
+      fontfile,
+      left: 108,
+      top: 104
+    }),
+    createTextOverlay({
+      text: badge,
+      color: palette.badgeText,
+      font: 'Inter OG Bold 24',
+      fontfile,
+      width: 162,
+      align: 'center',
+      left: 944,
+      top: 83
+    }),
+    createTextOverlay({
+      text: titleLines.join('\n'),
+      color: palette.ink,
+      font: 'Inter OG Bold 52',
+      fontfile,
+      width: 900,
+      spacing: 6,
+      left: 108,
+      top: 168
+    }),
+    createTextOverlay({
+      text: summaryLines.join('\n'),
+      color: palette.muted,
+      font: 'Inter OG 26',
+      fontfile,
+      width: 820,
+      spacing: 4,
+      left: 108,
+      top: summaryY
+    }),
+    createTextOverlay({
+      text: 'cascade.market',
+      color: palette.ink,
+      font: 'Inter OG Bold 24',
+      fontfile,
+      left: 108,
+      top: footerY
+    }),
+    createTextOverlay({
+      text: APP_NAME,
+      color: palette.muted,
+      font: 'Inter OG 18',
+      fontfile,
+      left: 108,
+      top: footerY + 34
     })
   ]);
 

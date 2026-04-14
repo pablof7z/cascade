@@ -27,7 +27,22 @@ let discussionCache: DiscussionRecord[] = [];
 let discussionCacheUpdatedAt = 0;
 let discussionRefresh: Promise<void> | undefined;
 
-type MarketDetailPayload = { market?: { raw_event?: NostrEvent } };
+type MarketDetailSummary = {
+  latestPricePpm?: number | null;
+  latest_price_ppm?: number | null;
+};
+
+type MarketDetailPayload = {
+  market?: {
+    raw_event?: NostrEvent;
+    latestPricePpm?: number | null;
+    latest_price_ppm?: number | null;
+  };
+  trades?: NostrEvent[];
+  trade_summary?: MarketDetailSummary;
+  latestPricePpm?: number | null;
+  latest_price_ppm?: number | null;
+};
 
 type FetchMarketBySlugDeps = {
   fetchProductJson?: typeof fetchProductJson;
@@ -56,7 +71,7 @@ export async function fetchMarketBySlug(
     `/api/product/markets/slug/${encodeURIComponent(slug)}`
   );
   const marketFromDetail = payload?.market?.raw_event ? parseMarketEvent(payload.market.raw_event) : null;
-  if (marketFromDetail) return marketFromDetail;
+  if (marketFromDetail) return withLatestPrice(marketFromDetail, payload);
 
   const rawMarket = await (deps.fetchRelayMarketBySlug ?? fetchRelayMarketBySlug)(slug);
   const marketFromRelay = rawMarket ? parseMarketEvent(rawMarket) : null;
@@ -196,6 +211,30 @@ export function summarizeTradesByMarket(trades: TradeRecord[]): Map<string, Mark
   }
 
   return summaries;
+}
+
+function withLatestPrice(market: MarketRecord, payload: MarketDetailPayload | null | undefined): MarketRecord {
+  return {
+    ...market,
+    latestPricePpm:
+      payload?.trade_summary?.latestPricePpm ??
+      payload?.trade_summary?.latest_price_ppm ??
+      payload?.market?.latestPricePpm ??
+      payload?.market?.latest_price_ppm ??
+      payload?.latestPricePpm ??
+      payload?.latest_price_ppm ??
+      latestPriceFromTrades(payload?.trades ?? [], market.id)
+  };
+}
+
+function latestPriceFromTrades(rawTrades: NostrEvent[], marketId: string): number | null {
+  const latestTrade = rawTrades
+    .map(parseTradeEvent)
+    .filter((trade): trade is TradeRecord => Boolean(trade))
+    .filter((trade) => trade.marketId === marketId)
+    .sort((left, right) => right.createdAt - left.createdAt)[0];
+
+  return latestTrade?.pricePpm ?? null;
 }
 
 async function refreshProductFeed(limit: number): Promise<void> {

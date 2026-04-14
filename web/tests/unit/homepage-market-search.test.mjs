@@ -11,6 +11,16 @@ function read(relativePath) {
   return readFileSync(path.join(webRoot, relativePath), 'utf8');
 }
 
+function sectionBetween(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  assert.notEqual(start, -1, `missing section start: ${startMarker}`);
+
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  assert.notEqual(end, -1, `missing section end: ${endMarker}`);
+
+  return source.slice(start, end);
+}
+
 async function loadSearchHelpers() {
   return import(pathToFileURL(path.join(webRoot, 'src/routes/homepage-market-search.ts')).href);
 }
@@ -80,5 +90,29 @@ test('homepage source uses how-it-works CTA and probability-driven YES/NO labels
   assert.match(
     source,
     /<span class="lead-side">\{probabilityForMarket\(primaryTrending\.id\) >= 0\.5 \? 'YES' : 'NO'\}<\/span>/
+  );
+});
+
+test('homepage source keeps side panels dense with price and activity signals', () => {
+  const source = read('src/routes/+page.svelte');
+  const underTheRadar = sectionBetween(source, '<h2>Under the radar</h2>', '<h2>Most Contested</h2>');
+  const mostContested = sectionBetween(source, '<h2>Most Contested</h2>', '<h2>New This Week</h2>');
+  const newThisWeek = sectionBetween(source, '<h2>New This Week</h2>', '<h2>Live Debate</h2>');
+
+  assert.ok(
+    underTheRadar.includes(
+      '<span>{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)} vol · {discussionCounts.get(market.id) ?? 0} posts</span>'
+    )
+  );
+  assert.ok(
+    mostContested.includes(
+      '<span>Tight spread {spreadForMarket(market.id)} · {tradeSummaries.get(market.id)?.tradeCount ?? 0} trades</span>'
+    )
+  );
+  assert.ok(newThisWeek.includes('<span class="mono-cell">{centsForMarket(market.id)}</span>'));
+  assert.ok(
+    newThisWeek.includes(
+      '<span>{formatRelativeTime(market.createdAt)} · {tradeSummaries.get(market.id)?.tradeCount ?? 0} trades</span>'
+    )
   );
 });

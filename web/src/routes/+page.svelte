@@ -389,7 +389,7 @@
                 </div>
                 <div class="stack-aside">
                   <span class="mono-cell">{centsForMarket(market.id)}</span>
-                  <span>{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)} vol</span>
+                  <span>{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)} vol · {discussionCounts.get(market.id) ?? 0} posts</span>
                 </div>
               </a>
             {/each}
@@ -417,7 +417,7 @@
                 </div>
                 <div class="stack-aside">
                   <span class="mono-cell">{centsForMarket(market.id)}</span>
-                  <span>Tight spread {spreadForMarket(market.id)}</span>
+                  <span>Tight spread {spreadForMarket(market.id)} · {tradeSummaries.get(market.id)?.tradeCount ?? 0} trades</span>
                 </div>
               </a>
             {/each}
@@ -446,7 +446,8 @@
                   <p>by {authorLabel(market.pubkey)}</p>
                 </div>
                 <div class="stack-aside">
-                  <span>{formatRelativeTime(market.createdAt)}</span>
+                  <span class="mono-cell">{centsForMarket(market.id)}</span>
+                  <span>{formatRelativeTime(market.createdAt)} · {tradeSummaries.get(market.id)?.tradeCount ?? 0} trades</span>
                 </div>
               </a>
             {/each}

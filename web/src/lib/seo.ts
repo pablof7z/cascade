@@ -79,7 +79,12 @@ export function buildMarketSeo(args: {
     description: description || `${args.market.title} on ${SITE_NAME}.`,
     canonical: canonicalUrl(args.url),
     type: 'article',
-    image: defaultImage(args.url, `${args.market.title} preview`)
+    image: {
+      url: new URL(`/og/market/${encodeURIComponent(args.market.slug)}`, args.url.origin).toString(),
+      alt: `${args.market.title} preview`,
+      width: 1200,
+      height: 630
+    }
   };
 }
 

@@ -25,6 +25,7 @@ export type MarketRecord = {
   mintUrl?: string;
   mintPubkey?: string;
   status: string;
+  latestPricePpm: number | null;
   createdAt: number;
   rawEvent: NostrEvent;
 };
@@ -125,6 +126,7 @@ export function parseMarketEvent(event: NDKEvent | NostrEvent): MarketRecord | n
       firstTagValue(raw.tags, 'mint_pubkey') ||
       undefined,
     status: firstTagValue(raw.tags, 'status') || 'open',
+    latestPricePpm: null,
     createdAt: raw.created_at || 0,
     rawEvent: raw
   };

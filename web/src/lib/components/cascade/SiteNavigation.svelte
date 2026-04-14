@@ -6,7 +6,8 @@
     { href: '/activity', label: 'Activity' },
     { href: '/leaderboard', label: 'Leaderboard' },
     { href: '/analytics', label: 'Analytics' },
-    { href: '/portfolio', label: 'Portfolio' }
+    { href: '/portfolio', label: 'Portfolio' },
+    { href: '/builder', label: 'Create' }
   ];
 
   function isActive(href: string): boolean {

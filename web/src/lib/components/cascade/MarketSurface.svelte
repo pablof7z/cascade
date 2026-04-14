@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import type { NDKUserProfile } from '@nostr-dev-kit/ndk';
   import { NDKEvent } from '@nostr-dev-kit/ndk';
   import { invalidateAll } from '$app/navigation';
+  import type { NostrEvent } from 'nostr-tools';
   import PaperTradePanel from '$lib/components/cascade/PaperTradePanel.svelte';
   import { isPaperEdition } from '$lib/cascade/config';
   import { formatProductAmount, productUnitLabel } from '$lib/cascade/format';
@@ -16,6 +18,7 @@
     marketChartsUrl,
     marketDiscussionUrl,
     marketUrl,
+    parseDiscussionEvent,
     sanitizeMarketCopy,
     threadUrl,
     truncateText,
@@ -46,7 +49,20 @@
   const currentUser = $derived(ndk.$currentUser);
   const paperEdition = isPaperEdition();
   const valueUnitLabel = 'USD';
-  const discussionThreads = $derived(buildDiscussionThreads(discussions, market.id));
+  const discussionFeed = ndk.$subscribe(() => {
+    if (!browser) return undefined;
+    return { filters: [{ kinds: [1111], '#e': [market.id], limit: 200 }] };
+  });
+  const mergedDiscussions = $derived.by(() => {
+    return mergeRawEvents(
+      discussions.map((discussion) => discussion.rawEvent as NostrEvent),
+      discussionFeed.events
+    )
+      .map(parseDiscussionEvent)
+      .filter((discussion): discussion is DiscussionRecord => Boolean(discussion))
+      .sort((left, right) => right.createdAt - left.createdAt);
+  });
+  const discussionThreads = $derived(buildDiscussionThreads(mergedDiscussions, market.id));
   const author = $derived(displayName(profiles[market.pubkey], shortPubkey(market.pubkey)));
   const tabs = $derived([
     { href: marketUrl(market.slug), label: 'Overview', active: tab === 'overview' },
@@ -118,7 +134,7 @@
         headline: `${trade.type === 'buy' ? 'Bought' : 'Sold'} ${trade.direction === 'long' ? 'YES' : 'NO'}`,
         detail: `${formatProductAmount(trade.amount, trade.unit)} at ${formatProbability(trade.probability)}`
       })),
-      ...discussions.map((discussion) => ({
+      ...mergedDiscussions.map((discussion) => ({
         id: discussion.id,
         kind: 'discussion' as const,
         createdAt: discussion.createdAt,
@@ -207,6 +223,18 @@
 
   function authorLabel(pubkey: string): string {
     return displayName(profiles[pubkey], shortPubkey(pubkey));
+  }
+
+  function mergeRawEvents(seed: NostrEvent[], live: NDKEvent[]): NostrEvent[] {
+    const map = new Map<string, NostrEvent>();
+    for (const event of live) {
+      const raw = event.rawEvent() as NostrEvent;
+      if (raw.id) map.set(raw.id, raw);
+    }
+    for (const event of seed) {
+      if (event.id && !map.has(event.id)) map.set(event.id, event);
+    }
+    return [...map.values()];
   }
 
   function priceCents(probability: number): string {

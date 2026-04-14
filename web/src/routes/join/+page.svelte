@@ -23,6 +23,7 @@
     type SocialProfilePrefill,
     type SocialProvider
   } from '$lib/features/auth/social-prefill';
+  import { joinOnboardingTarget } from '$lib/features/auth/onboardingRedirect';
   import '$lib/features/auth/auth.css';
   import { ndk } from '$lib/ndk/client';
 
@@ -82,7 +83,7 @@
 
   function finishHumanEntry() {
     clearAuthState();
-    void goto('/onboarding');
+    void goto(joinOnboardingTarget(window.location.search));
   }
 
   async function finalizeSocialPrefill(prefill: SocialProfilePrefill) {

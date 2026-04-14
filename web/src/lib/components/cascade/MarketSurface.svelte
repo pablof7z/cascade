@@ -4,6 +4,7 @@
   import { NDKEvent } from '@nostr-dev-kit/ndk';
   import { invalidateAll } from '$app/navigation';
   import type { NostrEvent } from 'nostr-tools';
+  import BookmarkIcon from '$lib/components/BookmarkIcon.svelte';
   import PaperTradePanel from '$lib/components/cascade/PaperTradePanel.svelte';
   import { isPaperEdition } from '$lib/cascade/config';
   import { formatProductAmount, productUnitLabel } from '$lib/cascade/format';
@@ -46,6 +47,15 @@
 
   const tradeSummary = $derived(buildTradeSummary(trades));
   const currentUser = $derived(ndk.$currentUser);
+  const myBookmarkList = ndk.$subscribe(() => {
+    if (!browser || !currentUser) return undefined;
+    return { filters: [{ kinds: [10003], authors: [currentUser.pubkey], limit: 1 }] };
+  });
+  const isBookmarked = $derived.by(() => {
+    const event = myBookmarkList.events[0];
+    if (!event) return false;
+    return event.tags.some((tag) => tag[0] === 'e' && tag[1] === market.id);
+  });
   const paperEdition = isPaperEdition();
   const valueUnitLabel = 'USD';
   const discussionFeed = ndk.$subscribe(() => {
@@ -285,6 +295,25 @@
       composeSubmitting = false;
     }
   }
+
+  async function toggleBookmark() {
+    if (!currentUser) return;
+    const existing = myBookmarkList.events[0];
+    const updated = new NDKEvent(ndk);
+    updated.kind = 10003;
+
+    if (existing) {
+      if (isBookmarked) {
+        updated.tags = existing.tags.filter((tag) => !(tag[0] === 'e' && tag[1] === market.id));
+      } else {
+        updated.tags = [...existing.tags, ['e', market.id]];
+      }
+    } else {
+      updated.tags = [['e', market.id]];
+    }
+
+    await updated.publish();
+  }
 </script>
 
 <section class="market-shell">
@@ -301,6 +330,21 @@
           <span>{market.categories.join(', ')}</span>
         {/if}
       </div>
+
+      {#if currentUser}
+        <div class="market-header-actions">
+          <button
+            class="market-bookmark-button"
+            class:bookmarked={isBookmarked}
+            title={isBookmarked ? 'Remove bookmark' : 'Save market'}
+            type="button"
+            onclick={toggleBookmark}
+          >
+            <BookmarkIcon size={14} filled={isBookmarked} />
+            <span>{isBookmarked ? 'Saved' : 'Save'}</span>
+          </button>
+        </div>
+      {/if}
     </div>
 
     <div class="market-header-side">
@@ -741,8 +785,7 @@
             <p>{truncateText(sanitizeMarketCopy(related.description || related.body), 120)}</p>
           </div>
           <div class="dense-aside">
-            <span>{formatRelativeTime(related.createdAt)}</span>
-            <span>{authorLabel(related.pubkey)}</span>
+            <span class="positive">{priceCents((related.latestPricePpm ?? 500_000) / 1_000_000)} YES</span>
           </div>
         </a>
       {/each}
@@ -836,6 +879,35 @@
     align-items: center;
     gap: 0.75rem;
     flex-wrap: wrap;
+  }
+
+  .market-bookmark-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid rgba(38, 38, 38, 0.8);
+    background: transparent;
+    color: color-mix(in srgb, var(--color-neutral-content) 68%, transparent);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease;
+  }
+
+  .market-bookmark-button:hover,
+  .market-bookmark-button:focus-visible {
+    color: white;
+    border-color: color-mix(in srgb, white 18%, transparent);
+    background: color-mix(in srgb, white 4%, transparent);
+    outline: none;
+  }
+
+  .market-bookmark-button.bookmarked {
+    color: white;
+    border-color: color-mix(in srgb, white 16%, transparent);
+    background: color-mix(in srgb, white 7%, transparent);
   }
 
   .market-tabs {

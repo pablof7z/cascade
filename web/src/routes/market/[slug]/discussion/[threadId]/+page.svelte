@@ -2,7 +2,7 @@
   import { NDKEvent } from '@nostr-dev-kit/ndk';
   import { invalidateAll } from '$app/navigation';
   import type { DiscussionThread } from '$lib/ndk/cascade';
-  import { formatRelativeTime, marketDiscussionUrl, truncateText } from '$lib/ndk/cascade';
+  import { buildThreadReplyTags, formatRelativeTime, marketDiscussionUrl } from '$lib/ndk/cascade';
   import { displayName, shortPubkey } from '$lib/ndk/format';
   import { ndk } from '$lib/ndk/client';
   import type { PageProps } from './$types';
@@ -27,13 +27,7 @@
       const event = new NDKEvent(ndk);
       event.kind = 1111;
       event.content = replyBody.trim();
-      event.tags = [
-        ['E', data.thread.post.id, '', 'root'],
-        ['K', '1111'],
-        ['e', data.thread.post.id, '', 'root'],
-        ['k', '1111'],
-        ['e', data.thread.post.id, '', 'reply']
-      ];
+      event.tags = buildThreadReplyTags(data.market.id, data.thread.post.id);
       await event.publish();
       replyBody = '';
       await invalidateAll();
@@ -66,7 +60,7 @@
   <article class="surface panel">
     <div class="eyebrow">{authorLabel(node.post.pubkey)} · {formatRelativeTime(node.post.createdAt)}</div>
     <h2 class="section-title">{node.post.subject || 'Reply'}</h2>
-    <p class="page-subtitle">{truncateText(node.post.content, 400)}</p>
+    <p class="page-subtitle">{node.post.content}</p>
 
     {#if node.replies.length > 0}
       <div class="section" style="margin-top: 1rem; padding-left: 1rem; border-left: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);">

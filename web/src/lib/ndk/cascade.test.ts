@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   CASCADE_POSITION_KIND,
   CASCADE_TRADE_KIND,
+  buildThreadReplyTags,
   parsePositionEvent,
   parseTradeEvent
 } from './cascade.ts';
@@ -92,4 +93,15 @@ test('parsePositionEvent rejects yes/no aliases', () => {
   });
 
   assert.equal(position, null);
+});
+
+test('buildThreadReplyTags scopes replies to the market root and thread parent', () => {
+  assert.deepEqual(buildThreadReplyTags('market-982', 'thread-1111'), [
+    ['E', 'market-982', '', 'root'],
+    ['K', '982'],
+    ['e', 'market-982', '', 'root'],
+    ['k', '982'],
+    ['e', 'thread-1111', '', 'reply'],
+    ['k', '1111']
+  ]);
 });

@@ -74,6 +74,17 @@ export type DiscussionThread = {
   replyCount: number;
 };
 
+export function buildThreadReplyTags(marketId: string, threadId: string): string[][] {
+  return [
+    ['E', marketId, '', 'root'],
+    ['K', String(CASCADE_MARKET_KIND)],
+    ['e', marketId, '', 'root'],
+    ['k', String(CASCADE_MARKET_KIND)],
+    ['e', threadId, '', 'reply'],
+    ['k', String(CASCADE_DISCUSSION_KIND)]
+  ];
+}
+
 export type PositionRecord = {
   id: string;
   pubkey: string;

@@ -28,11 +28,42 @@
   const marketList = $derived(data.markets as MarketRecord[]);
   const positionList = $derived(data.positions as PositionRecord[]);
   const profileLabel = $derived(displayName(resolvedProfile, shortPubkey(resolvedPubkey)));
+  let avatarLoadFailed = $state(false);
+  const avatarPicture = $derived(resolvedProfile?.picture?.trim() || undefined);
+  const avatarUrl = $derived(avatarLoadFailed ? undefined : avatarPicture);
+  const avatarMonogram = $derived((profileLabel.trim()[0] ?? '?').toUpperCase());
   const longCount = $derived(positionList.filter((position) => position.direction === 'long').length);
   const shortCount = $derived(positionList.filter((position) => position.direction === 'short').length);
+
+  $effect(() => {
+    avatarPicture;
+    avatarLoadFailed = false;
+  });
+
+  function handleAvatarError(event: Event) {
+    avatarLoadFailed = true;
+
+    const image = event.currentTarget;
+    if (image instanceof HTMLImageElement) {
+      image.onerror = null;
+    }
+  }
 </script>
 
 <section class="profile-header">
+  {#if avatarUrl}
+    <img
+      class="profile-avatar profile-avatar-image"
+      src={avatarUrl}
+      alt={`${profileLabel} avatar`}
+      loading="lazy"
+      decoding="async"
+      onerror={handleAvatarError}
+    />
+  {:else}
+    <div class="profile-avatar profile-avatar-fallback" aria-hidden="true">{avatarMonogram}</div>
+  {/if}
+
   <div class="profile-copy">
     <div class="profile-kicker">Profile</div>
     <h1>{profileLabel}</h1>
@@ -127,14 +158,40 @@
   .profile-header {
     display: flex;
     align-items: flex-end;
-    justify-content: space-between;
-    gap: 2rem;
+    gap: 1.5rem 2rem;
     padding-top: 1rem;
+  }
+
+  .profile-avatar,
+  .profile-avatar-image,
+  .profile-avatar-fallback {
+    width: 5rem;
+    height: 5rem;
+    border-radius: 50%;
+    flex: 0 0 auto;
+  }
+
+  .profile-avatar-image {
+    display: block;
+    object-fit: cover;
+    background: rgba(38, 38, 38, 0.8);
+  }
+
+  .profile-avatar-fallback {
+    display: grid;
+    place-items: center;
+    background: rgba(38, 38, 38, 0.8);
+    color: white;
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1;
   }
 
   .profile-copy {
     display: grid;
     gap: 0.9rem;
+    flex: 1 1 auto;
+    min-width: 0;
     max-width: 42rem;
   }
 
@@ -170,6 +227,7 @@
     display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
+    margin-left: auto;
   }
 
   .profile-stats {
@@ -255,9 +313,27 @@
   }
 
   @media (max-width: 900px) {
-    .profile-header,
-    .profile-grid {
+    .profile-header {
       flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .profile-avatar,
+    .profile-avatar-image,
+    .profile-avatar-fallback {
+      width: 3.75rem;
+      height: 3.75rem;
+    }
+
+    .profile-avatar-fallback {
+      font-size: 1.35rem;
+    }
+
+    .profile-actions {
+      margin-left: 0;
+    }
+
+    .profile-grid {
       grid-template-columns: 1fr;
     }
 
@@ -267,6 +343,17 @@
   }
 
   @media (max-width: 640px) {
+    .profile-avatar,
+    .profile-avatar-image,
+    .profile-avatar-fallback {
+      width: 3.25rem;
+      height: 3.25rem;
+    }
+
+    .profile-avatar-fallback {
+      font-size: 1.1rem;
+    }
+
     .profile-stats {
       grid-template-columns: 1fr;
     }

@@ -2,6 +2,7 @@
 
 pub mod fx;
 pub mod handlers;
+pub mod nostr;
 pub mod payment;
 pub mod routes;
 pub mod stripe;
@@ -28,6 +29,8 @@ pub async fn build_server(
     db: Arc<CascadeDatabase>,
     network_type: &str,
     mint_url: &str,
+    trade_publisher: Option<Arc<nostr::TradePublisher>>,
+    mint_nostr_pubkey: String,
 ) -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
     let stripe_gateway = stripe_config
         .map(StripeGateway::new)
@@ -56,6 +59,8 @@ pub async fn build_server(
         network_type == "signet",
         network_type.to_string(),
         mint_url.to_string(),
+        trade_publisher,
+        mint_nostr_pubkey,
     );
 
     // Build cascade-specific routes

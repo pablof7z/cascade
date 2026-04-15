@@ -2,6 +2,11 @@
 
 ## Active App
 
+PENDING: the active frontend is being refit so normal users no longer see relay/network,
+signer, custody, or raw funding-rail state in visible UI copy. As part of that work, public
+market metrics are moving to USD-only presentation and the relay browser routes are being removed
+from the normal product surface.
+
 The active frontend lives in `web/`.
 
 - framework: SvelteKit + Svelte 5
@@ -69,6 +74,12 @@ The frontend derives user state from:
 - user-side position records where applicable
 
 The backend is not the canonical source of the user's current portfolio holdings.
+
+Builder publishes the signed kind `982` directly to relays, keeps creator-only pending state
+locally, and sends the signed raw event only with the first seed quote/buy when the mint has not
+seen the market yet. Public market discovery, search, detail pricing, and portfolio mark pricing
+come from relay-fetched kind `982` and kind `983` events. Portfolio funding and runtime
+affordances come from edition-local frontend config rather than a mint-side runtime manifest.
 
 ## Funding And Trading
 

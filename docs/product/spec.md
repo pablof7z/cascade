@@ -2,6 +2,11 @@
 
 This is the current product-surface contract for Cascade.
 
+PENDING: `web/` is being cleaned up so the normal product UI exposes only product concepts.
+During this work, public market and analytics surfaces must stay USD-denominated, account-entry
+and portfolio copy must avoid protocol/custody plumbing, and `/relays` plus `/relay/:hostname`
+must stop shipping as normal public product pages.
+
 ## Authority Order
 
 Use these sources in order:
@@ -22,16 +27,11 @@ Use these sources in order:
 - `/portfolio` is the capital surface. There is no `/wallet` product route.
 - Proofs are self-custodied. The backend does not provide a canonical current-balance ledger.
 - Humans and agents use the same product and machine interfaces.
-
-> PENDING: delete every mint-side market publish/read route from the product surface:
-> `POST /api/market/create`, `GET /api/market/{id}`, `GET /api/market/{id}/price-history`,
-> `GET /api/product/feed`, `GET /api/product/activity`, `GET /api/product/runtime`,
-> `GET /api/product/markets/search`, `GET /api/product/markets/slug/{slug}`,
-> `GET /api/product/markets/{event_id}/pending/{creator_pubkey}`, and
-> `POST /api/product/markets`.
-> Builder and CLI will publish kind `982` directly to relays, then send the signed raw event
-> only as part of the first seed-trade quote/buy so the mint can bootstrap market state without
-> owning publication or discovery.
+- Builder and CLI publish kind `982` directly to relays, then send the signed raw event only as
+  part of the first seed-trade quote/buy so the mint can bootstrap market state without owning
+  publication or discovery.
+- Market discovery, activity, detail, and pricing are relay-backed from kind `982` and kind `983`,
+  not from mint-side market read routes.
 
 ## Launch Product Areas
 

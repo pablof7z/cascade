@@ -1,4 +1,4 @@
-import type { NDKFilter, NDKKind, NostrEvent } from '@nostr-dev-kit/ndk';
+import { NDKSubscriptionCacheUsage, type NDKFilter, type NDKKind, type NostrEvent } from '@nostr-dev-kit/ndk';
 import {
   buildTradeSummary,
   parseDiscussionEvent,
@@ -15,7 +15,6 @@ import {
 const MARKET_CACHE_TTL_MS = 60_000;
 const DISCUSSION_CACHE_TTL_MS = 30_000;
 const RELAY_FETCH_TIMEOUT_MS = 2_500;
-const DEFAULT_PRODUCT_API_URL = 'https://mint.f7z.io';
 
 let marketCache: MarketRecord[] = [];
 let marketCacheUpdatedAt = 0;
@@ -29,7 +28,6 @@ let discussionCacheUpdatedAt = 0;
 let discussionRefresh: Promise<void> | undefined;
 
 type FetchMarketBySlugDeps = {
-  fetchProductMarketDetailBySlug?: typeof fetchProductMarketDetailBySlug;
   fetchRelayMarketBySlug?: typeof fetchRelayMarketBySlug;
   fetchRelayTradesForMarket?: typeof fetchRelayTradesForMarket;
 };
@@ -60,7 +58,7 @@ export async function fetchSitemapMarkets(
   const markets = await (deps.fetchRecentMarkets ?? fetchRecentMarkets)(limit);
   if (markets.length > 0) return markets;
 
-  console.warn(`fetchSitemapMarkets fell back to relays because product feed returned no markets`);
+  console.warn('fetchSitemapMarkets fell back to a direct relay fetch because the cache was empty');
   return (deps.fetchRecentRelayMarkets ?? fetchRecentRelayMarkets)(limit);
 }
 
@@ -68,13 +66,6 @@ export async function fetchMarketBySlug(
   slug: string,
   deps: FetchMarketBySlugDeps = {}
 ): Promise<MarketRecord | null> {
-  const productMarket = await (deps.fetchProductMarketDetailBySlug ?? fetchProductMarketDetailBySlug)(
-    slug
-  );
-  if (productMarket) {
-    return withLatestPrice(productMarket.market, productMarket.trades);
-  }
-
   const rawMarket = await (deps.fetchRelayMarketBySlug ?? fetchRelayMarketBySlug)(slug);
   const marketFromRelay = rawMarket ? parseMarketEvent(rawMarket) : null;
   if (!marketFromRelay || marketFromRelay.slug !== slug) return null;
@@ -333,131 +324,88 @@ async function refreshRecentDiscussions(limit: number): Promise<void> {
 }
 
 async function fetchRecentRelayMarkets(limit: number): Promise<MarketRecord[]> {
-  const ndk = await getServerNdkClient();
-  const events = await withRelayEventTimeout(
-    ndk.fetchEvents(
-      {
-        kinds: [982 as NDKKind],
-        limit
-      } satisfies NDKFilter,
-      { closeOnEose: true }
-    ),
-    `fetchRecentRelayMarkets(${limit})`
+  const events = await collectRelayRawEvents(
+    {
+      kinds: [982 as NDKKind],
+      limit
+    } satisfies NDKFilter,
+    `fetchRecentRelayMarkets(${limit})`,
+    {
+      stopWhen: (seen) => seen.size >= limit
+    }
   );
 
-  return Array.from(events)
-    .map((event) => parseMarketEvent(event.rawEvent()))
+  return events
+    .map((event) => parseMarketEvent(event))
     .filter((market): market is MarketRecord => Boolean(market))
     .sort((left, right) => right.createdAt - left.createdAt)
     .slice(0, limit);
 }
 
-async function fetchProductMarketDetailBySlug(
-  slug: string
-): Promise<{ market: MarketRecord; trades: TradeRecord[] } | null> {
-  const response = await fetch(
-    `${getServerProductApiUrl()}/api/product/markets/slug/${encodeURIComponent(slug)}`,
-    { cache: 'no-store' }
-  ).catch(() => null);
-  if (!response?.ok) return null;
-
-  const payload = (await response.json().catch(() => null)) as
-    | {
-        market?: { raw_event?: NostrEvent | null } | null;
-        trades?: NostrEvent[] | null;
-      }
-    | null;
-  const market = payload?.market?.raw_event ? parseMarketEvent(payload.market.raw_event) : null;
-  if (!market || market.slug !== slug) return null;
-
-  const trades = (payload?.trades ?? [])
-    .map((event) => parseTradeEvent(event))
-    .filter((trade): trade is TradeRecord => Boolean(trade));
-
-  return { market, trades };
-}
-
-function getServerProductApiUrl(): string {
-  return (
-    process.env.PUBLIC_CASCADE_API_URL ||
-    process.env.PUBLIC_CASCADE_MINT_URL ||
-    DEFAULT_PRODUCT_API_URL
-  ).replace(/\/+$/, '');
-}
-
 async function fetchRecentRelayTrades(limit: number): Promise<TradeRecord[]> {
-  const ndk = await getServerNdkClient();
-  const events = await withRelayEventTimeout(
-    ndk.fetchEvents(
-      {
-        kinds: [983 as NDKKind],
-        limit
-      } satisfies NDKFilter,
-      { closeOnEose: true }
-    ),
-    `fetchRecentRelayTrades(${limit})`
+  const events = await collectRelayRawEvents(
+    {
+      kinds: [983 as NDKKind],
+      limit
+    } satisfies NDKFilter,
+    `fetchRecentRelayTrades(${limit})`,
+    {
+      stopWhen: (seen) => seen.size >= limit
+    }
   );
 
-  return Array.from(events)
-    .map((event) => parseTradeEvent(event.rawEvent()))
+  return events
+    .map((event) => parseTradeEvent(event))
     .filter((trade): trade is TradeRecord => Boolean(trade))
     .sort((left, right) => right.createdAt - left.createdAt)
     .slice(0, limit);
 }
 
 async function fetchRelayMarketBySlug(slug: string): Promise<NostrEvent | null> {
-  const ndk = await getServerNdkClient();
-  const directMatch = await withRelayEventTimeout(
-    ndk.fetchEvents(
-      {
-        kinds: [982 as NDKKind],
-        '#d': [slug],
-        limit: 12
-      } satisfies NDKFilter,
-      { closeOnEose: true }
-    ),
-    `fetchRelayMarketBySlug:direct(${slug})`
+  const directMatch = await collectRelayRawEvents(
+    {
+      kinds: [982 as NDKKind],
+      '#d': [slug],
+      limit: 12
+    } satisfies NDKFilter,
+    `fetchRelayMarketBySlug:direct(${slug})`,
+    {
+      stopWhen: (seen, rawEvent) => parseMarketEvent(rawEvent)?.slug === slug
+    }
   );
 
-  const matchedDirectEvent = Array.from(directMatch)
-    .map((event) => event.rawEvent() as NostrEvent)
-    .find((event) => parseMarketEvent(event)?.slug === slug);
+  const matchedDirectEvent = directMatch.find((event) => parseMarketEvent(event)?.slug === slug);
   if (matchedDirectEvent) return matchedDirectEvent;
 
-  const recentEvents = await withRelayEventTimeout(
-    ndk.fetchEvents(
-      {
-        kinds: [982 as NDKKind],
-        limit: 120
-      } satisfies NDKFilter,
-      { closeOnEose: true }
-    ),
-    `fetchRelayMarketBySlug:recent(${slug})`
+  const recentEvents = await collectRelayRawEvents(
+    {
+      kinds: [982 as NDKKind],
+      limit: 120
+    } satisfies NDKFilter,
+    `fetchRelayMarketBySlug:recent(${slug})`,
+    {
+      stopWhen: (seen, rawEvent) => parseMarketEvent(rawEvent)?.slug === slug
+    }
   );
 
-  return (
-    Array.from(recentEvents)
-      .map((event) => event.rawEvent() as NostrEvent)
-      .find((event) => parseMarketEvent(event)?.slug === slug) ?? null
-  );
+  return recentEvents.find((event) => parseMarketEvent(event)?.slug === slug) ?? null;
 }
 
 async function fetchRelayTradesForMarket(marketId: string, limit: number): Promise<TradeRecord[]> {
-  const ndk = await getServerNdkClient();
-  const events = await withRelayEventTimeout(
-    ndk.fetchEvents(
-      {
-        kinds: [983 as NDKKind],
-        '#e': [marketId],
-        limit
-      } satisfies NDKFilter,
-      { closeOnEose: true }
-    ),
-    `fetchRelayTradesForMarket(${marketId})`
+  const events = await collectRelayRawEvents(
+    {
+      kinds: [983 as NDKKind],
+      '#e': [marketId],
+      limit
+    } satisfies NDKFilter,
+    `fetchRelayTradesForMarket(${marketId})`,
+    {
+      stopWhen: (seen) => seen.size >= limit
+    }
   );
 
-  return Array.from(events)
-    .map((event) => parseTradeEvent(event.rawEvent()))
+  return events
+    .map((event) => parseTradeEvent(event))
     .filter((trade): trade is TradeRecord => Boolean(trade))
     .sort((left, right) => right.createdAt - left.createdAt)
     .slice(0, limit);
@@ -465,6 +413,56 @@ async function fetchRelayTradesForMarket(marketId: string, limit: number): Promi
 
 async function getServerNdkClient() {
   return (await import('./nostr.ts')).getServerNdk();
+}
+
+type CollectRelayRawEventsOptions = {
+  timeoutMs?: number;
+  stopWhen?: (seen: ReadonlyMap<string, NostrEvent>, rawEvent: NostrEvent) => boolean;
+};
+
+async function collectRelayRawEvents(
+  filter: NDKFilter,
+  label: string,
+  options: CollectRelayRawEventsOptions = {}
+): Promise<NostrEvent[]> {
+  const ndk = await getServerNdkClient();
+  const timeoutMs = options.timeoutMs ?? RELAY_FETCH_TIMEOUT_MS;
+
+  return new Promise((resolve) => {
+    const seen = new Map<string, NostrEvent>();
+    let resolved = false;
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      subscription.stop();
+      resolve([...seen.values()]);
+    };
+
+    const subscription = ndk.subscribe(filter, {
+      closeOnEose: true,
+      cacheUsage: NDKSubscriptionCacheUsage.ONLY_RELAY,
+      groupable: false,
+      onEvent: (event) => {
+        const rawEvent = event.rawEvent() as NostrEvent;
+        if (!rawEvent.id) return;
+        seen.set(rawEvent.id, rawEvent);
+        if (options.stopWhen?.(seen, rawEvent)) {
+          finish();
+        }
+      },
+      onEose: () => {
+        finish();
+      }
+    });
+
+    timeoutHandle = setTimeout(() => {
+      console.warn(`${label} timed out after ${timeoutMs}ms`);
+      finish();
+    }, timeoutMs);
+  });
 }
 
 function withRelayEventTimeout<T>(

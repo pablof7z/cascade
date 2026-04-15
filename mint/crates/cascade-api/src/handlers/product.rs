@@ -50,8 +50,6 @@ use std::str::FromStr;
 
 const TRADE_FEE_BPS: u64 = 100;
 const TRADE_QUOTE_TTL_SECONDS: i64 = 30;
-const FALLBACK_MINT_PUBKEY: &str =
-    "1111111111111111111111111111111111111111111111111111111111111111";
 const SIGNET_FUNDING_SINGLE_LIMIT_MINOR: u64 = 10_000;
 const SIGNET_FUNDING_WINDOW_LIMIT_MINOR: u64 = 25_000;
 const SIGNET_FUNDING_WINDOW_SECONDS: i64 = 24 * 60 * 60;
@@ -3095,7 +3093,7 @@ async fn buy_trade_by_event(
                 });
             let raw_event = build_trade_event(
                 &trade_id,
-                mint_pubkey_from_market(&quote.market_event_id, &quote.side),
+                state.mint_nostr_pubkey.clone(),
                 &market.event_id,
                 direction,
                 "buy",
@@ -3305,6 +3303,17 @@ async fn buy_trade_by_event(
                             ..market.clone()
                         })
                         .await;
+
+                    if let Some(trade_publisher) = &state.trade_publisher {
+                        if let Err(error) = trade_publisher.publish_trade_event(&raw_event).await {
+                            tracing::warn!(
+                                trade_id = %trade_id,
+                                market_event_id = %market.event_id,
+                                error = %error,
+                                "failed_to_publish_buy_trade_to_relays"
+                            );
+                        }
+                    }
 
                     if let Some(request_id) = request_id {
                         if let Err(error) = state
@@ -3540,7 +3549,7 @@ async fn sell_trade_by_event(
                 });
             let raw_event = build_trade_event(
                 &trade_id,
-                mint_pubkey_from_market(&quote.market_event_id, &quote.side),
+                state.mint_nostr_pubkey.clone(),
                 &market.event_id,
                 direction,
                 "sell",
@@ -3762,6 +3771,17 @@ async fn sell_trade_by_event(
                             ..market.clone()
                         })
                         .await;
+
+                    if let Some(trade_publisher) = &state.trade_publisher {
+                        if let Err(error) = trade_publisher.publish_trade_event(&raw_event).await {
+                            tracing::warn!(
+                                trade_id = %trade_id,
+                                market_event_id = %market.event_id,
+                                error = %error,
+                                "failed_to_publish_sell_trade_to_relays"
+                            );
+                        }
+                    }
 
                     if let Some(request_id) = request_id {
                         if let Err(error) = state
@@ -5575,10 +5595,6 @@ fn build_trade_event(
         "sig": "",
         "tags": tags
     })
-}
-
-fn mint_pubkey_from_market(_event_id: &str, _side: &str) -> String {
-    std::env::var("MINT_NOSTR_PUBKEY").unwrap_or_else(|_| FALLBACK_MINT_PUBKEY.to_string())
 }
 
 fn request_auth_context(

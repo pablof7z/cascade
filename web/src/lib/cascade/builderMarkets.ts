@@ -20,6 +20,7 @@ export type BuilderCreatorMarket = {
   title: string;
   visibility: 'public' | 'pending';
   created_at: number;
+  rawEvent?: unknown;
 };
 
 export function mergeCreatorMarkets(
@@ -34,7 +35,8 @@ export function mergeCreatorMarkets(
       slug: market.slug,
       title: market.title,
       visibility: 'public',
-      created_at: market.createdAt
+      created_at: market.createdAt,
+      rawEvent: undefined
     });
   }
 
@@ -44,7 +46,8 @@ export function mergeCreatorMarkets(
       slug: market.slug,
       title: market.title,
       visibility: 'pending',
-      created_at: market.createdAt
+      created_at: market.createdAt,
+      rawEvent: market.rawEvent
     });
   }
 

@@ -4,8 +4,10 @@ use anyhow::{Context, Result};
 use cascade_api::{
     build_server,
     fx::{FxQuotePolicy, FxQuoteService},
+    nostr::TradePublisher,
     payment::UsdBolt11PaymentProcessor,
 };
+use bitcoin::secp256k1::SecretKey;
 use cascade_core::lightning::lnd_client::LndClient;
 use cascade_core::{
     db::CascadeDatabase, invoice::InvoiceService, market_manager::MarketManager,
@@ -21,6 +23,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use sha2::{Digest, Sha256};
 
 /// Load seed from file or generate a new one.
 /// Supports raw hex (32 bytes) or BIP-39 mnemonic.
@@ -86,6 +89,22 @@ fn load_or_generate_seed(path: &str) -> Result<[u8; 32]> {
     Ok(result)
 }
 
+fn derive_nostr_secret_key(seed: &[u8; 32]) -> Result<SecretKey> {
+    for counter in 0u8..=u8::MAX {
+        let mut hasher = Sha256::new();
+        hasher.update(b"cascade-mint-nostr-v1");
+        hasher.update(seed);
+        hasher.update([counter]);
+        let candidate = hasher.finalize();
+
+        if let Ok(secret_key) = SecretKey::from_slice(&candidate) {
+            return Ok(secret_key);
+        }
+    }
+
+    anyhow::bail!("failed_to_derive_mint_nostr_secret_key");
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // 1. Initialize logging
@@ -115,6 +134,19 @@ async fn main() -> Result<()> {
     // 4. Load or generate master seed
     let seed = load_or_generate_seed(&config.seed.path)?;
     tracing::info!("Seed loaded successfully");
+
+    let nostr_secret_key =
+        derive_nostr_secret_key(&seed).context("Failed to derive mint Nostr key")?;
+    let trade_publisher = Arc::new(
+        TradePublisher::new(
+            config.nostr.relays.clone(),
+            nostr_secret_key,
+            config.nostr.publish_timeout_ms,
+        )
+        .map_err(|error| anyhow::anyhow!("Failed to initialize trade publisher: {error}"))?,
+    );
+    let mint_nostr_pubkey = trade_publisher.public_key_hex();
+    tracing::info!("Mint Nostr pubkey: {}", mint_nostr_pubkey);
 
     // 5. Initialize CDK SQLite database
     let cdk_db = MintSqliteDatabase::new(config.database.path.as_str())
@@ -276,6 +308,8 @@ async fn main() -> Result<()> {
         cascade_db,
         &config.network.network_type,
         &config.mint.url,
+        Some(trade_publisher),
+        mint_nostr_pubkey,
     )
     .await
     .map_err(|e| anyhow::anyhow!("Failed to build HTTP server: {}", e))?;

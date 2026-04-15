@@ -153,14 +153,10 @@ Standard-first backend rule:
 
 Actor metadata such as thesis, role, or operator notes is not mint state and should not live in mint tables. The mint only needs market, quote, settlement, and proof data.
 
-Public `/market/:slug` reads should use the mint's public market-detail endpoint as the
-authoritative post-seed visibility gate, then hydrate the page with relay content. That avoids
-landing on a `404` while relay `983` propagation catches up after the first trade.
-
-The mint does not serve a separate pending-market projection. The first trade for a market triggers
-lazy LMSR pool initialization and publishes the first kind `983` to relays; public market detail
-reads can confirm that post-seed state through the mint's market-detail endpoint while the
-frontend continues to use relay content for the market event, discussion, and trade hydration.
+Public `/market/:slug` reads are relay-only. Anonymous reads stay `404` until relays have both
+the kind `982` market event and at least one mint-authored kind `983`. Creator-only pending
+visibility remains in builder and other creator-aware flows rather than a mint-side pending-market
+endpoint.
 
 Edition boundaries (signet vs mainnet) are enforced at the mint level through separate runtime instances. The frontend must connect to the correct mint for the correct edition.
 
@@ -249,7 +245,10 @@ The current mint runtime uses the local `lncli` binary as the concrete LND adapt
 
 ## Nostr Publishing
 
-After every market trade, the backend publishes a kind `983` event to Nostr relays using the market mint's own Nostr keypair.
+After every market trade, the backend signs and publishes a kind `983` event to the configured
+Nostr relays using the market mint's own Nostr keypair. Public market visibility depends on that
+publication: the first seed trade makes `/market/:slug` readable once relays have both the kind
+`982` market event and the first kind `983`.
 
 This is the public audit trail. Anyone subscribed to kind `983` events for a given market can reconstruct the trading history.
 

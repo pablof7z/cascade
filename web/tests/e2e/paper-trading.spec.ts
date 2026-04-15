@@ -308,26 +308,8 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   await expect(tradedPositionRow).toBeVisible();
   await expect(tradedPositionRow.getByText('Mark only')).toHaveCount(0);
 
-  const marketDetailPattern = `**/api/product/markets/slug/${market.slug}`;
-  await page.route(marketDetailPattern, async (route) => {
-    await route.fulfill({
-      status: 503,
-      contentType: 'application/json',
-      body: JSON.stringify({ error: 'market_detail_unavailable' })
-    });
-  });
-
   await page.reload();
   await ensureLoggedIn(page, creatorSecret);
-  const unavailablePriceRow = page
-    .locator('.position-row')
-    .filter({ hasText: market.title })
-    .filter({ hasText: 'SHORT' })
-    .first();
-  await expect(unavailablePriceRow).toBeVisible();
-  await expect(unavailablePriceRow.getByText('Price unavailable')).toBeVisible();
-  await expect(unavailablePriceRow.getByText('Mark only')).toBeVisible();
-  await page.unroute(marketDetailPattern);
 
   const injectedLocalPosition = await page.evaluate(({ slug }) => {
     const usdKey = Object.keys(localStorage).find(
@@ -361,11 +343,16 @@ test('funded portfolio users can create a market, buy the other side, and withdr
 
   await page.reload();
   await ensureLoggedIn(page, creatorSecret);
-  await expect(
-    page.getByText(
-      'Derived from local market positions, the browser-local trade book, and current public market prices.'
+  await expect
+    .poll(
+      async () =>
+        await page.evaluate(({ slug }) => {
+          const lowerKey = Object.keys(localStorage).find((key) => key.endsWith(`:long_${slug}`));
+          return Boolean(lowerKey);
+        }, { slug: market.slug }),
+      { timeout: 45_000 }
     )
-  ).toBeVisible();
+    .toBe(true);
 
   const migratedLocalPosition = await page.evaluate(({ slug }) => {
     const upperKey = Object.keys(localStorage).find((key) => key.endsWith(`:LONG_${slug}`));
@@ -398,7 +385,7 @@ test('funded portfolio users can create a market, buy the other side, and withdr
     .filter({ hasText: market.title })
     .filter({ hasText: 'LONG' })
     .first();
-  await expect(localPositionRow).toBeVisible();
+  await expect(localPositionRow).toBeVisible({ timeout: 45_000 });
   await expect(localPositionRow.getByText('Mark only')).toBeVisible();
 });
 

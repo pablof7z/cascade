@@ -1,5 +1,10 @@
 # Authentication & Identity
 
+PENDING: the current `/join` and account-entry UI is being rewritten to keep signer transport and
+key-management details behind product-language labels. Normal visible copy should describe device
+setup, recovery, and app pairing without surfacing extension names, connection URIs, or raw
+public-key identifiers.
+
 ## Model: Nostr Keypairs
 
 There are no traditional user accounts on Cascade. No usernames. No passwords. No email addresses. No server-side user database.

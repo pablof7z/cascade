@@ -42,6 +42,8 @@ pub struct MintConfig {
     pub stripe: StripeSettings,
     #[serde(default)]
     pub usdc: UsdcSettings,
+    #[serde(default)]
+    pub nostr: NostrSettings,
     pub network: NetworkSettings,
     pub server: ServerSettings,
     pub fees: FeeSettings,
@@ -144,6 +146,14 @@ pub struct UsdcSettings {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct NostrSettings {
+    #[serde(default = "default_nostr_relays")]
+    pub relays: Vec<String>,
+    #[serde(default = "default_nostr_publish_timeout_ms")]
+    pub publish_timeout_ms: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ServerSettings {
     pub host: String,
     pub port: u16,
@@ -234,6 +244,18 @@ fn default_usdc_asset() -> String {
 
 fn default_usdc_deposit_intent_expiry_seconds() -> u64 {
     24 * 60 * 60
+}
+
+fn default_nostr_relays() -> Vec<String> {
+    vec![
+        "wss://relay.damus.io".to_string(),
+        "wss://purplepag.es".to_string(),
+        "wss://relay.primal.net".to_string(),
+    ]
+}
+
+fn default_nostr_publish_timeout_ms() -> u64 {
+    5_000
 }
 
 impl MintConfig {
@@ -518,6 +540,7 @@ impl Default for MintConfig {
             fx: FxSettings::default(),
             stripe: StripeSettings::default(),
             usdc: UsdcSettings::default(),
+            nostr: NostrSettings::default(),
             network: NetworkSettings {
                 network_type: "testnet".to_string(),
             },
@@ -594,6 +617,15 @@ impl Default for UsdcSettings {
             asset: default_usdc_asset(),
             treasury_address: String::new(),
             deposit_intent_expiry_seconds: default_usdc_deposit_intent_expiry_seconds(),
+        }
+    }
+}
+
+impl Default for NostrSettings {
+    fn default() -> Self {
+        Self {
+            relays: default_nostr_relays(),
+            publish_timeout_ms: default_nostr_publish_timeout_ms(),
         }
     }
 }

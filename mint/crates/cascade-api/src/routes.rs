@@ -12,6 +12,7 @@ use tokio::sync::{Mutex, RwLock};
 
 use crate::fx::FxQuoteService;
 use crate::handlers::{self, price, product};
+use crate::nostr::TradePublisher;
 use crate::stripe::StripeGateway;
 use crate::usdc::UsdcWallet;
 use cascade_core::{db::CascadeDatabase, invoice::InvoiceService, MarketManager};
@@ -44,6 +45,10 @@ pub struct AppState {
     pub network_type: String,
     /// Canonical public mint URL for this runtime.
     pub mint_url: String,
+    /// Optional Nostr trade publisher for mint-authored kind 983 events.
+    pub trade_publisher: Option<Arc<TradePublisher>>,
+    /// Mint Nostr pubkey used in kind 983 payloads.
+    pub mint_nostr_pubkey: String,
     /// Serialize market bootstrap so slug uniqueness checks stay authoritative.
     pub market_bootstrap_lock: Arc<Mutex<()>>,
 }
@@ -60,6 +65,8 @@ impl AppState {
         paper_mode: bool,
         network_type: String,
         mint_url: String,
+        trade_publisher: Option<Arc<TradePublisher>>,
+        mint_nostr_pubkey: String,
     ) -> Self {
         Self {
             market_manager,
@@ -75,6 +82,8 @@ impl AppState {
             paper_mode,
             network_type,
             mint_url,
+            trade_publisher,
+            mint_nostr_pubkey,
             market_bootstrap_lock: Arc::new(Mutex::new(())),
         }
     }
@@ -102,6 +111,10 @@ impl AppState {
             paper_mode: true,
             network_type: "signet".to_string(),
             mint_url: "http://127.0.0.1:0".to_string(),
+            trade_publisher: None,
+            mint_nostr_pubkey:
+                "4b6e51d4d8d057f0dcbe67f2be22849f1889291d1ea2ef85f8c1ef4efb0616fb"
+                    .to_string(),
             market_bootstrap_lock: Arc::new(Mutex::new(())),
         }
     }

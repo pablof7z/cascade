@@ -53,23 +53,6 @@ export type ProductPortfolioFundingRequestStatus = {
   funding?: ProductPortfolioFunding | null;
 };
 
-export type ProductRuntimeRail = {
-  available: boolean;
-  reason?: string | null;
-};
-
-export type ProductRuntime = {
-  edition: 'mainnet' | 'signet' | string;
-  network: string;
-  mint_url: string;
-  proof_custody: string;
-  funding: {
-    lightning: ProductRuntimeRail;
-    stripe: ProductRuntimeRail;
-    usdc?: ProductRuntimeRail;
-  };
-};
-
 export type ProductMarketSummary = {
   event_id: string;
   slug: string;
@@ -178,32 +161,6 @@ export type ProductTradeStatus = {
   settlement?: ProductTradeSettlement | null;
 };
 
-export type ProductMarketDetail = {
-  market: ProductMarketSummary;
-  trades: ProductTradeEvent[];
-};
-
-export type ProductFeed = {
-  markets: Array<{
-    raw_event?: ProductTradeEvent;
-  } | ProductTradeEvent>;
-  trades: ProductTradeEvent[];
-  next_market_offset?: number | null;
-  next_trade_offset?: number | null;
-};
-
-export type ProductActivityItem = {
-  kind: 'market' | 'trade' | string;
-  created_at: number;
-  market: ProductMarketSummary;
-  trade?: ProductTradeEvent | null;
-};
-
-export type ProductActivity = {
-  items: ProductActivityItem[];
-  next_offset?: number | null;
-};
-
 export type ProductTradeRequestStatus = {
   request_id: string;
   status: string;
@@ -226,64 +183,6 @@ function productFetch(path: string, init?: RequestInit): Promise<Response> {
     ...init,
     cache: init?.cache ?? 'no-store',
     headers: init?.headers
-  });
-}
-
-export async function fetchProductRuntime(): Promise<Response> {
-  return productFetch('/api/product/runtime');
-}
-
-export async function fetchProductFeed(input?: {
-  marketLimit?: number;
-  marketOffset?: number;
-  tradeLimit?: number;
-  tradeOffset?: number;
-}): Promise<Response> {
-  const params = new URLSearchParams();
-  if (typeof input?.marketLimit === 'number') {
-    params.set('market_limit', String(input.marketLimit));
-  }
-  if (typeof input?.marketOffset === 'number') {
-    params.set('market_offset', String(input.marketOffset));
-  }
-  if (typeof input?.tradeLimit === 'number') {
-    params.set('trade_limit', String(input.tradeLimit));
-  }
-  if (typeof input?.tradeOffset === 'number') {
-    params.set('trade_offset', String(input.tradeOffset));
-  }
-
-  const query = params.size > 0 ? `?${params.toString()}` : '';
-  return productFetch(`/api/product/feed${query}`);
-}
-
-export async function fetchMarketDetailBySlug(slug: string): Promise<Response> {
-  return productFetch(`/api/product/markets/slug/${encodeURIComponent(slug)}`);
-}
-
-export async function createProductMarket(input: {
-  eventId: string;
-  title: string;
-  description: string;
-  slug: string;
-  body: string;
-  creatorPubkey: string;
-  rawEvent: unknown;
-  b: number;
-}): Promise<Response> {
-  return productFetch('/api/product/markets', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      event_id: input.eventId,
-      title: input.title,
-      description: input.description,
-      slug: input.slug,
-      body: input.body,
-      creator_pubkey: input.creatorPubkey,
-      raw_event: input.rawEvent,
-      b: input.b
-    })
   });
 }
 

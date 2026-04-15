@@ -3,22 +3,19 @@
   import { goto } from '$app/navigation';
   import {
     buyMarketPosition,
-    createProductMarket,
     extractTradeBlindSignatureBundles,
-    fetchProductFeed,
     fetchTradeQuoteStatus,
     quoteBuyTrade,
     fetchTradeRequestStatus,
     fetchTradeStatus,
     hasCompletedTradeSettlement,
     parseJson,
-    type ProductMarketSummary,
     type ProductTradeQuote,
     type ProductTradeExecution,
     type ProductTradeRequestStatus,
     type ProductTradeStatus
   } from '$lib/cascade/api';
-  import { NDKEvent, type NostrEvent } from '@nostr-dev-kit/ndk';
+  import { NDKEvent, type NDKKind, type NostrEvent } from '@nostr-dev-kit/ndk';
   import { formatUsdMinor } from '$lib/cascade/format';
   import { getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
   import { normalizeProductTradeSide } from '$lib/cascade/tradeSide';
@@ -39,8 +36,8 @@
     type AuthoredCreatorMarket
   } from '$lib/cascade/builderMarkets';
   import { buildMarketEventTags } from '$lib/cascade/marketEventTags';
-  import { ndk } from '$lib/ndk/client';
-  import { parseMarketEvent, type MarketRecord } from '$lib/ndk/cascade';
+  import { ensureClientNdk, ndk } from '$lib/ndk/client';
+  import { parseMarketEvent, parseTradeEvent, type MarketRecord } from '$lib/ndk/cascade';
   import {
     addLocalProofs,
     localProofBalance,
@@ -53,6 +50,7 @@
     unblindPreparedOutputs
   } from '$lib/wallet/cashuMint';
   import { applyLocalPositionTradeFromPayload } from '$lib/wallet/localPositionBook';
+  import type { PageProps } from './$types';
 
   type DraftLink = {
     id: string;
@@ -72,6 +70,7 @@
   const publicMarketRoutePollMs = 500;
   const publicMarketRouteTimeoutMs = 15_000;
 
+  let { data }: PageProps = $props();
   const currentUser = $derived(ndk.$currentUser);
 
   let step = $state<Step>(0);
@@ -88,7 +87,6 @@
   let seedAmount = $state('10000');
   let seedSide = $state<'long' | 'short'>('long');
   let pendingCreatorMarkets = $state<PendingCreatorMarketRecord[]>([]);
-  let publicReferenceMarkets = $state<MarketRecord[]>([]);
 
   const steps = [
     { label: 'Claim' },
@@ -129,6 +127,44 @@
   const creatorMarketFeed = ndk.$subscribe(() => {
     if (!browser || !paperEdition || !currentUser) return undefined;
     return { filters: [{ kinds: [982], authors: [currentUser.pubkey], limit: 200 }] };
+  });
+
+  const publicMarketFeed = ndk.$subscribe(() => {
+    if (!browser || !paperEdition) return undefined;
+    return { filters: [{ kinds: [982], limit: 240 }] };
+  });
+
+  const publicTradeFeed = ndk.$subscribe(() => {
+    if (!browser || !paperEdition) return undefined;
+    return { filters: [{ kinds: [983], limit: 480 }] };
+  });
+
+  const seededPublicMarketIds = $derived.by(() => {
+    return new Set((data.markets ?? []).map((event) => event.id).filter(Boolean));
+  });
+
+  const publicTradeMarketIds = $derived.by(() => {
+    const ids = new Set<string>();
+    for (const event of publicTradeFeed.events) {
+      const trade = parseTradeEvent(event.rawEvent());
+      if (trade?.marketId) ids.add(trade.marketId);
+    }
+    return ids;
+  });
+
+  const publicReferenceMarkets = $derived.by(() => {
+    const merged = mergeRawEvents(data.markets ?? [], [
+      ...publicMarketFeed.events,
+      ...creatorMarketFeed.events
+    ]);
+
+    return merged
+      .map(parseMarketEvent)
+      .filter((market): market is MarketRecord => Boolean(market))
+      .filter(
+        (market) => seededPublicMarketIds.has(market.id) || publicTradeMarketIds.has(market.id)
+      )
+      .sort((left, right) => right.createdAt - left.createdAt);
   });
 
   const publicCreatorMarketIds = $derived.by(() => {
@@ -243,6 +279,70 @@
     pendingCreatorMarkets = currentUser ? listPendingCreatorMarkets(currentUser.pubkey) : [];
   }
 
+  function isSignedMarketRawEvent(candidate: unknown, eventId: string): candidate is NostrEvent {
+    return (
+      typeof candidate === 'object' &&
+      candidate !== null &&
+      'id' in candidate &&
+      'kind' in candidate &&
+      (candidate as { id?: unknown }).id === eventId &&
+      (candidate as { kind?: unknown }).kind === 982
+    );
+  }
+
+  async function resolveBootstrapRawEvent(
+    eventId: string,
+    slug: string,
+    rawEvent?: unknown
+  ): Promise<NostrEvent | undefined> {
+    if (isSignedMarketRawEvent(rawEvent, eventId)) {
+      return rawEvent;
+    }
+
+    if (currentUser) {
+      const pendingRawEvent = listPendingCreatorMarkets(currentUser.pubkey).find(
+        (market) => market.eventId === eventId
+      )?.rawEvent;
+      if (isSignedMarketRawEvent(pendingRawEvent, eventId)) {
+        return pendingRawEvent;
+      }
+    }
+
+    const feedMatch = creatorMarketFeed.events
+      .map((event) => event.rawEvent() as NostrEvent)
+      .find((event) => event.id === eventId);
+    if (feedMatch) return feedMatch;
+
+    try {
+      await ensureClientNdk();
+      const directMatch = await ndk.fetchEvents(
+        { kinds: [982 as NDKKind], ids: [eventId], limit: 1 },
+        { closeOnEose: true }
+      );
+      const directRawEvent = Array.from(directMatch)
+        .map((event) => event.rawEvent() as NostrEvent)
+        .find((event) => event.id === eventId);
+      if (directRawEvent) return directRawEvent;
+
+      const authoredMatch = await ndk.fetchEvents(
+        {
+          kinds: [982 as NDKKind],
+          '#d': [slug],
+          authors: currentUser ? [currentUser.pubkey] : undefined,
+          limit: 12
+        },
+        { closeOnEose: true }
+      );
+      return (
+        Array.from(authoredMatch)
+          .map((event) => event.rawEvent() as NostrEvent)
+          .find((event) => event.id === eventId || parseMarketEvent(event)?.slug === slug) ?? undefined
+      );
+    } catch {
+      return undefined;
+    }
+  }
+
   function marketUnitForSide(marketSlug: string, side: 'long' | 'short'): string {
     return side === 'long' ? `long_${marketSlug}` : `short_${marketSlug}`;
   }
@@ -293,7 +393,7 @@
     return `${eventId}-${Date.now()}`;
   }
 
-  async function seedPendingMarket(eventId: string, slug: string) {
+  async function seedPendingMarket(eventId: string, slug: string, rawEvent?: unknown) {
     if (!currentUser) {
       errorMessage = 'Sign in before seeding a market.';
       return;
@@ -319,11 +419,16 @@
 
       builderStatus = `Seeding ${seedSide.toUpperCase()} with ${formatUsdMinor(parsedSeedAmount)}.`;
       const requestId = createSeedRequestId(eventId);
+      const bootstrapEvent = await resolveBootstrapRawEvent(eventId, slug, rawEvent);
+      if (!bootstrapEvent) {
+        throw new Error('Signed market event unavailable. Retry seeding after relay publication completes.');
+      }
 
       const quoteResponse = await quoteBuyTrade({
         eventId,
         side: seedSide,
-        spendMinor: parsedSeedAmount
+        spendMinor: parsedSeedAmount,
+        rawEvent: bootstrapEvent
       });
       const quote = await parseJson<ProductTradeQuote>(
         quoteResponse,
@@ -369,6 +474,7 @@
         pubkey: currentUser.pubkey,
         side: tradeSide,
         spendMinor: quote.spend_minor,
+        rawEvent: bootstrapEvent,
         proofs: spendProofs,
         issuedOutputs,
         changeOutputs,
@@ -452,46 +558,23 @@
       }
 
       await marketEvent.sign();
+      builderStatus = 'Publishing market to relays.';
+      await marketEvent.publish();
       const rawEvent = marketEvent.rawEvent();
       const eventId = rawEvent.id || marketEvent.id;
       if (!eventId) {
         throw new Error('Published market is missing an event id.');
       }
 
-      builderStatus = 'Market published. Creating the market.';
-      const created = await createProductMarket({
+      trackPendingCreatorMarket({
         eventId,
-        title: title.trim(),
-        description: description.trim(),
+        pubkey: currentUser.pubkey,
         slug,
-        body: body.trim(),
-        creatorPubkey: currentUser.pubkey,
+        title: title.trim(),
+        createdAt: rawEvent.created_at ?? Math.floor(Date.now() / 1000),
         rawEvent,
-        b: 10
       });
-
-      let createdMarket: ProductMarketSummary | null = null;
-      if (created.ok) {
-        createdMarket = (await created.json()) as ProductMarketSummary;
-      } else if (created.status !== 409) {
-        const payload = (await created.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error || 'Failed to create market.');
-      }
-
-      if (createdMarket && createdMarket.visibility !== 'public') {
-        trackPendingCreatorMarket({
-          eventId: createdMarket.event_id,
-          pubkey: currentUser.pubkey,
-          slug: createdMarket.slug,
-          title: createdMarket.title,
-          createdAt: createdMarket.created_at
-        });
-        refreshPendingCreatorMarkets();
-      }
-
-      void marketEvent.publish().catch((error) => {
-        console.warn('Best-effort market publish failed in signet mode', error);
-      });
+      refreshPendingCreatorMarkets();
 
       const availableMinor = availableLocalUsdMinor();
       if (availableMinor < parsedSeedAmount) {
@@ -500,7 +583,7 @@
         return;
       }
 
-      await seedPendingMarket(eventId, slug);
+      await seedPendingMarket(eventId, slug, rawEvent);
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : 'Failed to publish market.';
     } finally {
@@ -508,16 +591,6 @@
         saving = false;
       }
     }
-  }
-
-  async function loadPublicReferenceMarkets() {
-    if (!browser) return;
-    const response = await fetchProductFeed({ marketLimit: 200, tradeLimit: 0 });
-    if (!response.ok) return;
-    const payload = (await response.json()) as { markets?: NostrEvent[] };
-    publicReferenceMarkets = (payload.markets ?? [])
-      .map(parseMarketEvent)
-      .filter((market): market is MarketRecord => Boolean(market));
   }
 
   async function reconcileSeedRequests() {
@@ -662,8 +735,23 @@
 
   $effect(() => {
     if (!browser || !paperEdition) return;
-    void loadPublicReferenceMarkets();
+    refreshPendingCreatorMarkets();
   });
+
+  function mergeRawEvents(seed: NostrEvent[], live: NDKEvent[]): NostrEvent[] {
+    const map = new Map<string, NostrEvent>();
+
+    for (const event of live) {
+      const raw = event.rawEvent() as NostrEvent;
+      if (raw.id) map.set(raw.id, raw);
+    }
+
+    for (const event of seed) {
+      if (event.id && !map.has(event.id)) map.set(event.id, event);
+    }
+
+    return [...map.values()];
+  }
 </script>
 
 <section class="builder-page">
@@ -852,11 +940,18 @@
             <div class="builder-launch-grid">
               <label class="builder-field">
                 <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Initial funding</span>
-                <input class="input input-bordered" bind:value={seedAmount} min="100" step="100" type="number" />
+                <input
+                  aria-label="Initial funding"
+                  class="input input-bordered"
+                  bind:value={seedAmount}
+                  min="100"
+                  step="100"
+                  type="number"
+                />
               </label>
               <label class="builder-field">
                 <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Your position</span>
-                <select class="select select-bordered" bind:value={seedSide}>
+                <select aria-label="Your position" class="select select-bordered" bind:value={seedSide}>
                   <option value="long">LONG</option>
                   <option value="short">SHORT</option>
                 </select>
@@ -894,7 +989,7 @@
                 {#if market.visibility === 'public'}
                   <a class="btn btn-outline" href={`/market/${market.slug}`}>Open market</a>
                 {:else}
-                  <button class="btn btn-outline" disabled={saving || parsedSeedAmount <= 0} onclick={() => void seedPendingMarket(market.event_id, market.slug)} type="button">
+                  <button class="btn btn-outline" disabled={saving || parsedSeedAmount <= 0} onclick={() => void seedPendingMarket(market.event_id, market.slug, market.rawEvent)} type="button">
                     Seed now
                   </button>
                   <a class="btn btn-outline" href="/portfolio">Fund portfolio</a>

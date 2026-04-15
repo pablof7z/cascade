@@ -340,6 +340,8 @@ async fn create_product_test_context_with_invoice_service(
         cascade_db.clone(),
         network_type,
         "http://127.0.0.1:0",
+        None,
+        "4b6e51d4d8d057f0dcbe67f2be22849f1889291d1ea2ef85f8c1ef4efb0616fb".to_string(),
     )
     .await
     .unwrap();
@@ -754,53 +756,49 @@ fn proof_amount_total(proofs: &[Proof]) -> u64 {
     proofs.iter().map(|proof| proof.amount.to_u64()).sum()
 }
 
-async fn create_public_market_with_seed(
+async fn bootstrap_market_for_trading(
     client: &reqwest::Client,
     url: &str,
-    creator: &str,
     event_id: &str,
-    slug: &str,
-    title: &str,
-    description: &str,
     raw_event: Value,
     spend_minor: u64,
 ) -> serde_json::Value {
-    let create_response = client
-        .post(format!("{url}/api/product/markets"))
-        .json(&json!({
-            "event_id": event_id,
-            "title": title,
-            "description": description,
-            "slug": slug,
-            "body": format!("{title} body"),
-            "creator_pubkey": creator,
-            "raw_event": raw_event,
-            "b": 10.0
-        }))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(create_response.status(), 201);
-
-    let funding_proofs: Vec<Proof> = serde_json::from_value(
-        create_signet_funding_and_get_proofs(client, url, creator, 10_000).await,
-    )
-    .unwrap();
-    let usd_keyset = fetch_active_usd_keyset(client, url).await;
-    let market_keyset = fetch_market_keyset(client, url, event_id, "long").await;
-
     let quote_response = client
         .post(format!("{url}/api/trades/quote"))
         .json(&json!({
             "event_id": event_id,
             "side": "long",
-            "spend_minor": spend_minor
+            "spend_minor": spend_minor,
+            "raw_event": raw_event
         }))
         .send()
         .await
         .unwrap();
-    assert_eq!(quote_response.status(), 200);
+    let quote_status = quote_response.status();
     let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
+    assert_eq!(quote_status, 200, "quote payload: {quote_payload}");
+    quote_payload
+}
+
+async fn create_public_market_with_seed(
+    client: &reqwest::Client,
+    url: &str,
+    creator: &str,
+    event_id: &str,
+    _slug: &str,
+    _title: &str,
+    _description: &str,
+    raw_event: Value,
+    spend_minor: u64,
+) -> serde_json::Value {
+    let funding_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_funding_and_get_proofs(client, url, creator, 10_000).await,
+    )
+    .unwrap();
+    let quote_payload =
+        bootstrap_market_for_trading(client, url, event_id, raw_event.clone(), spend_minor).await;
+    let usd_keyset = fetch_active_usd_keyset(client, url).await;
+    let market_keyset = fetch_market_keyset(client, url, event_id, "long").await;
 
     let (issued_outputs, _) = prepare_outputs(
         &market_keyset,
@@ -821,6 +819,8 @@ async fn create_public_market_with_seed(
             "pubkey": creator,
             "side": "long",
             "spend_minor": spend_minor,
+            "raw_event": raw_event,
+            "quote_id": quote_payload["quote_id"].as_str(),
             "proofs": funding_proofs,
             "issued_outputs": issued_outputs,
             "change_outputs": change_outputs
@@ -1256,16 +1256,66 @@ async fn test_content_type_header() {
 }
 
 #[tokio::test]
-async fn test_pending_market_stays_private_until_first_trade() {
+async fn test_market_bootstrap_requires_raw_event_and_legacy_pending_routes_are_absent() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();
     let creator_secret = secret_key_from_byte(1);
     let creator = pubkey_from_secret_key(&creator_secret);
-    let viewer_secret = secret_key_from_byte(2);
     let event_id = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     let slug = "pending-market";
+    let raw_event = sample_market_event(event_id, slug, &creator);
 
-    let create_response = client
+    let quote_response = client
+        .post(format!("{url}/api/trades/quote"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "side": "long",
+            "spend_minor": 2_000,
+            "raw_event": raw_event
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(
+        quote_response.status(),
+        200,
+        "quote response should bootstrap the market when raw_event is provided"
+    );
+    let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
+    assert_eq!(quote_payload["market_event_id"].as_str(), Some(event_id));
+
+    let replay_quote_response = client
+        .post(format!("{url}/api/trades/quote"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "side": "long",
+            "spend_minor": 2_000
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(replay_quote_response.status(), 200);
+
+    let keyset_response = client
+        .get(format!("{url}/{event_id}/v1/keys"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(keyset_response.status(), 200);
+
+    let missing_raw_event_response = client
+        .post(format!("{url}/api/trades/quote"))
+        .json(&serde_json::json!({
+            "event_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "side": "long",
+            "spend_minor": 2_000
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(missing_raw_event_response.status(), 404);
+
+    let legacy_create_response = client
         .post(format!("{url}/api/product/markets"))
         .json(&serde_json::json!({
             "event_id": event_id,
@@ -1280,25 +1330,7 @@ async fn test_pending_market_stays_private_until_first_trade() {
         .send()
         .await
         .unwrap();
-
-    assert_eq!(create_response.status(), 201);
-    let created: serde_json::Value = create_response.json().await.unwrap();
-    assert_eq!(
-        created.get("visibility").and_then(|value| value.as_str()),
-        Some("pending")
-    );
-
-    let feed_response = client
-        .get(format!("{url}/api/product/feed"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(feed_response.status(), 200);
-    let feed_payload: serde_json::Value = feed_response.json().await.unwrap();
-    assert_eq!(
-        feed_payload["markets"].as_array().map(|items| items.len()),
-        Some(0)
-    );
+    assert_eq!(legacy_create_response.status(), 404);
 
     let pending_detail_url = format!("{url}/api/product/markets/{event_id}/pending/{creator}");
     let pending_detail_response = client
@@ -1310,41 +1342,14 @@ async fn test_pending_market_stays_private_until_first_trade() {
         .send()
         .await
         .unwrap();
-    assert_eq!(pending_detail_response.status(), 200);
-    let pending_detail_payload: serde_json::Value = pending_detail_response.json().await.unwrap();
-    assert_eq!(
-        pending_detail_payload["market"]["visibility"].as_str(),
-        Some("pending")
-    );
-    assert_eq!(
-        pending_detail_payload["trades"]
-            .as_array()
-            .map(|items| items.len()),
-        Some(0)
-    );
-
-    let forbidden_pending_detail_response = client
-        .get(&pending_detail_url)
-        .header(
-            "authorization",
-            nip98_authorization_header(&viewer_secret, &Method::GET, &pending_detail_url),
-        )
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(forbidden_pending_detail_response.status(), 401);
-
-    let anonymous_pending_detail_response = client.get(&pending_detail_url).send().await.unwrap();
-    assert_eq!(anonymous_pending_detail_response.status(), 401);
+    assert_eq!(pending_detail_response.status(), 404);
 }
 
 #[tokio::test]
-async fn test_product_read_models_support_pagination_search_and_activity_without_pending_leaks() {
+async fn test_legacy_product_read_model_routes_are_absent() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();
     let macro_creator = "1111111111111111111111111111111111111111111111111111111111111111";
-    let ai_creator = "2222222222222222222222222222222222222222222222222222222222222222";
-    let pending_creator = "3333333333333333333333333333333333333333333333333333333333333333";
 
     create_public_market_with_seed(
         &client,
@@ -1366,52 +1371,6 @@ async fn test_product_read_models_support_pagination_search_and_activity_without
     )
     .await;
 
-    create_public_market_with_seed(
-        &client,
-        &url,
-        ai_creator,
-        "5555555555555555555555555555555555555555555555555555555555555555",
-        "ai-chip-cycle",
-        "AI Chip Cycle",
-        "AI market",
-        sample_market_event_with_metadata(
-            "5555555555555555555555555555555555555555555555555555555555555555",
-            "ai-chip-cycle",
-            ai_creator,
-            "AI Chip Cycle",
-            "AI market",
-            &[json!(["t", "ai"]), json!(["c", "chips"])],
-        ),
-        4_500,
-    )
-    .await;
-
-    let pending_event_id = "6666666666666666666666666666666666666666666666666666666666666666";
-    let pending_slug = "hidden-pending";
-    let pending_create_response = client
-        .post(format!("{url}/api/product/markets"))
-        .json(&json!({
-            "event_id": pending_event_id,
-            "title": "Hidden Pending",
-            "description": "Should stay private",
-            "slug": pending_slug,
-            "body": "pending",
-            "creator_pubkey": pending_creator,
-            "raw_event": sample_market_event_with_metadata(
-                pending_event_id,
-                pending_slug,
-                pending_creator,
-                "Hidden Pending",
-                "Should stay private",
-                &[json!(["t", "macro"])]
-            ),
-            "b": 10.0
-        }))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(pending_create_response.status(), 201);
-
     let feed_response = client
         .get(format!(
             "{url}/api/product/feed?market_limit=1&market_offset=0&trade_limit=1&trade_offset=0"
@@ -1419,87 +1378,21 @@ async fn test_product_read_models_support_pagination_search_and_activity_without
         .send()
         .await
         .unwrap();
-    assert_eq!(feed_response.status(), 200);
-    let feed_payload: serde_json::Value = feed_response.json().await.unwrap();
-    assert_eq!(
-        feed_payload["markets"].as_array().map(|items| items.len()),
-        Some(1)
-    );
-    assert_eq!(
-        feed_payload["trades"].as_array().map(|items| items.len()),
-        Some(1)
-    );
-    assert_eq!(feed_payload["next_market_offset"].as_u64(), Some(1));
-    assert_eq!(feed_payload["next_trade_offset"].as_u64(), Some(1));
+    assert_eq!(feed_response.status(), 404);
 
     let search_response = client
         .get(format!("{url}/api/product/markets/search?q=macro&limit=10"))
         .send()
         .await
         .unwrap();
-    assert_eq!(search_response.status(), 200);
-    let search_payload: serde_json::Value = search_response.json().await.unwrap();
-    assert_eq!(
-        search_payload["markets"]
-            .as_array()
-            .map(|items| items.len()),
-        Some(1)
-    );
-    assert_eq!(
-        search_payload["markets"][0]["slug"].as_str(),
-        Some("macro-shock")
-    );
-
-    let hidden_search_response = client
-        .get(format!(
-            "{url}/api/product/markets/search?q=hidden&limit=10"
-        ))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(hidden_search_response.status(), 200);
-    let hidden_search_payload: serde_json::Value = hidden_search_response.json().await.unwrap();
-    assert_eq!(
-        hidden_search_payload["markets"]
-            .as_array()
-            .map(|items| items.len()),
-        Some(0)
-    );
+    assert_eq!(search_response.status(), 404);
 
     let activity_response = client
         .get(format!("{url}/api/product/activity?limit=2&offset=0"))
         .send()
         .await
         .unwrap();
-    assert_eq!(activity_response.status(), 200);
-    let activity_payload: serde_json::Value = activity_response.json().await.unwrap();
-    assert_eq!(
-        activity_payload["items"]
-            .as_array()
-            .map(|items| items.len()),
-        Some(2)
-    );
-    assert_eq!(activity_payload["next_offset"].as_u64(), Some(2));
-    assert!(activity_payload["items"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .all(|item| item["market"]["event_id"].as_str() != Some(pending_event_id)));
-
-    let activity_page_two_response = client
-        .get(format!("{url}/api/product/activity?limit=2&offset=2"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(activity_page_two_response.status(), 200);
-    let activity_page_two_payload: serde_json::Value =
-        activity_page_two_response.json().await.unwrap();
-    assert_eq!(
-        activity_page_two_payload["items"]
-            .as_array()
-            .map(|items| items.len()),
-        Some(2)
-    );
+    assert_eq!(activity_response.status(), 404);
 }
 
 #[tokio::test]
@@ -1509,42 +1402,16 @@ async fn test_paper_wallet_buy_and_sell_flow() {
     let creator = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
     let event_id = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
     let slug = "paper-flow-market";
-
-    client
-        .post(format!("{url}/api/product/markets"))
-        .json(&serde_json::json!({
-            "event_id": event_id,
-            "title": "Paper Flow Market",
-            "description": "Exercise the signet paper flow",
-            "slug": slug,
-            "body": "Paper body",
-            "creator_pubkey": creator,
-            "raw_event": sample_market_event(event_id, slug, creator),
-            "b": 10.0
-        }))
-        .send()
-        .await
-        .unwrap();
+    let raw_event = sample_market_event(event_id, slug, creator);
 
     let funding_proofs: Vec<Proof> = serde_json::from_value(
         create_signet_funding_and_get_proofs(&client, &url, creator, 10_000).await,
     )
     .unwrap();
+    let buy_quote_payload =
+        bootstrap_market_for_trading(&client, &url, event_id, raw_event.clone(), 8_000).await;
     let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
     let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
-
-    let buy_quote_response = client
-        .post(format!("{url}/api/trades/quote"))
-        .json(&serde_json::json!({
-            "event_id": event_id,
-            "side": "long",
-            "spend_minor": 8000
-        }))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(buy_quote_response.status(), 200);
-    let buy_quote_payload: serde_json::Value = buy_quote_response.json().await.unwrap();
     let (issued_outputs, issued_pre_mint) = prepare_outputs(
         &market_keyset,
         buy_quote_payload["quantity_minor"].as_u64().unwrap(),
@@ -1563,6 +1430,8 @@ async fn test_paper_wallet_buy_and_sell_flow() {
             "pubkey": creator,
             "side": "long",
             "spend_minor": 8000,
+            "raw_event": raw_event,
+            "quote_id": buy_quote_payload["quote_id"].as_str(),
             "proofs": funding_proofs,
             "issued_outputs": issued_outputs,
             "change_outputs": change_outputs
@@ -1621,15 +1490,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .send()
         .await
         .unwrap();
-    let feed_payload: serde_json::Value = feed_response.json().await.unwrap();
-    assert_eq!(
-        feed_payload["markets"].as_array().map(|items| items.len()),
-        Some(1)
-    );
-    assert_eq!(
-        feed_payload["trades"].as_array().map(|items| items.len()),
-        Some(1)
-    );
+    assert_eq!(feed_response.status(), 404);
 
     let sell_quote_response = client
         .post(format!("{url}/api/trades/sell/quote"))
@@ -1819,12 +1680,7 @@ async fn test_paper_wallet_buy_and_sell_flow() {
         .send()
         .await
         .unwrap();
-    assert_eq!(detail_response.status(), 200);
-    let detail_payload: serde_json::Value = detail_response.json().await.unwrap();
-    assert_eq!(
-        detail_payload["trades"].as_array().map(|items| items.len()),
-        Some(2)
-    );
+    assert_eq!(detail_response.status(), 404);
 }
 
 #[tokio::test]
@@ -1834,40 +1690,15 @@ async fn test_coordinator_trade_routes_and_status() {
     let creator = "1212121212121212121212121212121212121212121212121212121212121212";
     let event_id = "3434343434343434343434343434343434343434343434343434343434343434";
     let slug = "coordinator-trade-market";
-
-    client
-        .post(format!("{url}/api/product/markets"))
-        .json(&serde_json::json!({
-            "event_id": event_id,
-            "title": "Coordinator Trade Market",
-            "description": "Exercise coordinator routes",
-            "slug": slug,
-            "body": "Coordinator body",
-            "creator_pubkey": creator,
-            "raw_event": sample_market_event(event_id, slug, creator),
-            "b": 10.0
-        }))
-        .send()
-        .await
-        .unwrap();
+    let raw_event = sample_market_event(event_id, slug, creator);
 
     let funding_proofs: Vec<Proof> = serde_json::from_value(
         create_signet_funding_and_get_proofs(&client, &url, creator, 10_000).await,
     )
     .unwrap();
 
-    let quote_response = client
-        .post(format!("{url}/api/trades/quote"))
-        .json(&serde_json::json!({
-            "event_id": event_id,
-            "side": "long",
-            "spend_minor": 4000
-        }))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(quote_response.status(), 200);
-    let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
+    let quote_payload =
+        bootstrap_market_for_trading(&client, &url, event_id, raw_event.clone(), 4_000).await;
     assert_eq!(quote_payload["trade_type"].as_str(), Some("buy"));
     assert!(quote_payload["quantity"].as_f64().unwrap() > 0.0);
     assert_eq!(quote_payload["settlement_minor"].as_u64(), Some(4000));
@@ -1940,6 +1771,7 @@ async fn test_coordinator_trade_routes_and_status() {
             "side": "long",
             "spend_minor": 4000,
             "quote_id": buy_quote_id,
+            "raw_event": raw_event,
             "proofs": funding_proofs,
             "issued_outputs": issued_outputs,
             "change_outputs": change_outputs
@@ -2169,14 +2001,6 @@ async fn test_signet_lightning_funding_quote_auto_pays_after_status_poll() {
     let issued_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["ISSUED"]).await;
     assert_eq!(issued_quote["state"].as_str(), Some("ISSUED"));
 
-    let funding_status_response = client
-        .get(format!("{url}/api/portfolio/funding/{quote_id}"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(funding_status_response.status(), 200);
-    let funding_status_payload: serde_json::Value = funding_status_response.json().await.unwrap();
-    assert_eq!(funding_status_payload["status"].as_str(), Some("complete"));
 }
 
 #[tokio::test]
@@ -2324,7 +2148,7 @@ async fn test_standard_bolt11_melt_routes_pay_invoice() {
 }
 
 #[tokio::test]
-async fn test_runtime_reports_actual_edition_and_funding_rails() {
+async fn test_runtime_route_is_absent() {
     let url = create_product_test_server().await;
     let client = reqwest::Client::new();
 
@@ -2334,27 +2158,7 @@ async fn test_runtime_reports_actual_edition_and_funding_rails() {
         .await
         .unwrap();
 
-    assert_eq!(response.status(), 200);
-    let payload: serde_json::Value = response.json().await.unwrap();
-    assert_eq!(payload["edition"].as_str(), Some("signet"));
-    assert_eq!(payload["network"].as_str(), Some("signet"));
-    assert_eq!(payload["proof_custody"].as_str(), Some("browser_local"));
-    assert_eq!(
-        payload["funding"]["lightning"]["available"].as_bool(),
-        Some(true)
-    );
-    assert_eq!(
-        payload["funding"]["stripe"]["available"].as_bool(),
-        Some(false)
-    );
-    assert_eq!(
-        payload["funding"]["usdc"]["available"].as_bool(),
-        Some(false)
-    );
-    assert_eq!(
-        payload["funding"]["usdc"]["reason"].as_str(),
-        Some("usdc_mainnet_only")
-    );
+    assert_eq!(response.status(), 404);
 }
 
 #[tokio::test]
@@ -2398,19 +2202,6 @@ async fn test_lightning_funding_request_id_is_idempotent() {
     assert_eq!(second_payload["quote"].as_str(), Some(quote_id.as_str()));
     assert_eq!(second_payload["request"].as_str(), Some(invoice.as_str()));
     assert_eq!(second_payload["state"].as_str(), Some("UNPAID"));
-
-    let request_status_response = client
-        .get(format!("{url}/api/portfolio/funding/requests/{request_id}"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(request_status_response.status(), 200);
-    let request_status_payload: serde_json::Value = request_status_response.json().await.unwrap();
-    assert_eq!(request_status_payload["status"].as_str(), Some("complete"));
-    assert_eq!(
-        request_status_payload["funding"]["id"].as_str(),
-        Some(quote_id.as_str())
-    );
 
     invoice_service
         .lock()
@@ -2515,7 +2306,7 @@ async fn test_stripe_funding_completes_from_webhook() {
     let request_id = "stripe-funding-request-1";
 
     let create_response = client
-        .post(format!("{url}/api/portfolio/funding/stripe"))
+        .post(format!("{url}/v1/fund/stripe"))
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount_minor": 4200,
@@ -2541,7 +2332,7 @@ async fn test_stripe_funding_completes_from_webhook() {
     assert!(create_payload["fx_quote_id"].is_null());
 
     let request_status_response = client
-        .get(format!("{url}/api/portfolio/funding/requests/{request_id}"))
+        .get(format!("{url}/v1/fund/stripe/requests/{request_id}"))
         .send()
         .await
         .unwrap();
@@ -2574,7 +2365,7 @@ async fn test_stripe_funding_completes_from_webhook() {
     let signature = stripe_signature(webhook_secret, &event_body, timestamp);
 
     let webhook_response = client
-        .post(format!("{url}/api/portfolio/funding/stripe/webhook"))
+        .post(format!("{url}/v1/fund/stripe/webhook"))
         .header("stripe-signature", signature)
         .header("content-type", "application/json")
         .body(event_body)
@@ -2584,7 +2375,7 @@ async fn test_stripe_funding_completes_from_webhook() {
     assert_eq!(webhook_response.status(), 200);
 
     let funding_status_response = client
-        .get(format!("{url}/api/portfolio/funding/{funding_id}"))
+        .get(format!("{url}/v1/fund/stripe/{funding_id}"))
         .send()
         .await
         .unwrap();
@@ -2617,7 +2408,7 @@ async fn test_stripe_funding_completes_from_webhook() {
     assert_eq!(issued_quote["state"].as_str(), Some("ISSUED"));
 
     let completed_funding_status_response = client
-        .get(format!("{url}/api/portfolio/funding/{funding_id}"))
+        .get(format!("{url}/v1/fund/stripe/{funding_id}"))
         .send()
         .await
         .unwrap();
@@ -2654,7 +2445,7 @@ async fn test_stripe_funding_moves_to_review_required_for_high_risk() {
     let pubkey = "1111111111111111111111111111111111111111111111111111111111111111";
 
     let create_response = client
-        .post(format!("{url}/api/portfolio/funding/stripe"))
+        .post(format!("{url}/v1/fund/stripe"))
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount_minor": 4200
@@ -2687,7 +2478,7 @@ async fn test_stripe_funding_moves_to_review_required_for_high_risk() {
     let signature = stripe_signature(webhook_secret, &event_body, timestamp);
 
     let webhook_response = client
-        .post(format!("{url}/api/portfolio/funding/stripe/webhook"))
+        .post(format!("{url}/v1/fund/stripe/webhook"))
         .header("stripe-signature", signature)
         .header("content-type", "application/json")
         .body(event_body)
@@ -2699,7 +2490,7 @@ async fn test_stripe_funding_moves_to_review_required_for_high_risk() {
     assert_eq!(webhook_payload["status"].as_str(), Some("review_required"));
 
     let funding_status_response = client
-        .get(format!("{url}/api/portfolio/funding/{funding_id}"))
+        .get(format!("{url}/v1/fund/stripe/{funding_id}"))
         .send()
         .await
         .unwrap();
@@ -2981,22 +2772,7 @@ async fn test_trade_execution_requires_input_proofs() {
     let creator = "abababababababababababababababababababababababababababababababab";
     let event_id = "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd";
     let slug = "proof-required-market";
-
-    client
-        .post(format!("{url}/api/product/markets"))
-        .json(&serde_json::json!({
-            "event_id": event_id,
-            "title": "Proof Required Market",
-            "description": "Trade execution must require input proofs",
-            "slug": slug,
-            "body": "Proof-required body",
-            "creator_pubkey": creator,
-            "raw_event": sample_market_event(event_id, slug, creator),
-            "b": 10.0
-        }))
-        .send()
-        .await
-        .unwrap();
+    let raw_event = sample_market_event(event_id, slug, creator);
 
     let buy_response = client
         .post(format!("{url}/api/trades/buy"))
@@ -3004,7 +2780,8 @@ async fn test_trade_execution_requires_input_proofs() {
             "event_id": event_id,
             "pubkey": creator,
             "side": "long",
-            "spend_minor": 4000
+            "spend_minor": 4000,
+            "raw_event": raw_event.clone()
         }))
         .send()
         .await
@@ -3012,6 +2789,19 @@ async fn test_trade_execution_requires_input_proofs() {
     assert_eq!(buy_response.status(), 400);
     let buy_payload: serde_json::Value = buy_response.json().await.unwrap();
     assert_eq!(buy_payload["error"].as_str(), Some("input_proofs_required"));
+
+    let bootstrap_quote_response = client
+        .post(format!("{url}/api/trades/quote"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "side": "long",
+            "spend_minor": 4000,
+            "raw_event": raw_event
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(bootstrap_quote_response.status(), 200);
 
     let sell_response = client
         .post(format!("{url}/api/trades/sell"))
@@ -3040,41 +2830,16 @@ async fn test_trade_request_id_is_idempotent() {
     let event_id = "7878787878787878787878787878787878787878787878787878787878787878";
     let slug = "trade-request-idempotency-market";
     let request_id = "req-buy-idempotent-1";
-
-    client
-        .post(format!("{url}/api/product/markets"))
-        .json(&serde_json::json!({
-            "event_id": event_id,
-            "title": "Trade Request Idempotency Market",
-            "description": "Ensure duplicate request ids do not double execute",
-            "slug": slug,
-            "body": "Trade request idempotency body",
-            "creator_pubkey": creator,
-            "raw_event": sample_market_event(event_id, slug, creator),
-            "b": 10.0
-        }))
-        .send()
-        .await
-        .unwrap();
+    let raw_event = sample_market_event(event_id, slug, creator);
 
     let funding_proofs: Vec<Proof> = serde_json::from_value(
         create_signet_funding_and_get_proofs(&client, &url, creator, 10_000).await,
     )
     .unwrap();
     let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
+    let buy_quote_payload =
+        bootstrap_market_for_trading(&client, &url, event_id, raw_event.clone(), 4_000).await;
     let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
-    let buy_quote_response = client
-        .post(format!("{url}/api/trades/quote"))
-        .json(&serde_json::json!({
-            "event_id": event_id,
-            "side": "long",
-            "spend_minor": 4000
-        }))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(buy_quote_response.status(), 200);
-    let buy_quote_payload: serde_json::Value = buy_quote_response.json().await.unwrap();
     let (issued_outputs, _issued_pre_mint) = prepare_outputs(
         &market_keyset,
         buy_quote_payload["quantity_minor"].as_u64().unwrap(),
@@ -3094,6 +2859,8 @@ async fn test_trade_request_id_is_idempotent() {
             "side": "long",
             "spend_minor": 4000,
             "request_id": request_id,
+            "raw_event": raw_event,
+            "quote_id": buy_quote_payload["quote_id"].as_str(),
             "proofs": funding_proofs.clone(),
             "issued_outputs": issued_outputs,
             "change_outputs": change_outputs
@@ -3159,12 +2926,7 @@ async fn test_trade_request_id_is_idempotent() {
         .send()
         .await
         .unwrap();
-    assert_eq!(detail_response.status(), 200);
-    let detail_payload: serde_json::Value = detail_response.json().await.unwrap();
-    assert_eq!(
-        detail_payload["trades"].as_array().map(|items| items.len()),
-        Some(1)
-    );
+    assert_eq!(detail_response.status(), 404);
 }
 
 #[tokio::test]
@@ -3177,36 +2939,11 @@ async fn test_trade_request_replays_buy_after_pre_issuance_checkpoint() {
     let slug = "trade-request-buy-restart-replay";
     let request_id = "req-buy-restart-replay-1";
     let trade_id = "trade-buy-restart-replay-1";
+    let raw_event = sample_market_event(event_id, slug, creator);
 
-    client
-        .post(format!("{url}/api/product/markets"))
-        .json(&serde_json::json!({
-            "event_id": event_id,
-            "title": "Trade Request Buy Restart Replay Market",
-            "description": "Replay a persisted buy request after a pre-issuance checkpoint",
-            "slug": slug,
-            "body": "Trade request restart replay body",
-            "creator_pubkey": creator,
-            "raw_event": sample_market_event(event_id, slug, creator),
-            "b": 10.0
-        }))
-        .send()
-        .await
-        .unwrap();
-
+    let buy_quote_payload =
+        bootstrap_market_for_trading(&client, &url, event_id, raw_event, 4_000).await;
     let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
-    let buy_quote_response = client
-        .post(format!("{url}/api/trades/quote"))
-        .json(&serde_json::json!({
-            "event_id": event_id,
-            "side": "long",
-            "spend_minor": 4000
-        }))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(buy_quote_response.status(), 200);
-    let buy_quote_payload: serde_json::Value = buy_quote_response.json().await.unwrap();
     let buy_quote: cascade_api::types::ProductTradeQuoteResponse =
         serde_json::from_value(buy_quote_payload).unwrap();
     let (issued_outputs, _issued_pre_mint) = prepare_outputs(
@@ -3317,6 +3054,7 @@ async fn test_trade_request_replays_buy_after_pre_issuance_checkpoint() {
         pubkey: creator.to_string(),
         side: "long".to_string(),
         spend_minor: 4000,
+        raw_event: None,
         proofs: Vec::new(),
         issued_outputs: Vec::new(),
         change_outputs: Vec::new(),

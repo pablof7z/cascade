@@ -2,18 +2,19 @@
   import { browser } from '$app/environment';
   import {
     createStripeFunding,
-    fetchMarketDetailBySlug,
     fetchPortfolioFundingRequestStatus,
     fetchPortfolioFundingStatus,
-    fetchProductRuntime,
     parseJson,
-    type ProductMarketDetail,
     type ProductProof,
-    type ProductRuntime,
     type ProductPortfolioFunding,
     type ProductPortfolioFundingRequestStatus
   } from '$lib/cascade/api';
-  import { getProductApiUrl, isPaperEdition, isStripeFundingEnabled } from '$lib/cascade/config';
+  import {
+    getCascadeClientRuntime,
+    getProductApiUrl,
+    isPaperEdition,
+    isStripeFundingEnabled
+  } from '$lib/cascade/config';
   import { formatUsdMinor } from '$lib/cascade/format';
   import { quantityToShareMinor, shareMinorToQuantity } from '$lib/cascade/shares';
   import {
@@ -30,6 +31,7 @@
   import type { LocalFundingHistoryRecord } from '$lib/cascade/recovery';
   import { ndk } from '$lib/ndk/client';
   import { formatProbability } from '$lib/ndk/cascade';
+  import { fetchPublicMarketSnapshotBySlug } from '$lib/ndk/publicMarkets';
   import {
     checkUsdLightningMintQuote,
     createUsdLightningMintQuote,
@@ -76,11 +78,10 @@
   const proofUnit = 'usd';
   const signetFundingSingleLimitMinor = 10000;
   const signetFundingWindowLimitMinor = 25000;
+  const runtime = getCascadeClientRuntime();
 
-  let runtime = $state<ProductRuntime | null>(null);
   let loading = $state(false);
   let errorMessage = $state('');
-  let runtimeNotice = $state('');
   let status = $state('');
   let fundingAmount = $state(paperEdition ? '10000' : '2500');
   let localBalanceMinor = $state(0);
@@ -178,23 +179,18 @@
             : null;
 
         try {
-          const response = await fetchMarketDetailBySlug(entry.slug);
-          if (!response.ok) {
-            throw new Error('market_detail_unavailable');
-          }
+          const payload = await fetchPublicMarketSnapshotBySlug(entry.slug);
+          if (!payload) throw new Error('market_detail_unavailable');
 
-          const payload = await parseJson<ProductMarketDetail>(
-            response,
-            'Failed to load current market pricing.'
-          );
+          const yesPricePpm = payload.yesPricePpm;
           const currentPricePpm =
             entry.direction === 'long'
-              ? payload.market.price_yes_ppm
-              : payload.market.price_no_ppm;
+              ? yesPricePpm
+              : 1_000_000 - yesPricePpm;
           const marketValueMinor = Math.floor((entry.quantity * currentPricePpm) / 1_000_000);
 
           return {
-            market_event_id: payload.market.event_id,
+            market_event_id: payload.market.id,
             market_slug: payload.market.slug,
             market_title: payload.market.title,
             direction: entry.direction,
@@ -237,33 +233,12 @@
   const usingLocalPositionMarks = $derived(localPositions.length > 0);
   const displayedPositionValueMinor = $derived(localPositionValueMinor);
   const displayedTotalValueMinor = $derived(localBalanceMinor + displayedPositionValueMinor);
-  const expectedEdition = paperEdition ? 'signet' : 'mainnet';
-  const runtimeEditionMismatch = $derived(
-    runtime !== null && runtime.edition !== expectedEdition
-  );
-  const lightningFundingAvailable = $derived(
-    runtime !== null && !runtimeEditionMismatch && runtime.funding.lightning.available
-  );
+  const lightningFundingAvailable = $derived(runtime.funding.lightning.available);
   const stripeFundingAvailable = $derived(
-    stripeFundingEnabled &&
-      runtime !== null &&
-      !runtimeEditionMismatch &&
-      runtime.funding.stripe.available
+    stripeFundingEnabled && runtime.funding.stripe.available
   );
-
-  function runtimeMismatchMessage(actualEdition: string): string {
-    return `This ${portfolioLabel} is pointed at a ${actualEdition} server. Funding and trading stay disabled until the API target is corrected.`;
-  }
 
   function railUnavailableMessage(rail: 'lightning' | 'stripe'): string {
-    if (!runtime) {
-      return 'Funding unavailable. Check your connection and try again.';
-    }
-
-    if (runtimeEditionMismatch) {
-      return runtimeMismatchMessage(runtime.edition);
-    }
-
     const configuredReason =
       rail === 'stripe' ? runtime.funding.stripe.reason : runtime.funding.lightning.reason;
     if (configuredReason === 'stripe_fundings_unavailable') {
@@ -276,25 +251,6 @@
     return rail === 'stripe'
       ? 'Stripe funding is unavailable for this edition right now.'
       : 'Lightning funding is unavailable for this edition right now.';
-  }
-
-  async function loadRuntime() {
-    runtimeNotice = '';
-
-    try {
-      const response = await fetchProductRuntime();
-      const nextRuntime = await parseJson<ProductRuntime>(response, 'Failed to load portfolio runtime.');
-      runtime = nextRuntime;
-      if (nextRuntime.edition !== expectedEdition) {
-        runtimeNotice = runtimeMismatchMessage(nextRuntime.edition);
-      }
-    } catch (error) {
-      runtime = null;
-      runtimeNotice =
-        error instanceof Error
-          ? error.message
-          : 'Failed to load the portfolio runtime manifest.';
-    }
   }
 
   async function refreshPortfolioView() {
@@ -527,8 +483,7 @@
   }
 
   async function refreshPendingFundings() {
-    if (!runtime || runtimeEditionMismatch) {
-      errorMessage = railUnavailableMessage('lightning');
+    if (!currentUser) {
       return;
     }
 
@@ -538,7 +493,7 @@
   }
 
   async function reconcilePendingFundings() {
-    if (!currentUser || !runtime || runtimeEditionMismatch) return;
+    if (!currentUser) return;
 
     const trackedFundings = listPendingFundings(currentUser.pubkey);
     if (!trackedFundings.length) return;
@@ -770,11 +725,10 @@
     if (!browser) return;
     refreshLocalProofSummary();
     refreshLocalFundingState();
-    void loadRuntime();
   });
 
   $effect(() => {
-    if (!browser || !currentUser || !runtime) return;
+    if (!browser || !currentUser) return;
     void (async () => {
       await refreshPortfolioView();
       await reconcilePendingFundings();
@@ -782,7 +736,7 @@
   });
 
   $effect(() => {
-    if (!browser || !currentUser || !runtime || runtimeEditionMismatch) return;
+    if (!browser || !currentUser) return;
 
     const interval = window.setInterval(() => {
       void reconcilePendingFundings();
@@ -801,9 +755,6 @@
       position value is marked from public market prices, and exact sell proceeds can differ based
       on trade size.
     </p>
-    {#if runtimeNotice}
-      <p class="muted">{runtimeNotice}</p>
-    {/if}
   </header>
 
   {#if !currentUser}
@@ -852,9 +803,9 @@
               per funding request and {formatUsdMinor(signetFundingWindowLimitMinor)} per 24 hours.
             {/if}
           </p>
-          {#if !runtimeNotice && runtime && !runtime.funding.lightning.available}
+          {#if !runtime.funding.lightning.available}
             <p class="muted">{railUnavailableMessage('lightning')}</p>
-          {:else if stripeFundingEnabled && runtime && !runtime.funding.stripe.available}
+          {:else if stripeFundingEnabled && !runtime.funding.stripe.available}
             <p class="muted">{railUnavailableMessage('stripe')}</p>
           {/if}
         </div>

@@ -5,6 +5,22 @@ const LEGACY_MAINNET_MINT = 'https://mint.cascade.market';
 
 export type CascadeEdition = 'mainnet' | 'signet';
 
+export type CascadeFundingRailAvailability = {
+  available: boolean;
+  reason?: string | null;
+};
+
+export type CascadeClientRuntime = {
+  edition: CascadeEdition;
+  network: CascadeEdition;
+  mintUrl: string;
+  proofCustody: 'browser-local';
+  funding: {
+    lightning: CascadeFundingRailAvailability;
+    stripe: CascadeFundingRailAvailability;
+  };
+};
+
 export function getCascadeEdition(): CascadeEdition {
   const raw = env.PUBLIC_CASCADE_EDITION?.toLowerCase();
   return raw === 'signet' || raw === 'paper' ? 'signet' : 'mainnet';
@@ -53,6 +69,22 @@ export function isStripeFundingEnabled(): boolean {
     env.PUBLIC_CASCADE_ENABLE_STRIPE_FUNDING === 'true' ||
     env.PUBLIC_CASCADE_ENABLE_STRIPE_TOPUPS === 'true'
   );
+}
+
+export function getCascadeClientRuntime(): CascadeClientRuntime {
+  const edition = getCascadeEdition();
+  return {
+    edition,
+    network: edition,
+    mintUrl: getProductApiUrl(),
+    proofCustody: 'browser-local',
+    funding: {
+      lightning: { available: true },
+      stripe: isStripeFundingEnabled()
+        ? { available: true }
+        : { available: false, reason: 'stripe_fundings_unavailable' }
+    }
+  };
 }
 
 export function storageKey(base: string): string {

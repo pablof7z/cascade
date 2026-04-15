@@ -77,16 +77,9 @@ Launch does not require:
 - No mock data in production.
 - No Nostr jargon in user-facing UI.
 
-> PENDING: remove the remaining mint-side market publish/read routes from the actual implementation:
-> `POST /api/market/create`, `GET /api/market/{id}`, `GET /api/market/{id}/price-history`,
-> `GET /api/product/feed`, `GET /api/product/activity`, `GET /api/product/runtime`,
-> `GET /api/product/markets/search`, `GET /api/product/markets/slug/{slug}`,
-> `GET /api/product/markets/{event_id}/pending/{creator_pubkey}`, and
-> `POST /api/product/markets`.
-> The launch flow should match this plan literally: relay publication happens in the client, relay
-> reads power public discovery/detail views, build-time config replaces the runtime manifest, and
-> the first seed-trade quote/buy carries the signed kind `982` when the mint has not seen the
-> market yet.
+The launch flow is relay-first: client publication creates kind `982`, relay reads power public
+discovery and detail views, build-time edition config replaces the runtime manifest, and the first
+seed-trade quote/buy carries the signed kind `982` when the mint has not seen the market yet.
 
 ## Route Inventory And Disposition
 

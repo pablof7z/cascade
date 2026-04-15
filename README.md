@@ -3,7 +3,7 @@
 Repository layout:
 
 - `web/` - active Svelte 5 + SvelteKit frontend under construction.
-- `webapp/` - failed earlier Svelte migration kept only as legacy reference material.
+- failed `webapp/` migration removed from the repo; historical frontend context lives in `docs/archive/`.
 - `mint/` - Rust mint workspace and deployment assets.
 - `docs/` - product, technical, and business documentation.
 

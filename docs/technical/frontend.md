@@ -4,7 +4,7 @@
 
 The active frontend implementation lives in `web/`.
 
-`webapp/` is a failed earlier Svelte migration. It may still contain useful reference code or copy, but it is not the active app and should not be treated as the canonical frontend subtree.
+A failed earlier `webapp/` migration has been removed from the repo. Historical references may still appear in docs, but `web/` is the only frontend subtree that matters.
 
 ## Stack
 
@@ -314,7 +314,7 @@ Every local-storage key involved in wallet or portfolio state should be namespac
 
 NIP-60 is deferred. The current launch frontend should use browser-local proof storage for both signet and mainnet rather than a separate NIP-60 wallet implementation in one edition.
 
-The failed `webapp/` migration remains legacy implementation reference only, not the active architecture.
+The failed `webapp/` migration is historical context only, not an in-repo implementation dependency.
 
 ## No Mock Data
 

@@ -41,7 +41,7 @@ Cashu bearer model, optional NIP-98 request attribution, `983` `p`-tag semantics
 Complete reference for all Nostr event kinds used by Cascade. Includes full tag schemas for kinds 982 (market), 983 (trade), 1111 (discussions), 10003 (bookmarks), and 30078 (positions). Cascade does not use a market-resolution kind.
 
 ### [technical/frontend.md](technical/frontend.md)
-Frontend architecture for the active `web/` app, plus the distinction between the in-progress Svelte 5 implementation and the failed legacy `webapp/` migration.
+Frontend architecture for the active `web/` app, plus historical context from the removed legacy `webapp/` migration where relevant.
 
 ### [technical/backend.md](technical/backend.md)
 Backend architecture: Rust + PostgreSQL + LND. The mint as authoritative LMSR state. Architecture layers from HTTP API through LMSR engine to Lightning.

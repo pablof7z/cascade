@@ -33,6 +33,17 @@ dist-ssr
 .artifacts
 test-results
 .vercel
+.playwright-cli
+$AGENT_HOME/
+
+# Local UI capture artifacts accidentally written to repo root
+/*-final.yaml
+/playwright-*.yaml
+/builder-*.yaml
+/dashboard-*.yaml
+/leaderboard-*.yaml
+/wallet-*.yaml
+/wallet-*.png
 
 # Rust build artifacts (mint workspace)
 mint/target/

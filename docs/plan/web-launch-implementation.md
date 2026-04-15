@@ -30,7 +30,7 @@ Launch means:
 - all launch routes use real data and real mint/Nostr integrations rather than placeholder catalogs
 - all authenticated product actions execute through NIP-98-signed API endpoints
 - the agent onboarding path is functional through `/join` and `/SKILL.md`
-- discovery and search are API-backed projections over real event data
+- discovery and search are relay-based — the frontend queries relays directly for market and trade events
 - portfolio proofs remain self-custodied by the user or agent
 - portfolio and trading surfaces are dollar-denominated
 - portfolio funding runs through Stripe and Lightning
@@ -68,7 +68,7 @@ Launch does not require:
 - Discussion is append-only Nostr content under NIP-22-style semantics. There is no moderation, edit, or delete layer in the product.
 - Authenticated API endpoints use NIP-98.
 - Follow graph data comes from real kind `3` follow events.
-- Discovery and search can be served from API projections over relay data.
+- Discovery and search are relay-based. The frontend queries relays directly. There is no backend market data API.
 - Portfolio proofs are self-custodied. There is no canonical `/api/wallet` balance endpoint.
 - The browser Cashu client is pinned explicitly to a version compatible with the mint's active keyset-id derivation and standard mint/melt flow behavior.
 - The normal human product UI does not expose sats, msats, or Lightning invoices.
@@ -161,7 +161,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 ### Missing or wrong relative to the launch target
 
 - no market tab subroutes for discussion, charts, activity, or thread detail
-- no API-backed discovery/search layer yet defined in the app shell
+- no relay-based discovery/search layer yet wired in the app shell
 - current authenticated action flow is not yet locked to NIP-98-signed API calls
 - current public profile does not yet prove real follow-graph behavior from kind `3`
 - current public profile still lacks recent discussion activity and follow controls
@@ -204,13 +204,13 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 
 ## Workstream 3: Discovery And Search
 
-- [ ] Discovery and search are API-backed rather than relay-query UI hacks.
-- [ ] Homepage ranking cuts are served from a real discovery API over real market/discussion data.
+- [ ] Discovery and search are relay-based — the frontend queries relays directly for kind `982` and kind `983` events.
+- [ ] There is no backend API for market feeds, search, activity, or price history. Relays are the database.
+- [ ] Homepage ranking cuts are derived client-side from relay data (kind `982` market definitions + kind `983` trade events).
 - [ ] Public discovery excludes markets that do not yet have a mint-authored kind `983`.
-- [ ] Market search exists in the public product.
+- [ ] Market search exists in the public product, implemented as client-side filtering/ranking of relay-fetched market events.
 - [ ] Search supports query by market title, slug, creator identity, and relevant market text.
 - [ ] Search results use the same canonical market-card model as the homepage and link directly to market routes.
-- [ ] Search ranking can use server-side projections beyond what a raw relay query can do.
 - [ ] Empty search state is explicit and useful.
 
 ## Workstream 4: Market Detail And Market Tabs
@@ -508,7 +508,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 
 - [ ] Markets load from real kind `982` data and/or canonical server projections.
 - [ ] Discussions load from real kind `1111` data and/or canonical server projections.
-- [ ] Search and discovery are served by an API-backed projection layer over real event data.
+- [ ] Search and discovery are relay-based. The frontend queries relays directly for kind `982` and kind `983` events.
 - [ ] Bookmarks load from real bookmark state.
 - [ ] Positions load from the actual current position model.
 - [ ] Follow graph loads from real kind `3` data.
@@ -599,7 +599,7 @@ The launch plan is complete only when all of the following are true:
 - [ ] Agent onboarding through `/join` and `/SKILL.md` is coherent
 - [ ] Portfolio and trading flows function against the real mint
 - [ ] Authenticated write actions function through NIP-98-signed API endpoints
-- [ ] Discovery and search function through the API-backed data layer
+- [ ] Discovery and search function through relay queries — no backend market data API
 - [ ] Public profiles include real follow-graph behavior from kind `3`
 - [ ] Portfolio behavior is self-custodied and does not depend on a server wallet API
 - [ ] Template leftovers are removed or repurposed

@@ -67,28 +67,38 @@ HTTP API / product coordinator
 
 The backend exposes two classes of interface.
 
-### Low-Level Mint Interface
+### Cashu Mint Interface
 
-These are the Cashu-facing endpoints used by the wallet and by any Cashu-aware client:
+Standard NUT endpoints on the wallet mint and market mint:
 
-- standard NUT endpoints on the wallet mint
-- standard NUT endpoints on the market mint
+- standard NUT endpoints (`/v1/info`, `/v1/keys`, `/v1/keysets`, `/v1/swap`, `/v1/checkstate`, `/v1/restore`, `/v1/ws`)
+- BOLT11 mint/melt flows (`/v1/mint/quote/bolt11`, `/v1/mint/bolt11`, `/v1/melt/quote/bolt11`, `/v1/melt/bolt11`)
 - market-scoped key discovery: `GET /{event_id}/v1/keys`
-- custom `stripe` payment-method routes on the wallet mint
+- Stripe funding: `POST /v1/fund/stripe`, `POST /v1/fund/stripe/webhook`, `GET /v1/fund/stripe/{funding_id}` (Stripe is a funding rail — it lives on the mint, not a webapp)
+- blind auth NUT endpoints
+- health: `GET /health`
 
-### Product Interface
+### Product Trade Interface
 
-These are the higher-level routes `web/` and agents should normally use:
+Higher-level trade orchestration routes:
 
-- public discovery, analytics, profile, and discussion APIs
-- Stripe and Lightning funding initiation and status
-- spend-based trade quote and execute endpoints in USD
-- persisted trade status lookup by `trade_id`
-- authenticated product actions around market funding, trading, discussion, follows, and other state changes
+- trade quote and execution endpoints (`/api/trades/quote`, `/api/trades/buy`, `/api/trades/sell/quote`, `/api/trades/sell`)
+- trade status lookup (`/api/trades/{trade_id}`, `/api/trades/requests/{request_id}`)
+- FX preview (`/api/product/fx/lightning/{amount_minor}`)
 
 There is no mint-side registry of humans or agents at this boundary. A pubkey is just a pubkey.
 
-The worst sat-oriented route drift has been removed from `mint/crates/cascade-api/src/routes.rs`. The main remaining contract debt is the missing standard melt/payment-processor wiring, not old public trade aliases.
+### What The Backend Does NOT Serve
+
+The backend does not serve market discovery, search, activity feeds, price history, or any other data that belongs on relays. Specifically, there are no:
+
+- market feed or listing endpoints
+- market search endpoints
+- activity feed endpoints
+- price history endpoints
+- market detail endpoints (beyond what trade execution requires)
+
+Market definitions (kind `982`) and trade records (kind `983`) are authoritative on Nostr relays. The frontend queries relays directly for all market discovery and read surfaces.
 
 See [../mint/api.md](../mint/api.md) for the canonical machine-interface story.
 
@@ -143,9 +153,9 @@ Standard-first backend rule:
 
 Actor metadata such as thesis, role, or operator notes is not mint state and should not live in mint tables. The mint only needs market, quote, settlement, and proof data.
 
-Public market projections must exclude markets that do not yet have at least one mint-authored kind `983`. The first trade for a market triggers lazy LMSR pool initialization; only after that first kind `983` is the market publicly discoverable. There is no pre-registration step and no dedicated pending-state endpoint.
+The mint does not serve market discovery projections. Market visibility is a relay and frontend concern. The first trade for a market triggers lazy LMSR pool initialization and publishes the first kind `983` to relays; the frontend uses the presence of at least one kind `983` as the visibility signal. There is no pre-registration step and no dedicated pending-state endpoint on the mint.
 
-Projection keys and runtime configuration should also include the edition boundary so signet and mainnet discovery cannot mix.
+Edition boundaries (signet vs mainnet) are enforced at the mint level through separate runtime instances. The frontend must connect to the correct mint for the correct edition.
 
 ## FX Quote Policy
 
@@ -160,12 +170,7 @@ The `USD <-> msat` boundary should be implemented as a modular multi-provider qu
 
 ## Stripe Integration
 
-Stripe is a launch funding rail for the wallet mint.
-
-- user starts a dollar funding flow
-- backend creates the Stripe session or payment intent
-- Stripe webhook confirms completion
-- wallet mint marks the quote paid and issues USD ecash
+Stripe is a launch funding rail for the wallet mint. The mint holds the Stripe secret key, creates checkout sessions, and receives webhooks. There is no webapp backend in the Stripe funding path — it is architecturally identical to Lightning: the mint handles the money, the frontend handles the UX.
 
 Card payments are reversible, so launch needs explicit risk controls around freshly funded balances.
 
@@ -178,14 +183,15 @@ Because wallet proofs are browser-local bearer assets, the backend cannot safely
 
 The hosted Stripe flow should be:
 
-- client requests `POST /api/portfolio/funding/stripe` with `pubkey`, `amount_minor`, and optional `request_id`
-- backend persists the funding request before creating the Checkout Session
-- backend creates a hosted Checkout Session with funding identifiers in metadata
-- backend persists the Stripe funding record with rail `stripe` and pending status
+- client requests `POST /v1/fund/stripe` on the mint with `pubkey`, `amount_minor`, and optional `request_id`
+- mint persists the funding request before creating the Checkout Session
+- mint creates a hosted Checkout Session with funding identifiers in metadata
+- mint persists the Stripe funding record with rail `stripe` and pending status
 - browser redirects to the returned `checkout_url`
-- Stripe webhook is the authoritative completion path
+- Stripe webhook (`POST /v1/fund/stripe/webhook`) on the mint is the authoritative completion path
 - webhook fetches Stripe risk data, then either marks the quote paid for later browser minting or marks the funding request `review_required`
-- browser resumes by polling `GET /api/portfolio/funding/{funding_id}` or `GET /api/portfolio/funding/requests/{request_id}`
+- browser resumes by polling `GET /v1/fund/stripe/{funding_id}` on the mint
+- browser calls the standard mint blind-output issuance route to receive proofs
 
 Stripe must not introduce a separate balance ledger or a server-side proof issuance path. It terminates in the same browser-side blind-output issuance and recovery model already used by Lightning mint quotes.
 

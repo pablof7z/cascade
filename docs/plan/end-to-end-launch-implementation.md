@@ -67,20 +67,22 @@ Launch should prefer a small number of deployable services with clear logical mo
 
 ### Core Runtime
 
-- `product API / coordinator`
-- `wallet mint`
+- `product API / coordinator` (trade orchestration only — no market data serving)
+- `wallet mint` (includes Stripe funding: session creation, webhook, proof issuance)
 - `market mint`
 - `Nostr publisher`
-- `discovery projection and read API`
 - `background reconciliation worker`
+
+There is no `discovery projection and read API` module. Market discovery, search, activity feeds, and price history are relay concerns — the frontend queries relays directly.
 
 ### Supporting Modules
 
 - `FX quote module`
-- `Stripe webhook handler`
 - `Lightning integration`
 - `local proof manager in web`
 - no launch dependency on NIP-60
+
+Stripe is not a supporting module — it is part of the wallet mint. The mint holds the Stripe secret key, creates checkout sessions, and receives webhooks.
 
 ### Optional Supporting Modules
 
@@ -230,13 +232,14 @@ The preferred first implementation is one backend deployment with these modules,
 
 ### Scope
 
-- implement Stripe funding
+- implement Stripe funding directly on the wallet mint (the mint holds the Stripe secret key, creates checkout sessions, receives webhooks, and issues proofs)
 - implement Lightning funding
 - keep signet on the normal funding paths and the same standard mint-quote and mint routes as mainnet
+- there is no webapp backend involvement in any funding flow
 
 ### Deliverables
 
-- Stripe funding initiation and webhook completion
+- Stripe funding on the mint: `POST /v1/fund/stripe` creates a checkout session, `POST /v1/fund/stripe/webhook` receives Stripe events, `GET /v1/fund/stripe/{funding_id}` returns status, `POST /v1/mint/stripe` issues proofs
 - Lightning mint-quote and mint flow on standard Cashu NUT-23 endpoints backed by real CDK mint quote state
 - signet funding settlement that ends in edition-local Cashu proofs, not a pubkey-keyed server wallet ledger
 - one rail-agnostic funding recovery model shared by Stripe and Lightning
@@ -354,19 +357,20 @@ Launch should fail this gate if:
 - `POST /api/trades/buy`
 - `POST /api/trades/sell/quote`
 - `POST /api/trades/sell`
-- funding-status routes
-- pending market read route for creator flows
+- trade status endpoints (`GET /api/trades/{trade_id}`, `GET /api/trades/requests/{request_id}`)
+
+Funding-status routes live on the mint, not the coordinator. Pending market visibility is a relay concern: the frontend checks for the presence of at least one mint-authored kind `983`.
 
 ### Success Gates
 
 - `web/` and agents can trade in USD without handling Lightning directly
 - creator can publish kind `982`, fund later, and resume launch cleanly
-- public discovery excludes unfunded markets until the first mint-authored `983`
 
 ### Failure Gates
 
 - the coordinator leaks Lightning invoice mechanics into normal trade UX
 - creator funding and market launch are not resumable
+- the coordinator serves market data that belongs on relays
 
 ### Best Practices
 
@@ -374,38 +378,43 @@ Launch should fail this gate if:
 - keep quote IDs, trade IDs, and funding IDs stable and externally visible
 - make status endpoints the recovery contract
 
-## Milestone 7: Discovery, Projection, And Read APIs
+## Milestone 7: Relay-Based Discovery
 
 ### Scope
 
-- build public read models for homepage, search, market detail, activity, analytics, and profiles
-- enforce creator-only pending visibility
-- enforce edition boundaries in discovery
+- wire the frontend to query relays directly for all market discovery, search, activity, and detail surfaces
+- enforce visibility rules client-side: a market is public only when at least one mint-authored kind `983` exists
+- enforce edition boundaries by connecting to the correct relay/mint per edition
+- there is no backend API for market feeds, search, activity, or price history — relays are the database
 
 ### Deliverables
 
-- API-backed homepage cuts
-- market search
-- market detail projection
-- activity projection
-- edition-aware public discovery
+- frontend relay subscriptions for market feeds (kind `982` + kind `983`)
+- client-side visibility filtering: only show markets with at least one kind `983`
+- client-side market search (filter/rank kind `982` events from relay)
+- client-side activity feed (kind `983` events from relay)
+- client-side price history (derived from kind `983` trade events)
+- client-side market detail (kind `982` + aggregated kind `983` data)
+- edition-scoped relay connections (signet frontend connects to signet relay, mainnet to mainnet)
 
 ### Success Gates
 
 - a paper-trading market never appears in the mainnet app
 - an unfunded market never appears in public discovery
-- the creator can still read their own pending market
+- the creator can still read their own pending market (via relay query for their own kind `982`)
+- no market data passes through the mint backend — all reads come from relays
 
 ### Failure Gates
 
-- raw relay queries in the browser are still treated as canonical discovery
+- the frontend depends on a mint-hosted market feed, search, or activity API
+- the frontend maintains a local SQLite mirror or equivalent of relay data on the backend
 - discovery mixes signet and mainnet records
 
 ### Best Practices
 
-- projection keys should include edition as a first-class dimension
-- prefer append-only rebuildable projections
-- keep projection logic deterministic and backfillable
+- use NIP-01 relay subscriptions with appropriate filters
+- cache relay results client-side for responsiveness, but relays remain the source of truth
+- keep visibility logic (presence of kind `983`) as a simple client-side filter, not a backend projection
 
 ## Milestone 8: `web/` Integration
 
@@ -420,7 +429,7 @@ Launch should fail this gate if:
 - portfolio funding in the active app
 - buy/sell flows in USD
 - creator builder flow with pending visibility and resume
-- portfolio and activity views wired to real data
+- portfolio views wired to local proof state, activity views wired to relay data
 - environment banner or switcher
 - `/portfolio` is the canonical self-custodied account route and there is no `/wallet` route at launch
 
@@ -505,7 +514,7 @@ Launch should fail this gate if:
 - persist raw provider payload references for auditability
 - reject stale quotes aggressively
 - keep local proof storage namespaced by edition and mint URL
-- make every public market projection rebuildable from canonical sources
+- all market discovery and read surfaces derive from relay data — no backend mirror
 - add manual smoke scripts for signet and mainnet before every deploy
 - keep the first implementation modular, not over-distributed
 

@@ -122,6 +122,48 @@ The dashboard family is a later workspace product line. It should stay clearly s
 3. Portfolio derives spendable balance and position state locally.
 4. Imports and exports remain proof-native.
 
+## Architectural Boundaries
+
+### Stripe Is Mint Concern
+
+Stripe is a funding rail. Funding is mint concern. The mint holds the Stripe secret key, creates checkout sessions, and receives webhooks. There is no webapp backend involvement in funding flows.
+
+- The mint exposes Stripe session creation and webhook endpoints directly.
+- The browser redirects to Stripe and returns to the frontend.
+- The browser polls the mint for funding status and mints proofs from the mint.
+- No `/api/portfolio/funding/stripe` on a separate webapp. The mint IS the backend for funding.
+
+### No Market Data Mirror In The Mint
+
+The mint does not maintain a SQLite (or any) mirror of relay data for market discovery, search, activity feeds, or price history.
+
+- Market definitions (kind `982`) live on relays. The frontend reads them from relays.
+- Trade history (kind `983`) lives on relays. The frontend reads it from relays.
+- Search, activity feeds, and price history are relay queries or frontend-derived from relay data.
+- The mint database stores only what the mint needs for execution: LMSR state, keysets, proofs, quotes, funding state, trade settlement records, and risk/anti-abuse state.
+- There are no `/api/product/feed`, `/api/product/activity`, `/api/product/markets/search`, `/api/market/{id}`, or `/api/market/{id}/price-history` routes. Those concerns belong to relays and the frontend.
+- The only market state the mint exposes is what it needs for trade execution: current LMSR price (returned in trade quotes), market-scoped key discovery (`GET /{event_id}/v1/keys`), and the FX preview endpoint.
+
+### What The Mint Database Contains
+
+The mint database is restricted to execution state:
+
+- LMSR state per market (`qLong`, `qShort`, `b`, `reserve`)
+- Keyset-to-market mappings
+- Spent-proof tracking
+- Trade execution records (source of kind `983` publishing)
+- Wallet funding state (Stripe sessions, Lightning quotes, USDC intents)
+- FX quote snapshots
+- Settlement state (inter-mint Lightning records)
+- Risk/anti-abuse state
+
+It does NOT contain:
+
+- A copy of kind `982` market events for serving to clients
+- A copy of kind `983` trade events for serving to clients
+- Market metadata (titles, descriptions, slugs) beyond what LMSR execution requires
+- Activity feeds, search indexes, or price history projections
+
 ## Out Of Scope For Launch
 
 - any market expiry field
@@ -130,3 +172,4 @@ The dashboard family is a later workspace product line. It should stay clearly s
 - any server-held canonical wallet ledger
 - any separate human-versus-agent mechanics
 - any route or copy that treats `/wallet` as the main capital surface
+- any market data mirror or read API on the mint backend

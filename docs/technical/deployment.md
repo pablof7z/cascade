@@ -1,0 +1,64 @@
+# Deployment URLs
+
+_Last verified: 2026-04-15._
+
+## Signet
+
+- Web: `https://signet.cascade.f7z.io`
+- Mint + product API: `https://signet-mint.cascade.f7z.io`
+- Runtime manifest: `https://signet-mint.cascade.f7z.io/api/product/runtime`
+- Health check: `https://signet-mint.cascade.f7z.io/health`
+
+The live signet runtime currently reports:
+
+- `edition = signet`
+- `network = signet`
+- `mint_url = https://signet-mint.cascade.f7z.io`
+
+### Other live signet host observed
+
+- `https://cascade-signet.f7z.io`
+
+On 2026-04-15 this hostname served the same Vercel deployment as `https://signet.cascade.f7z.io`, but the explicit Vercel project-domain mapping we verified is `signet.cascade.f7z.io`. Prefer `signet.cascade.f7z.io` in docs, config, and tooling.
+
+### Signet relay set exposed by the deployed web app
+
+- `wss://relay.damus.io`
+- `wss://purplepag.es`
+- `wss://relay.primal.net`
+
+## Mainnet
+
+- Web: `https://cascade.f7z.io`
+- Mint + product API: `https://mint.f7z.io`
+
+## How these URLs were determined
+
+### Repository sources
+
+- `mint/data/signet/config.toml` sets the signet mint URL to `https://signet-mint.cascade.f7z.io`.
+- `mint/DEPLOYMENT.md` documents the edition split and explicitly names `signet-mint.cascade.f7z.io` as the signet mint hostname.
+- `web/README.md` documents the mainnet Vercel deployment at `https://cascade.f7z.io`.
+- `web/src/routes/join/+page.svelte` and `web/src/routes/embed/+page.svelte` use `https://signet.cascade.f7z.io` as the signet fallback origin.
+- `web/src/lib/cascade/config.ts` and the live deployed HTML expose `PUBLIC_CASCADE_API_URL=https://signet-mint.cascade.f7z.io` for the signet web deployment.
+- `web/vercel.json` exists but only sets the install and build commands.
+- There is no `web/next.config*`; the active frontend is SvelteKit, not Next.js.
+
+### Live verification commands
+
+Use these to confirm the current deployment state:
+
+```bash
+vercel inspect https://signet.cascade.f7z.io
+vercel domains inspect signet.cascade.f7z.io
+curl -sS https://signet-mint.cascade.f7z.io/api/product/runtime
+curl -sS https://signet.cascade.f7z.io | grep PUBLIC_CASCADE_API_URL
+```
+
+## Future workflow
+
+1. Search the repo for `f7z.io`.
+2. Check `mint/data/signet/config.toml` for the signet mint base URL.
+3. Check `mint/DEPLOYMENT.md` for the intended edition hostnames and smoke-check endpoints.
+4. Check `web/README.md` and `web/vercel.json` for frontend deployment clues.
+5. Verify the live deployment with `vercel inspect`, `vercel domains inspect`, and a direct runtime fetch from `/api/product/runtime` on the signet mint.

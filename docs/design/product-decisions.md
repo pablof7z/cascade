@@ -193,6 +193,18 @@ The `USD <-> msat` quote layer should be modular and source data from multiple m
 
 The product should execute against locked quotes, not loose spot tickers.
 
+### Stripe Is Mint Concern
+
+Stripe is a funding rail. Funding rails are mint concern — period.
+
+- The mint holds the Stripe secret key.
+- The mint creates checkout sessions.
+- The mint receives Stripe webhooks.
+- There is no webapp backend in the funding path. The browser talks to the mint for Stripe session creation, redirects to Stripe, and returns to the frontend. The mint receives the webhook and the browser mints proofs from the mint.
+- This is the same architectural boundary as Lightning funding: the mint handles the money, the frontend handles the UX.
+
+> Stripe stuff is about funds; there's zero reason to couple the webapp's backend with the Stripe stuff. Zero. That's all mint concern.
+
 ### Stripe Risk Controls
 
 Freshly card-funded USD value is portable bearer ecash once proofs are issued, so launch risk controls must happen before proof issuance.
@@ -202,6 +214,17 @@ Freshly card-funded USD value is portable bearer ecash once proofs are issued, s
 - Stripe webhook completion must fetch Stripe risk data before issuing proofs.
 - Higher-risk funding requests should end in `review_required` or rejection, not in immediately portable proofs with server-side "limits" that cannot actually be enforced.
 - The precise scoring model can evolve, but launch must have an explicit pre-issuance risk gate.
+
+### No Market Data Mirror In The Mint
+
+The mint does not maintain a mirror of relay data. Market discovery, search, activity, and price history are relay concerns — the frontend queries relays directly.
+
+- The mint database stores only execution state: LMSR parameters, keysets, proofs, quotes, funding/settlement state, and risk state.
+- There are no product read APIs for market feeds, search, activity, or price history on the mint backend.
+- Kind `982` (market definitions) and kind `983` (trade records) are authoritative on relays. The mint publishes kind `983` to relays after trade execution — it does not serve them back to clients through an HTTP API.
+- The frontend derives activity feeds, search, and price history from relay subscriptions and local computation.
+
+> Those endpoints shouldn't exist on the webapp; all that stuff is relay concern. The relay is where we store data — why do we have a second database?
 
 ### Mint URL Routing
 

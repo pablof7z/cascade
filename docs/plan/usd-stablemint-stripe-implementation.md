@@ -29,6 +29,8 @@ Related docs:
 - We are not introducing a bespoke public cross-unit swap primitive for launch.
 - A market is not publicly visible until it has at least one mint-authored kind `983`.
 - Signet and mainnet run as separate editions with separate funds, proofs, and infrastructure.
+- Stripe is a funding rail. Funding rails are mint concern. The mint holds the Stripe secret key, creates checkout sessions, and receives webhooks. No webapp backend involvement in funding flows.
+- The mint does not maintain a mirror of relay data. Market discovery, search, activity, and price history are relay concerns — the frontend queries relays directly. The mint database stores only execution state.
 
 ## Target System
 
@@ -103,10 +105,11 @@ Definition of done:
 
 ## Workstream 3: Wallet Mint Funding Rails
 
-Implement the USD wallet mint with both launch funding paths.
+Implement the USD wallet mint with both launch funding paths. All funding rails live on the mint — the mint holds keys, creates sessions, receives webhooks. No webapp backend involvement.
 
 - add wallet-mint configuration for USD operation
-- implement or integrate a `stripe` payment processor / gateway
+- implement Stripe funding directly on the mint: `POST /v1/fund/stripe` creates a checkout session, `POST /v1/fund/stripe/webhook` receives Stripe events, `GET /v1/fund/stripe/{funding_id}` returns status, `POST /v1/mint/stripe` issues proofs
+- the mint holds the Stripe secret key — it is never exposed to or proxied through a webapp backend
 - add incoming Lightning mint-quote support for USD-denominated funding on the standard Cashu NUT-23 BOLT11 endpoints
 - map Stripe and Lightning payment completion to mint quote completion
 - let the browser mint and recover USD proofs locally after successful Lightning funding
@@ -117,12 +120,13 @@ Implement the USD wallet mint with both launch funding paths.
 
 Definition of done:
 
-- user can start Stripe funding
-- Stripe webhook marks the payment complete
+- user can start Stripe funding by calling `POST /v1/fund/stripe` on the mint directly
+- Stripe webhook hits the mint directly at `POST /v1/fund/stripe/webhook` and marks the payment complete
 - user can start Lightning funding for a locked USD amount through `POST /v1/mint/quote/bolt11`
 - Lightning payment marks the mint quote `PAID`
 - the browser can call `POST /v1/mint/bolt11` and recover the issued proofs locally after interruption
 - Stripe retains the persisted request/status saga because card checkout is not a standard Cashu mint flow
+- there are no `/api/portfolio/funding/stripe` routes — Stripe lives at `/v1/fund/stripe` on the mint
 
 ## Workstream 4: Market Mint Quote And Payment Processors
 

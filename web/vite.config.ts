@@ -1,9 +1,18 @@
-import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 
+const vendorRoot = fileURLToPath(new URL('./vendor', import.meta.url));
+const workspaceRoot = searchForWorkspaceRoot(process.cwd());
+
 export default defineConfig(({ isSsrBuild }) => ({
   plugins: [tailwindcss(), sveltekit()],
+  server: {
+    fs: {
+      allow: [workspaceRoot, vendorRoot]
+    }
+  },
   build: isSsrBuild
     ? undefined
     : {

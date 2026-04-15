@@ -51,21 +51,17 @@ async function ensureLoggedIn(page: Page, secretKey: string) {
     await page.waitForTimeout(500);
   }
 
-  const loginButton = page.getByRole('button', { name: 'Log in' });
-  try {
-    await loginButton.click();
-  } catch (error) {
-    if (await userMenu.isVisible().catch(() => false)) {
-      return;
-    }
-    throw error;
+  const secretKeyTab = page.getByRole('tab', { name: 'Secret key' });
+  if (!(await secretKeyTab.isVisible().catch(() => false))) {
+    await page.getByRole('button', { name: 'Log in' }).click();
   }
-  const loginDialog = page.getByRole('dialog', { name: 'Log in' });
-  await loginDialog.getByRole('tab', { name: 'Secret key' }).click();
-  await loginDialog
+
+  await expect(secretKeyTab).toBeVisible();
+  await secretKeyTab.click();
+  await page
     .getByRole('textbox', { name: /Account key|Secret key/i })
     .fill(secretKey);
-  await loginDialog.getByRole('button', { name: 'Continue with key' }).click();
+  await page.getByRole('button', { name: 'Continue with key' }).click();
   await waitForUserMenu(page);
 }
 
@@ -77,7 +73,7 @@ async function loginWithPrivateKey(page: Page, secretKey: string) {
 async function fundPortfolio(page: Page, secretKey: string, amountMinor: number) {
   await page.goto('/portfolio');
   await ensureLoggedIn(page, secretKey);
-  await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your portfolio' })).toBeVisible();
 
   let remainingMinor = amountMinor;
   let fundedMinor = 0;
@@ -85,7 +81,7 @@ async function fundPortfolio(page: Page, secretKey: string, amountMinor: number)
 
   while (remainingMinor > 0) {
     const chunkMinor = Math.min(remainingMinor, SIGNET_TOPUP_SINGLE_LIMIT_MINOR);
-    await page.getByRole('spinbutton', { name: 'Funding amount' }).fill(String(chunkMinor));
+    await page.getByRole('spinbutton', { name: 'Amount' }).fill(String(chunkMinor));
     await page.getByRole('button', { name: 'Create Lightning invoice' }).click();
     await expect(
       page.locator('.history-row').filter({ hasText: `lightning · invoice_pending` }).first()
@@ -123,7 +119,7 @@ async function completeBuilderDraft(
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByRole('spinbutton', { name: 'Seed spend' }).fill(String(seedMinor));
+  await page.getByLabel('Initial funding').fill(String(seedMinor));
 }
 
 async function createPublicMarket(
@@ -153,7 +149,7 @@ test('pending markets stay private until the first mint trade, then become publi
   await page.getByRole('button', { name: 'Create Market' }).click();
 
   await expect(page).toHaveURL(/\/builder$/);
-  await expect(page.getByText(/Market is pending\. Fund your signet portfolio/)).toBeVisible();
+  await expect(page.getByText(/Market is pending\. Fund your practice portfolio/)).toBeVisible();
   await expect(pendingMarketRow(page, market.title)).toContainText('Pending');
 
   const privateMarketResponse = await fetch(`${BASE_URL}/market/${market.slug}`);
@@ -219,10 +215,10 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   const tradePanel = page.locator('.trade-panel');
   await expect(tradePanel.getByText('Available')).toBeVisible();
 
-  await tradePanel.getByRole('button', { name: /^SHORT / }).click();
-  await expect(tradePanel.getByRole('button', { name: 'Mint SHORT' })).toBeVisible();
+  await tradePanel.getByRole('button', { name: /^NO / }).click();
+  await expect(tradePanel.getByRole('button', { name: 'Buy NO' })).toBeVisible();
   await tradePanel.locator('input[type="number"]').first().fill('2500');
-  await tradePanel.getByRole('button', { name: 'Mint SHORT' }).click();
+  await tradePanel.getByRole('button', { name: 'Buy NO' }).click();
   await expect(tradePanel.getByText(`Bought SHORT on ${market.slug}.`)).toBeVisible();
 
   const rewroteBuyReceipt = await page.evaluate(() => {
@@ -256,16 +252,15 @@ test('funded portfolio users can create a market, buy the other side, and withdr
     await expect(tradePanel.getByText('Available')).toBeVisible();
   }
 
-  await tradePanel.getByRole('button', { name: /SHORT/ }).click();
   await tradePanel.locator('input[type="number"]').nth(1).fill('10');
-  const withdrawButton = tradePanel.getByRole('button', { name: /^Withdraw / });
-  await expect(withdrawButton).toBeEnabled();
-  await withdrawButton.click();
-  await expect(tradePanel.getByText(/Withdrew (LONG|SHORT) on/)).toContainText(market.slug);
+  const sellButton = tradePanel.getByRole('button', { name: /^Sell / });
+  await expect(sellButton).toBeEnabled();
+  await sellButton.click();
+  await expect(tradePanel.getByText(/Sold (LONG|SHORT) on/)).toContainText(market.slug);
 
   await page.goto('/portfolio');
   await ensureLoggedIn(page, creatorSecret);
-  await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your portfolio' })).toBeVisible();
   const tradedPositionRow = page.locator('.position-row').filter({ hasText: market.title }).first();
   await expect(tradedPositionRow).toBeVisible();
   await expect(tradedPositionRow.getByText('Mark only')).toHaveCount(0);
@@ -284,7 +279,7 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   const unavailablePriceRow = page
     .locator('.position-row')
     .filter({ hasText: market.title })
-    .filter({ hasText: 'SHORT' })
+    .filter({ hasText: 'NO' })
     .first();
   await expect(unavailablePriceRow).toBeVisible();
   await expect(unavailablePriceRow.getByText('Price unavailable')).toBeVisible();
@@ -320,7 +315,7 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   await ensureLoggedIn(page, creatorSecret);
   await expect(
     page.getByText(
-      'Derived from local market-proof holdings, the browser-local trade book, and current public market prices.'
+      'Derived from local market positions, the browser-local trade book, and current public market prices.'
     )
   ).toBeVisible();
 
@@ -353,7 +348,7 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   const localPositionRow = page
     .locator('.position-row')
     .filter({ hasText: market.title })
-    .filter({ hasText: 'LONG' })
+    .filter({ hasText: 'YES' })
     .first();
   await expect(localPositionRow).toBeVisible();
   await expect(localPositionRow.getByText('Mark only')).toBeVisible();
@@ -365,7 +360,7 @@ test('portfolio hides manual proof transfer controls', async ({ page }) => {
   await loginWithPrivateKey(page, secret);
   await page.goto('/portfolio');
   await ensureLoggedIn(page, secret);
-  await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your portfolio' })).toBeVisible();
 
   await expect(page.getByRole('heading', { name: 'Move proofs' })).toHaveCount(0);
   await expect(page.getByText('Export or import Cashu token strings locally in this browser.')).toHaveCount(0);
@@ -382,9 +377,9 @@ test('signet portfolio can fund through the Lightning funding flow', async ({ pa
   await loginWithPrivateKey(page, secret);
   await page.goto('/portfolio');
   await ensureLoggedIn(page, secret);
-  await expect(page.getByRole('heading', { name: 'Browser-local proof portfolio' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your portfolio' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Create Lightning invoice' })).toBeVisible();
-  await page.getByRole('spinbutton', { name: 'Funding amount' }).fill('2500');
+  await page.getByRole('spinbutton', { name: 'Amount' }).fill('2500');
   await page.getByRole('button', { name: 'Create Lightning invoice' }).click();
   await expect(
     page.locator('.history-row').filter({ hasText: `lightning · invoice_pending` }).first()
@@ -401,7 +396,7 @@ test('signet portfolio can fund through the Lightning funding flow', async ({ pa
   await page.goto('/portfolio');
   await ensureLoggedIn(page, secret);
   const walletPanels = page.locator('.wallet-grid .wallet-panel');
-  await expect(walletPanels.first()).toContainText('Local Proofs');
+  await expect(walletPanels.first()).toContainText('Your balance');
   await expect(walletPanels.first()).toContainText('$25.00');
   await expect(page.locator('.history-row').filter({ hasText: 'lightning · complete' }).first()).toBeVisible();
   await expect(page.getByText('No pending funding requests.')).toBeVisible();

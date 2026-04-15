@@ -23,6 +23,9 @@ use hmac::{Hmac, Mac};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::{Arc, OnceLock};
 use tokio::net::TcpListener;
@@ -197,6 +200,22 @@ async fn create_product_test_server_bundle_with_funding(
     (context.url, context.invoice_service)
 }
 
+async fn create_product_test_server_bundle_with_invoice_service(
+    stripe_config: Option<cascade_api::stripe::StripeConfig>,
+    usdc_config: Option<cascade_api::usdc::UsdcConfig>,
+    network_type: &'static str,
+    invoice_service: SharedInvoiceService,
+) -> (String, SharedInvoiceService) {
+    let context = create_product_test_context_with_invoice_service(
+        stripe_config,
+        usdc_config,
+        network_type,
+        invoice_service,
+    )
+    .await;
+    (context.url, context.invoice_service)
+}
+
 async fn create_product_test_context_with_funding(
     stripe_config: Option<cascade_api::stripe::StripeConfig>,
     usdc_config: Option<cascade_api::usdc::UsdcConfig>,
@@ -238,6 +257,44 @@ async fn create_product_test_context_with_funding(
     let invoice_service = Arc::new(Mutex::new(cascade_core::invoice::InvoiceService::new(
         lnd_client, 3600, 40,
     )));
+    create_product_test_context_with_invoice_service(
+        stripe_config,
+        usdc_config,
+        network_type,
+        invoice_service,
+    )
+    .await
+}
+
+async fn create_product_test_context_with_invoice_service(
+    stripe_config: Option<cascade_api::stripe::StripeConfig>,
+    usdc_config: Option<cascade_api::usdc::UsdcConfig>,
+    network_type: &'static str,
+    invoice_service: SharedInvoiceService,
+) -> ProductTestContext {
+    let cdk_db = Arc::new(cdk_sqlite::mint::memory::empty().await.unwrap());
+    let mut builder = MintBuilder::new(cdk_db.clone());
+    builder
+        .configure_unit(
+            CurrencyUnit::Sat,
+            UnitConfig {
+                amounts: vec![1, 2, 4, 8, 16, 32, 64, 128],
+                input_fee_ppk: 0,
+            },
+        )
+        .unwrap();
+    builder
+        .configure_unit(
+            CurrencyUnit::Usd,
+            UnitConfig {
+                amounts: vec![
+                    1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
+                ],
+                input_fee_ppk: 0,
+            },
+        )
+        .unwrap();
+
     let fx_service = test_fx_service();
     builder
         .add_payment_processor(
@@ -305,6 +362,115 @@ async fn create_product_test_context_with_funding(
         mint,
         cascade_db,
     }
+}
+
+fn make_fake_lncli_path(name: &str) -> PathBuf {
+    let unique = format!(
+        "{name}-{}-{}",
+        std::process::id(),
+        chrono::Utc::now()
+            .timestamp_nanos_opt()
+            .unwrap_or_default()
+            .abs()
+    );
+    std::env::temp_dir().join(unique)
+}
+
+async fn create_cli_invoice_service_requiring_internal_settlement(
+    network_type: &'static str,
+) -> SharedInvoiceService {
+    let script_dir = make_fake_lncli_path("cascade-fake-lncli");
+    fs::create_dir_all(&script_dir).unwrap();
+
+    let script_path = script_dir.join("lncli");
+    fs::write(
+        &script_path,
+        r#"#!/usr/bin/env python3
+import hashlib
+import json
+import sys
+import time
+
+command = None
+for arg in sys.argv[1:]:
+    if arg in {"getinfo", "addinvoice", "lookupinvoice", "payinvoice"}:
+        command = arg
+        break
+
+if command == "getinfo":
+    print(json.dumps({
+        "identity_pubkey": "fake-lncli-pubkey",
+        "alias": "fake-lncli",
+        "num_active_channels": 0,
+        "num_peers": 0,
+        "block_height": 1
+    }))
+    sys.exit(0)
+
+if command == "addinvoice":
+    preimage = ""
+    for arg in sys.argv[1:]:
+        if arg.startswith("--preimage="):
+            preimage = arg.split("=", 1)[1]
+            break
+    payment_hash = hashlib.sha256(bytes.fromhex(preimage)).hexdigest()
+    print(json.dumps({
+        "r_hash": payment_hash,
+        "payment_request": f"lnsb1internal{payment_hash[:16]}"
+    }))
+    sys.exit(0)
+
+if command == "lookupinvoice":
+    payment_hash = ""
+    for arg in sys.argv[1:]:
+        if arg.startswith("--rhash="):
+            payment_hash = arg.split("=", 1)[1]
+            break
+    print(json.dumps({
+        "memo": "fake invoice",
+        "r_hash": payment_hash,
+        "value_msat": "2500000",
+        "creation_date": str(int(time.time())),
+        "expiry": "3600",
+        "payment_request": f"lnsb1internal{payment_hash[:16]}",
+        "cltv_expiry": "40",
+        "settled": False,
+        "state": "OPEN"
+    }))
+    sys.exit(0)
+
+if command == "payinvoice":
+    sys.stderr.write("self-payment disabled in fake lncli\n")
+    sys.exit(1)
+
+sys.stderr.write(f"unsupported fake lncli command: {' '.join(sys.argv[1:])}\n")
+sys.exit(1)
+"#,
+    )
+    .unwrap();
+    let mut permissions = fs::metadata(&script_path).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&script_path, permissions).unwrap();
+
+    let cert_path = script_dir.join("tls.cert");
+    fs::write(&cert_path, "fake-cert").unwrap();
+    let macaroon_path = script_dir.join("admin.macaroon");
+    fs::write(&macaroon_path, [1_u8, 2, 3, 4]).unwrap();
+
+    let lnd_config = cascade_core::LndConfig {
+        host: "127.0.0.1:10009".to_string(),
+        cert_path: Some(cert_path.display().to_string()),
+        macaroon_path: Some(macaroon_path.display().to_string()),
+        tls_domain: None,
+        network: Some(network_type.to_string()),
+        cli_path: Some(script_path.display().to_string()),
+    };
+    let mut lnd_client = cascade_core::lightning::lnd_client::LndClient::new(lnd_config);
+    lnd_client.connect().await.unwrap();
+
+    Arc::new(Mutex::new(cascade_core::invoice::InvoiceService::new(
+        lnd_client, 3600, 40,
+    )))
 }
 
 async fn create_mock_stripe_server() -> String {
@@ -2011,6 +2177,38 @@ async fn test_signet_lightning_funding_quote_auto_pays_after_status_poll() {
     assert_eq!(funding_status_response.status(), 200);
     let funding_status_payload: serde_json::Value = funding_status_response.json().await.unwrap();
     assert_eq!(funding_status_payload["status"].as_str(), Some("complete"));
+}
+
+#[tokio::test]
+async fn test_signet_lightning_funding_quote_auto_pays_with_cli_backend_when_self_pay_fails() {
+    let invoice_service = create_cli_invoice_service_requiring_internal_settlement("signet").await;
+    let (url, _) = create_product_test_server_bundle_with_invoice_service(
+        None,
+        None,
+        "signet",
+        invoice_service,
+    )
+    .await;
+    let client = reqwest::Client::new();
+
+    let quote_response = client
+        .post(format!("{url}/v1/mint/quote/bolt11"))
+        .json(&serde_json::json!({
+            "pubkey": "fake-cli-internal-payment-user",
+            "amount": 2500,
+            "unit": "usd"
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(quote_response.status(), 200);
+
+    let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
+    let quote_id = quote_payload["quote"].as_str().unwrap().to_string();
+    assert_eq!(quote_payload["state"].as_str(), Some("UNPAID"));
+
+    let paid_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["PAID"]).await;
+    assert_eq!(paid_quote["state"].as_str(), Some("PAID"));
 }
 
 #[tokio::test]

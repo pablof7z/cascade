@@ -1583,7 +1583,7 @@ async fn create_lightning_wallet_funding_quote_record(
                 fx_quote.amount_msat,
                 Some(invoice_description),
                 Some(invoice_expiry_seconds),
-                false,
+                state.paper_mode,
             )
             .await
         {

@@ -185,6 +185,11 @@ Persisted settlement records for sells should expose that logical direction expl
 - receiver role: `wallet_mint`
 - settlement mode: `bolt11_market_to_wallet`
 
+On signet paper mode, the wallet-mint incoming quote used by sell settlement is
+internally payable, and successful in-process self-payment immediately marks the
+local invoice record settled so quote status does not depend on `lookupinvoice`
+propagation.
+
 ## Why We Reuse Existing Primitives
 
 This architecture deliberately stays inside existing boundaries:

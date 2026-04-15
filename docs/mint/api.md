@@ -19,6 +19,14 @@ Provided by CDK:
 - `POST /v1/restore`
 - `GET /v1/ws`
 
+In Cascade, the standard key discovery routes are wallet-facing only:
+
+- `/v1/keys`
+- `/v1/keysets`
+- `/v1/keys/{keyset_id}`
+
+They expose wallet/public mint keysets such as USD. They do NOT enumerate market LONG and SHORT keysets.
+
 Standard BOLT11 flows:
 
 - `POST /v1/mint/quote/bolt11`
@@ -39,7 +47,7 @@ Blind auth routes:
 
 - `GET /{event_id}/v1/keys`
 
-This is the market-scoped key discovery surface keyed by the kind `982` event id.
+This is the market-scoped key discovery surface keyed by the kind `982` event id. It is the canonical public discovery path for market LONG and SHORT keysets.
 
 ### Product Trading Routes
 

@@ -357,13 +357,21 @@
         : { issued: null, change: null };
     const issuedProofs = receipt.issuedPreparation
       ? issued
-        ? await unblindPreparedOutputs(proofMintUrl(), receipt.issuedPreparation, issued.signatures)
-        : await restorePreparedOutputs(proofMintUrl(), receipt.issuedPreparation)
+        ? await unblindPreparedOutputs(proofMintUrl(), receipt.issuedPreparation, issued.signatures, {
+            marketEventId: receipt.eventId
+          })
+        : await restorePreparedOutputs(proofMintUrl(), receipt.issuedPreparation, {
+            marketEventId: receipt.eventId
+          })
       : [];
     const changeProofs = receipt.changePreparation
       ? change
-        ? await unblindPreparedOutputs(proofMintUrl(), receipt.changePreparation, change.signatures)
-        : await restorePreparedOutputs(proofMintUrl(), receipt.changePreparation)
+        ? await unblindPreparedOutputs(proofMintUrl(), receipt.changePreparation, change.signatures, {
+            marketEventId: receipt.eventId
+          })
+        : await restorePreparedOutputs(proofMintUrl(), receipt.changePreparation, {
+            marketEventId: receipt.eventId
+          })
       : [];
 
     if (!issuedProofs.length && !changeProofs.length) {
@@ -447,7 +455,9 @@
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
         proofMintUrl(),
         issuedUnit,
-        quote.quantity_minor
+        quote.quantity_minor,
+        undefined,
+        { marketEventId: eventId }
       );
       const changeMinor = spendProofs.reduce((sum, proof) => sum + proof.amount, 0) - quote.spend_minor;
       const changeBundle =

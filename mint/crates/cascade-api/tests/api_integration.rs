@@ -1302,6 +1302,9 @@ async fn test_market_bootstrap_requires_raw_event_and_legacy_pending_routes_are_
         .await
         .unwrap();
     assert_eq!(keyset_response.status(), 200);
+    let keyset_payload: serde_json::Value = keyset_response.json().await.unwrap();
+    assert_eq!(keyset_payload["market_id"].as_str(), Some(event_id));
+    assert!(keyset_payload.get("Ok").is_none());
 
     let missing_raw_event_response = client
         .post(format!("{url}/api/trades/quote"))
@@ -1343,6 +1346,86 @@ async fn test_market_bootstrap_requires_raw_event_and_legacy_pending_routes_are_
         .await
         .unwrap();
     assert_eq!(pending_detail_response.status(), 404);
+}
+
+#[tokio::test]
+async fn test_standard_key_routes_exclude_market_keysets() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+    let creator_secret = secret_key_from_byte(2);
+    let creator = pubkey_from_secret_key(&creator_secret);
+    let event_id = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+    let slug = "wallet-only-key-routes";
+    let raw_event = sample_market_event(event_id, slug, &creator);
+
+    let quote_response = client
+        .post(format!("{url}/api/trades/quote"))
+        .json(&serde_json::json!({
+            "event_id": event_id,
+            "side": "long",
+            "spend_minor": 2_000,
+            "raw_event": raw_event
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(quote_response.status(), 200);
+
+    let wallet_keys_response = client
+        .get(format!("{url}/v1/keys"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(wallet_keys_response.status(), 200);
+    let wallet_keys_payload: KeysResponse = wallet_keys_response.json().await.unwrap();
+    assert!(wallet_keys_payload.keysets.iter().any(|keyset| {
+        keyset.unit == CurrencyUnit::Usd && keyset.active.unwrap_or(false)
+    }));
+    assert!(wallet_keys_payload.keysets.iter().all(|keyset| {
+        let unit = keyset.unit.to_string().to_ascii_lowercase();
+        !unit.starts_with("long_") && !unit.starts_with("short_")
+    }));
+
+    let wallet_keysets_response = client
+        .get(format!("{url}/v1/keysets"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(wallet_keysets_response.status(), 200);
+    let wallet_keysets_payload: serde_json::Value = wallet_keysets_response.json().await.unwrap();
+    let wallet_keysets = wallet_keysets_payload["keysets"]
+        .as_array()
+        .expect("wallet keysets payload should contain a keysets array");
+    assert!(wallet_keysets.iter().all(|keyset| {
+        let unit = keyset["unit"]
+            .as_str()
+            .unwrap_or_default()
+            .to_ascii_lowercase();
+        !unit.starts_with("long_") && !unit.starts_with("short_")
+    }));
+
+    let market_long_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
+
+    let wallet_keyset_detail_response = client
+        .get(format!("{url}/v1/keys/{}", market_long_keyset.id))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(wallet_keyset_detail_response.status(), 400);
+    let wallet_keyset_detail_payload: serde_json::Value =
+        wallet_keyset_detail_response.json().await.unwrap();
+    assert_eq!(
+        wallet_keyset_detail_payload["detail"].as_str(),
+        Some("Unknown Keyset")
+    );
+
+    let active_usd_keyset = fetch_active_usd_keyset(&client, &url).await;
+    let usd_keyset_detail_response = client
+        .get(format!("{url}/v1/keys/{}", active_usd_keyset.id))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(usd_keyset_detail_response.status(), 200);
 }
 
 #[tokio::test]

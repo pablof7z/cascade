@@ -1,5 +1,13 @@
 import { browser } from '$app/environment';
-import { Mint, Wallet, type CounterSource, type MintQuoteState } from '@cashu/cashu-ts';
+import {
+  KeyChain,
+  Mint,
+  Wallet,
+  type CounterSource,
+  type MintKeyset,
+  type MintKeys,
+  type MintQuoteState
+} from '@cashu/cashu-ts';
 import { normalizeMintUrl, storageKey } from '$lib/cascade/config';
 import type { BlindedMessageInput, ProductProof, TokenOutput } from '$lib/cascade/api';
 import { toProductProof } from '$lib/wallet/cashuTokens';
@@ -23,12 +31,28 @@ export type PendingOutputPreparation = PendingMintPreparation & {
   outputCount: number;
   amount: number;
   unit: string;
+  marketEventId?: string;
 };
 
 type ApiError = {
   detail?: string;
+  details?: string;
   error?: string;
 };
+
+type MarketKeysetResponse = {
+  id: string;
+  unit: string;
+  keys: Record<string, { pubkey: string }>;
+};
+
+type MarketMintKeysResponse = {
+  market_id: string;
+  long_keyset: MarketKeysetResponse;
+  short_keyset: MarketKeysetResponse;
+};
+
+type MarketMintKeysEnvelope = MarketMintKeysResponse | { Ok?: MarketMintKeysResponse };
 
 function seedStorageKey(mintUrl: string): string {
   return `${storageKey('cascade_cashu_wallet_seed')}:${normalizeMintUrl(mintUrl)}`;
@@ -87,17 +111,119 @@ function advanceCounter(mintUrl: string, keysetId: string, next: number): void {
 }
 
 async function parseError(response: Response, fallback: string): Promise<string> {
-  const payload = (await response.json().catch(() => null)) as ApiError | null;
-  return payload?.detail || payload?.error || fallback;
+  const payload = (await response.json().catch(() => null)) as
+    | (ApiError & { Err?: ApiError })
+    | null;
+  const nested = payload?.Err && typeof payload.Err === 'object' ? payload.Err : payload;
+  return nested?.detail || nested?.details || nested?.error || fallback;
 }
 
-async function cashuWallet(mintUrl: string, unit = 'usd'): Promise<Wallet> {
+function isMarketMintKeysResponse(payload: unknown): payload is MarketMintKeysResponse {
+  return Boolean(
+    payload &&
+      typeof payload === 'object' &&
+      'market_id' in payload &&
+      'long_keyset' in payload &&
+      'short_keyset' in payload
+  );
+}
+
+function isMarketUnit(unit: string): boolean {
+  const lowered = unit.toLowerCase();
+  return lowered.startsWith('long_') || lowered.startsWith('short_');
+}
+
+async function fetchMarketMintKeys(
+  mintUrl: string,
+  marketEventId: string
+): Promise<MarketMintKeysResponse> {
+  const response = await fetch(`${normalizeMintUrl(mintUrl)}/${marketEventId}/v1/keys`, {
+    cache: 'no-store'
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseError(response, 'Failed to load market keysets.'));
+  }
+
+  const payload = (await response.json()) as MarketMintKeysEnvelope;
+
+  if (isMarketMintKeysResponse(payload)) {
+    return payload;
+  }
+
+  if (payload && typeof payload === 'object' && 'Ok' in payload && isMarketMintKeysResponse(payload.Ok)) {
+    return payload.Ok;
+  }
+
+  throw new Error('Failed to load market keysets.');
+}
+
+function toMintKeyset(keyset: MarketKeysetResponse): MintKeyset {
+  return {
+    id: keyset.id,
+    unit: keyset.unit,
+    active: true
+  };
+}
+
+function toMintKeys(keyset: MarketKeysetResponse): MintKeys {
+  return {
+    id: keyset.id,
+    unit: keyset.unit,
+    active: true,
+    keys: Object.fromEntries(
+      Object.entries(keyset.keys).map(([amount, value]) => [amount, value.pubkey])
+    )
+  };
+}
+
+async function loadMarketMintCache(
+  wallet: Wallet,
+  mint: Mint,
+  mintUrl: string,
+  unit: string,
+  marketEventId: string
+): Promise<void> {
+  const [mintInfo, marketKeys] = await Promise.all([
+    mint.getInfo(),
+    fetchMarketMintKeys(mintUrl, marketEventId)
+  ]);
+
+  wallet.loadMintFromCache(
+    mintInfo,
+    KeyChain.mintToCacheDTO(unit, normalizeMintUrl(mintUrl), [
+      toMintKeyset(marketKeys.long_keyset),
+      toMintKeyset(marketKeys.short_keyset)
+    ], [
+      toMintKeys(marketKeys.long_keyset),
+      toMintKeys(marketKeys.short_keyset)
+    ])
+  );
+}
+
+async function cashuWallet(
+  mintUrl: string,
+  unit = 'usd',
+  options?: { marketEventId?: string }
+): Promise<Wallet> {
   const normalizedMintUrl = normalizeMintUrl(mintUrl);
-  const wallet = new Wallet(new Mint(normalizedMintUrl), {
+  const mint = new Mint(normalizedMintUrl);
+  const wallet = new Wallet(mint, {
     unit,
     bip39seed: getOrCreateSeed(normalizedMintUrl),
     counterSource: localCounterSource(normalizedMintUrl)
   });
+
+  if (isMarketUnit(unit)) {
+    const marketEventId = options?.marketEventId;
+    if (!marketEventId) {
+      throw new Error(`market_event_id_required_for_unit:${unit}`);
+    }
+
+    await loadMarketMintCache(wallet, mint, normalizedMintUrl, unit, marketEventId);
+    return wallet;
+  }
+
   await wallet.loadMint();
   return wallet;
 }
@@ -244,9 +370,13 @@ export async function prepareProofOutputs(
   mintUrl: string,
   unit: string,
   amountMinor: number,
-  existing?: PendingOutputPreparation
+  existing?: PendingOutputPreparation,
+  options?: {
+    marketEventId?: string;
+  }
 ): Promise<{ outputs: BlindedMessageInput[]; preparation: PendingOutputPreparation }> {
-  const wallet = await cashuWallet(mintUrl, unit);
+  const marketEventId = options?.marketEventId ?? existing?.marketEventId;
+  const wallet = await cashuWallet(mintUrl, unit, { marketEventId });
   const prepared = await prepareMint(normalizeMintUrl(mintUrl), wallet, amountMinor, existing);
 
   return {
@@ -254,7 +384,8 @@ export async function prepareProofOutputs(
     preparation: {
       ...prepared.preparation,
       amount: amountMinor,
-      unit
+      unit,
+      marketEventId
     }
   };
 }
@@ -262,9 +393,14 @@ export async function prepareProofOutputs(
 async function proofsFromPreparedOutputs(
   mintUrl: string,
   preparation: PendingOutputPreparation,
-  signatures: TokenOutput[]
+  signatures: TokenOutput[],
+  options?: {
+    marketEventId?: string;
+  }
 ): Promise<ProductProof[]> {
-  const wallet = await cashuWallet(mintUrl, preparation.unit);
+  const wallet = await cashuWallet(mintUrl, preparation.unit, {
+    marketEventId: options?.marketEventId ?? preparation.marketEventId
+  });
   const normalizedMintUrl = normalizeMintUrl(mintUrl);
   const prepared = await prepareMint(normalizedMintUrl, wallet, preparation.amount, preparation);
 
@@ -297,16 +433,24 @@ async function proofsFromPreparedOutputs(
 export async function unblindPreparedOutputs(
   mintUrl: string,
   preparation: PendingOutputPreparation,
-  signatures: TokenOutput[]
+  signatures: TokenOutput[],
+  options?: {
+    marketEventId?: string;
+  }
 ): Promise<ProductProof[]> {
-  return proofsFromPreparedOutputs(mintUrl, preparation, signatures);
+  return proofsFromPreparedOutputs(mintUrl, preparation, signatures, options);
 }
 
 export async function restorePreparedOutputs(
   mintUrl: string,
-  preparation: PendingOutputPreparation
+  preparation: PendingOutputPreparation,
+  options?: {
+    marketEventId?: string;
+  }
 ): Promise<ProductProof[]> {
-  const wallet = await cashuWallet(mintUrl, preparation.unit);
+  const wallet = await cashuWallet(mintUrl, preparation.unit, {
+    marketEventId: options?.marketEventId ?? preparation.marketEventId
+  });
   const restored = await wallet.restore(preparation.counterStart, preparation.outputCount, {
     keysetId: preparation.keysetId
   });

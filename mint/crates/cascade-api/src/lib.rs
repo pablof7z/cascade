@@ -76,6 +76,5 @@ pub async fn build_server(
         .allow_headers(Any)
         .allow_methods(Any);
 
-    // Merge all routes
-    Ok(cascade_routes.merge(mint_routes).layer(cors))
+    Ok(cascade_routes.fallback_service(mint_routes).layer(cors))
 }

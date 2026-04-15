@@ -142,6 +142,12 @@ impl AppState {
 /// Build the cascade-specific HTTP routes
 pub fn build_cascade_routes(state: AppState) -> Router {
     Router::new()
+        .route("/v1/keys", get(handlers::keys::get_wallet_keys))
+        .route("/v1/keysets", get(handlers::keys::get_wallet_keysets))
+        .route(
+            "/v1/keys/{keyset_id}",
+            get(handlers::keys::get_wallet_keyset_pubkeys),
+        )
         // Price feeds
         .route("/api/price/{currency}", get(price::get_prices))
         .route(

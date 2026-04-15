@@ -16,20 +16,17 @@ use cdk::util::hex;
 pub async fn get_market_keys(
     State(state): State<AppState>,
     Path(event_id): Path<String>,
-) -> (
-    StatusCode,
-    Json<Result<MarketMintKeysResponse, ErrorResponse>>,
-) {
+) -> Result<Json<MarketMintKeysResponse>, (StatusCode, Json<ErrorResponse>)> {
     let market = match state.get_market_by_event_id(&event_id).await {
         Some(market) => market,
         None => {
-            return (
+            return Err((
                 StatusCode::NOT_FOUND,
-                Json(Err(ErrorResponse {
+                Json(ErrorResponse {
                     error: "Market not found".to_string(),
                     details: Some(event_id),
-                })),
-            );
+                }),
+            ));
         }
     };
 
@@ -65,35 +62,32 @@ pub async fn get_market_keys(
     let long_keyset = match build_market_keyset(&market.long_keyset_id, "long") {
         Some(keyset) => keyset,
         None => {
-            return (
+            return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(Err(ErrorResponse {
+                Json(ErrorResponse {
                     error: "Market LONG keyset is not active on the mint".to_string(),
                     details: Some(market.long_keyset_id),
-                })),
-            );
+                }),
+            ));
         }
     };
 
     let short_keyset = match build_market_keyset(&market.short_keyset_id, "short") {
         Some(keyset) => keyset,
         None => {
-            return (
+            return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(Err(ErrorResponse {
+                Json(ErrorResponse {
                     error: "Market SHORT keyset is not active on the mint".to_string(),
                     details: Some(market.short_keyset_id),
-                })),
-            );
+                }),
+            ));
         }
     };
 
-    (
-        StatusCode::OK,
-        Json(Ok(MarketMintKeysResponse {
-            market_id: market.event_id,
-            long_keyset,
-            short_keyset,
-        })),
-    )
+    Ok(Json(MarketMintKeysResponse {
+        market_id: market.event_id,
+        long_keyset,
+        short_keyset,
+    }))
 }

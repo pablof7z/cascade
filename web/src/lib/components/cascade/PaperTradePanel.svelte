@@ -125,14 +125,22 @@
 
     const issuedProofs = receipt.issuedPreparation
       ? issued
-        ? await unblindPreparedOutputs(proofMintUrl(), receipt.issuedPreparation, issued.signatures)
-        : await restorePreparedOutputs(proofMintUrl(), receipt.issuedPreparation)
+        ? await unblindPreparedOutputs(proofMintUrl(), receipt.issuedPreparation, issued.signatures, {
+            marketEventId: receipt.eventId
+          })
+        : await restorePreparedOutputs(proofMintUrl(), receipt.issuedPreparation, {
+            marketEventId: receipt.eventId
+          })
       : [];
 
     const changeProofs = receipt.changePreparation
       ? change
-        ? await unblindPreparedOutputs(proofMintUrl(), receipt.changePreparation, change.signatures)
-        : await restorePreparedOutputs(proofMintUrl(), receipt.changePreparation)
+        ? await unblindPreparedOutputs(proofMintUrl(), receipt.changePreparation, change.signatures, {
+            marketEventId: receipt.eventId
+          })
+        : await restorePreparedOutputs(proofMintUrl(), receipt.changePreparation, {
+            marketEventId: receipt.eventId
+          })
       : [];
 
     if (!issuedProofs.length && !changeProofs.length) {
@@ -317,7 +325,9 @@
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
         proofMintUrl(),
         marketUnit,
-        quote.quantity_minor
+        quote.quantity_minor,
+        undefined,
+        { marketEventId: marketId }
       );
       const changeMinor = spendProofs.reduce((sum, proof) => sum + proof.amount, 0) - quote.spend_minor;
       const changePreparation =
@@ -449,12 +459,19 @@
         spendProofs.reduce((sum, proof) => sum + proof.amount, 0) - quote.quantity_minor;
       const changePreparation =
         changeMinor > 0
-          ? (await prepareProofOutputs(proofMintUrl(), marketUnit, changeMinor)).preparation
+          ? (
+              await prepareProofOutputs(proofMintUrl(), marketUnit, changeMinor, undefined, {
+                marketEventId: marketId
+              })
+            ).preparation
           : undefined;
       const changeOutputs =
         changeMinor > 0
-          ? (await prepareProofOutputs(proofMintUrl(), marketUnit, changeMinor, changePreparation))
-              .outputs
+          ? (
+              await prepareProofOutputs(proofMintUrl(), marketUnit, changeMinor, changePreparation, {
+                marketEventId: marketId
+              })
+            ).outputs
           : [];
 
       const requestId = createTradeRequestId();

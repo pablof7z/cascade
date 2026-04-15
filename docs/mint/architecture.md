@@ -115,6 +115,8 @@ The canonical public discovery path for market keysets is market-scoped:
 
 - `GET /{event_id}/v1/keys`
 
+The shared standard `/v1/keys`, `/v1/keysets`, and `/v1/keys/{keyset_id}` routes stay wallet-facing. Market key material lives on the same mint runtime, but it is not listed on the shared standard key routes.
+
 The path segment is the kind `982` event id, not the slug and not an internal mint UUID.
 
 ## State Authority

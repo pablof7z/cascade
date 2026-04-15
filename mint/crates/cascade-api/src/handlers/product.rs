@@ -6,32 +6,29 @@ use crate::stripe::{
 };
 use crate::types::{
     BlindedMessageInput, MintBolt11Request, MintBolt11Response, MintQuoteBolt11Request,
-    MintQuoteBolt11Response, ProductActivityItem, ProductActivityResponse, ProductBuyRequest,
-    ProductCoordinatorBuyRequest, ProductCoordinatorSellRequest,
-    ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest, ProductFeedResponse,
+    MintQuoteBolt11Response, ProductBuyRequest, ProductCoordinatorBuyRequest,
+    ProductCoordinatorSellRequest, ProductCoordinatorTradeQuoteRequest,
     ProductFxMetadataResponse, ProductFxObservationResponse, ProductLightningFxQuoteResponse,
-    ProductMarketDetailResponse, ProductMarketSearchResponse, ProductMarketSummary,
-    ProductPortfolioFundingRequestStatusResponse, ProductPortfolioFundingResponse,
-    ProductRuntimeFundingResponse, ProductRuntimeRailResponse, ProductRuntimeResponse,
-    ProductSellRequest, ProductStripeFundingRequest, ProductTradeBlindSignatureBundleResponse,
-    ProductTradeExecutionResponse, ProductTradeQuoteRequest, ProductTradeQuoteResponse,
-    ProductTradeRequestStatusResponse, ProductTradeSettlementResponse, ProductTradeStatusResponse,
-    ProductUsdcDepositIntentRequest, ProductUsdcDepositIntentResponse,
-    ProductUsdcWithdrawalRequest, ProductUsdcWithdrawalResponse, ProofInput, TokenOutput,
+    ProductMarketSummary, ProductPortfolioFundingRequestStatusResponse,
+    ProductPortfolioFundingResponse, ProductSellRequest, ProductStripeFundingRequest,
+    ProductTradeBlindSignatureBundleResponse, ProductTradeExecutionResponse,
+    ProductTradeQuoteRequest, ProductTradeQuoteResponse, ProductTradeRequestStatusResponse,
+    ProductTradeSettlementResponse, ProductTradeStatusResponse, ProductUsdcDepositIntentRequest,
+    ProductUsdcDepositIntentResponse, ProductUsdcWithdrawalRequest, ProductUsdcWithdrawalResponse,
+    ProofInput, TokenOutput,
 };
 use axum::{
     body::Bytes,
-    extract::{Json, Path, Query, State},
+    extract::{Json, Path, State},
     http::{header::AUTHORIZATION, HeaderMap, Method, StatusCode, Uri},
 };
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use bitcoin::secp256k1::{schnorr::Signature, Message, Secp256k1, XOnlyPublicKey};
 use cascade_core::{
     product::{
-        FxQuoteSnapshot, MarketLaunchState, TradeExecutionRequest, TradeExecutionRequestStatus,
-        TradeQuoteSnapshot, TradeSettlementInsert, TradeSettlementRecord, UsdcDepositIntent,
-        UsdcWithdrawal, WalletFundingQuote, WalletFundingRequest, WalletFundingRequestStatus,
-        WalletFundingStatus,
+        FxQuoteSnapshot, TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot,
+        TradeSettlementInsert, TradeSettlementRecord, UsdcDepositIntent, UsdcWithdrawal,
+        WalletFundingQuote, WalletFundingRequest, WalletFundingRequestStatus, WalletFundingStatus,
     },
     Market, Side,
 };
@@ -62,14 +59,6 @@ const NIP98_AUTH_KIND: i64 = 27_235;
 const NIP98_AUTH_WINDOW_SECONDS: i64 = 120;
 const SHARE_MINOR_SCALE: u64 = 10_000;
 const MAX_MARKET_DENOMINATION_POWER: u32 = 32;
-const DEFAULT_FEED_MARKET_LIMIT: usize = 60;
-const DEFAULT_FEED_TRADE_LIMIT: usize = 240;
-const MAX_FEED_MARKET_LIMIT: usize = 240;
-const MAX_FEED_TRADE_LIMIT: usize = 480;
-const DEFAULT_DISCOVERY_LIMIT: usize = 20;
-const MAX_DISCOVERY_LIMIT: usize = 100;
-const DEFAULT_ACTIVITY_LIMIT: usize = 40;
-const MAX_ACTIVITY_LIMIT: usize = 200;
 
 struct RequestAuthContext {
     signer_pubkey: Option<String>,
@@ -89,149 +78,6 @@ struct Nip98AuthEvent {
 struct PreparedTradeQuote {
     response: ProductTradeQuoteResponse,
     fx_quote: FxQuoteSnapshot,
-}
-
-#[derive(Default, serde::Deserialize)]
-pub struct ProductFeedQuery {
-    market_limit: Option<usize>,
-    market_offset: Option<usize>,
-    trade_limit: Option<usize>,
-    trade_offset: Option<usize>,
-}
-
-#[derive(Default, serde::Deserialize)]
-pub struct ProductPaginationQuery {
-    limit: Option<usize>,
-    offset: Option<usize>,
-}
-
-#[derive(Default, serde::Deserialize)]
-pub struct ProductSearchQuery {
-    q: Option<String>,
-    limit: Option<usize>,
-    offset: Option<usize>,
-}
-
-fn runtime_response(state: &AppState) -> ProductRuntimeResponse {
-    ProductRuntimeResponse {
-        edition: state.edition().to_string(),
-        network: state.network_type.clone(),
-        mint_url: state.mint_url.clone(),
-        proof_custody: "browser_local".to_string(),
-        funding: ProductRuntimeFundingResponse {
-            lightning: ProductRuntimeRailResponse {
-                available: true,
-                reason: None,
-            },
-            stripe: ProductRuntimeRailResponse {
-                available: state.stripe_gateway.is_some(),
-                reason: state
-                    .stripe_gateway
-                    .as_ref()
-                    .map(|_| None)
-                    .unwrap_or_else(|| Some("stripe_fundings_unavailable".to_string())),
-            },
-            usdc: ProductRuntimeRailResponse {
-                available: !state.paper_mode && state.usdc_wallet.is_some(),
-                reason: if state.paper_mode {
-                    Some("usdc_mainnet_only".to_string())
-                } else {
-                    state
-                        .usdc_wallet
-                        .as_ref()
-                        .map(|_| None)
-                        .unwrap_or_else(|| Some("usdc_fundings_unavailable".to_string()))
-                },
-            },
-        },
-    }
-}
-
-fn bounded_limit(limit: Option<usize>, default: usize, max: usize) -> usize {
-    limit.unwrap_or(default).min(max)
-}
-
-fn bounded_offset(offset: Option<usize>) -> usize {
-    offset.unwrap_or(0)
-}
-
-fn next_offset(total: usize, offset: usize, page_len: usize) -> Option<u64> {
-    if page_len == 0 {
-        return None;
-    }
-
-    let next = offset.saturating_add(page_len);
-    (next < total).then_some(next as u64)
-}
-
-fn paginate_owned<T: Clone>(items: &[T], offset: usize, limit: usize) -> (Vec<T>, Option<u64>) {
-    if limit == 0 {
-        return (Vec::new(), None);
-    }
-
-    let page = items
-        .iter()
-        .skip(offset)
-        .take(limit)
-        .cloned()
-        .collect::<Vec<_>>();
-    let next = next_offset(items.len(), offset, page.len());
-    (page, next)
-}
-
-fn event_tag_values(raw_event: &Value) -> Vec<String> {
-    raw_event
-        .get("tags")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(Value::as_array)
-        .flat_map(|tag| tag.iter().skip(1))
-        .filter_map(Value::as_str)
-        .map(|value| value.to_ascii_lowercase())
-        .collect()
-}
-
-fn market_search_score(query: &str, market: &Market, raw_event: &Value) -> Option<i64> {
-    let normalized_query = query.trim().to_ascii_lowercase();
-    if normalized_query.is_empty() {
-        return None;
-    }
-
-    let terms = normalized_query
-        .split_whitespace()
-        .filter(|term| !term.is_empty())
-        .collect::<Vec<_>>();
-    if terms.is_empty() {
-        return None;
-    }
-
-    let title = market.title.to_ascii_lowercase();
-    let slug = market.slug.to_ascii_lowercase();
-    let description = market.description.to_ascii_lowercase();
-    let creator = market.creator_pubkey.to_ascii_lowercase();
-    let tag_values = event_tag_values(raw_event);
-
-    let mut score = 0_i64;
-    for term in terms {
-        if title.contains(term) {
-            score += 100;
-        }
-        if slug.contains(term) {
-            score += 80;
-        }
-        if description.contains(term) {
-            score += 50;
-        }
-        if creator.contains(term) {
-            score += 30;
-        }
-        if tag_values.iter().any(|value| value.contains(term)) {
-            score += 70;
-        }
-    }
-
-    (score > 0).then_some(score)
 }
 
 fn funding_metadata_json(source: &str, extra: Value) -> Result<String, serde_json::Error> {
@@ -1236,248 +1082,6 @@ fn market_proof_unit(market: &Market, side: Side) -> String {
     }
 }
 
-pub async fn feed(
-    State(state): State<AppState>,
-    Query(query): Query<ProductFeedQuery>,
-) -> (StatusCode, Json<Value>) {
-    let markets = state.db.list_public_markets().await.unwrap_or_default();
-    let trades = state
-        .db
-        .list_recent_public_trade_events(MAX_FEED_TRADE_LIMIT as i64)
-        .await
-        .unwrap_or_default();
-
-    let market_limit = bounded_limit(
-        query.market_limit,
-        DEFAULT_FEED_MARKET_LIMIT,
-        MAX_FEED_MARKET_LIMIT,
-    );
-    let trade_limit = bounded_limit(
-        query.trade_limit,
-        DEFAULT_FEED_TRADE_LIMIT,
-        MAX_FEED_TRADE_LIMIT,
-    );
-    let market_offset = bounded_offset(query.market_offset);
-    let trade_offset = bounded_offset(query.trade_offset);
-
-    let market_events = markets
-        .into_iter()
-        .filter_map(|(_, launch)| serde_json::from_str(&launch.raw_event_json).ok())
-        .collect::<Vec<Value>>();
-    let trade_events = trades
-        .into_iter()
-        .filter_map(|trade| serde_json::from_str(&trade.raw_event_json).ok())
-        .collect::<Vec<Value>>();
-
-    let (market_page, next_market_offset) =
-        paginate_owned(&market_events, market_offset, market_limit);
-    let (trade_page, next_trade_offset) = paginate_owned(&trade_events, trade_offset, trade_limit);
-
-    (
-        StatusCode::OK,
-        Json(json!(ProductFeedResponse {
-            markets: market_page,
-            trades: trade_page,
-            next_market_offset,
-            next_trade_offset,
-        })),
-    )
-}
-
-pub async fn runtime(State(state): State<AppState>) -> (StatusCode, Json<ProductRuntimeResponse>) {
-    (StatusCode::OK, Json(runtime_response(&state)))
-}
-
-pub async fn market_detail(
-    State(state): State<AppState>,
-    Path(slug): Path<String>,
-) -> (StatusCode, Json<Value>) {
-    match state.db.get_public_market_by_slug(&slug).await {
-        Ok(Some((market, launch))) => market_detail_response(&state, &market, &launch).await,
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": "market_not_found" })),
-        ),
-        Err(error) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": error.to_string() })),
-        ),
-    }
-}
-
-pub async fn pending_market_detail(
-    State(state): State<AppState>,
-    method: Method,
-    uri: Uri,
-    headers: HeaderMap,
-    Path((event_id, creator_pubkey)): Path<(String, String)>,
-) -> (StatusCode, Json<Value>) {
-    let auth = match request_auth_context(&headers, &method, &uri) {
-        Ok(auth) => auth,
-        Err(error) => return (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
-    };
-    let Some(signer_pubkey) = auth.signer_pubkey.as_deref() else {
-        return (
-            StatusCode::UNAUTHORIZED,
-            Json(json!({ "error": "creator_auth_required" })),
-        );
-    };
-
-    let market = match state.db.get_market(&event_id).await {
-        Ok(Some(market)) => market,
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "error": "market_not_found" })),
-            )
-        }
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    if market.creator_pubkey != creator_pubkey || signer_pubkey != creator_pubkey {
-        return (
-            StatusCode::UNAUTHORIZED,
-            Json(json!({ "error": "creator_auth_required" })),
-        );
-    }
-
-    let launch = match state.db.get_market_launch_state(&event_id).await {
-        Ok(Some(launch)) => launch,
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "error": "market_launch_state_not_found" })),
-            )
-        }
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    market_detail_response(&state, &market, &launch).await
-}
-
-pub async fn search_markets(
-    State(state): State<AppState>,
-    Query(query): Query<ProductSearchQuery>,
-) -> (StatusCode, Json<Value>) {
-    let search_query = query.q.unwrap_or_default();
-    let limit = bounded_limit(query.limit, DEFAULT_DISCOVERY_LIMIT, MAX_DISCOVERY_LIMIT);
-    let offset = bounded_offset(query.offset);
-    let normalized_query = search_query.trim().to_ascii_lowercase();
-
-    let mut markets = state
-        .db
-        .list_public_markets()
-        .await
-        .unwrap_or_default()
-        .into_iter()
-        .filter_map(|(market, launch)| {
-            let raw_event = serde_json::from_str::<Value>(&launch.raw_event_json).ok()?;
-            let score = market_search_score(&normalized_query, &market, &raw_event)?;
-            let summary = product_market_summary(&state, &market, &launch)?;
-            Some((score, launch.volume_minor, market.created_at, summary))
-        })
-        .collect::<Vec<_>>();
-
-    markets.sort_by(|left, right| {
-        right
-            .0
-            .cmp(&left.0)
-            .then_with(|| right.1.cmp(&left.1))
-            .then_with(|| right.2.cmp(&left.2))
-    });
-
-    let summaries = markets
-        .into_iter()
-        .map(|(_, _, _, summary)| summary)
-        .collect::<Vec<_>>();
-    let (page, next_offset) = paginate_owned(&summaries, offset, limit);
-
-    (
-        StatusCode::OK,
-        Json(json!(ProductMarketSearchResponse {
-            query: normalized_query,
-            markets: page,
-            next_offset,
-        })),
-    )
-}
-
-pub async fn activity_feed(
-    State(state): State<AppState>,
-    Query(query): Query<ProductPaginationQuery>,
-) -> (StatusCode, Json<Value>) {
-    let limit = bounded_limit(query.limit, DEFAULT_ACTIVITY_LIMIT, MAX_ACTIVITY_LIMIT);
-    let offset = bounded_offset(query.offset);
-
-    let public_markets = state.db.list_public_markets().await.unwrap_or_default();
-    let trade_fetch_limit = (offset
-        .saturating_add(limit)
-        .saturating_add(public_markets.len()))
-    .max(DEFAULT_FEED_TRADE_LIMIT);
-    let recent_trades = state
-        .db
-        .list_recent_public_trade_events(trade_fetch_limit as i64)
-        .await
-        .unwrap_or_default();
-
-    let mut items = Vec::new();
-    for (market, launch) in public_markets {
-        let Some(summary) = product_market_summary(&state, &market, &launch) else {
-            continue;
-        };
-        items.push(ProductActivityItem {
-            kind: "market".to_string(),
-            created_at: launch
-                .public_visible_at
-                .or(launch.first_trade_at)
-                .unwrap_or(market.created_at),
-            market: summary,
-            trade: None,
-        });
-    }
-
-    let market_summaries = items
-        .iter()
-        .map(|item| (item.market.event_id.clone(), item.market.clone()))
-        .collect::<HashMap<_, _>>();
-
-    for trade in recent_trades {
-        let Some(summary) = market_summaries.get(&trade.market_event_id).cloned() else {
-            continue;
-        };
-        let Some(raw_trade) = serde_json::from_str::<Value>(&trade.raw_event_json).ok() else {
-            continue;
-        };
-        items.push(ProductActivityItem {
-            kind: "trade".to_string(),
-            created_at: trade.created_at,
-            market: summary,
-            trade: Some(raw_trade),
-        });
-    }
-
-    items.sort_by(|left, right| right.created_at.cmp(&left.created_at));
-    let (page, next_offset) = paginate_owned(&items, offset, limit);
-
-    (
-        StatusCode::OK,
-        Json(json!(ProductActivityResponse {
-            items: page,
-            next_offset,
-        })),
-    )
-}
-
 pub async fn preview_lightning_fx_quote(
     State(state): State<AppState>,
     Path(amount_minor): Path<u64>,
@@ -1583,7 +1187,7 @@ async fn create_lightning_wallet_funding_quote_record(
                 fx_quote.amount_msat,
                 Some(invoice_description),
                 Some(invoice_expiry_seconds),
-                false,
+                state.paper_mode,
             )
             .await
         {
@@ -2873,177 +2477,6 @@ pub async fn get_usdc_withdrawal_by_request_id(
     }
 }
 
-pub async fn create_market(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    method: Method,
-    uri: Uri,
-    Json(req): Json<ProductCreateMarketRequest>,
-) -> (StatusCode, Json<Value>) {
-    let auth = match request_auth_context(&headers, &method, &uri) {
-        Ok(context) => context,
-        Err(error) => return (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
-    };
-
-    if let Some(signer_pubkey) = auth.signer_pubkey.as_deref() {
-        if signer_pubkey != req.creator_pubkey {
-            return (
-                StatusCode::UNAUTHORIZED,
-                Json(json!({ "error": "request_signer_must_match_creator_pubkey" })),
-            );
-        }
-    }
-
-    if req.event_id.trim().is_empty()
-        || req.slug.trim().is_empty()
-        || req.title.trim().is_empty()
-        || req.creator_pubkey.trim().is_empty()
-    {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "event_id_slug_title_and_creator_pubkey_are_required" })),
-        );
-    }
-
-    let raw_event_id = req.raw_event.get("id").and_then(Value::as_str);
-    let raw_event_kind = req.raw_event.get("kind").and_then(Value::as_i64);
-    if raw_event_id != Some(req.event_id.as_str()) || raw_event_kind != Some(982) {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "raw_event_must_be_the_signed_kind_982_event" })),
-        );
-    }
-
-    if let Ok(Some((market, launch))) = state.db.get_public_market_by_slug(&req.slug).await {
-        if let Some(summary) = product_market_summary(&state, &market, &launch) {
-            return (StatusCode::CONFLICT, Json(json!(summary)));
-        }
-    }
-
-    if let Ok(Some(_)) = state.db.get_market(&req.event_id).await {
-        return (
-            StatusCode::CONFLICT,
-            Json(json!({ "error": "market_already_exists" })),
-        );
-    }
-
-    let denominations = market_share_denominations();
-
-    let long_keyset_id = match state
-        .mint
-        .rotate_keyset(
-            market_currency_unit(&req.slug, Side::Long),
-            denominations.clone(),
-            0,
-            false,
-            None,
-        )
-        .await
-    {
-        Ok(info) => info.id.to_string(),
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("failed_to_create_long_keyset: {error}") })),
-            )
-        }
-    };
-
-    let short_keyset_id = match state
-        .mint
-        .rotate_keyset(
-            market_currency_unit(&req.slug, Side::Short),
-            denominations,
-            0,
-            false,
-            None,
-        )
-        .await
-    {
-        Ok(info) => info.id.to_string(),
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("failed_to_create_short_keyset: {error}") })),
-            )
-        }
-    };
-
-    let market = match state
-        .market_manager
-        .create_market(
-            req.event_id.clone(),
-            req.slug.clone(),
-            req.title.clone(),
-            req.description.clone(),
-            req.b,
-            req.creator_pubkey.clone(),
-            long_keyset_id,
-            short_keyset_id,
-        )
-        .await
-    {
-        Ok(market) => market,
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    let raw_event_json = match serde_json::to_string(&req.raw_event) {
-        Ok(value) => value,
-        Err(error) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(json!({ "error": format!("invalid_raw_event: {error}") })),
-            )
-        }
-    };
-
-    if let Err(error) = state.db.insert_market(&market).await {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": error.to_string() })),
-        );
-    }
-    if let Err(error) = state
-        .db
-        .insert_market_launch_state(&market.event_id, &raw_event_json)
-        .await
-    {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": error.to_string() })),
-        );
-    }
-
-    let launch = match state.db.get_market_launch_state(&market.event_id).await {
-        Ok(Some(launch)) => launch,
-        Ok(None) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "market_launch_state_missing" })),
-            )
-        }
-        Err(error) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": error.to_string() })),
-            )
-        }
-    };
-
-    match product_market_summary(&state, &market, &launch) {
-        Some(summary) => (StatusCode::CREATED, Json(json!(summary))),
-        None => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": "failed_to_build_market_summary" })),
-        ),
-    }
-}
-
 pub async fn quote_trade(
     State(state): State<AppState>,
     Json(req): Json<ProductCoordinatorTradeQuoteRequest>,
@@ -3054,7 +2487,7 @@ pub async fn quote_trade(
         spend_minor: req.spend_minor,
         quantity: req.quantity,
     };
-    quote_trade_by_event(&state, &req.event_id, &quote_request).await
+    quote_trade_by_event(&state, &req.event_id, &quote_request, req.raw_event.as_ref()).await
 }
 
 pub async fn quote_trade_sell(
@@ -3067,7 +2500,7 @@ pub async fn quote_trade_sell(
         spend_minor: None,
         quantity: req.quantity,
     };
-    quote_trade_by_event(&state, &req.event_id, &quote_request).await
+    quote_trade_by_event(&state, &req.event_id, &quote_request, req.raw_event.as_ref()).await
 }
 
 pub async fn buy_trade(
@@ -3095,6 +2528,7 @@ pub async fn buy_trade(
         pubkey: req.pubkey,
         side: req.side,
         spend_minor: req.spend_minor,
+        raw_event: req.raw_event,
         proofs: req.proofs,
         issued_outputs: req.issued_outputs,
         change_outputs: req.change_outputs,
@@ -3506,8 +2940,9 @@ async fn quote_trade_by_event(
     state: &AppState,
     event_id: &str,
     req: &ProductTradeQuoteRequest,
+    raw_event: Option<&Value>,
 ) -> (StatusCode, Json<Value>) {
-    match load_market_for_trading(state, event_id).await {
+    match load_market_for_trading(state, event_id, raw_event).await {
         Ok(market) => match build_quote_response(state, &market, req).await {
             Ok(quote) => match create_persisted_trade_quote(state, &market, &quote).await {
                 Ok(persisted) => (StatusCode::OK, Json(json!(persisted))),
@@ -3521,10 +2956,7 @@ async fn quote_trade_by_event(
                 Json(json!({ "error": error.to_string() })),
             ),
         },
-        Err(error) => (
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": error.to_string() })),
-        ),
+        Err((status, error)) => (status, Json(json!({ "error": error }))),
     }
 }
 
@@ -3534,7 +2966,7 @@ async fn buy_trade_by_event(
     req: &ProductBuyRequest,
     request_signer_pubkey: Option<&str>,
 ) -> (StatusCode, Json<Value>) {
-    match load_market_for_trading(state, event_id).await {
+    match load_market_for_trading(state, event_id, req.raw_event.as_ref()).await {
         Ok(market) => {
             let side = match parse_side(&req.side) {
                 Ok(side) => side,
@@ -3961,10 +3393,7 @@ async fn buy_trade_by_event(
                 }
             }
         }
-        Err(error) => (
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": error.to_string() })),
-        ),
+        Err((status, error)) => (status, Json(json!({ "error": error }))),
     }
 }
 
@@ -3974,7 +3403,7 @@ async fn sell_trade_by_event(
     req: &ProductSellRequest,
     request_signer_pubkey: Option<&str>,
 ) -> (StatusCode, Json<Value>) {
-    match load_market_for_trading(state, event_id).await {
+    match load_market_for_trading(state, event_id, None).await {
         Ok(market) => {
             let side = match parse_side(&req.side) {
                 Ok(side) => side,
@@ -4425,10 +3854,7 @@ async fn sell_trade_by_event(
                 }
             }
         }
-        Err(error) => (
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": error.to_string() })),
-        ),
+        Err((status, error)) => (status, Json(json!({ "error": error }))),
     }
 }
 
@@ -4450,15 +3876,7 @@ async fn load_trade_status_response(
         .map_err(|error| error.to_string())?
         .ok_or_else(|| "market_not_found".to_string())?;
 
-    let launch = state
-        .db
-        .get_market_launch_state(&trade_record.market_event_id)
-        .await
-        .map_err(|error| error.to_string())?
-        .ok_or_else(|| "market_launch_state_not_found".to_string())?;
-
-    let summary = product_market_summary(state, &market, &launch)
-        .ok_or_else(|| "failed_to_build_market_summary".to_string())?;
+    let summary = product_market_summary(state, &market);
 
     let trade = serde_json::from_str::<Value>(&trade_record.raw_event_json)
         .map_err(|error| format!("invalid_trade_event_json: {error}"))?;
@@ -4494,16 +3912,7 @@ async fn load_market_summary_by_event_id(
         return Ok(None);
     };
 
-    let Some(launch) = state
-        .db
-        .get_market_launch_state(event_id)
-        .await
-        .map_err(|error| error.to_string())?
-    else {
-        return Ok(None);
-    };
-
-    Ok(product_market_summary(state, &market, &launch))
+    Ok(Some(product_market_summary(state, &market)))
 }
 
 async fn load_wallet_funding_request_status_response(
@@ -4900,62 +4309,27 @@ async fn build_trade_execution_response(
     } else {
         None
     };
-    let updated_market = match state.db.get_market_launch_state(&market.event_id).await {
-        Ok(Some(launch)) => product_market_summary(
-            state,
-            &Market {
-                q_long: next_q_long,
-                q_short: next_q_short,
-                reserve_sats: next_reserve_minor,
-                ..market.clone()
-            },
-            &launch,
-        ),
-        _ => None,
-    };
+    let updated_market = product_market_summary(
+        state,
+        &Market {
+            q_long: next_q_long,
+            q_short: next_q_short,
+            reserve_sats: next_reserve_minor,
+            ..market.clone()
+        },
+    );
 
-    updated_market
-        .map(|summary| ProductTradeExecutionResponse {
-            market: summary,
-            trade: raw_event,
-            settlement,
-            issued,
-            change,
-        })
-        .ok_or_else(|| "failed_to_build_updated_market_summary".to_string())
+    Ok(ProductTradeExecutionResponse {
+        market: updated_market,
+        trade: raw_event,
+        settlement,
+        issued,
+        change,
+    })
 }
 
 fn trade_execution_response(response: ProductTradeExecutionResponse) -> (StatusCode, Json<Value>) {
     (StatusCode::CREATED, Json(json!(response)))
-}
-
-async fn market_detail_response(
-    state: &AppState,
-    market: &Market,
-    launch: &MarketLaunchState,
-) -> (StatusCode, Json<Value>) {
-    let trades = state
-        .db
-        .list_market_trade_events(&market.event_id, 240)
-        .await
-        .unwrap_or_default();
-
-    match product_market_summary(state, market, launch) {
-        Some(summary) => (
-            StatusCode::OK,
-            Json(json!(ProductMarketDetailResponse {
-                market: summary,
-                trades: trades
-                    .into_iter()
-                    .filter_map(|trade| serde_json::from_str(&trade.raw_event_json).ok())
-                    .collect(),
-            })),
-        ),
-        None => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": "failed_to_build_market_summary" })),
-        ),
-    }
 }
 
 async fn enforce_signet_funding_limits(
@@ -5797,13 +5171,170 @@ fn next_sell_quantities(market: &Market, side: Side, quantity: f64) -> (f64, f64
     }
 }
 
-async fn load_market_for_trading(state: &AppState, event_id: &str) -> Result<Market, String> {
+fn raw_event_tags(raw_event: &Value) -> Option<Vec<Vec<String>>> {
+    raw_event
+        .get("tags")
+        .and_then(Value::as_array)
+        .map(|tags| {
+            tags.iter()
+                .filter_map(Value::as_array)
+                .map(|tag| {
+                    tag.iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_string)
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        })
+}
+
+async fn bootstrap_market_from_raw_event(
+    state: &AppState,
+    event_id: &str,
+    raw_event: &Value,
+) -> Result<Market, (StatusCode, String)> {
+    let raw_event_id = raw_event.get("id").and_then(Value::as_str);
+    let raw_event_kind = raw_event.get("kind").and_then(Value::as_i64);
+    if raw_event_id != Some(event_id) || raw_event_kind != Some(982) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "raw_event_must_be_the_signed_kind_982_event".to_string(),
+        ));
+    }
+
+    let creator_pubkey = raw_event
+        .get("pubkey")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                "raw_event_pubkey_is_required".to_string(),
+            )
+        })?;
+
+    let tags = raw_event_tags(raw_event).ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            "raw_event_tags_are_required".to_string(),
+        )
+    })?;
+    let slug = tag_value(&tags, "d")
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, "raw_event_slug_is_required".to_string()))?;
+    let title = tag_value(&tags, "title")
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(slug);
+    let description = tag_value(&tags, "description").unwrap_or("").trim();
+
+    if let Ok(Some(existing_market)) = state.db.get_market(event_id).await {
+        state.market_manager.load_market(existing_market.clone()).await;
+        return Ok(existing_market);
+    }
+
+    if let Ok(markets) = state.db.list_markets().await {
+        if markets
+            .iter()
+            .any(|market| market.slug == slug && market.event_id != event_id)
+        {
+            return Err((
+                StatusCode::CONFLICT,
+                "market_slug_already_exists".to_string(),
+            ));
+        }
+    }
+
+    let denominations = market_share_denominations();
+    let long_keyset_id = state
+        .mint
+        .rotate_keyset(
+            market_currency_unit(slug, Side::Long),
+            denominations.clone(),
+            0,
+            false,
+            None,
+        )
+        .await
+        .map(|info| info.id.to_string())
+        .map_err(|error| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed_to_create_long_keyset: {error}"),
+            )
+        })?;
+
+    let short_keyset_id = state
+        .mint
+        .rotate_keyset(
+            market_currency_unit(slug, Side::Short),
+            denominations,
+            0,
+            false,
+            None,
+        )
+        .await
+        .map(|info| info.id.to_string())
+        .map_err(|error| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed_to_create_short_keyset: {error}"),
+            )
+        })?;
+
+    let market = state
+        .market_manager
+        .create_market(
+            event_id.to_string(),
+            slug.to_string(),
+            title.to_string(),
+            description.to_string(),
+            10.0,
+            creator_pubkey.to_string(),
+            long_keyset_id,
+            short_keyset_id,
+        )
+        .await
+        .map_err(|error| {
+            let error_message = error.to_string();
+            if error_message.contains("already exists") {
+                (StatusCode::CONFLICT, "market_already_exists".to_string())
+            } else {
+                (StatusCode::INTERNAL_SERVER_ERROR, error_message)
+            }
+        })?;
+
+    state.db.insert_market(&market).await.map_err(|error| {
+        let error_message = error.to_string();
+        if error_message.contains("UNIQUE constraint failed: markets.slug") {
+            (StatusCode::CONFLICT, "market_slug_already_exists".to_string())
+        } else if error_message.contains("UNIQUE constraint failed: markets.event_id") {
+            (StatusCode::CONFLICT, "market_already_exists".to_string())
+        } else {
+            (StatusCode::INTERNAL_SERVER_ERROR, error_message)
+        }
+    })?;
+
+    state.market_manager.load_market(market.clone()).await;
+    Ok(market)
+}
+
+async fn load_market_for_trading(
+    state: &AppState,
+    event_id: &str,
+    raw_event: Option<&Value>,
+) -> Result<Market, (StatusCode, String)> {
     match state.get_market_by_event_id(event_id).await {
         Some(market) => {
             state.market_manager.load_market(market.clone()).await;
             Ok(market)
         }
-        None => Err(format!("market_not_found: {event_id}")),
+        None => match raw_event {
+            Some(raw_event) => bootstrap_market_from_raw_event(state, event_id, raw_event).await,
+            None => Err((StatusCode::NOT_FOUND, format!("market_not_found: {event_id}"))),
+        },
     }
 }
 
@@ -5998,29 +5529,24 @@ async fn sync_wallet_funding_quote_best_effort(
     }
 }
 
-fn product_market_summary(
-    state: &AppState,
-    market: &Market,
-    launch: &MarketLaunchState,
-) -> Option<ProductMarketSummary> {
-    let raw_event: Value = serde_json::from_str(&launch.raw_event_json).ok()?;
+fn product_market_summary(state: &AppState, market: &Market) -> ProductMarketSummary {
     let (price_long_ppm, price_short_ppm) = current_prices_ppm(state, market);
-    Some(ProductMarketSummary {
+    ProductMarketSummary {
         event_id: market.event_id.clone(),
         slug: market.slug.clone(),
         title: market.title.clone(),
         description: market.description.clone(),
         creator_pubkey: market.creator_pubkey.clone(),
-        visibility: launch.visibility.to_string(),
+        visibility: "public".to_string(),
         created_at: market.created_at,
-        first_trade_at: launch.first_trade_at,
+        first_trade_at: None,
         price_long_ppm,
         price_short_ppm,
-        volume_minor: launch.volume_minor,
-        trade_count: launch.trade_count,
+        volume_minor: 0,
+        trade_count: 0,
         reserve_minor: market.reserve_sats,
-        raw_event,
-    })
+        raw_event: serde_json::Value::Null,
+    }
 }
 
 fn build_trade_event(

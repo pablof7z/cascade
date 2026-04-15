@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
 use crate::fx::FxQuoteService;
-use crate::handlers::{self, market, price, product};
+use crate::handlers::{self, price, product};
 use crate::stripe::StripeGateway;
 use crate::usdc::UsdcWallet;
 use cascade_core::{db::CascadeDatabase, invoice::InvoiceService, MarketManager};
@@ -127,26 +127,6 @@ pub fn build_cascade_routes(state: AppState) -> Router {
     Router::new()
         // Price feeds
         .route("/api/price/{currency}", get(price::get_prices))
-        // Market management
-        .route("/api/market/create", post(market::create_market))
-        .route("/api/market/{id}", get(market::get_market))
-        .route(
-            "/api/market/{id}/price-history",
-            get(market::get_price_history),
-        )
-        .route("/api/product/feed", get(product::feed))
-        .route("/api/product/activity", get(product::activity_feed))
-        .route("/api/product/runtime", get(product::runtime))
-        .route("/api/product/markets/search", get(product::search_markets))
-        .route(
-            "/api/product/markets/slug/{slug}",
-            get(product::market_detail),
-        )
-        .route(
-            "/api/product/markets/{event_id}/pending/{creator_pubkey}",
-            get(product::pending_market_detail),
-        )
-        .route("/api/product/markets", post(product::create_market))
         .route(
             "/api/product/fx/lightning/{amount_minor}",
             get(product::preview_lightning_fx_quote),
@@ -164,21 +144,19 @@ pub fn build_cascade_routes(state: AppState) -> Router {
             get(product::trade_request_status),
         )
         .route("/api/trades/{trade_id}", get(product::trade_status))
+        // Stripe funding routes (browser calls mint directly)
+        .route("/v1/fund/stripe", post(product::create_stripe_funding))
         .route(
-            "/api/portfolio/funding/requests/{request_id}",
+            "/v1/fund/stripe/webhook",
+            post(product::stripe_webhook),
+        )
+        .route(
+            "/v1/fund/stripe/requests/{request_id}",
             get(product::wallet_funding_request_status),
         )
         .route(
-            "/api/portfolio/funding/{quote_id}",
+            "/v1/fund/stripe/{funding_id}",
             get(product::get_wallet_funding_status),
-        )
-        .route(
-            "/api/portfolio/funding/stripe",
-            post(product::create_stripe_funding),
-        )
-        .route(
-            "/api/portfolio/funding/stripe/webhook",
-            post(product::stripe_webhook),
         )
         .route(
             "/api/portfolio/funding/usdc/deposit-intents",

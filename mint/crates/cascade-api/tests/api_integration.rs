@@ -6,7 +6,7 @@
 use async_trait::async_trait;
 use axum::{
     extract::{Json, State},
-    http::{HeaderMap, Method, Uri},
+    http::{HeaderMap, Method, StatusCode, Uri},
     Router,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
@@ -23,6 +23,10 @@ use hmac::{Hmac, Mac};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::fs;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::{Arc, OnceLock};
 use tokio::net::TcpListener;
@@ -279,6 +283,198 @@ async fn create_product_test_context_with_funding(
         fx_service.clone(),
         stripe_config,
         usdc_config,
+        mint.clone(),
+        cascade_db.clone(),
+        network_type,
+        "http://127.0.0.1:0",
+    )
+    .await
+    .unwrap();
+
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let url = format!("http://{}", addr);
+    register_test_invoice_service(&url, invoice_service.clone()).await;
+
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    ProductTestContext {
+        url,
+        invoice_service,
+        fx_service,
+        market_manager,
+        mint,
+        cascade_db,
+    }
+}
+
+fn create_fake_lncli_fixture() -> (PathBuf, String, String, String) {
+    let root = std::env::temp_dir().join(format!("cascade-fake-lncli-{}", uuid::Uuid::new_v4()));
+    let state_dir = root.join("state");
+    fs::create_dir_all(&state_dir).unwrap();
+
+    let script_path = root.join("lncli");
+    let cert_path = root.join("tls.cert");
+    let macaroon_path = root.join("admin.macaroon");
+    fs::write(&cert_path, "fake cert").unwrap();
+    fs::write(&macaroon_path, [0u8; 32]).unwrap();
+
+    let script = format!(
+        r#"#!/bin/sh
+STATE_DIR="{state_dir}"
+cmd=""
+last=""
+for arg in "$@"; do
+  last="$arg"
+  case "$arg" in
+    --*) ;;
+    *) if [ -z "$cmd" ]; then cmd="$arg"; fi ;;
+  esac
+done
+
+case "$cmd" in
+  getinfo)
+    echo '{{"identity_pubkey":"test","alias":"fake","num_active_channels":0,"num_peers":0,"block_height":1}}'
+    ;;
+  addinvoice)
+    preimage=""
+    amount_msat="0"
+    expiry="3600"
+    memo=""
+    for arg in "$@"; do
+      case "$arg" in
+        --preimage=*) preimage="${{arg#--preimage=}}" ;;
+        --amt_msat=*) amount_msat="${{arg#--amt_msat=}}" ;;
+        --expiry=*) expiry="${{arg#--expiry=}}" ;;
+        --memo=*) memo="${{arg#--memo=}}" ;;
+      esac
+    done
+    rhash=$(printf '%s' "$preimage" | xxd -r -p | shasum -a 256 | awk '{{print $1}}')
+    request="lnfake-$rhash"
+    created_at=$(date +%s)
+    cat > "$STATE_DIR/$rhash.json" <<EOF
+{{"memo":"$memo","r_hash":"$rhash","value_msat":"$amount_msat","creation_date":"$created_at","expiry":"$expiry","payment_request":"$request","state":"OPEN","settled":false}}
+EOF
+    echo "{{\"r_hash\":\"$rhash\",\"payment_request\":\"$request\"}}"
+    ;;
+  lookupinvoice)
+    rhash=""
+    for arg in "$@"; do
+      case "$arg" in
+        --rhash=*) rhash="${{arg#--rhash=}}" ;;
+      esac
+    done
+    cat "$STATE_DIR/$rhash.json"
+    ;;
+  payinvoice)
+    echo '{{"payment_error":"fake lncli payinvoice should not run"}}' >&2
+    exit 1
+    ;;
+  *)
+    echo "{{\"error\":\"unknown_command:$cmd\"}}" >&2
+    exit 1
+    ;;
+esac
+"#,
+        state_dir = state_dir.display(),
+    );
+    fs::write(&script_path, script).unwrap();
+
+    #[cfg(unix)]
+    {
+        let mut permissions = fs::metadata(&script_path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&script_path, permissions).unwrap();
+    }
+
+    (
+        root,
+        script_path.to_string_lossy().into_owned(),
+        cert_path.to_string_lossy().into_owned(),
+        macaroon_path.to_string_lossy().into_owned(),
+    )
+}
+
+async fn create_cli_backed_product_test_context(network_type: &'static str) -> ProductTestContext {
+    let (_fixture_root, lncli_path, cert_path, macaroon_path) = create_fake_lncli_fixture();
+
+    let cdk_db = Arc::new(cdk_sqlite::mint::memory::empty().await.unwrap());
+    let mut builder = MintBuilder::new(cdk_db.clone());
+    builder
+        .configure_unit(
+            CurrencyUnit::Sat,
+            UnitConfig {
+                amounts: vec![1, 2, 4, 8, 16, 32, 64, 128],
+                input_fee_ppk: 0,
+            },
+        )
+        .unwrap();
+    builder
+        .configure_unit(
+            CurrencyUnit::Usd,
+            UnitConfig {
+                amounts: vec![
+                    1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
+                ],
+                input_fee_ppk: 0,
+            },
+        )
+        .unwrap();
+
+    let lnd_config = cascade_core::LndConfig {
+        host: "127.0.0.1:10009".to_string(),
+        cert_path: Some(cert_path),
+        macaroon_path: Some(macaroon_path),
+        tls_domain: None,
+        network: Some(network_type.to_string()),
+        cli_path: Some(lncli_path),
+    };
+    let mut lnd_client = cascade_core::lightning::lnd_client::LndClient::new(lnd_config);
+    lnd_client.connect().await.unwrap();
+
+    let invoice_service = Arc::new(Mutex::new(cascade_core::invoice::InvoiceService::new(
+        lnd_client, 3600, 40,
+    )));
+    let fx_service = test_fx_service();
+    builder
+        .add_payment_processor(
+            CurrencyUnit::Usd,
+            PaymentMethod::Known(KnownMethod::Bolt11),
+            MintMeltLimits::new(1, 100_000_000),
+            Arc::new(cascade_api::payment::UsdBolt11PaymentProcessor::new(
+                invoice_service.clone(),
+                fx_service.clone(),
+                cdk_db.clone(),
+                network_type == "signet",
+            )),
+        )
+        .await
+        .unwrap();
+
+    let seed = [9_u8; 32];
+    let advertised_mint_info = builder.current_mint_info();
+    let mint = Arc::new(builder.build_with_seed(cdk_db.clone(), &seed).await.unwrap());
+    mint.set_mint_info(advertised_mint_info).await.unwrap();
+
+    let cascade_db = Arc::new(
+        cascade_core::db::CascadeDatabase::connect("sqlite::memory:")
+            .await
+            .unwrap(),
+    );
+    cascade_db.run_migrations().await.unwrap();
+    let market_manager = Arc::new(cascade_core::MarketManager::new(
+        cascade_core::LmsrEngine::new(10.0).unwrap(),
+    ));
+
+    let app = cascade_api::build_server(
+        market_manager.clone(),
+        invoice_service.clone(),
+        fx_service.clone(),
+        None,
+        None,
         mint.clone(),
         cascade_db.clone(),
         network_type,
@@ -599,42 +795,26 @@ async fn create_public_market_with_seed(
     raw_event: Value,
     spend_minor: u64,
 ) -> serde_json::Value {
-    let create_response = client
-        .post(format!("{url}/api/product/markets"))
-        .json(&json!({
-            "event_id": event_id,
-            "title": title,
-            "description": description,
-            "slug": slug,
-            "body": format!("{title} body"),
-            "creator_pubkey": creator,
-            "raw_event": raw_event,
-            "b": 10.0
-        }))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(create_response.status(), 201);
-
     let funding_proofs: Vec<Proof> = serde_json::from_value(
         create_signet_funding_and_get_proofs(client, url, creator, 10_000).await,
     )
     .unwrap();
     let usd_keyset = fetch_active_usd_keyset(client, url).await;
-    let market_keyset = fetch_market_keyset(client, url, event_id, "long").await;
 
     let quote_response = client
         .post(format!("{url}/api/trades/quote"))
         .json(&json!({
             "event_id": event_id,
             "side": "long",
-            "spend_minor": spend_minor
+            "spend_minor": spend_minor,
+            "raw_event": raw_event.clone()
         }))
         .send()
         .await
         .unwrap();
     assert_eq!(quote_response.status(), 200);
     let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
+    let market_keyset = fetch_market_keyset(client, url, event_id, "long").await;
 
     let (issued_outputs, _) = prepare_outputs(
         &market_keyset,
@@ -655,6 +835,7 @@ async fn create_public_market_with_seed(
             "pubkey": creator,
             "side": "long",
             "spend_minor": spend_minor,
+            "raw_event": raw_event,
             "proofs": funding_proofs,
             "issued_outputs": issued_outputs,
             "change_outputs": change_outputs
@@ -881,26 +1062,59 @@ async fn test_unknown_route_returns_404() {
     assert_eq!(response.status(), 404, "Unknown routes should return 404");
 }
 
-/// Test cascade-specific routes exist
 #[tokio::test]
-async fn test_cascade_routes_exist() {
-    // Create a test server with cascade-style routes
+async fn test_public_market_publish_and_read_routes_are_not_exposed() {
+    let url = create_product_test_server().await;
+    let client = reqwest::Client::new();
+
+    let requests = vec![
+        (Method::POST, format!("{url}/api/market/create")),
+        (Method::GET, format!("{url}/api/market/test-market")),
+        (
+            Method::GET,
+            format!("{url}/api/market/test-market/price-history"),
+        ),
+        (Method::GET, format!("{url}/api/product/feed")),
+        (Method::GET, format!("{url}/api/product/activity")),
+        (Method::GET, format!("{url}/api/product/runtime")),
+        (
+            Method::GET,
+            format!("{url}/api/product/markets/search?q=macro&limit=10"),
+        ),
+        (
+            Method::GET,
+            format!("{url}/api/product/markets/slug/test-market"),
+        ),
+        (
+            Method::GET,
+            format!(
+                "{url}/api/product/markets/test-event/pending/creator-pubkey"
+            ),
+        ),
+        (Method::POST, format!("{url}/api/product/markets")),
+    ];
+
+    for (method, endpoint) in requests {
+        let response = match method {
+            Method::GET => client.get(&endpoint).send().await.unwrap(),
+            Method::POST => client.post(&endpoint).json(&json!({})).send().await.unwrap(),
+            other => panic!("unsupported test method: {other}"),
+        };
+        assert_eq!(
+            response.status(),
+            StatusCode::NOT_FOUND,
+            "{method} {endpoint} should return 404"
+        );
+    }
+}
+
+/// Test basic routes exist
+#[tokio::test]
+async fn test_basic_routes_exist() {
     let app = Router::new()
         .route(
             "/api/price/{currency}",
             axum::routing::get(|| async { r#"{"usd":50000.0,"btc":1.0}"# }),
-        )
-        .route(
-            "/api/market/create",
-            axum::routing::post(|| async {
-                r#"{"id":"test-market","slug":"test-market","status":"active"}"#
-            }),
-        )
-        .route(
-            "/api/market/{id}",
-            axum::routing::get(|| async {
-                r#"{"id":"test-market","title":"Test Market","status":"active"}"#
-            }),
         )
         .route("/health", axum::routing::get(|| async { "OK" }));
 
@@ -923,44 +1137,13 @@ async fn test_cascade_routes_exist() {
         .await
         .expect("Failed to make request");
     assert_eq!(response.status(), 200, "Price endpoint should return 200");
-
-    // Test market create endpoint
-    let response = client
-        .post(&format!("{}/api/market/create", url))
-        .json(&serde_json::json!({
-            "event_id": "evt123",
-            "slug": "test-market",
-            "title": "Test Market",
-            "description": "Test description",
-            "b": 10.0
-        }))
-        .send()
-        .await
-        .expect("Failed to make request");
-    assert_eq!(
-        response.status(),
-        200,
-        "Market create endpoint should return 200"
-    );
-
-    // Test market get endpoint
-    let response = client
-        .get(&format!("{}/api/market/test-market", url))
-        .send()
-        .await
-        .expect("Failed to make request");
-    assert_eq!(
-        response.status(),
-        200,
-        "Market get endpoint should return 200"
-    );
 }
 
 /// Test that invalid JSON in request body returns error
 #[tokio::test]
 async fn test_invalid_json_returns_error() {
     let app = Router::new().route(
-        "/api/market/create",
+        "/api/trades/buy",
         axum::routing::post(
             |axum::extract::Json(payload): axum::extract::Json<serde_json::Value>| async move {
                 format!("Received: {:?}", payload)
@@ -982,7 +1165,7 @@ async fn test_invalid_json_returns_error() {
 
     // Send invalid JSON
     let response = client
-        .post(&format!("{}/api/market/create", url))
+        .post(&format!("{}/api/trades/buy", url))
         .header("Content-Type", "application/json")
         .body("not valid json {{{")
         .send()
@@ -2004,13 +2187,38 @@ async fn test_signet_lightning_funding_quote_auto_pays_after_status_poll() {
     assert_eq!(issued_quote["state"].as_str(), Some("ISSUED"));
 
     let funding_status_response = client
-        .get(format!("{url}/api/portfolio/funding/{quote_id}"))
+        .get(format!("{url}/v1/fund/stripe/{quote_id}"))
         .send()
         .await
         .unwrap();
     assert_eq!(funding_status_response.status(), 200);
     let funding_status_payload: serde_json::Value = funding_status_response.json().await.unwrap();
     assert_eq!(funding_status_payload["status"].as_str(), Some("complete"));
+}
+
+#[tokio::test]
+async fn test_signet_lightning_funding_quote_auto_pays_without_lncli_payinvoice() {
+    let context = create_cli_backed_product_test_context("signet").await;
+    let client = reqwest::Client::new();
+
+    let quote_response = client
+        .post(format!("{}/v1/mint/quote/bolt11", context.url))
+        .json(&serde_json::json!({
+            "pubkey": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+            "amount": 2500,
+            "unit": "usd"
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(quote_response.status(), 200);
+
+    let quote_payload: serde_json::Value = quote_response.json().await.unwrap();
+    let quote_id = quote_payload["quote"].as_str().unwrap().to_string();
+    assert_eq!(quote_payload["state"].as_str(), Some("UNPAID"));
+
+    let paid_quote = wait_for_mint_quote_state(&client, &context.url, &quote_id, &["PAID"]).await;
+    assert_eq!(paid_quote["state"].as_str(), Some("PAID"));
 }
 
 #[tokio::test]
@@ -2202,7 +2410,7 @@ async fn test_lightning_funding_request_id_is_idempotent() {
     assert_eq!(second_payload["state"].as_str(), Some("UNPAID"));
 
     let request_status_response = client
-        .get(format!("{url}/api/portfolio/funding/requests/{request_id}"))
+        .get(format!("{url}/v1/fund/stripe/requests/{request_id}"))
         .send()
         .await
         .unwrap();
@@ -2317,7 +2525,7 @@ async fn test_stripe_funding_completes_from_webhook() {
     let request_id = "stripe-funding-request-1";
 
     let create_response = client
-        .post(format!("{url}/api/portfolio/funding/stripe"))
+        .post(format!("{url}/v1/fund/stripe"))
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount_minor": 4200,
@@ -2343,7 +2551,7 @@ async fn test_stripe_funding_completes_from_webhook() {
     assert!(create_payload["fx_quote_id"].is_null());
 
     let request_status_response = client
-        .get(format!("{url}/api/portfolio/funding/requests/{request_id}"))
+        .get(format!("{url}/v1/fund/stripe/requests/{request_id}"))
         .send()
         .await
         .unwrap();
@@ -2376,7 +2584,7 @@ async fn test_stripe_funding_completes_from_webhook() {
     let signature = stripe_signature(webhook_secret, &event_body, timestamp);
 
     let webhook_response = client
-        .post(format!("{url}/api/portfolio/funding/stripe/webhook"))
+        .post(format!("{url}/v1/fund/stripe/webhook"))
         .header("stripe-signature", signature)
         .header("content-type", "application/json")
         .body(event_body)
@@ -2386,7 +2594,7 @@ async fn test_stripe_funding_completes_from_webhook() {
     assert_eq!(webhook_response.status(), 200);
 
     let funding_status_response = client
-        .get(format!("{url}/api/portfolio/funding/{funding_id}"))
+        .get(format!("{url}/v1/fund/stripe/{funding_id}"))
         .send()
         .await
         .unwrap();
@@ -2419,7 +2627,7 @@ async fn test_stripe_funding_completes_from_webhook() {
     assert_eq!(issued_quote["state"].as_str(), Some("ISSUED"));
 
     let completed_funding_status_response = client
-        .get(format!("{url}/api/portfolio/funding/{funding_id}"))
+        .get(format!("{url}/v1/fund/stripe/{funding_id}"))
         .send()
         .await
         .unwrap();
@@ -2456,7 +2664,7 @@ async fn test_stripe_funding_moves_to_review_required_for_high_risk() {
     let pubkey = "1111111111111111111111111111111111111111111111111111111111111111";
 
     let create_response = client
-        .post(format!("{url}/api/portfolio/funding/stripe"))
+        .post(format!("{url}/v1/fund/stripe"))
         .json(&serde_json::json!({
             "pubkey": pubkey,
             "amount_minor": 4200
@@ -2489,7 +2697,7 @@ async fn test_stripe_funding_moves_to_review_required_for_high_risk() {
     let signature = stripe_signature(webhook_secret, &event_body, timestamp);
 
     let webhook_response = client
-        .post(format!("{url}/api/portfolio/funding/stripe/webhook"))
+        .post(format!("{url}/v1/fund/stripe/webhook"))
         .header("stripe-signature", signature)
         .header("content-type", "application/json")
         .body(event_body)
@@ -2501,7 +2709,7 @@ async fn test_stripe_funding_moves_to_review_required_for_high_risk() {
     assert_eq!(webhook_payload["status"].as_str(), Some("review_required"));
 
     let funding_status_response = client
-        .get(format!("{url}/api/portfolio/funding/{funding_id}"))
+        .get(format!("{url}/v1/fund/stripe/{funding_id}"))
         .send()
         .await
         .unwrap();
@@ -3119,6 +3327,7 @@ async fn test_trade_request_replays_buy_after_pre_issuance_checkpoint() {
         pubkey: creator.to_string(),
         side: "long".to_string(),
         spend_minor: 4000,
+        raw_event: None,
         proofs: Vec::new(),
         issued_outputs: Vec::new(),
         change_outputs: Vec::new(),

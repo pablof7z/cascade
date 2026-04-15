@@ -35,6 +35,10 @@ test-results
 .vercel
 .playwright-cli
 $AGENT_HOME/
+.claude/
+.factory/
+.goose/
+.windsurf/
 
 # Local UI capture artifacts accidentally written to repo root
 /*-final.yaml

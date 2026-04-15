@@ -281,10 +281,14 @@ export function buildTradeSummary(trades: TradeRecord[]): MarketTradeSummary {
     longVolume: trades.filter((trade) => trade.direction === 'long').reduce((sum, trade) => sum + trade.amount, 0),
     shortVolume: trades.filter((trade) => trade.direction === 'short').reduce((sum, trade) => sum + trade.amount, 0),
     latestTradeAt: latest.createdAt,
-    latestPricePpm: latest.pricePpm,
+    latestPricePpm: yesPricePpmFromTrade(latest),
     latestDirection: latest.direction,
     latestType: latest.type
   };
+}
+
+export function yesPricePpmFromTrade(trade: Pick<TradeRecord, 'direction' | 'pricePpm'>): number {
+  return trade.direction === 'long' ? trade.pricePpm : 1_000_000 - trade.pricePpm;
 }
 
 export function buildDiscussionThreads(records: DiscussionRecord[], marketId: string): DiscussionThread[] {

@@ -3,12 +3,11 @@
 use crate::error::Result;
 use crate::market::{Market, MarketStatus, Side, Trade, TradeDirection};
 use crate::product::{
-    FxQuoteObservation, FxQuoteSnapshot, FxQuoteSourceMetadata, MarketLaunchState,
-    MarketTradeRecord, MarketVisibility, TradeExecutionRequest, TradeExecutionRequestStatus,
-    TradeQuoteSnapshot, TradeSettlementInsert, TradeSettlementRecord, TradeSettlementStatus,
-    UsdcDepositIntent, UsdcDepositIntentStatus, UsdcWithdrawal, UsdcWithdrawalStatus,
-    WalletFundingEvent, WalletFundingQuote, WalletFundingRequest, WalletFundingRequestStatus,
-    WalletFundingStatus,
+    FxQuoteObservation, FxQuoteSnapshot, FxQuoteSourceMetadata, MarketTradeRecord,
+    TradeExecutionRequest, TradeExecutionRequestStatus, TradeQuoteSnapshot, TradeSettlementInsert,
+    TradeSettlementRecord, TradeSettlementStatus, UsdcDepositIntent, UsdcDepositIntentStatus,
+    UsdcWithdrawal, UsdcWithdrawalStatus, WalletFundingEvent, WalletFundingQuote,
+    WalletFundingRequest, WalletFundingRequestStatus, WalletFundingStatus,
 };
 use crate::trade::Payout;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
@@ -169,6 +168,11 @@ impl CascadeDatabase {
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         sqlx::query(include_str!("../../../migrations/016_usdc_withdrawals.sql"))
+            .execute(&self.pool)
+            .await
+            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+
+        sqlx::query(include_str!("../../../migrations/019_drop_market_mirror.sql"))
             .execute(&self.pool)
             .await
             .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
@@ -684,48 +688,6 @@ impl CascadeDatabase {
             .collect())
     }
 
-    /// Insert LMSR price snapshot
-    pub async fn insert_lmsr_snapshot(
-        &self,
-        market_slug: &str,
-        q_long: f64,
-        q_short: f64,
-        price_long: f64,
-        price_short: f64,
-    ) -> Result<()> {
-        sqlx::query(
-            "INSERT INTO lmsr_snapshots (market_slug, q_long, q_short, price_long, price_short, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))"
-        )
-        .bind(market_slug)
-        .bind(q_long)
-        .bind(q_short)
-        .bind(price_long)
-        .bind(price_short)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(())
-    }
-
-    /// Get price history for a market
-    pub async fn get_price_history(
-        &self,
-        market_slug: &str,
-        limit: i64,
-    ) -> Result<Vec<(f64, f64, String)>> {
-        let rows = sqlx::query_as::<_, (f64, f64, String)>(
-            "SELECT price_long, price_short, created_at FROM lmsr_snapshots WHERE market_slug = ? ORDER BY created_at DESC LIMIT ?"
-        )
-        .bind(market_slug)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(rows)
-    }
-
     /// Insert a payout record
     pub async fn insert_payout(&self, payout: &Payout) -> Result<()> {
         sqlx::query(
@@ -743,190 +705,6 @@ impl CascadeDatabase {
         .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         Ok(())
-    }
-
-    /// Persist product launch state for a market.
-    pub async fn insert_market_launch_state(
-        &self,
-        event_id: &str,
-        raw_event_json: &str,
-    ) -> Result<()> {
-        sqlx::query(
-            r#"
-            INSERT INTO market_launch_state (
-                event_id,
-                raw_event_json,
-                visibility,
-                last_price_yes_ppm,
-                last_price_no_ppm,
-                updated_at
-            )
-            VALUES (?, ?, 'pending', 500000, 500000, strftime('%s', 'now'))
-            "#,
-        )
-        .bind(event_id)
-        .bind(raw_event_json)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(())
-    }
-
-    pub async fn get_market_launch_state(
-        &self,
-        event_id: &str,
-    ) -> Result<Option<MarketLaunchState>> {
-        let row = sqlx::query_as::<
-            _,
-            (
-                String,
-                String,
-                String,
-                Option<i64>,
-                Option<i64>,
-                i64,
-                i64,
-                i64,
-                i64,
-                i64,
-            ),
-        >(
-            r#"
-            SELECT
-                event_id,
-                raw_event_json,
-                visibility,
-                first_trade_at,
-                public_visible_at,
-                volume_minor,
-                trade_count,
-                last_price_yes_ppm,
-                last_price_no_ppm,
-                updated_at
-            FROM market_launch_state
-            WHERE event_id = ?
-            "#,
-        )
-        .bind(event_id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(row.map(
-            |(
-                event_id,
-                raw_event_json,
-                visibility,
-                first_trade_at,
-                public_visible_at,
-                volume_minor,
-                trade_count,
-                last_price_yes_ppm,
-                last_price_no_ppm,
-                updated_at,
-            )| MarketLaunchState {
-                event_id,
-                raw_event_json,
-                visibility: visibility.parse().unwrap_or(MarketVisibility::Pending),
-                first_trade_at,
-                public_visible_at,
-                volume_minor: volume_minor.max(0) as u64,
-                trade_count: trade_count.max(0) as u64,
-                last_price_yes_ppm: last_price_yes_ppm.max(0) as u64,
-                last_price_no_ppm: last_price_no_ppm.max(0) as u64,
-                updated_at,
-            },
-        ))
-    }
-
-    pub async fn list_public_markets(&self) -> Result<Vec<(Market, MarketLaunchState)>> {
-        let rows = sqlx::query(
-            r#"
-            SELECT
-                m.event_id,
-                m.slug,
-                m.title,
-                m.description,
-                m.b,
-                m.q_long,
-                m.q_short,
-                m.reserve_sats,
-                m.status,
-                m.resolution_outcome,
-                m.creator_pubkey,
-                m.created_at,
-                m.resolved_at,
-                m.long_keyset_id,
-                m.short_keyset_id,
-                s.raw_event_json,
-                s.visibility,
-                s.first_trade_at,
-                s.public_visible_at,
-                s.volume_minor,
-                s.trade_count,
-                s.last_price_yes_ppm,
-                s.last_price_no_ppm,
-                s.updated_at
-            FROM markets m
-            INNER JOIN market_launch_state s ON s.event_id = m.event_id
-            WHERE s.visibility = 'public'
-            ORDER BY COALESCE(s.public_visible_at, m.created_at) DESC
-            "#,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(rows
-            .into_iter()
-            .map(|row| map_market_and_launch_state_row(&row))
-            .collect())
-    }
-
-    pub async fn get_public_market_by_slug(
-        &self,
-        slug: &str,
-    ) -> Result<Option<(Market, MarketLaunchState)>> {
-        let row = sqlx::query(
-            r#"
-            SELECT
-                m.event_id,
-                m.slug,
-                m.title,
-                m.description,
-                m.b,
-                m.q_long,
-                m.q_short,
-                m.reserve_sats,
-                m.status,
-                m.resolution_outcome,
-                m.creator_pubkey,
-                m.created_at,
-                m.resolved_at,
-                m.long_keyset_id,
-                m.short_keyset_id,
-                s.raw_event_json,
-                s.visibility,
-                s.first_trade_at,
-                s.public_visible_at,
-                s.volume_minor,
-                s.trade_count,
-                s.last_price_yes_ppm,
-                s.last_price_no_ppm,
-                s.updated_at
-            FROM markets m
-            INNER JOIN market_launch_state s ON s.event_id = m.event_id
-            WHERE m.slug = ? AND s.visibility = 'public'
-            LIMIT 1
-            "#,
-        )
-        .bind(slug)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(row.map(|row| map_market_and_launch_state_row(&row)))
     }
 
     pub async fn sum_wallet_funding_quote_amount_since(
@@ -2849,169 +2627,6 @@ impl CascadeDatabase {
         }))
     }
 
-    pub async fn list_recent_public_trade_events(
-        &self,
-        limit: i64,
-    ) -> Result<Vec<MarketTradeRecord>> {
-        let rows = sqlx::query_as::<
-            _,
-            (
-                String,
-                String,
-                String,
-                String,
-                String,
-                String,
-                i64,
-                i64,
-                f64,
-                i64,
-                i64,
-                String,
-            ),
-        >(
-            r#"
-            SELECT
-                t.id,
-                t.market_event_id,
-                t.market_slug,
-                t.pubkey,
-                t.direction,
-                t.trade_type,
-                t.amount_minor,
-                t.fee_minor,
-                t.quantity,
-                t.price_ppm,
-                t.created_at,
-                t.raw_event_json
-            FROM market_trade_events t
-            INNER JOIN market_launch_state s ON s.event_id = t.market_event_id
-            WHERE s.visibility = 'public'
-            ORDER BY t.created_at DESC
-            LIMIT ?
-            "#,
-        )
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(rows
-            .into_iter()
-            .map(
-                |(
-                    id,
-                    market_event_id,
-                    market_slug,
-                    pubkey,
-                    direction,
-                    trade_type,
-                    amount_minor,
-                    fee_minor,
-                    quantity,
-                    price_ppm,
-                    created_at,
-                    raw_event_json,
-                )| MarketTradeRecord {
-                    id,
-                    market_event_id,
-                    market_slug,
-                    pubkey,
-                    direction,
-                    trade_type,
-                    amount_minor: amount_minor.max(0) as u64,
-                    fee_minor: fee_minor.max(0) as u64,
-                    quantity,
-                    price_ppm: price_ppm.max(0) as u64,
-                    created_at,
-                    raw_event_json,
-                },
-            )
-            .collect())
-    }
-
-    pub async fn list_market_trade_events(
-        &self,
-        event_id: &str,
-        limit: i64,
-    ) -> Result<Vec<MarketTradeRecord>> {
-        let rows = sqlx::query_as::<
-            _,
-            (
-                String,
-                String,
-                String,
-                String,
-                String,
-                String,
-                i64,
-                i64,
-                f64,
-                i64,
-                i64,
-                String,
-            ),
-        >(
-            r#"
-            SELECT
-                id,
-                market_event_id,
-                market_slug,
-                pubkey,
-                direction,
-                trade_type,
-                amount_minor,
-                fee_minor,
-                quantity,
-                price_ppm,
-                created_at,
-                raw_event_json
-            FROM market_trade_events
-            WHERE market_event_id = ?
-            ORDER BY created_at DESC
-            LIMIT ?
-            "#,
-        )
-        .bind(event_id)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
-
-        Ok(rows
-            .into_iter()
-            .map(
-                |(
-                    id,
-                    market_event_id,
-                    market_slug,
-                    pubkey,
-                    direction,
-                    trade_type,
-                    amount_minor,
-                    fee_minor,
-                    quantity,
-                    price_ppm,
-                    created_at,
-                    raw_event_json,
-                )| MarketTradeRecord {
-                    id,
-                    market_event_id,
-                    market_slug,
-                    pubkey,
-                    direction,
-                    trade_type,
-                    amount_minor: amount_minor.max(0) as u64,
-                    fee_minor: fee_minor.max(0) as u64,
-                    quantity,
-                    price_ppm: price_ppm.max(0) as u64,
-                    created_at,
-                    raw_event_json,
-                },
-            )
-            .collect())
-    }
-
     pub async fn get_market_trade_event(
         &self,
         trade_id: &str,
@@ -3157,61 +2772,6 @@ impl CascadeDatabase {
         .execute(&mut *tx)
         .await?;
 
-        let existing_state = sqlx::query_as::<_, (i64, i64, Option<i64>)>(
-            r#"
-            SELECT volume_minor, trade_count, first_trade_at
-            FROM market_launch_state
-            WHERE event_id = ?
-            "#,
-        )
-        .bind(&market.event_id)
-        .fetch_one(&mut *tx)
-        .await?;
-
-        let next_volume_minor = existing_state.0 + amount_minor as i64;
-        let next_trade_count = existing_state.1 + 1;
-        let first_trade_at = existing_state.2.unwrap_or(now);
-        let visibility = if next_trade_count > 0 {
-            "public"
-        } else {
-            "pending"
-        };
-
-        sqlx::query(
-            r#"
-            UPDATE market_launch_state
-            SET
-                visibility = ?,
-                first_trade_at = ?,
-                public_visible_at = COALESCE(public_visible_at, ?),
-                volume_minor = ?,
-                trade_count = ?,
-                last_price_yes_ppm = ?,
-                last_price_no_ppm = ?,
-                updated_at = ?
-            WHERE event_id = ?
-            "#,
-        )
-        .bind(visibility)
-        .bind(first_trade_at)
-        .bind(now)
-        .bind(next_volume_minor)
-        .bind(next_trade_count)
-        .bind(if direction == "long" {
-            price_ppm as i64
-        } else {
-            (1_000_000_u64.saturating_sub(price_ppm)) as i64
-        })
-        .bind(if direction == "long" {
-            (1_000_000_u64.saturating_sub(price_ppm)) as i64
-        } else {
-            price_ppm as i64
-        })
-        .bind(now)
-        .bind(&market.event_id)
-        .execute(&mut *tx)
-        .await?;
-
         sqlx::query(
             r#"
             INSERT INTO market_trade_events (
@@ -3336,50 +2896,6 @@ impl CascadeDatabase {
             raw_event_json: raw_event_json.to_string(),
         })
     }
-}
-
-fn map_market_and_launch_state_row(row: &sqlx::sqlite::SqliteRow) -> (Market, MarketLaunchState) {
-    let event_id: String = row.get("event_id");
-    let raw_event_json: String = row.get("raw_event_json");
-    let visibility: String = row.get("visibility");
-
-    let market = Market {
-        event_id: event_id.clone(),
-        slug: row.get("slug"),
-        title: row.get("title"),
-        description: row.get("description"),
-        b: row.get("b"),
-        q_long: row.get("q_long"),
-        q_short: row.get("q_short"),
-        reserve_sats: row.get::<i64, _>("reserve_sats").max(0) as u64,
-        status: row
-            .get::<String, _>("status")
-            .parse()
-            .unwrap_or(MarketStatus::Active),
-        resolution_outcome: row
-            .get::<Option<String>, _>("resolution_outcome")
-            .and_then(|value| value.parse().ok()),
-        creator_pubkey: row.get("creator_pubkey"),
-        created_at: row.get("created_at"),
-        long_keyset_id: row.get("long_keyset_id"),
-        short_keyset_id: row.get("short_keyset_id"),
-        resolved_at: row.get("resolved_at"),
-    };
-
-    let state = MarketLaunchState {
-        event_id,
-        raw_event_json,
-        visibility: visibility.parse().unwrap_or(MarketVisibility::Pending),
-        first_trade_at: row.get("first_trade_at"),
-        public_visible_at: row.get("public_visible_at"),
-        volume_minor: row.get::<i64, _>("volume_minor").max(0) as u64,
-        trade_count: row.get::<i64, _>("trade_count").max(0) as u64,
-        last_price_yes_ppm: row.get::<i64, _>("last_price_yes_ppm").max(0) as u64,
-        last_price_no_ppm: row.get::<i64, _>("last_price_no_ppm").max(0) as u64,
-        updated_at: row.get("updated_at"),
-    };
-
-    (market, state)
 }
 
 #[cfg(test)]

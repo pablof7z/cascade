@@ -105,12 +105,9 @@ These routes exist in `routes.rs` but must be deleted. They serve relay data thr
 - `POST /api/product/markets` — market creation publishes kind `982` to relays
 - `POST /api/market/create` — duplicate of above
 
-**Stripe routes at wrong path (moved to mint `/v1/fund/stripe`):**
+**Stripe routes (moved to `/v1/fund/stripe` — completed):**
 
-- `POST /api/portfolio/funding/stripe` — replaced by `POST /v1/fund/stripe`
-- `POST /api/portfolio/funding/stripe/webhook` — replaced by `POST /v1/fund/stripe/webhook`
-- `GET /api/portfolio/funding/requests/{request_id}` — replaced by `GET /v1/fund/stripe/{funding_id}`
-- `GET /api/portfolio/funding/{quote_id}` — replaced by `GET /v1/fund/stripe/{funding_id}`
+The old `/api/portfolio/funding/stripe*` routes have been removed. Stripe funding now lives at the correct mint paths listed under "Stripe Funding Routes" above.
 
 ### SQLite Market Mirror Tables To Remove
 

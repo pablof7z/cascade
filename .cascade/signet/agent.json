@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "edition": "signet",
+  "api_base_url": "https://signet-mint.cascade.f7z.io",
+  "relays": [
+    "wss://purplepag.es",
+    "wss://relay.damus.io",
+    "wss://relay.primal.net"
+  ],
+  "identity": {
+    "nsec": "nsec1r6jesq7mv5l4073wm2llvupppfve5teqtgygldszc0t05vm64hdqrgzgkw"
+  },
+  "proof_store": ".cascade/signet/proofs.json",
+  "created_at": "2026-04-15T12:01:28.791475+00:00"
+}

@@ -49,6 +49,15 @@ The underlying cryptographic reality is intentionally abstracted. Users don't ne
 - "pubkey"
 - "event"
 
+## Client Session Bootstrap
+
+Cascade boots the browser-side NDK and session manager before handling account-entry actions.
+Fresh page loads, especially in browser automation, can reach `/join` before that bootstrap path
+finishes. In that state, account creation and sign-in controls should use the local session
+manager as soon as it exists while the client NDK finishes connecting in the background. The UI
+should only surface an inline error when the session layer itself is unavailable, rather than
+blocking indefinitely on relay connection.
+
 ---
 
 ## NIP-46 Remote Signing _(planned / not yet implemented)_

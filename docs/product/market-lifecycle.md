@@ -17,6 +17,10 @@ The seed trade is required. There is no zero-liquidity launch.
 
 A raw kind `982` is not enough for normal public discovery.
 
+PENDING: public market-detail reads are being tightened so `/market/:slug` stays `404` until the
+first mint-authored kind `983` exists. Creator pending visibility should remain in creator-aware
+flows rather than anonymous public reads.
+
 The public visibility threshold is the first mint-authored kind `983`. That proves the market is funded and live.
 
 ## Trading

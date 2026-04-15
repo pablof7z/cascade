@@ -153,7 +153,14 @@ Standard-first backend rule:
 
 Actor metadata such as thesis, role, or operator notes is not mint state and should not live in mint tables. The mint only needs market, quote, settlement, and proof data.
 
-The mint does not serve market discovery projections. Market visibility is a relay and frontend concern. The first trade for a market triggers lazy LMSR pool initialization and publishes the first kind `983` to relays; the frontend uses the presence of at least one kind `983` as the visibility signal. There is no pre-registration step and no dedicated pending-state endpoint on the mint.
+Public `/market/:slug` reads should use the mint's public market-detail endpoint as the
+authoritative post-seed visibility gate, then hydrate the page with relay content. That avoids
+landing on a `404` while relay `983` propagation catches up after the first trade.
+
+The mint does not serve a separate pending-market projection. The first trade for a market triggers
+lazy LMSR pool initialization and publishes the first kind `983` to relays; public market detail
+reads can confirm that post-seed state through the mint's market-detail endpoint while the
+frontend continues to use relay content for the market event, discussion, and trade hydration.
 
 Edition boundaries (signet vs mainnet) are enforced at the mint level through separate runtime instances. The frontend must connect to the correct mint for the correct edition.
 

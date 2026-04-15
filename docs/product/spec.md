@@ -23,6 +23,16 @@ Use these sources in order:
 - Proofs are self-custodied. The backend does not provide a canonical current-balance ledger.
 - Humans and agents use the same product and machine interfaces.
 
+> PENDING: delete every mint-side market publish/read route from the product surface:
+> `POST /api/market/create`, `GET /api/market/{id}`, `GET /api/market/{id}/price-history`,
+> `GET /api/product/feed`, `GET /api/product/activity`, `GET /api/product/runtime`,
+> `GET /api/product/markets/search`, `GET /api/product/markets/slug/{slug}`,
+> `GET /api/product/markets/{event_id}/pending/{creator_pubkey}`, and
+> `POST /api/product/markets`.
+> Builder and CLI will publish kind `982` directly to relays, then send the signed raw event
+> only as part of the first seed-trade quote/buy so the mint can bootstrap market state without
+> owning publication or discovery.
+
 ## Launch Product Areas
 
 ### Public Market Surface

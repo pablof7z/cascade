@@ -23,6 +23,7 @@
     type SocialProfilePrefill,
     type SocialProvider
   } from '$lib/features/auth/social-prefill';
+  import { requireAuthSessions } from '$lib/features/auth/sessionBootstrap';
   import { joinOnboardingTarget } from '$lib/features/auth/onboardingRedirect';
   import '$lib/features/auth/auth.css';
   import { ndk } from '$lib/ndk/client';
@@ -87,14 +88,15 @@
   }
 
   async function finalizeSocialPrefill(prefill: SocialProfilePrefill) {
-    if (!ndk.$sessions || socialAuthSettling) return;
+    if (socialAuthSettling) return;
 
     try {
       socialAuthSettling = true;
       error = '';
+      const sessions = await requireAuthSessions();
 
       if (!currentUser) {
-        await ndk.$sessions.login(NDKPrivateKeySigner.generate());
+        await sessions.login(NDKPrivateKeySigner.generate());
       }
 
       storeSocialProfilePrefill(prefill);
@@ -159,12 +161,13 @@
   }
 
   async function createAccount() {
-    if (!ndk.$sessions || pending) return;
+    if (pending) return;
 
     try {
       pending = true;
       error = '';
-      await ndk.$sessions.login(NDKPrivateKeySigner.generate());
+      const sessions = await requireAuthSessions();
+      await sessions.login(NDKPrivateKeySigner.generate());
       finishHumanEntry();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : "Couldn't create an account on this device.";
@@ -173,12 +176,13 @@
   }
 
   async function loginWithExtension() {
-    if (!ndk.$sessions || pending || !extensionAvailable) return;
+    if (pending || !extensionAvailable) return;
 
     try {
       pending = true;
       error = '';
-      await ndk.$sessions.login(new NDKNip07Signer());
+      const sessions = await requireAuthSessions();
+      await sessions.login(new NDKNip07Signer());
       finishHumanEntry();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : "Couldn't log in with the extension.";
@@ -187,12 +191,13 @@
   }
 
   async function loginWithPrivateKey() {
-    if (!ndk.$sessions || pending || !privateKey.trim()) return;
+    if (pending || !privateKey.trim()) return;
 
     try {
       pending = true;
       error = '';
-      await ndk.$sessions.login(new NDKPrivateKeySigner(privateKey.trim()));
+      const sessions = await requireAuthSessions();
+      await sessions.login(new NDKPrivateKeySigner(privateKey.trim()));
       finishHumanEntry();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : "Couldn't log in with that account key.";
@@ -201,12 +206,13 @@
   }
 
   async function startRemoteSigner() {
-    if (!ndk.$sessions || preparingRemoteSigner || connectingBunker) return;
+    if (preparingRemoteSigner || connectingBunker) return;
 
     try {
       error = '';
       clearRemoteSigner();
       preparingRemoteSigner = true;
+      const sessions = await requireAuthSessions();
 
       const pairing = await prepareRemoteSignerPairing(ndk);
       const activeSigner = pairing.signer;
@@ -214,7 +220,7 @@
       nostrConnectUri = pairing.nostrConnectUri;
       qrCodeDataUrl = pairing.qrCodeDataUrl;
 
-      void ndk.$sessions
+      void sessions
         .login(activeSigner)
         .then(() => {
           if (nostrConnectSigner !== activeSigner) return;
@@ -234,14 +240,15 @@
   }
 
   async function loginWithBunker() {
-    if (!ndk.$sessions || connectingBunker || !bunkerUri.trim().startsWith('bunker://')) return;
+    if (connectingBunker || !bunkerUri.trim().startsWith('bunker://')) return;
 
     try {
       error = '';
       connectingBunker = true;
       stopNostrConnectSigner(nostrConnectSigner);
       nostrConnectSigner = null;
-      await ndk.$sessions.login(new NDKNip46Signer(ndk, bunkerUri.trim()));
+      const sessions = await requireAuthSessions();
+      await sessions.login(new NDKNip46Signer(ndk, bunkerUri.trim()));
       finishHumanEntry();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : "Couldn't use that connection link.";

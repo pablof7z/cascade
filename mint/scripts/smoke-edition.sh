@@ -24,6 +24,6 @@ esac
 
 curl -fsS "${BASE_URL}/health"
 curl -fsS "${BASE_URL}/v1/info" >/dev/null
-curl -fsS "${BASE_URL}/api/product/feed" >/dev/null
+curl -fsS "${BASE_URL}/v1/keysets" >/dev/null
 
 echo "mint ${EDITION} smoke checks passed for ${BASE_URL}"

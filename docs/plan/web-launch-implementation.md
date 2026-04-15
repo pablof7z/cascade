@@ -77,6 +77,17 @@ Launch does not require:
 - No mock data in production.
 - No Nostr jargon in user-facing UI.
 
+> PENDING: remove the remaining mint-side market publish/read routes from the actual implementation:
+> `POST /api/market/create`, `GET /api/market/{id}`, `GET /api/market/{id}/price-history`,
+> `GET /api/product/feed`, `GET /api/product/activity`, `GET /api/product/runtime`,
+> `GET /api/product/markets/search`, `GET /api/product/markets/slug/{slug}`,
+> `GET /api/product/markets/{event_id}/pending/{creator_pubkey}`, and
+> `POST /api/product/markets`.
+> The launch flow should match this plan literally: relay publication happens in the client, relay
+> reads power public discovery/detail views, build-time config replaces the runtime manifest, and
+> the first seed-trade quote/buy carries the signed kind `982` when the mint has not seen the
+> market yet.
+
 ## Route Inventory And Disposition
 
 ### Canonical launch routes
@@ -298,7 +309,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Initial side selection exists.
 - [ ] Initial seed amount selection exists in USD.
 - [ ] Review step exists.
-- [ ] Launch action creates the market through a NIP-98-authenticated API call and navigates directly to the new market page.
+- [ ] In signet, launch publishes kind `982`, coordinates the first seed trade, and only redirects once the public `/market/:slug` route is readable so the creator does not land on a `404` during relay propagation.
 - [ ] Builder never exposes duration, end date, or "resolves on" inputs.
 - [ ] Builder copy teaches that linked markets are informational only.
 - [ ] Creator seeding is mandatory.

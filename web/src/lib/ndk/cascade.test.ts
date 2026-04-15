@@ -9,6 +9,7 @@ import {
   buildThreadReplyTags,
   parsePositionEvent,
   parseTradeEvent,
+  yesPricePpmFromTrade,
   type DiscussionRecord
 } from './cascade.ts';
 
@@ -52,6 +53,16 @@ test('parseTradeEvent rejects yes/no aliases', () => {
   });
 
   assert.equal(trade, null);
+});
+
+test('yesPricePpmFromTrade normalizes short-side trade prices back to yes probability', () => {
+  assert.equal(
+    yesPricePpmFromTrade({
+      direction: 'short',
+      pricePpm: 310_000
+    }),
+    690_000
+  );
 });
 
 test('parsePositionEvent accepts long and short directions', () => {

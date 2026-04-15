@@ -68,6 +68,21 @@ test('formatHomepageMarketMatchCount uses singular and plural labels', async () 
   assert.equal(formatHomepageMarketMatchCount(4), '4 markets matched');
 });
 
+test('filterLiveHomepageMarkets hides markets until a public trade exists', async () => {
+  const { filterLiveHomepageMarkets } = await loadSearchHelpers();
+
+  const markets = [
+    { id: 'market-live', title: 'Live market', description: 'Has at least one trade.' },
+    { id: 'market-pending', title: 'Pending market', description: 'Published but not live yet.' }
+  ];
+  const trades = [{ marketId: 'market-live' }];
+
+  assert.deepEqual(
+    filterLiveHomepageMarkets(markets, trades).map((market) => market.id),
+    ['market-live']
+  );
+});
+
 test('homepage source wires client-side search state, input UI, and filtered results', () => {
   const source = read('src/routes/+page.svelte');
 
@@ -79,6 +94,24 @@ test('homepage source wires client-side search state, input UI, and filtered res
   assert.match(source, /\{#if hasActiveMarketSearch\}[\s\S]*\{searchResultCountLabel\}/);
   assert.match(source, /\{#if filteredMarkets\.length > 0\}[\s\S]*\{#each filteredMarkets as market \(market\.id\)\}/);
   assert.match(source, /\{:else\}[\s\S]*<h2 class="text-3xl font-bold tracking-tight">Most Active<\/h2>/);
+});
+
+test('homepage source filters discovery markets using merged live trades', () => {
+  const source = read('src/routes/+page.svelte');
+
+  assert.match(source, /import \{[\s\S]*filterLiveHomepageMarkets,[\s\S]*\} from '\.\/homepage-market-search';/);
+  assert.match(
+    source,
+    /const tradeFeed = ndk\.\$subscribe\(\(\) => \{[\s\S]*if \(!browser\) return undefined;[\s\S]*filters: \[\{ kinds: \[983\], limit: 240 \}\][\s\S]*\}\);/
+  );
+  assert.match(
+    source,
+    /const trades = \$derived\.by\(\(\) => \{[\s\S]*return mergeRawEvents\(data\.trades, tradeFeed\.events\)[\s\S]*\.map\(parseTradeEvent\)[\s\S]*\.filter\(\(trade\): trade is TradeRecord => Boolean\(trade\)\)/
+  );
+  assert.match(
+    source,
+    /return filterLiveHomepageMarkets\([\s\S]*\.map\(parseMarketEvent\)[\s\S]*\.filter\(\(market\): market is MarketRecord => Boolean\(market\)\)[\s\S]*,\s*trades\s*\)[\s\S]*\.sort\(\(left, right\) => right\.createdAt - left\.createdAt\);/
+  );
 });
 
 test('homepage source uses how-it-works CTA and probability-driven LONG/SHORT labels', () => {

@@ -134,14 +134,14 @@
       .map((chunk) => sanitizeMarketCopy(chunk.replace(/^#+\s*/, '').replace(/\*\*/g, '').trim()))
       .filter(Boolean)
   );
-  const resolutionCriteria = $derived(
+  const tradingContext = $derived(
     bodyParagraphs
-      .map((chunk) => chunk.match(/^(?:resolution criteria|market criteria):\s*(.+)$/i)?.[1]?.trim())
+      .map((chunk) => chunk.match(/^(?:trading context|market context|market criteria):\s*(.+)$/i)?.[1]?.trim())
       .filter((chunk): chunk is string => Boolean(chunk))
   );
   const caseParagraphs = $derived(
     bodyParagraphs
-      .filter((chunk) => !/^(resolution criteria|market criteria):/i.test(chunk))
+      .filter((chunk) => !/^(trading context|market context|market criteria):/i.test(chunk))
   );
 
   const activityEntries = $derived.by(() => {
@@ -513,12 +513,12 @@
           <p>No one has made the case yet. You could be first.</p>
         {/if}
 
-        {#if resolutionCriteria.length > 0}
+        {#if tradingContext.length > 0}
           <div class="detail-header detail-header-tight">
-            <h3>Market criteria</h3>
+            <h3>Trading context</h3>
           </div>
 
-          {#each resolutionCriteria as criteria}
+          {#each tradingContext as criteria}
             <p>{criteria}</p>
           {/each}
         {/if}

@@ -56,6 +56,9 @@ Legacy relay browser routes exist only as redirects away from the launch product
 ## Product Rules
 
 - normal UX is USD-denominated
+- public discovery surfaces only link to markets after the first public trade exists
+- thread detail SSR merges current relay discussion data so newly published threads can open without waiting for a later refresh
+- perpetual-market copy describes indefinite trading and voluntary exits, not oracle resolution or closure
 - `/portfolio` is the capital surface
 - there is no `/wallet` product route
 - no loading spinners

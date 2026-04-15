@@ -383,7 +383,7 @@ export function truncateText(value: string, maxLength = 160): string {
 
 export function sanitizeMarketCopy(value: string): string {
   return value
-    .replace(/resolution criteria/gi, 'market criteria')
+    .replace(/resolution criteria/gi, 'trading context')
     .replace(/\bresolves based on whether\b/gi, 'tracks whether')
     .replace(/\bresolves based on\b/gi, 'tracks')
     .replace(/\bresolves if\b/gi, 'tracks if')

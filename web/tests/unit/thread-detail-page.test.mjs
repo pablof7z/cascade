@@ -43,3 +43,17 @@ test('thread detail page shows current market context and trading link', () => {
     /<div class="market-context-bar">[\s\S]*href="\/market\/\{data\.market\.slug\}"[\s\S]*\{data\.market\.title\}[\s\S]*LONG \{formatProbability\(impliedProbability\)\}[\s\S]*Buy LONG \/ Buy SHORT/
   );
 });
+
+
+test('thread detail server load retries the requested thread from relay data before returning 404', () => {
+  const source = read('src/routes/market/[slug]/discussion/[threadId]/+page.server.ts');
+
+  assert.match(source, /import \{ fetchThreadRootDiscussion \} from '\$lib\/server\/cascade';/);
+  assert.match(source, /import \{ resolveMarketThread \} from '\$lib\/server\/market-thread';/);
+  assert.match(
+    source,
+    /const \{ discussions, thread \} = await resolveMarketThread\(data, params\.threadId, \(\) =>\s*fetchThreadRootDiscussion\(data\.market\.id, params\.threadId\)\s*\);/
+  );
+  assert.match(source, /if \(!thread\) \{/);
+  assert.match(source, /return \{[\s\S]*\.\.\.data,[\s\S]*discussions,[\s\S]*thread,[\s\S]*seo:/);
+});

@@ -158,6 +158,29 @@ export async function fetchMarketDiscussions(marketId: string, limit = 200): Pro
     .sort((left, right) => right.createdAt - left.createdAt);
 }
 
+export async function fetchThreadRootDiscussion(
+  marketId: string,
+  threadId: string
+): Promise<DiscussionRecord[]> {
+  const events = await collectRelayRawEvents(
+    {
+      kinds: [1111 as NDKKind],
+      ids: [threadId],
+      limit: 1
+    } satisfies NDKFilter,
+    `fetchThreadRootDiscussion(${marketId}, ${threadId})`,
+    {
+      stopWhen: (seen, rawEvent) => rawEvent.id === threadId
+    }
+  );
+
+  return events
+    .map(parseDiscussionEvent)
+    .filter((record): record is DiscussionRecord => Boolean(record))
+    .filter((record) => record.id === threadId && record.marketId === marketId)
+    .sort((left, right) => right.createdAt - left.createdAt);
+}
+
 export async function fetchDiscussionsByPubkey(pubkey: string, limit = 50): Promise<DiscussionRecord[]> {
   const ndk = await getServerNdkClient();
   const events = await withRelayEventTimeout(

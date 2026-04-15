@@ -19,7 +19,11 @@
     type TradeRecord
   } from '$lib/ndk/cascade';
   import { displayName, shortPubkey } from '$lib/ndk/format';
-  import { filterHomepageMarkets, formatHomepageMarketMatchCount } from './homepage-market-search';
+  import {
+    filterHomepageMarkets,
+    filterLiveHomepageMarkets,
+    formatHomepageMarketMatchCount
+  } from './homepage-market-search';
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
@@ -35,26 +39,33 @@
     return { filters: [{ kinds: [982], limit: 60 }] };
   });
 
+  const tradeFeed = ndk.$subscribe(() => {
+    if (!browser) return undefined;
+    return { filters: [{ kinds: [983], limit: 240 }] };
+  });
+
   const profiles = $derived(data.profiles as Record<string, NDKUserProfile>);
 
-  const markets = $derived.by(() => {
-    return mergeRawEvents(data.markets, marketFeed.events)
-      .map(parseMarketEvent)
-      .filter((market): market is MarketRecord => Boolean(market))
+  const trades = $derived.by(() => {
+    return mergeRawEvents(data.trades, tradeFeed.events)
+      .map(parseTradeEvent)
+      .filter((trade): trade is TradeRecord => Boolean(trade))
       .sort((left, right) => right.createdAt - left.createdAt);
+  });
+
+  const markets = $derived.by(() => {
+    return filterLiveHomepageMarkets(
+      mergeRawEvents(data.markets, marketFeed.events)
+        .map(parseMarketEvent)
+        .filter((market): market is MarketRecord => Boolean(market)),
+      trades
+    ).sort((left, right) => right.createdAt - left.createdAt);
   });
 
   const discussions = $derived.by(() => {
     return mergeRawEvents(data.discussions, discussionFeed.events)
       .map(parseDiscussionEvent)
       .filter((discussion): discussion is DiscussionRecord => Boolean(discussion))
-      .sort((left, right) => right.createdAt - left.createdAt);
-  });
-
-  const trades = $derived.by(() => {
-    return data.trades
-      .map(parseTradeEvent)
-      .filter((trade): trade is TradeRecord => Boolean(trade))
       .sort((left, right) => right.createdAt - left.createdAt);
   });
 
@@ -277,7 +288,7 @@
     <article class="grid gap-3 content-start pt-2">
       <span class="text-lg text-neutral-400">∞</span>
       <h3 class="font-semibold">No expiry</h3>
-      <p class="text-sm text-neutral-500 leading-relaxed">Take a position today. The market stays open until the question is settled — or forever.</p>
+      <p class="text-sm text-neutral-500 leading-relaxed">Take a position today. Trading continues indefinitely, and you can exit whenever the price makes sense for you.</p>
     </article>
 
     <article class="grid gap-3 content-start pt-2">

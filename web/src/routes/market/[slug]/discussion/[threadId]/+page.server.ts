@@ -1,9 +1,10 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { buildMarketSeo } from '$lib/seo';
-import { buildDiscussionThreads } from '$lib/ndk/cascade';
+import { fetchThreadRootDiscussion } from '$lib/server/cascade';
 import { marketPageCacheControl } from '$lib/server/cascade-cache';
 import { loadMarketSurface } from '$lib/server/cascade-pages';
+import { resolveMarketThread } from '$lib/server/market-thread';
 
 export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
   const data = await loadMarketSurface(params.slug);
@@ -15,8 +16,9 @@ export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
     error(404, 'Market not found');
   }
 
-  const threads = buildDiscussionThreads(data.discussions, data.market.id);
-  const thread = threads.find((candidate) => candidate.post.id === params.threadId);
+  const { discussions, thread } = await resolveMarketThread(data, params.threadId, () =>
+    fetchThreadRootDiscussion(data.market.id, params.threadId)
+  );
 
   if (!thread) {
     error(404, 'Thread not found');
@@ -24,6 +26,7 @@ export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
 
   return {
     ...data,
+    discussions,
     thread,
     seo: buildMarketSeo({
       url,

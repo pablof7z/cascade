@@ -41,7 +41,7 @@ export function buildPublicProfilePositionStats(
     total,
     longCount,
     shortCount,
-    splitLabel: `YES ${longCount} · NO ${shortCount}`,
+    splitLabel: `LONG ${longCount} · SHORT ${shortCount}`,
     averageEntryPrice:
       total > 0 ? positions.reduce((sum, position) => sum + position.entryPrice, 0) / total : null
   };
@@ -55,7 +55,7 @@ export function formatProfileProbability(probability: number | null | undefined)
 export function formatProfilePositionSummary(
   position: Pick<PositionRecord, 'direction' | 'quantity' | 'entryPrice'>
 ): string {
-  return `${position.direction === 'long' ? 'YES' : 'NO'} · ${QUANTITY_FORMATTER.format(position.quantity)} units @ ${formatProfileProbability(position.entryPrice)}`;
+  return `${position.direction === 'long' ? 'LONG' : 'SHORT'} · ${QUANTITY_FORMATTER.format(position.quantity)} units @ ${formatProfileProbability(position.entryPrice)}`;
 }
 
 export function buildPublicProfileDiscussionEntries(

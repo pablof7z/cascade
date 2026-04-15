@@ -218,7 +218,7 @@
 
           <div class="flex items-baseline gap-3">
             <span class="text-success font-mono text-5xl font-bold tracking-tight">{centsForMarket(featuredMarket.id)}</span>
-            <span class="badge badge-success badge-outline">{probabilityForMarket(featuredMarket.id) >= 0.5 ? 'YES' : 'NO'}</span>
+            <span class="badge badge-success badge-outline">{probabilityForMarket(featuredMarket.id) >= 0.5 ? 'LONG' : 'SHORT'}</span>
           </div>
 
           <div class="flex flex-wrap gap-5 text-sm text-neutral-500">
@@ -252,7 +252,7 @@
     </div>
     <div class="flex items-start gap-3">
       <span class="font-mono text-sm text-neutral-500">02</span>
-      <p class="text-sm text-neutral-300">Buy YES or NO</p>
+      <p class="text-sm text-neutral-300">Buy LONG or SHORT</p>
     </div>
     <div class="flex items-start gap-3">
       <span class="font-mono text-sm text-neutral-500">03</span>
@@ -395,7 +395,7 @@
 
             <div class="flex items-baseline gap-3">
               <span class="text-success font-mono text-5xl font-bold tracking-tight">{centsForMarket(primaryTrending.id)}</span>
-              <span class="badge badge-success badge-outline">{probabilityForMarket(primaryTrending.id) >= 0.5 ? 'YES' : 'NO'}</span>
+              <span class="badge badge-success badge-outline">{probabilityForMarket(primaryTrending.id) >= 0.5 ? 'LONG' : 'SHORT'}</span>
             </div>
 
             <p class="max-w-prose text-neutral-400 leading-relaxed">{truncateText(sanitizeMarketCopy(primaryTrending.description || primaryTrending.body), 180)}</p>
@@ -503,7 +503,7 @@
               <div class="mt-2 flex items-baseline gap-3">
                 <span class="text-success font-mono text-4xl font-bold tracking-tight">{centsForMarket(topDisputed.id)}</span>
                 <span class="text-sm text-neutral-500">Spread {spreadForMarket(topDisputed.id)}</span>
-                <span class="badge badge-success badge-outline badge-sm">{probabilityForMarket(topDisputed.id) >= 0.5 ? 'YES' : 'NO'}</span>
+                <span class="badge badge-success badge-outline badge-sm">{probabilityForMarket(topDisputed.id) >= 0.5 ? 'LONG' : 'SHORT'}</span>
               </div>
               <div class="mt-2 flex gap-4 text-sm text-neutral-500">
                 <span>{tradeSummaries.get(topDisputed.id)?.tradeCount ?? 0} trades</span>

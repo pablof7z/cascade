@@ -150,7 +150,7 @@
         id: trade.id,
         kind: 'trade' as const,
         createdAt: trade.createdAt,
-        headline: `${trade.type === 'buy' ? 'Bought' : 'Sold'} ${trade.direction === 'long' ? 'YES' : 'NO'}`,
+        headline: `${trade.type === 'buy' ? 'Bought' : 'Sold'} ${trade.direction === 'long' ? 'LONG' : 'SHORT'}`,
         detail: `${formatProductAmount(trade.amount, trade.unit)} at ${formatProbability(trade.probability)}`
       })),
       ...mergedDiscussions.map((discussion) => ({
@@ -166,16 +166,16 @@
   const tilt = $derived.by(() => {
     if (impliedProbability >= 0.65) {
       return {
-        label: 'Strong YES consensus',
-        detail: 'Most visible capital leans YES. New flow needs fresh evidence rather than repetition.',
+        label: 'Strong LONG consensus',
+        detail: 'Most visible capital leans LONG. New flow needs fresh evidence rather than repetition.',
         accentClass: 'positive'
       };
     }
 
     if (impliedProbability <= 0.35) {
       return {
-        label: 'Strong NO consensus',
-        detail: 'Most visible capital leans NO. A reversal needs a catalyst, not sentiment alone.',
+        label: 'Strong SHORT consensus',
+        detail: 'Most visible capital leans SHORT. A reversal needs a catalyst, not sentiment alone.',
         accentClass: 'negative'
       };
     }
@@ -190,24 +190,24 @@
   const tradeFrame = $derived.by(() => {
     if (impliedProbability >= 0.65) {
       return [
-        'YES is crowded. New buyers need information the market has not absorbed yet.',
-        'NO becomes more attractive if the current thesis is overstated.',
+        'LONG is crowded. New buyers need information the market has not absorbed yet.',
+        'SHORT becomes more attractive if the current thesis is overstated.',
         'Check the discussion for the strongest counter-argument before sizing up.'
       ];
     }
 
     if (impliedProbability <= 0.35) {
       return [
-        'NO is crowded. Further downside requires genuinely new evidence.',
-        'YES offers value only if the current skepticism is wrong.',
+        'SHORT is crowded. Further downside requires genuinely new evidence.',
+        'LONG offers value only if the current skepticism is wrong.',
         'Look for what would force traders to reprice quickly.'
       ];
     }
 
     return [
       'Neither side has taken control. Edge comes from the next material update.',
-      'YES works if the case is underpriced relative to current debate.',
-      'NO works if the visible enthusiasm is getting ahead of itself.'
+      'LONG works if the case is underpriced relative to current debate.',
+      'SHORT works if the visible enthusiasm is getting ahead of itself.'
     ];
   });
 
@@ -215,16 +215,16 @@
     return [
       {
         eyebrow: 'Crowding',
-        title: impliedProbability >= 0.5 ? `${priceCents(impliedProbability)} YES leaning` : `${priceCents(oppositeProbability)} NO leaning`,
+        title: impliedProbability >= 0.5 ? `${priceCents(impliedProbability)} LONG leaning` : `${priceCents(oppositeProbability)} SHORT leaning`,
         detail:
           impliedProbability >= 0.5
-            ? 'Visible pricing favors YES right now.'
-            : 'Visible pricing favors NO right now.'
+            ? 'Visible pricing favors LONG right now.'
+            : 'Visible pricing favors SHORT right now.'
       },
       {
         eyebrow: 'Flow',
         title: latestTrade
-          ? `${latestTrade.type === 'buy' ? 'Buy' : 'Sell'} on ${latestTrade.direction === 'long' ? 'YES' : 'NO'}`
+          ? `${latestTrade.type === 'buy' ? 'Buy' : 'Sell'} on ${latestTrade.direction === 'long' ? 'LONG' : 'SHORT'}`
           : 'No visible fills yet',
         detail: latestTrade
           ? `${formatProductAmount(latestTrade.amount, latestTrade.unit)} moved ${formatRelativeTime(latestTrade.createdAt)}.`
@@ -353,7 +353,7 @@
     <div class="market-header-side">
       <div class="market-header-price">
         <span class="market-header-probability">{priceCents(impliedProbability)}</span>
-        <span class="market-header-side-label">YES</span>
+        <span class="market-header-side-label">LONG</span>
       </div>
 
       <div class="market-header-stats">
@@ -397,11 +397,11 @@
 
       <div class="price-grid">
         <div>
-          <span>YES</span>
+          <span>LONG</span>
           <strong class="positive">{priceCents(impliedProbability)}</strong>
         </div>
         <div>
-          <span>NO</span>
+          <span>SHORT</span>
           <strong class="negative">{priceCents(oppositeProbability)}</strong>
         </div>
       </div>
@@ -412,18 +412,18 @@
           <dd>{formatProductAmount(tradeSummary.grossVolume, 'usd')} {valueUnitLabel}</dd>
         </div>
         <div>
-          <dt>YES flow</dt>
+          <dt>LONG flow</dt>
           <dd>{formatProductAmount(tradeSummary.longVolume, 'usd')} {valueUnitLabel}</dd>
         </div>
         <div>
-          <dt>NO flow</dt>
+          <dt>SHORT flow</dt>
           <dd>{formatProductAmount(tradeSummary.shortVolume, 'usd')} {valueUnitLabel}</dd>
         </div>
         <div>
           <dt>Last trade</dt>
           <dd>
             {#if latestTrade}
-              {latestTrade.direction === 'long' ? 'YES' : 'NO'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}
+              {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}
             {:else}
               None
             {/if}
@@ -472,7 +472,7 @@
         <div>
           <div class="bar-label">
             <span>Implied probability</span>
-            <span>{formatProbability(impliedProbability)} YES</span>
+            <span>{formatProbability(impliedProbability)} LONG</span>
           </div>
           <div class="bar-track">
             <div class="bar-fill positive-fill" style:width={`${impliedProbability * 100}%`}></div>
@@ -481,8 +481,8 @@
 
         <div>
           <div class="bar-label">
-            <span>YES share</span>
-            <span>{formatProbability(flowLong)} YES</span>
+            <span>LONG share</span>
+            <span>{formatProbability(flowLong)} LONG</span>
           </div>
           <div class="bar-track">
             <div class="bar-fill positive-fill" style:width={`${flowLong * 100}%`}></div>
@@ -491,8 +491,8 @@
 
         <div>
           <div class="bar-label">
-            <span>NO share</span>
-            <span>{formatProbability(flowShort)} NO</span>
+            <span>SHORT share</span>
+            <span>{formatProbability(flowShort)} SHORT</span>
           </div>
           <div class="bar-track">
             <div class="bar-fill negative-fill" style:width={`${flowShort * 100}%`}></div>
@@ -564,7 +564,7 @@
           {#each orderedTrades.slice(0, 6) as trade (trade.id)}
             <div class="dense-row">
               <div>
-                <strong>{trade.type === 'buy' ? 'Buy' : 'Sell'} · {trade.direction === 'long' ? 'YES' : 'NO'}</strong>
+                <strong>{trade.type === 'buy' ? 'Buy' : 'Sell'} · {trade.direction === 'long' ? 'LONG' : 'SHORT'}</strong>
                 <p>{formatRelativeTime(trade.createdAt)}</p>
               </div>
               <div class="dense-aside">
@@ -740,7 +740,7 @@
         <dl class="summary-list">
           <div>
             <dt>Direction</dt>
-            <dd>{latestTrade.direction === 'long' ? 'YES' : 'NO'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}</dd>
+            <dd>{latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}</dd>
           </div>
           <div>
             <dt>Price</dt>
@@ -805,7 +805,7 @@
             <p>{truncateText(sanitizeMarketCopy(related.description || related.body), 120)}</p>
           </div>
           <div class="dense-aside">
-            <span class="positive">{priceCents((related.latestPricePpm ?? 500_000) / 1_000_000)} YES</span>
+            <span class="positive">{priceCents((related.latestPricePpm ?? 500_000) / 1_000_000)} LONG</span>
           </div>
         </a>
       {/each}

@@ -70,8 +70,8 @@
     }
   }
 
-  function positionDirectionLabel(position: Pick<PositionRecord, 'direction'>): 'YES' | 'NO' {
-    return position.direction === 'long' ? 'YES' : 'NO';
+  function positionDirectionLabel(position: Pick<PositionRecord, 'direction'>): 'LONG' | 'SHORT' {
+    return position.direction === 'long' ? 'LONG' : 'SHORT';
   }
 </script>
 
@@ -117,7 +117,7 @@
     <strong>{positionStats.total}</strong>
   </div>
   <div>
-    <span>YES/NO split</span>
+    <span>LONG/SHORT split</span>
     <strong>{positionStats.splitLabel}</strong>
   </div>
   <div>

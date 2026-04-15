@@ -57,6 +57,7 @@ Secondary routes that exist but are not launch-critical:
 - there is no `/wallet` product route
 - no loading spinners
 - no Nostr jargon in normal UI copy
+- active product-side direction labels use LONG and SHORT in UI chrome and trading copy; explanatory YES/NO category examples may remain on `/about` and `/how-it-works`
 
 ## State Model
 

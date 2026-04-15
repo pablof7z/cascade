@@ -56,9 +56,9 @@
   <div class="market-context-bar">
     <a href="/market/{data.market.slug}" class="market-context-market">{data.market.title}</a>
     <span class:positive={impliedProbability >= 0.5} class:negative={impliedProbability < 0.5}>
-      {formatProbability(impliedProbability)} YES
+      LONG {formatProbability(impliedProbability)}
     </span>
-    <a class="btn btn-outline" href="/market/{data.market.slug}">Buy YES / Buy NO</a>
+    <a class="btn btn-outline" href="/market/{data.market.slug}">Buy LONG / Buy SHORT</a>
   </div>
 </section>
 

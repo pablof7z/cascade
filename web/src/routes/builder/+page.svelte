@@ -762,8 +762,8 @@
                         (event.currentTarget as HTMLSelectElement).value as 'long' | 'short'
                       )}
                   >
-                    <option value="long">Supports YES</option>
-                    <option value="short">Supports NO</option>
+                    <option value="long">Supports LONG</option>
+                    <option value="short">Supports SHORT</option>
                   </select>
                   <input
                     class="input input-bordered"
@@ -830,8 +830,8 @@
               <label class="builder-field">
                 <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Your position</span>
                 <select class="select select-bordered" bind:value={seedSide}>
-                  <option value="long">YES</option>
-                  <option value="short">NO</option>
+                  <option value="long">LONG</option>
+                  <option value="short">SHORT</option>
                 </select>
               </label>
             </div>

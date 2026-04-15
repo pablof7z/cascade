@@ -1,14 +1,18 @@
-# AGENTS
+# Auth Agent Rules
 
-This subtree owns authentication and session-entry UI.
+Follow [`../../../../AGENTS.md`](../../../../AGENTS.md) and [`../../../AGENTS.md`](../../../AGENTS.md) first.
 
 ## Purpose
 
-Keep signer login flows, session-entry UX, and authenticated topbar actions isolated from route files and generic components.
+This subtree owns sign-in flows, session-entry UI, and authenticated topbar actions.
 
 ## Rules
 
-- Put auth orchestration here, not in `src/routes` or generic component folders.
-- Keep components small: split by login mode or auth state instead of rebuilding a large panel component.
-- Keep styling for auth surfaces in this subtree instead of `src/app.css`.
-- Do not move onboarding publishing logic here; auth can route into onboarding, but onboarding owns profile setup.
+- Keep auth orchestration here, not in routes or generic UI folders.
+- Keep components small and split by auth state or login mode.
+- Keep styling local to this subtree instead of `src/app.css`.
+- Onboarding can route out of auth, but onboarding logic should not live here.
+
+## Docs-First Rule
+
+- If sign-in, session-entry, or identity-bootstrap behavior changes, update the relevant canonical doc with a `PENDING:` note first, usually `docs/technical/authentication.md` or `docs/product/spec.md`.

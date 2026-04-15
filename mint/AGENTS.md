@@ -1,30 +1,29 @@
-# Cascade Mint Agent Notes
+# Mint Agent Rules
 
-This subtree is the Rust mint workspace. Follow the repository root `AGENTS.md` as the baseline, then apply the constraints here when working under `mint/`.
+Follow the repo root [`AGENTS.md`](../AGENTS.md) first.
 
 ## Scope
 
-- `crates/cascade-core` contains shared market and LMSR logic.
-- `crates/cascade-api` contains the HTTP surface.
-- `crates/cascade-mint` contains the mint binary and service wiring.
+- `crates/cascade-core` = shared market and LMSR logic
+- `crates/cascade-api` = HTTP surface
+- `crates/cascade-mint` = binary and service wiring
 
-## Working Rules
+## Fundamentals
 
-- Keep mint changes backward-compatible unless the user explicitly asks for a breaking change.
-- Update migrations, config examples, and docs together when changing storage or runtime configuration.
-- Prefer targeted edits over broad refactors. Keep code paths and API shapes stable.
-- Run the relevant Rust checks after changes when possible, especially `cargo fmt` and the smallest useful test command.
+- Keep mint changes backward-compatible unless the user asks for a breaking change.
+- The mint is the authority for trade execution and exit pricing.
+- Do not reintroduce close, oracle, or resolution semantics.
+- Update migrations, config examples, and docs together when storage or runtime behavior changes.
 
-## Product Guardrails
+## Docs-First Rule
 
-- Do not use forbidden market terminology from the repo root instructions.
-- Markets do not close, there is no oracle, and there is no resolution step.
-- The mint is the authority for trade execution and withdrawal pricing.
+- Before changing mint routes, storage, funding behavior, or trade semantics, update the affected canonical doc with a `PENDING:` note first.
+- Finish by removing the `PENDING:` note and leaving the doc accurate.
 
-## Reference Files
+## Read Before Editing
 
-- `README.md`
-- `DEPLOYMENT.md`
-- `.env.example`
-- `config.toml.example`
-- `migrations/`
+- [`README.md`](README.md)
+- [`DEPLOYMENT.md`](DEPLOYMENT.md)
+- [`../docs/mint/index.md`](../docs/mint/index.md)
+- [`../docs/mint/api.md`](../docs/mint/api.md)
+- [`../docs/design/product-decisions.md`](../docs/design/product-decisions.md)

@@ -1,20 +1,18 @@
-# AGENTS
+# Server Lib Agent Rules
 
-This subtree is server-only.
+Follow [`../../../AGENTS.md`](../../../AGENTS.md) and [`../../AGENTS.md`](../../AGENTS.md) first.
 
 ## Purpose
 
-Put SSR data loading support, OG generation, and other non-browser Nostr access here.
+This subtree is server-only. Put SSR fetch helpers, OG generation, caching, and non-browser relay access here.
 
 ## Rules
 
 - Do not import browser-only APIs or UI components here.
-- Keep network access, relay access, caching, and timeout policy centralized here when possible.
-- Prefer adding new fetch helpers here instead of embedding server-fetch logic inside route files.
-- Keep return shapes stable and predictable for route loaders.
-- If caching behavior changes, document the intended scope in code comments.
+- Keep network access, caching, and timeout policy centralized here when possible.
+- Prefer server helpers here over embedding fetch logic in route files.
+- Keep return shapes stable for route loaders.
 
-## Boundaries
+## Docs-First Rule
 
-- `nostr.ts`: server data access and cache behavior
-- `og.ts`: image generation and OG presentation helpers
+- If server data contracts, caching behavior, or OG behavior change in a way that affects docs, update the nearest canonical doc with a `PENDING:` note first, usually `docs/technical/frontend.md`.

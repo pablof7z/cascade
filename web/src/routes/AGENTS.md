@@ -1,21 +1,18 @@
-# AGENTS
+# Route Agent Rules
 
-This subtree owns route composition.
+Follow [`../../AGENTS.md`](../../AGENTS.md) and [`../AGENTS.md`](../AGENTS.md) first.
 
 ## Purpose
 
-Route files should orchestrate page-level behavior, compose components, and connect SSR data with client interactivity.
+Route files should orchestrate page behavior, SSR data, and composition. They should not become catch-all business-logic modules.
 
 ## Rules
 
-- Keep `+page.server.ts` focused on loading, caching headers, and route response shape.
+- Keep `+page.server.ts` focused on loading, caching, and response shape.
 - Keep `+page.svelte` focused on page composition and route-local view logic.
-- If route logic is reusable or domain-specific, move it into `src/lib`.
-- Avoid turning route files into catch-all business-logic modules.
-- Do not parse Nostr tags or event semantics inline in multiple routes if the logic may be reused. Move that to `src/lib/ndk` or `src/lib/server`.
-- Do not let route files become the place where session, caching, or publishing policy is decided.
+- Move reusable or domain-specific logic into `src/lib`.
+- Do not duplicate Nostr event interpretation across multiple routes.
 
-## Growth Rules
+## Docs-First Rule
 
-- When a route grows into a full product surface, create route-local support modules before adding another nested `AGENTS.md`.
-- Keep naming and URL structure predictable.
+- If a route, URL contract, page behavior, or public-facing copy changes, update `docs/product/spec.md` or `docs/technical/frontend.md` with a `PENDING:` note first.

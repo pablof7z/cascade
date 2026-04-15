@@ -8,8 +8,7 @@ use base64::Engine;
 use cascade_api::types::{
     BlindedMessageInput, MintBolt11Request, MintBolt11Response, MintQuoteBolt11Request,
     MintQuoteBolt11Response, ProductCoordinatorBuyRequest, ProductCoordinatorSellRequest,
-    ProductCoordinatorTradeQuoteRequest, ProductCreateMarketRequest, ProductFeedResponse,
-    ProductMarketDetailResponse, ProductPortfolioFundingRequestStatusResponse,
+    ProductCoordinatorTradeQuoteRequest, ProductPortfolioFundingRequestStatusResponse,
     ProductTradeExecutionResponse, ProductTradeQuoteResponse, ProductTradeRequestStatusResponse,
     ProductTradeStatusResponse, TokenOutput,
 };
@@ -526,35 +525,23 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
                         .collect::<Vec<_>>();
                 ctx.emit(&json!({ "markets": limit_vec(markets, args.limit) }))
             } else {
-                let payload: ProductFeedResponse = ctx
-                    .request_json(
-                        &loaded,
-                        Method::GET,
-                        "/api/product/feed",
-                        None,
-                        AuthMode::None,
-                    )
-                    .await?;
-                let markets: Vec<MarketRecord> = payload
-                    .markets
-                    .into_iter()
-                    .filter_map(parse_market_record)
-                    .collect();
+                let fetch_limit = args.limit.unwrap_or(80).max(80);
+                let markets = fetch_public_market_records(ctx, &loaded, fetch_limit).await?;
                 ctx.emit(&json!({ "markets": limit_vec(markets, args.limit) }))
             }
         }
         MarketSubcommand::Show(args) => {
             let loaded = ctx.require_config()?;
             let selector = resolve_market_selector(ctx, &loaded, &args.market).await?;
-            let detail: ProductMarketDetailResponse = ctx
-                .request_json(
-                    &loaded,
-                    Method::GET,
-                    &format!("/api/product/markets/slug/{}", selector.slug),
-                    None,
-                    AuthMode::None,
-                )
-                .await?;
+            let visibility = if public_market_event_ids(ctx, &loaded)
+                .await?
+                .contains(&selector.event_id)
+            {
+                "public"
+            } else {
+                "pending"
+            };
+            let detail = build_market_detail_payload(ctx, &loaded, &selector, visibility, Some(80)).await?;
             ctx.emit(&detail)
         }
         MarketSubcommand::Pending(args) => {
@@ -563,48 +550,66 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
                 Some(creator) => creator.clone(),
                 None => ctx.pubkey_hex(&loaded)?,
             };
-            let detail: Value = ctx
-                .request_json(
-                    &loaded,
-                    Method::GET,
-                    &format!("/api/product/markets/{}/pending/{}", args.event_id, creator),
-                    None,
-                    AuthMode::Nip98,
-                )
-                .await?;
+            let record = fetch_creator_market_records(ctx, Some(&loaded), &creator, 200)
+                .await?
+                .into_iter()
+                .find(|market| market.event_id == args.event_id)
+                .ok_or_else(|| anyhow!("pending market not found for creator"))?;
+            let visibility = if public_market_event_ids(ctx, &loaded)
+                .await?
+                .contains(&record.event_id)
+            {
+                "public"
+            } else {
+                "pending"
+            };
+            let detail =
+                build_market_detail_payload(ctx, &loaded, &market_record_to_selector(record), visibility, Some(80))
+                    .await?;
             ctx.emit(&detail)
         }
         MarketSubcommand::PriceHistory(args) => {
             let loaded = ctx.require_config()?;
             let selector = resolve_market_selector(ctx, &loaded, &args.market).await?;
-            let history: Value = ctx
-                .request_json(
-                    &loaded,
-                    Method::GET,
-                    &format!("/api/market/{}/price-history", selector.event_id),
-                    None,
-                    AuthMode::None,
-                )
-                .await?;
+            let trades = fetch_market_trade_records(ctx, &loaded, &selector.event_id, 240).await?;
+            let history = json!({
+                "event_id": selector.event_id,
+                "history": trades
+                    .iter()
+                    .map(|trade| json!({
+                        "created_at": value_created_at(trade),
+                        "price_ppm": trade
+                            .get("tags")
+                            .and_then(Value::as_array)
+                            .and_then(|tags| first_tag_value(tags, "price"))
+                            .and_then(|value| value.parse::<u64>().ok()),
+                        "amount_minor": trade_amount_minor(trade),
+                        "trade": trade,
+                    }))
+                    .collect::<Vec<_>>(),
+            });
             ctx.emit(&history)
         }
         MarketSubcommand::Activity(args) => {
             let loaded = ctx.require_config()?;
             let selector = resolve_market_selector(ctx, &loaded, &args.market).await?;
-            let detail: ProductMarketDetailResponse = ctx
-                .request_json(
-                    &loaded,
-                    Method::GET,
-                    &format!("/api/product/markets/slug/{}", selector.slug),
-                    None,
-                    AuthMode::None,
-                )
-                .await?;
+            let visibility = if public_market_event_ids(ctx, &loaded)
+                .await?
+                .contains(&selector.event_id)
+            {
+                "public"
+            } else {
+                "pending"
+            };
+            let detail = build_market_detail_payload(ctx, &loaded, &selector, visibility, args.limit).await?;
             let discussions =
                 fetch_market_discussions(ctx, Some(&loaded), &selector.event_id).await?;
             let payload = json!({
-                "market": detail.market,
-                "trades": limit_json(detail.trades, args.limit),
+                "market": detail["market"].clone(),
+                "trades": limit_json(
+                    detail["trades"].as_array().cloned().unwrap_or_default(),
+                    args.limit
+                ),
                 "discussion": limit_vec(discussions, args.limit),
             });
             ctx.emit(&payload)
@@ -639,34 +644,6 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
             let publish_output = client.send_event(&event).await?;
             client.disconnect().await;
 
-            let create_request = ProductCreateMarketRequest {
-                event_id: event.id.to_string(),
-                title: selector.title.clone(),
-                description: selector.description.clone(),
-                slug: selector.slug.clone(),
-                body: selector.body.clone(),
-                creator_pubkey: keys.public_key().to_string(),
-                raw_event: raw_event.clone(),
-                b: 10.0,
-            };
-
-            let market_registration: Value = ctx
-                .request_json(
-                    &loaded,
-                    Method::POST,
-                    "/api/product/markets",
-                    Some(serde_json::to_value(&create_request)?),
-                    AuthMode::Nip98,
-                )
-                .await
-                .or_else(|error| {
-                    if error.to_string().contains("HTTP 409") {
-                        Ok(json!({ "status": "existing_market" }))
-                    } else {
-                        Err(error)
-                    }
-                })?;
-
             let seed_result = execute_buy(
                 ctx,
                 &loaded,
@@ -675,6 +652,7 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
                 &selector.title,
                 &args.seed_side,
                 args.seed_spend_minor,
+                Some(raw_event.clone()),
                 args.request_id.clone(),
             )
             .await?;
@@ -686,7 +664,9 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
                     "success_relays": publish_output.success.into_iter().map(|relay| relay.to_string()).collect::<Vec<_>>(),
                     "failed_relays": publish_output.failed.into_iter().map(|(relay, error)| (relay.to_string(), error)).collect::<BTreeMap<_, _>>(),
                 },
-                "market_registration": market_registration,
+                "market_registration": {
+                    "status": "bootstrapped_with_seed_trade"
+                },
                 "seed_trade": seed_result,
             }))
         }
@@ -708,6 +688,7 @@ async fn handle_trade(ctx: &AppContext, command: &TradeCommand) -> Result<()> {
                             event_id: selector.event_id,
                             side: args.side.clone(),
                             spend_minor: Some(args.spend_minor),
+                            raw_event: Some(selector.raw_event.clone()),
                             quantity: None,
                         })?),
                         AuthMode::None,
@@ -726,6 +707,7 @@ async fn handle_trade(ctx: &AppContext, command: &TradeCommand) -> Result<()> {
                             event_id: selector.event_id,
                             side: args.side.clone(),
                             spend_minor: None,
+                            raw_event: Some(selector.raw_event.clone()),
                             quantity: Some(args.quantity),
                         })?),
                         AuthMode::None,
@@ -744,6 +726,7 @@ async fn handle_trade(ctx: &AppContext, command: &TradeCommand) -> Result<()> {
                 &selector.title,
                 &args.side,
                 args.spend_minor,
+                Some(selector.raw_event.clone()),
                 args.request_id.clone(),
             )
             .await?;
@@ -759,6 +742,7 @@ async fn handle_trade(ctx: &AppContext, command: &TradeCommand) -> Result<()> {
                 &selector.title,
                 &args.side,
                 args.quantity,
+                Some(selector.raw_event.clone()),
                 args.request_id.clone(),
             )
             .await?;
@@ -887,7 +871,7 @@ async fn handle_portfolio(ctx: &AppContext, command: &PortfolioCommand) -> Resul
                     .request_json(
                         &loaded,
                         Method::GET,
-                        &format!("/api/portfolio/funding/requests/{}", args.id),
+                        &format!("/v1/fund/stripe/requests/{}", args.id),
                         None,
                         AuthMode::None,
                     )
@@ -1196,15 +1180,10 @@ async fn handle_feed(ctx: &AppContext, command: &FeedCommand) -> Result<()> {
     let loaded = ctx.require_config()?;
     match &command.command {
         FeedSubcommand::Home => {
-            let payload: ProductFeedResponse = ctx
-                .request_json(
-                    &loaded,
-                    Method::GET,
-                    "/api/product/feed",
-                    None,
-                    AuthMode::None,
-                )
-                .await?;
+            let payload = json!({
+                "markets": fetch_public_market_records(ctx, &loaded, 80).await?,
+                "trades": fetch_public_trade_events(ctx, Some(&loaded), 160).await?,
+            });
             ctx.emit(&payload)
         }
     }
@@ -1214,20 +1193,13 @@ async fn handle_activity(ctx: &AppContext, command: &ActivityCommand) -> Result<
     let loaded = ctx.require_config()?;
     match &command.command {
         ActivitySubcommand::List(args) => {
-            let feed: ProductFeedResponse = ctx
-                .request_json(
-                    &loaded,
-                    Method::GET,
-                    "/api/product/feed",
-                    None,
-                    AuthMode::None,
-                )
-                .await?;
-            let discussions =
-                fetch_recent_discussions(ctx, Some(&loaded), args.limit.unwrap_or(80)).await?;
+            let fetch_limit = args.limit.unwrap_or(80).max(80);
+            let markets = fetch_public_market_records(ctx, &loaded, fetch_limit).await?;
+            let trades = fetch_public_trade_events(ctx, Some(&loaded), fetch_limit * 2).await?;
+            let discussions = fetch_recent_discussions(ctx, Some(&loaded), fetch_limit).await?;
             let mut entries = Vec::new();
 
-            for market in feed.markets.into_iter().filter_map(parse_market_record) {
+            for market in markets {
                 entries.push(ActivityEntry {
                     kind: "market".to_string(),
                     id: market.event_id,
@@ -1236,7 +1208,7 @@ async fn handle_activity(ctx: &AppContext, command: &ActivityCommand) -> Result<
                     detail: market.description,
                 });
             }
-            for trade in feed.trades {
+            for trade in trades {
                 if let Some(entry) = parse_trade_activity(&trade) {
                     entries.push(entry);
                 }
@@ -1263,23 +1235,15 @@ async fn handle_analytics(ctx: &AppContext, command: &AnalyticsCommand) -> Resul
     let loaded = ctx.require_config()?;
     match &command.command {
         AnalyticsSubcommand::Summary => {
-            let feed: ProductFeedResponse = ctx
-                .request_json(
-                    &loaded,
-                    Method::GET,
-                    "/api/product/feed",
-                    None,
-                    AuthMode::None,
-                )
-                .await?;
+            let markets = fetch_public_market_records(ctx, &loaded, 200).await?;
+            let trades = fetch_public_trade_events(ctx, Some(&loaded), 400).await?;
             let discussions = fetch_recent_discussions(ctx, Some(&loaded), 160).await?;
-            let market_count = feed.markets.len();
-            let trade_count = feed.trades.len();
+            let market_count = markets.len();
+            let trade_count = trades.len();
             let discussion_count = discussions.len();
-            let unique_creators = feed
-                .markets
+            let unique_creators = markets
                 .iter()
-                .filter_map(|market| market.get("pubkey").and_then(Value::as_str))
+                .filter_map(|market| market.raw_event.get("pubkey").and_then(Value::as_str))
                 .collect::<HashSet<_>>()
                 .len();
             let unique_discussion_authors = discussions
@@ -1302,20 +1266,7 @@ async fn handle_leaderboard(ctx: &AppContext, command: &LeaderboardCommand) -> R
     let loaded = ctx.require_config()?;
     match &command.command {
         LeaderboardSubcommand::Show => {
-            let feed: ProductFeedResponse = ctx
-                .request_json(
-                    &loaded,
-                    Method::GET,
-                    "/api/product/feed",
-                    None,
-                    AuthMode::None,
-                )
-                .await?;
-            let markets: Vec<MarketRecord> = feed
-                .markets
-                .into_iter()
-                .filter_map(parse_market_record)
-                .collect();
+            let markets = fetch_public_market_records(ctx, &loaded, 200).await?;
             let discussions = fetch_recent_discussions(ctx, Some(&loaded), 240).await?;
             let bookmark_events = ctx
                 .fetch_events(
@@ -1419,6 +1370,8 @@ struct ResolvedMarketSelector {
     event_id: String,
     slug: String,
     title: String,
+    created_at: i64,
+    raw_event: Value,
 }
 
 fn keyset_denominations(keyset: &KeySet) -> Vec<u64> {
@@ -1612,6 +1565,7 @@ async fn execute_buy(
     title: &str,
     side: &str,
     spend_minor: u64,
+    raw_event: Option<Value>,
     request_id: Option<String>,
 ) -> Result<Value> {
     let path = ctx.proof_store_path(loaded);
@@ -1628,6 +1582,7 @@ async fn execute_buy(
                 event_id: event_id.to_string(),
                 side: side.to_string(),
                 spend_minor: Some(spend_minor),
+                raw_event: raw_event.clone(),
                 quantity: None,
             })?),
             AuthMode::None,
@@ -1652,6 +1607,7 @@ async fn execute_buy(
                 pubkey: ctx.pubkey_hex(loaded)?,
                 side: side.to_string(),
                 spend_minor,
+                raw_event,
                 proofs: spend_proofs.clone(),
                 issued_outputs,
                 change_outputs,
@@ -1710,6 +1666,7 @@ async fn execute_sell(
     title: &str,
     side: &str,
     quantity: f64,
+    raw_event: Option<Value>,
     request_id: Option<String>,
 ) -> Result<Value> {
     let path = ctx.proof_store_path(loaded);
@@ -1728,6 +1685,7 @@ async fn execute_sell(
                 event_id: event_id.to_string(),
                 side: side.to_string(),
                 spend_minor: None,
+                raw_event: raw_event,
                 quantity: Some(quantity),
             })?),
             AuthMode::None,
@@ -1827,21 +1785,13 @@ async fn build_portfolio_view(ctx: &AppContext, loaded: &LoadedConfig) -> Result
             None => continue,
         };
         let selector = resolve_market_selector(ctx, loaded, &slug).await?;
-        let detail: ProductMarketDetailResponse = ctx
-            .request_json(
-                loaded,
-                Method::GET,
-                &format!("/api/product/markets/slug/{}", selector.slug),
-                None,
-                AuthMode::None,
-            )
-            .await?;
+        let quote = fetch_market_quote_snapshot(ctx, loaded, &selector).await?;
         let quantity_minor: u64 = wallet.proofs.iter().map(|proof| proof.amount).sum();
         let quantity = share_minor_to_quantity(quantity_minor);
         let current_price_ppm = if side == "long" {
-            detail.market.price_long_ppm
+            quote.current_price_long_ppm
         } else {
-            detail.market.price_short_ppm
+            quote.current_price_short_ppm
         };
         let market_value_minor =
             ((quantity * current_price_ppm as f64) / 1_000_000.0).round() as u64;
@@ -1870,26 +1820,15 @@ async fn resolve_market_selector(
     selector: &str,
 ) -> Result<ResolvedMarketSelector> {
     if is_hex_event_id(selector) {
-        let feed: ProductFeedResponse = ctx
-            .request_json(
-                loaded,
-                Method::GET,
-                "/api/product/feed",
-                None,
-                AuthMode::None,
-            )
-            .await?;
-        if let Some(record) = feed
-            .markets
-            .into_iter()
-            .filter_map(parse_market_record)
-            .find(|record| record.event_id == selector)
-        {
-            return Ok(ResolvedMarketSelector {
-                event_id: record.event_id,
-                slug: record.slug,
-                title: record.title,
-            });
+        if let Some(record) = fetch_market_record_by_event_id(ctx, loaded, selector).await? {
+            let public_market_ids = public_market_event_ids(ctx, loaded).await?;
+            let current_pubkey = ctx.pubkey_hex(loaded)?;
+            if public_market_ids.contains(&record.event_id)
+                || record.raw_event.get("pubkey").and_then(Value::as_str)
+                    == Some(current_pubkey.as_str())
+            {
+                return Ok(market_record_to_selector(record));
+            }
         }
 
         let authored_markets =
@@ -1898,28 +1837,27 @@ async fn resolve_market_selector(
             .into_iter()
             .find(|market| market.event_id == selector)
         {
-            return Ok(ResolvedMarketSelector {
-                event_id: market.event_id,
-                slug: market.slug,
-                title: market.title,
-            });
+            return Ok(market_record_to_selector(market));
         }
     }
 
-    let detail: ProductMarketDetailResponse = ctx
-        .request_json(
-            loaded,
-            Method::GET,
-            &format!("/api/product/markets/slug/{selector}"),
-            None,
-            AuthMode::None,
-        )
-        .await?;
-    Ok(ResolvedMarketSelector {
-        event_id: detail.market.event_id,
-        slug: detail.market.slug,
-        title: detail.market.title,
-    })
+    if let Some(record) = fetch_public_market_records(ctx, loaded, 200)
+        .await?
+        .into_iter()
+        .find(|market| market.slug == selector)
+    {
+        return Ok(market_record_to_selector(record));
+    }
+
+    if let Some(record) = fetch_creator_market_records(ctx, Some(loaded), &ctx.pubkey_hex(loaded)?, 200)
+        .await?
+        .into_iter()
+        .find(|market| market.slug == selector)
+    {
+        return Ok(market_record_to_selector(record));
+    }
+
+    bail!("market not found: {selector}")
 }
 
 fn build_market_create_spec(args: &MarketCreateArgs) -> Result<MarketCreateSpec> {
@@ -2002,29 +1940,202 @@ fn parse_market_record(value: Value) -> Option<MarketRecord> {
     })
 }
 
+fn value_created_at(value: &Value) -> i64 {
+    value
+        .get("created_at")
+        .and_then(Value::as_i64)
+        .unwrap_or_default()
+}
+
+fn trade_market_event_id(value: &Value) -> Option<String> {
+    first_tag_value(value.get("tags")?.as_array()?, "e")
+}
+
+fn trade_amount_minor(value: &Value) -> Option<u64> {
+    first_tag_value(value.get("tags")?.as_array()?, "amount")?
+        .parse::<u64>()
+        .ok()
+}
+
+fn market_description(value: &Value) -> String {
+    value.get("tags")
+        .and_then(Value::as_array)
+        .and_then(|tags| first_tag_value(tags, "description"))
+        .unwrap_or_default()
+}
+
+fn market_record_to_selector(record: MarketRecord) -> ResolvedMarketSelector {
+    ResolvedMarketSelector {
+        event_id: record.event_id,
+        slug: record.slug,
+        title: record.title,
+        created_at: record.created_at,
+        raw_event: record.raw_event,
+    }
+}
+
+async fn fetch_recent_market_records(
+    ctx: &AppContext,
+    loaded: Option<&LoadedConfig>,
+    limit: usize,
+) -> Result<Vec<MarketRecord>> {
+    let events = ctx
+        .fetch_events(loaded, Filter::new().kind(Kind::Custom(982)).limit(limit))
+        .await?;
+    let mut markets = events
+        .into_iter()
+        .filter_map(|event| serde_json::to_value(event).ok().and_then(parse_market_record))
+        .collect::<Vec<_>>();
+    markets.sort_by(|left, right| right.created_at.cmp(&left.created_at));
+    Ok(markets)
+}
+
+async fn fetch_public_trade_events(
+    ctx: &AppContext,
+    loaded: Option<&LoadedConfig>,
+    limit: usize,
+) -> Result<Vec<Value>> {
+    let events = ctx
+        .fetch_events(loaded, Filter::new().kind(Kind::Custom(983)).limit(limit))
+        .await?;
+    let mut trades = events
+        .into_iter()
+        .filter_map(|event| serde_json::to_value(event).ok())
+        .collect::<Vec<_>>();
+    trades.sort_by(|left, right| value_created_at(right).cmp(&value_created_at(left)));
+    Ok(trades)
+}
+
+async fn fetch_public_market_records(
+    ctx: &AppContext,
+    loaded: &LoadedConfig,
+    limit: usize,
+) -> Result<Vec<MarketRecord>> {
+    let public_market_ids = public_market_event_ids(ctx, loaded).await?;
+    let fetch_limit = limit.max(200);
+    Ok(fetch_recent_market_records(ctx, Some(loaded), fetch_limit)
+        .await?
+        .into_iter()
+        .filter(|market| public_market_ids.contains(&market.event_id))
+        .take(limit)
+        .collect())
+}
+
 async fn public_market_event_ids(
     ctx: &AppContext,
     loaded: &LoadedConfig,
 ) -> Result<HashSet<String>> {
-    let payload: ProductFeedResponse = ctx
-        .request_json(
-            loaded,
-            Method::GET,
-            "/api/product/feed",
-            None,
-            AuthMode::None,
+    Ok(fetch_public_trade_events(ctx, Some(loaded), 800)
+        .await?
+        .into_iter()
+        .filter_map(|value| trade_market_event_id(&value))
+        .collect())
+}
+
+async fn fetch_market_record_by_event_id(
+    ctx: &AppContext,
+    loaded: &LoadedConfig,
+    event_id: &str,
+) -> Result<Option<MarketRecord>> {
+    let event_id = EventId::from_hex(event_id)?;
+    let event = fetch_latest_event(
+        ctx,
+        Some(loaded),
+        Filter::new().kind(Kind::Custom(982)).event(event_id).limit(1),
+    )
+    .await?;
+    Ok(event
+        .and_then(|event| serde_json::to_value(event).ok())
+        .and_then(parse_market_record))
+}
+
+async fn fetch_market_trade_records(
+    ctx: &AppContext,
+    loaded: &LoadedConfig,
+    event_id: &str,
+    limit: usize,
+) -> Result<Vec<Value>> {
+    let event_id = EventId::from_hex(event_id)?;
+    let events = ctx
+        .fetch_events(
+            Some(loaded),
+            Filter::new().kind(Kind::Custom(983)).event(event_id).limit(limit.max(1)),
         )
         .await?;
-    Ok(payload
-        .markets
+    let mut trades = events
         .into_iter()
-        .filter_map(|value| {
-            value
-                .get("id")
-                .and_then(Value::as_str)
-                .map(ToString::to_string)
-        })
-        .collect())
+        .filter_map(|event| serde_json::to_value(event).ok())
+        .collect::<Vec<_>>();
+    trades.sort_by(|left, right| value_created_at(right).cmp(&value_created_at(left)));
+    Ok(trades)
+}
+
+async fn fetch_market_quote_snapshot(
+    ctx: &AppContext,
+    loaded: &LoadedConfig,
+    selector: &ResolvedMarketSelector,
+) -> Result<ProductTradeQuoteResponse> {
+    ctx.request_json(
+        loaded,
+        Method::POST,
+        "/api/trades/quote",
+        Some(serde_json::to_value(ProductCoordinatorTradeQuoteRequest {
+            event_id: selector.event_id.clone(),
+            side: "long".to_string(),
+            spend_minor: Some(1),
+            raw_event: Some(selector.raw_event.clone()),
+            quantity: None,
+        })?),
+        AuthMode::None,
+    )
+    .await
+}
+
+fn build_market_summary_value(
+    selector: &ResolvedMarketSelector,
+    quote: Option<&ProductTradeQuoteResponse>,
+    trades: &[Value],
+    visibility: &str,
+) -> Value {
+    json!({
+        "event_id": selector.event_id.clone(),
+        "slug": selector.slug.clone(),
+        "title": selector.title.clone(),
+        "description": market_description(&selector.raw_event),
+        "creator_pubkey": selector.raw_event.get("pubkey").and_then(Value::as_str).unwrap_or_default(),
+        "visibility": visibility,
+        "created_at": selector.created_at,
+        "first_trade_at": trades.iter().map(value_created_at).min(),
+        "price_long_ppm": quote.map(|value| value.current_price_long_ppm).unwrap_or(500_000),
+        "price_short_ppm": quote.map(|value| value.current_price_short_ppm).unwrap_or(500_000),
+        "volume_minor": trades.iter().filter_map(trade_amount_minor).sum::<u64>(),
+        "trade_count": trades.len() as u64,
+        "reserve_minor": 0,
+        "raw_event": selector.raw_event.clone(),
+    })
+}
+
+async fn build_market_detail_payload(
+    ctx: &AppContext,
+    loaded: &LoadedConfig,
+    selector: &ResolvedMarketSelector,
+    visibility: &str,
+    limit: Option<usize>,
+) -> Result<Value> {
+    let trades = if visibility == "public" {
+        fetch_market_trade_records(ctx, loaded, &selector.event_id, limit.unwrap_or(80).max(80)).await?
+    } else {
+        Vec::new()
+    };
+    let quote = if visibility == "public" || !trades.is_empty() {
+        Some(fetch_market_quote_snapshot(ctx, loaded, selector).await?)
+    } else {
+        None
+    };
+    Ok(json!({
+        "market": build_market_summary_value(selector, quote.as_ref(), &trades, visibility),
+        "trades": limit_json(trades, limit),
+    }))
 }
 
 async fn fetch_creator_market_records(

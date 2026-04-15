@@ -229,11 +229,70 @@ function productFetch(path: string, init?: RequestInit): Promise<Response> {
   });
 }
 
+export async function fetchProductRuntime(): Promise<Response> {
+  return productFetch('/api/product/runtime');
+}
+
+export async function fetchProductFeed(input?: {
+  marketLimit?: number;
+  marketOffset?: number;
+  tradeLimit?: number;
+  tradeOffset?: number;
+}): Promise<Response> {
+  const params = new URLSearchParams();
+  if (typeof input?.marketLimit === 'number') {
+    params.set('market_limit', String(input.marketLimit));
+  }
+  if (typeof input?.marketOffset === 'number') {
+    params.set('market_offset', String(input.marketOffset));
+  }
+  if (typeof input?.tradeLimit === 'number') {
+    params.set('trade_limit', String(input.tradeLimit));
+  }
+  if (typeof input?.tradeOffset === 'number') {
+    params.set('trade_offset', String(input.tradeOffset));
+  }
+
+  const query = params.size > 0 ? `?${params.toString()}` : '';
+  return productFetch(`/api/product/feed${query}`);
+}
+
+export async function fetchMarketDetailBySlug(slug: string): Promise<Response> {
+  return productFetch(`/api/product/markets/slug/${encodeURIComponent(slug)}`);
+}
+
+export async function createProductMarket(input: {
+  eventId: string;
+  title: string;
+  description: string;
+  slug: string;
+  body: string;
+  creatorPubkey: string;
+  rawEvent: unknown;
+  b: number;
+}): Promise<Response> {
+  return productFetch('/api/product/markets', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      event_id: input.eventId,
+      title: input.title,
+      description: input.description,
+      slug: input.slug,
+      body: input.body,
+      creator_pubkey: input.creatorPubkey,
+      raw_event: input.rawEvent,
+      b: input.b
+    })
+  });
+}
+
 export async function buyMarketPosition(input: {
   eventId: string;
   pubkey: string;
   side: 'long' | 'short';
   spendMinor: number;
+  rawEvent?: unknown;
   proofs: ProductProof[];
   issuedOutputs: BlindedMessageInput[];
   changeOutputs: BlindedMessageInput[];
@@ -248,6 +307,7 @@ export async function buyMarketPosition(input: {
       pubkey: input.pubkey,
       side: input.side,
       spend_minor: input.spendMinor,
+      raw_event: input.rawEvent,
       proofs: input.proofs,
       issued_outputs: input.issuedOutputs,
       change_outputs: input.changeOutputs,
@@ -289,6 +349,7 @@ export async function quoteBuyTrade(input: {
   eventId: string;
   side: 'long' | 'short';
   spendMinor: number;
+  rawEvent?: unknown;
 }): Promise<Response> {
   return productFetch('/api/trades/quote', {
     method: 'POST',
@@ -296,7 +357,8 @@ export async function quoteBuyTrade(input: {
     body: JSON.stringify({
       event_id: input.eventId,
       side: input.side,
-      spend_minor: input.spendMinor
+      spend_minor: input.spendMinor,
+      raw_event: input.rawEvent
     })
   });
 }
@@ -321,62 +383,12 @@ export async function fetchTradeQuoteStatus(quoteId: string): Promise<Response> 
   return productFetch(`/api/trades/quotes/${quoteId}`);
 }
 
-export async function fetchProductRuntime(): Promise<Response> {
-  return productFetch('/api/product/runtime');
-}
-
-export async function fetchMarketDetailBySlug(slug: string): Promise<Response> {
-  return productFetch(`/api/product/markets/slug/${encodeURIComponent(slug)}`);
-}
-
-export async function fetchProductFeed(input?: {
-  marketLimit?: number;
-  marketOffset?: number;
-  tradeLimit?: number;
-  tradeOffset?: number;
-}): Promise<Response> {
-  const search = new URLSearchParams();
-  if (typeof input?.marketLimit === 'number') search.set('market_limit', String(input.marketLimit));
-  if (typeof input?.marketOffset === 'number') search.set('market_offset', String(input.marketOffset));
-  if (typeof input?.tradeLimit === 'number') search.set('trade_limit', String(input.tradeLimit));
-  if (typeof input?.tradeOffset === 'number') search.set('trade_offset', String(input.tradeOffset));
-
-  const suffix = search.size ? `?${search.toString()}` : '';
-  return productFetch(`/api/product/feed${suffix}`);
-}
-
-export async function createProductMarket(input: {
-  eventId: string;
-  title: string;
-  description: string;
-  slug: string;
-  body: string;
-  creatorPubkey: string;
-  rawEvent: unknown;
-  b?: number;
-}): Promise<Response> {
-  return productFetch('/api/product/markets', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      event_id: input.eventId,
-      title: input.title,
-      description: input.description,
-      slug: input.slug,
-      body: input.body,
-      creator_pubkey: input.creatorPubkey,
-      raw_event: input.rawEvent,
-      b: input.b ?? 10
-    })
-  });
-}
-
 export async function createStripeFunding(input: {
   pubkey: string;
   amountMinor: number;
   requestId?: string;
 }): Promise<Response> {
-  return productFetch('/api/portfolio/funding/stripe', {
+  return productFetch('/v1/fund/stripe', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -388,11 +400,11 @@ export async function createStripeFunding(input: {
 }
 
 export async function fetchPortfolioFundingRequestStatus(requestId: string): Promise<Response> {
-  return productFetch(`/api/portfolio/funding/requests/${requestId}`);
+  return productFetch(`/v1/fund/stripe/requests/${requestId}`);
 }
 
 export async function fetchPortfolioFundingStatus(fundingId: string): Promise<Response> {
-  return productFetch(`/api/portfolio/funding/${fundingId}`);
+  return productFetch(`/v1/fund/stripe/${fundingId}`);
 }
 
 export async function fetchTradeStatus(tradeId: string): Promise<Response> {

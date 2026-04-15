@@ -348,7 +348,7 @@ impl MintPayment for UsdBolt11PaymentProcessor {
                     fx_quote.snapshot.amount_msat,
                     bolt11_options.description.clone(),
                     Some(expiry_seconds),
-                    false,
+                    self.paper_mode,
                 )
                 .await
                 .map_err(|error| payment::Error::Anyhow(anyhow!(error.to_string())))?
@@ -644,9 +644,60 @@ impl MintPayment for UsdBolt11PaymentProcessor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fx::{FxQuotePolicy, QuoteSource};
     use cascade_core::product::{
         FxQuoteDirection, FxQuoteObservation, FxQuoteSnapshot, FxQuoteSourceMetadata,
     };
+    use cdk_common::payment::Bolt11IncomingPaymentOptions;
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::PathBuf;
+
+    #[derive(Debug)]
+    struct StaticQuoteSource {
+        id: &'static str,
+        price: f64,
+        observed_at: i64,
+    }
+
+    #[async_trait]
+    impl QuoteSource for StaticQuoteSource {
+        fn id(&self) -> &'static str {
+            self.id
+        }
+
+        async fn fetch_observation(
+            &self,
+            _client: &reqwest::Client,
+        ) -> Result<FxQuoteObservation, String> {
+            Ok(FxQuoteObservation {
+                source: self.id.to_string(),
+                btc_usd_price: self.price,
+                observed_at: self.observed_at,
+            })
+        }
+    }
+
+    fn test_fx_service() -> Arc<FxQuoteService> {
+        Arc::new(
+            FxQuoteService::with_sources(
+                vec![Arc::new(StaticQuoteSource {
+                    id: "test",
+                    price: 50_000.0,
+                    observed_at: chrono::Utc::now().timestamp(),
+                })],
+                FxQuotePolicy {
+                    quote_ttl_seconds: 30,
+                    max_provider_spread_bps: 500,
+                    max_observation_age_seconds: 60,
+                    min_provider_count: 1,
+                    usd_to_msat_spread_bps: 100,
+                    msat_to_usd_spread_bps: 100,
+                },
+            )
+            .unwrap(),
+        )
+    }
 
     fn sample_fx_quote() -> FxQuoteEnvelope {
         FxQuoteEnvelope {
@@ -677,10 +728,125 @@ mod tests {
         }
     }
 
+    fn make_fake_lncli_path(name: &str) -> PathBuf {
+        let unique = format!(
+            "{name}-{}-{}",
+            std::process::id(),
+            chrono::Utc::now()
+                .timestamp_nanos_opt()
+                .unwrap_or_default()
+                .abs()
+        );
+        std::env::temp_dir().join(unique)
+    }
+
+    async fn create_cli_invoice_service() -> Arc<Mutex<InvoiceService>> {
+        let script_dir = make_fake_lncli_path("cascade-payment-fake-lncli");
+        fs::create_dir_all(&script_dir).unwrap();
+
+        let script_path = script_dir.join("lncli");
+        fs::write(
+            &script_path,
+            r#"#!/usr/bin/env python3
+import hashlib
+import json
+import sys
+
+command = None
+for arg in sys.argv[1:]:
+    if arg in {"getinfo", "addinvoice", "payinvoice"}:
+        command = arg
+        break
+
+if command == "getinfo":
+    print(json.dumps({
+        "identity_pubkey": "fake-lncli-pubkey",
+        "alias": "fake-lncli",
+        "num_active_channels": 0,
+        "num_peers": 0,
+        "block_height": 1
+    }))
+    sys.exit(0)
+
+if command == "addinvoice":
+    preimage = ""
+    for arg in sys.argv[1:]:
+        if arg.startswith("--preimage="):
+            preimage = arg.split("=", 1)[1]
+            break
+    payment_hash = hashlib.sha256(bytes.fromhex(preimage)).hexdigest()
+    print(json.dumps({
+        "r_hash": payment_hash,
+        "payment_request": f"lnsb1internal{payment_hash[:16]}"
+    }))
+    sys.exit(0)
+
+if command == "payinvoice":
+    sys.stderr.write("self-payment disabled in fake lncli\n")
+    sys.exit(1)
+
+sys.stderr.write(f"unsupported fake lncli command: {' '.join(sys.argv[1:])}\n")
+sys.exit(1)
+"#,
+        )
+        .unwrap();
+        let mut permissions = fs::metadata(&script_path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&script_path, permissions).unwrap();
+
+        let cert_path = script_dir.join("tls.cert");
+        fs::write(&cert_path, "fake-cert").unwrap();
+        let macaroon_path = script_dir.join("admin.macaroon");
+        fs::write(&macaroon_path, [1_u8, 2, 3, 4]).unwrap();
+
+        let lnd_config = cascade_core::LndConfig {
+            host: "127.0.0.1:10009".to_string(),
+            cert_path: Some(cert_path.display().to_string()),
+            macaroon_path: Some(macaroon_path.display().to_string()),
+            tls_domain: None,
+            network: Some("signet".to_string()),
+            cli_path: Some(script_path.display().to_string()),
+        };
+        let mut lnd_client = cascade_core::lightning::lnd_client::LndClient::new(lnd_config);
+        lnd_client.connect().await.unwrap();
+
+        Arc::new(Mutex::new(InvoiceService::new(lnd_client, 3600, 40)))
+    }
+
     #[test]
     fn quote_extra_json_omits_fallback_flag() {
         let payload = UsdBolt11PaymentProcessor::quote_extra_json(&sample_fx_quote());
 
         assert!(payload.get("fallback_used").is_none());
+    }
+
+    #[tokio::test]
+    async fn create_incoming_payment_request_marks_invoice_internal_payable() {
+        let invoice_service = create_cli_invoice_service().await;
+        let localstore = Arc::new(cdk_sqlite::mint::memory::empty().await.unwrap());
+        let processor = UsdBolt11PaymentProcessor::new(
+            invoice_service.clone(),
+            test_fx_service(),
+            localstore,
+            true,
+        );
+
+        let response = processor
+            .create_incoming_payment_request(IncomingPaymentOptions::Bolt11(
+                Bolt11IncomingPaymentOptions {
+                    description: Some("Cascade sell withdrawal test".to_string()),
+                    amount: Amount::new(2_500, CurrencyUnit::Usd),
+                    unix_expiry: None,
+                },
+            ))
+            .await
+            .unwrap();
+
+        let payment_result = {
+            let invoice_service = invoice_service.lock().await;
+            invoice_service.pay_invoice(&response.request).await
+        };
+
+        assert!(payment_result.is_ok());
     }
 }

@@ -235,11 +235,13 @@ As the wallet mint lands, also verify:
 For edition-boundary safety, verify:
 
 ```bash
-curl -sS https://mint.f7z.io/api/product/runtime
-curl -sS https://signet-mint.cascade.f7z.io/api/product/runtime
+curl -sS https://mint.f7z.io/v1/info
+curl -sS https://signet-mint.cascade.f7z.io/v1/info
+curl -sS https://cascade.f7z.io | grep PUBLIC_CASCADE_API_URL
+curl -sS https://signet.cascade.f7z.io | grep PUBLIC_CASCADE_API_URL
 ```
 
-The returned runtime manifest should report the actual backend edition and funding-rail availability. The mainnet surface must not advertise `signet` here, and the signet surface must not advertise `mainnet`.
+The removed `/api/product/runtime` manifest is no longer part of the deployment contract. Instead, verify that each mint exposes the standard Cashu info route and that each web deployment embeds the matching `PUBLIC_CASCADE_API_URL` for its edition.
 
 ## Operational Notes
 

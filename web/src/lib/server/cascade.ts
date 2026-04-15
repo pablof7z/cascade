@@ -15,6 +15,7 @@ import {
 const MARKET_CACHE_TTL_MS = 60_000;
 const DISCUSSION_CACHE_TTL_MS = 30_000;
 const RELAY_FETCH_TIMEOUT_MS = 2_500;
+const DEFAULT_PRODUCT_API_URL = 'https://mint.f7z.io';
 
 let marketCache: MarketRecord[] = [];
 let marketCacheUpdatedAt = 0;
@@ -27,26 +28,10 @@ let discussionCache: DiscussionRecord[] = [];
 let discussionCacheUpdatedAt = 0;
 let discussionRefresh: Promise<void> | undefined;
 
-type MarketDetailSummary = {
-  latestPricePpm?: number | null;
-  latest_price_ppm?: number | null;
-};
-
-type MarketDetailPayload = {
-  market?: {
-    raw_event?: NostrEvent;
-    latestPricePpm?: number | null;
-    latest_price_ppm?: number | null;
-  };
-  trades?: NostrEvent[];
-  trade_summary?: MarketDetailSummary;
-  latestPricePpm?: number | null;
-  latest_price_ppm?: number | null;
-};
-
 type FetchMarketBySlugDeps = {
-  fetchProductJson?: typeof fetchProductJson;
+  fetchProductMarketDetailBySlug?: typeof fetchProductMarketDetailBySlug;
   fetchRelayMarketBySlug?: typeof fetchRelayMarketBySlug;
+  fetchRelayTradesForMarket?: typeof fetchRelayTradesForMarket;
 };
 
 type FetchSitemapMarketsDeps = {
@@ -59,7 +44,7 @@ export async function fetchRecentMarkets(limit = 80): Promise<MarketRecord[]> {
   const underfilled = marketCache.length < limit;
 
   if (stale || underfilled) {
-    const refresh = refreshProductFeed(Math.max(limit, 80));
+    const refresh = refreshRelayDiscovery(Math.max(limit, 80));
     if (marketCache.length === 0 || underfilled) {
       await refresh;
     }
@@ -83,15 +68,23 @@ export async function fetchMarketBySlug(
   slug: string,
   deps: FetchMarketBySlugDeps = {}
 ): Promise<MarketRecord | null> {
-  const payload = await (deps.fetchProductJson ?? fetchProductJson)<MarketDetailPayload>(
-    `/api/product/markets/slug/${encodeURIComponent(slug)}`
+  const productMarket = await (deps.fetchProductMarketDetailBySlug ?? fetchProductMarketDetailBySlug)(
+    slug
   );
-  const marketFromDetail = payload?.market?.raw_event ? parseMarketEvent(payload.market.raw_event) : null;
-  if (marketFromDetail) return withLatestPrice(marketFromDetail, payload);
+  if (productMarket) {
+    return withLatestPrice(productMarket.market, productMarket.trades);
+  }
 
   const rawMarket = await (deps.fetchRelayMarketBySlug ?? fetchRelayMarketBySlug)(slug);
   const marketFromRelay = rawMarket ? parseMarketEvent(rawMarket) : null;
-  return marketFromRelay?.slug === slug ? marketFromRelay : null;
+  if (!marketFromRelay || marketFromRelay.slug !== slug) return null;
+
+  const trades = await (deps.fetchRelayTradesForMarket ?? fetchRelayTradesForMarket)(
+    marketFromRelay.id,
+    40
+  );
+  if (trades.length === 0) return null;
+  return withLatestPrice(marketFromRelay, trades);
 }
 
 export async function fetchMarketsByAuthor(pubkey: string, limit = 48): Promise<MarketRecord[]> {
@@ -200,7 +193,7 @@ export async function fetchRecentTrades(limit = 200): Promise<TradeRecord[]> {
   const underfilled = tradeCache.length < limit;
 
   if (stale || underfilled) {
-    const refresh = refreshProductFeed(Math.max(Math.ceil(limit / 4), 80));
+    const refresh = refreshRelayDiscovery(Math.max(Math.ceil(limit / 4), 80));
     if (tradeCache.length === 0 || underfilled) {
       await refresh;
     }
@@ -210,13 +203,7 @@ export async function fetchRecentTrades(limit = 200): Promise<TradeRecord[]> {
 }
 
 export async function fetchMarketTrades(market: MarketRecord, limit = 200): Promise<TradeRecord[]> {
-  const payload = await fetchProductJson<{ trades?: NostrEvent[] }>(
-    `/api/product/markets/slug/${encodeURIComponent(market.slug)}`
-  );
-  return (payload?.trades ?? [])
-    .map(parseTradeEvent)
-    .filter((trade): trade is TradeRecord => Boolean(trade))
-    .slice(0, limit);
+  return fetchRelayTradesForMarket(market.id, limit);
 }
 
 export async function fetchPositionsByPubkey(pubkey: string, limit = 120): Promise<PositionRecord[]> {
@@ -273,50 +260,29 @@ export function summarizeTradesByMarket(trades: TradeRecord[]): Map<string, Mark
   return summaries;
 }
 
-function withLatestPrice(market: MarketRecord, payload: MarketDetailPayload | null | undefined): MarketRecord {
+function withLatestPrice(market: MarketRecord, trades: TradeRecord[]): MarketRecord {
+  const summary = buildTradeSummary(trades);
   return {
     ...market,
-    latestPricePpm:
-      payload?.trade_summary?.latestPricePpm ??
-      payload?.trade_summary?.latest_price_ppm ??
-      payload?.market?.latestPricePpm ??
-      payload?.market?.latest_price_ppm ??
-      payload?.latestPricePpm ??
-      payload?.latest_price_ppm ??
-      latestPriceFromTrades(payload?.trades ?? [], market.id)
+    latestPricePpm: summary.latestPricePpm
   };
 }
 
-function latestPriceFromTrades(rawTrades: NostrEvent[], marketId: string): number | null {
-  const latestTrade = rawTrades
-    .map(parseTradeEvent)
-    .filter((trade): trade is TradeRecord => Boolean(trade))
-    .filter((trade) => trade.marketId === marketId)
-    .sort((left, right) => right.createdAt - left.createdAt)[0];
-
-  return latestTrade?.pricePpm ?? null;
-}
-
-async function refreshProductFeed(limit: number): Promise<void> {
+async function refreshRelayDiscovery(limit: number): Promise<void> {
   if (marketRefresh || tradeRefresh) return Promise.all([marketRefresh, tradeRefresh].filter(Boolean) as Promise<void>[])
       .then(() => undefined);
 
   const refresh = (async () => {
-    const payload = await fetchProductJson<{ markets?: NostrEvent[]; trades?: NostrEvent[] }>(
-      `/api/product/feed?market_limit=${Math.max(limit, 80)}&trade_limit=${Math.max(limit * 4, 240)}`
-    );
-
-    const nextMarkets = (payload?.markets ?? [])
-      .map(parseMarketEvent)
-      .filter((market): market is MarketRecord => Boolean(market))
+    const nextTrades = await fetchRecentRelayTrades(Math.max(limit * 4, 240));
+    const marketIds = [...new Set(nextTrades.map((trade) => trade.marketId))];
+    const tradeSummaries = summarizeTradesByMarket(nextTrades);
+    const nextMarkets = (await fetchMarketsByIds(marketIds))
+      .map((market) => ({
+        ...market,
+        latestPricePpm: tradeSummaries.get(market.id)?.latestPricePpm ?? market.latestPricePpm
+      }))
       .sort((left, right) => right.createdAt - left.createdAt)
       .slice(0, limit);
-
-    const nextTrades = (payload?.trades ?? [])
-      .map(parseTradeEvent)
-      .filter((trade): trade is TradeRecord => Boolean(trade))
-      .sort((left, right) => right.createdAt - left.createdAt)
-      .slice(0, Math.max(limit * 4, 240));
 
     marketCache = nextMarkets;
     tradeCache = nextTrades;
@@ -386,6 +352,59 @@ async function fetchRecentRelayMarkets(limit: number): Promise<MarketRecord[]> {
     .slice(0, limit);
 }
 
+async function fetchProductMarketDetailBySlug(
+  slug: string
+): Promise<{ market: MarketRecord; trades: TradeRecord[] } | null> {
+  const response = await fetch(
+    `${getServerProductApiUrl()}/api/product/markets/slug/${encodeURIComponent(slug)}`,
+    { cache: 'no-store' }
+  ).catch(() => null);
+  if (!response?.ok) return null;
+
+  const payload = (await response.json().catch(() => null)) as
+    | {
+        market?: { raw_event?: NostrEvent | null } | null;
+        trades?: NostrEvent[] | null;
+      }
+    | null;
+  const market = payload?.market?.raw_event ? parseMarketEvent(payload.market.raw_event) : null;
+  if (!market || market.slug !== slug) return null;
+
+  const trades = (payload?.trades ?? [])
+    .map((event) => parseTradeEvent(event))
+    .filter((trade): trade is TradeRecord => Boolean(trade));
+
+  return { market, trades };
+}
+
+function getServerProductApiUrl(): string {
+  return (
+    process.env.PUBLIC_CASCADE_API_URL ||
+    process.env.PUBLIC_CASCADE_MINT_URL ||
+    DEFAULT_PRODUCT_API_URL
+  ).replace(/\/+$/, '');
+}
+
+async function fetchRecentRelayTrades(limit: number): Promise<TradeRecord[]> {
+  const ndk = await getServerNdkClient();
+  const events = await withRelayEventTimeout(
+    ndk.fetchEvents(
+      {
+        kinds: [983 as NDKKind],
+        limit
+      } satisfies NDKFilter,
+      { closeOnEose: true }
+    ),
+    `fetchRecentRelayTrades(${limit})`
+  );
+
+  return Array.from(events)
+    .map((event) => parseTradeEvent(event.rawEvent()))
+    .filter((trade): trade is TradeRecord => Boolean(trade))
+    .sort((left, right) => right.createdAt - left.createdAt)
+    .slice(0, limit);
+}
+
 async function fetchRelayMarketBySlug(slug: string): Promise<NostrEvent | null> {
   const ndk = await getServerNdkClient();
   const directMatch = await withRelayEventTimeout(
@@ -423,14 +442,25 @@ async function fetchRelayMarketBySlug(slug: string): Promise<NostrEvent | null> 
   );
 }
 
-async function fetchProductJson<T>(path: string): Promise<T | null> {
-  const response = await fetch(`${await getProductApiBaseUrl()}${path}`);
-  if (!response.ok) return null;
-  return (await response.json()) as T;
-}
+async function fetchRelayTradesForMarket(marketId: string, limit: number): Promise<TradeRecord[]> {
+  const ndk = await getServerNdkClient();
+  const events = await withRelayEventTimeout(
+    ndk.fetchEvents(
+      {
+        kinds: [983 as NDKKind],
+        '#e': [marketId],
+        limit
+      } satisfies NDKFilter,
+      { closeOnEose: true }
+    ),
+    `fetchRelayTradesForMarket(${marketId})`
+  );
 
-async function getProductApiBaseUrl(): Promise<string> {
-  return (await import('../cascade/config.ts')).getProductApiUrl();
+  return Array.from(events)
+    .map((event) => parseTradeEvent(event.rawEvent()))
+    .filter((trade): trade is TradeRecord => Boolean(trade))
+    .sort((left, right) => right.createdAt - left.createdAt)
+    .slice(0, limit);
 }
 
 async function getServerNdkClient() {

@@ -535,7 +535,10 @@ impl LndClient {
                     ));
                 }
 
-                Preimage::from_hex(trimmed_preimage)
+                let preimage = Preimage::from_hex(trimmed_preimage)?;
+                self.mark_issued_invoice_settled(&raw.payment_hash, &raw.payment_request, &preimage)
+                    .await;
+                Ok(preimage)
             }
         }
     }
@@ -732,6 +735,27 @@ impl LndClient {
         record.internal_payable = record.internal_payable || internal_payable;
         if let Some(preimage) = preimage {
             record.preimage = preimage;
+        }
+    }
+
+    async fn mark_issued_invoice_settled(
+        &self,
+        payment_hash_hex: &str,
+        payment_request: &str,
+        preimage: &Preimage,
+    ) {
+        let mut issued = self.issued_invoices.write().await;
+        if let Some(record) = issued.get_mut(payment_hash_hex) {
+            record.invoice.state = InvoiceState::Settled;
+            record.preimage = preimage.clone();
+            return;
+        }
+        if let Some(record) = issued
+            .values_mut()
+            .find(|record| record.invoice.payment_request == payment_request)
+        {
+            record.invoice.state = InvoiceState::Settled;
+            record.preimage = preimage.clone();
         }
     }
 
@@ -1034,6 +1058,8 @@ fn is_invoice_not_found(message: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
 
     #[test]
     fn test_lnd_config_default() {
@@ -1122,6 +1148,92 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(error.contains("Mock invoice not found"));
+    }
+
+    #[tokio::test]
+    async fn test_cli_pay_invoice_updates_local_invoice_state_after_success() {
+        let mut client = LndClient::new(LndConfig::default());
+        let (invoice, preimage) = client.create_mock_invoice(
+            10_000,
+            Some("Cascade CLI pay test".to_string()),
+            Some(120),
+            Some(40),
+        );
+
+        let temp_dir =
+            std::env::temp_dir().join(format!("cascade-lncli-test-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp_dir).unwrap();
+        let log_path = temp_dir.join("commands.log");
+        let script_path = temp_dir.join("fake-lncli.sh");
+        let script = format!(
+            r#"#!/bin/sh
+for arg in "$@"; do
+  case "$arg" in
+    payinvoice|lookupinvoice)
+      COMMAND="$arg"
+      ;;
+  esac
+done
+
+echo "$COMMAND" >> "{}"
+case "$COMMAND" in
+  payinvoice)
+    cat <<'EOF'
+{{"payment_hash":"{}","payment_preimage":"{}","value_msat":"{}","fee_msat":"0","payment_request":"{}","status":"SUCCEEDED","failure_reason":""}}
+EOF
+    ;;
+  lookupinvoice)
+    cat <<'EOF'
+{{"memo":"{}","r_hash":"{}","value_msat":"{}","creation_date":"{}","expiry":"{}","payment_request":"{}","cltv_expiry":"{}","settled":false,"state":"OPEN"}}
+EOF
+    ;;
+  *)
+    echo "unexpected command: $*" >&2
+    exit 1
+    ;;
+esac
+"#,
+            log_path.display(),
+            invoice.payment_hash.to_hex(),
+            preimage.to_hex(),
+            invoice.amount_msat,
+            invoice.payment_request.clone(),
+            invoice.description.clone().unwrap_or_default(),
+            invoice.payment_hash.to_hex(),
+            invoice.amount_msat,
+            invoice.created_at,
+            invoice.expiry_seconds,
+            invoice.payment_request.clone(),
+            invoice.cltv_expiry.unwrap_or_default(),
+        );
+        fs::write(&script_path, script).unwrap();
+        let mut permissions = fs::metadata(&script_path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&script_path, permissions).unwrap();
+
+        client.connected = true;
+        client.backend = LndBackend::Cli {
+            lncli_path: script_path.to_string_lossy().to_string(),
+        };
+        client
+            .upsert_issued_invoice(invoice.clone(), Some(preimage.clone()), false)
+            .await;
+
+        let returned_preimage = client.pay_invoice(invoice.bolt11()).await.unwrap();
+        assert_eq!(returned_preimage.payment_hash(), invoice.payment_hash);
+
+        let looked_up = client
+            .get_invoice(&invoice.payment_hash)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(looked_up.state, InvoiceState::Settled);
+
+        let logged_commands = fs::read_to_string(&log_path).unwrap();
+        assert_eq!(
+            logged_commands.lines().collect::<Vec<_>>(),
+            vec!["payinvoice"]
+        );
     }
 
     #[test]

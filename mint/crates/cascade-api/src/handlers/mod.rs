@@ -1,6 +1,5 @@
 //! HTTP request handlers
 
-pub mod market;
 pub mod price;
 pub mod product;
 pub mod settlement;

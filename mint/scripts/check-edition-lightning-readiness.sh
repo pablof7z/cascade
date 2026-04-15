@@ -84,16 +84,7 @@ if [[ ! -f "${MACAROON_PATH}" ]]; then
   exit 1
 fi
 
-RUNTIME_JSON="$(curl -fsS "${BASE_URL}/api/product/runtime")"
-RUNTIME_EDITION="$(
-  node -e 'const fs=require("fs"); const data=JSON.parse(fs.readFileSync(0, "utf8")); process.stdout.write(String(data.edition || ""));' \
-    <<<"${RUNTIME_JSON}"
-)"
-
-if [[ "${RUNTIME_EDITION}" != "${EDITION}" ]]; then
-  echo "edition mismatch: runtime reports ${RUNTIME_EDITION}, expected ${EDITION}" >&2
-  exit 1
-fi
+curl -fsS "${BASE_URL}/v1/info" >/dev/null
 
 TOPUP_JSON="$(
   curl -fsS \

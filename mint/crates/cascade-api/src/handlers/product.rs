@@ -5230,6 +5230,8 @@ async fn bootstrap_market_from_raw_event(
         .unwrap_or(slug);
     let description = tag_value(&tags, "description").unwrap_or("").trim();
 
+    let _bootstrap_guard = state.market_bootstrap_lock.lock().await;
+
     if let Ok(Some(existing_market)) = state.db.get_market(event_id).await {
         state.market_manager.load_market(existing_market.clone()).await;
         return Ok(existing_market);
@@ -5284,27 +5286,16 @@ async fn bootstrap_market_from_raw_event(
             )
         })?;
 
-    let market = state
-        .market_manager
-        .create_market(
-            event_id.to_string(),
-            slug.to_string(),
-            title.to_string(),
-            description.to_string(),
-            10.0,
-            creator_pubkey.to_string(),
-            long_keyset_id,
-            short_keyset_id,
-        )
-        .await
-        .map_err(|error| {
-            let error_message = error.to_string();
-            if error_message.contains("already exists") {
-                (StatusCode::CONFLICT, "market_already_exists".to_string())
-            } else {
-                (StatusCode::INTERNAL_SERVER_ERROR, error_message)
-            }
-        })?;
+    let market = Market::new(
+        event_id.to_string(),
+        slug.to_string(),
+        title.to_string(),
+        description.to_string(),
+        10.0,
+        creator_pubkey.to_string(),
+        long_keyset_id,
+        short_keyset_id,
+    );
 
     state.db.insert_market(&market).await.map_err(|error| {
         let error_message = error.to_string();

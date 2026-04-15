@@ -6,14 +6,12 @@ _Last verified: 2026-04-15._
 
 - Web: `https://signet.cascade.f7z.io`
 - Mint + product API: `https://signet-mint.cascade.f7z.io`
-- Runtime manifest: `https://signet-mint.cascade.f7z.io/api/product/runtime`
+- Cashu info: `https://signet-mint.cascade.f7z.io/v1/info`
 - Health check: `https://signet-mint.cascade.f7z.io/health`
 
-The live signet runtime currently reports:
+The live signet web deployment currently embeds:
 
-- `edition = signet`
-- `network = signet`
-- `mint_url = https://signet-mint.cascade.f7z.io`
+- `PUBLIC_CASCADE_API_URL=https://signet-mint.cascade.f7z.io`
 
 ### Other live signet host observed
 
@@ -51,7 +49,7 @@ Use these to confirm the current deployment state:
 ```bash
 vercel inspect https://signet.cascade.f7z.io
 vercel domains inspect signet.cascade.f7z.io
-curl -sS https://signet-mint.cascade.f7z.io/api/product/runtime
+curl -sS https://signet-mint.cascade.f7z.io/v1/info
 curl -sS https://signet.cascade.f7z.io | grep PUBLIC_CASCADE_API_URL
 ```
 
@@ -61,4 +59,4 @@ curl -sS https://signet.cascade.f7z.io | grep PUBLIC_CASCADE_API_URL
 2. Check `mint/data/signet/config.toml` for the signet mint base URL.
 3. Check `mint/DEPLOYMENT.md` for the intended edition hostnames and smoke-check endpoints.
 4. Check `web/README.md` and `web/vercel.json` for frontend deployment clues.
-5. Verify the live deployment with `vercel inspect`, `vercel domains inspect`, and a direct runtime fetch from `/api/product/runtime` on the signet mint.
+5. Verify the live deployment with `vercel inspect`, `vercel domains inspect`, a direct `v1/info` fetch from the signet mint, and the embedded `PUBLIC_CASCADE_API_URL` on the signet web deployment.

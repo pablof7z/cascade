@@ -4,37 +4,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-// Market endpoints
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct CreateMarketRequest {
-    pub event_id: String,
-    pub title: String,
-    pub description: String,
-    pub slug: String,
-    pub b: f64,
-}
-
-#[derive(Debug, Serialize)]
-pub struct MarketResponse {
-    pub event_id: String,
-    pub slug: String,
-    pub title: String,
-    pub description: String,
-    pub b: f64,
-    pub q_long: f64,
-    pub q_short: f64,
-    pub status: String,
-    pub long_keyset_id: String,
-    pub short_keyset_id: String,
-    pub reserve: u64,
-}
-
-#[derive(Debug, Serialize)]
-pub struct MarketsListResponse {
-    pub markets: Vec<MarketResponse>,
-}
-
 // Price endpoints
 
 #[derive(Debug, Serialize)]
@@ -136,55 +105,9 @@ pub struct ProductFeedResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ProductRuntimeRailResponse {
-    pub available: bool,
-    pub reason: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ProductRuntimeFundingResponse {
-    pub lightning: ProductRuntimeRailResponse,
-    pub stripe: ProductRuntimeRailResponse,
-    pub usdc: ProductRuntimeRailResponse,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ProductRuntimeResponse {
-    pub edition: String,
-    pub network: String,
-    pub mint_url: String,
-    pub proof_custody: String,
-    pub funding: ProductRuntimeFundingResponse,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 pub struct ProductMarketDetailResponse {
     pub market: ProductMarketSummary,
     pub trades: Vec<Value>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ProductMarketSearchResponse {
-    pub query: String,
-    pub markets: Vec<ProductMarketSummary>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub next_offset: Option<u64>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ProductActivityItem {
-    pub kind: String,
-    pub created_at: i64,
-    pub market: ProductMarketSummary,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub trade: Option<Value>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ProductActivityResponse {
-    pub items: Vec<ProductActivityItem>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub next_offset: Option<u64>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -417,6 +340,8 @@ pub struct ProductCoordinatorTradeQuoteRequest {
     pub side: String,
     pub spend_minor: Option<u64>,
     pub quantity: Option<f64>,
+    #[serde(default)]
+    pub raw_event: Option<Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -459,6 +384,8 @@ pub struct ProductBuyRequest {
     pub side: String,
     pub spend_minor: u64,
     #[serde(default)]
+    pub raw_event: Option<Value>,
+    #[serde(default)]
     pub proofs: Vec<ProofInput>,
     #[serde(default)]
     pub issued_outputs: Vec<BlindedMessageInput>,
@@ -474,6 +401,8 @@ pub struct ProductCoordinatorBuyRequest {
     pub pubkey: String,
     pub side: String,
     pub spend_minor: u64,
+    #[serde(default)]
+    pub raw_event: Option<Value>,
     #[serde(default)]
     pub proofs: Vec<ProofInput>,
     #[serde(default)]

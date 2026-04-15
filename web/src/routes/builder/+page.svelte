@@ -69,6 +69,8 @@
     'Will Europe avoid a recession through 2027?',
     'Will open models overtake frontier closed models in daily usage?'
   ];
+  const publicMarketRoutePollMs = 500;
+  const publicMarketRouteTimeoutMs = 15_000;
 
   const currentUser = $derived(ndk.$currentUser);
 
@@ -205,6 +207,31 @@
 
     if (browser && window.location.pathname !== destination) {
       window.location.assign(destination);
+    }
+  }
+
+  async function waitForPublicMarketRoute(slug: string): Promise<boolean> {
+    if (!browser) return true;
+
+    const destination = `/market/${slug}`;
+    const deadline = Date.now() + publicMarketRouteTimeoutMs;
+
+    while (Date.now() <= deadline) {
+      try {
+        const response = await fetch(destination, { cache: 'no-store' });
+        if (response.ok) return true;
+        if (response.status !== 404) return false;
+      } catch {}
+
+      await new Promise((resolve) => setTimeout(resolve, publicMarketRoutePollMs));
+    }
+
+    return false;
+  }
+
+  async function openPublicMarketWhenReady(slug: string) {
+    if (await waitForPublicMarketRoute(slug)) {
+      await navigateToMarket(slug);
     }
   }
 
@@ -378,10 +405,10 @@
         clearPendingCreatorMarket(eventId, currentUser.pubkey);
         refreshPendingCreatorMarkets();
         builderStatus = 'Market seeded and now public.';
+        await openPublicMarketWhenReady(slug);
       } else {
         builderStatus = 'Market seed submitted. Waiting for settlement.';
       }
-      await navigateToMarket(slug);
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : 'Failed to seed the market.';
     } finally {
@@ -516,7 +543,7 @@
           builderStatus = 'Recovered seeded market and now public.';
           clearPendingCreatorMarket(receipt.eventId, currentUser.pubkey);
           refreshPendingCreatorMarkets();
-          await navigateToMarket(payload.market.slug);
+          await openPublicMarketWhenReady(payload.market.slug);
           return;
         }
 
@@ -554,7 +581,7 @@
             builderStatus = 'Recovered seeded market and now public.';
             clearPendingCreatorMarket(receipt.eventId, currentUser.pubkey);
             refreshPendingCreatorMarkets();
-            await navigateToMarket(tradePayload.market.slug);
+            await openPublicMarketWhenReady(tradePayload.market.slug);
             return;
           }
 
@@ -599,7 +626,7 @@
           builderStatus = 'Recovered seeded market and now public.';
           clearPendingCreatorMarket(receipt.eventId, currentUser.pubkey);
           refreshPendingCreatorMarkets();
-          await navigateToMarket(tradePayload.market.slug);
+          await openPublicMarketWhenReady(tradePayload.market.slug);
           return;
         }
       } catch {

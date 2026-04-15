@@ -11,6 +11,7 @@ export type PendingCreatorMarket = {
   slug: string;
   title: string;
   createdAt: number;
+  rawEvent?: unknown;
 };
 
 export type BuilderCreatorMarket = {

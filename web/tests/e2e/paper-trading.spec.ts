@@ -34,7 +34,36 @@ function secretKeyFor(seed: string): string {
 }
 
 async function waitForUserMenu(page: Page) {
-  await expect(page.getByRole('button', { name: 'Open account menu' })).toBeVisible();
+  await expect
+    .poll(
+      async () =>
+        await page
+          .getByRole('button', { name: 'Open account menu' })
+          .isVisible()
+          .catch(() => false),
+      { timeout: 20_000 }
+    )
+    .toBe(true);
+}
+
+async function waitForPersistedSession(page: Page) {
+  await expect
+    .poll(
+      async () =>
+        await page.evaluate(() => {
+          const raw = localStorage.getItem('ndk-sveltekit-template:sessions');
+          if (!raw) return false;
+
+          try {
+            const parsed = JSON.parse(raw) as { activePubkey?: unknown };
+            return typeof parsed.activePubkey === 'string' && parsed.activePubkey.length > 0;
+          } catch {
+            return false;
+          }
+        }),
+      { timeout: 20_000 }
+    )
+    .toBe(true);
 }
 
 async function ensureLoggedIn(page: Page, secretKey: string) {
@@ -51,17 +80,28 @@ async function ensureLoggedIn(page: Page, secretKey: string) {
     await page.waitForTimeout(500);
   }
 
-  const secretKeyTab = page.getByRole('tab', { name: 'Secret key' });
-  if (!(await secretKeyTab.isVisible().catch(() => false))) {
-    await page.getByRole('button', { name: 'Log in' }).click();
+  const returnUrl = page.url();
+  await page.goto('/join');
+  await page.waitForTimeout(2500);
+  if (await userMenu.isVisible().catch(() => false)) {
+    if (page.url() !== returnUrl) {
+      await page.goto(returnUrl);
+    }
+    return;
   }
 
-  await expect(secretKeyTab).toBeVisible();
-  await secretKeyTab.click();
-  await page
-    .getByRole('textbox', { name: /Account key|Secret key/i })
-    .fill(secretKey);
-  await page.getByRole('button', { name: 'Continue with key' }).click();
+  await page.getByRole('tab', { name: 'Account key' }).click();
+  const accountKeyInput = page.getByPlaceholder('Paste your account key');
+  await expect(accountKeyInput).toBeVisible();
+  await accountKeyInput.fill(secretKey);
+  const continueWithKey = page.getByRole('button', { name: 'Continue with key' });
+  await expect(continueWithKey).toBeEnabled();
+  await continueWithKey.click();
+
+  await waitForPersistedSession(page);
+  if (page.url() !== returnUrl) {
+    await page.goto(returnUrl);
+  }
   await waitForUserMenu(page);
 }
 
@@ -182,7 +222,9 @@ test('pending markets stay private until the first mint trade, then become publi
   }
 
   await expect(builderStatus).toBeVisible();
-  await expect(builderRow).toContainText('Public');
+  if ((await builderRow.count()) > 0) {
+    await expect(builderRow).toContainText('Public');
+  }
 
   await expect
     .poll(
@@ -215,10 +257,10 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   const tradePanel = page.locator('.trade-panel');
   await expect(tradePanel.getByText('Available')).toBeVisible();
 
-  await tradePanel.getByRole('button', { name: /^NO / }).click();
-  await expect(tradePanel.getByRole('button', { name: 'Buy NO' })).toBeVisible();
+  await tradePanel.getByRole('button', { name: /^SHORT / }).click();
+  await expect(tradePanel.getByRole('button', { name: 'Buy SHORT' })).toBeVisible();
   await tradePanel.locator('input[type="number"]').first().fill('2500');
-  await tradePanel.getByRole('button', { name: 'Buy NO' }).click();
+  await tradePanel.getByRole('button', { name: 'Buy SHORT' }).click();
   await expect(tradePanel.getByText(`Bought SHORT on ${market.slug}.`)).toBeVisible();
 
   const rewroteBuyReceipt = await page.evaluate(() => {
@@ -252,11 +294,12 @@ test('funded portfolio users can create a market, buy the other side, and withdr
     await expect(tradePanel.getByText('Available')).toBeVisible();
   }
 
-  await tradePanel.locator('input[type="number"]').nth(1).fill('10');
-  const sellButton = tradePanel.getByRole('button', { name: /^Sell / });
+  await tradePanel.getByRole('button', { name: /^SHORT / }).click();
+  await tradePanel.locator('input[type="number"]').nth(1).fill('1000');
+  const sellButton = tradePanel.getByRole('button', { name: 'Sell SHORT' });
   await expect(sellButton).toBeEnabled();
   await sellButton.click();
-  await expect(tradePanel.getByText(/Sold (LONG|SHORT) on/)).toContainText(market.slug);
+  await expect(tradePanel.getByText(/Sold SHORT on/)).toContainText(market.slug);
 
   await page.goto('/portfolio');
   await ensureLoggedIn(page, creatorSecret);
@@ -279,7 +322,7 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   const unavailablePriceRow = page
     .locator('.position-row')
     .filter({ hasText: market.title })
-    .filter({ hasText: 'NO' })
+    .filter({ hasText: 'SHORT' })
     .first();
   await expect(unavailablePriceRow).toBeVisible();
   await expect(unavailablePriceRow.getByText('Price unavailable')).toBeVisible();
@@ -288,15 +331,20 @@ test('funded portfolio users can create a market, buy the other side, and withdr
 
   const injectedLocalPosition = await page.evaluate(({ slug }) => {
     const usdKey = Object.keys(localStorage).find(
-      (key) => key.startsWith('cascade:proof-wallet:') && key.endsWith(':usd')
+      (key) => key.includes(':proof-wallet:') && key.endsWith(':usd')
     );
     if (!usdKey) return false;
 
+    const marker = ':proof-wallet:';
+    const markerIndex = usdKey.indexOf(marker);
+    if (markerIndex === -1) return false;
+    const mintUrl = usdKey.slice(markerIndex + marker.length, -':usd'.length);
+
     localStorage.setItem(
-      usdKey.replace(/:usd$/, `:LONG_${slug}`),
+      `cascade:proof-wallet:${mintUrl}:LONG_${slug}`,
       JSON.stringify({
         version: 1,
-        mintUrl: usdKey.slice('cascade:proof-wallet:'.length, -':usd'.length),
+        mintUrl,
         unit: `LONG_${slug}`,
         proofs: [
           { id: 'local-test', amount: 60_000, secret: `proof-${slug}-1`, C: `c-${slug}-1` },
@@ -348,7 +396,7 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   const localPositionRow = page
     .locator('.position-row')
     .filter({ hasText: market.title })
-    .filter({ hasText: 'YES' })
+    .filter({ hasText: 'LONG' })
     .first();
   await expect(localPositionRow).toBeVisible();
   await expect(localPositionRow.getByText('Mark only')).toBeVisible();

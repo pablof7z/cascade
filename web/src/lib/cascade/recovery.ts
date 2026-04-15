@@ -62,6 +62,7 @@ export type PendingCreatorMarketRecord = {
   slug: string;
   title: string;
   createdAt: number;
+  rawEvent?: unknown;
 };
 
 const PENDING_FUNDINGS_KEY = storageKey('cascade_pending_fundings');

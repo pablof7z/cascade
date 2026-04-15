@@ -44,6 +44,8 @@ pub struct AppState {
     pub network_type: String,
     /// Canonical public mint URL for this runtime.
     pub mint_url: String,
+    /// Serialize market bootstrap so slug uniqueness checks stay authoritative.
+    pub market_bootstrap_lock: Arc<Mutex<()>>,
 }
 
 impl AppState {
@@ -73,6 +75,7 @@ impl AppState {
             paper_mode,
             network_type,
             mint_url,
+            market_bootstrap_lock: Arc::new(Mutex::new(())),
         }
     }
 
@@ -99,6 +102,7 @@ impl AppState {
             paper_mode: true,
             network_type: "signet".to_string(),
             mint_url: "http://127.0.0.1:0".to_string(),
+            market_bootstrap_lock: Arc::new(Mutex::new(())),
         }
     }
 

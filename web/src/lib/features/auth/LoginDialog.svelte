@@ -8,6 +8,7 @@
   import ExtensionLoginForm from './ExtensionLoginForm.svelte';
   import PrivateKeyLoginForm from './PrivateKeyLoginForm.svelte';
   import RemoteLoginForm from './RemoteLoginForm.svelte';
+  import { requireAuthSessions } from './sessionBootstrap';
   import {
     hasNostrExtension,
     prepareRemoteSignerPairing,
@@ -70,12 +71,13 @@
   }
 
   async function loginWithExtension() {
-    if (!ndk.$sessions || pending || !extensionAvailable) return;
+    if (pending || !extensionAvailable) return;
 
     try {
       pending = true;
       error = '';
-      await ndk.$sessions.login(new NDKNip07Signer());
+      const sessions = await requireAuthSessions();
+      await sessions.login(new NDKNip07Signer());
       finishLogin();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : "Couldn't log in with the extension.";
@@ -85,12 +87,13 @@
   }
 
   async function loginWithPrivateKey() {
-    if (!ndk.$sessions || pending || !privateKey.trim()) return;
+    if (pending || !privateKey.trim()) return;
 
     try {
       pending = true;
       error = '';
-      await ndk.$sessions.login(new NDKPrivateKeySigner(privateKey.trim()));
+      const sessions = await requireAuthSessions();
+      await sessions.login(new NDKPrivateKeySigner(privateKey.trim()));
       finishLogin();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : "Couldn't log in with that key.";
@@ -100,12 +103,13 @@
   }
 
   async function startRemoteSigner() {
-    if (!ndk.$sessions || preparingRemoteSigner || connectingBunker) return;
+    if (preparingRemoteSigner || connectingBunker) return;
 
     try {
       error = '';
       clearRemoteSigner();
       preparingRemoteSigner = true;
+      const sessions = await requireAuthSessions();
 
       const pairing = await prepareRemoteSignerPairing(ndk);
       const activeSigner = pairing.signer;
@@ -113,7 +117,7 @@
       nostrConnectUri = pairing.nostrConnectUri;
       qrCodeDataUrl = pairing.qrCodeDataUrl;
 
-      void ndk.$sessions
+      void sessions
         .login(activeSigner)
         .then(async () => {
           if (nostrConnectSigner !== activeSigner) return;
@@ -132,14 +136,15 @@
   }
 
   async function loginWithBunker() {
-    if (!ndk.$sessions || connectingBunker || !bunkerUri.trim().startsWith('bunker://')) return;
+    if (connectingBunker || !bunkerUri.trim().startsWith('bunker://')) return;
 
     try {
       error = '';
       connectingBunker = true;
       stopNostrConnectSigner(nostrConnectSigner);
       nostrConnectSigner = null;
-      await ndk.$sessions.login(new NDKNip46Signer(ndk, bunkerUri.trim()));
+      const sessions = await requireAuthSessions();
+      await sessions.login(new NDKNip46Signer(ndk, bunkerUri.trim()));
       finishLogin();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : "Couldn't use that connection link.";

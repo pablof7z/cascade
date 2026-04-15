@@ -30,4 +30,4 @@ cargo test --workspace
 cargo run
 ```
 
-Do not treat older payout, resolution, or fee language from removed docs as current behavior. Cascade markets never close, and buys/sells are the only market activity the mint should treat as trades.
+Do not treat older payout, closure, or server-wallet language from removed docs as current behavior. Cascade markets never close, and buys/exits are the only market activity the mint should treat as trades.

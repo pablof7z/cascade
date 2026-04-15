@@ -1,142 +1,69 @@
-# Cascade — Competitive Landscape
+# Competitive Landscape
 
-> Analysis of prediction market competitors, their strengths, weaknesses, and where Cascade can win.
-
-**Tags:** #cascade #competition #polymarket #manifold #strategy
-
----
-
-# Cascade — Competitive Landscape
-
-**Written:** 2026-03-28
-**Purpose:** Know the battlefield
-
----
-
-## Direct Competitors
+## Primary Reference Competitors
 
 ### Polymarket
-**What they are:** The dominant crypto prediction market. Real money, real liquidity, mainstream attention.
 
-**Strengths:**
-- Brand recognition (media cites their odds)
-- Deep liquidity on major markets
-- Simple UX
-- Regulatory arbitrage (offshore)
+Strengths:
 
-**Weaknesses:**
-- Isolated markets (no compositional thinking)
-- Centralized (can be shut down)
-- No thesis-level betting
-- US users blocked
+- strongest public brand in crypto prediction markets
+- deep liquidity on major markets
+- simple question-first UX
 
-**Our angle:** "Polymarket asks 'Will X happen?' — we ask 'If X happens, then what?'"
+Weaknesses relative to Cascade:
 
----
+- mostly isolated markets
+- centralized product boundary
+- weaker story for linked reasoning and agent-native participation
 
-### Manifold Markets
-**What they are:** Play-money prediction market with social features. Lower stakes, more experimental.
+### Manifold
 
-**Strengths:**
-- Permissionless market creation
-- Strong community
-- Experimental features (loans, leagues)
-- No regulatory issues (play money)
+Strengths:
 
-**Weaknesses:**
-- Play money = less signal
-- No real stakes = less serious
-- Limited mainstream appeal
+- permissionless creation
+- social features and community energy
 
-**Our angle:** Real money + compositional thinking. Skin in the game matters.
+Weaknesses relative to Cascade:
 
----
+- play-money signal
+- less serious financial surface
 
 ### Metaculus
-**What they are:** Forecasting platform focused on calibration and track records. Academic/research bent.
 
-**Strengths:**
-- High-quality forecasters
-- Reputation tracking
-- Research partnerships
-- Long-term questions
+Strengths:
 
-**Weaknesses:**
-- No money (reputation only)
-- Academic feel
-- Less accessible to casual users
+- strong forecasting culture
+- credibility with researchers
 
-**Our angle:** Same rigor, but with stakes. Put money where your model is.
+Weaknesses relative to Cascade:
 
----
+- no direct trading stakes
+- less market-like product behavior
 
 ### Kalshi
-**What they are:** CFTC-regulated prediction market. Legal in US but heavily constrained.
 
-**Strengths:**
-- Legal in US
-- Institutional credibility
-- Real money
+Strengths:
 
-**Weaknesses:**
-- Limited market types (regulatory approval needed)
-- Slow to add markets
-- Can't do anything controversial
-- Fees
+- regulated US access
+- institutional credibility
 
-**Our angle:** Permissionless. Any thesis. No gatekeepers.
+Weaknesses relative to Cascade:
 
----
+- slower market surface
+- constrained market scope
+- less permissionless creation
 
-## Indirect Competitors
+## Cascade's Differentiation
 
-### Sports Betting (DraftKings, FanDuel)
-Mass market betting behavior. Not prediction markets per se, but competing for the same "I want to bet on outcomes" impulse.
+- linked beliefs, not just isolated prompts
+- perpetual markets rather than expiry-centric closeout
+- open Nostr event layer
+- self-custodied portfolio model
+- first-class agent participation
 
-### Crypto Derivatives (dYdX, GMX)
-Financial prediction on steroids. Different audience but proves appetite for decentralized speculation.
+## Watchpoints
 
-### Twitter/X
-Where narratives form and spread. Not a market, but the distribution channel for market-worthy ideas.
-
----
-
-## Where Cascade Wins
-
-| Dimension | Polymarket | Manifold | Cascade |
-|-----------|------------|----------|---------|
-| Real money | ✅ | ❌ | ✅ |
-| Compositional | ❌ | ❌ | ✅ |
-| Censorship-resistant | ❌ | ❌ | ✅ |
-| Thesis betting | ❌ | ❌ | ✅ |
-| Agent participation | ❌ | Partial | ✅ |
-| No oracle | ❌ | ❌ | ✅ |
-
-**Our unique position:** The only prediction market designed for interconnected beliefs and agent participation, built on open protocols.
-
----
-
-## Competitive Moats to Build
-
-1. **Network effects** — More modules = more thesis possibilities = more users
-2. **Agent ecosystem** — First platform where AI agents are first-class traders
-3. **Nostr native** — Data portability, censorship resistance, identity ownership
-4. **Discussion as market mover** — Alpha has monetary value
-
----
-
-## Threats to Monitor
-
-1. Polymarket adding compositional features
-2. Regulatory crackdown on crypto prediction markets
-3. New entrant with better tech + funding
-4. Nostr ecosystem fragmentation
-
----
-
-## Intelligence Gaps (Need Research)
-
-- [ ] Polymarket volume trends (growing? plateauing?)
-- [ ] Manifold user retention rates
-- [ ] Regulatory landscape changes (US, EU, elsewhere)
-- [ ] Agent trading activity on existing platforms
+- Polymarket adding stronger composition or creator tooling
+- regulatory pressure on real-money prediction products
+- a better-funded open-protocol competitor
+- fragmentation in relays, identity, or agent tooling

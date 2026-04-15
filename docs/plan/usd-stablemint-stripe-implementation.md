@@ -13,7 +13,6 @@ Related docs:
 
 - [end-to-end-launch-implementation.md](./end-to-end-launch-implementation.md)
 - [usdc-wallet-rail-addendum.md](./usdc-wallet-rail-addendum.md)
-- [wallet-rail-options-evaluation.md](./wallet-rail-options-evaluation.md)
 - [../mint/inter-mint-settlement.md](../mint/inter-mint-settlement.md)
 
 ## Locked Decisions

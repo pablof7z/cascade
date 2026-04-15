@@ -1,94 +1,80 @@
 # How Cascade Works
 
-> Read this before anything else. These are the fundamentals. Everything else follows from here.
+Read this first. It is the shortest accurate explanation of the product.
 
----
+## The Core Model
 
-## The two primitives
+Cascade is a prediction market product for interconnected beliefs.
 
-**Modules** are atomic yes/no predictions. "Will BTC exceed $150k before July 2026?" One question, binary outcome, its own market.
+- A **module** is an atomic yes-or-no market.
+- A **thesis** is a broader market that can link modules as supporting context.
+- Linked modules are informational only. They do not mathematically set another market's price.
 
-**Theses** are belief networks — a collection of modules that together express a broader view. "US enters recession in 2026" might reference three separate modules as supporting evidence. Each module still trades independently. The thesis is a statement of reasoning, not a mathematical aggregation.
+Every market has its own LMSR curve. Each market trades independently.
 
----
+## Funding, Trading, And Exiting
 
-## How trading works
+There is no order book and no counterparty matching. Users trade against the mint's LMSR engine.
 
-There is no order book. There is no counterparty. Trading is against the **LMSR** (Logarithmic Market Scoring Rule) — an automated market maker built into the mint.
+Funding:
 
-**To fund your wallet:**
-- You buy USD ecash through Cascade's Stripe gateway or a Lightning funding flow
-- The wallet mint issues you dollar-denominated Cashu ecash
+- The user adds funds in USD through Stripe or Lightning.
+- The wallet mint issues USD-denominated ecash.
 
-**To take a position:**
-- You spend dollars from that wallet on a market, choosing LONG or SHORT
-- The market mint issues you Cashu ecash tokens representing your position
-- Price is determined by the LMSR curve — early buyers pay less, later buyers pay more as the side fills up
-- Lightning is used behind the scenes between the wallet mint and the market mint, but that rail is hidden from the normal product UX
+Taking a position:
 
-**To exit a position:**
-- You **sell** — return your tokens to the mint
-- The system returns dollar-denominated ecash to your wallet at the current LMSR price
+- The user spends USD ecash on a market.
+- The market mint issues LONG or SHORT market proofs.
+- Price moves with trading activity on that market.
 
-That's the entire trading loop. Mint in, sell out.
+Exiting:
 
----
+- The user returns LONG or SHORT proofs to the mint.
+- The mint returns USD ecash at the current LMSR price.
 
-## Markets never close
+That is the whole loop: fund, mint a position, exit when the price makes sense.
 
-There is no expiry date. No countdown timer. No admin close button. No oracle. No DAO vote.
+## Markets Are Perpetual
 
-Markets are **perpetual**. They live as long as people hold positions. If a real-world event happens and one side is clearly correct, arbitrageurs push the price toward 1.0 (or 0.0). Holders of the winning side sell at near-full value. Holders of the losing side sell at near-zero - or hold forever, which is their choice.
+Markets do not expire.
 
-Nothing forces closure. Reality reveals itself through price.
+- No countdown timer
+- No end date
+- No admin close button
+- No oracle
+- No outcome declaration service
 
-Markets never close. There is no resolution event and no admin-triggered ending. As prices move and the market cap falls away naturally, users sell when the price makes sense for them.
+Price drifts because people trade. Users exit when they want to. If the world makes one side obviously stronger, trading pressure pushes the price toward the edge.
 
----
+## Nostr Event Kinds
 
-## Nostr event kinds
+| Kind | Purpose | Published by |
+|------|---------|--------------|
+| `982` | Market definition | User |
+| `983` | Trade record | Mint |
 
-| Kind | What it is | Who publishes it |
-|------|-----------|-----------------|
-| **982** | Market creation — defines the market, immutable once published | The user who creates the market |
-| **983** | Trade record — every mint or sell | The mint only (never the user) |
+Kind `982` defines the market. It is immutable once published.
 
-Kind 983 is published by the **mint**, not the user. Cashu bearer tokens do not let the mint infer a stable proof owner from the trade alone. When a trade request is authenticated with NIP-98, the mint may also attach an optional `p` tag for the request signer.
+Kind `983` is the public trade log. It is mint-authored, not user-authored. When a trade request is authenticated with NIP-98, the mint may include the request signer in an optional `p` tag.
 
----
+## Mint Shape
 
-## The mint layer
+Cascade uses a custom CDK Rust Cashu mint layer.
 
-Cascade runs custom Cashu mint infrastructure (built with CDK in Rust). It is not a standard Cashu mint — it understands LMSR pricing and it separates wallet funding from market execution.
+- The **wallet mint** issues USD ecash.
+- The **market mint** issues market proofs priced by LMSR.
+- Each market has two keysets: one LONG keyset and one SHORT keyset.
+- Lightning is hidden plumbing between mints, not the normal product UX.
 
-- The **wallet mint** issues USD ecash
-- Every market gets **two keysets** on the **market mint**: one for LONG tokens, one for SHORT tokens
-- The market mint holds the LMSR reserve in Lightning settlement units — always solvent by math, not by trust
-- Lightning is the hidden settlement rail between the wallet mint and the market mint
-- The market mint publishes kind 983 to Nostr after every trade
+## Product Language
 
----
+Use these terms:
 
-## What doesn't exist
+- `fund portfolio`
+- `mint LONG` / `mint SHORT`
+- `withdraw`
+- `exit a position`
+- `withdrawal proceeds`
+- `LMSR price`
 
-- ❌ No resolution event
-- ❌ No oracle
-- ❌ No market expiry
-- ❌ No "winning side" declared by anyone
-- ❌ No order book
-- ❌ No counterparty matching
-
----
-
-## Terminology
-
-| Say this | Not this |
-|----------|----------|
-| fund wallet | top up Lightning / buy rail balance |
-| buy position / mint | deposit directly into the market rail |
-| sell | settle / resolution |
-| sale proceeds | payout / winnings |
-| exit a position | cash out / settle |
-| LMSR price | market price (fine, but be specific) |
-
-Never use "resolution." Never say a market "closes." Never say there are "winners and losers" in the traditional sense - only people who sold at a good price and people who didn't.
+Do not talk about market closure, winner payout, or a resolution step. Cascade is about continuous pricing and voluntary exits.

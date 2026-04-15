@@ -2,9 +2,9 @@
 
 This document is the canonical launch checklist for `web/`.
 
-It answers one strict question: what exact feature set must exist in `web/` for Cascade to launch without depending on the failed `webapp/` migration?
+It answers one strict question: what exact feature set must exist in `web/` for Cascade to launch without depending on any failed legacy frontend snapshot?
 
-`webapp/` is legacy reference only. `web/` is the active frontend.
+Legacy frontend snapshots are reference material at most. `web/` is the active frontend.
 
 ## Source Hierarchy
 
@@ -13,11 +13,10 @@ Use these sources in this order when implementing launch:
 1. [`../HOW-IT-WORKS.md`](../HOW-IT-WORKS.md)
 2. [`../design/product-decisions.md`](../design/product-decisions.md)
 3. [`../product/spec.md`](../product/spec.md)
-4. [`../REACT_MAP.md`](../REACT_MAP.md)
-5. [`../react_map/`](../react_map/index.md)
-6. [`../mint/api.md`](../mint/api.md)
-7. [`./usd-stablemint-stripe-implementation.md`](./usd-stablemint-stripe-implementation.md)
-8. [`./end-to-end-launch-implementation.md`](./end-to-end-launch-implementation.md)
+4. [`../technical/frontend.md`](../technical/frontend.md)
+5. [`../mint/api.md`](../mint/api.md)
+6. [`./usd-stablemint-stripe-implementation.md`](./usd-stablemint-stripe-implementation.md)
+7. [`./end-to-end-launch-implementation.md`](./end-to-end-launch-implementation.md)
 
 If the old React app conflicts with current mechanics, current mechanics win.
 
@@ -38,7 +37,7 @@ Launch means:
 - signet and mainnet are separate frontend editions with separate proof namespaces and environment labeling
 - both editions use the same browser-local proof storage implementation; NIP-60 is deferred
 - template/demo routes that are not part of Cascade are removed, redirected, or repurposed
-- no launch-critical surface depends on `webapp/`
+- no launch-critical surface depends on legacy frontend snapshot code
 
 Launch does not require:
 
@@ -585,8 +584,8 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Remove public nav exposure for anything not in the canonical launch surface.
 - [ ] Remove copy that still says Contrarian.
 - [ ] Remove copy that implies resolution, payout, or expiry.
-- [ ] Remove dependence on legacy `webapp/` code for launch-critical behavior.
-- [ ] Ensure all launch-critical docs point to `web/`, not `webapp/`.
+- [ ] Remove dependence on legacy frontend snapshot code for launch-critical behavior.
+- [ ] Ensure all launch-critical docs point to `web/`, not a legacy frontend snapshot.
 - [ ] Ensure dashboard/workspace routes are not treated as launch-critical surfaces.
 
 ## Launch Exit Criteria

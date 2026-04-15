@@ -1,85 +1,51 @@
 # Business Overview
 
-## Vision
+## Positioning
 
-**Cascade is the pricing layer for scenario forecasting.**
+Cascade is the pricing layer for scenario forecasting.
 
-Most prediction markets ask a single question: "Will X happen?" Cascade asks the next question: "If X happens, then what?" This compositional structure — theses referencing modules, scenarios referencing predictions — enables a market that reflects not just individual beliefs but the chains of reasoning that connect them.
+Short version:
 
----
+- Polymarket asks `Will X happen?`
+- Cascade also asks `If X happens, then what?`
 
-## What Cascade Does
+That makes Cascade a market product for linked beliefs, public argument, and agent participation.
 
-Cascade enables anyone to create and trade prediction markets for interconnected scenarios.
+## Who It Is For
 
-**For individuals**: Take positions on questions you have a view on. Earn if you're right. The price signals are visible to everyone — a public record of what informed participants believe.
+- traders with strong views on politics, macro, tech, and markets
+- analysts who want to publish a thesis with real prices attached
+- agents that can monitor information, create markets, and trade continuously
 
-**For analysts and researchers**: Create markets that encode your thesis. Cite related predictions as evidence. Earn from your insight before your analysis becomes consensus.
+## Business Model
 
-**For AI agents**: Trade markets, create analysis, operate as automated market makers — all using the same economics and mechanics as humans. Cascade should still expose a full machine-friendly API surface and a hosted `SKILL.md` onboarding path so agents can operate programmatically.
+The launch business is trading-volume driven.
 
-**For anyone who thinks carefully**: A structured epistemics tool. What does the market believe about the chain of consequences that follows from a given event?
+- revenue comes from mint and market operations around trading flow
+- there are no subscription fees in the core product model
+- good markets and good liquidity drive growth
 
----
+## Why It Can Be Defensible
 
-## Revenue Model
+- linked-market framing instead of isolated question lists
+- perpetual markets instead of expiry-centric closeout mechanics
+- open Nostr-based market definitions and trade records
+- protocol parity between humans and agents
+- self-custodied portfolio model
 
-Cascade's economics are embedded in the LMSR pricing curve and mint operations.
+## Near-Term Go-To-Market
 
-This is a volume-based model: more trading activity = more revenue. Creating good markets and attracting active traders is the growth flywheel.
+Near term, the business needs to do four things well:
 
-No subscription charges. No listing costs. No per-market setup costs.
-
----
+1. Launch a small number of sharp, legible markets with real liquidity.
+2. Make the public market pages and discussion surfaces shareable.
+3. Build a credible machine interface so agents can participate early.
+4. Publish consistent narrative content around scenario thinking and live markets.
 
 ## Targets
 
-| Milestone | Target |
-|-----------|--------|
-| First revenue | May 31, 2026 |
-| Users | 1,000 by August 2026 |
-| Profitability | Month 18 |
+Current operating targets:
 
----
-
-## Positioning
-
-**"Polymarket asks 'Will X happen?' We ask 'If X happens, then what?'"**
-
-Cascade is not trying to out-Polymarket Polymarket on atomic predictions. Cascade's differentiated layer is the compositional structure: theses built on modules, scenarios built on predictions, a graph of interconnected markets that reveals the market's collective model of the world.
-
----
-
-## Competitive Differentiation
-
-| Factor | Cascade | Competitors |
-|--------|---------|-------------|
-| Compositional markets | ✓ Theses reference modules | ✗ Isolated questions |
-| Oracle required | ✗ Markets exhaust via economic forces; never formally closed | ✓ Most require oracles |
-| Protocol | Nostr-native, censorship-resistant | Centralized or chain-specific |
-| Agent parity | ✓ AI agents are first-class | ✗ Human-focused UX |
-| Settlement layer | Cashu + Lightning (ecash) | Crypto wallets or fiat |
-| Data portability | ✓ Everything is Nostr events | ✗ Platform-locked |
-
----
-
-## Network Effects
-
-Cascade's value compounds as more markets exist:
-
-1. **Thesis-module graph density**: More modules → more material for thesis authors → better theses → more traders.
-2. **Agent liquidity**: As AI agents trade and make markets, liquidity improves and price discovery becomes faster.
-3. **Information network**: Related markets inform each other. Traders watching one market naturally watch its related markets.
-4. **Creator incentives**: LMSR's early-buyer advantage means market creators are rewarded for being right first. Good creators build reputation and following.
-
----
-
-## Infrastructure Advantages
-
-**Nostr-native**: Data is censorship-resistant and portable. No platform lock-in. Third parties can build on top without permission.
-
-**Cashu ecash**: Private, instant, Lightning-backed settlement. No KYC requirements embedded in the protocol.
-
-**No oracle by default**: Removes a critical dependency and attack surface. Markets reach equilibrium through trading and withdrawal — no trusted party ever declares an outcome.
-
-**Open protocol**: Alternative front-ends, analytics tools, and agent integrations are possible without permission because market definitions, trade records, and discussions are public Nostr events and the product surface can be exposed through machine-friendly APIs.
+- first revenue by May 31, 2026
+- 1,000 users by August 2026
+- profitable business by month 18

@@ -1,321 +1,82 @@
 # Frontend Architecture
 
-## Status
+## Active App
 
-The active frontend implementation lives in `web/`.
+The active frontend lives in `web/`.
 
-A failed earlier `webapp/` migration has been removed from the repo. Historical references may still appear in docs, but `web/` is the only frontend subtree that matters.
+- framework: SvelteKit + Svelte 5
+- deploy target: Vercel at `https://cascade.f7z.io`
+- styling direction: editorial dark theme on neutral grays
+- Nostr client: NDK
 
-## Stack
+`web/` is the only canonical frontend. Any legacy snapshot elsewhere in the repo is non-authoritative.
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | SvelteKit + Svelte 5 |
-| Styling | Tailwind CSS v4 + DaisyUI |
-| Component primitives | bits-ui (headless, for accessibility — tabs, dialogs, dropdowns) |
-| Nostr client | NDK (Nostr Dev Kit) |
-| Deployment | Vercel at `cascade.f7z.io`, plus a local node-runtime path for supervised signet/mainnet editions |
-| Repository | `git@github.com:pablof7z/cascade.git` |
+## Current Route Surface
 
-**React is gone.** The active frontend direction is Svelte 5 + SvelteKit in `web/`.
+Public product routes:
 
-## Deployment
+- `/`
+- `/market/:slug`
+- `/market/:slug/discussion`
+- `/market/:slug/discussion/:threadId`
+- `/market/:slug/charts`
+- `/market/:slug/activity`
+- `/activity`
+- `/analytics`
+- `/leaderboard`
+- `/bookmarks`
+- `/builder`
+- `/blog`
+- `/how-it-works`
+- `/embed`
+- `/embed/market/:slug`
+- `/about`
+- `/privacy`
+- `/terms`
 
-Auto-deploys on push to `main`. If it's not deployed, it doesn't exist.
+Identity and portfolio routes:
 
-Production URL: `https://cascade.f7z.io`
+- `/join`
+- `/onboarding`
+- `/portfolio`
+- `/profile`
+- `/profile/edit`
+- `/p/:identifier`
+- `/note/:id`
 
-No auth required to view the production site.
+Secondary routes that exist but are not launch-critical:
 
-For local supervised editions on this machine, `web/` also supports `@sveltejs/adapter-node` builds via:
+- `/dashboard/*`
+- `/relays`
+- `/relay/:hostname`
 
-```bash
-cd web
-./scripts/build-node-edition.sh
-./scripts/run-node-edition.sh signet
-```
+## Product Rules
 
-The local edition env templates live in:
+- normal UX is USD-denominated
+- `/portfolio` is the capital surface
+- there is no `/wallet` product route
+- no loading spinners
+- no Nostr jargon in normal UI copy
 
-- `web/.env.signet.example`
-- `web/.env.mainnet.example`
+## State Model
 
-## Current `web/` Routes
+The frontend derives user state from:
 
-| Route | Description |
-|-------|-------------|
-| `/` | Homepage |
-| `/about` | About page |
-| `/activity` | Activity feed |
-| `/analytics` | Public analytics |
-| `/blog` | Editorial content |
-| `/bookmarks` | Bookmarked markets |
-| `/builder` | Market builder |
-| `/dashboard` | Private workspace shell |
-| `/embed` | Embed surface |
-| `/join` | Account creation (human or agent) |
-| `/leaderboard` | Rankings |
-| `/onboarding` | Post-join onboarding |
-| `/portfolio` | Canonical account surface for balances, funding, positions, and PnL |
-| `/privacy` | Privacy policy |
-| `/profile` | Current-user profile surface |
-| `/relays` | Relay configuration / diagnostics |
-| `/terms` | Terms of service |
-| `/wallet` | Compatibility redirect to `/portfolio`; not a distinct product surface |
-
-The full target product route model is defined in [../product/spec.md](../product/spec.md). The `web/` app is still being built toward that target.
-
-The app should ship in separate signet and mainnet editions. Proof storage, environment labels, and discovery sources must be edition-aware.
-
-## Nostr Integration
-
-**NDK** handles all Nostr operations:
-
-- real-time subscriptions to relays
-- event publishing signed by the user's key
-- metadata fetching for profiles, bookmarks, and positions
-
-No polling. Data streams in as events arrive.
-
-Key subscriptions include:
-
-- `kinds: [982]` — all markets
-- `kinds: [983]` filtered by market event ID — trade history for a specific market
-- `kinds: [1111]` filtered by market event ID — discussions
-- `kinds: [30078]` filtered by user pubkey — user position records
-
-Public market discovery should not blindly render every raw kind `982` event. The app should only surface a market publicly after at least one mint-authored kind `983` exists for it. The creator can still see their own pending market between kind `982` publication and the first trade.
-
-## No Loading Spinners
-
-This is a hard directive from the project owner.
-
-- no spinner components
-- no skeleton-loader product logic
-- no fake "loading complete" states
-
-If nothing has arrived yet for a view, show an empty state, not a spinner.
-
-## Auth
-
-Users authenticate with Nostr keypairs.
-
-- private key is generated client-side and stored locally
-- it is never sent to the backend
-- the user should not see protocol jargon during onboarding
-- authenticated API actions use NIP-98
-
-The cryptography stays behind the product boundary.
-
-## Dollar-Denominated Product UX
-
-The normal product surface is dollar-denominated.
-
-- balances are shown in USD
-- trade size inputs are shown in USD
-- fill previews and PnL are shown in USD
-- sats, msats, and Lightning invoices are not part of the normal human UI
-
-If Lightning is used to settle between mints, that stays behind the product boundary. The exception is an explicit Lightning add-funds flow on `/portfolio`, where the user still starts from a USD amount and receives an invoice only as the funding mechanism.
-
-## Portfolio
-
-The canonical self-custodied capital route is `/portfolio`.
-
-It should allow users to:
-
-- view their USD balance
-- add funds through the Stripe gateway
-- add funds through the standard Lightning mint-quote flow for a chosen USD amount
-- receive or import ecash tokens
-- send or export ecash tokens
-- review transaction history
-- review open positions and exited-position history
-- review aggregate invested, value, and PnL state
-
-The portfolio stores proofs locally. The mint is the issuer; the user's device is the holder.
-
-There is no canonical server wallet API for current balance because the proofs are self-custodied.
-There is also no canonical pubkey-keyed backend portfolio read. `/portfolio` is a browser-derived view.
-
-`/portfolio` is the canonical proof-custody route. There is no `/wallet` route.
-
-The browser's edition (signet vs mainnet) and configured mint URL are set at build time. There is no `GET /api/product/runtime` endpoint — client configuration is build-time or Nostr-native, not fetched from a runtime manifest.
-
-Edition mismatch protection should be implemented at the build level: the browser knows its own edition from build-time configuration and should not attempt to connect to a mint configured for a different edition.
-
-## Trading And Portfolio State
-
-The frontend needs local state for at least two proof classes:
-
-- USD portfolio proofs
-- market proofs for LONG/SHORT positions
-
-Trading surfaces should let the user spend dollars on LONG or SHORT and then persist the resulting market proofs locally.
-
-The launch trade path is proof-native in both signet and mainnet:
-
-- the browser selects locally stored USD proofs for buys
-- the browser selects locally stored market proofs for withdrawals
-- the browser prepares blinded outputs for the target-side issuance and any change
-- the mint returns blind signatures, not user proofs
-- the browser unblinds those signatures locally, removes the consumed proofs from local storage, and persists the resulting proofs locally
-- the browser never relies on a proofless pubkey-only trade shortcut in either edition
-
-Canonical market-proof units are lowercase and slug-based:
-
-- `long_<market-slug>`
-- `short_<market-slug>`
-
-If the browser encounters older uppercase market-proof buckets from earlier builds, it should migrate them into the lowercase canonical buckets during local storage reads rather than maintaining parallel holdings.
-
-There is no server-side proof mirror in the launch design. The backend may expose quote, trade, and settlement status, but bearer proofs remain browser-local.
-There is also no server-side portfolio ledger in the launch design. Pending funding requests and trade recovery are resumed from browser-local recovery records plus quote/status routes, not from a backend "current portfolio" snapshot.
-The mint may know funding quotes, payment hashes, trade execution records, and spent-proof state. It must not know or reconstruct the browser's current unspent proof set.
-
-The `/portfolio` surface derives both spendable state and performance from:
-
-- local proof state
-- a browser-local executed-trade position book for launch cost basis
+- local proofs
+- local trade and funding recovery state
 - public market data
+- user-side position records where applicable
 
-For launch cost basis and PnL:
+The backend is not the canonical source of the user's current portfolio holdings.
 
-- successful buy, seed, and withdrawal executions in this browser update a browser-local position book
-- that local position book tracks quantity and cost basis by market side
-- imported proofs or older proofs without local trade history may have quantity but no local cost basis
-- when local cost basis is unavailable, `/portfolio` should show a mark-only value instead of inventing PnL from backend compatibility state
-- when public market pricing is temporarily unavailable, `/portfolio` should keep the local holding visible with price unavailable rather than falling back to backend-derived valuation
+## Funding And Trading
 
-The launch `/portfolio` surface must also handle local proof movement directly in the browser:
+- funding calls the mint directly
+- Stripe and Lightning are the launch rails
+- buys consume local USD proofs and return market proofs
+- exits consume market proofs and return USD proofs
+- the browser remains the proof holder in both signet and mainnet
 
-- the browser Cashu client must be pinned explicitly and kept compatible with the mint's active NUT-02/NUT-04 behavior
-- do not rely on a transitive `@cashu/cashu-ts` version, because keyset-id derivation mismatches break local proof funding and trading even when the HTTP endpoints are otherwise correct
+## Edition Split
 
-In signet, funding still starts from the normal add-funds UI and API contract, and the quote remains pending until the payment object is actually settled. Paper trading comes from signet-value rails and test infrastructure, not from a separate faucet surface or instant quote completion.
-
-Portfolio funding uses one recovery model across both launch rails:
-
-- the browser stores pending funding recovery state in local storage
-- Lightning funding uses the standard Cashu NUT-23 mint flow instead of a bespoke Cascade funding endpoint
-- Stripe funding uses a persisted product funding request with a client `request_id`
-- Lightning mint quotes remain pending until the invoice is actually paid
-- Stripe funding remains pending until the verified webhook completes it
-- after Lightning reaches `PAID`, the browser calls `POST /v1/mint/bolt11` and stores the resulting proofs locally
-- after Stripe reaches a paid-and-allowed state, the browser must complete the corresponding custom mint flow with blinded outputs and store the resulting proofs locally
-- if a Stripe payment is captured but not accepted by the configured issuance policy, the browser should show `review_required` and must not assume funded proofs exist
-
-For Lightning specifically, browser-local recovery must be proof-native:
-
-- the browser stores the standard mint `quote_id`
-- if the browser loses the initial quote response, it retries `POST /v1/mint/quote/bolt11` with the same client `request_id` until the mint replays the same quote
-- once the quote reaches `PAID`, the browser prepares deterministic blinded outputs from a browser-local Cashu seed and counter
-- if the minting response is interrupted after issuance, the browser restores those proofs locally from the same seed/counter path instead of relying on a server-held proof copy
-- signet and mainnet use the same local recovery implementation
-
-Trade recovery must use the same privacy model:
-
-- before buy or withdrawal execution, the browser stores deterministic output preparation for the issued side and any change side
-- if the response arrives, the browser unblinds the returned signatures locally
-- if the response is interrupted after execution, the browser checks trade status and restores the locally prepared outputs instead of asking the backend for bearer proofs
-
-For Stripe specifically:
-
-- `/portfolio` offers a hosted Checkout action alongside Lightning when the edition has Stripe configured
-- the UI can navigate the user to the returned `checkout_url`
-- the return from Stripe is not the source of truth for proof issuance
-- the browser must recover through the same pending-funding polling path used for Lightning
-- signet and mainnet use the same browser-local proof storage and the same funding recovery mechanics
-
-For Lightning specifically:
-
-- `/portfolio` should fund through `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`
-- the UI still starts from a USD amount and renders the returned invoice as a funding mechanism only
-- the browser must not depend on bespoke `/api/portfolio/funding/lightning/*` routes for Lightning funding
-- the browser must not depend on `GET /api/portfolio/funding/requests/{request_id}` for Lightning recovery either; Lightning recovery stays on the standard mint quote flow plus client `request_id`
-
-- export a locally held proof bucket as a standard Cashu token string
-- import a Cashu token string into the local browser store
-- keep import/export entirely local rather than introducing a server custody API
-- use the same browser-local proof manager in signet and mainnet
-
-The immediate implementation target is one export/import action per local proof bucket:
-
-- one mint URL
-- one unit
-- one encoded Cashu token string
-
-That keeps export/import aligned with the current storage model and avoids inventing a non-standard multi-unit wrapper before trade execution itself is fully proof-native.
-
-For valuation, the frontend should use a two-layer model:
-
-- liquid USD balance = sum of locally held USD proofs
-- mark-to-market position value = locally held market-proof quantity priced against current public market prices
-- exact exit value = a fresh sell quote from the mint for the full quantity the user wants to withdraw
-
-The fast portfolio view should use current public market prices for mark-to-market display. When the user is about to exit, the client should call the sell-quote endpoint because LMSR pricing is size-dependent and the executable withdrawal value may differ from the simple mark price.
-
-Market-proof amounts are stored as fixed share-minor units rather than floats:
-
-- one proof amount unit = `0.0001` share
-- one whole share = `10_000` stored units
-
-The frontend should convert between stored integer units and displayed decimal share quantities at the edge of the UI instead of storing float quantities in browser state.
-
-Mint-side market keysets must also expose large denominations for these share-minor units. Otherwise a single position near the edge of the LMSR curve can turn into thousands of tiny proofs and overflow browser-local storage.
-
-It is not a private custody dashboard backed by server-held proofs.
-
-## Styling Rules
-
-### Stack
-- **Tailwind CSS v4** — native CSS-based config, `@import "tailwindcss"` in `app.css`, no `tailwind.config.js`
-- **DaisyUI** — component classes (`btn`, `card`, `modal`, `tab`, etc.) for consistent, pre-styled UI
-- **bits-ui** — headless Svelte primitives for accessibility (tabs, dialogs, dropdowns); style with DaisyUI classes
-
-### DaisyUI Theme
-- Use a single dark theme customized to Cascade's palette
-- Base: `neutral-950` page background, pure neutral grays (no blue tint)
-- Primary accent: `emerald` family
-- Error/negative accent: `rose` family
-- Configure via DaisyUI theme customization in CSS, not arbitrary Tailwind overrides
-
-### Component Rules
-- **Use DaisyUI component classes first.** `btn`, `btn-primary`, `card`, `modal`, `tab`, `badge`, `alert`, `input`, `select`, `textarea`, `toggle`, `dropdown`, etc.
-- **Do not reinvent components that DaisyUI provides.** If DaisyUI has a class for it, use it.
-- **bits-ui for behavior, DaisyUI for style.** When using bits-ui primitives (e.g., `Tabs.Root`), apply DaisyUI classes to the rendered elements.
-- No hand-rolled CSS for things DaisyUI covers. Custom CSS only for genuinely unique Cascade elements.
-
-### Typography
-- Numbers and money: `font-mono`
-- Text and UI: `font-sans`
-- Headings: `font-heading` (via global CSS)
-
-### Visual Constraints
-- No rounded pills, no gradients, no emojis in UI chrome
-- No gratuitous cards — use cards only when content grouping adds clarity
-- `neutral-*` for all grays — never `gray-*` (which has a blue tint)
-
-### Migration Note
-The codebase currently uses hand-written CSS variables and custom styles in `app.css`. These must be migrated to Tailwind v4 + DaisyUI. The existing `src/lib/components/ui/` directory contains bits-ui wrappers (tabs, dialog, dropdown-menu, avatar, navigation-menu) that should be restyled with DaisyUI classes rather than custom CSS.
-
-See [style-guide.md](../design/style-guide.md) for the full reference.
-
-## Local State And Offline Support
-
-The frontend may use localStorage for categories of state such as:
-
-- USD proofs
-- market proofs
-- position records
-- offline action queues
-
-Every local-storage key involved in wallet or portfolio state should be namespaced by edition and mint URL.
-
-NIP-60 is deferred. The current launch frontend should use browser-local proof storage for both signet and mainnet rather than a separate NIP-60 wallet implementation in one edition.
-
-The failed `webapp/` migration is historical context only, not an in-repo implementation dependency.
-
-## No Mock Data
-
-Every market displayed must come from a real kind `982` Nostr event or a real API projection over real events. No hardcoded, placeholder, or fake markets.
+The frontend must treat signet and mainnet as separate editions with separate local proof namespaces and separate mint/discovery configuration.

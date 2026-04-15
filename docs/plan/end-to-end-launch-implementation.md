@@ -17,7 +17,7 @@
 
 ## What This Plan Locks
 
-- The active frontend is `web/`, not `webapp/`.
+- The active frontend is `web/`, not any legacy frontend snapshot.
 - Launch funding rails are Stripe and Lightning.
 - USDC is an additive later rail, not a launch blocker.
 - Paper trading and real-money trading are separate editions.
@@ -111,7 +111,7 @@ The preferred first implementation is one backend deployment with these modules,
 
 - a developer can explain the difference between signet and mainnet in one paragraph
 - no doc still implies a single mixed deployment
-- no doc still treats `webapp/` as active frontend scope
+- no doc still treats a legacy frontend snapshot as active frontend scope
 
 ### Failure Gates
 
@@ -431,7 +431,7 @@ Launch should fail this gate if:
 
 ### Failure Gates
 
-- `web/` still depends on legacy `webapp/` code for launch-critical behavior
+- `web/` still depends on legacy frontend snapshot code for launch-critical behavior
 - signet and mainnet proofs can collide in browser storage
 
 ### Best Practices

@@ -65,6 +65,6 @@ See `docs/design/style-guide.md` for the full brand style guide.
 # Repository Layout
 
 - The active Svelte 5 web app lives in `web/`.
-- The failed earlier `webapp/` migration has been removed from the repo. Historical frontend context belongs in `docs/archive/`, not a legacy app subtree.
+- Any legacy frontend snapshot elsewhere in the workspace is non-canonical. `web/` is the only frontend source of truth.
 - The Rust mint workspace lives in `mint/`.
 - When working inside either subtree, also read that directory's local `AGENTS.md` before editing files there.

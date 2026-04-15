@@ -1,103 +1,61 @@
-# What is Cascade?
+# Product Overview
 
-Cascade is a prediction market platform for interconnected beliefs. Where other platforms ask "Will X happen?", Cascade asks "If X happens, then what?"
+Cascade is a dollar-denominated prediction market product for interconnected beliefs.
 
-## The Core Idea
+The short version:
 
-Most prediction markets are isolated: you bet on whether one event occurs. But real-world beliefs are connected. If Bitcoin breaks $100k, what happens to altcoin cycles? If the Fed cuts rates, what follows for tech stocks? If a particular candidate wins, which policies become likely?
+- most prediction markets focus on isolated yes-or-no questions
+- Cascade also supports broader scenario markets that can link related questions as context
+- every market still trades on its own LMSR curve
 
-Cascade makes those connections explicit and tradeable.
+The differentiator is transparent reasoning with live prices, not mathematical coupling between markets.
 
----
+## Market Shapes
 
-## Two Market Types
+Modules:
 
-### Modules — Atomic Predictions
+- atomic yes-or-no markets
+- one clear claim
+- independently traded
 
-A module is a single, binary, observable prediction. It works exactly like a Polymarket question:
+Theses:
 
-- "Will BTC break $100k by December 31?"
-- "Will the US enter recession in 2026?"
-- "Will GPT-5 score above 90% on the MMLU benchmark?"
+- broader scenario markets
+- can link modules as supporting context
+- independently traded
 
-Each module presents a clear directional claim. Traders can take LONG or SHORT. It has its own LMSR-priced bonding curve and is independently tradeable.
+Linked markets are informational only. A thesis does not inherit a module's price, and a module does not move because a thesis linked it.
 
-### Theses — Networks of Beliefs
+## Trading Model
 
-A thesis is a higher-order market that references modules as supporting evidence. It represents a compound scenario:
+Users:
 
-- "If BTC breaks $100k, then ETH will outperform through the cycle"
-- "The AI infrastructure supercycle continues through 2027, driven by enterprise adoption and regulatory tailwinds"
+- fund a USD balance
+- mint LONG or SHORT exposure on a market
+- exit by returning market proofs at the current LMSR price
 
-A thesis cites modules not to compute its probability from them, but to make its reasoning transparent. Each thesis also has its own LMSR bonding curve. It's independently tradeable.
+There is no order book and no counterparty matching. The mint is the execution layer.
 
----
+## Product Principles
 
-## The Critical Distinction: Informational, Not Mathematical
+- Markets never expire.
+- There is no oracle and no admin close step.
+- Price comes only from trading activity on that market.
+- Creator seeding is required at launch.
+- Public discovery starts after the first mint-authored kind `983`.
+- The normal product surface is USD-denominated.
 
-Modules within a thesis are **informational links only**. They show why the thesis creator believes what they believe. They do not mathematically determine the thesis's probability.
+## Participants
 
-The thesis's price is set entirely by trading activity on that thesis — not by aggregating module probabilities. Similarly, each module's price is set by trading on that module alone.
+Humans and agents are protocol peers.
 
-This means:
-- You can disagree with the thesis even if you believe all its cited modules.
-- A thesis can trade at 70% even if its cited modules are 50/50 — if traders collectively believe the thesis author's reasoning is sound and the overall scenario is probable.
-- Two theses can cite the same module but trade at very different prices.
+- both use Nostr identities
+- both self-custody proofs
+- both create markets through kind `982`
+- both trade through the same mint and product interfaces
 
-This is intentional and fundamental to the design. Do not introduce code that mathematically couples module prices to thesis probabilities.
+There is no privileged agent mode.
 
----
+## Why It Exists
 
-## Pricing: LMSR
-
-Every market — module and thesis alike — uses the Logarithmic Market Scoring Rule (LMSR). LMSR is an automated market maker:
-
-- No counterparty matching needed. You don't wait for someone to take the other side.
-- Platform provides initial liquidity. Creator seeds it at launch.
-- Prices update continuously with every trade.
-- The reserve is always solvent — mathematically guaranteed, not fractional.
-- Early buyers get cheaper prices. Later buyers move the price.
-
-See [lmsr.md](../mint/lmsr.md) for the full pricing mechanics.
-
----
-
-## Who Participates
-
-### Human Traders
-Any person can create markets, take positions, and sell at the current LMSR price. No account required — just a Nostr keypair (handled transparently in the app).
-
-### AI Agents
-AI agents are first-class participants. They use the same underlying mechanics as humans: Nostr keypairs for identity, Cashu bearer tokens for funds, and kind 982 events to create markets. There is no privileged "agent mode" — agents and humans are protocol peers. First-class means protocol parity, not a special mint-side account or actor record.
-
-Agents can:
-- Create and seed markets
-- Trade based on their models
-- Provide analysis and commentary
-- Operate as automated market makers
-- Run arbitrage strategies across related markets
-
-The product should still expose a full machine-friendly interface and a hosted `SKILL.md` onboarding path so agents can operate without scraping the web UI.
-
-### Market Makers
-Anyone can act as a market maker by seeding liquidity into new markets. The LMSR curve ensures the reserve is always sufficient.
-
----
-
-## Infrastructure
-
-**Nostr-native**: All market definitions, trade records, and discussions are Nostr events. Kind `982` market definitions are published by their authors directly to relays. Data is censorship-resistant, portable, and auditable by anyone.
-
-**Cashu ecash**: Funds move as Cashu bearer tokens — private, instant, Lightning-backed.
-
-**No oracle by default**: Markets never close and need no external oracle. Reality asserts itself through economic forces: price converges -> arbitrage kicks in -> holders sell -> market exhausts naturally. There is no resolution event, no winner declaration, and no administrator.
-
-**Open protocol**: Because market definitions, trade records, and discussions are public Nostr events and the product can expose structured APIs, third parties can build market explorers, analytics tools, alternative front-ends, and automated traders without permission.
-
----
-
-## The Vision
-
-Cascade is building the pricing layer for scenario forecasting.
-
-Not just "Will X happen?" but "If X happens, what's the cascade of consequences?" Markets as a structured epistemics tool — for analysts, researchers, investors, and anyone who thinks carefully about how the world unfolds.
+Cascade is trying to become the pricing layer for scenario forecasting: not only `Will X happen?`, but also `If X happens, then what?`

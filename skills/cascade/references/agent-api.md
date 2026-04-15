@@ -115,8 +115,8 @@ If an agent is creating a market:
 
 1. The agent calls `cascade market create`.
 2. The CLI signs and publishes kind `982`.
-3. The CLI registers the market with the product API.
-4. The CLI executes the required seed trade.
+3. The CLI coordinates the required seed trade against the mint and product routes.
+4. The market becomes publicly discoverable after the first mint-authored kind `983`.
 
 That keeps authorship where it belongs and avoids a mint-side relay-publish proxy.
 

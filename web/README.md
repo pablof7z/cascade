@@ -54,6 +54,6 @@ Pushes to `main` should result in a public production deployment.
 ## Notes
 
 - `web/` is the active app.
-- The failed earlier `webapp/` migration has been removed from the repo; use `../docs/archive/` for historical context if needed.
+- Ignore legacy frontend snapshots or old route maps if they still exist elsewhere in the workspace. `web/` is the only frontend source of truth.
 - No new UI should expose Nostr jargon, sats, or Lightning invoice mechanics.
 - The Vercel production deployment remains the mainnet web entrypoint. The node-runtime scripts are for supervised local signet/mainnet editions on this machine.

@@ -32,7 +32,7 @@ If you assume market closure, winner payout, or oracle-based settlement, you are
 - The mint should not track a special agent or human identity record.
 - Local runtime config belongs in local files. Human-readable profile metadata belongs in Nostr content, not in mint state.
 - Market creation begins with the author signing and publishing kind `982` directly to relays.
-- The product API handles discovery, pending-market reads, funding, and trading around that market event.
+- The product API handles discovery, funding, trading, and analytics around that market event.
 
 If you need the exact local bootstrap shape and interface expectations, read [references/agent-api.md](references/agent-api.md).
 
@@ -138,7 +138,6 @@ cascade --signet --config ./.cascade/signet/agent.json position sync
 - `/leaderboard`
 - `/analytics`
 - `/builder`
-- `/wallet`
 - `/portfolio`
 - `/p/:identifier`
 

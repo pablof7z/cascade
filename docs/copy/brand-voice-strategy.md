@@ -1,262 +1,131 @@
-# Cascade Markets — Brand Voice & Consumer Copy Strategy
+# Cascade Brand Voice
 
-> **Purpose:** This document is the operating manual for anyone writing UI copy for Cascade Markets. Read it before touching a single label. Follow it without exception.
+Use this document for UI copy, onboarding copy, empty states, notifications, and headline-level marketing copy.
 
----
+## Voice
 
-## Table of Contents
+Cascade should sound:
 
-1. [Brand Voice & Tone Guidelines](#1-brand-voice--tone-guidelines)
-2. [Consumer Framing Principles](#2-consumer-framing-principles)
-3. [Forbidden Terms Glossary](#3-forbidden-terms-glossary)
-4. [Rewrite Principles](#4-rewrite-principles)
-5. [Example Rewrites](#5-example-rewrites)
-6. [Quick Reference Card](#6-quick-reference-card)
+- sharp
+- confident
+- grounded
+- concise
+- respectful of the user's intelligence
 
----
+Think opinionated financial writing, not crypto marketing and not enterprise software copy.
 
-## 1. Brand Voice & Tone Guidelines
+## Core Rules
 
-### Who Cascade Sounds Like
+- Lead with what the user experiences, not the plumbing underneath.
+- Use short, direct sentences.
+- Prefer plain financial language over protocol language.
+- Keep the tone calm. No hype, no fake warmth, no casino energy.
+- When the user makes money or loses money, say it plainly.
 
-Cascade is **the friend who's smarter than you about markets, but never makes you feel dumb about it.**
+## Product Framing
 
-Picture a Substack writer with skin in the game. Sharp, opinionated, precise. They use plain words because they're confident — not because they're talking down to you. They wouldn't say "ecash proofs" any more than a Robinhood user would say "fractional share custodianship settlement cycle."
+Use these frames:
 
-**Reference products:** Robinhood (consumer-first), Polymarket (prediction market confidence), Substack (smart opinion culture)  
-**Anti-references:** Bitcoin Core, a white paper, a trading terminal API docs page
+- `balance`
+- `add funds`
+- `withdraw`
+- `take a position`
+- `back YES` / `back NO`
+- `LONG` / `SHORT` where market literacy helps
+- `current price`
+- `current value`
+- `exit`
+- `you’re up` / `you’re down`
 
----
+Hide or avoid these implementation terms in user-facing copy:
 
-### Personality
+- Nostr
+- relay
+- pubkey
+- nsec
+- Cashu
+- proofs
+- LMSR
+- msats
+- blind signatures
 
-**Confident but never condescending.** Cascade has opinions and uses them. It tells you what things are, not what they might possibly be if you squint. But it never punishes you for not knowing something.
+## Market Language
 
-**Sharp but human.** Every sentence earns its place. No filler. No throat-clearing. But there's a dry wit underneath — not corporate, not startup-bro. The app can say "No oracle. No expiration date. Just questions, evidence, and prices that keep moving." That's Cascade's voice.
+Markets are live questions with prices, not contracts and not admin-run closeout flows.
 
-**Minimal but meaningful.** Less is more. The copy doesn't explain itself. It trusts users to be smart enough to follow.
+Say:
 
-**Direct without being cold.** "Start trading" beats "Begin your trading journey." "You're in." beats "Your account has been successfully created."
+- `This market keeps trading`
+- `Exit when the price works for you`
+- `The market moved`
+- `What the crowd thinks`
 
----
+Do not say:
 
-### Voice Attributes (The 5 Adjectives)
+- `resolution`
+- `market closes`
+- `winning payout`
+- `settlement`
+- `expiry`
+- `resolves on`
 
-| Attribute | What It Means | What It Doesn't Mean |
-|-----------|---------------|----------------------|
-| **Sharp** | Every word is chosen, no fat | Cold, clinical, terse |
-| **Confident** | We know what this is and say it plainly | Arrogant, dismissive |
-| **Accessible** | Anyone who argues online can understand this | Dumbed down, condescending |
-| **Grounded** | Real stakes, real money, real consequences | Hyped, gamified, FOMO-driven |
-| **Curious** | We're genuinely interested in the questions markets raise | Academic, philosophical, navel-gazing |
+## Money Language
 
----
+Normal product UX should speak in USD.
 
-### On-Brand vs Off-Brand Language
+Say:
 
-**Always okay:**
-- Plain English financial terms: balance, earnings, position, stake
-- Outcome-first framing: "You made $12" not "Settlement resulted in a positive P&L event"
-- Second person present tense: "You're up" not "The user's portfolio has appreciated"
-- Short, complete sentences
-- Numbers without false precision: "$12 earned" not "$12.00347 sats calculated"
-- The words: predict, believe, bet (used sparingly), back, stand behind, exit, cash out
+- `balance`
+- `available`
+- `add funds`
+- `withdraw`
+- `you’ll receive`
 
-**Never okay:**
-- Technical protocol terms exposed in UI: see Forbidden Terms Glossary
-- Passive voice for user outcomes: "Gains were realized" → "You earned"
-- Fake warmth: "Congratulations on your journey!" / "Let's get started!"
-- Fear-of-missing-out pressure: "Don't miss out!" / "Act fast!"
-- Crypto-native tribal language: "ngmi", "gm", "to the moon", "HODL"
-- Unnecessary legalese: "aforementioned", "pursuant to", "in the event that"
-- Vague superlatives: "powerful", "revolutionary", "cutting-edge"
+Do not say:
 
----
+- `proofs`
+- `wallet rail`
+- `ecash`
+- `sats`
+- `msats`
 
-### Tone Variations by Context
+If Bitcoin or Lightning must appear, keep it secondary and practical.
 
-Cascade's voice stays consistent, but the **energy** shifts:
+## Tone By Surface
 
-**Onboarding / First impression**
-- Tone: Welcoming, confident, brief
-- Energy: "You belong here. Here's what to do first."
-- Example: "Pick your position. If you're right, you earn. If you're wrong, you lose your stake. Simple."
-- ❌ Not: "Welcome to a new era of decentralized prediction markets!"
+Onboarding:
 
-**Normal usage / Browsing markets**
-- Tone: Neutral, informative, efficient
-- Energy: Matter-of-fact. Present the fact, get out of the way.
-- Example: "53¢ · 14 people backed this"
-- ❌ Not: "Current market-implied probability based on automated market maker algorithm: 53%"
+- Warm, brief, and orienting
+- Example: `Pick a market. Take a position. Watch the price move.`
 
-**Taking a position**
-- Tone: Clear, confident, action-oriented
-- Energy: You know what you're doing. Let's go.
-- Example: "Back YES · $5 · You're in."
-- ❌ Not: "Initiating LONG position minting process..."
+Trading:
 
-**Winning / Position value up**
-- Tone: Direct, warm, unsentimental
-- Energy: Nice. Here's what it's worth.
-- Example: "You're up $8.40. Cash out anytime."
-- ❌ Not: "Realized gains detected! Your P&L has moved into positive territory!"
+- Crisp and action-forward
+- Example: `Back YES · $10`
 
-**Losing / Position value down**
-- Tone: Straight, non-dramatic, not preachy
-- Energy: This happens. Here's where you stand.
-- Example: "You're down $3. The market moved."
-- ❌ Not: "Your position has experienced negative price movement at this time."
+Portfolio:
 
-**Error states**
-- Tone: Clear, useful, solution-first
-- Energy: Here's what happened, here's what to do.
-- Example: "Couldn't connect. Check your connection and try again."
-- ❌ Not: "An error occurred while processing your request. Error code: MINT_PROOF_VALIDATION_FAILURE"
+- Clear and matter-of-fact
+- Example: `Available balance`, `Current value`, `Exit position`
 
-**Empty states**
-- Tone: Brief, inviting, not sad
-- Energy: Nothing here yet — that's fixable.
-- Example: "No positions yet. Pick a market to back."
-- ❌ Not: "No local market proofs found in this browser yet."
+Errors:
 
----
+- Calm and actionable
+- Example: `Couldn’t complete that request. Try again.`
 
-## 2. Consumer Framing Principles
+Empty states:
 
-### The Golden Rule
+- Directional, not apologetic
+- Example: `No positions yet. Find a market you have a view on.`
 
-> **Never name the plumbing. Describe what the user experiences.**
+## Rewrite Checklist
 
-Bitcoin, Nostr, Cashu, LMSR, ecash — these are the pipes. Users don't care how water gets to the tap. They care that it comes out clean and hot. If you catch yourself about to write the word "proof" or "mint" in UI copy, stop and ask: *what is the user actually experiencing?*
+Before shipping copy, check:
 
----
-
-### The User's Money / Balance
-
-**What users experience:** They have money in their Cascade account. It goes up when they win, down when they lose, and they can add more or take it out.
-
-**Say:**
-- "Your balance" — the amount of money available to back positions
-- "Available to bet" — same, in action contexts
-- "Cash" — casual reference to their liquid balance
-- "Add funds" — depositing money into the app
-- "Cash out" / "Withdraw" — taking money out
-- "$X in your account" — total account value
-
-**Never say:**
-- ~~proofs~~ / ~~ecash proofs~~ / ~~local USD proofs~~ → just "balance" or "cash"
-- ~~browser-local wallet~~ → just "your account" or "this device"
-- ~~tokens~~ → just "funds" or "balance"
-- ~~signet balance~~ / ~~mainnet balance~~ → handled invisibly (see Bitcoin section below)
-
-**The rule:** If a bank wouldn't use the word to describe a checking account, don't use it here.
-
----
-
-### Making Predictions / Taking Positions
-
-**What users experience:** They look at a question, decide if they believe YES or NO, and put money behind their view. If the market moves in their direction, they earn. If not, they lose.
-
-**Say:**
-- "Back YES" / "Back NO" — taking a position
-- "Take a position" — neutral description of the action
-- "Bet on YES" / "Bet on NO" — slightly casual, fine to use
-- "Back this" — even more casual, good for CTAs
-- "Stand behind" — for editorial contexts ("put money behind your conviction")
-- "Exit your position" / "Cash out" — closing a position
-- "You're in" — confirmation copy after taking a position
-
-**Never say:**
-- ~~mint LONG~~ / ~~mint SHORT~~ → "back YES" / "back NO"
-- ~~opening a trade~~ / ~~placing an order~~ → "taking a position"
-- ~~going long~~ / ~~going short~~ → "backing YES" / "backing NO"
-- ~~withdrawal~~ (when exiting a position) → "cash out" or "exit"
-- ~~withdrawing~~ (in trading context) → "selling" or "cashing out"
-
-**LONG / SHORT translation:**  
-In UI copy facing users, LONG = YES, SHORT = NO.  
-Use LONG and SHORT only where they appear as visual labels on a chart or price table where the convention aids market literacy. Never use them in instructional copy.
-
----
-
-### Winning / Losing
-
-**What users experience:** They picked a side. The price moved. They made money, or they didn't.
-
-**Say:**
-- "You earned $X" / "You're up $X" — positive outcome
-- "You're down $X" / "You lost $X" — negative outcome
-- "Your position is worth $X" — current marked value
-- "Cash out" — the action of locking in gains or cutting losses
-- "Exit" — same action, slightly more neutral
-
-**Never say:**
-- ~~settlement~~ / ~~settled~~ → "earnings paid out" or just "earned"
-- ~~P&L~~ / ~~realized gains~~ / ~~unrealized gains~~ → "$X profit" or "$X up"
-- ~~mark-to-market~~ → "current value" or "what it's worth right now"
-- ~~withdrawal proceeds~~ → "what you'll receive" or "your payout"
-
----
-
-### The Markets Themselves
-
-**What users experience:** Markets are questions with prices attached. The price tells you what the crowd thinks the odds are. The higher the price to back YES, the more people think YES is right.
-
-**Consumer framing:** A Cascade market is a **live question with real money riding on it.** Not a "prediction market" (too jargony), not a "contract" (sounds financial/legal), not a "bet" (slightly too casual for primary copy).
-
-**Say:**
-- "A question" / "A market" — for individual markets
-- "The odds" — what price means to a user
-- "The price has moved to X" — market price update
-- "People are backing YES / NO" — activity description
-- "What the crowd thinks" — aggregate signal
-
-**Never say:**
-- ~~prediction market~~ (in user-facing UI copy) — fine in marketing/meta copy, not in the product
-- ~~contract~~ — sounds financial/legal
-- ~~order book~~ / ~~liquidity pool~~ → "the market"
-- ~~LMSR~~ → never, ever. Users never need to know this.
-
----
-
-### Bitcoin — What Users Need to Know vs. What to Hide
-
-**Users need to know:**
-- They're paying with Bitcoin (real money, not credits or points)
-- Transactions are fast and fees are tiny
-- They can add funds and withdraw funds
-
-**Users don't need to know:**
-- That it's technically sats (use dollar values with Bitcoin context where needed)
-- Anything about the blockchain, on-chain vs off-chain, L1 vs L2
-- Anything about signet vs mainnet
-- Anything about the mint, blind signatures, NUT specs, Cashu
-- Anything about Lightning vs on-chain
-
-**How to handle:**
-- Show values in dollars (or USD cents ¢) — not in sats, not in BTC
-- If users ask "is this real money?" → "Yes. Cascade uses Bitcoin under the hood, so there are no middlemen and your funds are settled instantly. You see dollar values."
-- Never expose the word "signet" to a user. Signet is a testnet for development. If they're on mainnet, that's the product.
-
-**The one Bitcoin term that's okay:** "Powered by Bitcoin" — in marketing/meta contexts only. Not in product UI.
-
----
-
-### Fees / Costs
-
-**What users experience:** When they take a position, there's a small cost. It's not a commission, not a spread, not a rake. It's the cost of the market being liquid.
-
-**Say:**
-- "A small fee" — generic reference
-- "Market fee" — for the fee on a position
-- "You'll receive $X after fees" — in confirmation flow
-- "Cost: $X" — on the trade summary line
-
-**Never say:**
-- ~~LMSR pricing is size-dependent~~ → "Larger positions move the price more. Your payout updates in real time."
-- ~~rake~~ — internal revenue term, not user copy
-- ~~spread~~ — too financial
-- ~~slippage~~ — never. If you need to convey this, say: "Bigger bets move the price — what you see is what you pay."
+- Does it describe the user experience instead of the infrastructure?
+- Does it avoid banned market language?
+- Does it sound like a smart product, not a protocol document?
+- Would a non-Bitcoin user understand it immediately?
 
 ---
 

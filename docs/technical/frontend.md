@@ -2,11 +2,6 @@
 
 ## Active App
 
-PENDING: the active frontend is being refit so normal users no longer see relay/network,
-signer, custody, or raw funding-rail state in visible UI copy. As part of that work, public
-market metrics are moving to USD-only presentation and the relay browser routes are being removed
-from the normal product surface.
-
 The active frontend lives in `web/`.
 
 - framework: SvelteKit + Svelte 5
@@ -52,6 +47,9 @@ Identity and portfolio routes:
 Secondary routes that exist but are not launch-critical:
 
 - `/dashboard/*`
+
+Legacy relay browser routes exist only as redirects away from the launch product surface:
+
 - `/relays`
 - `/relay/:hostname`
 
@@ -62,6 +60,8 @@ Secondary routes that exist but are not launch-critical:
 - there is no `/wallet` product route
 - no loading spinners
 - no Nostr jargon in normal UI copy
+- no raw funding states, checkout identifiers, or custody plumbing in visible portfolio copy
+- public feeds and account chrome use neutral fallback labels rather than raw public keys
 - active product-side direction labels use LONG and SHORT in UI chrome and trading copy; explanatory YES/NO category examples may remain on `/about` and `/how-it-works`
 
 ## State Model

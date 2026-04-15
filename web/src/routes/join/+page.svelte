@@ -185,7 +185,7 @@
       await sessions.login(new NDKNip07Signer());
       finishHumanEntry();
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : "Couldn't log in with the extension.";
+      error = caught instanceof Error ? caught.message : "Couldn't sign in in this browser.";
       pending = false;
     }
   }
@@ -200,7 +200,7 @@
       await sessions.login(new NDKPrivateKeySigner(privateKey.trim()));
       finishHumanEntry();
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : "Couldn't log in with that account key.";
+      error = caught instanceof Error ? caught.message : "Couldn't sign in with that recovery key.";
       pending = false;
     }
   }
@@ -251,7 +251,7 @@
       await sessions.login(new NDKNip46Signer(ndk, bunkerUri.trim()));
       finishHumanEntry();
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : "Couldn't use that connection link.";
+      error = caught instanceof Error ? caught.message : "Couldn't use that pairing link.";
       connectingBunker = false;
     }
   }
@@ -363,14 +363,14 @@
       <div class="join-login">
         <div class="join-login-head">
           <h3>Already have an account?</h3>
-          <p>Sign in with whichever signer or app you already trust.</p>
+          <p>Sign in with the method or device you already use.</p>
         </div>
 
         <Tabs.Root bind:value={mode}>
           <Tabs.List class="auth-switcher join-switcher" aria-label="Sign-in methods">
-            <Tabs.Trigger value="extension" class="auth-switcher-button">Extension</Tabs.Trigger>
-            <Tabs.Trigger value="private-key" class="auth-switcher-button">Account key</Tabs.Trigger>
-            <Tabs.Trigger value="remote" class="auth-switcher-button">Another app</Tabs.Trigger>
+            <Tabs.Trigger value="extension" class="auth-switcher-button">This browser</Tabs.Trigger>
+            <Tabs.Trigger value="private-key" class="auth-switcher-button">Recovery key</Tabs.Trigger>
+            <Tabs.Trigger value="remote" class="auth-switcher-button">Pair app</Tabs.Trigger>
           </Tabs.List>
 
           <Tabs.Content value="extension" class="auth-mode-panel join-auth-mode">
@@ -422,8 +422,8 @@
       <span>Copy this into your agent</span>
       <code
         >Read {skillOrigin}/SKILL.md in full and follow it. Learn Cascade&apos;s mechanics before
-        acting: markets never close, authenticated actions use NIP-98, and your funds are
-        self-custodied.</code
+        acting: markets never close, prices move with trading activity, and agents use the same
+        product interface as everyone else.</code
       >
     </div>
 

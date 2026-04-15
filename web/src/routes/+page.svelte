@@ -2,10 +2,10 @@
   import { browser } from '$app/environment';
   import type { NDKEvent, NDKUserProfile, NostrEvent } from '@nostr-dev-kit/ndk';
   import { ndk } from '$lib/ndk/client';
+  import { formatProductAmount } from '$lib/cascade/format';
   import {
     buildTradeSummary,
     formatRelativeTime,
-    formatSats,
     marketDiscussionUrl,
     marketUrl,
     sanitizeMarketCopy,
@@ -175,7 +175,7 @@
   }
 
   function authorLabel(pubkey: string): string {
-    return displayName(profiles[pubkey], shortPubkey(pubkey));
+    return displayName(profiles[pubkey], 'Cascade user');
   }
 
   function probabilityForMarket(marketId: string): number {
@@ -222,7 +222,7 @@
           </div>
 
           <div class="flex flex-wrap gap-5 text-sm text-neutral-500">
-            <span>{formatSats(tradeSummaries.get(featuredMarket.id)?.grossVolume ?? 0)} vol</span>
+            <span>{formatProductAmount(tradeSummaries.get(featuredMarket.id)?.grossVolume ?? 0, 'usd')} vol</span>
             <span>{tradeSummaries.get(featuredMarket.id)?.tradeCount ?? 0} trades</span>
           </div>
 
@@ -369,7 +369,7 @@
               </span>
             </div>
             <span class="font-mono text-sm">{centsForMarket(market.id)}</span>
-            <span class="font-mono text-sm">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</span>
+            <span class="font-mono text-sm">{formatProductAmount(tradeSummaries.get(market.id)?.grossVolume ?? 0, 'usd')}</span>
             <span class="font-mono text-sm">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
             <span class="font-mono text-sm">{discussionCounts.get(market.id) ?? 0}</span>
             <span class="text-sm text-neutral-500 text-right">{formatRelativeTime(market.createdAt)}</span>
@@ -401,7 +401,7 @@
             <p class="max-w-prose text-neutral-400 leading-relaxed">{truncateText(sanitizeMarketCopy(primaryTrending.description || primaryTrending.body), 180)}</p>
 
             <div class="flex flex-wrap gap-5 text-sm text-neutral-500">
-              <span>{formatSats(tradeSummaries.get(primaryTrending.id)?.grossVolume ?? 0)} vol</span>
+              <span>{formatProductAmount(tradeSummaries.get(primaryTrending.id)?.grossVolume ?? 0, 'usd')} vol</span>
               <span>{tradeSummaries.get(primaryTrending.id)?.tradeCount ?? 0} trades</span>
               <span>{discussionCounts.get(primaryTrending.id) ?? 0} posts</span>
             </div>
@@ -427,7 +427,7 @@
                     </div>
                   </div>
                   <span class="font-mono text-sm">{centsForMarket(market.id)}</span>
-                  <span class="font-mono text-sm">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</span>
+                  <span class="font-mono text-sm">{formatProductAmount(tradeSummaries.get(market.id)?.grossVolume ?? 0, 'usd')}</span>
                   <span class="font-mono text-sm">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
                   <span class="font-mono text-sm">{discussionCounts.get(market.id) ?? 0}</span>
                 </a>
@@ -471,7 +471,7 @@
                       </a>
                     </td>
                     <td class="font-mono text-right">{centsForMarket(market.id)}</td>
-                    <td class="font-mono text-right">{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)}</td>
+                    <td class="font-mono text-right">{formatProductAmount(tradeSummaries.get(market.id)?.grossVolume ?? 0, 'usd')}</td>
                     <td class="font-mono text-right">{discussionCounts.get(market.id) ?? 0}</td>
                   </tr>
                 {/each}
@@ -569,7 +569,7 @@
               <a class="block py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketDiscussionUrl(entry.market.slug)}>
                 <p class="text-sm text-neutral-300 leading-relaxed">{truncateText(entry.discussion.content, 120)}</p>
                 <div class="mt-1 flex items-center gap-2 text-xs text-neutral-500">
-                  <span class="text-neutral-400">@{authorLabel(entry.discussion.pubkey)}</span>
+                  <span class="text-neutral-400">{authorLabel(entry.discussion.pubkey)}</span>
                   <span>in</span>
                   <span class="text-neutral-400 truncate">{entry.market.title}</span>
                   <span class="ml-auto shrink-0">{formatRelativeTime(entry.discussion.createdAt)}</span>

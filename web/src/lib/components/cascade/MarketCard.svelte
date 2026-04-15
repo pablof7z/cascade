@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { displayName, shortPubkey } from '$lib/ndk/format';
+  import { displayName } from '$lib/ndk/format';
+  import { formatProductAmount } from '$lib/cascade/format';
   import {
     formatProbability,
     formatRelativeTime,
-    formatSats,
     marketUrl,
     truncateText,
     type MarketRecord,
@@ -24,7 +24,7 @@
   } = $props();
 
   const profile = $derived(profiles[market.pubkey]);
-  const authorLabel = $derived(displayName(profile, shortPubkey(market.pubkey)));
+  const authorLabel = $derived(displayName(profile, 'Cascade user'));
 </script>
 
 <article class="grid gap-3 border-b border-neutral-800 py-4">
@@ -52,7 +52,7 @@
     </div>
     <div class="grid gap-1">
       <dt class="text-xs uppercase tracking-[0.08em] text-neutral-500">Volume</dt>
-      <dd class="m-0 font-mono text-sm text-white">{formatSats(tradeSummary?.grossVolume)}</dd>
+      <dd class="m-0 font-mono text-sm text-white">{formatProductAmount(tradeSummary?.grossVolume, 'usd')}</dd>
     </div>
     <div class="grid gap-1">
       <dt class="text-xs uppercase tracking-[0.08em] text-neutral-500">Trades</dt>

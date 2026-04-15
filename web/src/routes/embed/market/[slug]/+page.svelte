@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { buildTradeSummary, formatProbability, formatSats } from '$lib/ndk/cascade';
+  import { formatProductAmount } from '$lib/cascade/format';
+  import { buildTradeSummary, formatProbability } from '$lib/ndk/cascade';
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
@@ -23,7 +24,7 @@
       </div>
       <div style="background: #171717; padding: 0.75rem;">
         <div style="font-size: 0.72rem; color: #737373;">Volume</div>
-        <div style="font-family: 'JetBrains Mono', monospace;">{formatSats(summary.grossVolume)}</div>
+        <div style="font-family: 'JetBrains Mono', monospace;">{formatProductAmount(summary.grossVolume, 'usd')}</div>
       </div>
       <div style="background: #171717; padding: 0.75rem;">
         <div style="font-size: 0.72rem; color: #737373;">Trades</div>

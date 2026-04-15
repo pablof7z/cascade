@@ -40,6 +40,6 @@ test('thread detail page shows current market context and trading link', () => {
   assert.match(source, /const impliedProbability = \$derived\(\(tradeSummary\.latestPricePpm \?\? 500_000\) \/ 1_000_000\);/);
   assert.match(
     source,
-    /<div class="market-context-bar">[\s\S]*href="\/market\/\{data\.market\.slug\}"[\s\S]*\{data\.market\.title\}[\s\S]*\{formatProbability\(impliedProbability\)\} YES[\s\S]*Buy YES \/ Buy NO/
+    /<div class="market-context-bar">[\s\S]*href="\/market\/\{data\.market\.slug\}"[\s\S]*\{data\.market\.title\}[\s\S]*LONG \{formatProbability\(impliedProbability\)\}[\s\S]*Buy LONG \/ Buy SHORT/
   );
 });

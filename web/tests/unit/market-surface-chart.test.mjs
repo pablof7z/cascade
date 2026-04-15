@@ -46,61 +46,39 @@ test('charts tab last executed trade panel shows latest trade details and empty 
   assert.match(source, /<h3>Last executed trade<\/h3>/);
   assert.match(
     source,
-    /<h3>Last executed trade<\/h3>[\s\S]*\{#if latestTrade\}[\s\S]*<dt>Direction<\/dt>[\s\S]*latestTrade\.direction === 'long' \? 'YES' : 'NO'[\s\S]*latestTrade\.type === 'buy' \? 'Buy' : 'Sell'/
+    /<h3>Last executed trade<\/h3>[\s\S]*\{#if latestTrade\}[\s\S]*<dt>Direction<\/dt>[\s\S]*latestTrade\.direction === 'long' \? 'LONG' : 'SHORT'[\s\S]*latestTrade\.type === 'buy' \? 'Buy' : 'Sell'/
   );
   assert.match(source, /<dt>Price<\/dt>[\s\S]*priceCents\(latestTrade\.probability\)/);
   assert.match(
     source,
-    /<dt>Size<\/dt>[\s\S]*formatProductAmount\(latestTrade\.amount, latestTrade\.unit\)[\s\S]*productUnitLabel\(latestTrade\.unit\)/
+    /<dt>Size<\/dt>[\s\S]*formatProductAmount\(latestTrade\.amount, 'usd'\)[\s\S]*valueUnitLabel/
   );
   assert.match(source, /<dt>When<\/dt>[\s\S]*formatRelativeTime\(latestTrade\.createdAt\)/);
   assert.match(source, /\{:else\}[\s\S]*No trades yet\./);
-  assert.doesNotMatch(source, /<h3>Last executed trade<\/h3>[\s\S]*<dt>Current YES<\/dt>/);
-  assert.doesNotMatch(source, /<h3>Last executed trade<\/h3>[\s\S]*<dt>Current NO<\/dt>/);
+  assert.doesNotMatch(source, /<h3>Last executed trade<\/h3>[\s\S]*<dt>Current LONG<\/dt>/);
+  assert.doesNotMatch(source, /<h3>Last executed trade<\/h3>[\s\S]*<dt>Current SHORT<\/dt>/);
   assert.doesNotMatch(source, /<h3>Last executed trade<\/h3>[\s\S]*<dt>Current price<\/dt>/);
 });
 
-test('market surface presents prediction market copy as YES/NO while preserving internal long/short data model', () => {
+test('market surface presents prediction market copy as LONG/SHORT while preserving internal long/short data model', () => {
   const source = read('src/lib/components/cascade/MarketSurface.svelte');
 
-  const legacyVisibleCopy = [
-    'Strong LONG consensus',
-    'Most visible capital leans LONG. New flow needs fresh evidence rather than repetition.',
-    'Strong SHORT consensus',
-    'Most visible capital leans SHORT. A reversal needs a catalyst, not sentiment alone.',
-    'LONG is crowded. New buyers need information the market has not absorbed yet.',
-    'SHORT becomes more attractive if the current thesis is overstated.',
-    'SHORT is crowded. Further downside requires genuinely new evidence.',
-    'LONG offers value only if the current skepticism is wrong.',
-    'LONG works if the case is underpriced relative to current debate.',
-    'SHORT works if the visible enthusiasm is getting ahead of itself.',
-    'Visible pricing favors LONG right now.',
-    'Visible pricing favors SHORT right now.',
-    'LONG flow',
-    'SHORT flow',
-    'Current LONG',
-    'Current SHORT'
-  ];
-
-  for (const snippet of legacyVisibleCopy) {
-    assert.equal(source.includes(snippet), false, `expected visible copy to remove: ${snippet}`);
-  }
-
-  assert.match(source, /trade\.direction === 'long' \? 'YES' : 'NO'/);
-  assert.match(source, /latestTrade\.direction === 'long' \? 'YES' : 'NO'/);
-  assert.match(source, /trade\.direction === 'long' \? 'YES' : 'NO'/);
-  assert.match(source, /impliedProbability >= 0\.5 \? `\$\{priceCents\(impliedProbability\)\} YES leaning` : `\$\{priceCents\(oppositeProbability\)\} NO leaning`/);
-  assert.match(source, /latestTrade\.direction === 'long' \? 'YES' : 'NO'/);
-  assert.match(source, /market-header-side-label">YES<\/span>/);
-  assert.match(source, /<span>YES<\/span>[\s\S]*<strong class="positive">\{priceCents\(impliedProbability\)\}<\/strong>/);
-  assert.match(source, /<span>NO<\/span>[\s\S]*<strong class="negative">\{priceCents\(oppositeProbability\)\}<\/strong>/);
-  assert.match(source, /<dt>YES flow<\/dt>/);
-  assert.match(source, /<dt>NO flow<\/dt>/);
-  assert.match(source, /\{formatProbability\(impliedProbability\)\} YES/);
-  assert.match(source, /<span>YES share<\/span>/);
-  assert.match(source, /\{formatProbability\(flowLong\)\} YES/);
-  assert.match(source, /<span>NO share<\/span>/);
-  assert.match(source, /\{formatProbability\(flowShort\)\} NO/);
+  assert.match(source, /trade\.direction === 'long' \? 'LONG' : 'SHORT'/);
+  assert.match(source, /latestTrade\.direction === 'long' \? 'LONG' : 'SHORT'/);
+  assert.match(source, /impliedProbability >= 0\.5 \? `\$\{priceCents\(impliedProbability\)\} LONG leaning` : `\$\{priceCents\(oppositeProbability\)\} SHORT leaning`/);
+  assert.match(source, /market-header-side-label">LONG<\/span>/);
+  assert.match(source, /<span>LONG<\/span>[\s\S]*<strong class="positive">\{priceCents\(impliedProbability\)\}<\/strong>/);
+  assert.match(source, /<span>SHORT<\/span>[\s\S]*<strong class="negative">\{priceCents\(oppositeProbability\)\}<\/strong>/);
+  assert.match(source, /<dt>LONG flow<\/dt>/);
+  assert.match(source, /<dt>SHORT flow<\/dt>/);
+  assert.match(source, /\{formatProbability\(impliedProbability\)\} LONG/);
+  assert.match(source, /<span>LONG share<\/span>/);
+  assert.match(source, /\{formatProbability\(flowLong\)\} LONG/);
+  assert.match(source, /<span>SHORT share<\/span>/);
+  assert.match(source, /\{formatProbability\(flowShort\)\} SHORT/);
   assert.match(source, /<dt>Direction<\/dt>/);
   assert.match(source, /<dt>Price<\/dt>/);
+  assert.doesNotMatch(source, /market-header-side-label">YES<\/span>/);
+  assert.doesNotMatch(source, /<dt>YES flow<\/dt>/);
+  assert.doesNotMatch(source, /<dt>NO flow<\/dt>/);
 });

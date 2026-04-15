@@ -9,7 +9,7 @@
   import SharePopover from '$lib/components/SharePopover.svelte';
   import PaperTradePanel from '$lib/components/cascade/PaperTradePanel.svelte';
   import { isPaperEdition } from '$lib/cascade/config';
-  import { formatProductAmount, productUnitLabel } from '$lib/cascade/format';
+  import { formatProductAmount } from '$lib/cascade/format';
   import TabNav from '$lib/components/cascade/TabNav.svelte';
   import {
     buildDiscussionThreads,
@@ -28,7 +28,7 @@
     type MarketRecord,
     type TradeRecord
   } from '$lib/ndk/cascade';
-  import { displayName, shortPubkey } from '$lib/ndk/format';
+  import { displayName } from '$lib/ndk/format';
   import { ndk } from '$lib/ndk/client';
 
   let {
@@ -74,7 +74,7 @@
       .sort((left, right) => right.createdAt - left.createdAt);
   });
   const discussionThreads = $derived(buildDiscussionThreads(mergedDiscussions, market.id));
-  const author = $derived(displayName(profiles[market.pubkey], shortPubkey(market.pubkey)));
+  const author = $derived(displayName(profiles[market.pubkey], 'Cascade user'));
   const tabs = $derived([
     { href: marketUrl(market.slug), label: 'Overview', active: tab === 'overview' },
     { href: marketDiscussionUrl(market.slug), label: 'Discussion', active: tab === 'discussion' },
@@ -151,7 +151,7 @@
         kind: 'trade' as const,
         createdAt: trade.createdAt,
         headline: `${trade.type === 'buy' ? 'Bought' : 'Sold'} ${trade.direction === 'long' ? 'LONG' : 'SHORT'}`,
-        detail: `${formatProductAmount(trade.amount, trade.unit)} at ${formatProbability(trade.probability)}`
+        detail: `${formatProductAmount(trade.amount, 'usd')} at ${formatProbability(trade.probability)}`
       })),
       ...mergedDiscussions.map((discussion) => ({
         id: discussion.id,
@@ -227,7 +227,7 @@
           ? `${latestTrade.type === 'buy' ? 'Buy' : 'Sell'} on ${latestTrade.direction === 'long' ? 'LONG' : 'SHORT'}`
           : 'No visible fills yet',
         detail: latestTrade
-          ? `${formatProductAmount(latestTrade.amount, latestTrade.unit)} moved ${formatRelativeTime(latestTrade.createdAt)}.`
+          ? `${formatProductAmount(latestTrade.amount, 'usd')} moved ${formatRelativeTime(latestTrade.createdAt)}.`
           : 'This will update as soon as trade records are public.'
       },
       {
@@ -241,7 +241,7 @@
   });
 
   function authorLabel(pubkey: string): string {
-    return displayName(profiles[pubkey], shortPubkey(pubkey));
+    return displayName(profiles[pubkey], 'Cascade user');
   }
 
   function mergeRawEvents(seed: NostrEvent[], live: NDKEvent[]): NostrEvent[] {
@@ -389,7 +389,7 @@
         {:else if currentUser}
           <a class="btn btn-primary w-fit" href="/portfolio">Add funds to trade</a>
           <a href={marketActivityUrl(market.slug)}>See all trades on this market →</a>
-          <p class="trade-focus-copy"><small>Fund your portfolio via Lightning or card to take a position.</small></p>
+          <p class="trade-focus-copy"><small>Add funds to your portfolio to take a position.</small></p>
         {:else}
           <a class="btn btn-primary w-fit" href="/join?from=/market/{market.slug}">Take a position</a>
         {/if}
@@ -515,7 +515,7 @@
 
         {#if resolutionCriteria.length > 0}
           <div class="detail-header detail-header-tight">
-            <h3>Resolution</h3>
+            <h3>Market criteria</h3>
           </div>
 
           {#each resolutionCriteria as criteria}
@@ -568,7 +568,7 @@
                 <p>{formatRelativeTime(trade.createdAt)}</p>
               </div>
               <div class="dense-aside">
-                <span>{formatProductAmount(trade.amount, trade.unit)} {productUnitLabel(trade.unit)}</span>
+                <span>{formatProductAmount(trade.amount, 'usd')} {valueUnitLabel}</span>
                 <span>{formatProbability(trade.probability)}</span>
               </div>
             </div>
@@ -748,7 +748,7 @@
           </div>
           <div>
             <dt>Size</dt>
-            <dd>{formatProductAmount(latestTrade.amount, latestTrade.unit)} {productUnitLabel(latestTrade.unit)}</dd>
+            <dd>{formatProductAmount(latestTrade.amount, 'usd')} {valueUnitLabel}</dd>
           </div>
           <div>
             <dt>When</dt>

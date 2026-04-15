@@ -20,34 +20,39 @@ function read(relativePath) {
   return readFileSync(path.join(webRoot, relativePath), 'utf8');
 }
 
-test('prediction-market surfaces avoid visible LONG/SHORT copy in Svelte sources', () => {
-  const offenders = collectSvelteFiles(srcRoot)
-    .map((filePath) => {
-      const source = readFileSync(filePath, 'utf8');
-      const matches = [...source.matchAll(/\b(LONG|SHORT)\b/g)].map((match) => match[1]);
-      return matches.length > 0
-        ? `${path.relative(webRoot, filePath)}: ${matches.join(', ')}`
-        : null;
-    })
-    .filter(Boolean);
-
-  assert.deepEqual(offenders, []);
-});
-
-test('remaining prediction-market side labels use YES/NO while preserving long/short internals', () => {
+test('prediction-market surfaces keep visible LONG/SHORT copy in the active trading UI', () => {
   const expectations = [
-    ['src/lib/components/cascade/PortfolioPage.svelte', /position\.direction === 'long' \? 'YES' : 'NO'/],
-    ['src/lib/components/cascade/PaperTradePanel.svelte', /YES \{formatProbability\(yesProbability\)\}/],
-    ['src/lib/components/cascade/PaperTradePanel.svelte', /NO \{formatProbability\(noProbability\)\}/],
-    ['src/lib/components/cascade/PaperTradePanel.svelte', /currentPosition\.side === 'long' \? 'YES' : 'NO'/],
-    ['src/routes/activity/+page.svelte', /trade\.direction === 'long' \? 'YES' : 'NO'/],
-    ['src/routes/builder/+page.svelte', /<option value="long">YES<\/option>/],
-    ['src/routes/builder/+page.svelte', /<option value="short">NO<\/option>/],
-    ['src/routes/analytics/+page.svelte', /trade\.direction === 'long' \? 'YES' : 'NO'/],
-    ['src/routes/p/[identifier]/+page.svelte', /position\.direction === 'long' \? 'YES' : 'NO'/]
+    ['src/lib/components/cascade/PortfolioPage.svelte', /\{position\.direction === 'long' \? 'LONG' : 'SHORT'\}/],
+    ['src/lib/components/cascade/PaperTradePanel.svelte', /LONG \{formatProbability\(yesProbability\)\}/],
+    ['src/lib/components/cascade/PaperTradePanel.svelte', /SHORT \{formatProbability\(noProbability\)\}/],
+    ['src/lib/components/cascade/MarketSurface.svelte', /market-header-side-label">LONG<\/span>/],
+    ['src/routes/activity/+page.svelte', /trade\.direction === 'long' \? 'LONG' : 'SHORT'/],
+    ['src/routes/analytics/+page.svelte', /trade\.direction === 'long' \? 'LONG' : 'SHORT'/],
+    ['src/routes/p\/\[identifier\]\/\+page\.svelte', /LONG\/SHORT split/]
   ];
 
   for (const [relativePath, pattern] of expectations) {
     assert.match(read(relativePath), pattern, `${relativePath} should match ${pattern}`);
   }
+});
+
+test('remaining prediction-market side labels use LONG/SHORT while preserving long/short internals', () => {
+  const expectations = [
+    ['src/lib/components/cascade/PortfolioPage.svelte', /position\.direction === 'long' \? 'LONG' : 'SHORT'/],
+    ['src/lib/components/cascade/PaperTradePanel.svelte', /LONG \{formatProbability\(yesProbability\)\}/],
+    ['src/lib/components/cascade/PaperTradePanel.svelte', /SHORT \{formatProbability\(noProbability\)\}/],
+    ['src/lib/components/cascade/PaperTradePanel.svelte', /currentPosition\.side === 'long' \? 'LONG' : 'SHORT'/],
+    ['src/routes/activity/+page.svelte', /trade\.direction === 'long' \? 'LONG' : 'SHORT'/],
+    ['src/routes/builder/+page.svelte', /<option value="long">LONG<\/option>/],
+    ['src/routes/builder/+page.svelte', /<option value="short">SHORT<\/option>/],
+    ['src/routes/analytics/+page.svelte', /trade\.direction === 'long' \? 'LONG' : 'SHORT'/],
+    ['src/routes/p/[identifier]/+page.svelte', /position\.direction === 'long' \? 'LONG' : 'SHORT'/]
+  ];
+
+  for (const [relativePath, pattern] of expectations) {
+    assert.match(read(relativePath), pattern, `${relativePath} should match ${pattern}`);
+  }
+
+  assert.doesNotMatch(read('src/routes/builder/+page.svelte'), /<option value="long">YES<\/option>/);
+  assert.doesNotMatch(read('src/routes/builder/+page.svelte'), /<option value="short">NO<\/option>/);
 });

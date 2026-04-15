@@ -136,7 +136,7 @@
       : [];
 
     if (!issuedProofs.length && !changeProofs.length) {
-      throw new Error('trade_proofs_missing');
+      throw new Error("We couldn't restore that trade on this device.");
     }
 
     if (receipt.spentUnit && receipt.spentProofs?.length) {
@@ -310,7 +310,7 @@
       const lockedQuoteId = quote.quote_id;
       const spendProofs = selectLocalProofsForAmount(proofMintUrl(), 'usd', quote.spend_minor);
       if (!spendProofs.length) {
-        throw new Error('Not enough local USD funds to cover this trade.');
+        throw new Error('Not enough funds available on this device to cover this trade.');
       }
       const tradeSide = normalizeProductTradeSide(quote.side, buySide);
       const marketUnit = marketUnitForSide(tradeSide);
@@ -438,7 +438,7 @@
         quote.quantity_minor
       );
       if (!spendProofs.length) {
-        throw new Error(`Not enough local ${sellSide.toUpperCase()} funds to sell.`);
+        throw new Error(`Not enough ${sellSide.toUpperCase()} available on this device to sell.`);
       }
       const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
         proofMintUrl(),

@@ -2,11 +2,6 @@
 
 This is the current product-surface contract for Cascade.
 
-PENDING: `web/` is being cleaned up so the normal product UI exposes only product concepts.
-During this work, public market and analytics surfaces must stay USD-denominated, account-entry
-and portfolio copy must avoid protocol/custody plumbing, and `/relays` plus `/relay/:hostname`
-must stop shipping as normal public product pages.
-
 ## Authority Order
 
 Use these sources in order:
@@ -89,7 +84,8 @@ Supporting server routes:
 Expected behavior:
 
 - portfolio is browser-derived from local proofs, local trade history, and public market data
-- profile and identity surfaces avoid Nostr jargon in normal UX
+- join and login surfaces use product-language labels like `This browser`, `Recovery key`, and `Pair app` instead of protocol names or connection URIs
+- profile and identity surfaces avoid Nostr jargon in normal UX and never fall back to raw public-key strings in normal account chrome
 - social auth and NIP-05 are support surfaces, not the core product
 
 ### Secondary And Later Surfaces
@@ -103,10 +99,9 @@ These exist in code but should not redefine launch mechanics:
 - `/dashboard/field/:id`
 - `/dashboard/settings`
 - `/dashboard/treasury`
-- `/relays`
-- `/relay/:hostname`
 
 The dashboard family is a later workspace product line. It should stay clearly separated from the launch market-and-portfolio contract.
+Legacy relay browser routes now redirect away from the launch product surface and are not part of the public route contract.
 
 ## Core Flows
 
@@ -130,7 +125,7 @@ The dashboard family is a later workspace product line. It should stay clearly s
 1. User adds funds through Stripe or Lightning.
 2. Proofs are stored locally.
 3. Portfolio derives spendable balance and position state locally.
-4. Imports and exports remain proof-native.
+4. Funding status is shown with human-readable payment states rather than raw invoice or checkout identifiers.
 
 ## Architectural Boundaries
 

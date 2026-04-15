@@ -74,45 +74,50 @@ test('homepage source wires client-side search state, input UI, and filtered res
   assert.match(source, /let\s+searchQuery\s*=\s*\$state\(''\);/);
   assert.match(source, /const\s+filteredMarkets\s*=\s*\$derived\.by\(\(\)\s*=>\s*filterHomepageMarkets\(markets,\s*searchQuery\)\);/);
   assert.match(source, /const\s+hasActiveMarketSearch\s*=\s*\$derived\([^)]*searchQuery\.trim\(\)\.length\s*>\s*0[^)]*\);/);
-  assert.match(source, /<div class="mkts-search">[\s\S]*placeholder="Search markets…"[\s\S]*bind:value=\{searchQuery\}/);
-  assert.match(source, /mkts-search-count[\s\S]*\{searchResultCountLabel\}/);
-  assert.match(source, /\{#if hasActiveMarketSearch\}[\s\S]*\{#each filteredMarkets as market \(market\.id\)\}[\s\S]*\{:else\}[\s\S]*<h2>Most Active<\/h2>/);
+  assert.match(source, /<input[\s\S]*placeholder="Search markets…"/);
+  assert.match(source, /bind:value=\{searchQuery\}/);
+  assert.match(source, /\{#if hasActiveMarketSearch\}[\s\S]*\{searchResultCountLabel\}/);
+  assert.match(source, /\{#if filteredMarkets\.length > 0\}[\s\S]*\{#each filteredMarkets as market \(market\.id\)\}/);
+  assert.match(source, /\{:else\}[\s\S]*<h2 class="text-3xl font-bold tracking-tight">Most Active<\/h2>/);
 });
 
-test('homepage source uses how-it-works CTA and probability-driven YES/NO labels', () => {
+test('homepage source uses how-it-works CTA and probability-driven LONG/SHORT labels', () => {
   const source = read('src/routes/+page.svelte');
 
-  assert.match(source, /<a class="hero-secondary" href="\/how-it-works">How it works →<\/a>/);
+  assert.match(source, /<a class="text-sm text-neutral-400 hover:text-white transition-colors" href="\/how-it-works">How it works →<\/a>/);
   assert.match(
     source,
-    /<span class="featured-side">\{probabilityForMarket\(featuredMarket\.id\) >= 0\.5 \? 'YES' : 'NO'\}<\/span>/
+    /<span class="badge badge-success badge-outline">\{probabilityForMarket\(featuredMarket\.id\) >= 0\.5 \? 'LONG' : 'SHORT'\}<\/span>/
   );
   assert.match(
     source,
-    /<span class="lead-side">\{probabilityForMarket\(primaryTrending\.id\) >= 0\.5 \? 'YES' : 'NO'\}<\/span>/
+    /<span class="badge badge-success badge-outline">\{probabilityForMarket\(primaryTrending\.id\) >= 0\.5 \? 'LONG' : 'SHORT'\}<\/span>/
   );
 });
 
 test('homepage source keeps side panels dense with price and activity signals', () => {
   const source = read('src/routes/+page.svelte');
-  const underTheRadar = sectionBetween(source, '<h2>Under the radar</h2>', '<h2>Most Contested</h2>');
-  const mostContested = sectionBetween(source, '<h2>Most Contested</h2>', '<h2>New This Week</h2>');
-  const newThisWeek = sectionBetween(source, '<h2>New This Week</h2>', '<h2>Live Debate</h2>');
+  const underTheRadar = sectionBetween(
+    source,
+    '<h2 class="text-3xl font-bold tracking-tight">Under the radar</h2>',
+    '<h2 class="text-3xl font-bold tracking-tight">Most Contested</h2>'
+  );
+  const mostContested = sectionBetween(
+    source,
+    '<h2 class="text-3xl font-bold tracking-tight">Most Contested</h2>',
+    '<h2 class="text-3xl font-bold tracking-tight">New This Week</h2>'
+  );
+  const newThisWeek = sectionBetween(
+    source,
+    '<h2 class="text-3xl font-bold tracking-tight">New This Week</h2>',
+    '<h2 class="text-3xl font-bold tracking-tight">Live Debate</h2>'
+  );
 
-  assert.ok(
-    underTheRadar.includes(
-      '<span>{formatSats(tradeSummaries.get(market.id)?.grossVolume ?? 0)} vol · {discussionCounts.get(market.id) ?? 0} posts</span>'
-    )
-  );
-  assert.ok(
-    mostContested.includes(
-      '<span>Tight spread {spreadForMarket(market.id)} · {tradeSummaries.get(market.id)?.tradeCount ?? 0} trades</span>'
-    )
-  );
-  assert.ok(newThisWeek.includes('<span class="mono-cell">{centsForMarket(market.id)}</span>'));
-  assert.ok(
-    newThisWeek.includes(
-      '<span>{formatRelativeTime(market.createdAt)} · {tradeSummaries.get(market.id)?.tradeCount ?? 0} trades</span>'
-    )
-  );
+  assert.ok(underTheRadar.includes('{centsForMarket(market.id)}'));
+  assert.ok(underTheRadar.includes('{formatProductAmount(tradeSummaries.get(market.id)?.grossVolume ?? 0, \'usd\')}'));
+  assert.ok(underTheRadar.includes('{discussionCounts.get(market.id) ?? 0}'));
+  assert.ok(mostContested.includes('{spreadForMarket(topDisputed.id)}'));
+  assert.ok(mostContested.includes("{probabilityForMarket(topDisputed.id) >= 0.5 ? 'LONG' : 'SHORT'}"));
+  assert.ok(newThisWeek.includes("by {authorLabel(market.pubkey)} · {formatRelativeTime(market.createdAt)}"));
+  assert.ok(source.includes('<h2 class="text-3xl font-bold tracking-tight">Live Debate</h2>'));
 });

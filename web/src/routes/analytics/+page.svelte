@@ -1,10 +1,9 @@
 <script lang="ts">
-  import { formatProductAmount, productUnitLabel } from '$lib/cascade/format';
+  import { formatProductAmount } from '$lib/cascade/format';
   import {
     buildTradeSummary,
     formatProbability,
     formatRelativeTime,
-    formatSats,
     parseDiscussionEvent,
     parseMarketEvent,
     parseTradeEvent,
@@ -76,7 +75,7 @@
         id: trade.id,
         createdAt: trade.createdAt,
         kind: 'Trade',
-        detail: `${trade.direction === 'long' ? 'LONG' : 'SHORT'} · ${formatProductAmount(trade.amount, trade.unit)} ${productUnitLabel(trade.unit)}`
+        detail: `${trade.direction === 'long' ? 'LONG' : 'SHORT'} · ${formatProductAmount(trade.amount, 'usd')}`
       })),
       ...discussions.slice(0, 8).map((discussion) => ({
         id: discussion?.id ?? '',
@@ -117,7 +116,7 @@
   </div>
   <div>
     <span>Volume</span>
-    <strong>{formatProductAmount(visibleVolume, 'sat')} {productUnitLabel('sat')}</strong>
+    <strong>{formatProductAmount(visibleVolume, 'usd')}</strong>
   </div>
   <div>
     <span>Active Markets</span>
@@ -151,7 +150,7 @@
               <strong>{sanitizeMarketCopy(row.market.title)}</strong>
               <p>{formatRelativeTime(row.market.createdAt)}</p>
             </div>
-            <div class="mono-cell">{formatSats(row.summary.grossVolume)}</div>
+            <div class="mono-cell">{formatProductAmount(row.summary.grossVolume, 'usd')}</div>
             <div class="mono-cell">{formatProbability(row.summary.latestPricePpm ? row.summary.latestPricePpm / 1_000_000 : null)}</div>
             <div class="mono-cell">{row.discussionCount}</div>
           </a>

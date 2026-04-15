@@ -367,7 +367,7 @@
       : [];
 
     if (!issuedProofs.length && !changeProofs.length) {
-      throw new Error('seed_proofs_missing');
+      throw new Error("We couldn't restore the market launch on this device.");
     }
 
     if (receipt.spentUnit && receipt.spentProofs?.length) {
@@ -421,7 +421,7 @@
       const requestId = createSeedRequestId(eventId);
       const bootstrapEvent = await resolveBootstrapRawEvent(eventId, slug, rawEvent);
       if (!bootstrapEvent) {
-        throw new Error('Signed market event unavailable. Retry seeding after relay publication completes.');
+        throw new Error('This market is still processing. Try launching it again in a moment.');
       }
 
       const quoteResponse = await quoteBuyTrade({
@@ -558,12 +558,12 @@
       }
 
       await marketEvent.sign();
-      builderStatus = 'Publishing market to relays.';
+      builderStatus = 'Publishing market.';
       await marketEvent.publish();
       const rawEvent = marketEvent.rawEvent();
       const eventId = rawEvent.id || marketEvent.id;
       if (!eventId) {
-        throw new Error('Published market is missing an event id.');
+        throw new Error("We couldn't finish publishing this market. Try again.");
       }
 
       trackPendingCreatorMarket({

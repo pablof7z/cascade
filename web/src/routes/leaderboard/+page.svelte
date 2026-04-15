@@ -13,7 +13,7 @@
     type MarketRecord,
     type TradeRecord
   } from '$lib/ndk/cascade';
-  import { displayName, profileIdentifier, shortPubkey } from '$lib/ndk/format';
+  import { displayName, profileIdentifier } from '$lib/ndk/format';
   import type { PageProps } from './$types';
 
   type LeaderboardTab = 'Top Creators' | 'Top Traders' | 'Most Bookmarked';
@@ -113,7 +113,7 @@
   });
 
   function label(pubkey: string): string {
-    return displayName(profiles[pubkey], shortPubkey(pubkey));
+    return displayName(profiles[pubkey], 'Cascade user');
   }
 
   function profileHref(pubkey: string): string {

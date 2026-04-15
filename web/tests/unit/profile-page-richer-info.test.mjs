@@ -31,12 +31,12 @@ test('public profile helpers compute condensed position stats and entry price su
     total: 3,
     longCount: 2,
     shortCount: 1,
-    splitLabel: 'YES 2 · NO 1',
+    splitLabel: 'LONG 2 · SHORT 1',
     averageEntryPrice: (0.67 + 0.42 + 0.54) / 3
   });
   assert.equal(formatProfileProbability(stats.averageEntryPrice), '54.3%');
-  assert.equal(formatProfilePositionSummary(positions[0]), 'YES · 42 units @ 67%');
-  assert.equal(formatProfilePositionSummary(positions[1]), 'NO · 18 units @ 42%');
+  assert.equal(formatProfilePositionSummary(positions[0]), 'LONG · 42 units @ 67%');
+  assert.equal(formatProfilePositionSummary(positions[1]), 'SHORT · 18 units @ 42%');
 });
 
 test('public profile helpers build discussion rows for threads the user started', () => {
@@ -123,12 +123,12 @@ test('public profile page wires richer stats, entry pricing, and market links in
   assert.match(pageSource, /buildPublicProfilePositionStats/);
   assert.match(pageSource, /formatProfilePositionSummary\(position\)/);
   assert.match(pageSource, /<span>Positions<\/span>/);
-  assert.match(pageSource, /<span>YES\/NO split<\/span>/);
+  assert.match(pageSource, /<span>LONG\/SHORT split<\/span>/);
   assert.match(pageSource, /<span>Avg entry<\/span>/);
   assert.match(pageSource, /<h2>Discussions<\/h2>/);
   assert.match(pageSource, /discussionEntries/);
   assert.match(pageSource, /const positionMarketList = \$derived\(data\.positionMarkets as MarketRecord\[\]\);/);
-  assert.match(pageSource, /const positionMarketMap = \$derived\.by\(\(\) => \{[\s\S]*map\.set\(m\.id, m\);[\s\S]*\}\);/);
+  assert.match(pageSource, /const positionMarketMap = \$derived\.by\(\(\) => \{[\s\S]*for \(const m of positionMarketList\) map\.set\(m\.id, m\);[\s\S]*\}\);/);
   assert.match(pageSource, /\{@const positionMarket = positionMarketMap\.get\(position\.marketId\)\}[\s\S]*<a class="profile-row" href=\{positionMarket \? marketUrl\(positionMarket\.slug\) : undefined\}>/);
   assert.doesNotMatch(pageSource, /<div class="profile-kicker">Profile<\/div>/);
 

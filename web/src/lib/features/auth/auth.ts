@@ -71,7 +71,7 @@ export function authUserMeta(profile: NDKUserProfile | undefined, npub: string):
     return nip05;
   }
 
-  return npub.length > 16 ? `${npub.slice(0, 8)}...${npub.slice(-6)}` : npub || 'Cascade account';
+  return 'Cascade account';
 }
 
 export function authUserInitials(profile: NDKUserProfile | undefined): string {

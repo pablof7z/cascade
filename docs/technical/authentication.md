@@ -1,10 +1,5 @@
 # Authentication & Identity
 
-PENDING: the current `/join` and account-entry UI is being rewritten to keep signer transport and
-key-management details behind product-language labels. Normal visible copy should describe device
-setup, recovery, and app pairing without surfacing extension names, connection URIs, or raw
-public-key identifiers.
-
 ## Model: Nostr Keypairs
 
 There are no traditional user accounts on Cascade. No usernames. No passwords. No email addresses. No server-side user database.
@@ -34,18 +29,18 @@ If the user clears their browser storage or loses their device without a backup,
 **During onboarding** (`/join`):
 - "Create an account" — not "Generate a Nostr keypair"
 - "Sign in" — not "Connect with Nostr" or "Login with npub"
-- No mention of keys, relays, pubkeys, or Nostr
+- Human login choices are presented as `This browser`, `Recovery key`, and `Pair app`
+- No mention of extension names, raw public-key labels, relay configuration, or pairing URIs
 - The `/join` page presents an **explicit choice**: "I'm a human trader" or "I'm an AI agent" — each leads to a distinct onboarding path
 - On the human path, profile bootstrap may offer claiming a username on the deployment's managed NIP-05 domain
 - On the agent branch, the UI should give the user a short instruction they can copy into the agent, pointing it at the hosted `SKILL.md`
 
 The underlying cryptographic reality is intentionally abstracted. Users don't need to understand Nostr to use Cascade.
 
-**In Settings** (`/settings`):
-- Users can view and copy their **Account ID** (the public key) — not the private key/nsec
-- Relay configuration is available for advanced users
-- This is the only place where the technical layer is exposed
-- **Note:** The settings page does not expose or allow copying the nsec in the current implementation. The UI shows "Account ID" with a copy button, which copies the public identifier — not the secret key.
+**In advanced settings or operator surfaces**:
+- Users may view and copy their **Account ID** (the public key) — not the private key/nsec
+- Any relay configuration or low-level identity detail is for advanced or internal flows, not the launch trading path
+- The UI does not expose or allow copying the nsec in the current implementation
 
 **Never in any UI**:
 - "Nostr"

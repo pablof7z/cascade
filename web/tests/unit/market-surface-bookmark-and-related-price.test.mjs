@@ -44,12 +44,12 @@ test('market surface renders the share popover in the header actions for all use
   );
 });
 
-test('related markets show YES price with a 50¢ fallback instead of timestamp and author metadata', () => {
+test('related markets show LONG price with a 50¢ fallback instead of timestamp and author metadata', () => {
   const source = read('src/lib/components/cascade/MarketSurface.svelte');
   const relatedBlock = source.match(/\{#if relatedMarkets\.length > 0\}[\s\S]*?\{\/if\}/)?.[0] ?? '';
 
   assert.match(relatedBlock, /<h3>More markets<\/h3>/);
-  assert.match(relatedBlock, /<span class="positive">\{priceCents\(\(related\.latestPricePpm \?\? 500_000\) \/ 1_000_000\)\} YES<\/span>/);
+  assert.match(relatedBlock, /<span class="positive">\{priceCents\(\(related\.latestPricePpm \?\? 500_000\) \/ 1_000_000\)\} LONG<\/span>/);
   assert.doesNotMatch(relatedBlock, /formatRelativeTime\(related\.createdAt\)/);
   assert.doesNotMatch(relatedBlock, /authorLabel\(related\.pubkey\)/);
 });

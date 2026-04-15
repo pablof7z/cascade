@@ -6,7 +6,7 @@
     formatProfilePositionSummary,
     formatProfileProbability
   } from '$lib/cascade/profile';
-  import { displayName, shortPubkey } from '$lib/ndk/format';
+  import { displayName } from '$lib/ndk/format';
   import {
     formatRelativeTime,
     marketUrl,
@@ -36,7 +36,7 @@
   const positionMarketList = $derived(data.positionMarkets as MarketRecord[]);
   const positionList = $derived(data.positions as PositionRecord[]);
   const discussionList = $derived(data.discussions as DiscussionRecord[]);
-  const profileLabel = $derived(displayName(resolvedProfile, shortPubkey(resolvedPubkey)));
+  const profileLabel = $derived(displayName(resolvedProfile, 'Cascade user'));
   const relatedMarketList = $derived.by(() => {
     const deduped = new Map<string, MarketRecord>();
     for (const market of [...marketList, ...discussionMarketList]) {

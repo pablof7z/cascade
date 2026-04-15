@@ -20,7 +20,8 @@ export function formatProductAmount(
   value: number | null | undefined,
   unit: string | null | undefined = null
 ): string {
-  if (unit?.toLowerCase() === 'usd' || isPaperEdition()) {
+  const normalizedUnit = unit?.toLowerCase();
+  if (normalizedUnit === 'usd' || normalizedUnit === 'sat' || normalizedUnit === 'msat' || isPaperEdition()) {
     return formatUsdMinor(value);
   }
 
@@ -30,8 +31,9 @@ export function formatProductAmount(
 }
 
 export function productUnitLabel(unit: string | null | undefined = null): string {
-  if (unit?.toLowerCase() === 'usd' || isPaperEdition()) {
+  const normalizedUnit = unit?.toLowerCase();
+  if (normalizedUnit === 'usd' || normalizedUnit === 'sat' || normalizedUnit === 'msat' || isPaperEdition()) {
     return 'USD';
   }
-  return 'tokens';
+  return 'USD';
 }

@@ -316,7 +316,7 @@
       });
 
       if (!response.ok) {
-        throw new Error(await readResponseError(response, "Couldn't clear your NIP-05 handle."));
+        throw new Error(await readResponseError(response, "Couldn't clear your verified handle."));
       }
 
       managedNip05Status = 'idle';

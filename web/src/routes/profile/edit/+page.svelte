@@ -508,7 +508,7 @@
 
         <div class="grid gap-4">
           <label class="grid gap-2">
-            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">NIP-05</span>
+            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Verified handle</span>
             <input class="input input-bordered" bind:value={nip05} oninput={() => { profileTouched = true; }} placeholder="you@example.com" />
           </label>
 

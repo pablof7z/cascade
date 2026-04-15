@@ -1,5 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import CopyButton from '$lib/components/wallet/CopyButton.svelte';
+  import QRCode from '$lib/components/wallet/QRCode.svelte';
   import {
     createStripeFunding,
     fetchPortfolioFundingRequestStatus,
@@ -41,7 +43,6 @@
   } from '$lib/wallet/cashuMint';
   import {
     addLocalProofs,
-    listLocalProofs,
     listLocalProofWallets,
     localProofBalance
   } from '$lib/wallet/localProofs';
@@ -72,7 +73,6 @@
   const currentUser = $derived(ndk.$currentUser);
   const paperEdition = isPaperEdition();
   const stripeFundingEnabled = isStripeFundingEnabled();
-  const editionLabel = paperEdition ? 'Signet' : 'Mainnet';
   const portfolioLabel = paperEdition ? 'practice portfolio' : 'portfolio';
 
   const proofUnit = 'usd';
@@ -85,7 +85,6 @@
   let status = $state('');
   let fundingAmount = $state(paperEdition ? '10000' : '2500');
   let localBalanceMinor = $state(0);
-  let localProofCount = $state(0);
   let localPositions = $state<LocalPortfolioPosition[]>([]);
   let localPositionValueMinor = $state(0);
   let pendingFundings = $state<LocalPendingFunding[]>([]);
@@ -98,7 +97,6 @@
   function refreshLocalProofSummary() {
     const mintUrl = proofMintUrl();
     localBalanceMinor = localProofBalance(mintUrl, proofUnit);
-    localProofCount = listLocalProofs(mintUrl, proofUnit).length;
   }
 
   function refreshLocalFundingState() {
@@ -242,15 +240,15 @@
     const configuredReason =
       rail === 'stripe' ? runtime.funding.stripe.reason : runtime.funding.lightning.reason;
     if (configuredReason === 'stripe_fundings_unavailable') {
-      return 'Stripe funding is not configured for this edition yet.';
+      return 'Card funding is not available right now.';
     }
     if (configuredReason === 'lightning_fundings_unavailable') {
-      return 'Lightning funding is not configured for this edition yet.';
+      return 'Lightning funding is not available right now.';
     }
 
     return rail === 'stripe'
-      ? 'Stripe funding is unavailable for this edition right now.'
-      : 'Lightning funding is unavailable for this edition right now.';
+      ? 'Card funding is unavailable right now.'
+      : 'Lightning funding is unavailable right now.';
   }
 
   async function refreshPortfolioView() {
@@ -268,9 +266,8 @@
     if (!proofs?.length) return false;
     const snapshot = addLocalProofs(proofMintUrl(), proofUnit, proofs);
     localBalanceMinor = snapshot.proofs.reduce((sum, proof) => sum + proof.amount, 0);
-    localProofCount = snapshot.proofs.length;
     void loadLocalPositionMarks();
-    status = `${sourceLabel} added ${formatUsdMinor(proofs.reduce((sum, proof) => sum + proof.amount, 0))} to your browser-local funds.`;
+    status = `${sourceLabel} added ${formatUsdMinor(proofs.reduce((sum, proof) => sum + proof.amount, 0))} to this portfolio.`;
     return true;
   }
 
@@ -307,7 +304,30 @@
   }
 
   function fundingLabel(rail: string): string {
-    return rail === 'stripe' ? 'Stripe funding' : 'Lightning funding';
+    return rail === 'stripe' ? 'card payment' : 'Lightning payment';
+  }
+
+  function fundingRailLabel(rail: string): string {
+    return rail === 'stripe' ? 'Card' : 'Lightning';
+  }
+
+  function fundingStatusLabel(status: string, rail: string): string {
+    switch (status) {
+      case 'invoice_pending':
+        return 'Waiting for payment';
+      case 'pending':
+        return rail === 'stripe' ? 'Checkout open' : 'Waiting for payment';
+      case 'paid':
+        return 'Payment received';
+      case 'complete':
+        return 'Funds added';
+      case 'review_required':
+        return 'Under review';
+      case 'failed':
+        return 'Failed';
+      default:
+        return status.replace(/_/g, ' ');
+    }
   }
 
   async function recoverLightningQuote(trackedFunding: PendingFundingRecord) {
@@ -327,7 +347,7 @@
         error instanceof Error ? error.message : 'Lightning funding recovery failed.';
       if (message === 'wallet_funding_request_in_progress') {
         if (!trackedFunding.pendingNotified) {
-          status = `Recovered pending ${fundingLabel(trackedFunding.rail).toLowerCase()} for ${formatUsdMinor(trackedFunding.amountMinor)}.`;
+          status = `${fundingRailLabel(trackedFunding.rail)} payment still pending for ${formatUsdMinor(trackedFunding.amountMinor)}.`;
           markPendingFundingNotified(trackedFunding.id);
         }
         return null;
@@ -354,11 +374,11 @@
 
     const amountMinor = Number.parseInt(fundingAmount, 10) || 0;
     if (amountMinor <= 0) {
-      errorMessage = 'Enter a Lightning funding amount greater than zero.';
+      errorMessage = 'Enter a Lightning amount greater than zero.';
       return;
     }
 
-    status = `Creating a Lightning deposit for ${formatUsdMinor(amountMinor)}.`;
+    status = `Preparing a Lightning payment for ${formatUsdMinor(amountMinor)}.`;
     errorMessage = '';
     const requestId = crypto.randomUUID();
     trackPendingFunding({
@@ -380,13 +400,13 @@
         invoice: quote.request
       });
       refreshLocalFundingState();
-      status = `Created a Lightning funding quote for ${formatUsdMinor(amountMinor)}.`;
+      status = `Lightning payment ready for ${formatUsdMinor(amountMinor)}.`;
       await reconcilePendingFundings();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Lightning funding quote creation failed.';
       if (message === 'wallet_funding_request_in_progress') {
-        status = `Recovering the Lightning funding quote for ${formatUsdMinor(amountMinor)}.`;
+        status = `Restoring your Lightning payment for ${formatUsdMinor(amountMinor)}.`;
       } else {
         clearPendingFunding(requestId);
         errorMessage = formatSignetFundingError(message);
@@ -408,11 +428,11 @@
 
     const amountMinor = Number.parseInt(fundingAmount, 10) || 0;
     if (amountMinor <= 0) {
-      errorMessage = 'Enter a Stripe funding amount greater than zero.';
+      errorMessage = 'Enter a card funding amount greater than zero.';
       return;
     }
 
-    status = `Creating Stripe funding for ${formatUsdMinor(amountMinor)}.`;
+    status = `Preparing card checkout for ${formatUsdMinor(amountMinor)}.`;
     errorMessage = '';
     const requestId = crypto.randomUUID();
     trackPendingFunding({
@@ -458,21 +478,21 @@
         });
         clearPendingFunding(requestId);
         refreshLocalFundingState();
-        status = `Stripe funding settled for ${formatUsdMinor(amountMinor)}. Claiming browser-local funds for card funding is not enabled yet.`;
+        status = `Card payment confirmed for ${formatUsdMinor(amountMinor)}. Adding funds on this device is not available for card payments yet.`;
         return;
       }
 
-      status = `Created Stripe funding for ${formatUsdMinor(amountMinor)}.`;
+      status = `Card checkout ready for ${formatUsdMinor(amountMinor)}.`;
       if (browser && funding.checkout_url) {
         window.location.assign(funding.checkout_url);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Stripe funding creation failed.';
       if (message === 'wallet_funding_request_in_progress') {
-        status = `Recovering Stripe funding for ${formatUsdMinor(amountMinor)}.`;
+        status = `Restoring card checkout for ${formatUsdMinor(amountMinor)}.`;
       } else if (message === 'stripe_fundings_unavailable') {
         clearPendingFunding(requestId);
-        errorMessage = 'Stripe funding is not configured for this edition yet.';
+        errorMessage = 'Card funding is not available right now.';
         status = '';
       } else {
         clearPendingFunding(requestId);
@@ -487,7 +507,7 @@
       return;
     }
 
-    status = 'Refreshing pending funding requests.';
+    status = 'Refreshing payment status.';
     errorMessage = '';
     await reconcilePendingFundings();
   }
@@ -530,7 +550,7 @@
               invoice: quote.request
             });
             if (!trackedFunding.pendingNotified) {
-              status = `Recovered pending ${fundingLabel(trackedFunding.rail).toLowerCase()} for ${formatUsdMinor(trackedFunding.amountMinor)}.`;
+              status = `${fundingRailLabel(trackedFunding.rail)} payment still pending for ${formatUsdMinor(trackedFunding.amountMinor)}.`;
               markPendingFundingNotified(trackedFunding.id);
             }
             continue;
@@ -584,7 +604,7 @@
               });
               clearPendingFunding(trackedFunding.id);
               walletNeedsRefresh = true;
-              status = `Recovered issued Lightning funding for ${formatUsdMinor(trackedFunding.amountMinor)}, but this browser no longer has the local recovery data.`;
+              status = `Lightning payment completed for ${formatUsdMinor(trackedFunding.amountMinor)}, but this device can no longer restore those funds automatically.`;
               continue;
             }
 
@@ -620,7 +640,7 @@
 
           if (requestStatus.status === 'pending') {
             if (!trackedFunding.pendingNotified) {
-              status = `Recovered pending ${fundingLabel(trackedFunding.rail).toLowerCase()} for ${formatUsdMinor(trackedFunding.amountMinor)}.`;
+              status = `${fundingRailLabel(trackedFunding.rail)} payment still pending for ${formatUsdMinor(trackedFunding.amountMinor)}.`;
               markPendingFundingNotified(trackedFunding.id);
             }
             continue;
@@ -677,7 +697,7 @@
             checkoutExpiresAt: funding.checkout_expires_at ?? undefined
           });
           if (!trackedFunding.pendingNotified) {
-            status = `Recovered pending ${fundingLabel(funding.rail).toLowerCase()} for ${formatUsdMinor(funding.amount_minor)}.`;
+            status = `${fundingRailLabel(funding.rail)} payment still pending for ${formatUsdMinor(funding.amount_minor)}.`;
             markPendingFundingNotified(trackedFunding.id);
           }
           continue;
@@ -701,12 +721,12 @@
         walletNeedsRefresh = true;
 
         if (funding.status === 'complete') {
-          status = `Recovered ${fundingLabel(funding.rail).toLowerCase()} settlement for ${formatUsdMinor(funding.amount_minor)}. Browser-local fund claiming for this rail is not enabled yet.`;
+          status = `Payment confirmed for ${formatUsdMinor(funding.amount_minor)}. This device cannot finish adding those funds automatically for that payment method yet.`;
         } else {
           status =
             funding.status === 'review_required'
-              ? `Recovered ${fundingLabel(funding.rail).toLowerCase()} under review for ${formatUsdMinor(funding.amount_minor)}. No funds were issued.`
-              : `Recovered ${funding.status.replace(/_/g, ' ')} ${fundingLabel(funding.rail).toLowerCase()} for ${formatUsdMinor(funding.amount_minor)}.`;
+              ? `${fundingRailLabel(funding.rail)} payment is under review for ${formatUsdMinor(funding.amount_minor)}. No funds were added.`
+              : `${fundingRailLabel(funding.rail)} payment ${funding.status.replace(/_/g, ' ')} for ${formatUsdMinor(funding.amount_minor)}.`;
         }
       } catch (error) {
         console.error('pending_funding_reconcile_failed', trackedFunding, error);
@@ -751,16 +771,16 @@
     <div class="eyebrow">Portfolio</div>
     <h1>Your portfolio</h1>
     <p>
-      Your funds are stored in this browser. Your balance is liquid and ready to trade. Current
-      position value is marked from public market prices, and exact sell proceeds can differ based
-      on trade size.
+      This portfolio tracks the cash and positions available on this device. Cash is ready to
+      trade, and position values follow current public market prices. Exact withdrawal proceeds can
+      differ based on trade size.
     </p>
   </header>
 
   {#if !currentUser}
     <section class="wallet-panel">
       <h2>Connect to view your portfolio</h2>
-      <p class="muted">Your positions, your P&amp;L, this device.</p>
+      <p class="muted">Track your cash, positions, and current value from this device.</p>
       <a class="btn btn-primary w-fit" href="/join">Connect</a>
     </section>
   {:else}
@@ -768,7 +788,7 @@
       <article class="wallet-panel">
         <span class="label">Your balance</span>
         <strong>{formatUsdMinor(localBalanceMinor)}</strong>
-        <p class="muted">Your holdings in this browser.</p>
+        <p class="muted">Cash available to trade from this device.</p>
       </article>
 
       <article class="wallet-panel">
@@ -776,9 +796,9 @@
         <strong>{formatUsdMinor(displayedPositionValueMinor)}</strong>
         <p class="muted">
           {#if usingLocalPositionMarks}
-            Derived from local market positions, the browser-local trade book, and current public market prices.
+            Estimated from your current positions on this device and current public market prices.
           {:else}
-            No local holdings found in this browser yet.
+            No positions found on this device yet.
           {/if}
         </p>
       </article>
@@ -787,7 +807,7 @@
         <span class="label">Current Value</span>
         <strong>{formatUsdMinor(displayedTotalValueMinor)}</strong>
         <p class="muted">
-          Cash plus current position marks. Exact sale proceeds can differ based on trade size.
+          Cash plus current position marks. Exact withdrawal proceeds can differ based on trade size.
         </p>
       </article>
     </section>
@@ -799,7 +819,7 @@
           <p class="muted">
             Add funds to your balance with Stripe or Lightning.
             {#if paperEdition}
-              In practice mode, funding follows the normal pending-funding lifecycle. Limit {formatUsdMinor(signetFundingSingleLimitMinor)}
+              In practice mode, each payment is capped at {formatUsdMinor(signetFundingSingleLimitMinor)}
               per funding request and {formatUsdMinor(signetFundingWindowLimitMinor)} per 24 hours.
             {/if}
           </p>
@@ -839,7 +859,7 @@
           onclick={createLightningFunding}
           type="button"
         >
-          Create Lightning invoice
+          Add funds with Lightning
         </button>
       </div>
 
@@ -850,13 +870,19 @@
               <div class="history-copy">
                 <strong>{formatUsdMinor(funding.amount_minor)}</strong>
                 <p class="muted">
-                  {funding.rail} · {funding.status}
+                  {fundingRailLabel(funding.rail)} · {fundingStatusLabel(funding.status, funding.rail)}
                 </p>
                 {#if funding.invoice}
-                  <code>{funding.invoice}</code>
-                {/if}
-                {#if funding.checkout_session_id}
-                  <p class="muted">Checkout session {funding.checkout_session_id}</p>
+                  <div class="funding-payment-card">
+                    <QRCode value={funding.invoice} size={128} />
+                    <div class="funding-payment-copy">
+                      <span>Payment code</span>
+                      <div class="proof-transfer-actions">
+                        <a class="btn btn-outline" href={`lightning:${funding.invoice}`}>Open wallet</a>
+                        <CopyButton text={funding.invoice} label="Copy payment code" />
+                      </div>
+                    </div>
+                  </div>
                 {/if}
               </div>
               <div class="proof-transfer-actions">
@@ -871,7 +897,7 @@
           {/each}
         </div>
       {:else}
-        <p class="muted">No pending funding requests.</p>
+        <p class="muted">No pending payments.</p>
       {/if}
     </section>
 
@@ -881,9 +907,9 @@
           <h2>Open positions</h2>
           <p class="muted">
             {#if usingLocalPositionMarks}
-              Position quantity comes from local holdings. Cost basis comes from trades executed in this browser. Current USD value uses public market prices.
+              Position size comes from what this device can withdraw right now. Cost basis comes from trades placed here. Current value uses public market prices.
             {:else}
-              No local holdings found in this browser yet.
+              No positions found on this device yet.
             {/if}
           </p>
         </div>
@@ -931,7 +957,7 @@
             <div class="history-row">
               <div>
                 <strong>{formatUsdMinor(event.amountMinor)}</strong>
-                <p class="muted">{event.rail} · {event.status}</p>
+                <p class="muted">{fundingRailLabel(event.rail)} · {fundingStatusLabel(event.status, event.rail)}</p>
               </div>
               <span class="muted">{new Date(event.createdAt).toLocaleString()}</span>
             </div>
@@ -1035,17 +1061,37 @@
     gap: 0.35rem;
   }
 
-  .history-copy code {
-    overflow-wrap: anywhere;
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-  }
-
   .position-copy,
   .position-metrics {
     display: grid;
     gap: 0.35rem;
+  }
+
+  .funding-payment-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 0;
+  }
+
+  .funding-payment-copy {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .funding-payment-copy > span {
+    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .proof-transfer-actions {
+    display: grid;
+    grid-auto-flow: column;
+    gap: 0.75rem;
+    align-items: center;
   }
 
   .position-metrics {
@@ -1088,12 +1134,17 @@
       align-items: flex-start;
     }
 
-    .proof-transfer-actions {
-      grid-template-columns: 1fr;
-    }
-
     .position-metrics {
       justify-items: start;
+    }
+
+    .proof-transfer-actions {
+      grid-auto-flow: row;
+    }
+
+    .funding-payment-card {
+      align-items: flex-start;
+      flex-direction: column;
     }
   }
 </style>

@@ -16,11 +16,12 @@ test('market detail uses take-a-position CTA for new traders', async ({ page }) 
   await expect(page.getByRole('link', { name: 'Trade this market' })).toHaveCount(0);
 });
 
-test('market detail keeps trading units in Cashu token terms', async ({ page }) => {
+test('market detail keeps trading units in USD product terms', async ({ page }) => {
   await gotoFirstMarket(page);
 
   await expect(page.getByText(/sats/i)).toHaveCount(0);
-  await expect(page.getByText(/tokens/i).first()).toBeVisible();
+  await expect(page.getByText(/tokens/i)).toHaveCount(0);
+  await expect(page.getByText(/\bUSD\b/).first()).toBeVisible();
 });
 
 test('portfolio signed-out state uses friendly connection copy', async ({ page }) => {

@@ -80,7 +80,7 @@
       await sessions.login(new NDKNip07Signer());
       finishLogin();
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : "Couldn't log in with the extension.";
+      error = caught instanceof Error ? caught.message : "Couldn't sign in in this browser.";
     } finally {
       pending = false;
     }
@@ -96,7 +96,7 @@
       await sessions.login(new NDKPrivateKeySigner(privateKey.trim()));
       finishLogin();
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : "Couldn't log in with that key.";
+      error = caught instanceof Error ? caught.message : "Couldn't sign in with that recovery key.";
     } finally {
       pending = false;
     }
@@ -147,7 +147,7 @@
       await sessions.login(new NDKNip46Signer(ndk, bunkerUri.trim()));
       finishLogin();
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : "Couldn't use that connection link.";
+      error = caught instanceof Error ? caught.message : "Couldn't use that pairing link.";
     } finally {
       connectingBunker = false;
     }
@@ -186,9 +186,9 @@
       <div class="auth-dialog-body">
         <Tabs.Root bind:value={mode}>
           <Tabs.List class="auth-switcher" aria-label="Login methods">
-            <Tabs.Trigger value="extension" class="auth-switcher-button">Extension</Tabs.Trigger>
-            <Tabs.Trigger value="private-key" class="auth-switcher-button">Secret key</Tabs.Trigger>
-            <Tabs.Trigger value="remote" class="auth-switcher-button">Another app</Tabs.Trigger>
+            <Tabs.Trigger value="extension" class="auth-switcher-button">This browser</Tabs.Trigger>
+            <Tabs.Trigger value="private-key" class="auth-switcher-button">Recovery key</Tabs.Trigger>
+            <Tabs.Trigger value="remote" class="auth-switcher-button">Pair app</Tabs.Trigger>
           </Tabs.List>
 
           <Tabs.Content value="extension" class="auth-mode-panel">

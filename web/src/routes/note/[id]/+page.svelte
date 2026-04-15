@@ -277,12 +277,12 @@
 
 {#if missing}
   <section class="article-container">
-    <h1>{browser && fetchedEvent.loading ? 'Loading this post...' : 'This post is not available right now'}</h1>
-    <p class="muted" style="margin: 0;">
-      {browser && fetchedEvent.loading
-        ? 'Trying to load it directly from relays.'
+      <h1>{browser && fetchedEvent.loading ? 'Loading this post...' : 'This post is not available right now'}</h1>
+      <p class="muted" style="margin: 0;">
+        {browser && fetchedEvent.loading
+        ? 'Trying a fresh network fetch.'
         : 'It may have moved, been deleted, or not synced yet.'}
-    </p>
+      </p>
   </section>
 {:else if event}
   <section class="article-container">

@@ -1,10 +1,9 @@
 <script lang="ts">
   import type { NDKUserProfile } from '@nostr-dev-kit/ndk';
-  import { formatProductAmount, productUnitLabel } from '$lib/cascade/format';
+  import { formatProductAmount } from '$lib/cascade/format';
   import {
     formatProbability,
     formatRelativeTime,
-    formatSats,
     marketUrl,
     parseDiscussionEvent,
     parseMarketEvent,
@@ -14,7 +13,7 @@
     type MarketRecord,
     type TradeRecord
   } from '$lib/ndk/cascade';
-  import { displayName, shortPubkey } from '$lib/ndk/format';
+  import { displayName } from '$lib/ndk/format';
   import type { PageProps } from './$types';
 
   type Filter = 'All' | 'New Markets' | 'Trades' | 'Discussion';
@@ -48,7 +47,7 @@
       createdAt: market.createdAt,
       label: 'Opened',
       title: sanitizeMarketCopy(market.title),
-      subtitle: displayName(profiles[market.pubkey], shortPubkey(market.pubkey)),
+      subtitle: displayName(profiles[market.pubkey], 'Cascade user'),
       href: marketUrl(market.slug)
     }));
   });
@@ -62,7 +61,7 @@
         createdAt: trade.createdAt,
         label: trade.type === 'buy' ? 'Bought' : 'Sold',
         title: market ? sanitizeMarketCopy(market.title) : trade.marketId,
-        subtitle: `${trade.direction === 'long' ? 'LONG' : 'SHORT'} · ${formatProductAmount(trade.amount, trade.unit)} ${productUnitLabel(trade.unit)} · ${formatProbability(trade.probability)}`,
+        subtitle: `${trade.direction === 'long' ? 'LONG' : 'SHORT'} · ${formatProductAmount(trade.amount, 'usd')} · ${formatProbability(trade.probability)}`,
         href: market ? marketUrl(market.slug) : '/activity'
       };
     });
@@ -77,7 +76,7 @@
         createdAt: discussion.createdAt,
         label: 'Discussion',
         title: discussion.subject || (market ? sanitizeMarketCopy(market.title) : discussion.marketId),
-        subtitle: `${market ? sanitizeMarketCopy(market.title) : discussion.marketId} · ${displayName(profiles[discussion.pubkey], shortPubkey(discussion.pubkey))}`,
+        subtitle: `${market ? sanitizeMarketCopy(market.title) : discussion.marketId} · ${displayName(profiles[discussion.pubkey], 'Cascade user')}`,
         href: market ? `${marketUrl(market.slug)}/discussion` : '/activity'
       };
     });

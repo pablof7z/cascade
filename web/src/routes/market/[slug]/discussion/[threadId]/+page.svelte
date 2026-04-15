@@ -3,7 +3,7 @@
   import { invalidateAll } from '$app/navigation';
   import type { DiscussionThread } from '$lib/ndk/cascade';
   import { buildThreadReplyTags, buildTradeSummary, formatProbability, formatRelativeTime, marketDiscussionUrl } from '$lib/ndk/cascade';
-  import { displayName, shortPubkey } from '$lib/ndk/format';
+  import { displayName } from '$lib/ndk/format';
   import { ndk } from '$lib/ndk/client';
   import type { PageProps } from './$types';
 
@@ -14,7 +14,7 @@
   const impliedProbability = $derived((tradeSummary.latestPricePpm ?? 500_000) / 1_000_000);
 
   function authorLabel(pubkey: string): string {
-    return displayName(data.profiles[pubkey], shortPubkey(pubkey));
+    return displayName(data.profiles[pubkey], 'Cascade user');
   }
 
   let replyBody = $state('');

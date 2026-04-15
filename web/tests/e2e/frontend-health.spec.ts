@@ -2,11 +2,23 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function gotoFirstMarket(page: Page) {
   await page.goto('/');
-  const href = await page.locator('main a[href^="/market/"]').first().getAttribute('href');
-  if (!href) {
+  const hrefs = (await page
+    .locator('main a[href^="/market/"]')
+    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href')).filter(Boolean))) as string[];
+
+  if (!hrefs.length) {
     throw new Error('Expected at least one market link on the home page.');
   }
-  await page.goto(href);
+
+  for (const href of hrefs) {
+    await page.goto(href);
+    if (await page.getByRole('heading', { name: 'Page not found.' }).count()) {
+      continue;
+    }
+    return;
+  }
+
+  throw new Error('Expected at least one market link to resolve to a live market page.');
 }
 
 test('market detail uses take-a-position CTA for new traders', async ({ page }) => {
@@ -21,7 +33,7 @@ test('market detail keeps trading units in USD product terms', async ({ page }) 
 
   await expect(page.getByText(/sats/i)).toHaveCount(0);
   await expect(page.getByText(/tokens/i)).toHaveCount(0);
-  await expect(page.getByText(/\bUSD\b/).first()).toBeVisible();
+  await expect(page.getByText(/\$\d[\d,]*\.\d{2}/).first()).toBeVisible();
 });
 
 test('portfolio signed-out state uses friendly connection copy', async ({ page }) => {

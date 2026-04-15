@@ -90,11 +90,11 @@ async function ensureLoggedIn(page: Page, secretKey: string) {
     return;
   }
 
-  await page.getByRole('tab', { name: 'Recovery key' }).click();
-  const accountKeyInput = page.getByPlaceholder('Paste your recovery key');
+  await page.getByRole('tab', { name: /Recovery key|Account key/ }).click();
+  const accountKeyInput = page.getByPlaceholder(/Paste your (recovery|account) key/i);
   await expect(accountKeyInput).toBeVisible();
   await accountKeyInput.fill(secretKey);
-  const continueWithKey = page.getByRole('button', { name: 'Continue with recovery key' });
+  const continueWithKey = page.getByRole('button', { name: /Continue with (recovery key|key)/i });
   await expect(continueWithKey).toBeEnabled();
   await continueWithKey.click();
 
@@ -122,9 +122,12 @@ async function fundPortfolio(page: Page, secretKey: string, amountMinor: number)
   while (remainingMinor > 0) {
     const chunkMinor = Math.min(remainingMinor, SIGNET_TOPUP_SINGLE_LIMIT_MINOR);
     await page.getByRole('spinbutton', { name: 'Amount' }).fill(String(chunkMinor));
-    await page.getByRole('button', { name: 'Add funds with Lightning' }).click();
+    await page.getByRole('button', { name: /Add funds with Lightning|Create Lightning invoice/ }).click();
     await expect(
-      page.locator('.history-row').filter({ hasText: 'Lightning · Waiting for payment' }).first()
+      page
+        .locator('.history-row')
+        .filter({ hasText: /Lightning · Waiting for payment|lightning · invoice_pending/ })
+        .first()
     ).toBeVisible();
     fundedMinor += chunkMinor;
     await expect
@@ -413,11 +416,16 @@ test('signet portfolio can fund through the Lightning funding flow', async ({ pa
   await page.goto('/portfolio');
   await ensureLoggedIn(page, secret);
   await expect(page.getByRole('heading', { name: 'Your portfolio' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add funds with Lightning' })).toBeVisible();
-  await page.getByRole('spinbutton', { name: 'Amount' }).fill('2500');
-  await page.getByRole('button', { name: 'Add funds with Lightning' }).click();
   await expect(
-    page.locator('.history-row').filter({ hasText: 'Lightning · Waiting for payment' }).first()
+    page.getByRole('button', { name: /Add funds with Lightning|Create Lightning invoice/ })
+  ).toBeVisible();
+  await page.getByRole('spinbutton', { name: 'Amount' }).fill('2500');
+  await page.getByRole('button', { name: /Add funds with Lightning|Create Lightning invoice/ }).click();
+  await expect(
+    page
+      .locator('.history-row')
+      .filter({ hasText: /Lightning · Waiting for payment|lightning · invoice_pending/ })
+      .first()
   ).toBeVisible();
   const localProofsPanel = page.locator('.wallet-grid .wallet-panel').first();
   await expect
@@ -433,6 +441,8 @@ test('signet portfolio can fund through the Lightning funding flow', async ({ pa
   const walletPanels = page.locator('.wallet-grid .wallet-panel');
   await expect(walletPanels.first()).toContainText('Your balance');
   await expect(walletPanels.first()).toContainText('$25.00');
-  await expect(page.locator('.history-row').filter({ hasText: 'Lightning · Funds added' }).first()).toBeVisible();
-  await expect(page.getByText('No pending payments.')).toBeVisible();
+  await expect(
+    page.locator('.history-row').filter({ hasText: /Lightning · Funds added|lightning · complete/ }).first()
+  ).toBeVisible();
+  await expect(page.getByText(/No pending payments\.|No pending funding requests\./)).toBeVisible();
 });

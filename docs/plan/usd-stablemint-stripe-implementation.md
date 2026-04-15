@@ -232,7 +232,7 @@ USDC is defined separately in [usdc-wallet-rail-addendum.md](./usdc-wallet-rail-
 ### 2026-04-13 Review Addendum
 
 - Workstream 2 is not complete unless signet and mainnet both require the live multi-provider quote path.
-- Workstream 3 is not complete while signet Lightning funding auto-settles invoices inside the backend. Paper funding must still use a real signet-value payment loop and the same `quote -> pay -> PAID -> mint` lifecycle as mainnet.
+- Workstream 3 was temporarily treated as incomplete while signet Lightning funding auto-settled invoices inside the backend. Superseded by the 2026-04-15 clarification that signet wallet-funding quotes should auto-pay testnut-style while staying on the standard quote and mint routes.
 - Workstream 4 is not complete until the new sell-side wallet quote is actually recoverable. Persisting `wallet_mint_quote_id`, state, and expiry in trade metadata is not enough if the standard mint-quote routes cannot read or redeem that quote after interruption.
 - Do not manually force a wallet mint quote to `ISSUED` unless the corresponding blinded-output recovery path is durable and externally reachable.
 - Request-id idempotency must cover response loss, not only duplicate execution. After successful funding or sell issuance, the client must be able to recover the same outputs or resume through a documented redeemable quote path.
@@ -241,11 +241,17 @@ Required test additions:
 - duplicate Stripe webhook delivery after `paid`, `complete`, and `review_required`
 - interrupted sell after wallet invoice payment but before client receipt of proofs
 - interrupted funding after `PAID` and after successful proof issuance
-- signet paper funding without backend auto-payment
+- signet paper funding behavior is explicitly documented and test-covered so the signet mint's auto-payment rule cannot drift silently
 - launch checks that fail when live FX providers are unavailable
 
 ### 2026-04-13 Round 3
 
 - Workstream 2 now rejects missing or stale provider observations in every edition instead of silently falling back to a static signet BTC/USD rate, so launch completion depends on the live multi-provider quote path for both signet and mainnet.
-- Workstream 3 no longer auto-pays signet Lightning funding invoices in the product layer. Funding remains `quote -> pay -> PAID -> mint`, and the integration tests now explicitly drive payment before asserting `PAID` and `ISSUED`.
+- Workstream 3 was previously aligned to a manual-payment signet model. Superseded by the 2026-04-15 clarification that signet wallet-funding quotes should auto-pay testnut-style while the browser still observes `UNPAID -> PAID -> ISSUED` on the standard routes.
 - Workstream 4 recovery is now externally replayable end to end: sell-created wallet quotes are recoverable through the standard `bolt11` quote and mint routes, and completed trade request retries can return the same issued/change bundles without re-executing the trade.
+
+### 2026-04-15 Signet Funding Clarification
+
+- Owner clarification: signet wallet-funding Lightning quotes should auto-pay inside the signet mint, testnut-style.
+- The signet edition still uses the standard wallet-mint quote and mint routes and still issues browser-local proofs; the auto-payment shortcut does not justify a separate server-held paper wallet model.
+- Integration tests should therefore assert automatic transition from `UNPAID` to `PAID` for signet wallet-funding quotes without requiring an external manual `pay_invoice` step.

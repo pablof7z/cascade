@@ -451,7 +451,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Balance display exists in USD.
 - [ ] Add-funds flow exists.
 - [ ] Add-funds flow offers Stripe and Lightning.
-- [ ] Signet funding uses the normal funding rails and the same invoice lifecycle in the same edition-local proof model rather than introducing a separate "paper wallet" account system.
+- [ ] Signet funding uses the normal funding rails and the same standard mint routes in the same edition-local proof model; the signet mint may auto-pay Lightning funding quotes testnut-style rather than introducing a separate "paper wallet" account system.
 - [ ] Stripe and Lightning funding share one browser-local recovery surface, even though Lightning uses the standard Cashu mint flow and Stripe uses a persisted product saga.
 - [ ] Add-funds pending, paid, and minted states exist.
 - [ ] Lightning funding uses `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`.

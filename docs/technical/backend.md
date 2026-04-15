@@ -221,7 +221,7 @@ Lightning is both a launch wallet-funding rail and the settlement rail between t
 
 This is backend plumbing, not normal product UX. The frontend should not force the user to think in sats or Lightning invoices.
 
-In signet, the product should preserve these same quote shapes and the same payment lifecycle. The difference is the backing rail and value, not whether the mint skips settlement.
+In signet, the product should preserve these same quote shapes and the same standard public routes. The signet mint may auto-pay wallet-funding Lightning quotes, testnut-style, but the browser still observes quote state on the standard quote route and still calls the standard mint route to receive edition-local proofs.
 
 Incoming Lightning portfolio funding should therefore look like:
 

@@ -126,6 +126,8 @@ A valid market quote must include at least:
 
 The user sees a dollar-denominated funding flow. The invoice is a funding mechanism, not the product's unit of account.
 
+In signet, the mint may auto-pay wallet-funding Lightning quotes, testnut-style. That shortcut must still preserve the same public route contract: the quote appears on the standard quote endpoints, reaches `PAID`, and is redeemed through the standard mint endpoint into edition-local proofs.
+
 For wallet funding, the canonical public endpoints are:
 
 - `POST /v1/mint/quote/bolt11`

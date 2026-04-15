@@ -1960,9 +1960,8 @@ async fn test_coordinator_trade_routes_and_status() {
 }
 
 #[tokio::test]
-async fn test_lightning_funding_quote_settles_after_status_poll() {
-    let (url, invoice_service) =
-        create_product_test_server_bundle_with_funding(None, None, "signet").await;
+async fn test_signet_lightning_funding_quote_auto_pays_after_status_poll() {
+    let (url, _) = create_product_test_server_bundle_with_funding(None, None, "signet").await;
     let client = reqwest::Client::new();
     let pubkey = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
@@ -1994,23 +1993,6 @@ async fn test_lightning_funding_quote_settles_after_status_poll() {
     let get_quote_payload: serde_json::Value = get_quote_response.json().await.unwrap();
     assert_eq!(get_quote_payload["quote"].as_str(), Some(quote_id.as_str()));
     assert_eq!(get_quote_payload["state"].as_str(), Some("UNPAID"));
-
-    tokio::time::sleep(tokio::time::Duration::from_millis(400)).await;
-    let still_unpaid_response = client
-        .get(format!("{url}/v1/mint/quote/bolt11/{quote_id}"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(still_unpaid_response.status(), 200);
-    let still_unpaid_payload: serde_json::Value = still_unpaid_response.json().await.unwrap();
-    assert_eq!(still_unpaid_payload["state"].as_str(), Some("UNPAID"));
-
-    invoice_service
-        .lock()
-        .await
-        .pay_invoice(invoice)
-        .await
-        .unwrap();
 
     let paid_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["PAID"]).await;
     assert_eq!(paid_quote["quote"].as_str(), Some(quote_id.as_str()));

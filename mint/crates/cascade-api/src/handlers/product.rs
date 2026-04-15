@@ -1498,6 +1498,41 @@ enum WalletFundingRequestGuard {
     Failed(String),
 }
 
+fn spawn_paper_mode_lightning_funding_payment(
+    state: &AppState,
+    quote_id: &str,
+    payment_hash: &str,
+    invoice_request: &str,
+) {
+    let invoice_service = state.invoice_service.clone();
+    let quote_id = quote_id.to_string();
+    let payment_hash = payment_hash.to_string();
+    let invoice_request = invoice_request.to_string();
+
+    tokio::spawn(async move {
+        tokio::time::sleep(tokio::time::Duration::from_millis(250)).await;
+
+        let result = {
+            let invoice_service = invoice_service.lock().await;
+            invoice_service.pay_invoice(&invoice_request).await
+        };
+
+        match result {
+            Ok(_) => tracing::info!(
+                quote_id = %quote_id,
+                payment_hash = %payment_hash,
+                "paper_mode_lightning_funding_invoice_paid"
+            ),
+            Err(error) => tracing::warn!(
+                quote_id = %quote_id,
+                payment_hash = %payment_hash,
+                error = %error,
+                "paper_mode_lightning_funding_invoice_payment_failed"
+            ),
+        }
+    });
+}
+
 async fn create_lightning_wallet_funding_quote_record(
     state: &AppState,
     pubkey: &str,
@@ -1595,6 +1630,15 @@ async fn create_lightning_wallet_funding_quote_record(
             }
             (StatusCode::INTERNAL_SERVER_ERROR, error_message)
         })?;
+
+    if state.paper_mode {
+        spawn_paper_mode_lightning_funding_payment(
+            state,
+            &quote.id,
+            &invoice.payment_hash.to_hex(),
+            invoice.bolt11(),
+        );
+    }
 
     Ok(quote)
 }

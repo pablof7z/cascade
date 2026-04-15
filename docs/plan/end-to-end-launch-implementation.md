@@ -84,7 +84,7 @@ Launch should prefer a small number of deployable services with clear logical mo
 
 ### Optional Supporting Modules
 
-- `signet invoice-driven paper funding` on the same funding lifecycle as mainnet
+- `signet invoice-driven paper funding` on the same standard mint-quote and mint routes as mainnet, with testnut-style auto-payment allowed inside the signet mint
 - `USDC deposit module` later, as described in the addendum
 
 The preferred first implementation is one backend deployment with these modules, not separate network services for each concern.
@@ -232,7 +232,7 @@ The preferred first implementation is one backend deployment with these modules,
 
 - implement Stripe funding
 - implement Lightning funding
-- keep signet on the normal funding paths and the same invoice lifecycle as mainnet
+- keep signet on the normal funding paths and the same standard mint-quote and mint routes as mainnet
 
 ### Deliverables
 
@@ -246,7 +246,7 @@ The preferred first implementation is one backend deployment with these modules,
 Paper trading should not require real card rails. The signet edition should expose:
 
 - signet funding quotes on the same rails and API shapes as mainnet
-- signet quote settlement after actual payment on signet-value rails instead of a separate faucet concept
+- signet Lightning funding quotes may auto-pay inside the signet mint, testnut-style, while still progressing through the standard quote-state and proof-issuance path instead of a separate faucet concept
 
 Those signet-only rails should still feed the same wallet model as mainnet:
 
@@ -260,6 +260,7 @@ Stripe test mode is useful for integration testing, but not sufficient as the on
 
 - a user with `$0` can fund the portfolio in signet without real money
 - the Lightning portfolio rail works through `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`
+- signet Lightning funding may auto-pay its invoice inside the signet mint, but the quote still becomes visible on the standard quote route before proof issuance
 - the Lightning portfolio rail does not hide a bespoke server-side proof-issuance path behind those standard endpoints
 - browser-local recovery can restore a paid Lightning quote after refresh without a server-held proof copy
 - the backend does not maintain a pubkey-keyed current portfolio ledger in either edition
@@ -544,7 +545,7 @@ Launch should fail this gate if:
 ### 2026-04-13 Review Addendum
 
 - Milestone 3 is not complete unless signet and mainnet both use the live multi-provider quote policy.
-- Milestone 4 is not complete while signet Lightning funding auto-pays invoices inside the backend. Replace the auto-settle shortcut with an actual signet-value payment loop that preserves the normal `quote -> pay -> PAID -> mint` lifecycle and the same recovery semantics expected on mainnet.
+- Milestone 4 was temporarily treated as incomplete while signet Lightning funding auto-paid invoices inside the backend. Superseded by the 2026-04-15 clarification that signet wallet-funding quotes should auto-pay testnut-style while staying on the standard quote and mint routes.
 - Milestone 5 is not complete until sell exits are genuinely recoverable after interruption. A sell-created wallet mint quote must be readable and redeemable through the standard mint-quote contract, or an equivalently standard documented recovery contract. Do not mark a wallet mint quote `ISSUED` manually unless the blinded-output recovery path is durable and externally recoverable.
 - Request-id idempotency is not sufficient by itself. For buy, sell, Lightning funding, and Stripe funding, a client that loses the success response after proof issuance must be able to recover the issued outputs or resume through a documented redeemable quote path without double execution or stranded value.
 - Public product APIs and mint-authored trade payloads must use `long` and `short`. Do not accept or emit `yes` and `no`.
@@ -553,12 +554,18 @@ Required tests before closing M3, M4, or M5:
 - duplicate Stripe webhook delivery remains idempotent and cannot move a funding back out of `complete` or `review_required`
 - sell interrupted after wallet-invoice payment but before client response can be recovered end to end
 - trade and funding request-id retries after a lost success response recover the same issued outputs or an equivalent redeemable quote path
-- signet paper funding no longer relies on backend auto-payment
+- signet paper funding behavior is explicitly documented and test-covered so the signet mint's auto-payment rule cannot drift silently
 - launch signet and mainnet completion checks fail when live FX providers are unavailable
 
 ### 2026-04-13 Round 3
 
 - Review finding 1 is now closed in the public recovery contract: sell-created wallet quotes are mirrored into wallet funding state, `GET /v1/mint/quote/wallet/{quote_id}` exposes the same quote id after a sell exit, `POST /v1/mint/wallet` replays the issued signatures for that quote when needed, and trade request replay/status now recover completed buy and sell `issued` plus `change` bundles without re-executing the trade.
-- Review finding 2 is now closed for launch paths: the signet-only auto-payment shortcut was removed from portfolio Lightning funding, and the FX service now hard-fails when live provider observations are missing or stale instead of silently quoting against a static signet fallback.
+- Review finding 2 was closed under the then-current assumption that signet auto-payment should be removed. Superseded by the 2026-04-15 owner clarification that signet wallet-funding quotes should auto-pay testnut-style while preserving the standard public route contract.
 - Review finding 3 is now closed in the product contract: trade and market payloads use `long` and `short`, and the old `yes`/`no` aliases are gone.
 - Milestone 6 recovery scope also moved forward in this round: spend-capped buy quote replay now matches the persisted quote snapshot deterministically, and coordinator request-status reads return the same proof bundles needed to recover a lost success response.
+
+### 2026-04-15 Signet Funding Clarification
+
+- Owner clarification: signet wallet-funding Lightning quotes should auto-pay inside the signet mint, testnut-style.
+- This supersedes the earlier review note that treated signet auto-payment as a launch blocker.
+- The standard public contract is unchanged: the browser still uses `POST /v1/mint/quote/bolt11`, `GET /v1/mint/quote/bolt11/{quote_id}`, and `POST /v1/mint/bolt11`, and proof custody remains browser-local.

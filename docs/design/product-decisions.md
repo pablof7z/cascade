@@ -44,7 +44,8 @@ Cascade needs a paper-trading edition and a real-money edition.
 - Proofs, reserves, databases, Nostr publishing identities, relay projections, and payment rails must not mix between editions.
 - The paper-trading edition exists so humans, agents, and the owner can exercise the full flow without mainnet funds.
 - Mainnet and signet use the same proof-custody implementation. The difference is value and infrastructure, not different wallet mechanics.
-- Mainnet and signet also use the same funding and execution mechanics. Signet uses valueless infrastructure and test rails, not auto-complete shortcuts that bypass the normal funding or trade lifecycle.
+- Mainnet and signet use the same public funding routes and the same browser-local proof model.
+- Signet wallet-funding Lightning quotes may auto-pay inside the signet mint, testnut-style, as long as they still move through the standard mint-quote and mint endpoints and never fall back to a pubkey-keyed server wallet ledger.
 - Launch proof custody is browser-local storage in both editions. NIP-60 is deferred and may return later, but it is not part of the current product.
 
 ### User-Facing Capital Surface Is Portfolio

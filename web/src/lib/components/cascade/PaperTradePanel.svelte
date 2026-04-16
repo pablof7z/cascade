@@ -42,6 +42,7 @@
     unblindPreparedOutputs
   } from '$lib/wallet/cashuMint';
   import { applyLocalPositionTradeFromPayload } from '$lib/wallet/localPositionBook';
+  import { TradePanelState } from './tradePanelState';
 
   let {
     marketId,
@@ -61,7 +62,8 @@
   let buySide = $state<'long' | 'short'>('long');
   let buySpend = $state('2500');
   let sellQuantity = $state('');
-  let status = $state('');
+  let tradePanelState = $state<TradePanelState>(TradePanelState.Idle);
+  let statusMessage = $state('');
   let errorMessage = $state('');
 
   const currentPosition = $derived.by(() => {
@@ -112,6 +114,27 @@
   async function loadWallet() {
     if (!currentUser) return;
     refreshLocalWallet();
+  }
+
+  function setTradeState(nextState: TradePanelState) {
+    tradePanelState = nextState;
+  }
+
+  function setTradeStatus(nextState: TradePanelState, message: string) {
+    tradePanelState = nextState;
+    statusMessage = message;
+  }
+
+  function setTradeError(message: string, options: { clearStatus?: boolean } = {}) {
+    tradePanelState = TradePanelState.Error;
+    errorMessage = message;
+    if (options.clearStatus) {
+      statusMessage = '';
+    }
+  }
+
+  function clearTradeError() {
+    errorMessage = '';
   }
 
   async function applyRecoveredTradeProofs(
@@ -172,6 +195,7 @@
     );
     if (!receipts.length) return;
     let recoveredSide: 'long' | 'short' | null = null;
+    setTradeState(TradePanelState.Recovering);
 
     for (const receipt of receipts) {
       try {
@@ -182,13 +206,16 @@
             'Failed to recover the latest trade status.'
           );
           if (!hasCompletedTradeSettlement(payload)) {
-            status = `Recovered pending settlement for ${receipt.action} on ${payload.market.slug}.`;
+            setTradeStatus(
+              TradePanelState.Pending,
+              `Recovered pending settlement for ${receipt.action} on ${payload.market.slug}.`
+            );
             continue;
           }
           await applyRecoveredTradeProofs(receipt, payload);
           clearTradeReceipt(receipt.id);
           recoveredSide = receipt.side;
-          status = `Recovered ${receipt.action} on ${payload.market.slug}.`;
+          setTradeStatus(TradePanelState.Complete, `Recovered ${receipt.action} on ${payload.market.slug}.`);
           continue;
         }
 
@@ -207,13 +234,19 @@
         );
 
         if (payload.status === 'pending') {
-          status = `Recovered pending ${receipt.action} on ${receipt.marketSlug}.`;
+          setTradeStatus(
+            TradePanelState.Pending,
+            `Recovered pending ${receipt.action} on ${receipt.marketSlug}.`
+          );
           continue;
         }
 
         if (payload.status === 'failed') {
           clearTradeReceipt(receipt.id);
-          status = payload.error || `Recovered failed ${receipt.action} on ${receipt.marketSlug}.`;
+          setTradeStatus(
+            TradePanelState.Error,
+            payload.error || `Recovered failed ${receipt.action} on ${receipt.marketSlug}.`
+          );
           continue;
         }
 
@@ -226,13 +259,19 @@
             'Failed to recover the completed trade status.'
           );
           if (!hasCompletedTradeSettlement(tradePayload)) {
-            status = `Recovered pending settlement for ${receipt.action} on ${receipt.marketSlug}.`;
+            setTradeStatus(
+              TradePanelState.Pending,
+              `Recovered pending settlement for ${receipt.action} on ${receipt.marketSlug}.`
+            );
             continue;
           }
           await applyRecoveredTradeProofs(receipt, tradePayload);
           clearTradeReceipt(receipt.id);
           recoveredSide = receipt.side;
-          status = `Recovered ${receipt.action} on ${tradePayload.market.slug}.`;
+          setTradeStatus(
+            TradePanelState.Complete,
+            `Recovered ${receipt.action} on ${tradePayload.market.slug}.`
+          );
         }
       } catch {
         continue;
@@ -270,37 +309,45 @@
         'Failed to recover the completed trade status.'
       );
       if (!hasCompletedTradeSettlement(tradePayload)) {
-        status = `Recovered pending settlement for ${receipt.action} on ${receipt.marketSlug}.`;
+        setTradeStatus(
+          TradePanelState.Pending,
+          `Recovered pending settlement for ${receipt.action} on ${receipt.marketSlug}.`
+        );
         return 'handled';
       }
       await applyRecoveredTradeProofs(receipt, tradePayload);
       clearTradeReceipt(receipt.id);
-      status = `Recovered ${receipt.action} on ${tradePayload.market.slug}.`;
+      setTradeStatus(TradePanelState.Complete, `Recovered ${receipt.action} on ${tradePayload.market.slug}.`);
       return 'executed';
     }
 
     clearTradeReceipt(receipt.id);
-    status =
+    setTradeStatus(
+      TradePanelState.Recovering,
       payload.status === 'expired'
         ? `Recovered expired ${receipt.action} quote on ${receipt.marketSlug}. Retry the trade.`
-        : `Recovered open ${receipt.action} quote on ${receipt.marketSlug}. Retry the trade.`;
+        : `Recovered open ${receipt.action} quote on ${receipt.marketSlug}. Retry the trade.`
+    );
     return 'handled';
   }
 
   async function buy() {
     if (!currentUser) {
-      errorMessage = 'Sign in before trading.';
+      setTradeError('Sign in before trading.');
       return;
     }
 
     const spendMinor = Number.parseInt(buySpend, 10) || 0;
     if (spendMinor <= 0) {
-      errorMessage = 'Enter a buy amount greater than zero.';
+      setTradeError('Enter a buy amount greater than zero.');
       return;
     }
 
-    status = `Buying ${buySide.toUpperCase()} with ${formatUsdMinor(spendMinor)}.`;
-    errorMessage = '';
+    setTradeStatus(
+      TradePanelState.Quoting,
+      `Buying ${buySide.toUpperCase()} with ${formatUsdMinor(spendMinor)}.`
+    );
+    clearTradeError();
 
     try {
       const quoteResponse = await quoteBuyTrade({
@@ -316,6 +363,7 @@
         throw new Error('Buy quote is missing a quote id.');
       }
       const lockedQuoteId = quote.quote_id;
+      setTradeState(TradePanelState.PreparingProofs);
       const spendProofs = selectLocalProofsForAmount(proofMintUrl(), 'usd', quote.spend_minor);
       if (!spendProofs.length) {
         throw new Error('Not enough funds available on this device to cover this trade.');
@@ -356,6 +404,7 @@
         changePreparation
       });
 
+      setTradeState(TradePanelState.Submitting);
       const response = await buyMarketPosition({
         eventId: marketId,
         pubkey: currentUser.pubkey,
@@ -375,6 +424,7 @@
         attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
+      setTradeState(TradePanelState.Finalizing);
       await applyRecoveredTradeProofs(
         {
           id: requestId,
@@ -394,37 +444,39 @@
 
       if (hasCompletedTradeSettlement(payload)) {
         clearTradeReceipt(requestId);
-        status = `Bought ${buySide.toUpperCase()} on ${marketSlug}.`;
+        setTradeStatus(TradePanelState.Complete, `Bought ${buySide.toUpperCase()} on ${marketSlug}.`);
       } else {
-        status = `Buy submitted on ${marketSlug}. Waiting for settlement.`;
+        setTradeStatus(TradePanelState.Pending, `Buy submitted on ${marketSlug}. Waiting for settlement.`);
       }
       await invalidateAll();
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Trade failed.';
-      status = '';
+      setTradeError(error instanceof Error ? error.message : 'Trade failed.', { clearStatus: true });
     }
   }
 
   async function sell() {
     if (!currentUser) {
-      errorMessage = 'Sign in before trading.';
+      setTradeError('Sign in before trading.');
       return;
     }
 
     const sellSide = currentPosition?.side;
     if (!sellSide) {
-      errorMessage = 'No current position is available to sell.';
+      setTradeError('No current position is available to sell.');
       return;
     }
 
     const quantity = Number.parseFloat(sellQuantity);
     if (!Number.isFinite(quantity) || quantity <= 0) {
-      errorMessage = 'Enter a sell quantity greater than zero.';
+      setTradeError('Enter a sell quantity greater than zero.');
       return;
     }
 
-    status = `Selling ${quantity.toFixed(2)} ${sellSide.toUpperCase()} shares.`;
-    errorMessage = '';
+    setTradeStatus(
+      TradePanelState.Quoting,
+      `Selling ${quantity.toFixed(2)} ${sellSide.toUpperCase()} shares.`
+    );
+    clearTradeError();
 
     try {
       const quoteResponse = await quoteSellTrade({
@@ -442,6 +494,7 @@
       const lockedQuoteId = quote.quote_id;
       const tradeSide = normalizeProductTradeSide(quote.side, sellSide);
       const marketUnit = marketUnitForSide(tradeSide);
+      setTradeState(TradePanelState.PreparingProofs);
       const spendProofs = selectLocalProofsForAmount(
         proofMintUrl(),
         marketUnit,
@@ -489,6 +542,7 @@
         changePreparation
       });
 
+      setTradeState(TradePanelState.Submitting);
       const response = await sellMarketPosition({
         eventId: marketId,
         pubkey: currentUser.pubkey,
@@ -508,6 +562,7 @@
         attachTradeReceiptQuoteId(requestId, lockedQuoteId);
       }
 
+      setTradeState(TradePanelState.Finalizing);
       await applyRecoveredTradeProofs(
         {
           id: requestId,
@@ -527,15 +582,14 @@
 
       if (hasCompletedTradeSettlement(payload)) {
         clearTradeReceipt(requestId);
-        status = `Sold ${sellSide.toUpperCase()} on ${marketSlug}.`;
+        setTradeStatus(TradePanelState.Complete, `Sold ${sellSide.toUpperCase()} on ${marketSlug}.`);
       } else {
-        status = `Sell submitted on ${marketSlug}. Waiting for settlement.`;
+        setTradeStatus(TradePanelState.Pending, `Sell submitted on ${marketSlug}. Waiting for settlement.`);
       }
       sellQuantity = '';
       await invalidateAll();
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Sell failed.';
-      status = '';
+      setTradeError(error instanceof Error ? error.message : 'Sell failed.', { clearStatus: true });
     }
   }
 
@@ -548,7 +602,7 @@
   });
 </script>
 
-<aside class="trade-panel">
+<aside class="trade-panel" data-state={tradePanelState}>
   <div class="trade-panel-head">
     <div>
       <h3>Practice trade</h3>
@@ -602,8 +656,8 @@
     </div>
   {/if}
 
-  {#if status}
-    <p class="trade-muted">{status}</p>
+  {#if statusMessage}
+    <p class="trade-muted">{statusMessage}</p>
   {/if}
   {#if errorMessage}
     <p class="trade-error">{errorMessage}</p>

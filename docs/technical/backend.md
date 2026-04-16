@@ -1,7 +1,5 @@
 # Backend Architecture
 
-PENDING: The backend contract is being updated so mainnet mints accept/publish `982/983` and signet mints accept/publish `980/981`, while the webapp can switch between two mint backends from one deployment.
-
 ## Stack
 
 | Layer | Technology |
@@ -17,7 +15,7 @@ PENDING: The backend contract is being updated so mainnet mints accept/publish `
 
 The backend is self-hosted infrastructure, not Vercel. The frontend deploys to Vercel; the mint layer runs on dedicated servers.
 
-Signet and mainnet should be treated as separate editions with separate runtime state, not as one shared environment with a network flag.
+Live and Practice are separate mint runtimes with separate state. The single web deployment selects between them.
 
 ## Role: The Mint Layer Is Authoritative
 
@@ -30,7 +28,7 @@ That mint layer has two logical responsibilities:
 
 The market mint database is the authoritative source of LMSR state. Not Nostr. Not the frontend.
 
-Kind `983` events are the public audit log, published by the market mint after each trade. They are derived from the mint state. If there is ever a discrepancy, the mint state wins.
+Trade events are the public audit log, published by the market mint after each trade. Live publishes kind `983`; Practice publishes kind `981`. They are derived from the mint state. If there is ever a discrepancy, the mint state wins.
 
 ## Architecture Layers
 
@@ -47,7 +45,7 @@ HTTP API / product coordinator
    │   ├── LMSR engine
    │   ├── LONG/SHORT keysets
    │   ├── market quote state
-   │   └── trade history / kind 983
+   │   └── trade history / edition trade events
    │
    ├── FX Quote Layer
    │   └── USD <-> msat executable quotes
@@ -62,7 +60,7 @@ HTTP API / product coordinator
    │   └── card-funded portfolio funding completion
    │
    └── Nostr publisher
-       └── kind 983 trade audit log
+       └── edition trade audit log
 ```
 
 ## HTTP API
@@ -100,7 +98,7 @@ The backend does not serve market discovery, search, activity feeds, price histo
 - price history endpoints
 - market detail endpoints (beyond what trade execution requires)
 
-Market definitions (kind `982`) and trade records (kind `983`) are authoritative on Nostr relays. The frontend queries relays directly for all market discovery and read surfaces.
+Market definitions and trade records are authoritative on Nostr relays. Live uses kinds `982`/`983`; Practice uses kinds `980`/`981`. The frontend queries relays directly for all market discovery and read surfaces.
 
 See [../mint/api.md](../mint/api.md) for the canonical machine-interface story.
 
@@ -127,7 +125,7 @@ The intended persistent schema includes:
 - **LMSR state**: per-market `qLong`, `qShort`, `b`, `reserve_minor`
 - **Keysets**: USD wallet keysets and market keyset mappings
 - **Proofs**: spent-proof state and restore metadata for blinded outputs, not a server-side mirror of user-held proofs
-- **Trade history**: internal record of all trades, source of kind `983`
+- **Trade history**: internal record of all trades, source of edition-specific trade events
 - **Wallet funding**: Stripe session / payment-intent mapping and completion status
 - **Wallet Lightning mint quotes**: incoming quote, invoice, and settlement state
 - **Payment quotes**: outgoing and incoming mint/melt quote state for inter-mint settlement
@@ -156,11 +154,11 @@ Standard-first backend rule:
 Actor metadata such as thesis, role, or operator notes is not mint state and should not live in mint tables. The mint only needs market, quote, settlement, and proof data.
 
 Public `/market/:slug` reads are relay-only. Anonymous reads stay `404` until relays have both
-the kind `982` market event and at least one mint-authored kind `983`. Creator-only pending
+the selected edition market event and at least one mint-authored selected edition trade event. Creator-only pending
 visibility remains in builder and other creator-aware flows rather than a mint-side pending-market
 endpoint.
 
-Edition boundaries (signet vs mainnet) are enforced at the mint level through separate runtime instances. The frontend must connect to the correct mint for the correct edition.
+Edition boundaries are enforced at the mint level through separate runtime instances. The frontend must connect to the correct mint for the selected edition.
 
 ## FX Quote Policy
 
@@ -247,12 +245,13 @@ The current mint runtime uses the local `lncli` binary as the concrete LND adapt
 
 ## Nostr Publishing
 
-After every market trade, the backend signs and publishes a kind `983` event to the configured
-Nostr relays using the market mint's own Nostr keypair. Public market visibility depends on that
-publication: the first seed trade makes `/market/:slug` readable once relays have both the kind
-`982` market event and the first kind `983`.
+After every market trade, the backend signs and publishes the selected edition trade event to the
+configured Nostr relays using the market mint's own Nostr keypair. Live publishes kind `983`;
+Practice publishes kind `981`. Public market visibility depends on that publication: the first seed
+trade makes `/market/:slug` readable once relays have both the selected edition market event and
+the first selected edition trade event.
 
-This is the public audit trail. Anyone subscribed to kind `983` events for a given market can reconstruct the trading history.
+This is the public audit trail. Anyone subscribed to the selected edition trade events for a given market can reconstruct the trading history.
 
 ## Key Invariants
 

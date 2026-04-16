@@ -1,7 +1,5 @@
 # Cascade CLI
 
-PENDING: CLI event-kind behavior is being updated so `--mainnet` uses market/trade kinds `982/983` and `--signet` uses `980/981`.
-
 Target interface for `cascade`, the Rust CLI that humans and skills use to operate on Cascade.
 
 This document defines the current command surface for the Rust `cascade` CLI and the local `cascade-sim` activity runner.
@@ -12,7 +10,8 @@ This document defines the current command surface for the Rust `cascade` CLI and
 - Machine-first output. Commands print JSON to stdout by default. Human-oriented rendering is opt-in.
 - Edition selection uses `--signet` or `--mainnet`. There is no `--edition`.
 - No generic `cascade sign` or `cascade publish` commands. Domain commands own their own Nostr side effects.
-- `cascade market create` is the authoring entrypoint. It signs and publishes the kind `982` internally, then executes the seed trade that makes the market immediately public.
+- `cascade market create` is the authoring entrypoint. It signs and publishes the selected edition market event internally, then executes the seed trade that makes the market immediately public.
+- `--mainnet` uses market/trade kinds `982`/`983`; `--signet` uses `980`/`981`.
 - Money is expressed in USD minor units.
 - Market side is always `long|short` at the CLI boundary.
 - Proofs are self-custodied and managed locally by the CLI.
@@ -60,9 +59,7 @@ The CLI should stay compatible with the existing local runtime shape used by the
   "edition": "signet",
   "api_base_url": "http://127.0.0.1:8080",
   "relays": [
-    "wss://relay.damus.io",
-    "wss://purplepag.es",
-    "wss://relay.primal.net"
+    "wss://purplepag.es"
   ],
   "identity": {
     "nsec": "<nsec>"
@@ -249,7 +246,7 @@ cascade market create @market.json --seed-side long|short --seed-spend-minor <u6
 
 Behavior:
 
-1. Build the kind `982` event from flags or the JSON file.
+1. Build the selected edition market event from flags or the JSON file.
 2. Sign it with the local identity.
 3. Publish it directly to relays.
 4. Select enough local `usd` proofs for the seed spend.
@@ -261,12 +258,12 @@ Constraints:
 
 - `--seed-spend-minor` is required. A market cannot be created without seed funding.
 - The seed amount is total user spend, including fees.
-- `market create` must not expose a mode that only publishes kind `982` and skips seed funding.
+- `market create` must not expose a mode that only publishes the market event and skips seed funding.
 
 Failure semantics:
 
-- If kind `982` publication succeeds but funding fails, the command returns the event id and relay publication result with a non-zero exit code.
-- That state is valid: the kind `982` is published to relays, and the creator can retry the seed trade later.
+- If market event publication succeeds but funding fails, the command returns the event id and relay publication result with a non-zero exit code.
+- That state is valid: the market event is published to relays, and the creator can retry the seed trade later.
 
 ## Trade
 

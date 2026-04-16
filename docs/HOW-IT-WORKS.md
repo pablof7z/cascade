@@ -2,13 +2,11 @@
 
 Read this first. It is the shortest accurate explanation of the product.
 
-PENDING: Cascade is moving to one web deployment with a Live/Practice switch. Live uses market kind `982` and trade kind `983`; Practice uses market kind `980` and trade kind `981`.
-
 ## The Core Model
 
 Cascade is a prediction market product for interconnected beliefs.
 
-- A **module** is an atomic yes-or-no market.
+- A **module** is an atomic binary market.
 - A **thesis** is a broader market that can link modules as supporting context.
 - Linked modules are informational only. They do not mathematically set another market's price.
 
@@ -52,12 +50,16 @@ Price drifts because people trade. Users exit when they want to. If the world ma
 
 | Kind | Purpose | Published by |
 |------|---------|--------------|
-| `982` | Market definition | User |
-| `983` | Trade record | Mint |
+| `982` | Live market definition | User |
+| `983` | Live trade record | Mint |
+| `980` | Practice market definition | User |
+| `981` | Practice trade record | Mint |
 
-Kind `982` defines the market. It is immutable once published.
+Live uses kinds `982` and `983`. Practice uses kinds `980` and `981`. Both editions use the same event shape, which lets one relay set carry both editions without mixing markets or trades.
 
-Kind `983` is the public trade log. It is mint-authored, not user-authored. When a trade request is authenticated with NIP-98, the mint may include the request signer in an optional `p` tag.
+The market-definition event is immutable once published.
+
+The trade record is the public trade log. It is mint-authored, not user-authored. When a trade request is authenticated with NIP-98, the mint may include the request signer in an optional `p` tag.
 
 ## Mint Shape
 
@@ -79,4 +81,4 @@ Use these terms:
 - `withdrawal proceeds`
 - `LMSR price`
 
-Do not talk about market closure, winner payout, or a resolution step. Cascade is about continuous pricing and voluntary exits.
+Do not talk about market shutdown, winner payout, or outcome declaration. Cascade is about continuous pricing and voluntary exits.

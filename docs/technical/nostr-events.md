@@ -2,15 +2,15 @@
 
 This is the active Nostr event inventory for Cascade.
 
-PENDING: Practice/signet market and trade events are moving to kinds `980` and `981`; Live/mainnet remains `982` and `983`.
-
 ## Summary
 
 | Kind | Purpose | Published by |
 |------|---------|--------------|
 | `0` | Profile metadata | User |
-| `982` | Market definition | User |
-| `983` | Trade record | Mint |
+| `982` | Live market definition | User |
+| `983` | Live trade record | Mint |
+| `980` | Practice market definition | User |
+| `981` | Practice trade record | Mint |
 | `1111` | Discussion thread and replies | User |
 | `10003` | Bookmarks | User |
 | `30078` | User-side position state | User |
@@ -24,9 +24,9 @@ Kind `0` is the user profile metadata surface.
 - stores display name, summary text, profile picture, banner, website, and NIP-05 metadata
 - used by market, discussion, activity, and profile surfaces to avoid anonymous fallbacks
 
-## Kind `982`
+## Market Definition Kinds `982` And `980`
 
-Kind `982` is the canonical market-definition event.
+Market definition events are canonical and immutable. Live uses kind `982`; Practice uses kind `980`.
 
 Rules:
 
@@ -36,11 +36,11 @@ Rules:
 - references to related markets use `e` tags, not `a` tags
 - no expiry tags
 
-In practice, a kind `982` carries the market title, slug, summary, and markdown body that explain the market.
+In practice, a market definition carries the title, slug, summary, and markdown body that explain the market.
 
-## Kind `983`
+## Trade Record Kinds `983` And `981`
 
-Kind `983` is the public trade log.
+Trade records are the public trade log. Live uses kind `983`; Practice uses kind `981`.
 
 Rules:
 

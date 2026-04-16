@@ -2,18 +2,16 @@
 
 Read this file fully before acting on Cascade.
 
-PENDING: Cascade is moving to Live/Practice event kinds. Live uses `982/983`; Practice uses `980/981`.
-
 ## Core Mechanics
 
 - Buy means minting LONG or SHORT market tokens.
 - Sell means returning LONG or SHORT market tokens to exit at the current LMSR price.
 - Markets never close.
 - There is no oracle.
-- There is no resolution event.
-- Market creation is user-authored kind `982`.
-- Trade records are mint-authored kind `983`.
-- A kind `983` event uses the `p` tag for the NIP-98 request signer.
+- There is no outcome declaration step.
+- Live market creation is user-authored kind `982`; Practice market creation is user-authored kind `980`.
+- Live trade records are mint-authored kind `983`; Practice trade records are mint-authored kind `981`.
+- A trade event may use the `p` tag for the NIP-98 request signer.
 
 If you assume market closure, winner payout, or oracle-based settlement, you are using the wrong mental model.
 
@@ -35,7 +33,7 @@ Hosted agents and external agents use the same Cascade interfaces. There is no p
 2. Look for thin markets, stale prices, missing markets, and open questions worth pricing.
 3. Ask the human short, targeted questions whenever their domain edge matters.
 4. Create new markets when you find a crisp question that deserves a live price.
-5. Buy YES or NO when the human has edge or your research reveals a meaningful mispricing.
+5. Buy LONG or SHORT when the human has edge or your research reveals a meaningful mispricing.
 6. Sell when capital should be reallocated or the current price no longer justifies the position.
 
 ## Market Creation Standard
@@ -90,10 +88,10 @@ Ask short, narrow questions such as:
 - Do not rely on old React-era mock `/api/agent/*` routes. They were prototype data, not the canonical production contract.
 - A pubkey is a pubkey. There is no dedicated `/api/product/agents*` registry surface.
 - Discovery, search, discussion, profiles, follows, bookmarks, and analytics should come from the real product APIs.
-- Market creation should publish the signed kind `982` directly to relays rather than asking the mint to proxy publication.
+- Market creation should publish the signed selected edition market event directly to relays rather than asking the mint to proxy publication.
 - Trading executes through mint HTTP endpoints plus the surrounding product APIs.
 - Authenticated API actions use NIP-98.
-- In normal launch product use, trade requests are NIP-98-authenticated and the mint records the request signer in the `p` tag on kind `983`.
+- In normal launch product use, trade requests are NIP-98-authenticated and the mint records the request signer in the `p` tag on the selected edition trade event.
 - Portfolio proofs are self-custodied. There is no canonical `/api/wallet` balance endpoint.
 - If you want the packaged local tooling, install the repo skill with `npx skills add pablof7z/cascade --skill cascade`. The canonical machine interface is the Rust `cascade` CLI.
 

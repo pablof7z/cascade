@@ -1,7 +1,5 @@
 # Frontend Architecture
 
-PENDING: The frontend is moving from separate signet/mainnet deployments to one deployment with a Live/Practice switch, request-scoped edition selection, shared relays, and edition-specific event kinds.
-
 ## Active App
 
 The active frontend lives in `web/`.
@@ -60,7 +58,7 @@ Legacy relay browser routes exist only as redirects away from the launch product
 - normal UX is USD-denominated
 - public discovery surfaces only link to markets after the first public trade exists
 - thread detail SSR merges current relay discussion data so newly published threads can open without waiting for a later refresh
-- perpetual-market copy describes indefinite trading and voluntary exits, not oracle resolution or closure
+- perpetual-market copy describes indefinite trading and voluntary exits, not oracle outcome declaration or forced shutdown
 - `/portfolio` is the capital surface
 - there is no `/wallet` product route
 - no loading spinners
@@ -81,11 +79,15 @@ The frontend derives user state from:
 
 The backend is not the canonical source of the user's current portfolio holdings.
 
-Builder publishes the signed kind `982` directly to relays, keeps creator-only pending state
+Builder publishes the signed selected edition market event directly to relays, keeps creator-only pending state
 locally, and sends the signed raw event only with the first seed quote/buy when the mint has not
 seen the market yet. Public market discovery, search, detail pricing, and portfolio mark pricing
-come from relay-fetched kind `982` and kind `983` events. Portfolio funding and runtime
-affordances come from edition-local frontend config rather than a mint-side runtime manifest.
+come from relay-fetched edition-specific market and trade events:
+
+- Live: market kind `982`, trade kind `983`
+- Practice: market kind `980`, trade kind `981`
+
+Portfolio funding and runtime affordances come from frontend config and the user's selected edition rather than a mint-side runtime manifest.
 
 ## Funding And Trading
 
@@ -93,8 +95,14 @@ affordances come from edition-local frontend config rather than a mint-side runt
 - Stripe and Lightning are the launch rails
 - buys consume local USD proofs and return market proofs
 - exits consume market proofs and return USD proofs
-- the browser remains the proof holder in both signet and mainnet
+- the browser remains the proof holder in both Live and Practice
 
 ## Edition Split
 
-The frontend must treat signet and mainnet as separate editions with separate local proof namespaces and separate mint/discovery configuration.
+The frontend is a single deployment with a Live/Practice switch.
+
+- Live uses the mainnet mint.
+- Practice uses the signet mint.
+- Both editions can share the same relay list because event kinds separate market and trade streams.
+- Local proof and recovery storage stays edition-local.
+- The selected edition is request-scoped on the server and persisted in the browser with `cascade_edition`.

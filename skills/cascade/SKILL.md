@@ -1,6 +1,6 @@
 ---
 name: cascade
-description: Use when operating on Cascade markets or bootstrapping a local Cascade identity. Covers Cascade's LMSR trading model, protocol parity between humans and agents, the Rust `cascade` CLI, direct kind 982 market authorship, the product API surface, and local Cashu proof storage.
+description: Use when operating on Cascade markets or bootstrapping a local Cascade identity. Covers Cascade's LMSR trading model, protocol parity between humans and agents, the Rust `cascade` CLI, direct market authorship, the product API surface, and local Cashu proof storage.
 ---
 
 # Cascade
@@ -19,10 +19,10 @@ npx skills add pablof7z/cascade --skill cascade
 - Sell means returning LONG or SHORT market tokens to exit at the current LMSR price.
 - Markets never close.
 - There is no oracle.
-- There is no resolution event.
-- Market creation is user-authored kind `982`.
-- Trade records are mint-authored kind `983`.
-- The `p` tag on kind `983` is the NIP-98 request signer.
+- There is no outcome declaration step.
+- Live market creation is user-authored kind `982`; Practice market creation is user-authored kind `980`.
+- Live trade records are mint-authored kind `983`; Practice trade records are mint-authored kind `981`.
+- The `p` tag on a trade event is the NIP-98 request signer.
 
 If you assume market closure, winner payout, or oracle-based settlement, you are using the wrong mental model.
 
@@ -31,7 +31,7 @@ If you assume market closure, winner payout, or oracle-based settlement, you are
 - A pubkey is a pubkey. Cascade does not have separate protocol mechanics for humans versus agents.
 - The mint should not track a special agent or human identity record.
 - Local runtime config belongs in local files. Human-readable profile metadata belongs in Nostr content, not in mint state.
-- Market creation begins with the author signing and publishing kind `982` directly to relays.
+- Market creation begins with the author signing and publishing the selected edition market event directly to relays.
 - The product API handles discovery, funding, trading, and analytics around that market event.
 
 If you need the exact local bootstrap shape and interface expectations, read [references/agent-api.md](references/agent-api.md).
@@ -92,7 +92,7 @@ cascade --signet --config ./.cascade/signet/agent.json identity show
 cascade --signet --config ./.cascade/signet/agent.json api request POST /api/trades/quote @./trade-quote.json --auth nip98
 ```
 
-4. Create a market through the domain command that owns kind `982` publication plus seed funding.
+4. Create a market through the domain command that owns market event publication plus seed funding.
 
 ```bash
 cascade \
@@ -149,7 +149,7 @@ cascade --signet --config ./.cascade/signet/agent.json position sync
 - There is no dedicated `/api/product/agents*` registry surface in the intended contract.
 - Discovery, search, discussion, profiles, follows, bookmarks, and analytics should come from the real product APIs.
 - Authenticated API actions use the same NIP-98-oriented product endpoints for humans and agents.
-- Market creation should go through `cascade market create`, which signs and publishes the kind `982` internally rather than asking the mint to proxy publication.
+- Market creation should go through `cascade market create`, which signs and publishes the selected edition market event internally rather than asking the mint to proxy publication.
 - There is no generic event-publisher command in the canonical interface. Use domain commands such as `profile update`, `market create`, `discussion`, `bookmarks`, and `position sync`.
 - Hosted agents and external agents use the same product interface shape.
 
@@ -167,7 +167,7 @@ cascade --signet --config ./.cascade/signet/agent.json position sync
 2. Look for thin markets, stale prices, missing markets, and open questions worth pricing.
 3. Ask the human short, targeted questions whenever their domain edge matters.
 4. Create new markets when you find a crisp question that deserves a live price.
-5. Buy YES or NO when the human has edge or your research reveals a meaningful mispricing.
+5. Buy LONG or SHORT when the human has edge or your research reveals a meaningful mispricing.
 6. Sell when capital should be reallocated or the current price no longer justifies the position.
 
 ## Market creation standard

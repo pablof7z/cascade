@@ -2,8 +2,6 @@
 
 This is the current product-surface contract for Cascade.
 
-PENDING: The product surface is moving to one web deployment with a Live/Practice switch. Live keeps kinds `982/983`; Practice uses kinds `980/981`.
-
 ## Authority Order
 
 Use these sources in order:
@@ -17,17 +15,18 @@ Use these sources in order:
 - Markets never expire.
 - There is no oracle and no admin close step.
 - Price is set only by trading activity on that market.
-- Kind `982` defines markets.
-- Kind `983` records trades and is mint-authored.
-- A market is not publicly live until the first kind `983` exists.
+- Live uses market/trade kinds `982`/`983`.
+- Practice uses market/trade kinds `980`/`981`.
+- Trade records are mint-authored.
+- A market is not publicly live until the first selected edition trade event exists.
 - Portfolio and trading UX are USD-denominated.
 - `/portfolio` is the capital surface. There is no `/wallet` product route.
 - Proofs are self-custodied. The backend does not provide a canonical current-balance ledger.
 - Humans and agents use the same product and machine interfaces.
-- Builder and CLI publish kind `982` directly to relays, then send the signed raw event only as
+- Builder and CLI publish the selected edition market event directly to relays, then send the signed raw event only as
   part of the first seed-trade quote/buy so the mint can bootstrap market state without owning
   publication or discovery.
-- Market discovery, activity, detail, and pricing are relay-backed from kind `982` and kind `983`,
+- Market discovery, activity, detail, and pricing are relay-backed from selected edition market and trade events,
   not from mint-side market read routes.
 
 ## Launch Product Areas
@@ -61,7 +60,7 @@ Expected behavior:
 - market pages are the main trading surface
 - discussion is append-only
 - analytics and leaderboard are public read surfaces
-- builder publishes kind `982` and coordinates the required creator seed trade
+- builder publishes the selected edition market event and coordinates the required creator seed trade
 
 ### Identity And Portfolio
 
@@ -117,10 +116,10 @@ Legacy relay browser routes now redirect away from the launch product surface an
 ### Create A Market
 
 1. User writes the market in `/builder`.
-2. User publishes kind `982` directly to relays.
+2. User publishes the selected edition market event directly to relays.
 3. User funds the portfolio if needed.
 4. User executes the required seed trade.
-5. After the first kind `983`, the market is publicly live.
+5. After the first selected edition trade event, the market is publicly live.
 
 ### Manage Capital
 
@@ -144,8 +143,8 @@ Stripe is a funding rail. Funding is mint concern. The mint holds the Stripe sec
 
 The mint does not maintain a SQLite (or any) mirror of relay data for market discovery, search, activity feeds, or price history.
 
-- Market definitions (kind `982`) live on relays. The frontend reads them from relays.
-- Trade history (kind `983`) lives on relays. The frontend reads it from relays.
+- Market definitions live on relays. Live uses kind `982`; Practice uses kind `980`. The frontend reads them from relays.
+- Trade history lives on relays. Live uses kind `983`; Practice uses kind `981`. The frontend reads it from relays.
 - Search, activity feeds, and price history are relay queries or frontend-derived from relay data.
 - The mint database stores only what the mint needs for execution: LMSR state, keysets, proofs, quotes, funding state, trade settlement records, and risk/anti-abuse state.
 - There are no `/api/product/feed`, `/api/product/activity`, `/api/product/markets/search`, `/api/market/{id}`, or `/api/market/{id}/price-history` routes. Those concerns belong to relays and the frontend.
@@ -158,7 +157,7 @@ The mint database is restricted to execution state:
 - LMSR state per market (`qLong`, `qShort`, `b`, `reserve`)
 - Keyset-to-market mappings
 - Spent-proof tracking
-- Trade execution records (source of kind `983` publishing)
+- Trade execution records (source of edition-specific trade event publishing)
 - Wallet funding state (Stripe sessions, Lightning quotes, USDC intents)
 - FX quote snapshots
 - Settlement state (inter-mint Lightning records)
@@ -166,8 +165,8 @@ The mint database is restricted to execution state:
 
 It does NOT contain:
 
-- A copy of kind `982` market events for serving to clients
-- A copy of kind `983` trade events for serving to clients
+- A copy of market events for serving to clients
+- A copy of trade events for serving to clients
 - Market metadata (titles, descriptions, slugs) beyond what LMSR execution requires
 - Activity feeds, search indexes, or price history projections
 

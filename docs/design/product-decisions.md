@@ -4,19 +4,18 @@ Authoritative record of explicit decisions from the project owner (Pablo). Every
 
 **These are directives, not suggestions. Do not override, ignore, or second-guess them. If a decision here conflicts with your judgment, the decision here wins.**
 
-PENDING: The separate signet/mainnet web deployment directive is being replaced by one web deployment with a Live/Practice switch, shared relays, two mints, and edition-specific event kinds.
-
 > **Implementation status note:** Not all directives below are fully implemented in the current codebase. Treat them as required standards for all new work — if something doesn't yet comply, it's tech debt to fix, not a pattern to follow.
 
 ---
 
 ## 1. Architecture
 
-### Kind 982 — Non-Replaceable, Immutable Market Events
+### Edition Market Events — Non-Replaceable, Immutable
 
-Markets are kind 982 Nostr events. Not kind 30000. Not any replaceable kind.
+Markets are non-replaceable Nostr events. Not kind 30000. Not any replaceable kind.
 
-- Kind 982 only
+- Live market definitions use kind `982`
+- Practice market definitions use kind `980`
 - Only `E` tags for references — never `A` tags
 - No `version: 1` tag (was explicitly removed)
 - Markets are immutable once published
@@ -38,16 +37,19 @@ Deploy to Vercel at `cascade.f7z.io`. Auto-deploys on push to main. If it's not 
 - Production must be public — no auth required to view.
 - Repo: `git@github.com:pablof7z/cascade.git`
 
-### Separate Signet And Mainnet Editions
+### Single Web App, Two Edition Mints
 
 Cascade needs a paper-trading edition and a real-money edition.
 
-- Mainnet and signet must run as separate app + mint deployments.
-- Proofs, reserves, databases, Nostr publishing identities, relay projections, and payment rails must not mix between editions.
-- The paper-trading edition exists so humans, agents, and the owner can exercise the full flow without mainnet funds.
-- Mainnet and signet use the same proof-custody implementation. The difference is value and infrastructure, not different wallet mechanics.
-- Mainnet and signet use the same public funding routes and the same browser-local proof model.
-- Signet wallet-funding Lightning quotes may auto-pay inside the signet mint, testnut-style, as long as they still move through the standard mint-quote and mint endpoints and never fall back to a pubkey-keyed server wallet ledger.
+- The frontend is one deployment at `https://cascade.f7z.io` with a Live/Practice switch.
+- Live uses the mainnet mint. Practice uses the signet mint.
+- Relays can be shared between editions because event kinds separate the market and trade streams.
+- Live uses market/trade kinds `982`/`983`. Practice uses market/trade kinds `980`/`981`.
+- Proofs, reserves, databases, Nostr publishing identities, and payment rails must not mix between editions.
+- Practice exists so humans, agents, and the owner can exercise the full flow without mainnet funds.
+- Live and Practice use the same proof-custody implementation. The difference is value and infrastructure, not different wallet mechanics.
+- Live and Practice use the same public funding routes and the same browser-local proof model.
+- Practice wallet-funding Lightning quotes may auto-pay inside the signet mint, testnut-style, as long as they still move through the standard mint-quote and mint endpoints and never fall back to a pubkey-keyed server wallet ledger.
 - Launch proof custody is browser-local storage in both editions. NIP-60 is deferred and may return later, but it is not part of the current product.
 
 ### User-Facing Capital Surface Is Portfolio
@@ -71,7 +73,7 @@ Cascade does not maintain a canonical per-user portfolio on the backend.
 - The backend must not persist a canonical snapshot of a user's unspent holdings
 - `/portfolio` is derived in the browser from local proofs, browser-local trade/funding recovery state, and public market data
 
-This is true in both signet and mainnet.
+This is true in both Live and Practice.
 
 ### Svelte — React Is Gone
 
@@ -81,7 +83,7 @@ Complete migration from React to Svelte 5 + SvelteKit. No React in new code. No 
 
 ### Mint Has Its Own Nostr Pubkey
 
-The mint identity is separate from user and platform identity. Mint-published events (kind 983 trades) carry the mint's pubkey, not the user's.
+The mint identity is separate from user and platform identity. Mint-published trade events carry the mint's pubkey, not the user's.
 
 ### Modules Are Informational Only
 
@@ -162,11 +164,11 @@ Launch wallet funding happens at the USD wallet-mint boundary.
 
 ### Market Visibility Requires Funding
 
-The signed kind `982` event is not enough for public market discovery on its own.
+The signed market event is not enough for public market discovery on its own.
 
-- The creator can publish kind `982` immediately.
-- Other users should not see that market in normal discovery surfaces until the mint has published at least one kind `983` that `e`-tags the market.
-- The first mint-authored kind `983` is the public visibility threshold. There is no dedicated pending-state endpoint; the kind `982` is observable on relays, but the product API only surfaces a market after its first kind `983` exists.
+- The creator can publish the selected edition's market event immediately.
+- Other users should not see that market in normal discovery surfaces until the mint has published at least one selected edition trade event that `e`-tags the market.
+- The first mint-authored trade event is the public visibility threshold. There is no dedicated pending-state endpoint; the market event is observable on relays, but the product API only surfaces a market after its first trade event exists.
 
 ### Lightning Is The Rail, Not The UX
 
@@ -223,7 +225,7 @@ The mint does not maintain a mirror of relay data. Market discovery, search, act
 
 - The mint database stores only execution state: LMSR parameters, keysets, proofs, quotes, funding/settlement state, and risk state.
 - There are no product read APIs for market feeds, search, activity, or price history on the mint backend.
-- Kind `982` (market definitions) and kind `983` (trade records) are authoritative on relays. The mint publishes kind `983` to relays after trade execution — it does not serve them back to clients through an HTTP API.
+- Market definitions and trade records are authoritative on relays. Live uses kinds `982`/`983`; Practice uses kinds `980`/`981`. The mint publishes the selected edition's trade event to relays after trade execution — it does not serve them back to clients through an HTTP API.
 - The frontend derives activity feeds, search, and price history from relay subscriptions and local computation.
 
 > Those endpoints shouldn't exist on the webapp; all that stuff is relay concern. The relay is where we store data — why do we have a second database?
@@ -232,7 +234,7 @@ The mint does not maintain a mirror of relay data. Market discovery, search, act
 
 The mint uses URL path segmentation for market identification. Not Nostr relay routing.
 
-- Market-scoped key discovery uses the kind `982` event id in the path.
+- Market-scoped key discovery uses the market event id in the path.
 - Canonical example: `GET /{event_id}/v1/keys`
 
 ---
@@ -320,7 +322,7 @@ No pill tabs, no background-fill tabs. Underline only.
 
 ### Markets Never Close
 
-Cascade markets never close. There is no resolution event, oracle, or admin-driven settlement. Exit value is continuous and determined solely by the LMSR price at time of exit.
+Cascade markets keep trading indefinitely. There is no oracle, outcome declaration, or admin-driven settlement. Exit value is continuous and determined solely by the LMSR price at time of exit.
 
 > **Do not design features that assume markets close.**
 
@@ -330,7 +332,7 @@ Markets never have an expiry tag. Do not add one.
 
 ### No Version Tag
 
-No `version: 1` tag on kind 982 events. Removed by explicit decision.
+No `version: 1` tag on market events. Removed by explicit decision.
 
 ---
 

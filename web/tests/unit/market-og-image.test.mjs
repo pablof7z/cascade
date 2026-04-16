@@ -25,7 +25,7 @@ test('market OG route fetches by slug, renders PNG, and redirects to the default
 
   assert.match(source, /import \{ fetchMarketBySlug \} from '\$lib\/server\/cascade';/);
   assert.match(source, /import \{ renderMarketOgImage \} from '\$lib\/server\/og';/);
-  assert.match(source, /const market = await fetchMarketBySlug\(params\.slug\);/);
+  assert.match(source, /const market = await fetchMarketBySlug\(params\.slug, \{ edition: locals\.cascadeEdition \}\);/);
   assert.match(source, /const image = await renderMarketOgImage\(\{ market \}\);/);
   assert.match(source, /'content-type': 'image\/png'/);
   assert.match(source, /Response\.redirect\(new URL\('\/og-default\.png', url\), 307\)/);

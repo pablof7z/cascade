@@ -23,7 +23,7 @@ test('market surface merges seeded and live discussion events for the active mar
   );
   assert.match(
     source,
-    /const mergedDiscussions = \$derived\.by\(\(\) => \{[\s\S]*mergeRawEvents\([\s\S]*discussions\.map\(\(discussion\) => discussion\.rawEvent(?: as NostrEvent)?\)[\s\S]*discussionFeed\.events[\s\S]*\)[\s\S]*\.map\(parseDiscussionEvent\)[\s\S]*\.filter\(\(discussion\): discussion is DiscussionRecord => Boolean\(discussion\)\)/
+    /const mergedDiscussions = \$derived\.by\(\(\) => \{[\s\S]*mergeRawEvents\([\s\S]*discussions\.map\(\(discussion\) => discussion\.rawEvent(?: as NostrEvent)?\)[\s\S]*discussionFeed\.events[\s\S]*\)[\s\S]*\.map\(\(event\) => parseDiscussionEvent\(event, selectedEdition\)\)[\s\S]*\.filter\(\(discussion\): discussion is DiscussionRecord => Boolean\(discussion\)\)/
   );
   assert.match(source, /const discussionThreads = \$derived\(buildDiscussionThreads\(mergedDiscussions, market\.id\)\);/);
   assert.match(source, /\.\.\.mergedDiscussions\.map\(\(discussion\) => \(\{/);

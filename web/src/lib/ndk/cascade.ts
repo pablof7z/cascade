@@ -1,5 +1,4 @@
 import { NDKEvent, type NostrEvent } from '@nostr-dev-kit/ndk';
-import { getCascadeEdition, type CascadeEdition } from '$lib/cascade/config';
 
 export const CASCADE_MAINNET_MARKET_KIND = 982;
 export const CASCADE_MAINNET_TRADE_KIND = 983;
@@ -16,22 +15,53 @@ export type CascadeEventKinds = {
   trade: number;
 };
 
+export type CascadeEdition = 'mainnet' | 'signet';
+
+function parseCascadeEdition(value: unknown): CascadeEdition | null {
+  if (typeof value !== 'string') return null;
+  const raw = value.toLowerCase().trim();
+  if (raw === 'signet' || raw === 'paper' || raw === 'practice') return 'signet';
+  if (raw === 'mainnet' || raw === 'live') return 'mainnet';
+  return null;
+}
+
+function browserEditionCookie(): CascadeEdition | null {
+  if (typeof document === 'undefined') return null;
+  const prefix = 'cascade_edition=';
+  const raw = document.cookie
+    .split(';')
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(prefix))
+    ?.slice(prefix.length);
+  if (!raw) return null;
+
+  try {
+    return parseCascadeEdition(decodeURIComponent(raw));
+  } catch {
+    return null;
+  }
+}
+
+function resolveCascadeEdition(edition?: CascadeEdition | string | null): CascadeEdition {
+  return parseCascadeEdition(edition) ?? browserEditionCookie() ?? 'mainnet';
+}
+
 export function getCascadeEventKinds(
-  edition: CascadeEdition | string | null = getCascadeEdition()
+  edition: CascadeEdition | string | null = resolveCascadeEdition()
 ): CascadeEventKinds {
-  return getCascadeEdition(edition) === 'signet'
+  return resolveCascadeEdition(edition) === 'signet'
     ? { market: CASCADE_SIGNET_MARKET_KIND, trade: CASCADE_SIGNET_TRADE_KIND }
     : { market: CASCADE_MAINNET_MARKET_KIND, trade: CASCADE_MAINNET_TRADE_KIND };
 }
 
 export function getCascadeMarketKind(
-  edition: CascadeEdition | string | null = getCascadeEdition()
+  edition: CascadeEdition | string | null = resolveCascadeEdition()
 ): number {
   return getCascadeEventKinds(edition).market;
 }
 
 export function getCascadeTradeKind(
-  edition: CascadeEdition | string | null = getCascadeEdition()
+  edition: CascadeEdition | string | null = resolveCascadeEdition()
 ): number {
   return getCascadeEventKinds(edition).trade;
 }
@@ -109,7 +139,7 @@ export type DiscussionThread = {
 export function buildThreadReplyTags(
   marketId: string,
   threadId: string,
-  edition: CascadeEdition | string | null = getCascadeEdition()
+  edition: CascadeEdition | string | null = resolveCascadeEdition()
 ): string[][] {
   const marketKind = String(getCascadeMarketKind(edition));
   return [
@@ -141,7 +171,7 @@ export function rawEventOf(event: NDKEvent | NostrEvent): NostrEvent {
 
 export function parseMarketEvent(
   event: NDKEvent | NostrEvent,
-  edition: CascadeEdition | string | null = getCascadeEdition()
+  edition: CascadeEdition | string | null = resolveCascadeEdition()
 ): MarketRecord | null {
   const raw = rawEventOf(event);
   if (raw.kind !== getCascadeMarketKind(edition) || !raw.id) return null;
@@ -172,7 +202,7 @@ export function parseMarketEvent(
 
 export function parseTradeEvent(
   event: NDKEvent | NostrEvent,
-  edition: CascadeEdition | string | null = getCascadeEdition()
+  edition: CascadeEdition | string | null = resolveCascadeEdition()
 ): TradeRecord | null {
   const raw = rawEventOf(event);
   if (raw.kind !== getCascadeTradeKind(edition) || !raw.id) return null;
@@ -205,7 +235,7 @@ export function parseTradeEvent(
 
 export function parseDiscussionEvent(
   event: NDKEvent | NostrEvent,
-  edition: CascadeEdition | string | null = getCascadeEdition()
+  edition: CascadeEdition | string | null = resolveCascadeEdition()
 ): DiscussionRecord | null {
   const raw = rawEventOf(event);
   if (raw.kind !== CASCADE_DISCUSSION_KIND || !raw.id) return null;

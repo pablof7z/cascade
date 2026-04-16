@@ -36,11 +36,11 @@ test('market surface adds a logged-in bookmark toggle backed by kind 10003 event
 test('market surface renders the share popover in the header actions for all users', () => {
   const source = read('src/lib/components/cascade/MarketSurface.svelte');
 
-  assert.match(source, /import \{ page \} from '\$app\/stores';/);
+  assert.match(source, /import \{ page \} from '\$app\/state';/);
   assert.match(source, /import SharePopover from '\$lib\/components\/SharePopover\.svelte';/);
   assert.match(
     source,
-    /<div class="market-header-actions">[\s\S]*<SharePopover url=\{\$page\.url\.href\} title=\{market\.title\} \/>[\s\S]*\{#if currentUser\}[\s\S]*<button[\s\S]*class="market-bookmark-button"[\s\S]*\{\/if\}[\s\S]*<\/div>/
+    /<div class="market-header-actions">[\s\S]*<SharePopover url=\{page\.url\.href\} title=\{market\.title\} \/>[\s\S]*\{#if currentUser\}[\s\S]*<button[\s\S]*class="market-bookmark-button"[\s\S]*\{\/if\}[\s\S]*<\/div>/
   );
 });
 

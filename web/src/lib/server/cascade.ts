@@ -1,5 +1,4 @@
 import { NDKSubscriptionCacheUsage, type NDKFilter, type NDKKind, type NostrEvent } from '@nostr-dev-kit/ndk';
-import { getCascadeEdition, type CascadeEdition } from '$lib/cascade/config';
 import {
   buildTradeSummary,
   getCascadeEventKinds,
@@ -17,6 +16,8 @@ import {
 const MARKET_CACHE_TTL_MS = 60_000;
 const DISCUSSION_CACHE_TTL_MS = 30_000;
 const RELAY_FETCH_TIMEOUT_MS = 2_500;
+
+type CascadeEdition = 'mainnet' | 'signet';
 
 type CascadeEditionOption = {
   edition?: CascadeEdition | string | null;
@@ -37,7 +38,8 @@ type RelayDiscoveryCache = {
 const relayCaches = new Map<CascadeEdition, RelayDiscoveryCache>();
 
 function selectedEdition(edition: CascadeEdition | string | null | undefined): CascadeEdition {
-  return getCascadeEdition(edition ?? null);
+  if (edition === 'signet' || edition === 'paper' || edition === 'practice') return 'signet';
+  return 'mainnet';
 }
 
 function relayCache(edition: CascadeEdition): RelayDiscoveryCache {
@@ -424,7 +426,7 @@ async function refreshRecentDiscussions(limit: number, edition: CascadeEdition):
 
 async function fetchRecentRelayMarkets(
   limit: number,
-  edition: CascadeEdition = getCascadeEdition()
+  edition: CascadeEdition = 'mainnet'
 ): Promise<MarketRecord[]> {
   const kinds = getCascadeEventKinds(edition);
   const events = await collectRelayRawEvents(
@@ -447,7 +449,7 @@ async function fetchRecentRelayMarkets(
 
 async function fetchRecentRelayTrades(
   limit: number,
-  edition: CascadeEdition = getCascadeEdition()
+  edition: CascadeEdition = 'mainnet'
 ): Promise<TradeRecord[]> {
   const kinds = getCascadeEventKinds(edition);
   const events = await collectRelayRawEvents(
@@ -470,7 +472,7 @@ async function fetchRecentRelayTrades(
 
 async function fetchRelayMarketBySlug(
   slug: string,
-  edition: CascadeEdition = getCascadeEdition()
+  edition: CascadeEdition = 'mainnet'
 ): Promise<NostrEvent | null> {
   const kinds = getCascadeEventKinds(edition);
   const directMatch = await collectRelayRawEvents(
@@ -505,7 +507,7 @@ async function fetchRelayMarketBySlug(
 async function fetchRelayTradesForMarket(
   marketId: string,
   limit: number,
-  edition: CascadeEdition = getCascadeEdition()
+  edition: CascadeEdition = 'mainnet'
 ): Promise<TradeRecord[]> {
   const kinds = getCascadeEventKinds(edition);
   const events = await collectRelayRawEvents(

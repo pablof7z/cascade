@@ -104,8 +104,6 @@
   const sellQuantityValid = $derived(
     hasPosition && parsedSellQuantity > 0 && parsedSellQuantity <= (currentPosition?.quantity ?? 0)
   );
-  const status = $derived(statusMessage);
-
   function proofMintUrl(): string {
     return getProductApiUrl(selectedEdition).replace(/\/+$/, '');
   }
@@ -766,7 +764,7 @@
             Mint {buySide === 'long' ? 'LONG' : 'SHORT'}
           </button>
 
-          {#if status}<p class="trade-status-inline">{status}</p>{/if}
+          {#if statusMessage}<p class="trade-status-inline">{statusMessage}</p>{/if}
           {#if errorMessage}<p class="trade-error-inline">{errorMessage}</p>{/if}
         </div>
       </div>
@@ -777,7 +775,7 @@
           <div class="trade-position-summary">
             <div class="trade-position-row">
               <span class="trade-label">Position</span>
-              <strong>{currentPosition.quantity.toFixed(2)} {currentPosition.side.toUpperCase()} shares</strong>
+              <strong>{currentPosition.quantity.toFixed(2)} {currentPosition.side === 'long' ? 'LONG' : 'SHORT'} shares</strong>
             </div>
             <div class="trade-position-row">
               <span class="trade-label-muted">Current price</span>
@@ -816,10 +814,10 @@
             {/if}
 
             <button class="btn btn-outline w-full" onclick={sell} disabled={!sellQuantityValid}>
-              Exit {currentPosition.side.toUpperCase()} position
+              Exit {currentPosition.side === 'long' ? 'LONG' : 'SHORT'} position
             </button>
 
-            {#if status}<p class="trade-status-inline">{status}</p>{/if}
+            {#if statusMessage}<p class="trade-status-inline">{statusMessage}</p>{/if}
             {#if errorMessage}<p class="trade-error-inline">{errorMessage}</p>{/if}
           </div>
         {:else}

@@ -133,14 +133,15 @@ test('public profile page wires richer stats, entry pricing, and market links in
   assert.doesNotMatch(pageSource, /<div class="profile-kicker">Profile<\/div>/);
 
   assert.match(serverSource, /fetchDiscussionsByPubkey/);
-  assert.match(serverSource, /fetchDiscussionsByPubkey\(user\.pubkey,\s*50\)/);
+  assert.match(serverSource, /fetchDiscussionsByPubkey\(user\.pubkey,\s*50,\s*\{\s*edition\s*\}\)/);
   assert.match(serverSource, /fetchMarketsByIds/);
   assert.match(serverSource, /discussionMarkets/);
-  assert.match(serverSource, /const positionMarkets = await fetchMarketsByIds\(positions\.map\(\(p\) => p\.marketId\)\);/);
+  assert.match(serverSource, /fetchMarketsByAuthor\(user\.pubkey,\s*48,\s*\{\s*edition\s*\}\)/);
+  assert.match(serverSource, /const positionMarkets = await fetchMarketsByIds\(positions\.map\(\(p\) => p\.marketId\),\s*\{\s*edition\s*\}\);/);
   assert.match(serverSource, /positionMarkets,/);
 
-  assert.match(cascadeServerSource, /export async function fetchDiscussionsByPubkey\(pubkey: string, limit = 50\)/);
-  assert.match(cascadeServerSource, /export async function fetchMarketsByIds\(marketIds: readonly string\[\]\)/);
+  assert.match(cascadeServerSource, /export async function fetchDiscussionsByPubkey\(\s*pubkey: string,\s*limit = 50,\s*options: CascadeEditionOption = \{\}\s*\)/);
+  assert.match(cascadeServerSource, /export async function fetchMarketsByIds\(\s*marketIds: readonly string\[\],\s*options: CascadeEditionOption = \{\}\s*\)/);
   assert.match(cascadeServerSource, /authors:\s*\[pubkey\]/);
 });
 

@@ -52,7 +52,7 @@ test('thread detail server load retries the requested thread from relay data bef
   assert.match(source, /import \{ resolveMarketThread \} from '\$lib\/server\/market-thread';/);
   assert.match(
     source,
-    /const \{ discussions, thread \} = await resolveMarketThread\(data, params\.threadId, \(\) =>\s*fetchThreadRootDiscussion\(data\.market\.id, params\.threadId\)\s*\);/
+    /const \{ discussions, thread \} = await resolveMarketThread\(data, params\.threadId, \(\) =>\s*fetchThreadRootDiscussion\(data\.market\.id, params\.threadId, \{ edition \}\)\s*\);/
   );
   assert.match(source, /if \(!thread\) \{/);
   assert.match(source, /return \{[\s\S]*\.\.\.data,[\s\S]*discussions,[\s\S]*thread,[\s\S]*seo:/);

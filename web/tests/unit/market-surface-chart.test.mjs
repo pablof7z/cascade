@@ -65,13 +65,13 @@ test('market surface presents prediction market copy as LONG/SHORT while preserv
 
   assert.match(source, /trade\.direction === 'long' \? 'LONG' : 'SHORT'/);
   assert.match(source, /latestTrade\.direction === 'long' \? 'LONG' : 'SHORT'/);
-  assert.match(source, /impliedProbability >= 0\.5 \? `\$\{priceCents\(impliedProbability\)\} LONG leaning` : `\$\{priceCents\(oppositeProbability\)\} SHORT leaning`/);
+  assert.match(source, /const summary = `\$\{longPct\}% LONG • \$\{shortPct\}% SHORT`;/);
   assert.match(source, /market-header-side-label">LONG<\/span>/);
   assert.match(source, /<span>LONG<\/span>[\s\S]*<strong class="positive">\{priceCents\(impliedProbability\)\}<\/strong>/);
   assert.match(source, /<span>SHORT<\/span>[\s\S]*<strong class="negative">\{priceCents\(oppositeProbability\)\}<\/strong>/);
   assert.match(source, /<dt>LONG flow<\/dt>/);
   assert.match(source, /<dt>SHORT flow<\/dt>/);
-  assert.match(source, /\{formatProbability\(impliedProbability\)\} LONG/);
+  assert.match(source, /\{formatProbability\(flowLong\)\} LONG/);
   assert.match(source, /<span>LONG share<\/span>/);
   assert.match(source, /\{formatProbability\(flowLong\)\} LONG/);
   assert.match(source, /<span>SHORT share<\/span>/);

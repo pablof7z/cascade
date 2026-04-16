@@ -560,90 +560,102 @@
   });
 </script>
 
-<div class="mx-auto grid w-full max-w-5xl gap-8">
-  <nav class="grid gap-3 border-b border-neutral-800 pb-5 sm:grid-cols-2" aria-label="Setup steps">
-    {#each [1, 2] as s (s)}
+<div class="mx-auto w-full max-w-4xl space-y-8">
+  <!-- Stepper Navigation -->
+  <ul class="steps w-full">
+    <li class={`step ${step >= 1 ? 'step-primary' : ''}`}>
       <button
-        class={`flex items-center gap-3 rounded-md border px-4 py-3 text-left transition ${
-          step === s
-            ? 'border-white bg-base-200 text-white'
-            : step > s
-              ? 'border-neutral-700 bg-base-200 text-neutral-300'
-              : 'border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300'
-        }`}
         type="button"
-        onclick={() => {
-          if (s < step || (s === 2 && step1Valid)) step = s as 1 | 2;
-        }}
-        aria-current={step === s ? 'step' : undefined}
+        class="text-sm font-medium"
+        onclick={() => { step = 1; }}
       >
-        <span
-          class={`size-2 rounded-full ${
-            step === s ? 'bg-white' : step > s ? 'bg-primary' : 'bg-neutral-700'
-          }`}
-        ></span>
-        <span class="text-sm font-medium">{['About you', 'Public profile'][s - 1]}</span>
+        About you
       </button>
-    {/each}
-  </nav>
+    </li>
+    <li class={`step ${step >= 2 ? 'step-primary' : ''}`}>
+      <button
+        type="button"
+        class="text-sm font-medium"
+        onclick={() => {
+          if (step1Valid) step = 2;
+        }}
+        disabled={!step1Valid}
+      >
+        Public profile
+      </button>
+    </li>
+  </ul>
 
   {#if step === 1}
-    <div class="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start">
-      <div class="grid gap-3">
-        <h1>Tell people who you are.</h1>
-        <p class="text-base leading-7 text-neutral-400">
+    <div class="space-y-8">
+      <!-- Header -->
+      <div class="space-y-2">
+        <h1 class="text-2xl font-bold">Tell people who you are</h1>
+        <p class="text-base text-neutral-400">
           Set the basics for the public profile other traders and agents will see.
         </p>
-        {#if importedSocialPrefill}
-          <div class="ob-prefill-note">
-            <strong>Imported from {socialProviderLabel(importedSocialPrefill.provider)}.</strong>
-            <p>Everything here is editable before you publish your Cascade profile.</p>
-          </div>
-        {/if}
       </div>
 
-      <div class="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start">
-        <div class="grid gap-4">
-          <button
-            class="group relative grid aspect-square w-full max-w-56 place-items-center overflow-hidden rounded-md border border-neutral-800 bg-base-200"
-            type="button"
-            onclick={handleAvatarClick}
-            aria-label="Upload your own photo"
-          >
-            {#if avatarDisplayUrl}
-              <img src={avatarDisplayUrl} alt="Your avatar" class="h-full w-full object-cover" />
-            {:else}
-              <div class="grid gap-2 justify-items-center text-neutral-500">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                </svg>
-              </div>
-            {/if}
-            <div
-              class="pointer-events-none absolute inset-0 grid place-items-center bg-black/50 text-white opacity-0 transition group-hover:opacity-100"
-              aria-hidden="true"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-              </svg>
-            </div>
-          </button>
-          <input bind:this={fileInput} type="file" accept="image/*" onchange={handleAvatarSelection} class="hidden" tabindex="-1" />
+      {#if importedSocialPrefill}
+        <div role="alert" class="alert bg-base-200">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="h-6 w-6 shrink-0 stroke-info">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <div>
+            <div class="font-bold">Imported from {socialProviderLabel(importedSocialPrefill.provider)}</div>
+            <div class="text-sm">Everything here is editable before you publish your Cascade profile.</div>
+          </div>
+        </div>
+      {/if}
 
-          <div class="grid gap-3">
-            <p class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Or pick one</p>
-            <div class="grid grid-cols-4 gap-2 sm:grid-cols-6" role="listbox" aria-label="Avatar options">
+      <!-- Form Grid -->
+      <div class="grid gap-8 lg:grid-cols-[auto_1fr]">
+        <!-- Avatar Section -->
+        <div class="space-y-4">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Profile photo</span>
+            </label>
+            <button
+              class="avatar placeholder group relative h-48 w-48"
+              type="button"
+              onclick={handleAvatarClick}
+              aria-label="Upload your own photo"
+            >
+              <div class="w-48 overflow-hidden rounded-lg bg-base-200 ring-1 ring-neutral-700">
+                {#if avatarDisplayUrl}
+                  <img src={avatarDisplayUrl} alt="Your avatar" class="h-full w-full object-cover" />
+                {:else}
+                  <div class="flex h-full w-full items-center justify-center">
+                    <svg class="h-16 w-16 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <circle cx="12" cy="8" r="4" />
+                      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                    </svg>
+                  </div>
+                {/if}
+                <div class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                  <svg class="h-8 w-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                  </svg>
+                </div>
+              </div>
+            </button>
+            <input bind:this={fileInput} type="file" accept="image/*" onchange={handleAvatarSelection} class="hidden" tabindex="-1" />
+          </div>
+
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text text-xs font-medium uppercase tracking-wider text-neutral-500">Or pick one</span>
+            </label>
+            <div class="grid grid-cols-4 gap-2">
               {#each DICEBEAR_AVATARS as avatar (avatar.url)}
                 <button
-                  class={`overflow-hidden rounded-md border ${
+                  class={`avatar placeholder ${
                     selectedDicebear === avatar.url
-                      ? 'border-white'
-                      : 'border-neutral-800 hover:border-neutral-700'
+                      ? 'ring-2 ring-primary'
+                      : 'ring-1 ring-neutral-700 hover:ring-neutral-500'
                   }`}
                   type="button"
-                  role="option"
-                  aria-selected={selectedDicebear === avatar.url}
                   onclick={() => {
                     selectedDicebear = avatar.url;
                     avatarUrl = '';
@@ -653,7 +665,9 @@
                     profileTouched = true;
                   }}
                 >
-                  <img src={avatar.url} alt={avatar.seed} loading="lazy" class="h-full w-full bg-base-100 object-cover" />
+                  <div class="w-12 rounded-lg bg-base-100">
+                    <img src={avatar.url} alt={avatar.seed} loading="lazy" />
+                  </div>
                 </button>
               {/each}
             </div>
@@ -661,7 +675,7 @@
 
           {#if avatarDisplayUrl}
             <button
-              class="btn btn-ghost w-fit px-0 text-neutral-400 hover:bg-transparent hover:text-white"
+              class="btn btn-ghost btn-sm"
               type="button"
               onclick={() => {
                 avatarUrl = '';
@@ -674,15 +688,24 @@
               Remove photo
             </button>
           {/if}
+
           {#if uploadError}
-            <p class="text-sm text-error">{uploadError}</p>
+            <div role="alert" class="alert alert-error">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{uploadError}</span>
+            </div>
           {/if}
         </div>
 
-        <div class="grid gap-4">
-          <div class="grid gap-4 md:grid-cols-2">
-            <label class="grid gap-2">
-              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Username</span>
+        <!-- Profile Fields -->
+        <div class="space-y-4">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Username</span>
+              </label>
               <input
                 class="input input-bordered"
                 bind:value={name}
@@ -692,9 +715,12 @@
                 placeholder={namePlaceholder}
                 autocomplete="username"
               />
-            </label>
-            <label class="grid gap-2">
-              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Name <em class="normal-case tracking-normal text-neutral-400">(optional)</em></span>
+            </div>
+
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Name <span class="text-neutral-400">(optional)</span></span>
+              </label>
               <input
                 class="input input-bordered"
                 bind:value={display}
@@ -704,27 +730,29 @@
                 placeholder="Your full name"
                 autocomplete="name"
               />
-            </label>
+            </div>
           </div>
 
-          <label class="grid gap-2">
-            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Bio <em class="normal-case tracking-normal text-neutral-400">(optional)</em></span>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Bio <span class="text-neutral-400">(optional)</span></span>
+            </label>
             <textarea
-              class="textarea textarea-bordered min-h-32"
+              class="textarea textarea-bordered h-32"
               bind:value={about}
               oninput={() => {
                 profileTouched = true;
               }}
               placeholder="What do you write about?"
-              rows="3"
             ></textarea>
-          </label>
+          </div>
         </div>
       </div>
 
-      <div class="flex flex-col gap-3 border-t border-neutral-800 pt-5 sm:flex-row sm:items-center sm:justify-between">
+      <!-- Actions -->
+      <div class="flex flex-wrap items-center justify-between gap-4 border-t border-base-300 pt-6">
         <button
-          class="btn btn-primary w-fit"
+          class="btn btn-primary"
           type="button"
           disabled={!step1Valid}
           onclick={() => {
@@ -734,178 +762,156 @@
           Next — public profile details
         </button>
         {#if !step1Valid}
-          <p class="text-sm text-neutral-500">Add a username or name to continue.</p>
+          <p class="text-sm text-neutral-500">Add a username or name to continue</p>
         {/if}
       </div>
     </div>
   {:else if step === 2}
-    <div class="grid gap-6">
-      <div class="grid gap-3">
-        <h1>Finish your public profile.</h1>
-        <p class="text-base leading-7 text-neutral-400">
+    <div class="space-y-8">
+      <!-- Header -->
+      <div class="space-y-2">
+        <h1 class="text-2xl font-bold">Finish your public profile</h1>
+        <p class="text-base text-neutral-400">
           Add a site or claim a verified handle. Both are optional.
         </p>
       </div>
 
-      <div class="grid gap-4">
-          <div class="ob-profile-summary">
-            <span>Public name</span>
-            <strong>{writerLabel}</strong>
-            <p>This is the identity people will see when they open your public profile.</p>
+      <!-- Profile Summary Card -->
+      <div class="card bg-base-200">
+        <div class="card-body">
+          <div class="space-y-1">
+            <p class="text-xs font-medium uppercase tracking-wider text-neutral-500">Public name</p>
+            <p class="text-xl font-semibold">{writerLabel}</p>
+            <p class="text-sm text-neutral-400">This is the identity people will see when they open your public profile.</p>
           </div>
-
-          <label class="grid gap-2">
-            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Website <em class="normal-case tracking-normal text-neutral-400">(optional)</em></span>
-            <input
-              class="input input-bordered"
-              bind:value={website}
-              oninput={() => {
-                profileTouched = true;
-              }}
-              placeholder="https://yoursite.com"
-              type="url"
-            />
-          </label>
-
-          {#if managedNip05Enabled && managedNip05Domain}
-            <label class="grid gap-2">
-              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Verified handle <em class="normal-case tracking-normal text-neutral-400">(optional)</em></span>
-              <div class="ob-managed-nip05-input">
-                <input
-                  class="input input-bordered"
-                  bind:value={managedNip05Name}
-                  oninput={() => {
-                    managedNip05Touched = true;
-                  }}
-                  placeholder="writer"
-                  autocomplete="off"
-                  autocapitalize="none"
-                  autocorrect="off"
-                  spellcheck="false"
-                />
-                <span class="ob-managed-nip05-domain">@{managedNip05Domain}</span>
-              </div>
-              <p class="ob-managed-nip05-note">
-                Reserve a verified handle on @{managedNip05Domain}. Leave it blank to skip.
-              </p>
-              {#if existingExternalNip05}
-                <p class="ob-managed-nip05-note">
-                  Your current profile already advertises {existingExternalNip05}. Leaving this blank keeps that value.
-                </p>
-              {/if}
-              {#if normalizedManagedNip05Name && !managedNip05Valid}
-                <p class="ob-error">Use 1-64 lowercase letters, numbers, hyphens, or underscores.</p>
-              {:else if managedNip05Status === 'checking'}
-                <p class="ob-managed-nip05-status">Checking {managedNip05Identifier}…</p>
-              {:else if managedNip05Status === 'available'}
-                <p class="ob-managed-nip05-status success">{managedNip05Identifier} is available.</p>
-              {:else if managedNip05Status === 'owned'}
-                <p class="ob-managed-nip05-status success">{managedNip05Identifier} is already linked to this session.</p>
-              {:else if managedNip05Status === 'taken'}
-                <p class="ob-managed-nip05-status">That handle is already registered.</p>
-              {:else if managedNip05Status === 'error'}
-                <p class="ob-error">Couldn't check that handle right now.</p>
-              {/if}
-            </label>
-          {/if}
+        </div>
       </div>
 
-      <div class="flex flex-col gap-3 border-t border-neutral-800 pt-5">
-        <div class="flex flex-wrap items-center gap-3">
-          <button class="btn btn-outline" type="button" onclick={() => { step = 1; }}>Back</button>
-          <button
-            class="btn btn-primary"
-            type="button"
-            disabled={!canPublish}
-            onclick={() => void publish()}
-          >
-            {saving ? 'Saving…' : 'Open profile'}
-          </button>
+      <!-- Form Fields -->
+      <div class="space-y-4">
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium">Website <span class="text-neutral-400">(optional)</span></span>
+          </label>
+          <input
+            class="input input-bordered"
+            bind:value={website}
+            oninput={() => {
+              profileTouched = true;
+            }}
+            placeholder="https://yoursite.com"
+            type="url"
+          />
         </div>
-        {#if saveError}
-          <p class="text-sm text-error">{saveError}</p>
+
+        {#if managedNip05Enabled && managedNip05Domain}
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Verified handle <span class="text-neutral-400">(optional)</span></span>
+            </label>
+            <div class="join w-full">
+              <input
+                class="input input-bordered join-item flex-1"
+                bind:value={managedNip05Name}
+                oninput={() => {
+                  managedNip05Touched = true;
+                }}
+                placeholder="writer"
+                autocomplete="off"
+                autocapitalize="none"
+                autocorrect="off"
+                spellcheck="false"
+              />
+              <span class="join-item flex items-center bg-base-200 px-4 text-sm text-neutral-400">@{managedNip05Domain}</span>
+            </div>
+            <label class="label">
+              <span class="label-text-alt text-neutral-400">
+                Reserve a verified handle on @{managedNip05Domain}. Leave it blank to skip.
+              </span>
+            </label>
+
+            {#if existingExternalNip05}
+              <label class="label">
+                <span class="label-text-alt text-neutral-400">
+                  Your current profile already advertises {existingExternalNip05}. Leaving this blank keeps that value.
+                </span>
+              </label>
+            {/if}
+
+            {#if normalizedManagedNip05Name && !managedNip05Valid}
+              <div role="alert" class="alert alert-error">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Use 1-64 lowercase letters, numbers, hyphens, or underscores.</span>
+              </div>
+            {:else if managedNip05Status === 'checking'}
+              <div role="alert" class="alert">
+                <span class="loading loading-spinner loading-sm"></span>
+                <span>Checking {managedNip05Identifier}…</span>
+              </div>
+            {:else if managedNip05Status === 'available'}
+              <div role="alert" class="alert alert-success">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{managedNip05Identifier} is available</span>
+              </div>
+            {:else if managedNip05Status === 'owned'}
+              <div role="alert" class="alert alert-success">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{managedNip05Identifier} is already linked to this session</span>
+              </div>
+            {:else if managedNip05Status === 'taken'}
+              <div role="alert" class="alert alert-warning">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>That handle is already registered</span>
+              </div>
+            {:else if managedNip05Status === 'error'}
+              <div role="alert" class="alert alert-error">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Couldn't check that handle right now</span>
+              </div>
+            {/if}
+          </div>
         {/if}
       </div>
+
+      <!-- Actions -->
+      <div class="flex flex-wrap items-center gap-3 border-t border-base-300 pt-6">
+        <button class="btn btn-outline" type="button" onclick={() => { step = 1; }}>
+          Back
+        </button>
+        <button
+          class="btn btn-primary"
+          type="button"
+          disabled={!canPublish}
+          onclick={() => void publish()}
+        >
+          {#if saving}
+            <span class="loading loading-spinner loading-sm"></span>
+            Saving…
+          {:else}
+            Open profile
+          {/if}
+        </button>
+      </div>
+
+      {#if saveError}
+        <div role="alert" class="alert alert-error">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{saveError}</span>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
 
-<style>
-  .ob-prefill-note {
-    display: grid;
-    gap: 0.35rem;
-    padding: 0.9rem 1rem;
-    border: 1px solid rgba(64, 64, 64, 0.9);
-    background: rgba(23, 23, 23, 0.88);
-  }
-
-  .ob-prefill-note strong {
-    font-size: 0.95rem;
-  }
-
-  .ob-prefill-note p {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    line-height: 1.6;
-  }
-
-  .ob-profile-summary {
-    display: grid;
-    gap: 0.45rem;
-    padding: 1rem 1.1rem;
-    border: 1px solid rgba(64, 64, 64, 0.9);
-    background: rgba(23, 23, 23, 0.6);
-  }
-
-  .ob-profile-summary span {
-    color: rgba(255, 255, 255, 0.62);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .ob-profile-summary strong {
-    color: #ffffff;
-    font-size: 1.15rem;
-    letter-spacing: -0.03em;
-  }
-
-  .ob-profile-summary p {
-    color: rgba(255, 255, 255, 0.72);
-    line-height: 1.6;
-    margin: 0;
-  }
-
-  .ob-managed-nip05-input {
-    align-items: center;
-    display: grid;
-    gap: 0.75rem;
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .ob-managed-nip05-domain {
-    color: rgba(255, 255, 255, 0.62);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
-    font-size: 0.95rem;
-    white-space: nowrap;
-  }
-
-  .ob-managed-nip05-note,
-  .ob-managed-nip05-status {
-    color: rgba(255, 255, 255, 0.68);
-    font-size: 0.92rem;
-    line-height: 1.5;
-    margin: 0.55rem 0 0;
-  }
-
-  .ob-managed-nip05-status.success {
-    color: #9ed0ad;
-  }
-
-  @media (max-width: 720px) {
-    .ob-managed-nip05-input {
-      gap: 0.5rem;
-      grid-template-columns: 1fr;
-    }
-  }
-</style>

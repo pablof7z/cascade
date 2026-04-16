@@ -181,7 +181,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Header gives fast access to markets, activity, leaderboard, analytics, builder, portfolio, and join/profile.
 - [ ] Authenticated state swaps `Join` for session-aware profile/account affordances.
 - [ ] Current edition is always visible in the shell.
-- [ ] Footer links to blog, how-it-works, privacy, and terms.
+- [ ] Footer links to how-it-works, privacy, and terms.
 - [ ] No public nav item points to dashboard/workspace routes at launch.
 - [ ] Not-found handling is explicit and branded.
 - [ ] Empty states are purposeful and route users to the next action.

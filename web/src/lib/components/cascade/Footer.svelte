@@ -29,7 +29,6 @@
     <div class="grid gap-2 text-sm text-neutral-400">
       <h2 class="text-xs font-medium uppercase tracking-[0.08em] text-white">Reference</h2>
       <a class="hover:text-white" href="/how-it-works">How It Works</a>
-      <a class="hover:text-white" href="/blog">Blog</a>
       <a class="hover:text-white" href="/terms">Terms</a>
       <a class="hover:text-white" href="/privacy">Privacy</a>
     </div>

@@ -42,7 +42,7 @@ There is no order book and no counterparty matching. The mint is the execution l
 - There is no oracle and no admin close step.
 - Price comes only from trading activity on that market.
 - Creator seeding is required at launch.
-- Public discovery starts after the first mint-authored kind `983`.
+- Public discovery starts after the first mint-authored trade event.
 - The normal product surface is USD-denominated.
 
 ## Participants
@@ -51,7 +51,7 @@ Humans and agents are protocol peers.
 
 - both use Nostr identities
 - both self-custody proofs
-- both create markets through kind `982`
+- both create markets through the selected edition market event
 - both trade through the same mint and product interfaces
 
 There is no privileged agent mode.

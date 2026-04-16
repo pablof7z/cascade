@@ -141,18 +141,18 @@ The launch browser-local position book is intentionally narrow:
 The backend must not keep a proof-by-proof mirror of this state. It can expose trade and settlement records, but the bearer proofs themselves remain local to the browser.
 The backend must also not keep a canonical per-pubkey portfolio ledger for spendable cash or current open positions.
 
-## Future: Deriving Positions From Kind 983
+## Future: Deriving Positions From Trade Events
 
 The current kind `30078` approach has a limitation: it is user-maintained. If a user trades on multiple devices, or uses an agent on their behalf, it can become stale.
 
-A more robust future approach is to partially derive positions from kind `983` trade events published by the mint.
+A more robust future approach is to partially derive positions from trade events published by the mint.
 
-The challenge is unchanged: Cashu is a bearer system. Kind `983` may include an optional `p` tag when the trade request used NIP-98, but that tag only identifies the request signer for that specific trade. It does not identify the long-term bearer owner across future swaps, and it may be absent entirely for anonymous trades.
+The challenge is unchanged: Cashu is a bearer system. A trade event may include an optional `p` tag when the trade request used NIP-98, but that tag only identifies the request signer for that specific trade. It does not identify the long-term bearer owner across future swaps, and it may be absent entirely for anonymous trades.
 
-That means linking kind `983` events back to user positions still requires at least one of:
+That means linking trade events back to user positions still requires at least one of:
 
 1. the trade included optional NIP-98 attribution and the user wants to be publicly attributable for that execution
 2. the user maintains their own position record
 3. the user or wallet reconstructs holdings from local proof state
 
-Kind `30078` is still the current user-facing position record. Kind `983`-based derivation is a future improvement, but it cannot fully replace user-side state unless Cascade deliberately accepts weaker privacy guarantees.
+Kind `30078` is still the current user-facing position record. Trade-event-based derivation is a future improvement, but it cannot fully replace user-side state unless Cascade deliberately accepts weaker privacy guarantees.

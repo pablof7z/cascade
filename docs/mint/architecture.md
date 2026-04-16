@@ -27,7 +27,7 @@ The market mint is the execution layer for positions.
 - maintains LMSR market state
 - issues LONG and SHORT tokens per market
 - burns market tokens on exits
-- publishes mint-authored kind `983` events
+- publishes mint-authored trade events
 - creates invoice-backed mint quotes for market issuance
 - computes exact market settlement amounts in `msat`
 
@@ -38,7 +38,7 @@ The web app and agent-facing product API compose the two mints.
 - users ask to spend dollars on LONG or SHORT
 - the coordinator gets a fresh `USD <-> msat` FX quote
 - the coordinator gets a fresh market `LONG/SHORT <-> msat` quote
-- the coordinator lazy-initializes the LMSR pool on the first trade for a market (fetching the kind `982` event from relays by event ID)
+- the coordinator lazy-initializes the LMSR pool on the first trade for a market (fetching the market event from relays by event ID)
 - the coordinator executes the stablemint melt and market-mint mint flow
 - the coordinator stores recovery state for interrupted client flows
 
@@ -98,7 +98,7 @@ Cascade uses pure bearer Cashu tokens.
 - market tokens are not bound to a permanent user identity by default
 - users can swap or transfer proofs without creating market activity
 
-This is why kind `983` stays mint-authored and request attribution stays optional.
+This is why trade events stay mint-authored and request attribution stays optional.
 
 ## Keysets
 
@@ -106,8 +106,8 @@ The wallet mint has USD keyset material for wallet balances.
 
 Each market on the market mint has two keysets:
 
-- LONG keyset for the YES side
-- SHORT keyset for the NO side
+- LONG keyset
+- SHORT keyset
 
 All users in the same market share those keysets. The market mint keeps the mapping from keyset id to market id and direction so it can interpret incoming proofs during exits.
 
@@ -117,7 +117,7 @@ The canonical public discovery path for market keysets is market-scoped:
 
 The shared standard `/v1/keys`, `/v1/keysets`, and `/v1/keys/{keyset_id}` routes stay wallet-facing. Market key material lives on the same mint runtime, but it is not listed on the shared standard key routes.
 
-The path segment is the kind `982` event id, not the slug and not an internal mint UUID.
+The path segment is the market event id, not the slug and not an internal mint UUID.
 
 ## State Authority
 
@@ -127,8 +127,8 @@ The market mint is the source of truth for executable market state.
 - `reserve_msat` is the current LMSR reserve implied by that state
 - quote state ties an executable market quote to a specific LMSR snapshot and expiry
 - keyset metadata ties proofs back to a market and side
-- trade history inside the market mint is the source material for kind `983`
-- public discovery eligibility begins only after the first mint-authored kind `983` for that market (triggered by the first trade, which also lazy-initializes the LMSR pool)
+- trade history inside the market mint is the source material for edition-specific trade events
+- public discovery eligibility begins only after the first mint-authored trade event for that market (triggered by the first trade, which also lazy-initializes the LMSR pool)
 
 The wallet mint is the source of truth for:
 
@@ -192,7 +192,7 @@ This is the layer `web/` and agents should normally use:
 - sell quote and execute endpoints in USD
 - public discovery, analytics, discussion, and profile APIs
 
-The product contract exists because the user experience is "spend $10 on YES", not "manually compose mint quotes, melt quotes, and Lightning invoices."
+The product contract exists because the user experience is "spend $10 on LONG", not "manually compose mint quotes, melt quotes, and Lightning invoices."
 
 ## Standard-First Rule
 
@@ -227,7 +227,7 @@ Custom logic is justified only for product-specific behavior such as Stripe fund
 ### Buy
 
 1. User asks to spend `$X` on LONG or SHORT for a market.
-2. **Lazy initialization (first trade only):** If no LMSR pool exists for the market, the coordinator fetches the kind `982` event from Nostr relays by event ID, extracts LMSR parameters, and creates the pool. No pre-registration is required.
+2. **Lazy initialization (first trade only):** If no LMSR pool exists for the market, the coordinator fetches the selected edition market event from Nostr relays by event ID, extracts LMSR parameters, and creates the pool. No pre-registration is required.
 3. Coordinator gets a fresh `USD <-> msat` FX quote.
 4. Coordinator computes the implied `msat` budget.
 5. Market mint computes the executable `LONG/SHORT <-> msat` quote.
@@ -236,8 +236,8 @@ Custom logic is justified only for product-specific behavior such as Stripe fund
 8. User authorizes spending local USD proofs.
 9. Wallet mint consumes the USD proofs and pays the invoice.
 10. User redeems the market-mint quote and receives LONG or SHORT proofs.
-11. Market mint publishes a kind `983` buy event.
-12. If this is the market's first kind `983`, the market becomes publicly discoverable.
+11. Market mint publishes the selected edition buy event.
+12. If this is the market's first trade event, the market becomes publicly discoverable.
 
 The persisted settlement record for this leg should identify the logical rail path as `wallet_mint -> market_mint` with `mode = bolt11_wallet_to_market`.
 
@@ -251,7 +251,7 @@ The persisted settlement record for this leg should identify the logical rail pa
 6. User submits market proofs to the market mint melt.
 7. Market mint consumes the proofs and pays the invoice.
 8. User redeems the wallet-mint quote and receives USD proofs.
-9. Market mint publishes a kind `983` sell event.
+9. Market mint publishes the selected edition sell event.
 
 The persisted settlement record for this leg should identify the logical rail path as `market_mint -> wallet_mint` with `mode = bolt11_market_to_wallet`.
 
@@ -262,13 +262,13 @@ NUT-03 swap is not market activity.
 - it splits, merges, or reissues bearer proofs
 - it may change who controls the proofs
 - it does not change `qLong`, `qShort`, reserve, or price
-- it must not produce kind `983`
+- it must not produce a trade event
 
 That separation keeps price history and volume tied only to actual LMSR execution.
 
 ## Nostr Publishing
 
-Every kind `983` is authored by the market mint.
+Every trade event is authored by the market mint. Live uses kind `983`; Practice uses kind `981`.
 
 - `pubkey` on the event is always the mint's Nostr pubkey
 - the optional `p` tag is not proof ownership metadata

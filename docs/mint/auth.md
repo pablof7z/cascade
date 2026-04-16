@@ -1,6 +1,6 @@
 # Mint Authentication And Trade Attribution
 
-This document defines how the mint layer should think about identity, bearer proofs, and attribution on kind `983`.
+This document defines how the mint layer should think about identity, bearer proofs, and attribution on mint-authored trade events.
 
 ## The Core Constraint
 
@@ -18,7 +18,7 @@ Cascade wants all of the following:
 
 - pure bearer market tokens by default
 - pure bearer USD wallet tokens by default
-- honest public attribution on kind `983`
+- honest public attribution on trade events
 - no permanent proof-level identity lock
 - no extra event for plain token swaps
 
@@ -26,11 +26,11 @@ The attribution model has to respect those constraints.
 
 ## Chosen Model
 
-Kind `983` stays mint-authored.
+Trade events stay mint-authored. Live uses kind `983`; Practice uses kind `981`.
 
 - `event.pubkey` is always the market mint's Nostr pubkey
 - `p` reflects the NIP-98 request signer when NIP-98 is present
-- launch product trade requests use NIP-98, so launch-originated kind `983` events normally include `p`
+- launch product trade requests use NIP-98, so launch-originated trade events normally include `p`
 - if the mint ever accepts a valid trade request without NIP-98 outside that launch surface, the event can omit `p`
 
 There is no extra `identity` tag and no extra `actor` tag. Request attribution uses the standard Nostr `p` tag only.
@@ -38,7 +38,7 @@ There is also no separate mint-side actor registry implied by NIP-98. A pubkey i
 
 ## Meaning Of The `p` Tag
 
-When present on kind `983`, `p` means:
+When present on a trade event, `p` means:
 
 - the Nostr pubkey that authenticated the HTTP request which executed this trade against the market mint
 
@@ -71,7 +71,7 @@ Operationally:
 
 1. Client sends the trade request with a NIP-98 authorization header in normal launch product flows.
 2. Mint verifies the NIP-98 event.
-3. If valid, mint copies the Nostr pubkey into the `p` tag on kind `983`.
+3. If valid, mint copies the Nostr pubkey into the `p` tag on the trade event.
 4. If a non-launch or internal trade path ever executes without NIP-98, the mint omits `p` rather than inventing attribution.
 
 ## Stable And Ephemeral Attribution
@@ -83,7 +83,7 @@ This model supports at least two user behaviors:
 
 The mint does not need to distinguish between those modes beyond verifying the signature.
 
-## Swaps Do Not Emit Kind `983`
+## Swaps Do Not Emit Trade Events
 
 NUT-03 swap can move or reissue proofs without touching LMSR state.
 
@@ -100,20 +100,20 @@ But none of the following change:
 - reserve
 - price
 
-So swaps are not buys and not sells. They do not emit kind `983`.
+So swaps are not buys and not sells. They do not emit trade events.
 
 ## Optional NUT-20
 
 NUT-20 can still be useful in the future for quote-level authorization on mint quote redemption.
 
-If added, it should be treated as quote hardening, not as the default source of public user attribution on kind `983`. The bearer token model still dominates the downstream identity story.
+If added, it should be treated as quote hardening, not as the default source of public user attribution on trade events. The bearer token model still dominates the downstream identity story.
 
-## Kind `983` Impact
+## Trade Event Impact
 
-The kind `983` schema should allow:
+The trade event schema should allow:
 
 ```text
-kind: 983
+kind: 983   # Live; Practice uses 981
 pubkey: <market-mint pubkey>
 tags:
   ["e", "<market-event-id>"]
@@ -134,6 +134,6 @@ Absence of `p` is intentional and meaningful. It means the mint did not receive 
 - launch buy and sell endpoints should require NIP-98
 - the mint should still define `p` as request-level attribution, not proof ownership
 - the mint should never infer `p` from proof history, keyset ownership, or local wallet state
-- the mint should never emit kind `983` for plain NUT-03 swap activity
+- the mint should never emit trade events for plain NUT-03 swap activity
 
-This keeps kind `983` useful without breaking the bearer-token model that Cascade depends on.
+This keeps trade events useful without breaking the bearer-token model that Cascade depends on.

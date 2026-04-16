@@ -19,8 +19,8 @@ cli_path = "/Users/customer/bin/lncli"
 [stripe]
 secret_key = ""
 webhook_secret = ""
-success_url = "https://signet.cascade.f7z.io/portfolio?stripe=success&funding_id={FUNDING_ID}"
-cancel_url = "https://signet.cascade.f7z.io/portfolio?stripe=cancel&funding_id={FUNDING_ID}"
+success_url = "https://cascade.f7z.io/portfolio?stripe=success&funding_id={FUNDING_ID}"
+cancel_url = "https://cascade.f7z.io/portfolio?stripe=cancel&funding_id={FUNDING_ID}"
 base_url = "https://api.stripe.com"
 checkout_expiry_seconds = 1800
 product_name = "Cascade Portfolio Funding"

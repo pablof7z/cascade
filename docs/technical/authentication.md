@@ -129,11 +129,11 @@ This request signing does **not** bind Cashu proofs to that pubkey. Cashu tokens
 
 It also does not imply that the mint keeps a special human or agent registry. A pubkey is just a pubkey at the API boundary.
 
-Direct publication of a signed kind `982` to relays is a separate action. NIP-98 only applies when there is an HTTP product API action to authenticate.
+Direct publication of a signed market event to relays is a separate action. NIP-98 only applies when there is an HTTP product API action to authenticate.
 
-For launch web flows, buy and sell requests are expected to carry NIP-98. The resulting kind `983` records therefore carry request-level attribution through the `p` tag in normal product use.
+For launch web flows, buy and sell requests are expected to carry NIP-98. The resulting trade records therefore carry request-level attribution through the `p` tag in normal product use.
 
-At the protocol level, the important meaning is unchanged: a `p` tag on kind `983` means "the pubkey that authenticated the HTTP request," not "the permanent owner of the proofs."
+At the protocol level, the important meaning is unchanged: a `p` tag on a trade event means "the pubkey that authenticated the HTTP request," not "the permanent owner of the proofs."
 
 See [`docs/mint/auth.md`](../mint/auth.md) for the canonical trade-attribution model.
 

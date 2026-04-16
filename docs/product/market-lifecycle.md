@@ -4,24 +4,26 @@
 
 Every market starts the same way:
 
-1. The creator writes the market and signs a kind `982` event.
-2. The kind `982` is published to relays.
+1. The creator writes the market and signs the selected edition market event.
+2. The market event is published to relays.
 3. The creator seeds the market with an initial trade.
 4. The mint lazy-initializes the LMSR pool on that first trade.
-5. The mint publishes the first kind `983` trade record.
+5. The mint publishes the first selected edition trade record.
 6. The market becomes publicly discoverable.
+
+Live uses market/trade kinds `982`/`983`. Practice uses market/trade kinds `980`/`981`.
 
 The seed trade is required. There is no zero-liquidity launch.
 
 ## Visibility
 
-A raw kind `982` is not enough for normal public discovery.
+A raw market event is not enough for normal public discovery.
 
-Anonymous public reads stay `404` until relays have both the kind `982` and the first
-mint-authored kind `983`. Creator pending visibility remains in creator-aware flows rather than
+Anonymous public reads stay `404` until relays have both the market event and the first
+mint-authored trade event for the selected edition. Creator pending visibility remains in creator-aware flows rather than
 anonymous public reads.
 
-The public visibility threshold is the first mint-authored kind `983`. That proves the market is funded and live.
+The public visibility threshold is the first mint-authored trade event. That proves the market is funded and live.
 
 ## Trading
 
@@ -30,7 +32,7 @@ Once live:
 - users spend USD ecash to mint LONG or SHORT exposure
 - users can exit by returning market proofs to the mint
 - price updates continuously with every trade
-- all public trade activity is represented by kind `983`
+- all public trade activity is represented by the selected edition trade event
 
 There is no order book and no counterparty matching.
 

@@ -75,7 +75,7 @@ Important distinction:
 - selling against LMSR is market activity
 - swapping bearer proofs is not
 
-Only the first case changes market state and produces kind `983`.
+Only the first case changes market state and produces a trade event.
 
 ## Starting State
 
@@ -119,7 +119,7 @@ If preview math and mint execution ever disagree, the mint wins.
 ## Product Consequences
 
 - markets never need an oracle or formal closing phase
-- there is no resolution event
+- there is no outcome declaration event
 - prices drift toward extremes as traders react to reality
 - users sell when the current price is favorable to them
 - market cap disappears through trading behavior, not an admin command

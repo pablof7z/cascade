@@ -47,7 +47,7 @@ Blind auth routes:
 
 - `GET /{event_id}/v1/keys`
 
-This is the market-scoped key discovery surface keyed by the kind `982` event id. It is the canonical public discovery path for market LONG and SHORT keysets.
+This is the market-scoped key discovery surface keyed by the market event id. It is the canonical public discovery path for market LONG and SHORT keysets.
 
 ### Product Trading Routes
 
@@ -99,9 +99,9 @@ These routes exist in `routes.rs` but must be deleted. They serve relay data thr
 
 **Market read routes (relay concern, not mint concern):**
 
-- `GET /api/market/{id}` — market state belongs on relays (kind `982`)
-- `GET /api/market/{id}/price-history` — derived from kind `983` on relays
-- `GET /api/product/activity` — derived from kind `983` on relays
+- `GET /api/market/{id}` — market state belongs on relays
+- `GET /api/market/{id}/price-history` — derived from trade events on relays
+- `GET /api/product/activity` — derived from trade events on relays
 - `GET /api/product/markets/search` — relay query or frontend-side search
 - `GET /api/product/feed` — relay subscription
 - `GET /api/product/runtime` — build-time or deployment config, not an HTTP manifest
@@ -110,7 +110,7 @@ These routes exist in `routes.rs` but must be deleted. They serve relay data thr
 
 - `GET /api/product/markets/slug/{slug}` — slug lookup is a relay query
 - `GET /api/product/markets/{event_id}/pending/{creator_pubkey}` — no pending-state endpoint needed
-- `POST /api/product/markets` — market creation publishes kind `982` to relays
+- `POST /api/product/markets` — market creation publishes the selected edition market event to relays
 - `POST /api/market/create` — duplicate of above
 
 **Stripe routes (moved to `/v1/fund/stripe` — completed):**
@@ -124,13 +124,13 @@ The mint database currently mirrors relay data in tables like `market_launch_sta
 - LMSR parameters per market (`qLong`, `qShort`, `b`, `reserve`)
 - Keyset-to-market mappings
 - Spent-proof tracking
-- Trade execution records (source of kind `983` publishing)
+- Trade execution records (source of edition-specific trade event publishing)
 - Wallet funding state (Stripe sessions, Lightning quotes, USDC intents)
 - FX quote snapshots
 - Settlement state
 - Risk/anti-abuse state
 
-It does NOT store market titles, descriptions, slugs (beyond keyset mapping), visibility state, volume projections, search indexes, or any data that exists for serving to clients. The mint publishes kind `983` to relays after trade execution — it does not serve trade history back through HTTP.
+It does NOT store market titles, descriptions, slugs (beyond keyset mapping), visibility state, volume projections, search indexes, or any data that exists for serving to clients. The mint publishes the selected edition trade event to relays after trade execution — it does not serve trade history back through HTTP.
 
 ## Interface Rules
 

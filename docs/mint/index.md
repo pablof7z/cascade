@@ -5,7 +5,7 @@ This directory is the canonical documentation set for the Cascade mint layer.
 Cascade uses a custom CDK Rust Cashu mint system with two logical roles:
 
 - a **wallet mint** that issues USD ecash and accepts Stripe or Lightning funding
-- a **market mint** that prices LONG and SHORT exposure with LMSR and publishes kind `983` trade records
+- a **market mint** that prices LONG and SHORT exposure with LMSR and publishes mint-authored trade records
 
 The user-facing product is dollar-denominated. Lightning may appear behind the scenes as settlement plumbing, but it is not the normal product language.
 
@@ -15,8 +15,9 @@ The user-facing product is dollar-denominated. Lightning may appear behind the s
 - each market has exactly two keysets: one LONG keyset and one SHORT keyset
 - only buys and exits against LMSR count as market activity
 - NUT-03 swaps are token movement, not market trades
-- kind `983` is mint-authored
-- the optional `p` tag on kind `983` is request attribution, not proof ownership
+- trade events are mint-authored
+- Live uses trade kind `983`; Practice uses trade kind `981`
+- the optional `p` tag on a trade event is request attribution, not proof ownership
 
 ## Map
 

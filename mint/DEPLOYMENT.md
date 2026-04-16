@@ -237,11 +237,11 @@ For edition-boundary safety, verify:
 ```bash
 curl -sS https://mint.f7z.io/v1/info
 curl -sS https://signet-mint.cascade.f7z.io/v1/info
-curl -sS https://cascade.f7z.io | grep PUBLIC_CASCADE_API_URL
-curl -sS https://signet.cascade.f7z.io | grep PUBLIC_CASCADE_API_URL
+curl -sS https://cascade.f7z.io | grep PUBLIC_CASCADE_MAINNET_API_URL
+curl -sS https://cascade.f7z.io | grep PUBLIC_CASCADE_SIGNET_API_URL
 ```
 
-The removed `/api/product/runtime` manifest is no longer part of the deployment contract. Instead, verify that each mint exposes the standard Cashu info route and that each web deployment embeds the matching `PUBLIC_CASCADE_API_URL` for its edition.
+The removed `/api/product/runtime` manifest is no longer part of the deployment contract. Instead, verify that each mint exposes the standard Cashu info route and that the single web deployment embeds the matching Live and Practice mint URLs.
 
 ## Operational Notes
 

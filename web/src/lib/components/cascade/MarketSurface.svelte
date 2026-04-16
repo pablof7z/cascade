@@ -163,81 +163,34 @@
     ].sort((left, right) => right.createdAt - left.createdAt);
   });
 
-  const tilt = $derived.by(() => {
-    if (impliedProbability >= 0.65) {
-      return {
-        label: 'Strong LONG consensus',
-        detail: 'Most visible capital leans LONG. New flow needs fresh evidence rather than repetition.',
-        accentClass: 'positive'
-      };
-    }
+  const marketState = $derived.by(() => {
+    const priceLabel = priceCents(impliedProbability);
+    const accentClass = impliedProbability >= 0.5 ? 'positive' : 'negative';
 
-    if (impliedProbability <= 0.35) {
-      return {
-        label: 'Strong SHORT consensus',
-        detail: 'Most visible capital leans SHORT. A reversal needs a catalyst, not sentiment alone.',
-        accentClass: 'negative'
-      };
-    }
+    // Simple data: just price and volume split
+    const longPct = Math.round(flowLong * 100);
+    const shortPct = Math.round(flowShort * 100);
+    const summary = `${longPct}% LONG • ${shortPct}% SHORT`;
 
-    return {
-      label: 'No clear consensus',
-      detail: 'Neither side dominates. Timing and evidence matter more than momentum here.',
-      accentClass: ''
-    };
+    return { label: priceLabel, summary, accentClass };
   });
 
-  const tradeFrame = $derived.by(() => {
-    if (impliedProbability >= 0.65) {
-      return [
-        'LONG is crowded. New buyers need information the market has not absorbed yet.',
-        'SHORT becomes more attractive if the current thesis is overstated.',
-        'Check the discussion for the strongest counter-argument before sizing up.'
-      ];
-    }
+  const recentSignals = $derived.by(() => {
+    // Latest trade - just the data
+    const latestFlow = latestTrade
+      ? `${latestTrade.direction.toUpperCase()} ${latestTrade.type} ${formatProductAmount(latestTrade.amount, 'usd')} • ${formatRelativeTime(latestTrade.createdAt)}`
+      : 'No trades yet';
 
-    if (impliedProbability <= 0.35) {
-      return [
-        'SHORT is crowded. Further downside requires genuinely new evidence.',
-        'LONG offers value only if the current skepticism is wrong.',
-        'Look for what would force traders to reprice quickly.'
-      ];
-    }
+    // Volume split - just percentages
+    const volumeSplit = `${Math.round(flowLong * 100)}% LONG • ${Math.round(flowShort * 100)}% SHORT`;
 
-    return [
-      'Neither side has taken control. Edge comes from the next material update.',
-      'LONG works if the case is underpriced relative to current debate.',
-      'SHORT works if the visible enthusiasm is getting ahead of itself.'
-    ];
-  });
+    // Discussion - just counts
+    const totalReplies = discussionThreads.reduce((sum, t) => sum + t.replyCount, 0);
+    const discussionActivity = discussionThreads.length > 0
+      ? `${discussionThreads.length} thread${discussionThreads.length === 1 ? '' : 's'} • ${totalReplies} repl${totalReplies === 1 ? 'y' : 'ies'}`
+      : 'No discussion yet';
 
-  const signalCards = $derived.by(() => {
-    return [
-      {
-        eyebrow: 'Crowding',
-        title: impliedProbability >= 0.5 ? `${priceCents(impliedProbability)} LONG leaning` : `${priceCents(oppositeProbability)} SHORT leaning`,
-        detail:
-          impliedProbability >= 0.5
-            ? 'Visible pricing favors LONG right now.'
-            : 'Visible pricing favors SHORT right now.'
-      },
-      {
-        eyebrow: 'Flow',
-        title: latestTrade
-          ? `${latestTrade.type === 'buy' ? 'Buy' : 'Sell'} on ${latestTrade.direction === 'long' ? 'LONG' : 'SHORT'}`
-          : 'No visible fills yet',
-        detail: latestTrade
-          ? `${formatProductAmount(latestTrade.amount, 'usd')} moved ${formatRelativeTime(latestTrade.createdAt)}.`
-          : 'This will update as soon as trade records are public.'
-      },
-      {
-        eyebrow: 'Debate',
-        title: discussionThreads[0]?.post.subject || 'No live debate yet',
-        detail: discussionThreads[0]
-          ? `${discussionThreads[0].replyCount} repl${discussionThreads[0].replyCount === 1 ? 'y' : 'ies'} so far.`
-          : 'Start a thread from the discussion tab when you want to challenge the market.'
-      }
-    ];
+    return [latestFlow, volumeSplit, discussionActivity];
   });
 
   function authorLabel(pubkey: string): string {
@@ -371,239 +324,179 @@
 </section>
 
 {#if tab === 'overview'}
-  <section class="trade-focus">
-    <article class="detail-section trade-focus-panel">
-      <div class="detail-header">
-        <h2>Take a position</h2>
-        <span>Price, flow, and your next move.</span>
+  <!-- MARKET CONTEXT -->
+  <section class="market-context">
+    <p class="market-state-summary">
+      <strong class={marketState.accentClass}>{marketState.label}</strong> • {marketState.summary}
+    </p>
+
+    <div class="overview-metrics">
+      <div>
+        <span>Price move since open</span>
+        <strong class:positive={impliedProbability - openingProbability >= 0} class:negative={impliedProbability - openingProbability < 0}>
+          {impliedProbability - openingProbability >= 0 ? '+' : ''}{((impliedProbability - openingProbability) * 100).toFixed(1)}¢
+        </strong>
+      </div>
+      <div>
+        <span>Traders</span>
+        <strong>{visibleAccounts}</strong>
+      </div>
+      <div>
+        <span>Average size</span>
+        <strong>{formatProductAmount(Math.round(averageTradeSize), 'usd')} {valueUnitLabel}</strong>
+      </div>
+      <div>
+        <span>Discussion</span>
+        <strong>{discussionThreads.length} threads</strong>
+      </div>
+    </div>
+
+    <div class="bar-stack">
+      <div>
+        <div class="bar-label">
+          <span>LONG share</span>
+          <span>{formatProbability(flowLong)} LONG</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill positive-fill" style:width={`${flowLong * 100}%`}></div>
+        </div>
       </div>
 
-      <div class="trade-focus-actions">
-        {#if paperEdition}
-          <PaperTradePanel
-            marketId={market.id}
-            marketSlug={market.slug}
-            yesProbability={impliedProbability}
-            noProbability={oppositeProbability}
-          />
-        {:else if currentUser}
-          <a class="btn btn-primary w-fit" href="/portfolio">Add funds to trade</a>
-          <a href={marketActivityUrl(market.slug)}>See all trades on this market →</a>
-          <p class="trade-focus-copy"><small>Add funds to your portfolio to take a position.</small></p>
-        {:else}
-          <a class="btn btn-primary w-fit" href="/join?from=/market/{market.slug}">Take a position</a>
-        {/if}
-      </div>
-
-      <div class="price-grid">
-        <div>
-          <span>LONG</span>
-          <strong class="positive">{priceCents(impliedProbability)}</strong>
+      <div>
+        <div class="bar-label">
+          <span>SHORT share</span>
+          <span>{formatProbability(flowShort)} SHORT</span>
         </div>
-        <div>
-          <span>SHORT</span>
-          <strong class="negative">{priceCents(oppositeProbability)}</strong>
+        <div class="bar-track">
+          <div class="bar-fill negative-fill" style:width={`${flowShort * 100}%`}></div>
         </div>
       </div>
-
-      <dl class="summary-list">
-        <div>
-          <dt>Volume</dt>
-          <dd>{formatProductAmount(tradeSummary.grossVolume, 'usd')} {valueUnitLabel}</dd>
-        </div>
-        <div>
-          <dt>LONG flow</dt>
-          <dd>{formatProductAmount(tradeSummary.longVolume, 'usd')} {valueUnitLabel}</dd>
-        </div>
-        <div>
-          <dt>SHORT flow</dt>
-          <dd>{formatProductAmount(tradeSummary.shortVolume, 'usd')} {valueUnitLabel}</dd>
-        </div>
-        <div>
-          <dt>Last trade</dt>
-          <dd>
-            {#if latestTrade}
-              {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}
-            {:else}
-              None
-            {/if}
-          </dd>
-        </div>
-      </dl>
-    </article>
-    <article class="detail-section trade-read-panel">
-      <div class="detail-header">
-        <h2 class={tilt.accentClass}>{tilt.label}</h2>
-        <span>Market snapshot</span>
-      </div>
-      <p class="trade-focus-copy">{tilt.detail}</p>
-
-      <div class="overview-metrics">
-        <div>
-          <span>Price move since open</span>
-          <strong class:positive={impliedProbability - openingProbability >= 0} class:negative={impliedProbability - openingProbability < 0}>
-            {impliedProbability - openingProbability >= 0 ? '+' : ''}{((impliedProbability - openingProbability) * 100).toFixed(1)}¢
-          </strong>
-        </div>
-        <div>
-          <span>Traders</span>
-          <strong>{visibleAccounts}</strong>
-        </div>
-        <div>
-          <span>Average size</span>
-          <strong>{formatProductAmount(Math.round(averageTradeSize), 'usd')} {valueUnitLabel}</strong>
-        </div>
-        <div>
-          <span>Discussion</span>
-          <strong>{discussionThreads.length} threads</strong>
-        </div>
-      </div>
-    </article>
+    </div>
   </section>
 
-  <section class="overview-grid">
+  <!-- MARKET BODY -->
+  <section class="market-body">
     <article class="detail-section">
       <div class="detail-header">
-        <h3>Price &amp; flow</h3>
-        <span>Based on public trades</span>
-      </div>
-
-      <div class="bar-stack">
-        <div>
-          <div class="bar-label">
-            <span>Implied probability</span>
-            <span>{formatProbability(impliedProbability)} LONG</span>
-          </div>
-          <div class="bar-track">
-            <div class="bar-fill positive-fill" style:width={`${impliedProbability * 100}%`}></div>
-          </div>
-        </div>
-
-        <div>
-          <div class="bar-label">
-            <span>LONG share</span>
-            <span>{formatProbability(flowLong)} LONG</span>
-          </div>
-          <div class="bar-track">
-            <div class="bar-fill positive-fill" style:width={`${flowLong * 100}%`}></div>
-          </div>
-        </div>
-
-        <div>
-          <div class="bar-label">
-            <span>SHORT share</span>
-            <span>{formatProbability(flowShort)} SHORT</span>
-          </div>
-          <div class="bar-track">
-            <div class="bar-fill negative-fill" style:width={`${flowShort * 100}%`}></div>
-          </div>
-        </div>
+        <h3>The case</h3>
       </div>
 
       <div class="case-copy">
-        <div class="detail-header detail-header-tight">
-          <h3>The argument</h3>
-        </div>
-
         {#if caseParagraphs.length > 0}
           {#each caseParagraphs as paragraph}
             <p>{paragraph}</p>
           {/each}
         {:else}
-          <p>No one has made the case yet. You could be first.</p>
+          <p>No written case yet.</p>
         {/if}
+      </div>
 
-        {#if tradingContext.length > 0}
-          <div class="detail-header detail-header-tight">
-            <h3>Trading context</h3>
-          </div>
+      {#if tradingContext.length > 0}
+        <div class="detail-header detail-header-tight">
+          <h3>Trading context</h3>
+        </div>
 
+        <div class="case-copy">
           {#each tradingContext as criteria}
             <p>{criteria}</p>
           {/each}
-        {/if}
-      </div>
-    </article>
-
-    <article class="detail-section">
-      <div class="detail-header">
-        <h3>What to know</h3>
-      </div>
-
-      <div class="bullet-list">
-        {#each tradeFrame as item}
-          <p>{item}</p>
-        {/each}
-      </div>
+        </div>
+      {/if}
 
       <div class="detail-header detail-header-spaced">
-        <h3>Signals</h3>
+        <h3>Market signals</h3>
       </div>
 
       <div class="signal-list">
-        {#each signalCards as card}
-          <div>
-            <span>{card.eyebrow}</span>
-            <strong>{card.title}</strong>
-            <p>{card.detail}</p>
-          </div>
+        {#each recentSignals as signal}
+          <p>{signal}</p>
         {/each}
       </div>
     </article>
-  </section>
 
-  <section class="overview-grid overview-grid-reverse">
     <article class="detail-section">
       <div class="detail-header">
-        <h3>Recent trades</h3>
-        <a href={marketActivityUrl(market.slug)}>Full activity</a>
+        <h3>Recent activity</h3>
       </div>
 
       <div class="dense-list">
-        {#if orderedTrades.length > 0}
-          {#each orderedTrades.slice(0, 6) as trade (trade.id)}
+        {#if activityEntries.length > 0}
+          {#each activityEntries.slice(0, 8) as entry (entry.id)}
             <div class="dense-row">
               <div>
-                <strong>{trade.type === 'buy' ? 'Buy' : 'Sell'} · {trade.direction === 'long' ? 'LONG' : 'SHORT'}</strong>
-                <p>{formatRelativeTime(trade.createdAt)}</p>
+                <strong>{entry.headline}</strong>
+                <p>{entry.detail}</p>
               </div>
               <div class="dense-aside">
-                <span>{formatProductAmount(trade.amount, 'usd')} {valueUnitLabel}</span>
-                <span>{formatProbability(trade.probability)}</span>
+                <span>{entry.kind}</span>
+                <span>{formatRelativeTime(entry.createdAt)}</span>
               </div>
             </div>
           {/each}
         {:else}
-          <div class="panel-empty">No visible fills yet.</div>
+          <div class="panel-empty">No activity yet.</div>
         {/if}
       </div>
     </article>
+  </section>
 
-    <article class="detail-section">
-      <div class="detail-header">
-        <h3>Discussion</h3>
-        <a href={marketDiscussionUrl(market.slug)}>Open discussion</a>
-      </div>
+  <!-- MARKET TRADING -->
+  <section class="market-trading">
+    <div class="detail-header">
+      <h2>Take a position</h2>
+      <span>Mint LONG or SHORT</span>
+    </div>
 
-      <div class="dense-list">
-        {#if discussionThreads.length > 0}
-          {#each discussionThreads.slice(0, 4) as thread (thread.post.id)}
-            <a class="dense-row dense-row-link" href={threadUrl(market.slug, thread.post.id)}>
-              <div>
-                <strong>{thread.post.subject || 'Untitled thread'}</strong>
-                <p>{truncateText(thread.post.content, 120)}</p>
-              </div>
-              <div class="dense-aside">
-                <span>{thread.replyCount} repl{thread.replyCount === 1 ? 'y' : 'ies'}</span>
-                <span>{formatRelativeTime(thread.lastActivityAt)}</span>
-              </div>
-            </a>
-          {/each}
-        {:else}
-          <div class="panel-empty">No live discussion yet.</div>
-        {/if}
+    <div class="price-grid">
+      <div>
+        <span>LONG</span>
+        <strong class="positive">{priceCents(impliedProbability)}</strong>
       </div>
-    </article>
+      <div>
+        <span>SHORT</span>
+        <strong class="negative">{priceCents(oppositeProbability)}</strong>
+      </div>
+    </div>
+
+    {#if paperEdition}
+      <PaperTradePanel
+        marketId={market.id}
+        marketSlug={market.slug}
+        yesProbability={impliedProbability}
+        noProbability={oppositeProbability}
+      />
+    {:else if currentUser}
+      <a class="btn btn-primary w-fit" href="/portfolio">Add funds to trade</a>
+      <a href={marketActivityUrl(market.slug)}>See all trades on this market →</a>
+      <p class="trade-focus-copy"><small>Add funds to your portfolio to take a position.</small></p>
+    {:else}
+      <a class="btn btn-primary w-fit" href="/join?from=/market/{market.slug}">Take a position</a>
+    {/if}
+
+    <dl class="summary-list">
+      <div>
+        <dt>Volume</dt>
+        <dd>{formatProductAmount(tradeSummary.grossVolume, 'usd')} {valueUnitLabel}</dd>
+      </div>
+      <div>
+        <dt>LONG flow</dt>
+        <dd>{formatProductAmount(tradeSummary.longVolume, 'usd')} {valueUnitLabel}</dd>
+      </div>
+      <div>
+        <dt>SHORT flow</dt>
+        <dd>{formatProductAmount(tradeSummary.shortVolume, 'usd')} {valueUnitLabel}</dd>
+      </div>
+      <div>
+        <dt>Last trade</dt>
+        <dd>
+          {#if latestTrade}
+            {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}
+          {:else}
+            None
+          {/if}
+        </dd>
+      </div>
+    </dl>
   </section>
 {/if}
 
@@ -934,22 +827,37 @@
     padding-top: 1rem;
   }
 
-  .trade-focus,
-  .overview-grid {
+  .market-context {
+    max-width: 48rem;
+    margin: 0 auto;
+    padding-top: 2rem;
+  }
+
+  .market-state-summary {
+    margin: 0 0 1.5rem;
+    color: color-mix(in srgb, var(--color-neutral-content) 88%, transparent);
+    font-size: 1.05rem;
+    line-height: 1.7;
+  }
+
+  .market-body {
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+    grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
     gap: 2.5rem;
     padding-top: 2rem;
+  }
+
+  .market-trading {
+    max-width: 40rem;
+    margin: 2rem auto 0;
+    padding: 2rem;
+    border: 1px solid rgba(38, 38, 38, 0.8);
+    background: var(--color-base-200);
   }
 
   .detail-section {
     display: grid;
     gap: 1.35rem;
-  }
-
-  .trade-focus-panel,
-  .trade-read-panel {
-    padding-bottom: 0.25rem;
   }
 
   .overview-metrics {
@@ -965,8 +873,7 @@
   }
 
   .overview-metrics span,
-  .detail-header span,
-  .signal-list span {
+  .detail-header span {
     color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
     font-size: 0.78rem;
   }
@@ -1045,35 +952,10 @@
     letter-spacing: -0.03em;
   }
 
-  .trade-focus .detail-header h2 {
-    font-size: clamp(1.35rem, 2vw, 1.7rem);
-    letter-spacing: -0.03em;
-  }
-
   .trade-focus-copy {
     margin: 0;
     color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
     line-height: 1.75;
-  }
-
-  .trade-focus-actions {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .detail-header a,
-  .trade-focus-actions a:not(.btn) {
-    color: var(--color-base-content);
-    font-size: 0.84rem;
-    font-weight: 500;
-  }
-
-  .detail-header a:hover,
-  .detail-header a:focus-visible,
-  .trade-focus-actions a:not(.btn):hover,
-  .trade-focus-actions a:not(.btn):focus-visible {
-    color: white;
-    outline: none;
   }
 
   .bar-stack,
@@ -1118,7 +1000,6 @@
   }
 
   .case-copy p,
-  .bullet-list p,
   .signal-list p,
   .dense-row p {
     margin: 0;
@@ -1127,26 +1008,26 @@
     line-height: 1.7;
   }
 
-  .bullet-list,
   .signal-list,
   .dense-list {
     border-top: 1px solid rgba(38, 38, 38, 0.8);
   }
 
-  .bullet-list p,
-  .signal-list > div,
   .dense-row,
   .dense-row-link {
     padding: 0.95rem 0;
     border-bottom: 1px solid rgba(38, 38, 38, 0.8);
   }
 
-  .signal-list > div {
-    display: grid;
-    gap: 0.4rem;
+  .signal-list p {
+    margin: 0;
+    padding: 0.95rem 0;
+    border-bottom: 1px solid rgba(38, 38, 38, 0.8);
+    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
+    font-size: 0.92rem;
+    line-height: 1.65;
   }
 
-  .signal-list strong,
   .dense-row strong {
     color: white;
     font-size: 0.98rem;
@@ -1177,9 +1058,6 @@
     text-align: right;
   }
 
-  .overview-grid-reverse {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
 
   .price-chart {
     display: grid;
@@ -1260,9 +1138,7 @@
 
   @media (max-width: 1024px) {
     .market-header,
-    .trade-focus,
-    .overview-grid,
-    .overview-grid-reverse {
+    .market-body {
       grid-template-columns: 1fr;
     }
 

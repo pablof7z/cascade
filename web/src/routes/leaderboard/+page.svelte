@@ -1,11 +1,10 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import type { NDKEvent, NDKUserProfile, NostrEvent } from '@nostr-dev-kit/ndk';
+  import type { NDKUserProfile } from '@nostr-dev-kit/ndk';
   import { ndk } from '$lib/ndk/client';
   import {
     CASCADE_BOOKMARK_KIND,
     CASCADE_MARKET_KIND,
-    CASCADE_TRADE_KIND,
     parseDiscussionEvent,
     parseMarketEvent,
     parseTradeEvent,
@@ -34,13 +33,8 @@
       .filter((discussion): discussion is DiscussionRecord => Boolean(discussion))
   );
 
-  const tradeFeed = ndk.$subscribe(() => {
-    if (!browser) return undefined;
-    return { filters: [{ kinds: [CASCADE_TRADE_KIND], limit: 240 }] };
-  });
-
   const trades = $derived.by(() => {
-    return mergeRawEvents(data.trades ?? [], tradeFeed.events)
+    return (data.trades ?? [])
       .map(parseTradeEvent)
       .filter((trade): trade is TradeRecord => Boolean(trade))
       .sort((left, right) => right.createdAt - left.createdAt);
@@ -130,21 +124,6 @@
     return [...counts.entries()]
       .map(([pubkey, count]) => ({ pubkey, count }))
       .sort((left, right) => right.count - left.count);
-  }
-
-  function mergeRawEvents(seed: NostrEvent[], live: NDKEvent[]): NostrEvent[] {
-    const merged = new Map<string, NostrEvent>();
-
-    for (const event of live) {
-      const raw = event.rawEvent() as NostrEvent;
-      if (raw.id) merged.set(raw.id, raw);
-    }
-
-    for (const event of seed) {
-      if (event.id && !merged.has(event.id)) merged.set(event.id, event);
-    }
-
-    return [...merged.values()];
   }
 </script>
 

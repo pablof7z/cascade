@@ -66,6 +66,7 @@ Legacy relay browser routes exist only as redirects away from the launch product
 - no raw funding states, checkout identifiers, or custody plumbing in visible portfolio copy
 - public feeds and account chrome use neutral fallback labels rather than raw public keys
 - active product-side direction labels use LONG and SHORT in UI chrome and trading copy; explanatory YES/NO category examples may remain on `/about` and `/how-it-works`
+- `/leaderboard` uses a smaller cached SSR trade sample for Top Traders instead of opening a live trade subscription on initial render.
 
 ## State Model
 

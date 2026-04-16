@@ -8,6 +8,8 @@ import {
   fetchRecentTrades
 } from '$lib/server/cascade';
 
+const LEADERBOARD_TRADE_SAMPLE_LIMIT = 80;
+
 export const load: PageServerLoad = async ({ setHeaders, url }) => {
   setHeaders({
     'cache-control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=600'
@@ -16,7 +18,7 @@ export const load: PageServerLoad = async ({ setHeaders, url }) => {
   const [markets, discussions, trades] = await Promise.all([
     fetchRecentMarkets(120),
     fetchRecentDiscussions(240),
-    fetchRecentTrades(240)
+    fetchRecentTrades(LEADERBOARD_TRADE_SAMPLE_LIMIT)
   ]);
 
   const profiles = await fetchProfilesForPubkeys([

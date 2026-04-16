@@ -26,19 +26,20 @@ test('leaderboard page headline and tabs match the leaderboard surfaces', () => 
   );
 });
 
-test('leaderboard page seeds and subscribes to trade events for Top Traders', () => {
+test('leaderboard page uses a cached trade sample without a live trade subscription', () => {
   const source = read('src/routes/leaderboard/+page.svelte');
   const serverSource = read('src/routes/leaderboard/+page.server.ts');
 
+  assert.doesNotMatch(source, /const tradeFeed = ndk\.\$subscribe/);
+  assert.doesNotMatch(source, /CASCADE_TRADE_KIND/);
+  assert.doesNotMatch(source, /tradeFeed\.events/);
   assert.match(
     source,
-    /const tradeFeed = ndk\.\$subscribe\(\(\) => \{[\s\S]*filters: \[\{ kinds: \[CASCADE_TRADE_KIND\], limit: 240 \}\][\s\S]*\}\);/
+    /const trades = \$derived\.by\(\(\) => \{[\s\S]*return \(data\.trades \?\? \[\]\)[\s\S]*\.map\(parseTradeEvent\)[\s\S]*\.filter\(\(trade\): trade is TradeRecord => Boolean\(trade\)\)[\s\S]*\.sort\(\(left, right\) => right\.createdAt - left\.createdAt\);[\s\S]*\}\);/
   );
-  assert.match(
-    source,
-    /const trades = \$derived\.by\(\(\) => \{[\s\S]*mergeRawEvents\(data\.trades \?\? \[\], tradeFeed\.events\)[\s\S]*map\(parseTradeEvent\)[\s\S]*filter\(\(trade\): trade is TradeRecord => Boolean\(trade\)\)[\s\S]*\.sort\(\(left, right\) => right\.createdAt - left\.createdAt\);[\s\S]*\}\);/
-  );
-  assert.match(serverSource, /fetchRecentTrades\(240\)/);
+  assert.match(serverSource, /const LEADERBOARD_TRADE_SAMPLE_LIMIT = 80;/);
+  assert.match(serverSource, /fetchRecentTrades\(LEADERBOARD_TRADE_SAMPLE_LIMIT\)/);
+  assert.doesNotMatch(serverSource, /fetchRecentTrades\(240\)/);
   assert.match(serverSource, /\.\.\.trades\.map\(\(trade\) => trade\.pubkey\)/);
   assert.match(serverSource, /trades: trades\.map\(\(trade\) => trade\.rawEvent as NostrEvent\)/);
   assert.match(

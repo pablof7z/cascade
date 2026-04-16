@@ -546,6 +546,26 @@ fn sample_market_event_with_metadata(
     description: &str,
     extra_tags: &[Value],
 ) -> serde_json::Value {
+    sample_market_event_with_kind_and_metadata(
+        event_id,
+        slug,
+        pubkey,
+        980,
+        title,
+        description,
+        extra_tags,
+    )
+}
+
+fn sample_market_event_with_kind_and_metadata(
+    event_id: &str,
+    slug: &str,
+    pubkey: &str,
+    kind: i64,
+    title: &str,
+    description: &str,
+    extra_tags: &[Value],
+) -> serde_json::Value {
     let mut tags = vec![
         json!(["d", slug]),
         json!(["title", title]),
@@ -558,7 +578,7 @@ fn sample_market_event_with_metadata(
         "id": event_id,
         "pubkey": pubkey,
         "created_at": 1_712_800_000_i64,
-        "kind": 982,
+        "kind": kind,
         "content": "A signed market body for tests.",
         "sig": "00",
         "tags": tags
@@ -2545,16 +2565,16 @@ async fn test_signet_sell_trade_updates_lmsr_price() {
 }
 
 #[tokio::test]
-async fn test_signet_market_creation_publishes_982() {
+async fn test_signet_market_creation_uses_kind_980() {
     let (url, _) = create_product_test_server_bundle_with_funding(None, None, "signet").await;
     let client = reqwest::Client::new();
     let creator = "9595959595959595959595959595959595959595959595959595959595959595";
     let event_id = "e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5";
-    let slug = "signet-market-create-982";
+    let slug = "signet-market-create-980";
     let raw_event = sample_market_event(event_id, slug, creator);
 
-    // NOTE: relay publication of the kind 982 event is not observable in this in-memory harness.
-    // This test verifies that the seed-trade API accepts the signed raw 982 event and bootstraps
+    // NOTE: relay publication of the kind 980 event is not observable in this in-memory harness.
+    // This test verifies that the seed-trade API accepts the signed raw 980 event and bootstraps
     // a public market from it, which is the HTTP-visible portion of market creation here.
     let buy_payload = create_public_market_with_seed(
         &client,
@@ -2562,8 +2582,8 @@ async fn test_signet_market_creation_publishes_982() {
         creator,
         event_id,
         slug,
-        "Signet 982 Market",
-        "Verifies market bootstrap accepts a signed kind 982 event",
+        "Signet 980 Market",
+        "Verifies market bootstrap accepts a signed kind 980 event",
         raw_event,
         4_000,
     )
@@ -2575,10 +2595,69 @@ async fn test_signet_market_creation_publishes_982() {
         Some("public"),
         "seed trade should make the market public on signet"
     );
+    assert_eq!(
+        buy_payload["trade"]["kind"].as_i64(),
+        Some(981),
+        "signet trade publication should use kind 981"
+    );
     assert!(
         !market_keyset.keys.is_empty(),
-        "market bootstrap should create a LONG keyset for the supplied kind 982 event"
+        "market bootstrap should create a LONG keyset for the supplied kind 980 event"
     );
+}
+
+#[tokio::test]
+async fn test_market_bootstrap_enforces_edition_event_kind() {
+    let client = reqwest::Client::new();
+    let creator = "8585858585858585858585858585858585858585858585858585858585858585";
+
+    let (signet_url, _) =
+        create_product_test_server_bundle_with_funding(None, None, "signet").await;
+    let signet_event_id = "8585858585858585858585858585858585858585858585858585858585858585";
+    let signet_response = client
+        .post(format!("{signet_url}/api/trades/quote"))
+        .json(&serde_json::json!({
+            "event_id": signet_event_id,
+            "side": "long",
+            "spend_minor": 2_000,
+            "raw_event": sample_market_event_with_kind_and_metadata(
+                signet_event_id,
+                "wrong-signet-kind",
+                creator,
+                982,
+                "Wrong Signet Kind",
+                "Signet should require kind 980.",
+                &[],
+            )
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(signet_response.status(), 400);
+
+    let (mainnet_url, _) =
+        create_product_test_server_bundle_with_funding(None, None, "mainnet").await;
+    let mainnet_event_id = "8686868686868686868686868686868686868686868686868686868686868686";
+    let mainnet_response = client
+        .post(format!("{mainnet_url}/api/trades/quote"))
+        .json(&serde_json::json!({
+            "event_id": mainnet_event_id,
+            "side": "long",
+            "spend_minor": 2_000,
+            "raw_event": sample_market_event_with_kind_and_metadata(
+                mainnet_event_id,
+                "mainnet-kind",
+                creator,
+                982,
+                "Mainnet Kind",
+                "Mainnet should accept kind 982.",
+                &[],
+            )
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(mainnet_response.status(), 200);
 }
 
 #[tokio::test]
@@ -3956,7 +4035,7 @@ async fn test_trade_request_replays_buy_after_pre_issuance_checkpoint() {
     let raw_event_json = serde_json::json!({
         "id": trade_id,
         "pubkey": creator,
-        "kind": 983,
+        "kind": 981,
         "content": "",
         "tags": [
             ["e", event_id],

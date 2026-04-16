@@ -8,6 +8,10 @@ publish = false
 name = "cascade"
 path = "src/main.rs"
 
+[[bin]]
+name = "cascade-sim"
+path = "src/bin/cascade-sim.rs"
+
 [dependencies]
 cascade-api = { path = "../cascade-api" }
 

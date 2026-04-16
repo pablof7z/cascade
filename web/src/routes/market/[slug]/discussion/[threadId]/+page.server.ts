@@ -6,10 +6,11 @@ import { marketPageCacheControl } from '$lib/server/cascade-cache';
 import { loadMarketSurface } from '$lib/server/cascade-pages';
 import { resolveMarketThread } from '$lib/server/market-thread';
 
-export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
-  const data = await loadMarketSurface(params.slug);
+export const load: PageServerLoad = async ({ locals, params, setHeaders, url }) => {
+  const edition = locals.cascadeEdition;
+  const data = await loadMarketSurface(params.slug, edition);
   setHeaders({
-    'cache-control': marketPageCacheControl(Boolean(data.market))
+    'cache-control': marketPageCacheControl(Boolean(data.market), edition)
   });
 
   if (!data.market) {
@@ -17,7 +18,7 @@ export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
   }
 
   const { discussions, thread } = await resolveMarketThread(data, params.threadId, () =>
-    fetchThreadRootDiscussion(data.market.id, params.threadId)
+    fetchThreadRootDiscussion(data.market.id, params.threadId, { edition })
   );
 
   if (!thread) {

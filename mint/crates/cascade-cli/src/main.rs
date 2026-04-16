@@ -36,6 +36,8 @@ use std::path::PathBuf;
 use std::time::Duration;
 use uuid::Uuid;
 
+const MARKET_QUOTE_SNAPSHOT_SPEND_MINOR: u64 = 1_000;
+
 #[tokio::main]
 async fn main() {
     if let Err(error) = async_main().await {
@@ -154,6 +156,22 @@ impl AppContext {
         body: Option<Value>,
         auth_mode: AuthMode,
     ) -> Result<R> {
+        let (url, _status, text) = self
+            .request_text(loaded, method, target, body, auth_mode)
+            .await?;
+
+        serde_json::from_str(&text)
+            .with_context(|| format!("failed to decode response body from {url}: {text}"))
+    }
+
+    async fn request_text(
+        &self,
+        loaded: &LoadedConfig,
+        method: Method,
+        target: &str,
+        body: Option<Value>,
+        auth_mode: AuthMode,
+    ) -> Result<(String, u16, String)> {
         let url = self.resolve_url(loaded, target)?;
         let body_text = body
             .as_ref()
@@ -184,8 +202,7 @@ impl AppContext {
             );
         }
 
-        serde_json::from_str(&text)
-            .with_context(|| format!("failed to decode response body from {url}: {text}"))
+        Ok((url, status.as_u16(), text))
     }
 
     fn build_nip98_header(
@@ -426,9 +443,15 @@ async fn handle_api(ctx: &AppContext, command: &ApiCommand) -> Result<()> {
             let method = Method::from_bytes(args.method.as_bytes())?;
             let body = read_optional_json_arg(args.body.as_ref())?;
             let auth = AuthMode::from_str(&args.auth)?;
-            let result: Value = ctx
-                .request_json(&loaded, method, &args.target, body, auth)
+            let (_, status, text) = ctx
+                .request_text(&loaded, method, &args.target, body, auth)
                 .await?;
+            let result = serde_json::from_str::<Value>(&text).unwrap_or_else(|_| {
+                json!({
+                    "status": status,
+                    "body": text,
+                })
+            });
             ctx.emit(&result)
         }
     }
@@ -626,6 +649,7 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
             let loaded = ctx.require_config()?;
             let keys = ctx.keys(&loaded)?;
             let selector = build_market_create_spec(args)?;
+            let seed_side = normalize_side(&args.seed_side)?;
 
             let mut tags = vec![
                 Tag::parse(vec!["title".to_string(), selector.title.clone()])?,
@@ -643,9 +667,12 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
                 tags.push(Tag::parse(vec!["t".to_string(), topic.clone()])?);
             }
 
-            let event = EventBuilder::new(Kind::Custom(982), selector.body.clone())
-                .tags(tags)
-                .sign_with_keys(&keys)?;
+            let event = EventBuilder::new(
+                Kind::Custom(loaded.config.edition.market_event_kind()),
+                selector.body.clone(),
+            )
+            .tags(tags)
+            .sign_with_keys(&keys)?;
             let raw_event = serde_json::to_value(&event)?;
 
             let client = build_nostr_client(Some(keys.clone()), &ctx.relays(Some(&loaded))).await?;
@@ -658,9 +685,10 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
                 &event.id.to_string(),
                 &selector.slug,
                 &selector.title,
-                &args.seed_side,
+                seed_side,
                 args.seed_spend_minor,
                 Some(raw_event.clone()),
+                None,
                 args.request_id.clone(),
             )
             .await?;
@@ -687,6 +715,7 @@ async fn handle_trade(ctx: &AppContext, command: &TradeCommand) -> Result<()> {
         TradeSubcommand::Quote(quote) => match &quote.command {
             TradeQuoteSubcommand::Buy(args) => {
                 let selector = resolve_market_selector(ctx, &loaded, &args.market).await?;
+                let side = normalize_side(&args.side)?;
                 let payload: ProductTradeQuoteResponse = ctx
                     .request_json(
                         &loaded,
@@ -694,7 +723,7 @@ async fn handle_trade(ctx: &AppContext, command: &TradeCommand) -> Result<()> {
                         "/api/trades/quote",
                         Some(serde_json::to_value(ProductCoordinatorTradeQuoteRequest {
                             event_id: selector.event_id,
-                            side: args.side.clone(),
+                            side: side.to_string(),
                             spend_minor: Some(args.spend_minor),
                             raw_event: Some(selector.raw_event.clone()),
                             quantity: None,
@@ -706,6 +735,7 @@ async fn handle_trade(ctx: &AppContext, command: &TradeCommand) -> Result<()> {
             }
             TradeQuoteSubcommand::Sell(args) => {
                 let selector = resolve_market_selector(ctx, &loaded, &args.market).await?;
+                let side = normalize_side(&args.side)?;
                 let payload: ProductTradeQuoteResponse = ctx
                     .request_json(
                         &loaded,
@@ -713,7 +743,7 @@ async fn handle_trade(ctx: &AppContext, command: &TradeCommand) -> Result<()> {
                         "/api/trades/sell/quote",
                         Some(serde_json::to_value(ProductCoordinatorTradeQuoteRequest {
                             event_id: selector.event_id,
-                            side: args.side.clone(),
+                            side: side.to_string(),
                             spend_minor: None,
                             raw_event: Some(selector.raw_event.clone()),
                             quantity: Some(args.quantity),
@@ -735,6 +765,7 @@ async fn handle_trade(ctx: &AppContext, command: &TradeCommand) -> Result<()> {
                 &args.side,
                 args.spend_minor,
                 Some(selector.raw_event.clone()),
+                args.quote_id.clone(),
                 args.request_id.clone(),
             )
             .await?;
@@ -751,6 +782,7 @@ async fn handle_trade(ctx: &AppContext, command: &TradeCommand) -> Result<()> {
                 &args.side,
                 args.quantity,
                 Some(selector.raw_event.clone()),
+                args.quote_id.clone(),
                 args.request_id.clone(),
             )
             .await?;
@@ -1162,7 +1194,10 @@ async fn handle_discussion(ctx: &AppContext, command: &DiscussionCommand) -> Res
             "".to_string(),
             "root".to_string(),
         ])?,
-        Tag::parse(vec!["k".to_string(), "982".to_string()])?,
+        Tag::parse(vec![
+            "k".to_string(),
+            loaded.config.edition.market_event_kind().to_string(),
+        ])?,
     ];
 
     if let Some(title) = &command.title {
@@ -1411,6 +1446,7 @@ async fn fetch_market_keyset(
     event_id: &str,
     side: &str,
 ) -> Result<KeySet> {
+    let side = normalize_side(side)?;
     let payload: Value = ctx
         .request_json(
             loaded,
@@ -1421,7 +1457,7 @@ async fn fetch_market_keyset(
         )
         .await?;
     let payload = payload.get("Ok").cloned().unwrap_or(payload);
-    let keyset = match side.to_ascii_lowercase().as_str() {
+    let keyset = match side {
         "long" => payload["long_keyset"].clone(),
         "short" => payload["short_keyset"].clone(),
         other => bail!("unsupported side {other}; expected long or short"),
@@ -1574,15 +1610,26 @@ async fn execute_buy(
     side: &str,
     spend_minor: u64,
     raw_event: Option<Value>,
+    quote_id: Option<String>,
     request_id: Option<String>,
 ) -> Result<Value> {
+    let side = normalize_side(side)?;
     let path = ctx.proof_store_path(loaded);
     let mut store = ProofStore::load(&path)?;
     let spend_proofs = store.select_for_amount("usd", spend_minor)?;
     let input_total_minor: u64 = spend_proofs.iter().map(|proof| proof.amount).sum();
     let request_id = request_id.unwrap_or_else(|| Uuid::new_v4().to_string());
-    let quote: ProductTradeQuoteResponse = ctx
-        .request_json(
+    let quote: ProductTradeQuoteResponse = if let Some(quote_id) = quote_id {
+        ctx.request_json(
+            loaded,
+            Method::GET,
+            &format!("/api/trades/quotes/{quote_id}"),
+            None,
+            AuthMode::None,
+        )
+        .await?
+    } else {
+        ctx.request_json(
             loaded,
             Method::POST,
             "/api/trades/quote",
@@ -1595,7 +1642,8 @@ async fn execute_buy(
             })?),
             AuthMode::None,
         )
-        .await?;
+        .await?
+    };
     let market_keyset = fetch_market_keyset(ctx, loaded, event_id, side).await?;
     let usd_keyset = fetch_active_usd_keyset(ctx, loaded).await?;
     let (issued_outputs, issued_pre_mint) = prepare_outputs(&market_keyset, quote.quantity_minor)?;
@@ -1675,8 +1723,10 @@ async fn execute_sell(
     side: &str,
     quantity: f64,
     raw_event: Option<Value>,
+    quote_id: Option<String>,
     request_id: Option<String>,
 ) -> Result<Value> {
+    let side = normalize_side(side)?;
     let path = ctx.proof_store_path(loaded);
     let mut store = ProofStore::load(&path)?;
     let unit = market_unit_for_side(slug, side)?;
@@ -1684,8 +1734,17 @@ async fn execute_sell(
     let spend_proofs = store.select_for_amount(&unit, target_minor)?;
     let input_total_minor: u64 = spend_proofs.iter().map(|proof| proof.amount).sum();
     let request_id = request_id.unwrap_or_else(|| Uuid::new_v4().to_string());
-    let quote: ProductTradeQuoteResponse = ctx
-        .request_json(
+    let quote: ProductTradeQuoteResponse = if let Some(quote_id) = quote_id {
+        ctx.request_json(
+            loaded,
+            Method::GET,
+            &format!("/api/trades/quotes/{quote_id}"),
+            None,
+            AuthMode::None,
+        )
+        .await?
+    } else {
+        ctx.request_json(
             loaded,
             Method::POST,
             "/api/trades/sell/quote",
@@ -1698,7 +1757,8 @@ async fn execute_sell(
             })?),
             AuthMode::None,
         )
-        .await?;
+        .await?
+    };
     let market_keyset = fetch_market_keyset(ctx, loaded, event_id, side).await?;
     let usd_keyset = fetch_active_usd_keyset(ctx, loaded).await?;
     let (issued_outputs, issued_pre_mint) = prepare_outputs(&usd_keyset, quote.net_minor)?;
@@ -1989,8 +2049,14 @@ async fn fetch_recent_market_records(
     loaded: Option<&LoadedConfig>,
     limit: usize,
 ) -> Result<Vec<MarketRecord>> {
+    let market_kind = loaded
+        .map(|config| config.config.edition.market_event_kind())
+        .unwrap_or(982);
     let events = ctx
-        .fetch_events(loaded, Filter::new().kind(Kind::Custom(982)).limit(limit))
+        .fetch_events(
+            loaded,
+            Filter::new().kind(Kind::Custom(market_kind)).limit(limit),
+        )
         .await?;
     let mut markets = events
         .into_iter()
@@ -2009,8 +2075,14 @@ async fn fetch_public_trade_events(
     loaded: Option<&LoadedConfig>,
     limit: usize,
 ) -> Result<Vec<Value>> {
+    let trade_kind = loaded
+        .map(|config| config.config.edition.trade_event_kind())
+        .unwrap_or(983);
     let events = ctx
-        .fetch_events(loaded, Filter::new().kind(Kind::Custom(983)).limit(limit))
+        .fetch_events(
+            loaded,
+            Filter::new().kind(Kind::Custom(trade_kind)).limit(limit),
+        )
         .await?;
     let mut trades = events
         .into_iter()
@@ -2056,7 +2128,7 @@ async fn fetch_market_record_by_event_id(
         ctx,
         Some(loaded),
         Filter::new()
-            .kind(Kind::Custom(982))
+            .kind(Kind::Custom(loaded.config.edition.market_event_kind()))
             .event(event_id)
             .limit(1),
     )
@@ -2077,7 +2149,7 @@ async fn fetch_market_trade_records(
         .fetch_events(
             Some(loaded),
             Filter::new()
-                .kind(Kind::Custom(983))
+                .kind(Kind::Custom(loaded.config.edition.trade_event_kind()))
                 .event(event_id)
                 .limit(limit.max(1)),
         )
@@ -2102,7 +2174,7 @@ async fn fetch_market_quote_snapshot(
         Some(serde_json::to_value(ProductCoordinatorTradeQuoteRequest {
             event_id: selector.event_id.clone(),
             side: "long".to_string(),
-            spend_minor: Some(1),
+            spend_minor: Some(MARKET_QUOTE_SNAPSHOT_SPEND_MINOR),
             raw_event: Some(selector.raw_event.clone()),
             quantity: None,
         })?),
@@ -2170,7 +2242,11 @@ async fn fetch_creator_market_records(
             loaded,
             Filter::new()
                 .author(parse_public_key(creator)?)
-                .kind(Kind::Custom(982))
+                .kind(Kind::Custom(
+                    loaded
+                        .map(|config| config.config.edition.market_event_kind())
+                        .unwrap_or(982),
+                ))
                 .limit(limit),
         )
         .await?;
@@ -2222,6 +2298,10 @@ async fn fetch_market_discussions(
     loaded: Option<&LoadedConfig>,
     market_id: &str,
 ) -> Result<Vec<DiscussionRecord>> {
+    let market_kind = loaded
+        .map(|config| config.config.edition.market_event_kind())
+        .unwrap_or(982)
+        .to_string();
     let event_id = EventId::from_hex(market_id)?;
     let events = ctx
         .fetch_events(
@@ -2234,7 +2314,7 @@ async fn fetch_market_discussions(
         .await?;
     Ok(events
         .into_iter()
-        .filter_map(parse_discussion_event)
+        .filter_map(|event| parse_discussion_event(event, &market_kind))
         .collect())
 }
 
@@ -2243,18 +2323,22 @@ async fn fetch_recent_discussions(
     loaded: Option<&LoadedConfig>,
     limit: usize,
 ) -> Result<Vec<DiscussionRecord>> {
+    let market_kind = loaded
+        .map(|config| config.config.edition.market_event_kind())
+        .unwrap_or(982)
+        .to_string();
     let events = ctx
         .fetch_events(loaded, Filter::new().kind(Kind::Custom(1111)).limit(limit))
         .await?;
     let mut discussions: Vec<DiscussionRecord> = events
         .into_iter()
-        .filter_map(parse_discussion_event)
+        .filter_map(|event| parse_discussion_event(event, &market_kind))
         .collect();
     discussions.sort_by(|left, right| right.created_at.cmp(&left.created_at));
     Ok(limit_vec(discussions, Some(limit)))
 }
 
-fn parse_discussion_event(event: Event) -> Option<DiscussionRecord> {
+fn parse_discussion_event(event: Event, market_kind: &str) -> Option<DiscussionRecord> {
     let raw_event = serde_json::to_value(&event).ok()?;
     let mut root_id: Option<String> = None;
     let mut reply_to: Option<String> = None;
@@ -2286,7 +2370,7 @@ fn parse_discussion_event(event: Event) -> Option<DiscussionRecord> {
     }
 
     let root_id = root_id?;
-    let market_id = if kind_reference.as_deref() == Some("982") {
+    let market_id = if kind_reference.as_deref() == Some(market_kind) {
         root_id.clone()
     } else if root_id != event.id.to_string() {
         root_id.clone()
@@ -2666,8 +2750,17 @@ fn is_hex_event_id(value: &str) -> bool {
     value.len() == 64 && value.chars().all(|char| char.is_ascii_hexdigit())
 }
 
+fn normalize_side(side: &str) -> Result<&'static str> {
+    match side.trim().to_ascii_lowercase().as_str() {
+        "long" => Ok("long"),
+        "short" => Ok("short"),
+        "yes" | "no" => bail!("side must be long or short; yes/no are not supported"),
+        other => bail!("unsupported side {other}; expected long or short"),
+    }
+}
+
 fn market_unit_for_side(slug: &str, side: &str) -> Result<String> {
-    match side.to_ascii_lowercase().as_str() {
+    match normalize_side(side)? {
         "long" => Ok(format!("long_{slug}")),
         "short" => Ok(format!("short_{slug}")),
         other => bail!("unsupported side {other}; expected long or short"),
@@ -2714,7 +2807,29 @@ async fn build_nostr_client(keys: Option<Keys>, relays: &[String]) -> Result<Cli
 
 #[cfg(test)]
 mod tests {
-    use super::market_unit_for_side;
+    use super::{market_unit_for_side, normalize_side, MARKET_QUOTE_SNAPSHOT_SPEND_MINOR};
+    use crate::config::Edition;
+
+    #[test]
+    fn normalize_side_accepts_long_and_short_only() {
+        assert_eq!(normalize_side("long").unwrap(), "long");
+        assert_eq!(normalize_side(" SHORT ").unwrap(), "short");
+        assert!(normalize_side("yes").is_err());
+        assert!(normalize_side("no").is_err());
+    }
+
+    #[test]
+    fn quote_snapshot_spend_is_above_live_minimum() {
+        assert!(MARKET_QUOTE_SNAPSHOT_SPEND_MINOR >= 1_000);
+    }
+
+    #[test]
+    fn edition_event_kinds_separate_practice_from_live() {
+        assert_eq!(Edition::Signet.market_event_kind(), 980);
+        assert_eq!(Edition::Signet.trade_event_kind(), 981);
+        assert_eq!(Edition::Mainnet.market_event_kind(), 982);
+        assert_eq!(Edition::Mainnet.trade_event_kind(), 983);
+    }
 
     #[test]
     fn market_unit_for_side_accepts_long_and_short() {

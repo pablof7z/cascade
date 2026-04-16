@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { NDKUserProfile } from '@nostr-dev-kit/ndk';
+  import { getCascadeEdition } from '$lib/cascade/config';
   import { formatProductAmount } from '$lib/cascade/format';
   import {
     formatProbability,
@@ -20,22 +21,23 @@
 
   let { data }: PageProps = $props();
   let activeFilter = $state<Filter>('All');
+  const selectedEdition = $derived(getCascadeEdition(data.cascadeEdition ?? null));
 
   const filters: Filter[] = ['All', 'New Markets', 'Trades', 'Discussion'];
   const profiles = $derived(data.profiles as Record<string, NDKUserProfile>);
   const markets = $derived(
     (data.markets ?? [])
-      .map(parseMarketEvent)
+      .map((event) => parseMarketEvent(event, selectedEdition))
       .filter((market): market is MarketRecord => Boolean(market))
   );
   const discussions = $derived(
     (data.discussions ?? [])
-      .map(parseDiscussionEvent)
+      .map((event) => parseDiscussionEvent(event, selectedEdition))
       .filter((discussion): discussion is DiscussionRecord => Boolean(discussion))
   );
   const trades = $derived(
     (data.trades ?? [])
-      .map(parseTradeEvent)
+      .map((event) => parseTradeEvent(event, selectedEdition))
       .filter((trade): trade is TradeRecord => Boolean(trade))
   );
   const marketById = $derived(new Map(markets.map((market) => [market.id, market])));

@@ -2,6 +2,8 @@
 
 This is the current product-surface contract for Cascade.
 
+PENDING: The product surface is moving to one web deployment with a Live/Practice switch. Live keeps kinds `982/983`; Practice uses kinds `980/981`.
+
 ## Authority Order
 
 Use these sources in order:

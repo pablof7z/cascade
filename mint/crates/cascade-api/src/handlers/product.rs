@@ -3103,6 +3103,7 @@ async fn buy_trade_by_event(
                     Side::Short => quote.current_price_short_ppm,
                 });
             let raw_event = build_trade_event(
+                state.trade_event_kind(),
                 &trade_id,
                 state.mint_nostr_pubkey.clone(),
                 &market.event_id,
@@ -3559,6 +3560,7 @@ async fn sell_trade_by_event(
                     Side::Short => quote.current_price_short_ppm,
                 });
             let raw_event = build_trade_event(
+                state.trade_event_kind(),
                 &trade_id,
                 state.mint_nostr_pubkey.clone(),
                 &market.event_id,
@@ -5223,10 +5225,11 @@ async fn bootstrap_market_from_raw_event(
 ) -> Result<Market, (StatusCode, String)> {
     let raw_event_id = raw_event.get("id").and_then(Value::as_str);
     let raw_event_kind = raw_event.get("kind").and_then(Value::as_i64);
-    if raw_event_id != Some(event_id) || raw_event_kind != Some(982) {
+    let expected_kind = state.market_event_kind();
+    if raw_event_id != Some(event_id) || raw_event_kind != Some(expected_kind) {
         return Err((
             StatusCode::BAD_REQUEST,
-            "raw_event_must_be_the_signed_kind_982_event".to_string(),
+            format!("raw_event_must_be_the_signed_kind_{expected_kind}_event"),
         ));
     }
 
@@ -5583,6 +5586,7 @@ fn product_market_summary(state: &AppState, market: &Market) -> ProductMarketSum
 }
 
 fn build_trade_event(
+    kind: i64,
     trade_id: &str,
     mint_pubkey: String,
     market_event_id: &str,
@@ -5612,7 +5616,7 @@ fn build_trade_event(
         "id": trade_id,
         "pubkey": mint_pubkey,
         "created_at": created_at,
-        "kind": 983,
+        "kind": kind,
         "content": "",
         "sig": "",
         "tags": tags

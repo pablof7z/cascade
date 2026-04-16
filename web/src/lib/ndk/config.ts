@@ -4,11 +4,9 @@ export const APP_NAME = 'Cascade';
 export const APP_TAGLINE =
   'Markets as Nostr events. Trading activity published by the mint. No oracle, no expiry, no closing bell.';
 
-const FALLBACK_RELAYS = [
-  'wss://relay.damus.io',
-  'wss://purplepag.es',
-  'wss://relay.primal.net'
-];
+const PUBLIC_DIRECTORY_RELAY = 'wss://purplepag.es';
+
+const FALLBACK_RELAYS = [PUBLIC_DIRECTORY_RELAY];
 
 export const DEFAULT_RELAYS = parseRelayList(
   env.PUBLIC_NOSTR_RELAYS,

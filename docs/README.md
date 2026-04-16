@@ -29,6 +29,7 @@ This directory contains the active documentation set. If a topic is not linked f
 - [technical/backend.md](technical/backend.md) — backend runtime shape and responsibilities
 - [technical/authentication.md](technical/authentication.md) — identity, NIP-05, and NIP-98
 - [technical/cascade-cli.md](technical/cascade-cli.md) — CLI contract for humans and agents
+- [technical/simulation-agents.md](technical/simulation-agents.md) — local signet activity agents driven by `cascade-sim`
 - [technical/positions-portfolio.md](technical/positions-portfolio.md) — local proofs, positions, and `/portfolio`
 
 ## Business

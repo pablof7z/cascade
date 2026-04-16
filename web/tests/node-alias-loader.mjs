@@ -5,6 +5,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const webRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const libRoot = path.join(webRoot, 'src', 'lib');
 const envStubUrl = pathToFileURL(path.join(webRoot, 'tests', 'stubs', 'env-public.mjs')).href;
+const appEnvironmentStubUrl = pathToFileURL(
+  path.join(webRoot, 'tests', 'stubs', 'app-environment.mjs')
+).href;
 
 function resolveLibPath(specifier) {
   const relativePath = specifier.slice('$lib/'.length);
@@ -23,6 +26,10 @@ function resolveLibPath(specifier) {
 export async function resolve(specifier, context, nextResolve) {
   if (specifier === '$env/dynamic/public') {
     return { shortCircuit: true, url: envStubUrl };
+  }
+
+  if (specifier === '$app/environment') {
+    return { shortCircuit: true, url: appEnvironmentStubUrl };
   }
 
   if (specifier.startsWith('$lib/')) {

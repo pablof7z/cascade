@@ -1,17 +1,21 @@
 # Deployment URLs
 
-_Last verified: 2026-04-15._
+PENDING: Web deployment is being consolidated to `https://cascade.f7z.io` with a Live/Practice switch. Signet remains a separate mint backend but no longer needs a separate web deployment.
+
+_Last verified: 2026-04-16._
 
 ## Signet
 
 - Web: `https://signet.cascade.f7z.io`
 - Mint + product API: `https://signet-mint.cascade.f7z.io`
+- Nostr relay: `wss://signet-relay.cascade.f7z.io`
 - Cashu info: `https://signet-mint.cascade.f7z.io/v1/info`
 - Health check: `https://signet-mint.cascade.f7z.io/health`
 
 The live signet web deployment currently embeds:
 
 - `PUBLIC_CASCADE_API_URL=https://signet-mint.cascade.f7z.io`
+- `PUBLIC_NOSTR_RELAYS=wss://purplepag.es,wss://signet-relay.cascade.f7z.io`
 
 ### Other live signet host observed
 
@@ -21,9 +25,16 @@ On 2026-04-15 this hostname served the same Vercel deployment as `https://signet
 
 ### Signet relay set exposed by the deployed web app
 
-- `wss://relay.damus.io`
 - `wss://purplepag.es`
-- `wss://relay.primal.net`
+- `wss://signet-relay.cascade.f7z.io`
+
+### Local signet relay host
+
+On this machine the Cascade signet relay is the Docker container
+`cascade-nostr-relay`, bound to `127.0.0.1:7781` with restart policy
+`unless-stopped`. Its ignored local data and config live under
+`data/signet-relay/`. Caddy terminates TLS for
+`signet-relay.cascade.f7z.io` and proxies to `localhost:7781`.
 
 ## Mainnet
 

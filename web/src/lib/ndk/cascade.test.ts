@@ -3,10 +3,14 @@ import assert from 'node:assert/strict';
 
 import {
   CASCADE_DISCUSSION_KIND,
+  CASCADE_SIGNET_MARKET_KIND,
+  CASCADE_SIGNET_TRADE_KIND,
   CASCADE_POSITION_KIND,
   CASCADE_TRADE_KIND,
   buildDiscussionThreads,
   buildThreadReplyTags,
+  getCascadeEventKinds,
+  parseMarketEvent,
   parsePositionEvent,
   parseTradeEvent,
   yesPricePpmFromTrade,
@@ -32,6 +36,48 @@ test('parseTradeEvent accepts long and short directions', () => {
   });
 
   assert.equal(trade?.direction, 'long');
+});
+
+test('event kind mapping separates live and practice events', () => {
+  assert.deepEqual(getCascadeEventKinds('mainnet'), { market: 982, trade: 983 });
+  assert.deepEqual(getCascadeEventKinds('signet'), { market: 980, trade: 981 });
+});
+
+test('parseMarketEvent accepts practice market kind only in practice mode', () => {
+  const event = {
+    id: 'practice-market',
+    kind: CASCADE_SIGNET_MARKET_KIND,
+    pubkey: 'f'.repeat(64),
+    created_at: 1_700_000_000,
+    content: '',
+    sig: '0'.repeat(128),
+    tags: [['d', 'practice-market']]
+  };
+
+  assert.equal(parseMarketEvent(event), null);
+  assert.equal(parseMarketEvent(event, 'signet')?.slug, 'practice-market');
+});
+
+test('parseTradeEvent accepts practice trade kind only in practice mode', () => {
+  const event = {
+    id: 'practice-trade',
+    kind: CASCADE_SIGNET_TRADE_KIND,
+    pubkey: 'f'.repeat(64),
+    created_at: 1_700_000_000,
+    content: '',
+    sig: '0'.repeat(128),
+    tags: [
+      ['e', 'market-1'],
+      ['direction', 'long'],
+      ['type', 'buy'],
+      ['amount', '2500'],
+      ['price', '610000'],
+      ['unit', 'usd']
+    ]
+  };
+
+  assert.equal(parseTradeEvent(event), null);
+  assert.equal(parseTradeEvent(event, 'signet')?.marketId, 'market-1');
 });
 
 test('parseTradeEvent rejects yes/no aliases', () => {
@@ -117,6 +163,12 @@ test('buildThreadReplyTags scopes replies to the market root and thread parent',
     ['k', '982'],
     ['e', 'thread-1111', '', 'reply'],
     ['k', '1111']
+  ]);
+  assert.deepEqual(buildThreadReplyTags('market-980', 'thread-1111', 'signet').slice(0, 4), [
+    ['E', 'market-980', '', 'root'],
+    ['K', '980'],
+    ['e', 'market-980', '', 'root'],
+    ['k', '980']
   ]);
 });
 

@@ -11,15 +11,16 @@ function take<T>(items: T[], limit: number): T[] {
   return items.slice(0, limit);
 }
 
-export const load: PageServerLoad = async ({ setHeaders, url }) => {
+export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
+  const edition = locals.cascadeEdition;
   setHeaders({
     'cache-control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=600'
   });
 
   const [markets, discussions, trades] = await Promise.all([
-    fetchRecentMarkets(ANALYTICS_MARKET_LIMIT),
-    fetchRecentDiscussions(ANALYTICS_DISCUSSION_LIMIT),
-    fetchRecentTrades(ANALYTICS_TRADE_LIMIT)
+    fetchRecentMarkets(ANALYTICS_MARKET_LIMIT, { edition }),
+    fetchRecentDiscussions(ANALYTICS_DISCUSSION_LIMIT, { edition }),
+    fetchRecentTrades(ANALYTICS_TRADE_LIMIT, { edition })
   ]);
 
   return {

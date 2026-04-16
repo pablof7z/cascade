@@ -5,9 +5,14 @@ import {
   fetchProfilesForPubkeys,
   fetchRecentMarkets
 } from '$lib/server/cascade';
+import { getCascadeEdition, type CascadeEdition } from '$lib/cascade/config';
 
-export async function loadMarketSurface(slug: string) {
-  const market = await fetchMarketBySlug(slug);
+export async function loadMarketSurface(
+  slug: string,
+  edition: CascadeEdition | string | null = getCascadeEdition()
+) {
+  const selectedEdition = getCascadeEdition(edition);
+  const market = await fetchMarketBySlug(slug, { edition: selectedEdition });
   if (!market) {
     return {
       market: null,
@@ -19,9 +24,9 @@ export async function loadMarketSurface(slug: string) {
   }
 
   const [trades, discussions, recentMarkets] = await Promise.all([
-    fetchMarketTrades(market, 240),
-    fetchMarketDiscussions(market.id, 240),
-    fetchRecentMarkets(48)
+    fetchMarketTrades(market, 240, { edition: selectedEdition }),
+    fetchMarketDiscussions(market.id, 240, { edition: selectedEdition }),
+    fetchRecentMarkets(48, { edition: selectedEdition })
   ]);
 
   const relatedMarkets = recentMarkets

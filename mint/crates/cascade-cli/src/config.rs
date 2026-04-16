@@ -5,11 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub const DEFAULT_RELAYS: [&str; 3] = [
-    "wss://relay.damus.io",
-    "wss://purplepag.es",
-    "wss://relay.primal.net",
-];
+pub const DEFAULT_RELAYS: [&str; 1] = ["wss://purplepag.es"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -23,6 +19,20 @@ impl Edition {
         match self {
             Self::Signet => "signet",
             Self::Mainnet => "mainnet",
+        }
+    }
+
+    pub fn market_event_kind(self) -> u16 {
+        match self {
+            Self::Signet => 980,
+            Self::Mainnet => 982,
+        }
+    }
+
+    pub fn trade_event_kind(self) -> u16 {
+        match self {
+            Self::Signet => 981,
+            Self::Mainnet => 983,
         }
     }
 }

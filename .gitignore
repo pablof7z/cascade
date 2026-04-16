@@ -59,3 +59,7 @@ data/
 # Activity simulator state
 scripts/.sim-state.json
 scripts/.sim-users.json
+scripts/.cascade-sim-state.json
+scripts/agents/*.agent.json
+scripts/agents/*.proofs.json
+scripts/news-cache/

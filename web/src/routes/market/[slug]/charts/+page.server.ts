@@ -4,10 +4,10 @@ import { buildMarketSeo } from '$lib/seo';
 import { marketPageCacheControl } from '$lib/server/cascade-cache';
 import { loadMarketSurface } from '$lib/server/cascade-pages';
 
-export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
-  const data = await loadMarketSurface(params.slug);
+export const load: PageServerLoad = async ({ locals, params, setHeaders, url }) => {
+  const data = await loadMarketSurface(params.slug, locals.cascadeEdition);
   setHeaders({
-    'cache-control': marketPageCacheControl(Boolean(data.market))
+    'cache-control': marketPageCacheControl(Boolean(data.market), locals.cascadeEdition)
   });
 
   if (!data.market) {

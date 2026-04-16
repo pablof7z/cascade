@@ -2,12 +2,17 @@
   import { browser } from '$app/environment';
   import { NDKEvent } from '@nostr-dev-kit/ndk';
   import { ndk } from '$lib/ndk/client';
-  import { parseMarketEvent, type MarketRecord } from '$lib/ndk/cascade';
+  import {
+    getCascadeEventKinds,
+    parseMarketEvent,
+    type MarketRecord
+  } from '$lib/ndk/cascade';
 
   const NETWORK_BOOKMARK_LIMIT = 40;
   const TRENDING_MARKET_LIMIT = 12;
 
   const currentUser = $derived(ndk.$currentUser);
+  const eventKinds = $derived(getCascadeEventKinds());
 
   const bookmarkLists = ndk.$subscribe(() => {
     if (!browser) return undefined;
@@ -55,7 +60,7 @@
 
   const bookmarkedMarkets = ndk.$subscribe(() => {
     if (!browser || subscribedMarketIds.length === 0) return undefined;
-    return { filters: [{ kinds: [982], ids: subscribedMarketIds }] };
+    return { filters: [{ kinds: [eventKinds.market], ids: subscribedMarketIds }] };
   });
 
   const marketLookup = $derived.by(() => {

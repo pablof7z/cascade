@@ -1,5 +1,7 @@
 # Frontend Architecture
 
+PENDING: The frontend is moving from separate signet/mainnet deployments to one deployment with a Live/Practice switch, request-scoped edition selection, shared relays, and edition-specific event kinds.
+
 ## Active App
 
 The active frontend lives in `web/`.

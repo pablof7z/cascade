@@ -17,7 +17,7 @@ function escapeXml(value: string): string {
     .replaceAll("'", '&apos;');
 }
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ locals, url }) => {
   const origin = url.origin;
 
   const staticPages: SitemapPage[] = [
@@ -27,7 +27,7 @@ export const GET: RequestHandler = async ({ url }) => {
     { loc: `${origin}/leaderboard`, priority: '0.6', changefreq: 'daily' }
   ];
 
-  const markets = await fetchSitemapMarkets(500);
+  const markets = await fetchSitemapMarkets(500, { edition: locals.cascadeEdition });
   const marketPages: SitemapPage[] = markets.map((market) => ({
     loc: `${origin}/market/${encodeURIComponent(market.slug)}`,
     priority: '0.9',

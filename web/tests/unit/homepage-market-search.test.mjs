@@ -102,15 +102,15 @@ test('homepage source filters discovery markets using merged live trades', () =>
   assert.match(source, /import \{[\s\S]*filterLiveHomepageMarkets,[\s\S]*\} from '\.\/homepage-market-search';/);
   assert.match(
     source,
-    /const tradeFeed = ndk\.\$subscribe\(\(\) => \{[\s\S]*if \(!browser\) return undefined;[\s\S]*filters: \[\{ kinds: \[983\], limit: 240 \}\][\s\S]*\}\);/
+    /const tradeFeed = ndk\.\$subscribe\(\(\) => \{[\s\S]*if \(!browser\) return undefined;[\s\S]*filters: \[\{ kinds: \[eventKinds\.trade\], limit: 240 \}\][\s\S]*\}\);/
   );
   assert.match(
     source,
-    /const trades = \$derived\.by\(\(\) => \{[\s\S]*return mergeRawEvents\(data\.trades, tradeFeed\.events\)[\s\S]*\.map\(parseTradeEvent\)[\s\S]*\.filter\(\(trade\): trade is TradeRecord => Boolean\(trade\)\)/
+    /const trades = \$derived\.by\(\(\) => \{[\s\S]*return mergeRawEvents\(data\.trades, tradeFeed\.events\)[\s\S]*\.map\(\(event\) => parseTradeEvent\(event, selectedEdition\)\)[\s\S]*\.filter\(\(trade\): trade is TradeRecord => Boolean\(trade\)\)/
   );
   assert.match(
     source,
-    /return filterLiveHomepageMarkets\([\s\S]*\.map\(parseMarketEvent\)[\s\S]*\.filter\(\(market\): market is MarketRecord => Boolean\(market\)\)[\s\S]*,\s*trades\s*\)[\s\S]*\.sort\(\(left, right\) => right\.createdAt - left\.createdAt\);/
+    /return filterLiveHomepageMarkets\([\s\S]*\.map\(\(event\) => parseMarketEvent\(event, selectedEdition\)\)[\s\S]*\.filter\(\(market\): market is MarketRecord => Boolean\(market\)\)[\s\S]*,\s*trades\s*\)[\s\S]*\.sort\(\(left, right\) => right\.createdAt - left\.createdAt\);/
   );
 });
 

@@ -17,7 +17,7 @@
   } from '$lib/cascade/api';
   import { NDKEvent, type NDKKind, type NostrEvent } from '@nostr-dev-kit/ndk';
   import { formatUsdMinor } from '$lib/cascade/format';
-  import { getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
+  import { getCascadeEdition, getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
   import { normalizeProductTradeSide } from '$lib/cascade/tradeSide';
   import {
     clearPendingCreatorMarket,
@@ -37,7 +37,12 @@
   } from '$lib/cascade/builderMarkets';
   import { buildMarketEventTags } from '$lib/cascade/marketEventTags';
   import { ensureClientNdk, ndk } from '$lib/ndk/client';
-  import { parseMarketEvent, parseTradeEvent, type MarketRecord } from '$lib/ndk/cascade';
+  import {
+    getCascadeEventKinds,
+    parseMarketEvent,
+    parseTradeEvent,
+    type MarketRecord
+  } from '$lib/ndk/cascade';
   import {
     addLocalProofs,
     localProofBalance,
@@ -120,23 +125,25 @@
     if (step === 1) return Boolean(body.trim());
     return true;
   });
-  const paperEdition = $derived(isPaperEdition());
+  const selectedEdition = $derived(getCascadeEdition(data.cascadeEdition ?? null));
+  const eventKinds = $derived(getCascadeEventKinds(selectedEdition));
+  const paperEdition = $derived(isPaperEdition(selectedEdition));
   const portfolioLabel = $derived(paperEdition ? 'practice portfolio' : 'portfolio');
   const parsedSeedAmount = $derived(Number.parseInt(seedAmount, 10) || 0);
 
   const creatorMarketFeed = ndk.$subscribe(() => {
     if (!browser || !paperEdition || !currentUser) return undefined;
-    return { filters: [{ kinds: [982], authors: [currentUser.pubkey], limit: 200 }] };
+    return { filters: [{ kinds: [eventKinds.market], authors: [currentUser.pubkey], limit: 200 }] };
   });
 
   const publicMarketFeed = ndk.$subscribe(() => {
     if (!browser || !paperEdition) return undefined;
-    return { filters: [{ kinds: [982], limit: 240 }] };
+    return { filters: [{ kinds: [eventKinds.market], limit: 240 }] };
   });
 
   const publicTradeFeed = ndk.$subscribe(() => {
     if (!browser || !paperEdition) return undefined;
-    return { filters: [{ kinds: [983], limit: 480 }] };
+    return { filters: [{ kinds: [eventKinds.trade], limit: 480 }] };
   });
 
   const seededPublicMarketIds = $derived.by(() => {
@@ -146,7 +153,7 @@
   const publicTradeMarketIds = $derived.by(() => {
     const ids = new Set<string>();
     for (const event of publicTradeFeed.events) {
-      const trade = parseTradeEvent(event.rawEvent());
+      const trade = parseTradeEvent(event.rawEvent(), selectedEdition);
       if (trade?.marketId) ids.add(trade.marketId);
     }
     return ids;
@@ -159,7 +166,7 @@
     ]);
 
     return merged
-      .map(parseMarketEvent)
+      .map((event) => parseMarketEvent(event, selectedEdition))
       .filter((market): market is MarketRecord => Boolean(market))
       .filter(
         (market) => seededPublicMarketIds.has(market.id) || publicTradeMarketIds.has(market.id)
@@ -178,7 +185,7 @@
 
   const creatorMarkets = $derived.by(() => {
     const publicMarkets = creatorMarketFeed.events
-      .map((event) => parseMarketEvent(event.rawEvent()))
+      .map((event) => parseMarketEvent(event.rawEvent(), selectedEdition))
       .filter((market): market is MarketRecord => Boolean(market))
       .filter((market) => publicCreatorMarketIds.has(market.id))
       .map<AuthoredCreatorMarket>((market) => ({
@@ -192,7 +199,7 @@
   });
 
   function proofMintUrl(): string {
-    return getProductApiUrl().replace(/\/+$/, '');
+    return getProductApiUrl(selectedEdition).replace(/\/+$/, '');
   }
 
   function slugify(value: string): string {
@@ -286,7 +293,7 @@
       'id' in candidate &&
       'kind' in candidate &&
       (candidate as { id?: unknown }).id === eventId &&
-      (candidate as { kind?: unknown }).kind === 982
+      (candidate as { kind?: unknown }).kind === eventKinds.market
     );
   }
 
@@ -316,7 +323,7 @@
     try {
       await ensureClientNdk();
       const directMatch = await ndk.fetchEvents(
-        { kinds: [982 as NDKKind], ids: [eventId], limit: 1 },
+        { kinds: [eventKinds.market as NDKKind], ids: [eventId], limit: 1 },
         { closeOnEose: true }
       );
       const directRawEvent = Array.from(directMatch)
@@ -326,7 +333,7 @@
 
       const authoredMatch = await ndk.fetchEvents(
         {
-          kinds: [982 as NDKKind],
+          kinds: [eventKinds.market as NDKKind],
           '#d': [slug],
           authors: currentUser ? [currentUser.pubkey] : undefined,
           limit: 12
@@ -336,7 +343,10 @@
       return (
         Array.from(authoredMatch)
           .map((event) => event.rawEvent() as NostrEvent)
-          .find((event) => event.id === eventId || parseMarketEvent(event)?.slug === slug) ?? undefined
+          .find(
+            (event) =>
+              event.id === eventId || parseMarketEvent(event, selectedEdition)?.slug === slug
+          ) ?? undefined
       );
     } catch {
       return undefined;
@@ -550,7 +560,7 @@
     saving = true;
     try {
       const marketEvent = new NDKEvent(ndk);
-      marketEvent.kind = 982;
+      marketEvent.kind = eventKinds.market;
       marketEvent.content = body.trim();
       marketEvent.tags = buildMarketEventTags({
         title,

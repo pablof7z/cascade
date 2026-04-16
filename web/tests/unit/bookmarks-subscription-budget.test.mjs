@@ -20,7 +20,7 @@ test('bookmarks page keeps live relay subscriptions bounded', () => {
     `expected at most 2 live subscriptions on /bookmarks, found ${subscribeCount}`
   );
 
-  const marketSubscriptionCount = source.match(/kinds:\s*\[982\]/g)?.length ?? 0;
+  const marketSubscriptionCount = source.match(/kinds:\s*\[eventKinds\.market\]/g)?.length ?? 0;
   assert.ok(
     marketSubscriptionCount <= 1,
     `expected one combined market subscription, found ${marketSubscriptionCount}`

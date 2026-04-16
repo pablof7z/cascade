@@ -45,9 +45,9 @@ pub struct AppState {
     pub network_type: String,
     /// Canonical public mint URL for this runtime.
     pub mint_url: String,
-    /// Optional Nostr trade publisher for mint-authored kind 983 events.
+    /// Optional Nostr trade publisher for mint-authored trade events.
     pub trade_publisher: Option<Arc<TradePublisher>>,
-    /// Mint Nostr pubkey used in kind 983 payloads.
+    /// Mint Nostr pubkey used in trade event payloads.
     pub mint_nostr_pubkey: String,
     /// Serialize market bootstrap so slug uniqueness checks stay authoritative.
     pub market_bootstrap_lock: Arc<Mutex<()>>,
@@ -123,6 +123,22 @@ impl AppState {
             "signet"
         } else {
             "mainnet"
+        }
+    }
+
+    pub fn market_event_kind(&self) -> i64 {
+        if self.paper_mode {
+            980
+        } else {
+            982
+        }
+    }
+
+    pub fn trade_event_kind(&self) -> i64 {
+        if self.paper_mode {
+            981
+        } else {
+            983
         }
     }
 

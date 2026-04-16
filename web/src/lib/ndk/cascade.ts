@@ -1,10 +1,40 @@
 import { NDKEvent, type NostrEvent } from '@nostr-dev-kit/ndk';
+import { getCascadeEdition, type CascadeEdition } from '$lib/cascade/config';
 
-export const CASCADE_MARKET_KIND = 982;
-export const CASCADE_TRADE_KIND = 983;
+export const CASCADE_MAINNET_MARKET_KIND = 982;
+export const CASCADE_MAINNET_TRADE_KIND = 983;
+export const CASCADE_SIGNET_MARKET_KIND = 980;
+export const CASCADE_SIGNET_TRADE_KIND = 981;
+export const CASCADE_MARKET_KIND = CASCADE_MAINNET_MARKET_KIND;
+export const CASCADE_TRADE_KIND = CASCADE_MAINNET_TRADE_KIND;
 export const CASCADE_DISCUSSION_KIND = 1111;
 export const CASCADE_BOOKMARK_KIND = 10003;
 export const CASCADE_POSITION_KIND = 30078;
+
+export type CascadeEventKinds = {
+  market: number;
+  trade: number;
+};
+
+export function getCascadeEventKinds(
+  edition: CascadeEdition | string | null = getCascadeEdition()
+): CascadeEventKinds {
+  return getCascadeEdition(edition) === 'signet'
+    ? { market: CASCADE_SIGNET_MARKET_KIND, trade: CASCADE_SIGNET_TRADE_KIND }
+    : { market: CASCADE_MAINNET_MARKET_KIND, trade: CASCADE_MAINNET_TRADE_KIND };
+}
+
+export function getCascadeMarketKind(
+  edition: CascadeEdition | string | null = getCascadeEdition()
+): number {
+  return getCascadeEventKinds(edition).market;
+}
+
+export function getCascadeTradeKind(
+  edition: CascadeEdition | string | null = getCascadeEdition()
+): number {
+  return getCascadeEventKinds(edition).trade;
+}
 
 const USD_FORMATTER = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -76,12 +106,17 @@ export type DiscussionThread = {
   lastActivityAt: number;
 };
 
-export function buildThreadReplyTags(marketId: string, threadId: string): string[][] {
+export function buildThreadReplyTags(
+  marketId: string,
+  threadId: string,
+  edition: CascadeEdition | string | null = getCascadeEdition()
+): string[][] {
+  const marketKind = String(getCascadeMarketKind(edition));
   return [
     ['E', marketId, '', 'root'],
-    ['K', String(CASCADE_MARKET_KIND)],
+    ['K', marketKind],
     ['e', marketId, '', 'root'],
-    ['k', String(CASCADE_MARKET_KIND)],
+    ['k', marketKind],
     ['e', threadId, '', 'reply'],
     ['k', String(CASCADE_DISCUSSION_KIND)]
   ];
@@ -104,9 +139,12 @@ export function rawEventOf(event: NDKEvent | NostrEvent): NostrEvent {
   return event instanceof NDKEvent ? (event.rawEvent() as NostrEvent) : event;
 }
 
-export function parseMarketEvent(event: NDKEvent | NostrEvent): MarketRecord | null {
+export function parseMarketEvent(
+  event: NDKEvent | NostrEvent,
+  edition: CascadeEdition | string | null = getCascadeEdition()
+): MarketRecord | null {
   const raw = rawEventOf(event);
-  if (raw.kind !== CASCADE_MARKET_KIND || !raw.id) return null;
+  if (raw.kind !== getCascadeMarketKind(edition) || !raw.id) return null;
 
   const slug = firstTagValue(raw.tags, 'd');
   if (!slug) return null;
@@ -132,9 +170,12 @@ export function parseMarketEvent(event: NDKEvent | NostrEvent): MarketRecord | n
   };
 }
 
-export function parseTradeEvent(event: NDKEvent | NostrEvent): TradeRecord | null {
+export function parseTradeEvent(
+  event: NDKEvent | NostrEvent,
+  edition: CascadeEdition | string | null = getCascadeEdition()
+): TradeRecord | null {
   const raw = rawEventOf(event);
-  if (raw.kind !== CASCADE_TRADE_KIND || !raw.id) return null;
+  if (raw.kind !== getCascadeTradeKind(edition) || !raw.id) return null;
 
   const marketId = firstTagValue(raw.tags, 'e');
   const direction = firstTagValue(raw.tags, 'direction');
@@ -162,7 +203,10 @@ export function parseTradeEvent(event: NDKEvent | NostrEvent): TradeRecord | nul
   };
 }
 
-export function parseDiscussionEvent(event: NDKEvent | NostrEvent): DiscussionRecord | null {
+export function parseDiscussionEvent(
+  event: NDKEvent | NostrEvent,
+  edition: CascadeEdition | string | null = getCascadeEdition()
+): DiscussionRecord | null {
   const raw = rawEventOf(event);
   if (raw.kind !== CASCADE_DISCUSSION_KIND || !raw.id) return null;
 
@@ -181,8 +225,9 @@ export function parseDiscussionEvent(event: NDKEvent | NostrEvent): DiscussionRe
   }
 
   const referencedKind = firstTagValue(raw.tags, 'k');
+  const marketKind = String(getCascadeMarketKind(edition));
   const marketId =
-    referencedKind === '982'
+    referencedKind === marketKind
       ? rootId
       : rootId && rootId !== raw.id
         ? rootId

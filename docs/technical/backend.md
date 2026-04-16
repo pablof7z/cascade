@@ -1,5 +1,7 @@
 # Backend Architecture
 
+PENDING: The backend contract is being updated so mainnet mints accept/publish `982/983` and signet mints accept/publish `980/981`, while the webapp can switch between two mint backends from one deployment.
+
 ## Stack
 
 | Layer | Technology |

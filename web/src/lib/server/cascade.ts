@@ -1,6 +1,8 @@
 import { NDKSubscriptionCacheUsage, type NDKFilter, type NDKKind, type NostrEvent } from '@nostr-dev-kit/ndk';
+import { getCascadeEdition, type CascadeEdition } from '$lib/cascade/config';
 import {
   buildTradeSummary,
+  getCascadeEventKinds,
   parseDiscussionEvent,
   parseMarketEvent,
   parsePositionEvent,
@@ -16,74 +18,115 @@ const MARKET_CACHE_TTL_MS = 60_000;
 const DISCUSSION_CACHE_TTL_MS = 30_000;
 const RELAY_FETCH_TIMEOUT_MS = 2_500;
 
-let marketCache: MarketRecord[] = [];
-let marketCacheUpdatedAt = 0;
-let marketRefresh: Promise<void> | undefined;
-let tradeCache: TradeRecord[] = [];
-let tradeCacheUpdatedAt = 0;
-let tradeRefresh: Promise<void> | undefined;
+type CascadeEditionOption = {
+  edition?: CascadeEdition | string | null;
+};
 
-let discussionCache: DiscussionRecord[] = [];
-let discussionCacheUpdatedAt = 0;
-let discussionRefresh: Promise<void> | undefined;
+type RelayDiscoveryCache = {
+  marketCache: MarketRecord[];
+  marketCacheUpdatedAt: number;
+  marketRefresh?: Promise<void>;
+  tradeCache: TradeRecord[];
+  tradeCacheUpdatedAt: number;
+  tradeRefresh?: Promise<void>;
+  discussionCache: DiscussionRecord[];
+  discussionCacheUpdatedAt: number;
+  discussionRefresh?: Promise<void>;
+};
 
-type FetchMarketBySlugDeps = {
+const relayCaches = new Map<CascadeEdition, RelayDiscoveryCache>();
+
+function selectedEdition(edition: CascadeEdition | string | null | undefined): CascadeEdition {
+  return getCascadeEdition(edition ?? null);
+}
+
+function relayCache(edition: CascadeEdition): RelayDiscoveryCache {
+  const existing = relayCaches.get(edition);
+  if (existing) return existing;
+
+  const next: RelayDiscoveryCache = {
+    marketCache: [],
+    marketCacheUpdatedAt: 0,
+    tradeCache: [],
+    tradeCacheUpdatedAt: 0,
+    discussionCache: [],
+    discussionCacheUpdatedAt: 0
+  };
+  relayCaches.set(edition, next);
+  return next;
+}
+
+type FetchMarketBySlugDeps = CascadeEditionOption & {
   fetchRelayMarketBySlug?: typeof fetchRelayMarketBySlug;
   fetchRelayTradesForMarket?: typeof fetchRelayTradesForMarket;
 };
 
-type FetchSitemapMarketsDeps = {
+type FetchSitemapMarketsDeps = CascadeEditionOption & {
   fetchRecentMarkets?: typeof fetchRecentMarkets;
   fetchRecentRelayMarkets?: typeof fetchRecentRelayMarkets;
 };
 
-export async function fetchRecentMarkets(limit = 80): Promise<MarketRecord[]> {
-  const stale = Date.now() - marketCacheUpdatedAt > MARKET_CACHE_TTL_MS;
-  const underfilled = marketCache.length < limit;
+export async function fetchRecentMarkets(
+  limit = 80,
+  options: CascadeEditionOption = {}
+): Promise<MarketRecord[]> {
+  const edition = selectedEdition(options.edition);
+  const cache = relayCache(edition);
+  const stale = Date.now() - cache.marketCacheUpdatedAt > MARKET_CACHE_TTL_MS;
+  const underfilled = cache.marketCache.length < limit;
 
   if (stale || underfilled) {
-    const refresh = refreshRelayDiscovery(Math.max(limit, 80));
-    if (marketCache.length === 0 || underfilled) {
+    const refresh = refreshRelayDiscovery(Math.max(limit, 80), edition);
+    if (cache.marketCache.length === 0 || underfilled) {
       await refresh;
     }
   }
 
-  return marketCache.slice(0, limit);
+  return cache.marketCache.slice(0, limit);
 }
 
 export async function fetchSitemapMarkets(
   limit = 80,
   deps: FetchSitemapMarketsDeps = {}
 ): Promise<MarketRecord[]> {
-  const markets = await (deps.fetchRecentMarkets ?? fetchRecentMarkets)(limit);
+  const edition = selectedEdition(deps.edition);
+  const markets = await (deps.fetchRecentMarkets ?? fetchRecentMarkets)(limit, { edition });
   if (markets.length > 0) return markets;
 
   console.warn('fetchSitemapMarkets fell back to a direct relay fetch because the cache was empty');
-  return (deps.fetchRecentRelayMarkets ?? fetchRecentRelayMarkets)(limit);
+  return (deps.fetchRecentRelayMarkets ?? fetchRecentRelayMarkets)(limit, edition);
 }
 
 export async function fetchMarketBySlug(
   slug: string,
   deps: FetchMarketBySlugDeps = {}
 ): Promise<MarketRecord | null> {
-  const rawMarket = await (deps.fetchRelayMarketBySlug ?? fetchRelayMarketBySlug)(slug);
-  const marketFromRelay = rawMarket ? parseMarketEvent(rawMarket) : null;
+  const edition = selectedEdition(deps.edition);
+  const rawMarket = await (deps.fetchRelayMarketBySlug ?? fetchRelayMarketBySlug)(slug, edition);
+  const marketFromRelay = rawMarket ? parseMarketEvent(rawMarket, edition) : null;
   if (!marketFromRelay || marketFromRelay.slug !== slug) return null;
 
   const trades = await (deps.fetchRelayTradesForMarket ?? fetchRelayTradesForMarket)(
     marketFromRelay.id,
-    40
+    40,
+    edition
   );
   if (trades.length === 0) return null;
   return withLatestPrice(marketFromRelay, trades);
 }
 
-export async function fetchMarketsByAuthor(pubkey: string, limit = 48): Promise<MarketRecord[]> {
+export async function fetchMarketsByAuthor(
+  pubkey: string,
+  limit = 48,
+  options: CascadeEditionOption = {}
+): Promise<MarketRecord[]> {
+  const edition = selectedEdition(options.edition);
+  const kinds = getCascadeEventKinds(edition);
   const ndk = await getServerNdkClient();
   const events = await withRelayEventTimeout(
     ndk.fetchEvents(
       {
-        kinds: [982 as NDKKind],
+        kinds: [kinds.market as NDKKind],
         authors: [pubkey],
         limit
       } satisfies NDKFilter,
@@ -93,22 +136,27 @@ export async function fetchMarketsByAuthor(pubkey: string, limit = 48): Promise<
   );
 
   return Array.from(events)
-    .map((event) => parseMarketEvent(event.rawEvent()))
+    .map((event) => parseMarketEvent(event.rawEvent(), edition))
     .filter((market): market is MarketRecord => Boolean(market))
     .filter((market) => market.pubkey === pubkey)
     .sort((left, right) => right.createdAt - left.createdAt)
     .slice(0, limit);
 }
 
-export async function fetchMarketsByIds(marketIds: readonly string[]): Promise<MarketRecord[]> {
+export async function fetchMarketsByIds(
+  marketIds: readonly string[],
+  options: CascadeEditionOption = {}
+): Promise<MarketRecord[]> {
+  const edition = selectedEdition(options.edition);
   const ids = [...new Set(marketIds.filter(Boolean))];
   if (ids.length === 0) return [];
 
+  const kinds = getCascadeEventKinds(edition);
   const ndk = await getServerNdkClient();
   const events = await withRelayEventTimeout(
     ndk.fetchEvents(
       {
-        kinds: [982 as NDKKind],
+        kinds: [kinds.market as NDKKind],
         ids,
         limit: ids.length
       } satisfies NDKFilter,
@@ -118,26 +166,36 @@ export async function fetchMarketsByIds(marketIds: readonly string[]): Promise<M
   );
 
   return Array.from(events)
-    .map((event) => parseMarketEvent(event.rawEvent()))
+    .map((event) => parseMarketEvent(event.rawEvent(), edition))
     .filter((market): market is MarketRecord => Boolean(market))
     .sort((left, right) => right.createdAt - left.createdAt);
 }
 
-export async function fetchRecentDiscussions(limit = 80): Promise<DiscussionRecord[]> {
-  const stale = Date.now() - discussionCacheUpdatedAt > DISCUSSION_CACHE_TTL_MS;
-  const underfilled = discussionCache.length < limit;
+export async function fetchRecentDiscussions(
+  limit = 80,
+  options: CascadeEditionOption = {}
+): Promise<DiscussionRecord[]> {
+  const edition = selectedEdition(options.edition);
+  const cache = relayCache(edition);
+  const stale = Date.now() - cache.discussionCacheUpdatedAt > DISCUSSION_CACHE_TTL_MS;
+  const underfilled = cache.discussionCache.length < limit;
 
   if (stale || underfilled) {
-    const refresh = refreshRecentDiscussions(Math.max(limit, 80));
-    if (discussionCache.length === 0 || underfilled) {
+    const refresh = refreshRecentDiscussions(Math.max(limit, 80), edition);
+    if (cache.discussionCache.length === 0 || underfilled) {
       await refresh;
     }
   }
 
-  return discussionCache.slice(0, limit);
+  return cache.discussionCache.slice(0, limit);
 }
 
-export async function fetchMarketDiscussions(marketId: string, limit = 200): Promise<DiscussionRecord[]> {
+export async function fetchMarketDiscussions(
+  marketId: string,
+  limit = 200,
+  options: CascadeEditionOption = {}
+): Promise<DiscussionRecord[]> {
+  const edition = selectedEdition(options.edition);
   const ndk = await getServerNdkClient();
   const events = await withRelayEventTimeout(
     ndk.fetchEvents(
@@ -152,7 +210,7 @@ export async function fetchMarketDiscussions(marketId: string, limit = 200): Pro
   );
 
   return Array.from(events)
-    .map(parseDiscussionEvent)
+    .map((event) => parseDiscussionEvent(event, edition))
     .filter((record): record is DiscussionRecord => Boolean(record))
     .filter((record) => record.marketId === marketId)
     .sort((left, right) => right.createdAt - left.createdAt);
@@ -160,8 +218,10 @@ export async function fetchMarketDiscussions(marketId: string, limit = 200): Pro
 
 export async function fetchThreadRootDiscussion(
   marketId: string,
-  threadId: string
+  threadId: string,
+  options: CascadeEditionOption = {}
 ): Promise<DiscussionRecord[]> {
+  const edition = selectedEdition(options.edition);
   const events = await collectRelayRawEvents(
     {
       kinds: [1111 as NDKKind],
@@ -175,13 +235,18 @@ export async function fetchThreadRootDiscussion(
   );
 
   return events
-    .map(parseDiscussionEvent)
+    .map((event) => parseDiscussionEvent(event, edition))
     .filter((record): record is DiscussionRecord => Boolean(record))
     .filter((record) => record.id === threadId && record.marketId === marketId)
     .sort((left, right) => right.createdAt - left.createdAt);
 }
 
-export async function fetchDiscussionsByPubkey(pubkey: string, limit = 50): Promise<DiscussionRecord[]> {
+export async function fetchDiscussionsByPubkey(
+  pubkey: string,
+  limit = 50,
+  options: CascadeEditionOption = {}
+): Promise<DiscussionRecord[]> {
+  const edition = selectedEdition(options.edition);
   const ndk = await getServerNdkClient();
   const events = await withRelayEventTimeout(
     ndk.fetchEvents(
@@ -196,28 +261,37 @@ export async function fetchDiscussionsByPubkey(pubkey: string, limit = 50): Prom
   );
 
   return Array.from(events)
-    .map(parseDiscussionEvent)
+    .map((event) => parseDiscussionEvent(event, edition))
     .filter((record): record is DiscussionRecord => Boolean(record))
     .filter((record) => record.pubkey === pubkey)
     .sort((left, right) => right.createdAt - left.createdAt);
 }
 
-export async function fetchRecentTrades(limit = 200): Promise<TradeRecord[]> {
-  const stale = Date.now() - tradeCacheUpdatedAt > MARKET_CACHE_TTL_MS;
-  const underfilled = tradeCache.length < limit;
+export async function fetchRecentTrades(
+  limit = 200,
+  options: CascadeEditionOption = {}
+): Promise<TradeRecord[]> {
+  const edition = selectedEdition(options.edition);
+  const cache = relayCache(edition);
+  const stale = Date.now() - cache.tradeCacheUpdatedAt > MARKET_CACHE_TTL_MS;
+  const underfilled = cache.tradeCache.length < limit;
 
   if (stale || underfilled) {
-    const refresh = refreshRelayDiscovery(Math.max(Math.ceil(limit / 4), 80));
-    if (tradeCache.length === 0 || underfilled) {
+    const refresh = refreshRelayDiscovery(Math.max(Math.ceil(limit / 4), 80), edition);
+    if (cache.tradeCache.length === 0 || underfilled) {
       await refresh;
     }
   }
 
-  return tradeCache.slice(0, limit);
+  return cache.tradeCache.slice(0, limit);
 }
 
-export async function fetchMarketTrades(market: MarketRecord, limit = 200): Promise<TradeRecord[]> {
-  return fetchRelayTradesForMarket(market.id, limit);
+export async function fetchMarketTrades(
+  market: MarketRecord,
+  limit = 200,
+  options: CascadeEditionOption = {}
+): Promise<TradeRecord[]> {
+  return fetchRelayTradesForMarket(market.id, limit, selectedEdition(options.edition));
 }
 
 export async function fetchPositionsByPubkey(pubkey: string, limit = 120): Promise<PositionRecord[]> {
@@ -282,15 +356,16 @@ function withLatestPrice(market: MarketRecord, trades: TradeRecord[]): MarketRec
   };
 }
 
-async function refreshRelayDiscovery(limit: number): Promise<void> {
-  if (marketRefresh || tradeRefresh) return Promise.all([marketRefresh, tradeRefresh].filter(Boolean) as Promise<void>[])
+async function refreshRelayDiscovery(limit: number, edition: CascadeEdition): Promise<void> {
+  const cache = relayCache(edition);
+  if (cache.marketRefresh || cache.tradeRefresh) return Promise.all([cache.marketRefresh, cache.tradeRefresh].filter(Boolean) as Promise<void>[])
       .then(() => undefined);
 
   const refresh = (async () => {
-    const nextTrades = await fetchRecentRelayTrades(Math.max(limit * 4, 240));
+    const nextTrades = await fetchRecentRelayTrades(Math.max(limit * 4, 240), edition);
     const marketIds = [...new Set(nextTrades.map((trade) => trade.marketId))];
     const tradeSummaries = summarizeTradesByMarket(nextTrades);
-    const nextMarkets = (await fetchMarketsByIds(marketIds))
+    const nextMarkets = (await fetchMarketsByIds(marketIds, { edition }))
       .map((market) => ({
         ...market,
         latestPricePpm: tradeSummaries.get(market.id)?.latestPricePpm ?? market.latestPricePpm
@@ -298,26 +373,27 @@ async function refreshRelayDiscovery(limit: number): Promise<void> {
       .sort((left, right) => right.createdAt - left.createdAt)
       .slice(0, limit);
 
-    marketCache = nextMarkets;
-    tradeCache = nextTrades;
-    marketCacheUpdatedAt = Date.now();
-    tradeCacheUpdatedAt = Date.now();
+    cache.marketCache = nextMarkets;
+    cache.tradeCache = nextTrades;
+    cache.marketCacheUpdatedAt = Date.now();
+    cache.tradeCacheUpdatedAt = Date.now();
   })();
 
-  marketRefresh = refresh.finally(() => {
-    marketRefresh = undefined;
+  cache.marketRefresh = refresh.finally(() => {
+    cache.marketRefresh = undefined;
   });
-  tradeRefresh = refresh.finally(() => {
-    tradeRefresh = undefined;
+  cache.tradeRefresh = refresh.finally(() => {
+    cache.tradeRefresh = undefined;
   });
 
   await refresh;
 }
 
-async function refreshRecentDiscussions(limit: number): Promise<void> {
-  if (discussionRefresh) return discussionRefresh;
+async function refreshRecentDiscussions(limit: number, edition: CascadeEdition): Promise<void> {
+  const cache = relayCache(edition);
+  if (cache.discussionRefresh) return cache.discussionRefresh;
 
-  discussionRefresh = (async () => {
+  cache.discussionRefresh = (async () => {
     const ndk = await getServerNdkClient();
     const events = await withRelayEventTimeout(
       ndk.fetchEvents(
@@ -331,25 +407,29 @@ async function refreshRecentDiscussions(limit: number): Promise<void> {
     );
 
     const next = Array.from(events)
-      .map(parseDiscussionEvent)
+      .map((event) => parseDiscussionEvent(event, edition))
       .filter((record): record is DiscussionRecord => Boolean(record))
       .sort((left, right) => right.createdAt - left.createdAt);
 
-    if (next.length > 0 || discussionCache.length === 0) {
-      discussionCache = next;
-      discussionCacheUpdatedAt = Date.now();
+    if (next.length > 0 || cache.discussionCache.length === 0) {
+      cache.discussionCache = next;
+      cache.discussionCacheUpdatedAt = Date.now();
     }
   })().finally(() => {
-    discussionRefresh = undefined;
+    cache.discussionRefresh = undefined;
   });
 
-  return discussionRefresh;
+  return cache.discussionRefresh;
 }
 
-async function fetchRecentRelayMarkets(limit: number): Promise<MarketRecord[]> {
+async function fetchRecentRelayMarkets(
+  limit: number,
+  edition: CascadeEdition = getCascadeEdition()
+): Promise<MarketRecord[]> {
+  const kinds = getCascadeEventKinds(edition);
   const events = await collectRelayRawEvents(
     {
-      kinds: [982 as NDKKind],
+      kinds: [kinds.market as NDKKind],
       limit
     } satisfies NDKFilter,
     `fetchRecentRelayMarkets(${limit})`,
@@ -359,16 +439,20 @@ async function fetchRecentRelayMarkets(limit: number): Promise<MarketRecord[]> {
   );
 
   return events
-    .map((event) => parseMarketEvent(event))
+    .map((event) => parseMarketEvent(event, edition))
     .filter((market): market is MarketRecord => Boolean(market))
     .sort((left, right) => right.createdAt - left.createdAt)
     .slice(0, limit);
 }
 
-async function fetchRecentRelayTrades(limit: number): Promise<TradeRecord[]> {
+async function fetchRecentRelayTrades(
+  limit: number,
+  edition: CascadeEdition = getCascadeEdition()
+): Promise<TradeRecord[]> {
+  const kinds = getCascadeEventKinds(edition);
   const events = await collectRelayRawEvents(
     {
-      kinds: [983 as NDKKind],
+      kinds: [kinds.trade as NDKKind],
       limit
     } satisfies NDKFilter,
     `fetchRecentRelayTrades(${limit})`,
@@ -378,46 +462,55 @@ async function fetchRecentRelayTrades(limit: number): Promise<TradeRecord[]> {
   );
 
   return events
-    .map((event) => parseTradeEvent(event))
+    .map((event) => parseTradeEvent(event, edition))
     .filter((trade): trade is TradeRecord => Boolean(trade))
     .sort((left, right) => right.createdAt - left.createdAt)
     .slice(0, limit);
 }
 
-async function fetchRelayMarketBySlug(slug: string): Promise<NostrEvent | null> {
+async function fetchRelayMarketBySlug(
+  slug: string,
+  edition: CascadeEdition = getCascadeEdition()
+): Promise<NostrEvent | null> {
+  const kinds = getCascadeEventKinds(edition);
   const directMatch = await collectRelayRawEvents(
     {
-      kinds: [982 as NDKKind],
+      kinds: [kinds.market as NDKKind],
       '#d': [slug],
       limit: 12
     } satisfies NDKFilter,
     `fetchRelayMarketBySlug:direct(${slug})`,
     {
-      stopWhen: (seen, rawEvent) => parseMarketEvent(rawEvent)?.slug === slug
+      stopWhen: (seen, rawEvent) => parseMarketEvent(rawEvent, edition)?.slug === slug
     }
   );
 
-  const matchedDirectEvent = directMatch.find((event) => parseMarketEvent(event)?.slug === slug);
+  const matchedDirectEvent = directMatch.find((event) => parseMarketEvent(event, edition)?.slug === slug);
   if (matchedDirectEvent) return matchedDirectEvent;
 
   const recentEvents = await collectRelayRawEvents(
     {
-      kinds: [982 as NDKKind],
+      kinds: [kinds.market as NDKKind],
       limit: 120
     } satisfies NDKFilter,
     `fetchRelayMarketBySlug:recent(${slug})`,
     {
-      stopWhen: (seen, rawEvent) => parseMarketEvent(rawEvent)?.slug === slug
+      stopWhen: (seen, rawEvent) => parseMarketEvent(rawEvent, edition)?.slug === slug
     }
   );
 
-  return recentEvents.find((event) => parseMarketEvent(event)?.slug === slug) ?? null;
+  return recentEvents.find((event) => parseMarketEvent(event, edition)?.slug === slug) ?? null;
 }
 
-async function fetchRelayTradesForMarket(marketId: string, limit: number): Promise<TradeRecord[]> {
+async function fetchRelayTradesForMarket(
+  marketId: string,
+  limit: number,
+  edition: CascadeEdition = getCascadeEdition()
+): Promise<TradeRecord[]> {
+  const kinds = getCascadeEventKinds(edition);
   const events = await collectRelayRawEvents(
     {
-      kinds: [983 as NDKKind],
+      kinds: [kinds.trade as NDKKind],
       '#e': [marketId],
       limit
     } satisfies NDKFilter,
@@ -428,7 +521,7 @@ async function fetchRelayTradesForMarket(marketId: string, limit: number): Promi
   );
 
   return events
-    .map((event) => parseTradeEvent(event))
+    .map((event) => parseTradeEvent(event, edition))
     .filter((trade): trade is TradeRecord => Boolean(trade))
     .sort((left, right) => right.createdAt - left.createdAt)
     .slice(0, limit);

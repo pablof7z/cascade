@@ -10,15 +10,16 @@ import {
 
 const LEADERBOARD_TRADE_SAMPLE_LIMIT = 80;
 
-export const load: PageServerLoad = async ({ setHeaders, url }) => {
+export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
+  const edition = locals.cascadeEdition;
   setHeaders({
     'cache-control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=600'
   });
 
   const [markets, discussions, trades] = await Promise.all([
-    fetchRecentMarkets(120),
-    fetchRecentDiscussions(240),
-    fetchRecentTrades(LEADERBOARD_TRADE_SAMPLE_LIMIT)
+    fetchRecentMarkets(120, { edition }),
+    fetchRecentDiscussions(240, { edition }),
+    fetchRecentTrades(LEADERBOARD_TRADE_SAMPLE_LIMIT, { edition })
   ]);
 
   const profiles = await fetchProfilesForPubkeys([

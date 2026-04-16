@@ -3,9 +3,11 @@
   import type { NDKEvent, NDKUserProfile, NostrEvent } from '@nostr-dev-kit/ndk';
   import { ndk } from '$lib/ndk/client';
   import { formatProductAmount } from '$lib/cascade/format';
+  import { getCascadeEdition } from '$lib/cascade/config';
   import {
     buildTradeSummary,
     formatRelativeTime,
+    getCascadeEventKinds,
     marketDiscussionUrl,
     marketUrl,
     sanitizeMarketCopy,
@@ -28,27 +30,29 @@
 
   let { data }: PageProps = $props();
   let searchQuery = $state('');
+  const selectedEdition = $derived(getCascadeEdition(data.cascadeEdition ?? null));
+  const eventKinds = $derived(getCascadeEventKinds(selectedEdition));
 
   const discussionFeed = ndk.$subscribe(() => {
     if (!browser) return undefined;
-    return { filters: [{ kinds: [1111], '#K': ['982'], limit: 80 }] };
+    return { filters: [{ kinds: [1111], '#K': [String(eventKinds.market)], limit: 80 }] };
   });
 
   const marketFeed = ndk.$subscribe(() => {
     if (!browser) return undefined;
-    return { filters: [{ kinds: [982], limit: 60 }] };
+    return { filters: [{ kinds: [eventKinds.market], limit: 60 }] };
   });
 
   const tradeFeed = ndk.$subscribe(() => {
     if (!browser) return undefined;
-    return { filters: [{ kinds: [983], limit: 240 }] };
+    return { filters: [{ kinds: [eventKinds.trade], limit: 240 }] };
   });
 
   const profiles = $derived(data.profiles as Record<string, NDKUserProfile>);
 
   const trades = $derived.by(() => {
     return mergeRawEvents(data.trades, tradeFeed.events)
-      .map(parseTradeEvent)
+      .map((event) => parseTradeEvent(event, selectedEdition))
       .filter((trade): trade is TradeRecord => Boolean(trade))
       .sort((left, right) => right.createdAt - left.createdAt);
   });
@@ -56,7 +60,7 @@
   const markets = $derived.by(() => {
     return filterLiveHomepageMarkets(
       mergeRawEvents(data.markets, marketFeed.events)
-        .map(parseMarketEvent)
+        .map((event) => parseMarketEvent(event, selectedEdition))
         .filter((market): market is MarketRecord => Boolean(market)),
       trades
     ).sort((left, right) => right.createdAt - left.createdAt);
@@ -64,7 +68,7 @@
 
   const discussions = $derived.by(() => {
     return mergeRawEvents(data.discussions, discussionFeed.events)
-      .map(parseDiscussionEvent)
+      .map((event) => parseDiscussionEvent(event, selectedEdition))
       .filter((discussion): discussion is DiscussionRecord => Boolean(discussion))
       .sort((left, right) => right.createdAt - left.createdAt);
   });
@@ -821,3 +825,4 @@
     }
   }
 </style>
+    getCascadeEventKinds,

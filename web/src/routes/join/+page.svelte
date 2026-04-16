@@ -4,7 +4,6 @@
   import { NDKNip07Signer, NDKNip46Signer, NDKPrivateKeySigner } from '@nostr-dev-kit/ndk';
   import { onDestroy, onMount } from 'svelte';
   import * as Tabs from '$lib/components/ui/tabs';
-  import { getCascadeEdition } from '$lib/cascade/config';
   import ExtensionLoginForm from '$lib/features/auth/ExtensionLoginForm.svelte';
   import PrivateKeyLoginForm from '$lib/features/auth/PrivateKeyLoginForm.svelte';
   import RemoteLoginForm from '$lib/features/auth/RemoteLoginForm.svelte';
@@ -28,11 +27,7 @@
   import '$lib/features/auth/auth.css';
   import { ndk } from '$lib/ndk/client';
 
-  const fallbackOrigin =
-    getCascadeEdition() === 'signet'
-      ? 'https://signet.cascade.f7z.io'
-      : 'https://cascade.f7z.io';
-
+  const fallbackOrigin = 'https://cascade.f7z.io';
   const skillOrigin = browser ? window.location.origin : fallbackOrigin;
 
   let mode = $state<LoginMode>('extension');

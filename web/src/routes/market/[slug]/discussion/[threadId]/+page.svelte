@@ -29,7 +29,7 @@
       const event = new NDKEvent(ndk);
       event.kind = 1111;
       event.content = replyBody.trim();
-      event.tags = buildThreadReplyTags(data.market.id, data.thread.post.id);
+      event.tags = buildThreadReplyTags(data.market.id, data.thread.post.id, data.cascadeEdition);
       await event.publish();
       replyBody = '';
       await invalidateAll();

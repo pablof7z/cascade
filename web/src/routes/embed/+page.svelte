@@ -1,12 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { getCascadeEdition } from '$lib/cascade/config';
 
-  const fallbackOrigin =
-    getCascadeEdition() === 'signet'
-      ? 'https://signet.cascade.f7z.io'
-      : 'https://cascade.f7z.io';
-
+  const fallbackOrigin = 'https://cascade.f7z.io';
   const embedOrigin = browser ? window.location.origin : fallbackOrigin;
 </script>
 

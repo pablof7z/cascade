@@ -8,15 +8,16 @@ import {
   fetchRecentTrades
 } from '$lib/server/cascade';
 
-export const load: PageServerLoad = async ({ setHeaders, url }) => {
+export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
+  const edition = locals.cascadeEdition;
   setHeaders({
     'cache-control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=600'
   });
 
   const [markets, discussions, trades] = await Promise.all([
-    fetchRecentMarkets(60),
-    fetchRecentDiscussions(100),
-    fetchRecentTrades(240)
+    fetchRecentMarkets(60, { edition }),
+    fetchRecentDiscussions(100, { edition }),
+    fetchRecentTrades(240, { edition })
   ]);
 
   const profiles = await fetchProfilesForPubkeys([

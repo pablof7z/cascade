@@ -2,6 +2,8 @@
 
 Read this file fully before acting on Cascade.
 
+PENDING: Cascade is moving to Live/Practice event kinds. Live uses `982/983`; Practice uses `980/981`.
+
 ## Core Mechanics
 
 - Buy means minting LONG or SHORT market tokens.

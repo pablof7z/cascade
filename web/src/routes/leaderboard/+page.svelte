@@ -2,9 +2,10 @@
   import { browser } from '$app/environment';
   import type { NDKUserProfile } from '@nostr-dev-kit/ndk';
   import { ndk } from '$lib/ndk/client';
+  import { getCascadeEdition } from '$lib/cascade/config';
   import {
     CASCADE_BOOKMARK_KIND,
-    CASCADE_MARKET_KIND,
+    getCascadeEventKinds,
     parseDiscussionEvent,
     parseMarketEvent,
     parseTradeEvent,
@@ -19,23 +20,25 @@
 
   let { data }: PageProps = $props();
   let activeTab = $state<LeaderboardTab>('Top Creators');
+  const selectedEdition = $derived(getCascadeEdition(data.cascadeEdition ?? null));
+  const eventKinds = $derived(getCascadeEventKinds(selectedEdition));
 
   const tabs: LeaderboardTab[] = ['Top Creators', 'Top Traders', 'Most Bookmarked'];
   const profiles = $derived(data.profiles as Record<string, NDKUserProfile>);
   const markets = $derived(
     (data.markets ?? [])
-      .map(parseMarketEvent)
+      .map((event) => parseMarketEvent(event, selectedEdition))
       .filter((market): market is MarketRecord => Boolean(market))
   );
   const discussions = $derived(
     (data.discussions ?? [])
-      .map(parseDiscussionEvent)
+      .map((event) => parseDiscussionEvent(event, selectedEdition))
       .filter((discussion): discussion is DiscussionRecord => Boolean(discussion))
   );
 
   const trades = $derived.by(() => {
     return (data.trades ?? [])
-      .map(parseTradeEvent)
+      .map((event) => parseTradeEvent(event, selectedEdition))
       .filter((trade): trade is TradeRecord => Boolean(trade))
       .sort((left, right) => right.createdAt - left.createdAt);
   });
@@ -78,13 +81,13 @@
 
   const bookmarkedMarkets = ndk.$subscribe(() => {
     if (!browser || bookmarkedCounts.length === 0) return undefined;
-    return { filters: [{ kinds: [CASCADE_MARKET_KIND], ids: bookmarkedCounts.map(([id]) => id) }] };
+    return { filters: [{ kinds: [eventKinds.market], ids: bookmarkedCounts.map(([id]) => id) }] };
   });
 
   const bookmarkedLookup = $derived.by(() => {
     const lookup = new Map<string, MarketRecord>();
     for (const event of bookmarkedMarkets.events) {
-      const market = parseMarketEvent(event.rawEvent());
+      const market = parseMarketEvent(event.rawEvent(), selectedEdition);
       if (market) lookup.set(market.id, market);
     }
     return lookup;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getCascadeEdition } from '$lib/cascade/config';
   import { formatProductAmount } from '$lib/cascade/format';
   import {
     buildTradeSummary,
@@ -14,16 +15,21 @@
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
+  const selectedEdition = $derived(getCascadeEdition(data.cascadeEdition ?? null));
 
   const markets = $derived(
     (data.markets ?? [])
-      .map(parseMarketEvent)
+      .map((event) => parseMarketEvent(event, selectedEdition))
       .filter((market): market is MarketRecord => Boolean(market))
   );
-  const discussions = $derived((data.discussions ?? []).map(parseDiscussionEvent).filter(Boolean));
+  const discussions = $derived(
+    (data.discussions ?? [])
+      .map((event) => parseDiscussionEvent(event, selectedEdition))
+      .filter(Boolean)
+  );
   const trades = $derived(
     (data.trades ?? [])
-      .map(parseTradeEvent)
+      .map((event) => parseTradeEvent(event, selectedEdition))
       .filter((trade): trade is TradeRecord => Boolean(trade))
   );
 

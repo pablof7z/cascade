@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 
 import { fetchMarketBySlug } from './cascade.ts';
 
-function sampleMarketEvent(slug: string, id = `event-${slug}`) {
+function sampleMarketEvent(slug: string, id = `event-${slug}`, kind = 982) {
   return {
     id,
-    kind: 982,
+    kind,
     pubkey: 'f'.repeat(64),
     created_at: 1_700_000_000,
     content: 'A market body',
@@ -19,10 +19,10 @@ function sampleMarketEvent(slug: string, id = `event-${slug}`) {
   };
 }
 
-function sampleTradeEvent(args: { marketId: string; direction: 'long' | 'short'; pricePpm: number; createdAt: number; id: string }) {
+function sampleTradeEvent(args: { marketId: string; direction: 'long' | 'short'; pricePpm: number; createdAt: number; id: string; kind?: number }) {
   return {
     id: args.id,
-    kind: 983,
+    kind: args.kind ?? 983,
     pubkey: 'e'.repeat(64),
     created_at: args.createdAt,
     content: '',
@@ -75,6 +75,40 @@ test('fetchMarketBySlug uses relay trades to set the latest yes price', async ()
 
   assert.equal(market?.slug, 'priced-market');
   assert.equal(market?.latestPricePpm, 670_000);
+});
+
+test('fetchMarketBySlug uses practice event kinds when edition is signet', async () => {
+  const marketEvent = sampleMarketEvent('practice-market', 'practice-market-id', 980);
+
+  const market = await fetchMarketBySlug('practice-market', {
+    edition: 'signet',
+    fetchRelayMarketBySlug: async () => marketEvent,
+    fetchRelayTradesForMarket: async () => [
+      {
+        id: 'practice-trade',
+        pubkey: 'e'.repeat(64),
+        marketId: marketEvent.id,
+        amount: 100,
+        unit: 'usd',
+        direction: 'long',
+        type: 'buy',
+        pricePpm: 520_000,
+        probability: 0.52,
+        createdAt: 1_700_000_100,
+        rawEvent: sampleTradeEvent({
+          marketId: marketEvent.id,
+          direction: 'long',
+          pricePpm: 520_000,
+          createdAt: 1_700_000_100,
+          id: 'practice-trade',
+          kind: 981
+        })
+      }
+    ]
+  });
+
+  assert.equal(market?.slug, 'practice-market');
+  assert.equal(market?.latestPricePpm, 520_000);
 });
 
 test('fetchMarketBySlug normalizes short-side relay trade prices back to yes probability', async () => {

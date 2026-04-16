@@ -35,10 +35,10 @@ test('leaderboard page uses a cached trade sample without a live trade subscript
   assert.doesNotMatch(source, /tradeFeed\.events/);
   assert.match(
     source,
-    /const trades = \$derived\.by\(\(\) => \{[\s\S]*return \(data\.trades \?\? \[\]\)[\s\S]*\.map\(parseTradeEvent\)[\s\S]*\.filter\(\(trade\): trade is TradeRecord => Boolean\(trade\)\)[\s\S]*\.sort\(\(left, right\) => right\.createdAt - left\.createdAt\);[\s\S]*\}\);/
+    /const trades = \$derived\.by\(\(\) => \{[\s\S]*return \(data\.trades \?\? \[\]\)[\s\S]*\.map\(\(event\) => parseTradeEvent\(event, selectedEdition\)\)[\s\S]*\.filter\(\(trade\): trade is TradeRecord => Boolean\(trade\)\)[\s\S]*\.sort\(\(left, right\) => right\.createdAt - left\.createdAt\);[\s\S]*\}\);/
   );
   assert.match(serverSource, /const LEADERBOARD_TRADE_SAMPLE_LIMIT = 80;/);
-  assert.match(serverSource, /fetchRecentTrades\(LEADERBOARD_TRADE_SAMPLE_LIMIT\)/);
+  assert.match(serverSource, /fetchRecentTrades\(LEADERBOARD_TRADE_SAMPLE_LIMIT, \{ edition \}\)/);
   assert.doesNotMatch(serverSource, /fetchRecentTrades\(240\)/);
   assert.match(serverSource, /\.\.\.trades\.map\(\(trade\) => trade\.pubkey\)/);
   assert.match(serverSource, /trades: trades\.map\(\(trade\) => trade\.rawEvent as NostrEvent\)/);

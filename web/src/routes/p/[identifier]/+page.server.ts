@@ -9,7 +9,8 @@ import {
   fetchProfileContext
 } from '$lib/server/cascade';
 
-export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
+export const load: PageServerLoad = async ({ locals, params, setHeaders, url }) => {
+  const edition = locals.cascadeEdition;
   setHeaders({
     'cache-control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=600'
   });
@@ -19,14 +20,17 @@ export const load: PageServerLoad = async ({ params, setHeaders, url }) => {
     error(404, 'Profile not found');
   }
 
-  const discussionsPromise = fetchDiscussionsByPubkey(user.pubkey, 50);
+  const discussionsPromise = fetchDiscussionsByPubkey(user.pubkey, 50, { edition });
   const [markets, positions, discussions] = await Promise.all([
-    fetchMarketsByAuthor(user.pubkey, 48),
+    fetchMarketsByAuthor(user.pubkey, 48, { edition }),
     fetchPositionsByPubkey(user.pubkey, 120),
     discussionsPromise
   ]);
-  const discussionMarkets = await fetchMarketsByIds(discussions.map((discussion) => discussion.marketId));
-  const positionMarkets = await fetchMarketsByIds(positions.map((p) => p.marketId));
+  const discussionMarkets = await fetchMarketsByIds(
+    discussions.map((discussion) => discussion.marketId),
+    { edition }
+  );
+  const positionMarkets = await fetchMarketsByIds(positions.map((p) => p.marketId), { edition });
 
   return {
     identifier: params.identifier,

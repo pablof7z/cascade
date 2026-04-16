@@ -2,6 +2,8 @@
 
 Read this first. It is the shortest accurate explanation of the product.
 
+PENDING: Cascade is moving to one web deployment with a Live/Practice switch. Live uses market kind `982` and trade kind `983`; Practice uses market kind `980` and trade kind `981`.
+
 ## The Core Model
 
 Cascade is a prediction market product for interconnected beliefs.

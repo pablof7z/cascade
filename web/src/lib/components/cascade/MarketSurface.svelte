@@ -1,14 +1,14 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { invalidateAll } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import type { NDKUserProfile } from '@nostr-dev-kit/ndk';
   import { NDKEvent } from '@nostr-dev-kit/ndk';
   import type { NostrEvent } from 'nostr-tools';
   import BookmarkIcon from '$lib/components/BookmarkIcon.svelte';
   import SharePopover from '$lib/components/SharePopover.svelte';
   import PaperTradePanel from '$lib/components/cascade/PaperTradePanel.svelte';
-  import { isPaperEdition } from '$lib/cascade/config';
+  import { getCascadeEdition, isPaperEdition } from '$lib/cascade/config';
   import { formatProductAmount } from '$lib/cascade/format';
   import TabNav from '$lib/components/cascade/TabNav.svelte';
   import {
@@ -16,6 +16,7 @@
     buildTradeSummary,
     formatProbability,
     formatRelativeTime,
+    getCascadeEventKinds,
     marketActivityUrl,
     marketChartsUrl,
     marketDiscussionUrl,
@@ -49,6 +50,8 @@
 
   const tradeSummary = $derived(buildTradeSummary(trades));
   const currentUser = $derived(ndk.$currentUser);
+  const selectedEdition = $derived(getCascadeEdition(page.data.cascadeEdition ?? null));
+  const eventKinds = $derived(getCascadeEventKinds(selectedEdition));
   const myBookmarkList = ndk.$subscribe(() => {
     if (!browser || !currentUser) return undefined;
     return { filters: [{ kinds: [10003], authors: [currentUser.pubkey], limit: 1 }] };
@@ -58,7 +61,7 @@
     if (!event) return false;
     return event.tags.some((tag) => tag[0] === 'e' && tag[1] === market.id);
   });
-  const paperEdition = isPaperEdition();
+  const paperEdition = $derived(isPaperEdition(selectedEdition));
   const valueUnitLabel = 'USD';
   const discussionFeed = ndk.$subscribe(() => {
     if (!browser) return undefined;
@@ -69,7 +72,7 @@
       discussions.map((discussion) => discussion.rawEvent as NostrEvent),
       discussionFeed.events
     )
-      .map(parseDiscussionEvent)
+      .map((event) => parseDiscussionEvent(event, selectedEdition))
       .filter((discussion): discussion is DiscussionRecord => Boolean(discussion))
       .sort((left, right) => right.createdAt - left.createdAt);
   });
@@ -230,11 +233,12 @@
       const event = new NDKEvent(ndk);
       event.kind = 1111;
       event.content = composeBody.trim();
+      const marketKind = String(eventKinds.market);
       const tags: string[][] = [
         ['E', market.id, '', 'root'],
-        ['K', '982'],
+        ['K', marketKind],
         ['e', market.id, '', 'root'],
-        ['k', '982']
+        ['k', marketKind]
       ];
       if (composeSubject.trim()) {
         tags.push(['subject', composeSubject.trim()]);
@@ -287,7 +291,7 @@
       </div>
 
       <div class="market-header-actions">
-        <SharePopover url={$page.url.href} title={market.title} />
+        <SharePopover url={page.url.href} title={market.title} />
         {#if currentUser}
           <button
             class="market-bookmark-button"

@@ -4,6 +4,8 @@ Authoritative record of explicit decisions from the project owner (Pablo). Every
 
 **These are directives, not suggestions. Do not override, ignore, or second-guess them. If a decision here conflicts with your judgment, the decision here wins.**
 
+PENDING: The separate signet/mainnet web deployment directive is being replaced by one web deployment with a Live/Practice switch, shared relays, two mints, and edition-specific event kinds.
+
 > **Implementation status note:** Not all directives below are fully implemented in the current codebase. Treat them as required standards for all new work — if something doesn't yet comply, it's tech debt to fix, not a pattern to follow.
 
 ---

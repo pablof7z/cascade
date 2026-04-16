@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { invalidateAll } from '$app/navigation';
+  import { page } from '$app/state';
   import {
     buyMarketPosition,
     extractTradeBlindSignatureBundles,
@@ -17,7 +18,7 @@
     type ProductTradeRequestStatus,
     type ProductTradeStatus
   } from '$lib/cascade/api';
-  import { getProductApiUrl } from '$lib/cascade/config';
+  import { getCascadeEdition, getProductApiUrl } from '$lib/cascade/config';
   import { formatUsdMinor } from '$lib/cascade/format';
   import { shareMinorToQuantity } from '$lib/cascade/shares';
   import { normalizeProductTradeSide } from '$lib/cascade/tradeSide';
@@ -57,6 +58,7 @@
   } = $props();
 
   const currentUser = $derived(ndk.$currentUser);
+  const selectedEdition = $derived(getCascadeEdition(page.data.cascadeEdition ?? null));
 
   let availableMinor = $state(0);
   let buySide = $state<'long' | 'short'>('long');
@@ -105,7 +107,7 @@
   const status = $derived(statusMessage);
 
   function proofMintUrl(): string {
-    return getProductApiUrl().replace(/\/+$/, '');
+    return getProductApiUrl(selectedEdition).replace(/\/+$/, '');
   }
 
   function marketUnitForSide(side: 'long' | 'short'): string {

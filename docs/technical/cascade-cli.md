@@ -1,8 +1,10 @@
 # Cascade CLI
 
+PENDING: CLI event-kind behavior is being updated so `--mainnet` uses market/trade kinds `982/983` and `--signet` uses `980/981`.
+
 Target interface for `cascade`, the Rust CLI that humans and skills use to operate on Cascade.
 
-This document is a design spec for the command surface. It defines the intended contract before the binary exists in full.
+This document defines the current command surface for the Rust `cascade` CLI and the local `cascade-sim` activity runner.
 
 ## Principles
 
@@ -12,7 +14,7 @@ This document is a design spec for the command surface. It defines the intended 
 - No generic `cascade sign` or `cascade publish` commands. Domain commands own their own Nostr side effects.
 - `cascade market create` is the authoring entrypoint. It signs and publishes the kind `982` internally, then executes the seed trade that makes the market immediately public.
 - Money is expressed in USD minor units.
-- Market side is always `yes|no` at the CLI boundary.
+- Market side is always `long|short` at the CLI boundary.
 - Proofs are self-custodied and managed locally by the CLI.
 - Canonical local proof units are:
   - `usd`
@@ -142,6 +144,9 @@ leaderboard
 
 api
   request <METHOD> <path-or-url> [@json-file]
+
+cascade-sim
+  run local simulation agents through the `cascade` CLI package
 ```
 
 `<market>` accepts either a market event id or a slug. The CLI looks up slugs before making market-scoped calls.
@@ -220,7 +225,7 @@ cascade market create \
   --description <text> \
   --slug <slug> \
   --body <text|@file> \
-  --seed-side yes|no \
+  --seed-side long|short \
   --seed-spend-minor <u64> \
   [--category <text> ...] \
   [--topic <text> ...] \
@@ -230,7 +235,7 @@ cascade market create \
 Alternate form:
 
 ```text
-cascade market create @market.json --seed-side yes|no --seed-spend-minor <u64> [--request-id <id>]
+cascade market create @market.json --seed-side long|short --seed-spend-minor <u64> [--request-id <id>]
 ```
 
 `market.json` fields:
@@ -248,7 +253,7 @@ Behavior:
 2. Sign it with the local identity.
 3. Publish it directly to relays.
 4. Select enough local `usd` proofs for the seed spend.
-5. Execute the opening buy on `yes` or `no`.
+5. Execute the opening buy on `long` or `short`.
 6. Remove spent USD proofs, persist any USD change proofs, persist the issued `long_<slug>` or `short_<slug>` proofs, and publish the updated position record.
 7. Return the signed event, accepted relays, seed trade payload, and proof-store delta.
 
@@ -270,19 +275,19 @@ The CLI owns local proof selection and proof-store updates. The normal `buy` and
 ### `cascade trade quote buy`
 
 ```text
-cascade trade quote buy --market <market> --side yes|no --spend-minor <u64>
+cascade trade quote buy --market <market> --side long|short --spend-minor <u64>
 ```
 
 ### `cascade trade quote sell`
 
 ```text
-cascade trade quote sell --market <market> --side yes|no --quantity <decimal>
+cascade trade quote sell --market <market> --side long|short --quantity <decimal>
 ```
 
 ### `cascade trade buy`
 
 ```text
-cascade trade buy --market <market> --side yes|no --spend-minor <u64> [--quote-id <id>] [--request-id <id>]
+cascade trade buy --market <market> --side long|short --spend-minor <u64> [--quote-id <id>] [--request-id <id>]
 ```
 
 Behavior:
@@ -297,7 +302,7 @@ Behavior:
 ### `cascade trade sell`
 
 ```text
-cascade trade sell --market <market> --side yes|no --quantity <decimal> [--quote-id <id>] [--request-id <id>]
+cascade trade sell --market <market> --side long|short --quantity <decimal> [--quote-id <id>] [--request-id <id>]
 ```
 
 Behavior:
@@ -590,6 +595,60 @@ Use cases:
 
 The CLI should apply NIP-98 automatically when the request targets an authenticated product endpoint and the current command has an identity loaded.
 
+If the response body is JSON, the command prints that JSON. If the response body is plain text, the command prints:
+
+```json
+{
+  "status": 200,
+  "body": "OK"
+}
+```
+
+## Simulation Runner
+
+`cascade-sim` is the local signet activity runner. It reads ignored local agent configs and executes real `cascade` commands for each enabled agent. It does not publish Nostr events directly.
+
+```bash
+scripts/simulate --agents 'scripts/agents/*.agent.json' --stress
+```
+
+Useful flags:
+
+- `--once` runs one pass and exits.
+- `--dry-run` asks Ollama for actions and validates them without executing Cascade commands.
+- `--stress` runs continuous bounded-concurrency passes.
+- `--max-concurrency <n>` overrides the concurrent agent count.
+- `--ollama-url <url>` overrides the local Ollama generate endpoint.
+
+Agent configs live outside git by default under `scripts/agents/*.agent.json`. They are JSON supersets of the normal CLI runtime config, so the same file can be passed to `cascade --config`.
+
+Minimum required fields:
+
+```json
+{
+  "version": 1,
+  "name": "Geopolitical Volatility Scout",
+  "enabled": true,
+  "edition": "signet",
+  "api_base_url": "https://signet-mint.cascade.f7z.io",
+  "relays": ["wss://purplepag.es", "wss://relay.damus.io", "wss://relay.primal.net"],
+  "identity": { "nsec": "<nsec>" },
+  "proof_store": "scripts/agents/geopolitical-volatility-scout.proofs.json",
+  "created_at": "2026-04-16T00:00:00Z",
+  "ollama_model": "glm-5.1:cloud",
+  "system_prompt": "You are a Cascade participant focused on geopolitical risk.",
+  "news_feeds": ["https://example.com/feed.xml"],
+  "interests": ["geopolitics", "energy", "rates"],
+  "risk": {
+    "bootstrap_usd_minor": 10000,
+    "max_trade_minor": 2500,
+    "max_seed_minor": 5000
+  }
+}
+```
+
+Startup funding is one-time per local agent. If an agent has no local USD proofs and is not marked bootstrapped in `scripts/.cascade-sim-state.json`, the runner calls `cascade portfolio faucet` for `bootstrap_usd_minor`. After that, it does not auto top up.
+
 ## Example Session
 
 ```bash
@@ -602,12 +661,12 @@ cascade market create \
   --description "Binary BTC threshold market." \
   --slug btc-150k-before-july-2026 \
   --body @./market.md \
-  --seed-side yes \
+  --seed-side long \
   --seed-spend-minor 5000
 
 cascade discussion --market btc-150k-before-july-2026 --title "Why the move could happen sooner than expected" --content @./thesis.md
 
-cascade trade quote sell --market btc-150k-before-july-2026 --side yes --quantity 1.25
+cascade trade quote sell --market btc-150k-before-july-2026 --side long --quantity 1.25
 
-cascade trade sell --market btc-150k-before-july-2026 --side yes --quantity 1.25
+cascade trade sell --market btc-150k-before-july-2026 --side long --quantity 1.25
 ```

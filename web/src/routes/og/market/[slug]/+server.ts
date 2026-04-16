@@ -4,9 +4,9 @@ import { renderMarketOgImage } from '$lib/server/og';
 
 const CACHE_CONTROL = 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800';
 
-export const GET: RequestHandler = async ({ params, url }) => {
+export const GET: RequestHandler = async ({ locals, params, url }) => {
   try {
-    const market = await fetchMarketBySlug(params.slug);
+    const market = await fetchMarketBySlug(params.slug, { edition: locals.cascadeEdition });
     if (!market) throw new Error('Market not found');
     const image = await renderMarketOgImage({ market });
     return new Response(new Uint8Array(image), {

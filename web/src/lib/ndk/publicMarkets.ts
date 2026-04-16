@@ -1,5 +1,13 @@
 import { NDKSubscriptionCacheUsage, type NDKFilter, type NDKKind, type NostrEvent } from '@nostr-dev-kit/ndk';
-import { buildTradeSummary, parseMarketEvent, parseTradeEvent, type MarketRecord, type TradeRecord } from './cascade.ts';
+import { getCascadeEdition, type CascadeEdition } from '$lib/cascade/config';
+import {
+  buildTradeSummary,
+  getCascadeEventKinds,
+  parseMarketEvent,
+  parseTradeEvent,
+  type MarketRecord,
+  type TradeRecord
+} from './cascade.ts';
 import { ensureClientNdk, ndk } from './client';
 
 const CLIENT_RELAY_TIMEOUT_MS = 2_500;
@@ -11,15 +19,17 @@ export type PublicMarketSnapshot = {
 };
 
 export async function fetchPublicMarketSnapshotBySlug(
-  slug: string
+  slug: string,
+  edition: CascadeEdition | string | null = getCascadeEdition()
 ): Promise<PublicMarketSnapshot | null> {
+  const selectedEdition = getCascadeEdition(edition);
   await ensureClientNdk();
 
-  const rawMarket = await fetchRelayMarketBySlug(slug);
-  const market = rawMarket ? parseMarketEvent(rawMarket) : null;
+  const rawMarket = await fetchRelayMarketBySlug(slug, selectedEdition);
+  const market = rawMarket ? parseMarketEvent(rawMarket, selectedEdition) : null;
   if (!market || market.slug !== slug) return null;
 
-  const trades = await fetchRelayTradesForMarket(market.id, 40);
+  const trades = await fetchRelayTradesForMarket(market.id, 40, selectedEdition);
   if (trades.length === 0) return null;
 
   const summary = buildTradeSummary(trades);
@@ -35,40 +45,51 @@ export async function fetchPublicMarketSnapshotBySlug(
   };
 }
 
-async function fetchRelayMarketBySlug(slug: string): Promise<NostrEvent | null> {
+async function fetchRelayMarketBySlug(
+  slug: string,
+  edition: CascadeEdition
+): Promise<NostrEvent | null> {
+  const kinds = getCascadeEventKinds(edition);
   const directMatch = await collectRelayRawEvents(
     {
-      kinds: [982 as NDKKind],
+      kinds: [kinds.market as NDKKind],
       '#d': [slug],
       limit: 12
     } satisfies NDKFilter,
     `fetchRelayMarketBySlug:direct(${slug})`,
     {
-      stopWhen: (seen, rawEvent) => parseMarketEvent(rawEvent)?.slug === slug
+      stopWhen: (seen, rawEvent) => parseMarketEvent(rawEvent, edition)?.slug === slug
     }
   );
 
-  const matchedDirectEvent = directMatch.find((event) => parseMarketEvent(event)?.slug === slug);
+  const matchedDirectEvent = directMatch.find(
+    (event) => parseMarketEvent(event, edition)?.slug === slug
+  );
   if (matchedDirectEvent) return matchedDirectEvent;
 
   const recentEvents = await collectRelayRawEvents(
     {
-      kinds: [982 as NDKKind],
+      kinds: [kinds.market as NDKKind],
       limit: 120
     } satisfies NDKFilter,
     `fetchRelayMarketBySlug:recent(${slug})`,
     {
-      stopWhen: (seen, rawEvent) => parseMarketEvent(rawEvent)?.slug === slug
+      stopWhen: (seen, rawEvent) => parseMarketEvent(rawEvent, edition)?.slug === slug
     }
   );
 
-  return recentEvents.find((event) => parseMarketEvent(event)?.slug === slug) ?? null;
+  return recentEvents.find((event) => parseMarketEvent(event, edition)?.slug === slug) ?? null;
 }
 
-async function fetchRelayTradesForMarket(marketId: string, limit: number): Promise<TradeRecord[]> {
+async function fetchRelayTradesForMarket(
+  marketId: string,
+  limit: number,
+  edition: CascadeEdition
+): Promise<TradeRecord[]> {
+  const kinds = getCascadeEventKinds(edition);
   const events = await collectRelayRawEvents(
     {
-      kinds: [983 as NDKKind],
+      kinds: [kinds.trade as NDKKind],
       '#e': [marketId],
       limit
     } satisfies NDKFilter,
@@ -79,7 +100,7 @@ async function fetchRelayTradesForMarket(marketId: string, limit: number): Promi
   );
 
   return events
-    .map((event) => parseTradeEvent(event))
+    .map((event) => parseTradeEvent(event, edition))
     .filter((trade): trade is TradeRecord => Boolean(trade))
     .sort((left, right) => right.createdAt - left.createdAt)
     .slice(0, limit);

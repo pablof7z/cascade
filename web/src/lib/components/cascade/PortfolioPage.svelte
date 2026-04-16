@@ -1,5 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { page } from '$app/state';
   import CopyButton from '$lib/components/wallet/CopyButton.svelte';
   import QRCode from '$lib/components/wallet/QRCode.svelte';
   import {
@@ -13,6 +14,7 @@
   } from '$lib/cascade/api';
   import {
     getCascadeClientRuntime,
+    getCascadeEdition,
     getProductApiUrl,
     isPaperEdition,
     isStripeFundingEnabled
@@ -71,19 +73,20 @@
   };
 
   const currentUser = $derived(ndk.$currentUser);
-  const paperEdition = isPaperEdition();
-  const stripeFundingEnabled = isStripeFundingEnabled();
-  const portfolioLabel = paperEdition ? 'practice portfolio' : 'portfolio';
+  const selectedEdition = $derived(getCascadeEdition(page.data.cascadeEdition ?? null));
+  const paperEdition = $derived(isPaperEdition(selectedEdition));
+  const stripeFundingEnabled = $derived(isStripeFundingEnabled(selectedEdition));
+  const portfolioLabel = $derived(paperEdition ? 'practice portfolio' : 'portfolio');
 
   const proofUnit = 'usd';
   const signetFundingSingleLimitMinor = 10000;
   const signetFundingWindowLimitMinor = 25000;
-  const runtime = getCascadeClientRuntime();
+  const runtime = $derived(getCascadeClientRuntime(selectedEdition));
 
   let loading = $state(false);
   let errorMessage = $state('');
   let status = $state('');
-  let fundingAmount = $state(paperEdition ? '10000' : '2500');
+  let fundingAmount = $state(isPaperEdition(page.data.cascadeEdition ?? null) ? '10000' : '2500');
   let localBalanceMinor = $state(0);
   let localPositions = $state<LocalPortfolioPosition[]>([]);
   let localPositionValueMinor = $state(0);
@@ -91,7 +94,7 @@
   let fundingHistory = $state<LocalFundingHistoryRecord[]>([]);
 
   function proofMintUrl(): string {
-    return getProductApiUrl().replace(/\/+$/, '');
+    return getProductApiUrl(selectedEdition).replace(/\/+$/, '');
   }
 
   function refreshLocalProofSummary() {
@@ -177,7 +180,7 @@
             : null;
 
         try {
-          const payload = await fetchPublicMarketSnapshotBySlug(entry.slug);
+          const payload = await fetchPublicMarketSnapshotBySlug(entry.slug, selectedEdition);
           if (!payload) throw new Error('market_detail_unavailable');
 
           const yesPricePpm = payload.yesPricePpm;

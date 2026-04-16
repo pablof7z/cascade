@@ -4,6 +4,7 @@
   import type { LayoutProps } from './$types';
   import '../app.css';
   import AuthPanel from '$lib/features/auth/AuthPanel.svelte';
+  import EditionSwitch from '$lib/components/cascade/EditionSwitch.svelte';
   import SiteNavigation from '$lib/components/cascade/SiteNavigation.svelte';
   import Footer from '$lib/components/cascade/Footer.svelte';
   import SeoHead from '$lib/components/SeoHead.svelte';
@@ -33,7 +34,8 @@
 
       <SiteNavigation />
 
-      <div class="flex min-w-0 items-center justify-end">
+      <div class="flex min-w-0 items-center justify-end gap-3">
+        <EditionSwitch />
         <AuthPanel />
       </div>
     </div>

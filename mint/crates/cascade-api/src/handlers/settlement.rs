@@ -12,7 +12,7 @@ use axum::{
 use cdk::util::hex;
 
 /// GET /{event_id}/v1/keys - Get the market's LONG and SHORT keysets.
-/// Uses the kind 982 event id as the canonical path segment.
+/// Uses the market event id as the canonical path segment.
 pub async fn get_market_keys(
     State(state): State<AppState>,
     Path(event_id): Path<String>,

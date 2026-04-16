@@ -4,32 +4,36 @@
   import { ndk } from '$lib/ndk/client';
   import { parseMarketEvent, type MarketRecord } from '$lib/ndk/cascade';
 
+  const NETWORK_BOOKMARK_LIMIT = 40;
+  const TRENDING_MARKET_LIMIT = 12;
+
   const currentUser = $derived(ndk.$currentUser);
 
-  const myBookmarkList = ndk.$subscribe(() => {
-    if (!browser || !currentUser) return undefined;
-    return { filters: [{ kinds: [10003], authors: [currentUser.pubkey], limit: 1 }] };
+  const bookmarkLists = ndk.$subscribe(() => {
+    if (!browser) return undefined;
+    const networkBookmarkFilter = { kinds: [10003], limit: NETWORK_BOOKMARK_LIMIT };
+    if (!currentUser) return { filters: [networkBookmarkFilter] };
+    return {
+      filters: [
+        { kinds: [10003], authors: [currentUser.pubkey], limit: 1 },
+        networkBookmarkFilter
+      ]
+    };
+  });
+
+  const myBookmarkEvent = $derived.by(() => {
+    if (!currentUser) return null;
+    return bookmarkLists.events.find((bookmarkEvent) => bookmarkEvent.pubkey === currentUser.pubkey) ?? null;
   });
 
   const myMarketIds = $derived.by(() => {
-    const bookmarkEvent = myBookmarkList.events[0];
-    if (!bookmarkEvent) return [];
-    return bookmarkEvent.tags.filter((tag) => tag[0] === 'e' && tag[1]).map((tag) => tag[1]);
-  });
-
-  const myMarkets = ndk.$subscribe(() => {
-    if (!browser || myMarketIds.length === 0) return undefined;
-    return { filters: [{ kinds: [982], ids: myMarketIds }] };
-  });
-
-  const networkBookmarks = ndk.$subscribe(() => {
-    if (!browser) return undefined;
-    return { filters: [{ kinds: [10003], limit: 200 }] };
+    if (!myBookmarkEvent) return [];
+    return myBookmarkEvent.tags.filter((tag) => tag[0] === 'e' && tag[1]).map((tag) => tag[1]);
   });
 
   const trendingMarketIds = $derived.by(() => {
     const counts = new Map<string, number>();
-    for (const bookmarkEvent of networkBookmarks.events) {
+    for (const bookmarkEvent of bookmarkLists.events) {
       if (currentUser && bookmarkEvent.pubkey === currentUser.pubkey) continue;
       for (const tag of bookmarkEvent.tags) {
         if (tag[0] !== 'e' || !tag[1]) continue;
@@ -37,43 +41,43 @@
       }
     }
 
-    return [...counts.entries()].sort((left, right) => right[1] - left[1]).slice(0, 20);
+    return [...counts.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, TRENDING_MARKET_LIMIT);
   });
 
-  const trendingMarkets = ndk.$subscribe(() => {
-    if (!browser || trendingMarketIds.length === 0) return undefined;
-    return { filters: [{ kinds: [982], ids: trendingMarketIds.map(([id]) => id) }] };
+  const subscribedMarketIds = $derived.by(() => {
+    const ids = new Set<string>();
+    for (const id of myMarketIds) ids.add(id);
+    for (const [id] of trendingMarketIds) ids.add(id);
+    return [...ids];
   });
 
-  const myMarketLookup = $derived.by(() => {
+  const bookmarkedMarkets = ndk.$subscribe(() => {
+    if (!browser || subscribedMarketIds.length === 0) return undefined;
+    return { filters: [{ kinds: [982], ids: subscribedMarketIds }] };
+  });
+
+  const marketLookup = $derived.by(() => {
     const lookup = new Map<string, MarketRecord>();
-    for (const event of myMarkets.events) {
+    for (const event of bookmarkedMarkets.events) {
       const market = parseMarketEvent(event.rawEvent());
       if (market) lookup.set(market.id, market);
     }
     return lookup;
   });
 
-  const orderedMyMarkets = $derived(myMarketIds.map((id) => myMarketLookup.get(id)).filter(Boolean) as MarketRecord[]);
-
-  const trendingLookup = $derived.by(() => {
-    const lookup = new Map<string, MarketRecord>();
-    for (const event of trendingMarkets.events) {
-      const market = parseMarketEvent(event.rawEvent());
-      if (market) lookup.set(market.id, market);
-    }
-    return lookup;
-  });
+  const orderedMyMarkets = $derived(myMarketIds.map((id) => marketLookup.get(id)).filter(Boolean) as MarketRecord[]);
 
   const orderedTrending = $derived.by(() => {
     return trendingMarketIds
-      .map(([id, count]) => ({ market: trendingLookup.get(id), count }))
+      .map(([id, count]) => ({ market: marketLookup.get(id), count }))
       .filter((entry): entry is { market: MarketRecord; count: number } => Boolean(entry.market));
   });
 
   async function removeBookmark(marketId: string) {
     if (!currentUser) return;
-    const bookmarkEvent = myBookmarkList.events[0];
+    const bookmarkEvent = myBookmarkEvent;
     if (!bookmarkEvent) return;
     const updated = new NDKEvent(ndk);
     updated.kind = 10003;

@@ -2,7 +2,7 @@
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import { NDKNip07Signer, NDKNip46Signer, NDKPrivateKeySigner } from '@nostr-dev-kit/ndk';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import * as Tabs from '$lib/components/ui/tabs';
   import { getCascadeEdition } from '$lib/cascade/config';
   import ExtensionLoginForm from '$lib/features/auth/ExtensionLoginForm.svelte';
@@ -47,7 +47,9 @@
   let socialAuthPopup: Window | null = $state(null);
   let socialAuthProvider = $state<SocialProvider | null>(null);
   let socialAuthSettling = $state(false);
-  let error = $state('');
+  let loading = $state(true);
+  let authError = $state('');
+  let socialAuthError = $state('');
   let socialAuthCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   const currentUser = $derived(ndk.$currentUser);
@@ -68,7 +70,8 @@
     pending = false;
     preparingRemoteSigner = false;
     privateKey = '';
-    error = '';
+    authError = '';
+    socialAuthError = '';
     clearRemoteSigner();
   }
 
@@ -92,7 +95,7 @@
 
     try {
       socialAuthSettling = true;
-      error = '';
+      socialAuthError = '';
       const sessions = await requireAuthSessions();
 
       if (!currentUser) {
@@ -102,7 +105,7 @@
       storeSocialProfilePrefill(prefill);
       finishHumanEntry();
     } catch (caught) {
-      error =
+      socialAuthError =
         caught instanceof Error
           ? caught.message
           : `Couldn't finish setup with ${socialProviderLabel(prefill.provider)}.`;
@@ -111,31 +114,37 @@
     }
   }
 
+  function canConsumeSocialProfilePrefill(): boolean {
+    return !loading && !currentUser && !pending && !preparingRemoteSigner && !connectingBunker;
+  }
+
   async function checkSocialAuthResult(options: { treatMissingAsCancel: boolean }) {
     const socialError = consumeSocialProfileError();
     if (socialError) {
-      error = socialError;
+      socialAuthError = socialError;
       stopSocialAuthWatcher();
       return;
     }
 
-    const prefill = consumeSocialProfilePrefill();
+    const prefill = canConsumeSocialProfilePrefill() ? consumeSocialProfilePrefill() : null;
     if (prefill) {
       await finalizeSocialPrefill(prefill);
       return;
     }
 
+    if (loading) return;
+
     if (options.treatMissingAsCancel && socialAuthProvider) {
-      error = `${socialProviderLabel(socialAuthProvider)} login was cancelled.`;
+      socialAuthError = `${socialProviderLabel(socialAuthProvider)} login was cancelled.`;
       stopSocialAuthWatcher();
     }
   }
 
   function startSocialProfileBootstrap(provider: SocialProvider) {
-    if (!browser || pending || preparingRemoteSigner || connectingBunker || socialAuthPending) return;
+    if (!browser || loading || pending || preparingRemoteSigner || connectingBunker || socialAuthPending) return;
 
     clearSocialProfileBootstrap();
-    error = '';
+    socialAuthError = '';
 
     const width = 620;
     const height = provider === 'telegram' ? 720 : 760;
@@ -148,7 +157,7 @@
     );
 
     if (!popup) {
-      error = 'Allow popups to import profile details from another app.';
+      socialAuthError = 'Allow popups to import profile details from another app.';
       return;
     }
 
@@ -161,55 +170,55 @@
   }
 
   async function createAccount() {
-    if (pending) return;
+    if (loading || pending) return;
 
     try {
       pending = true;
-      error = '';
+      authError = '';
       const sessions = await requireAuthSessions();
       await sessions.login(NDKPrivateKeySigner.generate());
       finishHumanEntry();
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : "Couldn't create an account on this device.";
+      authError = caught instanceof Error ? caught.message : "Couldn't create an account on this device.";
       pending = false;
     }
   }
 
   async function loginWithExtension() {
-    if (pending || !extensionAvailable) return;
+    if (loading || pending || !extensionAvailable) return;
 
     try {
       pending = true;
-      error = '';
+      authError = '';
       const sessions = await requireAuthSessions();
       await sessions.login(new NDKNip07Signer());
       finishHumanEntry();
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : "Couldn't sign in in this browser.";
+      authError = caught instanceof Error ? caught.message : "Couldn't sign in in this browser.";
       pending = false;
     }
   }
 
   async function loginWithPrivateKey() {
-    if (pending || !privateKey.trim()) return;
+    if (loading || pending || !privateKey.trim()) return;
 
     try {
       pending = true;
-      error = '';
+      authError = '';
       const sessions = await requireAuthSessions();
       await sessions.login(new NDKPrivateKeySigner(privateKey.trim()));
       finishHumanEntry();
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : "Couldn't sign in with that recovery key.";
+      authError = caught instanceof Error ? caught.message : "Couldn't sign in with that recovery key.";
       pending = false;
     }
   }
 
   async function startRemoteSigner() {
-    if (preparingRemoteSigner || connectingBunker) return;
+    if (loading || preparingRemoteSigner || connectingBunker) return;
 
     try {
-      error = '';
+      authError = '';
       clearRemoteSigner();
       preparingRemoteSigner = true;
       const sessions = await requireAuthSessions();
@@ -228,11 +237,11 @@
         })
         .catch((caught) => {
           if (nostrConnectSigner !== activeSigner) return;
-          error = caught instanceof Error ? caught.message : "Couldn't finish connecting to that app.";
+          authError = caught instanceof Error ? caught.message : "Couldn't finish connecting to that app.";
           pending = false;
         });
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : "Couldn't start pairing with another app.";
+      authError = caught instanceof Error ? caught.message : "Couldn't start pairing with another app.";
       clearRemoteSigner();
     } finally {
       preparingRemoteSigner = false;
@@ -240,10 +249,10 @@
   }
 
   async function loginWithBunker() {
-    if (connectingBunker || !bunkerUri.trim().startsWith('bunker://')) return;
+    if (loading || connectingBunker || !bunkerUri.trim().startsWith('bunker://')) return;
 
     try {
-      error = '';
+      authError = '';
       connectingBunker = true;
       stopNostrConnectSigner(nostrConnectSigner);
       nostrConnectSigner = null;
@@ -251,10 +260,34 @@
       await sessions.login(new NDKNip46Signer(ndk, bunkerUri.trim()));
       finishHumanEntry();
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : "Couldn't use that pairing link.";
+      authError = caught instanceof Error ? caught.message : "Couldn't use that pairing link.";
       connectingBunker = false;
     }
   }
+
+  onMount(() => {
+    if (!browser) {
+      loading = false;
+      return;
+    }
+
+    let active = true;
+    loading = true;
+
+    void requireAuthSessions()
+      .catch(() => undefined)
+      .finally(() => {
+        if (!active) return;
+        loading = false;
+        if (socialAuthProvider) {
+          void checkSocialAuthResult({ treatMissingAsCancel: false });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  });
 
   $effect(() => {
     if (currentUser?.pubkey) {
@@ -336,7 +369,7 @@
             <button
               class="btn btn-outline join-social-button"
               type="button"
-              disabled={socialAuthPending}
+              disabled={loading || socialAuthPending}
               onclick={() => startSocialProfileBootstrap(option.provider)}
             >
               {#if socialAuthProvider === option.provider || (socialAuthSettling && socialAuthProvider === option.provider)}
@@ -351,10 +384,14 @@
         <p class="join-social-note">
           This does not replace your Cascade identity. It just saves you from starting your profile from a blank form.
         </p>
+
+        {#if socialAuthError}
+          <p class="error" style="margin: 0;">{socialAuthError}</p>
+        {/if}
       </div>
 
       <div class="join-actions">
-        <button class="btn btn-primary" type="button" onclick={() => void createAccount()} disabled={pending || socialAuthPending}>
+        <button class="btn btn-primary" type="button" onclick={() => void createAccount()} disabled={loading || pending || socialAuthPending}>
           {pending ? 'Creating account...' : 'Create account'}
         </button>
         <a class="btn btn-outline" href="/how-it-works">How Cascade works</a>
@@ -403,8 +440,8 @@
           </Tabs.Content>
         </Tabs.Root>
 
-        {#if error}
-          <p class="error" style="margin: 0;">{error}</p>
+        {#if authError}
+          <p class="error" style="margin: 0;">{authError}</p>
         {/if}
       </div>
     {/if}

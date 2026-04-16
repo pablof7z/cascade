@@ -541,7 +541,8 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
             } else {
                 "pending"
             };
-            let detail = build_market_detail_payload(ctx, &loaded, &selector, visibility, Some(80)).await?;
+            let detail =
+                build_market_detail_payload(ctx, &loaded, &selector, visibility, Some(80)).await?;
             ctx.emit(&detail)
         }
         MarketSubcommand::Pending(args) => {
@@ -563,9 +564,14 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
             } else {
                 "pending"
             };
-            let detail =
-                build_market_detail_payload(ctx, &loaded, &market_record_to_selector(record), visibility, Some(80))
-                    .await?;
+            let detail = build_market_detail_payload(
+                ctx,
+                &loaded,
+                &market_record_to_selector(record),
+                visibility,
+                Some(80),
+            )
+            .await?;
             ctx.emit(&detail)
         }
         MarketSubcommand::PriceHistory(args) => {
@@ -601,7 +607,9 @@ async fn handle_market(ctx: &AppContext, command: &MarketCommand) -> Result<()> 
             } else {
                 "pending"
             };
-            let detail = build_market_detail_payload(ctx, &loaded, &selector, visibility, args.limit).await?;
+            let detail =
+                build_market_detail_payload(ctx, &loaded, &selector, visibility, args.limit)
+                    .await?;
             let discussions =
                 fetch_market_discussions(ctx, Some(&loaded), &selector.event_id).await?;
             let payload = json!({
@@ -1849,10 +1857,11 @@ async fn resolve_market_selector(
         return Ok(market_record_to_selector(record));
     }
 
-    if let Some(record) = fetch_creator_market_records(ctx, Some(loaded), &ctx.pubkey_hex(loaded)?, 200)
-        .await?
-        .into_iter()
-        .find(|market| market.slug == selector)
+    if let Some(record) =
+        fetch_creator_market_records(ctx, Some(loaded), &ctx.pubkey_hex(loaded)?, 200)
+            .await?
+            .into_iter()
+            .find(|market| market.slug == selector)
     {
         return Ok(market_record_to_selector(record));
     }
@@ -1958,7 +1967,8 @@ fn trade_amount_minor(value: &Value) -> Option<u64> {
 }
 
 fn market_description(value: &Value) -> String {
-    value.get("tags")
+    value
+        .get("tags")
         .and_then(Value::as_array)
         .and_then(|tags| first_tag_value(tags, "description"))
         .unwrap_or_default()
@@ -1984,7 +1994,11 @@ async fn fetch_recent_market_records(
         .await?;
     let mut markets = events
         .into_iter()
-        .filter_map(|event| serde_json::to_value(event).ok().and_then(parse_market_record))
+        .filter_map(|event| {
+            serde_json::to_value(event)
+                .ok()
+                .and_then(parse_market_record)
+        })
         .collect::<Vec<_>>();
     markets.sort_by(|left, right| right.created_at.cmp(&left.created_at));
     Ok(markets)
@@ -2041,7 +2055,10 @@ async fn fetch_market_record_by_event_id(
     let event = fetch_latest_event(
         ctx,
         Some(loaded),
-        Filter::new().kind(Kind::Custom(982)).event(event_id).limit(1),
+        Filter::new()
+            .kind(Kind::Custom(982))
+            .event(event_id)
+            .limit(1),
     )
     .await?;
     Ok(event
@@ -2059,7 +2076,10 @@ async fn fetch_market_trade_records(
     let events = ctx
         .fetch_events(
             Some(loaded),
-            Filter::new().kind(Kind::Custom(983)).event(event_id).limit(limit.max(1)),
+            Filter::new()
+                .kind(Kind::Custom(983))
+                .event(event_id)
+                .limit(limit.max(1)),
         )
         .await?;
     let mut trades = events
@@ -2123,7 +2143,8 @@ async fn build_market_detail_payload(
     limit: Option<usize>,
 ) -> Result<Value> {
     let trades = if visibility == "public" {
-        fetch_market_trade_records(ctx, loaded, &selector.event_id, limit.unwrap_or(80).max(80)).await?
+        fetch_market_trade_records(ctx, loaded, &selector.event_id, limit.unwrap_or(80).max(80))
+            .await?
     } else {
         Vec::new()
     };

@@ -112,9 +112,8 @@ impl AppState {
             network_type: "signet".to_string(),
             mint_url: "http://127.0.0.1:0".to_string(),
             trade_publisher: None,
-            mint_nostr_pubkey:
-                "4b6e51d4d8d057f0dcbe67f2be22849f1889291d1ea2ef85f8c1ef4efb0616fb"
-                    .to_string(),
+            mint_nostr_pubkey: "4b6e51d4d8d057f0dcbe67f2be22849f1889291d1ea2ef85f8c1ef4efb0616fb"
+                .to_string(),
             market_bootstrap_lock: Arc::new(Mutex::new(())),
         }
     }
@@ -169,10 +168,7 @@ pub fn build_cascade_routes(state: AppState) -> Router {
         .route("/api/trades/{trade_id}", get(product::trade_status))
         // Stripe funding routes (browser calls mint directly)
         .route("/v1/fund/stripe", post(product::create_stripe_funding))
-        .route(
-            "/v1/fund/stripe/webhook",
-            post(product::stripe_webhook),
-        )
+        .route("/v1/fund/stripe/webhook", post(product::stripe_webhook))
         .route(
             "/v1/fund/stripe/requests/{request_id}",
             get(product::wallet_funding_request_status),

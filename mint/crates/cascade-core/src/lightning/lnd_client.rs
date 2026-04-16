@@ -536,8 +536,12 @@ impl LndClient {
                 }
 
                 let preimage = Preimage::from_hex(trimmed_preimage)?;
-                self.mark_issued_invoice_settled(&raw.payment_hash, &raw.payment_request, &preimage)
-                    .await;
+                self.mark_issued_invoice_settled(
+                    &raw.payment_hash,
+                    &raw.payment_request,
+                    &preimage,
+                )
+                .await;
                 Ok(preimage)
             }
         }

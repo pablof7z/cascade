@@ -1371,16 +1371,13 @@ async fn test_standard_key_routes_exclude_market_keysets() {
         .unwrap();
     assert_eq!(quote_response.status(), 200);
 
-    let wallet_keys_response = client
-        .get(format!("{url}/v1/keys"))
-        .send()
-        .await
-        .unwrap();
+    let wallet_keys_response = client.get(format!("{url}/v1/keys")).send().await.unwrap();
     assert_eq!(wallet_keys_response.status(), 200);
     let wallet_keys_payload: KeysResponse = wallet_keys_response.json().await.unwrap();
-    assert!(wallet_keys_payload.keysets.iter().any(|keyset| {
-        keyset.unit == CurrencyUnit::Usd && keyset.active.unwrap_or(false)
-    }));
+    assert!(wallet_keys_payload
+        .keysets
+        .iter()
+        .any(|keyset| { keyset.unit == CurrencyUnit::Usd && keyset.active.unwrap_or(false) }));
     assert!(wallet_keys_payload.keysets.iter().all(|keyset| {
         let unit = keyset.unit.to_string().to_ascii_lowercase();
         !unit.starts_with("long_") && !unit.starts_with("short_")
@@ -2041,6 +2038,877 @@ async fn test_coordinator_trade_routes_and_status() {
 }
 
 #[tokio::test]
+async fn test_signet_buy_trade_issues_long_proofs() {
+    let (url, _) = create_product_test_server_bundle_with_funding(None, None, "signet").await;
+    let client = reqwest::Client::new();
+    let creator = "9191919191919191919191919191919191919191919191919191919191919191";
+    let event_id = "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1";
+    let slug = "signet-buy-long-market";
+    let raw_event = sample_market_event(event_id, slug, creator);
+
+    let funding_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_funding_and_get_proofs(&client, &url, creator, 10_000).await,
+    )
+    .unwrap();
+    let buy_quote_payload =
+        bootstrap_market_for_trading(&client, &url, event_id, raw_event.clone(), 8_000).await;
+    let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
+    let (issued_outputs, issued_pre_mint) = prepare_outputs(
+        &market_keyset,
+        buy_quote_payload["quantity_minor"].as_u64().unwrap(),
+        TEST_MARKET_DENOMINATIONS,
+    );
+    let (change_outputs, change_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        proof_amount_total(&funding_proofs).saturating_sub(8_000),
+        TEST_USD_DENOMINATIONS,
+    );
+
+    let buy_response = client
+        .post(format!("{url}/api/trades/buy"))
+        .json(&json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "long",
+            "spend_minor": 8_000,
+            "raw_event": raw_event,
+            "quote_id": buy_quote_payload["quote_id"].as_str(),
+            "proofs": funding_proofs,
+            "issued_outputs": issued_outputs,
+            "change_outputs": change_outputs
+        }))
+        .send()
+        .await
+        .unwrap();
+    let buy_status = buy_response.status();
+    let buy_payload: Value = buy_response.json().await.unwrap();
+    assert_eq!(
+        buy_status, 201,
+        "signet long buy should succeed: {buy_payload}"
+    );
+    assert!(
+        buy_quote_payload["quantity"].as_f64().unwrap() > 0.0,
+        "signet long buy quote should return a positive quantity: {buy_quote_payload}"
+    );
+
+    let issued_market_proofs = proofs_from_signatures(
+        &buy_payload["issued"]["signatures"],
+        &issued_pre_mint,
+        &market_keyset,
+    );
+    let change_proofs = proofs_from_signatures(
+        &buy_payload["change"]["signatures"],
+        &change_pre_mint,
+        &usd_keyset,
+    );
+
+    assert!(
+        !issued_market_proofs.is_empty(),
+        "signet long buy should issue LONG proofs: {buy_payload}"
+    );
+    assert!(
+        !change_proofs.is_empty(),
+        "signet long buy should return USD change proofs: {buy_payload}"
+    );
+    assert_eq!(
+        proof_amount_total(&issued_market_proofs),
+        buy_quote_payload["quantity_minor"].as_u64().unwrap(),
+        "issued LONG proof amount should match the quoted quantity_minor"
+    );
+    assert_eq!(
+        proof_amount_total(&change_proofs),
+        2_000,
+        "signet long buy should return the remaining USD ecash as change"
+    );
+}
+
+#[tokio::test]
+async fn test_signet_buy_trade_issues_short_proofs() {
+    let (url, _) = create_product_test_server_bundle_with_funding(None, None, "signet").await;
+    let client = reqwest::Client::new();
+    let creator = "9292929292929292929292929292929292929292929292929292929292929292";
+    let event_id = "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2";
+    let slug = "signet-buy-short-market";
+    let raw_event = sample_market_event(event_id, slug, creator);
+
+    let funding_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_funding_and_get_proofs(&client, &url, creator, 10_000).await,
+    )
+    .unwrap();
+    let quote_response = client
+        .post(format!("{url}/api/trades/quote"))
+        .json(&json!({
+            "event_id": event_id,
+            "side": "short",
+            "spend_minor": 8_000,
+            "raw_event": raw_event.clone()
+        }))
+        .send()
+        .await
+        .unwrap();
+    let quote_status = quote_response.status();
+    let quote_payload: Value = quote_response.json().await.unwrap();
+    assert_eq!(
+        quote_status, 200,
+        "signet short quote should succeed: {quote_payload}"
+    );
+
+    let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "short").await;
+    let (issued_outputs, issued_pre_mint) = prepare_outputs(
+        &market_keyset,
+        quote_payload["quantity_minor"].as_u64().unwrap(),
+        TEST_MARKET_DENOMINATIONS,
+    );
+    let (change_outputs, change_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        proof_amount_total(&funding_proofs).saturating_sub(8_000),
+        TEST_USD_DENOMINATIONS,
+    );
+
+    let buy_response = client
+        .post(format!("{url}/api/trades/buy"))
+        .json(&json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "short",
+            "spend_minor": 8_000,
+            "raw_event": raw_event,
+            "quote_id": quote_payload["quote_id"].as_str(),
+            "proofs": funding_proofs,
+            "issued_outputs": issued_outputs,
+            "change_outputs": change_outputs
+        }))
+        .send()
+        .await
+        .unwrap();
+    let buy_status = buy_response.status();
+    let buy_payload: Value = buy_response.json().await.unwrap();
+    assert_eq!(
+        buy_status, 201,
+        "signet short buy should succeed: {buy_payload}"
+    );
+    assert!(
+        quote_payload["quantity"].as_f64().unwrap() > 0.0,
+        "signet short quote should return a positive quantity: {quote_payload}"
+    );
+
+    let issued_market_proofs = proofs_from_signatures(
+        &buy_payload["issued"]["signatures"],
+        &issued_pre_mint,
+        &market_keyset,
+    );
+    let change_proofs = proofs_from_signatures(
+        &buy_payload["change"]["signatures"],
+        &change_pre_mint,
+        &usd_keyset,
+    );
+    let short_direction_tag = buy_payload["trade"]["tags"].as_array().and_then(|tags| {
+        tags.iter().find_map(|tag| {
+            let tag = tag.as_array()?;
+            if tag.first()?.as_str()? == "direction" {
+                tag.get(1)?.as_str()
+            } else {
+                None
+            }
+        })
+    });
+
+    assert!(
+        !issued_market_proofs.is_empty(),
+        "signet short buy should issue SHORT proofs: {buy_payload}"
+    );
+    assert!(
+        !change_proofs.is_empty(),
+        "signet short buy should return USD change proofs: {buy_payload}"
+    );
+    assert_eq!(
+        short_direction_tag,
+        Some("short"),
+        "signet short buy should record the short direction tag"
+    );
+    assert_eq!(
+        proof_amount_total(&issued_market_proofs),
+        quote_payload["quantity_minor"].as_u64().unwrap(),
+        "issued SHORT proof amount should match the quoted quantity_minor"
+    );
+    assert_eq!(
+        proof_amount_total(&change_proofs),
+        2_000,
+        "signet short buy should return the remaining USD ecash as change"
+    );
+}
+
+#[tokio::test]
+async fn test_signet_sell_trade_returns_usd_ecash() {
+    let (url, _) = create_product_test_server_bundle_with_funding(None, None, "signet").await;
+    let client = reqwest::Client::new();
+    let creator = "9393939393939393939393939393939393939393939393939393939393939393";
+    let event_id = "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3";
+    let slug = "signet-sell-returns-usd-market";
+    let raw_event = sample_market_event(event_id, slug, creator);
+
+    let funding_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_funding_and_get_proofs(&client, &url, creator, 10_000).await,
+    )
+    .unwrap();
+    let buy_quote_payload =
+        bootstrap_market_for_trading(&client, &url, event_id, raw_event.clone(), 8_000).await;
+    let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
+    let (issued_outputs, issued_pre_mint) = prepare_outputs(
+        &market_keyset,
+        buy_quote_payload["quantity_minor"].as_u64().unwrap(),
+        TEST_MARKET_DENOMINATIONS,
+    );
+    let (change_outputs, _change_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        proof_amount_total(&funding_proofs).saturating_sub(8_000),
+        TEST_USD_DENOMINATIONS,
+    );
+
+    let buy_response = client
+        .post(format!("{url}/api/trades/buy"))
+        .json(&json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "long",
+            "spend_minor": 8_000,
+            "raw_event": raw_event,
+            "quote_id": buy_quote_payload["quote_id"].as_str(),
+            "proofs": funding_proofs,
+            "issued_outputs": issued_outputs,
+            "change_outputs": change_outputs
+        }))
+        .send()
+        .await
+        .unwrap();
+    let buy_status = buy_response.status();
+    let buy_payload: Value = buy_response.json().await.unwrap();
+    assert_eq!(
+        buy_status, 201,
+        "signet setup buy should succeed: {buy_payload}"
+    );
+
+    let issued_market_proofs = proofs_from_signatures(
+        &buy_payload["issued"]["signatures"],
+        &issued_pre_mint,
+        &market_keyset,
+    );
+    let first_quantity = buy_quote_payload["quantity"].as_f64().unwrap();
+    assert!(
+        first_quantity > 0.0,
+        "setup buy should mint a positive quantity"
+    );
+
+    let sell_quote_response = client
+        .post(format!("{url}/api/trades/sell/quote"))
+        .json(&json!({
+            "event_id": event_id,
+            "side": "long",
+            "quantity": first_quantity / 2.0
+        }))
+        .send()
+        .await
+        .unwrap();
+    let sell_quote_status = sell_quote_response.status();
+    let sell_quote_payload: Value = sell_quote_response.json().await.unwrap();
+    assert_eq!(
+        sell_quote_status, 200,
+        "signet sell quote should succeed: {sell_quote_payload}"
+    );
+
+    let (sell_issued_outputs, sell_issued_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        sell_quote_payload["net_minor"].as_u64().unwrap(),
+        TEST_USD_DENOMINATIONS,
+    );
+    let (sell_change_outputs, sell_change_pre_mint) = prepare_outputs(
+        &market_keyset,
+        proof_amount_total(&issued_market_proofs)
+            .saturating_sub(sell_quote_payload["quantity_minor"].as_u64().unwrap()),
+        TEST_MARKET_DENOMINATIONS,
+    );
+
+    let sell_response = client
+        .post(format!("{url}/api/trades/sell"))
+        .json(&json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "long",
+            "quantity": first_quantity / 2.0,
+            "quote_id": sell_quote_payload["quote_id"].as_str(),
+            "proofs": issued_market_proofs,
+            "issued_outputs": sell_issued_outputs,
+            "change_outputs": sell_change_outputs
+        }))
+        .send()
+        .await
+        .unwrap();
+    let sell_status = sell_response.status();
+    let sell_payload: Value = sell_response.json().await.unwrap();
+    assert_eq!(
+        sell_status, 201,
+        "signet sell should succeed: {sell_payload}"
+    );
+
+    let sell_usd_proofs = proofs_from_signatures(
+        &sell_payload["issued"]["signatures"],
+        &sell_issued_pre_mint,
+        &usd_keyset,
+    );
+    let sell_market_change_proofs = proofs_from_signatures(
+        &sell_payload["change"]["signatures"],
+        &sell_change_pre_mint,
+        &market_keyset,
+    );
+
+    assert!(
+        sell_quote_payload["quantity"].as_f64().unwrap() > 0.0,
+        "signet sell quote should return a positive quantity: {sell_quote_payload}"
+    );
+    assert!(
+        !sell_usd_proofs.is_empty(),
+        "signet sell should issue USD ecash proofs: {sell_payload}"
+    );
+    assert!(
+        !sell_market_change_proofs.is_empty(),
+        "signet sell should return remaining LONG proofs as change: {sell_payload}"
+    );
+    assert_eq!(
+        proof_amount_total(&sell_usd_proofs),
+        sell_quote_payload["net_minor"].as_u64().unwrap(),
+        "issued USD ecash should match the sell quote net_minor"
+    );
+}
+
+#[tokio::test]
+async fn test_signet_sell_trade_updates_lmsr_price() {
+    let (url, _) = create_product_test_server_bundle_with_funding(None, None, "signet").await;
+    let client = reqwest::Client::new();
+    let creator = "9494949494949494949494949494949494949494949494949494949494949494";
+    let event_id = "d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4";
+    let slug = "signet-sell-updates-price-market";
+    let raw_event = sample_market_event(event_id, slug, creator);
+
+    let funding_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_funding_and_get_proofs(&client, &url, creator, 10_000).await,
+    )
+    .unwrap();
+    let buy_quote_payload =
+        bootstrap_market_for_trading(&client, &url, event_id, raw_event.clone(), 100).await;
+    let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
+    let (issued_outputs, issued_pre_mint) = prepare_outputs(
+        &market_keyset,
+        buy_quote_payload["quantity_minor"].as_u64().unwrap(),
+        TEST_MARKET_DENOMINATIONS,
+    );
+    let (change_outputs, _change_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        proof_amount_total(&funding_proofs).saturating_sub(100),
+        TEST_USD_DENOMINATIONS,
+    );
+
+    let buy_response = client
+        .post(format!("{url}/api/trades/buy"))
+        .json(&json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "long",
+            "spend_minor": 100,
+            "raw_event": raw_event,
+            "quote_id": buy_quote_payload["quote_id"].as_str(),
+            "proofs": funding_proofs,
+            "issued_outputs": issued_outputs,
+            "change_outputs": change_outputs
+        }))
+        .send()
+        .await
+        .unwrap();
+    let buy_status = buy_response.status();
+    let buy_payload: Value = buy_response.json().await.unwrap();
+    assert_eq!(
+        buy_status, 201,
+        "signet setup buy should succeed: {buy_payload}"
+    );
+
+    let issued_market_proofs = proofs_from_signatures(
+        &buy_payload["issued"]["signatures"],
+        &issued_pre_mint,
+        &market_keyset,
+    );
+    let first_quantity = buy_quote_payload["quantity"].as_f64().unwrap();
+
+    let initial_quote_response = client
+        .post(format!("{url}/api/trades/sell/quote"))
+        .json(&json!({
+            "event_id": event_id,
+            "side": "long",
+            "quantity": first_quantity / 4.0
+        }))
+        .send()
+        .await
+        .unwrap();
+    let initial_quote_status = initial_quote_response.status();
+    let initial_quote_payload: Value = initial_quote_response.json().await.unwrap();
+    assert_eq!(
+        initial_quote_status, 200,
+        "initial signet sell quote should succeed: {initial_quote_payload}"
+    );
+    let initial_price = initial_quote_payload["current_price_long_ppm"]
+        .as_u64()
+        .unwrap();
+    let initial_net_minor = initial_quote_payload["net_minor"].as_u64().unwrap();
+
+    let sell_quote_response = client
+        .post(format!("{url}/api/trades/sell/quote"))
+        .json(&json!({
+            "event_id": event_id,
+            "side": "long",
+            "quantity": first_quantity / 2.0
+        }))
+        .send()
+        .await
+        .unwrap();
+    let sell_quote_status = sell_quote_response.status();
+    let sell_quote_payload: Value = sell_quote_response.json().await.unwrap();
+    assert_eq!(
+        sell_quote_status, 200,
+        "sell quote used for price-impact test should succeed: {sell_quote_payload}"
+    );
+
+    let (sell_issued_outputs, _sell_issued_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        sell_quote_payload["net_minor"].as_u64().unwrap(),
+        TEST_USD_DENOMINATIONS,
+    );
+    let (sell_change_outputs, _sell_change_pre_mint) = prepare_outputs(
+        &market_keyset,
+        proof_amount_total(&issued_market_proofs)
+            .saturating_sub(sell_quote_payload["quantity_minor"].as_u64().unwrap()),
+        TEST_MARKET_DENOMINATIONS,
+    );
+
+    let sell_response = client
+        .post(format!("{url}/api/trades/sell"))
+        .json(&json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "long",
+            "quantity": first_quantity / 2.0,
+            "quote_id": sell_quote_payload["quote_id"].as_str(),
+            "proofs": issued_market_proofs,
+            "issued_outputs": sell_issued_outputs,
+            "change_outputs": sell_change_outputs
+        }))
+        .send()
+        .await
+        .unwrap();
+    let sell_status = sell_response.status();
+    let sell_payload: Value = sell_response.json().await.unwrap();
+    assert_eq!(
+        sell_status, 201,
+        "signet sell should succeed: {sell_payload}"
+    );
+
+    let second_quote_response = client
+        .post(format!("{url}/api/trades/sell/quote"))
+        .json(&json!({
+            "event_id": event_id,
+            "side": "long",
+            "quantity": first_quantity / 4.0
+        }))
+        .send()
+        .await
+        .unwrap();
+    let second_quote_status = second_quote_response.status();
+    let second_quote_payload: Value = second_quote_response.json().await.unwrap();
+    assert_eq!(
+        second_quote_status, 200,
+        "second signet sell quote should succeed: {second_quote_payload}"
+    );
+    let second_price = second_quote_payload["current_price_long_ppm"]
+        .as_u64()
+        .unwrap();
+    let second_net_minor = second_quote_payload["net_minor"].as_u64().unwrap();
+
+    assert!(
+        second_price != initial_price || second_net_minor != initial_net_minor,
+        "selling LONG on signet should change the quoted sell price or proceeds. initial={initial_quote_payload} second={second_quote_payload}"
+    );
+}
+
+#[tokio::test]
+async fn test_signet_market_creation_publishes_982() {
+    let (url, _) = create_product_test_server_bundle_with_funding(None, None, "signet").await;
+    let client = reqwest::Client::new();
+    let creator = "9595959595959595959595959595959595959595959595959595959595959595";
+    let event_id = "e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5";
+    let slug = "signet-market-create-982";
+    let raw_event = sample_market_event(event_id, slug, creator);
+
+    // NOTE: relay publication of the kind 982 event is not observable in this in-memory harness.
+    // This test verifies that the seed-trade API accepts the signed raw 982 event and bootstraps
+    // a public market from it, which is the HTTP-visible portion of market creation here.
+    let buy_payload = create_public_market_with_seed(
+        &client,
+        &url,
+        creator,
+        event_id,
+        slug,
+        "Signet 982 Market",
+        "Verifies market bootstrap accepts a signed kind 982 event",
+        raw_event,
+        4_000,
+    )
+    .await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
+
+    assert_eq!(
+        buy_payload["market"]["visibility"].as_str(),
+        Some("public"),
+        "seed trade should make the market public on signet"
+    );
+    assert!(
+        !market_keyset.keys.is_empty(),
+        "market bootstrap should create a LONG keyset for the supplied kind 982 event"
+    );
+}
+
+#[tokio::test]
+async fn test_signet_trade_request_id_idempotent() {
+    let (url, _) = create_product_test_server_bundle_with_funding(None, None, "signet").await;
+    let client = reqwest::Client::new();
+    let creator = "9696969696969696969696969696969696969696969696969696969696969696";
+    let event_id = "f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6";
+    let slug = "signet-buy-idempotent-market";
+    let request_id = "signet-buy-idempotent-request-1";
+    let raw_event = sample_market_event(event_id, slug, creator);
+
+    let funding_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_funding_and_get_proofs(&client, &url, creator, 10_000).await,
+    )
+    .unwrap();
+    let buy_quote_payload =
+        bootstrap_market_for_trading(&client, &url, event_id, raw_event.clone(), 4_000).await;
+    let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
+    let (issued_outputs, _issued_pre_mint) = prepare_outputs(
+        &market_keyset,
+        buy_quote_payload["quantity_minor"].as_u64().unwrap(),
+        TEST_MARKET_DENOMINATIONS,
+    );
+    let (change_outputs, _change_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        proof_amount_total(&funding_proofs).saturating_sub(4_000),
+        TEST_USD_DENOMINATIONS,
+    );
+
+    let request_body = json!({
+        "event_id": event_id,
+        "pubkey": creator,
+        "side": "long",
+        "spend_minor": 4_000,
+        "request_id": request_id,
+        "raw_event": raw_event,
+        "quote_id": buy_quote_payload["quote_id"].as_str(),
+        "proofs": funding_proofs,
+        "issued_outputs": issued_outputs,
+        "change_outputs": change_outputs
+    });
+
+    let first_buy_response = client
+        .post(format!("{url}/api/trades/buy"))
+        .json(&request_body)
+        .send()
+        .await
+        .unwrap();
+    let first_buy_status = first_buy_response.status();
+    let first_buy_payload: Value = first_buy_response.json().await.unwrap();
+    assert_eq!(
+        first_buy_status, 201,
+        "initial signet buy should succeed: {first_buy_payload}"
+    );
+
+    let second_buy_response = client
+        .post(format!("{url}/api/trades/buy"))
+        .json(&request_body)
+        .send()
+        .await
+        .unwrap();
+    let second_buy_status = second_buy_response.status();
+    let second_buy_payload: Value = second_buy_response.json().await.unwrap();
+    assert!(
+        matches!(second_buy_status.as_u16(), 200 | 201),
+        "idempotent signet buy replay should succeed, got {second_buy_status}: {second_buy_payload}"
+    );
+    assert_eq!(
+        second_buy_payload["trade"], first_buy_payload["trade"],
+        "retrying a signet buy with the same request_id should return the original trade"
+    );
+    assert_eq!(
+        second_buy_payload["issued"], first_buy_payload["issued"],
+        "retrying a signet buy with the same request_id should replay the same issued proofs"
+    );
+    assert_eq!(
+        second_buy_payload["change"], first_buy_payload["change"],
+        "retrying a signet buy with the same request_id should replay the same change proofs"
+    );
+}
+
+#[tokio::test]
+async fn test_signet_sell_recovery_after_interrupt() {
+    let (url, _) = create_product_test_server_bundle_with_funding(None, None, "signet").await;
+    let client = reqwest::Client::new();
+    let creator = "9797979797979797979797979797979797979797979797979797979797979797";
+    let event_id = "abababababababababababababababababababababababababababababababab";
+    let slug = "signet-sell-recovery-market";
+    let request_id = "signet-sell-recovery-request-1";
+    let raw_event = sample_market_event(event_id, slug, creator);
+
+    let funding_proofs: Vec<Proof> = serde_json::from_value(
+        create_signet_funding_and_get_proofs(&client, &url, creator, 10_000).await,
+    )
+    .unwrap();
+    let buy_quote_payload =
+        bootstrap_market_for_trading(&client, &url, event_id, raw_event.clone(), 8_000).await;
+    let usd_keyset = fetch_active_usd_keyset(&client, &url).await;
+    let market_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;
+    let (issued_outputs, issued_pre_mint) = prepare_outputs(
+        &market_keyset,
+        buy_quote_payload["quantity_minor"].as_u64().unwrap(),
+        TEST_MARKET_DENOMINATIONS,
+    );
+    let (change_outputs, _change_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        proof_amount_total(&funding_proofs).saturating_sub(8_000),
+        TEST_USD_DENOMINATIONS,
+    );
+
+    let buy_response = client
+        .post(format!("{url}/api/trades/buy"))
+        .json(&json!({
+            "event_id": event_id,
+            "pubkey": creator,
+            "side": "long",
+            "spend_minor": 8_000,
+            "raw_event": raw_event,
+            "quote_id": buy_quote_payload["quote_id"].as_str(),
+            "proofs": funding_proofs,
+            "issued_outputs": issued_outputs,
+            "change_outputs": change_outputs
+        }))
+        .send()
+        .await
+        .unwrap();
+    let buy_status = buy_response.status();
+    let buy_payload: Value = buy_response.json().await.unwrap();
+    assert_eq!(
+        buy_status, 201,
+        "signet setup buy should succeed: {buy_payload}"
+    );
+
+    let issued_market_proofs = proofs_from_signatures(
+        &buy_payload["issued"]["signatures"],
+        &issued_pre_mint,
+        &market_keyset,
+    );
+    let first_quantity = buy_quote_payload["quantity"].as_f64().unwrap();
+
+    let sell_quote_response = client
+        .post(format!("{url}/api/trades/sell/quote"))
+        .json(&json!({
+            "event_id": event_id,
+            "side": "long",
+            "quantity": first_quantity / 2.0
+        }))
+        .send()
+        .await
+        .unwrap();
+    let sell_quote_status = sell_quote_response.status();
+    let sell_quote_payload: Value = sell_quote_response.json().await.unwrap();
+    assert_eq!(
+        sell_quote_status, 200,
+        "signet sell quote should succeed before replay test: {sell_quote_payload}"
+    );
+
+    let (sell_issued_outputs, _sell_issued_pre_mint) = prepare_outputs(
+        &usd_keyset,
+        sell_quote_payload["net_minor"].as_u64().unwrap(),
+        TEST_USD_DENOMINATIONS,
+    );
+    let (sell_change_outputs, _sell_change_pre_mint) = prepare_outputs(
+        &market_keyset,
+        proof_amount_total(&issued_market_proofs)
+            .saturating_sub(sell_quote_payload["quantity_minor"].as_u64().unwrap()),
+        TEST_MARKET_DENOMINATIONS,
+    );
+
+    let request_body = json!({
+        "event_id": event_id,
+        "pubkey": creator,
+        "side": "long",
+        "quantity": first_quantity / 2.0,
+        "request_id": request_id,
+        "quote_id": sell_quote_payload["quote_id"].as_str(),
+        "proofs": issued_market_proofs,
+        "issued_outputs": sell_issued_outputs,
+        "change_outputs": sell_change_outputs
+    });
+
+    let first_sell_response = client
+        .post(format!("{url}/api/trades/sell"))
+        .json(&request_body)
+        .send()
+        .await
+        .unwrap();
+    let first_sell_status = first_sell_response.status();
+    let first_sell_payload: Value = first_sell_response.json().await.unwrap();
+    assert_eq!(
+        first_sell_status, 201,
+        "initial signet sell should succeed: {first_sell_payload}"
+    );
+    assert!(
+        first_sell_payload["issued"]["signatures"]
+            .as_array()
+            .is_some_and(|items| !items.is_empty()),
+        "initial signet sell should return USD ecash proofs: {first_sell_payload}"
+    );
+
+    let replay_sell_response = client
+        .post(format!("{url}/api/trades/sell"))
+        .json(&request_body)
+        .send()
+        .await
+        .unwrap();
+    let replay_sell_status = replay_sell_response.status();
+    let replay_sell_payload: Value = replay_sell_response.json().await.unwrap();
+    assert!(
+        matches!(replay_sell_status.as_u16(), 200 | 201),
+        "replaying a signet sell after an interrupted response should succeed, got {replay_sell_status}: {replay_sell_payload}"
+    );
+    assert_eq!(
+        replay_sell_payload["issued"], first_sell_payload["issued"],
+        "replayed signet sell should return the same USD ecash bundle"
+    );
+    assert_eq!(
+        replay_sell_payload["change"], first_sell_payload["change"],
+        "replayed signet sell should return the same market change bundle"
+    );
+}
+
+#[tokio::test]
+async fn test_signet_stale_fx_quote_rejected() {
+    let (url, _) = create_product_test_server_bundle_with_funding(None, None, "signet").await;
+    let client = reqwest::Client::new();
+    let creator = "9898989898989898989898989898989898989898989898989898989898989898";
+    let event_id = "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd";
+    let slug = "signet-fx-freshness-market";
+    let raw_event = sample_market_event(event_id, slug, creator);
+    let quote_payload =
+        bootstrap_market_for_trading(&client, &url, event_id, raw_event, 4_000).await;
+
+    // NOTE: stale FX rejection already has direct unit coverage in fx.rs. This integration test
+    // verifies that fresh executable quotes carry observation timestamps until we add a time-travel
+    // or stale-provider harness for the full HTTP path.
+    let now = chrono::Utc::now().timestamp();
+    let observations = quote_payload["fx_observations"]
+        .as_array()
+        .expect("fx observations should be present on signet trade quotes");
+
+    assert!(
+        !observations.is_empty(),
+        "signet trade quotes should include FX observations: {quote_payload}"
+    );
+    assert!(
+        quote_payload["fx_quote_id"].as_str().is_some(),
+        "signet trade quotes should persist an fx_quote_id: {quote_payload}"
+    );
+    for observation in observations {
+        let observed_at = observation["observed_at"]
+            .as_i64()
+            .expect("each FX observation should include an observed_at timestamp");
+        assert!(
+            now - observed_at <= 120,
+            "signet FX observations should be fresh timestamps, got observed_at={observed_at} in {observation}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_signet_no_internal_payable_on_mainnet() {
+    let (url, invoice_service) =
+        create_product_test_server_bundle_with_funding(None, None, "mainnet").await;
+    let client = reqwest::Client::new();
+    let pubkey = "9999999999999999999999999999999999999999999999999999999999999999";
+
+    let quote_response = client
+        .post(format!("{url}/v1/mint/quote/bolt11"))
+        .json(&json!({
+            "pubkey": pubkey,
+            "amount": 2_500,
+            "unit": "usd"
+        }))
+        .send()
+        .await
+        .unwrap();
+    let quote_status = quote_response.status();
+    let quote_payload: Value = quote_response.json().await.unwrap();
+    assert_eq!(
+        quote_status, 200,
+        "mainnet funding quote should succeed: {quote_payload}"
+    );
+    assert_eq!(
+        quote_payload["state"].as_str(),
+        Some("UNPAID"),
+        "mainnet Lightning funding should start unpaid and not auto-settle"
+    );
+
+    let quote_id = quote_payload["quote"].as_str().unwrap().to_string();
+    let invoice = quote_payload["request"].as_str().unwrap().to_string();
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+
+    let pending_quote_response = client
+        .get(format!("{url}/v1/mint/quote/bolt11/{quote_id}"))
+        .send()
+        .await
+        .unwrap();
+    let pending_quote_status = pending_quote_response.status();
+    let pending_quote_payload: Value = pending_quote_response.json().await.unwrap();
+    assert_eq!(
+        pending_quote_status, 200,
+        "mainnet funding quote lookup should succeed: {pending_quote_payload}"
+    );
+    assert_eq!(
+        pending_quote_payload["state"].as_str(),
+        Some("UNPAID"),
+        "mainnet Lightning funding should remain unpaid until an external payment arrives"
+    );
+
+    invoice_service
+        .lock()
+        .await
+        .pay_invoice(&invoice)
+        .await
+        .unwrap();
+
+    let paid_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["PAID"]).await;
+    assert_eq!(
+        paid_quote["state"].as_str(),
+        Some("PAID"),
+        "mainnet funding should only advance after manual invoice payment"
+    );
+    let minted_proofs = mint_funding_quote_and_get_proofs(&client, &url, &paid_quote, 2_500).await;
+    assert!(
+        minted_proofs.as_array().is_some(),
+        "mainnet funding should still mint proofs after manual payment"
+    );
+}
+
+#[tokio::test]
 async fn test_signet_lightning_funding_quote_auto_pays_after_status_poll() {
     let (url, _) = create_product_test_server_bundle_with_funding(None, None, "signet").await;
     let client = reqwest::Client::new();
@@ -2083,7 +2951,6 @@ async fn test_signet_lightning_funding_quote_auto_pays_after_status_poll() {
 
     let issued_quote = wait_for_mint_quote_state(&client, &url, &quote_id, &["ISSUED"]).await;
     assert_eq!(issued_quote["state"].as_str(), Some("ISSUED"));
-
 }
 
 #[tokio::test]

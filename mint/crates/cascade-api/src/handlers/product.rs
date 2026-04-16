@@ -7,15 +7,14 @@ use crate::stripe::{
 use crate::types::{
     BlindedMessageInput, MintBolt11Request, MintBolt11Response, MintQuoteBolt11Request,
     MintQuoteBolt11Response, ProductBuyRequest, ProductCoordinatorBuyRequest,
-    ProductCoordinatorSellRequest, ProductCoordinatorTradeQuoteRequest,
-    ProductFxMetadataResponse, ProductFxObservationResponse, ProductLightningFxQuoteResponse,
-    ProductMarketSummary, ProductPortfolioFundingRequestStatusResponse,
-    ProductPortfolioFundingResponse, ProductSellRequest, ProductStripeFundingRequest,
-    ProductTradeBlindSignatureBundleResponse, ProductTradeExecutionResponse,
-    ProductTradeQuoteRequest, ProductTradeQuoteResponse, ProductTradeRequestStatusResponse,
-    ProductTradeSettlementResponse, ProductTradeStatusResponse, ProductUsdcDepositIntentRequest,
-    ProductUsdcDepositIntentResponse, ProductUsdcWithdrawalRequest, ProductUsdcWithdrawalResponse,
-    ProofInput, TokenOutput,
+    ProductCoordinatorSellRequest, ProductCoordinatorTradeQuoteRequest, ProductFxMetadataResponse,
+    ProductFxObservationResponse, ProductLightningFxQuoteResponse, ProductMarketSummary,
+    ProductPortfolioFundingRequestStatusResponse, ProductPortfolioFundingResponse,
+    ProductSellRequest, ProductStripeFundingRequest, ProductTradeBlindSignatureBundleResponse,
+    ProductTradeExecutionResponse, ProductTradeQuoteRequest, ProductTradeQuoteResponse,
+    ProductTradeRequestStatusResponse, ProductTradeSettlementResponse, ProductTradeStatusResponse,
+    ProductUsdcDepositIntentRequest, ProductUsdcDepositIntentResponse,
+    ProductUsdcWithdrawalRequest, ProductUsdcWithdrawalResponse, ProofInput, TokenOutput,
 };
 use axum::{
     body::Bytes,
@@ -2485,7 +2484,13 @@ pub async fn quote_trade(
         spend_minor: req.spend_minor,
         quantity: req.quantity,
     };
-    quote_trade_by_event(&state, &req.event_id, &quote_request, req.raw_event.as_ref()).await
+    quote_trade_by_event(
+        &state,
+        &req.event_id,
+        &quote_request,
+        req.raw_event.as_ref(),
+    )
+    .await
 }
 
 pub async fn quote_trade_sell(
@@ -2498,7 +2503,13 @@ pub async fn quote_trade_sell(
         spend_minor: None,
         quantity: req.quantity,
     };
-    quote_trade_by_event(&state, &req.event_id, &quote_request, req.raw_event.as_ref()).await
+    quote_trade_by_event(
+        &state,
+        &req.event_id,
+        &quote_request,
+        req.raw_event.as_ref(),
+    )
+    .await
 }
 
 pub async fn buy_trade(
@@ -5192,20 +5203,17 @@ fn next_sell_quantities(market: &Market, side: Side, quantity: f64) -> (f64, f64
 }
 
 fn raw_event_tags(raw_event: &Value) -> Option<Vec<Vec<String>>> {
-    raw_event
-        .get("tags")
-        .and_then(Value::as_array)
-        .map(|tags| {
-            tags.iter()
-                .filter_map(Value::as_array)
-                .map(|tag| {
-                    tag.iter()
-                        .filter_map(Value::as_str)
-                        .map(str::to_string)
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>()
-        })
+    raw_event.get("tags").and_then(Value::as_array).map(|tags| {
+        tags.iter()
+            .filter_map(Value::as_array)
+            .map(|tag| {
+                tag.iter()
+                    .filter_map(Value::as_str)
+                    .map(str::to_string)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+    })
 }
 
 async fn bootstrap_market_from_raw_event(
@@ -5243,7 +5251,12 @@ async fn bootstrap_market_from_raw_event(
     let slug = tag_value(&tags, "d")
         .map(str::trim)
         .filter(|value| !value.is_empty())
-        .ok_or_else(|| (StatusCode::BAD_REQUEST, "raw_event_slug_is_required".to_string()))?;
+        .ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                "raw_event_slug_is_required".to_string(),
+            )
+        })?;
     let title = tag_value(&tags, "title")
         .map(str::trim)
         .filter(|value| !value.is_empty())
@@ -5253,7 +5266,10 @@ async fn bootstrap_market_from_raw_event(
     let _bootstrap_guard = state.market_bootstrap_lock.lock().await;
 
     if let Ok(Some(existing_market)) = state.db.get_market(event_id).await {
-        state.market_manager.load_market(existing_market.clone()).await;
+        state
+            .market_manager
+            .load_market(existing_market.clone())
+            .await;
         return Ok(existing_market);
     }
 
@@ -5320,7 +5336,10 @@ async fn bootstrap_market_from_raw_event(
     state.db.insert_market(&market).await.map_err(|error| {
         let error_message = error.to_string();
         if error_message.contains("UNIQUE constraint failed: markets.slug") {
-            (StatusCode::CONFLICT, "market_slug_already_exists".to_string())
+            (
+                StatusCode::CONFLICT,
+                "market_slug_already_exists".to_string(),
+            )
         } else if error_message.contains("UNIQUE constraint failed: markets.event_id") {
             (StatusCode::CONFLICT, "market_already_exists".to_string())
         } else {
@@ -5344,7 +5363,10 @@ async fn load_market_for_trading(
         }
         None => match raw_event {
             Some(raw_event) => bootstrap_market_from_raw_event(state, event_id, raw_event).await,
-            None => Err((StatusCode::NOT_FOUND, format!("market_not_found: {event_id}"))),
+            None => Err((
+                StatusCode::NOT_FOUND,
+                format!("market_not_found: {event_id}"),
+            )),
         },
     }
 }

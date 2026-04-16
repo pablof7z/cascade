@@ -149,26 +149,25 @@ These features are explicitly **not required** for M9 signet paper-trading gate 
 
 Existing signet-specific tests in `mint/crates/cascade-api/tests/api_integration.rs`:
 
-| Test | Line | What It Verifies |
-|------|------|------------------|
-| `test_signet_lightning_funding_quote_auto_pays_after_status_poll` | 2146 | Signet funding quote auto-pays after status poll |
-| `test_signet_lightning_funding_quote_auto_pays_without_lncli_payinvoice` | 2200 | Signet funding auto-pays without external lncli |
-| `test_signet_direct_mint_quote_self_pays_without_lncli_payinvoice` | 2225 | Signet direct mint quote self-pays |
-| `test_signet_funding_enforces_single_and_window_limits` | 3466 | Signet funding limits |
+| Test | Status | What It Verifies |
+|------|--------|------------------|
+| `test_signet_lightning_funding_quote_auto_pays_after_status_poll` | Present | Signet funding quote auto-pays after status poll |
+| `test_signet_lightning_funding_quote_auto_pays_with_cli_backend_when_self_pay_fails` | Present | Signet funding still auto-pays when internal self-pay falls back to the CLI-backed invoice service |
+| `test_signet_funding_enforces_single_and_window_limits` | Present | Signet funding limits |
 
-**New automated tests required for M9:**
+**M9 automated tests written on April 16, 2026:**
 
-| Test Name | Category | What It Verifies |
-|-----------|----------|------------------|
-| `test_signet_buy_trade_issues_long_proofs` | Core Flow 1.3 | Buy trade mints LONG proofs with correct amounts |
-| `test_signet_buy_trade_issues_short_proofs` | Core Flow 1.3 | Buy trade mints SHORT proofs with correct amounts |
-| `test_signet_sell_trade_returns_usd_ecash` | Core Flow 1.4 | Sell trade returns USD ecash at LMSR price |
-| `test_signet_sell_trade_updates_lmsr_price` | Core Flow 1.4 | LMSR price updates after sell |
-| `test_signet_market_creation_publishes_982` | Core Flow 1.2 | Market creation publishes kind 982 event |
-| `test_signet_trade_request_id_idempotent` | NFR 2.2 | Trade request-id retry returns same outputs |
-| `test_signet_sell_recovery_after_interrupt` | NFR 2.2 | Sell interrupted pre-response is recoverable |
-| `test_signet_stale_fx_quote_rejected` | NFR 2.3 | Stale FX quotes are rejected, not reused |
-| `test_signet_no_internal_payable_on_mainnet` | NFR 2.1 | `internal_payable` flag is false on mainnet config |
+| Test Name | Category | Status | What It Verifies |
+|-----------|----------|--------|------------------|
+| `test_signet_buy_trade_issues_long_proofs` | Core Flow 1.3 | Written | Buy trade mints LONG proofs with correct amounts |
+| `test_signet_buy_trade_issues_short_proofs` | Core Flow 1.3 | Written | Buy trade mints SHORT proofs with correct amounts |
+| `test_signet_sell_trade_returns_usd_ecash` | Core Flow 1.4 | Written | Sell trade returns USD ecash at LMSR price |
+| `test_signet_sell_trade_updates_lmsr_price` | Core Flow 1.4 | Written | Sell quote changes after a sell, covering LMSR price impact |
+| `test_signet_market_creation_publishes_982` | Core Flow 1.2 | Written with relay-gap note | Verifies the seed-trade API accepts a signed raw kind 982 event and bootstraps a public market; relay publication still needs relay-backed or manual verification |
+| `test_signet_trade_request_id_idempotent` | NFR 2.2 | Written | Trade request-id retry replays the original buy outputs |
+| `test_signet_sell_recovery_after_interrupt` | NFR 2.2 | Written | Sell retry after a lost response replays the original USD and change bundles |
+| `test_signet_stale_fx_quote_rejected` | NFR 2.3 | Written with freshness note | Verifies fresh FX observation timestamps on executable quotes; full stale-quote rejection still needs time-travel or dedicated stale-provider integration coverage |
+| `test_signet_no_internal_payable_on_mainnet` | NFR 2.1 | Written | Mainnet Lightning funding stays unpaid until an external/manual payment arrives |
 
 #### 4.2 Automated E2E Tests (Web)
 

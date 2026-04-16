@@ -1,13 +1,13 @@
 mod config;
 
 use anyhow::{Context, Result};
+use bitcoin::secp256k1::SecretKey;
 use cascade_api::{
     build_server,
     fx::{FxQuotePolicy, FxQuoteService},
     nostr::TradePublisher,
     payment::UsdBolt11PaymentProcessor,
 };
-use bitcoin::secp256k1::SecretKey;
 use cascade_core::lightning::lnd_client::LndClient;
 use cascade_core::{
     db::CascadeDatabase, invoice::InvoiceService, market_manager::MarketManager,
@@ -19,11 +19,11 @@ use cdk_common::nuts::{CurrencyUnit, PaymentMethod};
 use cdk_sqlite::MintSqliteDatabase;
 use clap::Parser;
 use config::MintConfig;
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-use sha2::{Digest, Sha256};
 
 /// Load seed from file or generate a new one.
 /// Supports raw hex (32 bytes) or BIP-39 mnemonic.

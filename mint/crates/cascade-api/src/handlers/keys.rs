@@ -7,7 +7,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use cdk::error::{Error as CdkError, ErrorResponse};
 use cdk::mint::Mint;
-use cdk::nuts::{CurrencyUnit, Id, KeysResponse, KeySet, KeySetInfo, KeysetResponse};
+use cdk::nuts::{CurrencyUnit, Id, KeySet, KeySetInfo, KeysResponse, KeysetResponse};
 
 use crate::routes::AppState;
 
@@ -48,7 +48,9 @@ fn cdk_bad_request(error: CdkError) -> Response {
     (StatusCode::BAD_REQUEST, Json(ErrorResponse::from(error))).into_response()
 }
 
-pub async fn get_wallet_keys(State(state): State<AppState>) -> Result<Json<KeysResponse>, Response> {
+pub async fn get_wallet_keys(
+    State(state): State<AppState>,
+) -> Result<Json<KeysResponse>, Response> {
     Ok(Json(KeysResponse {
         keysets: wallet_visible_pubkeys(&state.mint),
     }))
@@ -75,10 +77,7 @@ pub async fn get_wallet_keyset_pubkeys(
         return Err(cdk_bad_request(CdkError::UnknownKeySet));
     }
 
-    let pubkeys = state
-        .mint
-        .keyset_pubkeys(&id)
-        .map_err(cdk_bad_request)?;
+    let pubkeys = state.mint.keyset_pubkeys(&id).map_err(cdk_bad_request)?;
 
     Ok(Json(pubkeys))
 }

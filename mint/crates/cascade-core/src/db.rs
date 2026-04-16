@@ -172,10 +172,12 @@ impl CascadeDatabase {
             .await
             .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
-        sqlx::query(include_str!("../../../migrations/019_drop_market_mirror.sql"))
-            .execute(&self.pool)
-            .await
-            .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
+        sqlx::query(include_str!(
+            "../../../migrations/019_drop_market_mirror.sql"
+        ))
+        .execute(&self.pool)
+        .await
+        .map_err(|e| crate::error::CascadeError::database(e.to_string()))?;
 
         Ok(())
     }

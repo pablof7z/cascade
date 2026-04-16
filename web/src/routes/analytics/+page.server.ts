@@ -3,21 +3,31 @@ import type { PageServerLoad } from './$types';
 import { buildPageSeo } from '$lib/seo';
 import { fetchRecentDiscussions, fetchRecentMarkets, fetchRecentTrades } from '$lib/server/cascade';
 
+const ANALYTICS_MARKET_LIMIT = 20;
+const ANALYTICS_DISCUSSION_LIMIT = 20;
+const ANALYTICS_TRADE_LIMIT = 50;
+
+function take<T>(items: T[], limit: number): T[] {
+  return items.slice(0, limit);
+}
+
 export const load: PageServerLoad = async ({ setHeaders, url }) => {
   setHeaders({
     'cache-control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=600'
   });
 
   const [markets, discussions, trades] = await Promise.all([
-    fetchRecentMarkets(100),
-    fetchRecentDiscussions(160),
-    fetchRecentTrades(400)
+    fetchRecentMarkets(ANALYTICS_MARKET_LIMIT),
+    fetchRecentDiscussions(ANALYTICS_DISCUSSION_LIMIT),
+    fetchRecentTrades(ANALYTICS_TRADE_LIMIT)
   ]);
 
   return {
-    markets: markets.map((market) => market.rawEvent as NostrEvent),
-    discussions: discussions.map((discussion) => discussion.rawEvent as NostrEvent),
-    trades: trades.map((trade) => trade.rawEvent as NostrEvent),
+    markets: take(markets, ANALYTICS_MARKET_LIMIT).map((market) => market.rawEvent as NostrEvent),
+    discussions: take(discussions, ANALYTICS_DISCUSSION_LIMIT).map(
+      (discussion) => discussion.rawEvent as NostrEvent
+    ),
+    trades: take(trades, ANALYTICS_TRADE_LIMIT).map((trade) => trade.rawEvent as NostrEvent),
     seo: buildPageSeo({
       url,
       title: 'Analytics',

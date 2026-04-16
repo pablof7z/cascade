@@ -21,11 +21,15 @@ fn is_market_unit(unit: &CurrencyUnit) -> bool {
     }
 }
 
+fn is_wallet_public_unit(unit: &CurrencyUnit) -> bool {
+    matches!(unit, CurrencyUnit::Usd)
+}
+
 fn wallet_visible_keysets(mint: &Arc<Mint>) -> Vec<KeySetInfo> {
     mint.keysets()
         .keysets
         .into_iter()
-        .filter(|keyset| !is_market_unit(&keyset.unit))
+        .filter(|keyset| is_wallet_public_unit(&keyset.unit) && !is_market_unit(&keyset.unit))
         .collect()
 }
 
@@ -33,7 +37,7 @@ fn wallet_visible_pubkeys(mint: &Arc<Mint>) -> Vec<KeySet> {
     mint.pubkeys()
         .keysets
         .into_iter()
-        .filter(|keyset| !is_market_unit(&keyset.unit))
+        .filter(|keyset| is_wallet_public_unit(&keyset.unit) && !is_market_unit(&keyset.unit))
         .collect()
 }
 

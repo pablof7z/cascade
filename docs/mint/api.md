@@ -25,7 +25,7 @@ In Cascade, the standard key discovery routes are wallet-facing only:
 - `/v1/keysets`
 - `/v1/keys/{keyset_id}`
 
-They expose wallet/public mint keysets such as USD. They do NOT enumerate market LONG and SHORT keysets.
+They expose funding-supported wallet units only. On the current Cascade signet deployment, that means USD only. They do NOT enumerate sat keysets or market LONG and SHORT keysets.
 
 Standard BOLT11 flows:
 

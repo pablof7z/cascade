@@ -1378,6 +1378,10 @@ async fn test_standard_key_routes_exclude_market_keysets() {
         .keysets
         .iter()
         .any(|keyset| { keyset.unit == CurrencyUnit::Usd && keyset.active.unwrap_or(false) }));
+    assert!(wallet_keys_payload
+        .keysets
+        .iter()
+        .all(|keyset| keyset.unit == CurrencyUnit::Usd));
     assert!(wallet_keys_payload.keysets.iter().all(|keyset| {
         let unit = keyset.unit.to_string().to_ascii_lowercase();
         !unit.starts_with("long_") && !unit.starts_with("short_")
@@ -1398,7 +1402,7 @@ async fn test_standard_key_routes_exclude_market_keysets() {
             .as_str()
             .unwrap_or_default()
             .to_ascii_lowercase();
-        !unit.starts_with("long_") && !unit.starts_with("short_")
+        unit == "usd" && !unit.starts_with("long_") && !unit.starts_with("short_")
     }));
 
     let market_long_keyset = fetch_market_keyset(&client, &url, event_id, "long").await;

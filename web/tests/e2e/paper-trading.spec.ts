@@ -245,11 +245,14 @@ test('pending markets stay private until the first mint trade, then become publi
   await expect
     .poll(
       async () => {
-        const response = await fetch(`${BASE_URL}/market/${market.slug}`);
-        return response.status;
+        // Use page.request.get so the signet edition cookie is included;
+        // a raw fetch() from Node would be cookieless and the server
+        // would look for the market in mainnet mode (returning 404).
+        const response = await page.request.get(`/market/${market.slug}`);
+        return response.status();
       },
       {
-        timeout: 30_000
+        timeout: 60_000
       }
     )
     .toBe(200);

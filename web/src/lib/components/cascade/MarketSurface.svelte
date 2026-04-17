@@ -378,6 +378,65 @@
     </div>
   </section>
 
+  <!-- MARKET TRADING -->
+  <section class="market-trading">
+    <div class="detail-header">
+      <h2>Take a position</h2>
+      <span>Mint LONG or SHORT</span>
+    </div>
+
+    <div class="price-grid">
+      <div>
+        <span>LONG</span>
+        <strong class="positive">{priceCents(impliedProbability)}</strong>
+      </div>
+      <div>
+        <span>SHORT</span>
+        <strong class="negative">{priceCents(oppositeProbability)}</strong>
+      </div>
+    </div>
+
+    {#if paperEdition}
+      <PaperTradePanel
+        marketId={market.id}
+        marketSlug={market.slug}
+        yesProbability={impliedProbability}
+        noProbability={oppositeProbability}
+      />
+    {:else if currentUser}
+      <a class="btn btn-primary w-fit" href="/portfolio">Add funds to trade</a>
+      <a href={marketActivityUrl(market.slug)}>See all trades on this market →</a>
+      <p class="trade-focus-copy"><small>Add funds to your portfolio to take a position.</small></p>
+    {:else}
+      <a class="btn btn-primary w-fit" href="/join?from=/market/{market.slug}">Take a position</a>
+    {/if}
+
+    <dl class="summary-list">
+      <div>
+        <dt>Volume</dt>
+        <dd>{formatProductAmount(tradeSummary.grossVolume, 'usd')} {valueUnitLabel}</dd>
+      </div>
+      <div>
+        <dt>LONG flow</dt>
+        <dd>{formatProductAmount(tradeSummary.longVolume, 'usd')} {valueUnitLabel}</dd>
+      </div>
+      <div>
+        <dt>SHORT flow</dt>
+        <dd>{formatProductAmount(tradeSummary.shortVolume, 'usd')} {valueUnitLabel}</dd>
+      </div>
+      <div>
+        <dt>Last trade</dt>
+        <dd>
+          {#if latestTrade}
+            {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}
+          {:else}
+            None
+          {/if}
+        </dd>
+      </div>
+    </dl>
+  </section>
+
   <!-- MARKET BODY -->
   <section class="market-body">
     <article class="detail-section">
@@ -442,65 +501,6 @@
         {/if}
       </div>
     </article>
-  </section>
-
-  <!-- MARKET TRADING -->
-  <section class="market-trading">
-    <div class="detail-header">
-      <h2>Take a position</h2>
-      <span>Mint LONG or SHORT</span>
-    </div>
-
-    <div class="price-grid">
-      <div>
-        <span>LONG</span>
-        <strong class="positive">{priceCents(impliedProbability)}</strong>
-      </div>
-      <div>
-        <span>SHORT</span>
-        <strong class="negative">{priceCents(oppositeProbability)}</strong>
-      </div>
-    </div>
-
-    {#if paperEdition}
-      <PaperTradePanel
-        marketId={market.id}
-        marketSlug={market.slug}
-        yesProbability={impliedProbability}
-        noProbability={oppositeProbability}
-      />
-    {:else if currentUser}
-      <a class="btn btn-primary w-fit" href="/portfolio">Add funds to trade</a>
-      <a href={marketActivityUrl(market.slug)}>See all trades on this market →</a>
-      <p class="trade-focus-copy"><small>Add funds to your portfolio to take a position.</small></p>
-    {:else}
-      <a class="btn btn-primary w-fit" href="/join?from=/market/{market.slug}">Take a position</a>
-    {/if}
-
-    <dl class="summary-list">
-      <div>
-        <dt>Volume</dt>
-        <dd>{formatProductAmount(tradeSummary.grossVolume, 'usd')} {valueUnitLabel}</dd>
-      </div>
-      <div>
-        <dt>LONG flow</dt>
-        <dd>{formatProductAmount(tradeSummary.longVolume, 'usd')} {valueUnitLabel}</dd>
-      </div>
-      <div>
-        <dt>SHORT flow</dt>
-        <dd>{formatProductAmount(tradeSummary.shortVolume, 'usd')} {valueUnitLabel}</dd>
-      </div>
-      <div>
-        <dt>Last trade</dt>
-        <dd>
-          {#if latestTrade}
-            {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}
-          {:else}
-            None
-          {/if}
-        </dd>
-      </div>
-    </dl>
   </section>
 {/if}
 

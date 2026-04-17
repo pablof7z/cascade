@@ -369,9 +369,9 @@ test.describe('funded smoke flow', () => {
     // Switch back to mint mode (auto-switched to exit after buy) then buy LONG
     await tradePanel.getByRole('button', { name: 'Mint LONG/SHORT' }).click();
     await tradePanel.getByRole('button', { name: /^LONG / }).click();
-    await expect(tradePanel.getByRole('button', { name: 'Mint LONG' })).toBeVisible();
+    await expect(tradePanel.getByRole('button', { name: 'Mint LONG', exact: true })).toBeVisible();
     await tradePanel.locator('input[type="number"]').first().fill('2500');
-    await tradePanel.getByRole('button', { name: 'Mint LONG' }).click();
+    await tradePanel.getByRole('button', { name: 'Mint LONG', exact: true }).click();
     await expect(tradePanel.getByText(`Bought LONG on ${market.slug}.`)).toBeVisible({ timeout: 30_000 });
   });
 

@@ -6,7 +6,9 @@ export const APP_TAGLINE =
 
 const PUBLIC_DIRECTORY_RELAY = 'wss://purplepag.es';
 
-const FALLBACK_RELAYS = [PUBLIC_DIRECTORY_RELAY];
+// purplepag.es only accepts profile event kinds (0, 3, 10002).
+// Market and trade events (kinds 980-983) require relays that accept arbitrary kinds.
+const FALLBACK_RELAYS = [PUBLIC_DIRECTORY_RELAY, 'wss://relay.damus.io', 'wss://relay.primal.net'];
 
 export const DEFAULT_RELAYS = parseRelayList(
   env.PUBLIC_NOSTR_RELAYS,

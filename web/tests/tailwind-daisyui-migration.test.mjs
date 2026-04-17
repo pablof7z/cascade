@@ -51,8 +51,11 @@ test('bits-ui wrappers render DaisyUI styling classes', () => {
 
   assert.match(tabsList, /tabs\s+tabs-bordered/);
   assert.match(tabsTrigger, /\btab\b/);
-  assert.match(dialogContent, /modal/);
-  assert.match(dialogContent, /modal-box/);
+  assert.doesNotMatch(dialogContent, /modal-box/);
+  assert.match(dialogContent, /rounded-md/);
+  assert.match(dialogContent, /overflow-y-auto/);
+  assert.match(dialogContent, /overscroll-contain/);
+  assert.match(dialogContent, /bg-base-200/);
   assert.match(dropdownContent, /dropdown-content/);
   assert.match(avatarRoot, /\bavatar\b/);
 });

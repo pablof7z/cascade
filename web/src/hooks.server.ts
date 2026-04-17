@@ -14,7 +14,7 @@ export const handle: Handle = async ({ event, resolve }) => {
       path: '/',
       httpOnly: false,
       sameSite: 'lax',
-      secure: !dev,
+      secure: false,
       maxAge: 60 * 60 * 24 * 365
     });
 

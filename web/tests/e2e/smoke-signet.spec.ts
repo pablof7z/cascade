@@ -272,6 +272,7 @@ async function createPublicMarket(
 
 const market = uniqueMarket('M9 Smoke market');
 const creatorSecret = secretKeyFor(`m9-smoke:${market.title}`);
+let sharedPage: Page;
 
 /* ═══════════════════════════════════════════════════════════════════════
  * 1. Edition toggle: Live ↔ Practice
@@ -309,90 +310,109 @@ test('switches between Live and Practice editions via cookie', async ({ page }) 
 });
 
 /* ═══════════════════════════════════════════════════════════════════════
- * 2. Login + fund the portfolio (signet)
+ * Tests 2-6: share a single browser page so localStorage (cashu funds)
+ * persists across the fund → create → trade → withdraw → portfolio flow.
  * ═══════════════════════════════════════════════════════════════════════ */
 
-test('logs in and funds the practice portfolio', async ({ page }) => {
-  await loginWithPrivateKey(page, creatorSecret);
-  await fundPortfolio(page, creatorSecret, 25_000);
-  // Verify balance on portfolio page
-  await page.goto('/portfolio');
-  await ensureLoggedIn(page, creatorSecret);
-  const walletPanel = page.locator('.wallet-grid .wallet-panel').first();
-  await expect(walletPanel).toContainText('$250.00');
-});
+test.describe('funded smoke flow', () => {
+  test.beforeAll(async ({ browser }) => {
+    sharedPage = await browser.newPage();
+  });
 
-/* ═══════════════════════════════════════════════════════════════════════
- * 3. Create a market
- * ═══════════════════════════════════════════════════════════════════════ */
+  test.afterAll(async () => {
+    await sharedPage.close();
+  });
 
-test('creates a market on signet', async ({ page }) => {
-  await loginWithPrivateKey(page, creatorSecret);
-  await createPublicMarket(page, creatorSecret, market, 10_000);
-});
+  /* ═════════════════════════════════════════════════════════════════════
+   * 2. Login + fund the portfolio (signet)
+   * ═════════════════════════════════════════════════════════════════════ */
 
-/* ═══════════════════════════════════════════════════════════════════════
- * 4. Place trades: buy LONG, buy SHORT
- * ═══════════════════════════════════════════════════════════════════════ */
+  test('logs in and funds the practice portfolio', async () => {
+    await loginWithPrivateKey(sharedPage, creatorSecret);
+    await fundPortfolio(sharedPage, creatorSecret, 25_000);
+    // Verify balance on portfolio page
+    await sharedPage.goto('/portfolio');
+    await ensureLoggedIn(sharedPage, creatorSecret);
+    const walletPanel = sharedPage.locator('.wallet-grid .wallet-panel').first();
+    await expect(walletPanel).toContainText('$250.00');
+  });
 
-test('buys LONG and SHORT positions on the market', async ({ page }) => {
-  await loginWithPrivateKey(page, creatorSecret);
-  await page.goto(`/market/${market.slug}`);
-  await ensureLoggedIn(page, creatorSecret);
-  await expect(page.getByRole('heading', { name: market.title })).toBeVisible({ timeout: 30_000 });
+  /* ═════════════════════════════════════════════════════════════════════
+   * 3. Create a market
+   * ═════════════════════════════════════════════════════════════════════ */
 
-  const tradePanel = page.locator('.trade-panel');
-  await expect(tradePanel.getByText('Available')).toBeVisible();
+  test('creates a market on signet', async () => {
+    await loginWithPrivateKey(sharedPage, creatorSecret);
+    await createPublicMarket(sharedPage, creatorSecret, market, 10_000);
+  });
 
-  // Buy SHORT
-  await tradePanel.getByRole('button', { name: /^SHORT / }).click();
-  await expect(tradePanel.getByRole('button', { name: 'Buy SHORT' })).toBeVisible();
-  await tradePanel.locator('input[type="number"]').first().fill('2500');
-  await tradePanel.getByRole('button', { name: 'Buy SHORT' }).click();
-  await expect(tradePanel.getByText(`Bought SHORT on ${market.slug}.`)).toBeVisible({ timeout: 30_000 });
+  /* ═════════════════════════════════════════════════════════════════════
+   * 4. Place trades: buy LONG, buy SHORT
+   * ═════════════════════════════════════════════════════════════════════ */
 
-  // Buy LONG
-  await tradePanel.getByRole('button', { name: /^LONG / }).click();
-  await expect(tradePanel.getByRole('button', { name: 'Buy LONG' })).toBeVisible();
-  await tradePanel.locator('input[type="number"]').first().fill('2500');
-  await tradePanel.getByRole('button', { name: 'Buy LONG' }).click();
-  await expect(tradePanel.getByText(`Bought LONG on ${market.slug}.`)).toBeVisible({ timeout: 30_000 });
-});
+  test('buys LONG and SHORT positions on the market', async () => {
+    await loginWithPrivateKey(sharedPage, creatorSecret);
+    await sharedPage.goto(`/market/${market.slug}`);
+    await ensureLoggedIn(sharedPage, creatorSecret);
+    await expect(sharedPage.getByRole('heading', { name: market.title })).toBeVisible({ timeout: 30_000 });
 
-/* ═══════════════════════════════════════════════════════════════════════
- * 5. Withdraw a position
- * ═══════════════════════════════════════════════════════════════════════ */
+    const tradePanel = sharedPage.locator('.trade-panel');
+    await expect(tradePanel.getByText('Available')).toBeVisible();
 
-test('withdraws (sells) part of a SHORT position', async ({ page }) => {
-  await loginWithPrivateKey(page, creatorSecret);
-  await page.goto(`/market/${market.slug}`);
-  await ensureLoggedIn(page, creatorSecret);
-  await expect(page.getByRole('heading', { name: market.title })).toBeVisible({ timeout: 30_000 });
+    // Buy SHORT
+    await tradePanel.getByRole('button', { name: /^SHORT / }).click();
+    await expect(tradePanel.getByRole('button', { name: 'Mint SHORT' })).toBeVisible();
+    await tradePanel.locator('input[type="number"]').first().fill('2500');
+    await tradePanel.getByRole('button', { name: 'Mint SHORT' }).click();
+    await expect(tradePanel.getByText(`Bought SHORT on ${market.slug}.`)).toBeVisible({ timeout: 30_000 });
 
-  const tradePanel = page.locator('.trade-panel');
-  await expect(tradePanel.getByText('Available')).toBeVisible();
+    // Switch back to mint mode (auto-switched to exit after buy) then buy LONG
+    await tradePanel.getByRole('button', { name: 'Mint LONG/SHORT' }).click();
+    await tradePanel.getByRole('button', { name: /^LONG / }).click();
+    await expect(tradePanel.getByRole('button', { name: 'Mint LONG' })).toBeVisible();
+    await tradePanel.locator('input[type="number"]').first().fill('2500');
+    await tradePanel.getByRole('button', { name: 'Mint LONG' }).click();
+    await expect(tradePanel.getByText(`Bought LONG on ${market.slug}.`)).toBeVisible({ timeout: 30_000 });
+  });
 
-  // Switch to SHORT and sell
-  await tradePanel.getByRole('button', { name: /^SHORT / }).click();
-  await tradePanel.locator('input[type="number"]').nth(1).fill('1000');
-  const sellButton = tradePanel.getByRole('button', { name: 'Sell SHORT' });
-  await expect(sellButton).toBeEnabled();
-  await sellButton.click();
-  await expect(tradePanel.getByText(/Sold SHORT on/)).toContainText(market.slug);
-});
+  /* ═════════════════════════════════════════════════════════════════════
+   * 5. Withdraw a position
+   * ═════════════════════════════════════════════════════════════════════ */
 
-/* ═══════════════════════════════════════════════════════════════════════
- * 6. Portfolio reflects changes
- * ═══════════════════════════════════════════════════════════════════════ */
+  test('withdraws (sells) part of a SHORT position', async () => {
+    await loginWithPrivateKey(sharedPage, creatorSecret);
+    await sharedPage.goto(`/market/${market.slug}`);
+    await ensureLoggedIn(sharedPage, creatorSecret);
+    await expect(sharedPage.getByRole('heading', { name: market.title })).toBeVisible({ timeout: 30_000 });
 
-test('portfolio page shows the traded position', async ({ page }) => {
-  await loginWithPrivateKey(page, creatorSecret);
-  await page.goto('/portfolio');
-  await ensureLoggedIn(page, creatorSecret);
-  await expect(page.getByRole('heading', { name: 'Your portfolio' })).toBeVisible();
+    const tradePanel = sharedPage.locator('.trade-panel');
+    await expect(tradePanel.getByText('Available')).toBeVisible();
 
-  const positionRow = page.locator('.position-row').filter({ hasText: market.title }).first();
-  await expect(positionRow).toBeVisible({ timeout: 15_000 });
-  // Position should have a real value (not "Mark only")
-  await expect(positionRow.getByText('Mark only')).toHaveCount(0);
+    // Select SHORT side in mint mode so exit mode shows the SHORT position
+    await tradePanel.getByRole('button', { name: /^SHORT / }).click();
+    // Switch to exit mode
+    await tradePanel.getByRole('button', { name: 'Exit position' }).click();
+    // Fill exit quantity and submit
+    await tradePanel.locator('input[type="number"]').first().fill('1000');
+    const sellButton = tradePanel.getByRole('button', { name: 'Exit SHORT position' });
+    await expect(sellButton).toBeEnabled();
+    await sellButton.click();
+    await expect(tradePanel.getByText(/Sold SHORT on/)).toContainText(market.slug);
+  });
+
+  /* ═════════════════════════════════════════════════════════════════════
+   * 6. Portfolio reflects changes
+   * ═════════════════════════════════════════════════════════════════════ */
+
+  test('portfolio page shows the traded position', async () => {
+    await loginWithPrivateKey(sharedPage, creatorSecret);
+    await sharedPage.goto('/portfolio');
+    await ensureLoggedIn(sharedPage, creatorSecret);
+    await expect(sharedPage.getByRole('heading', { name: 'Your portfolio' })).toBeVisible();
+
+    const positionRow = sharedPage.locator('.position-row').filter({ hasText: market.title }).first();
+    await expect(positionRow).toBeVisible({ timeout: 15_000 });
+    // Position should have a real value (not "Mark only")
+    await expect(positionRow.getByText('Mark only')).toHaveCount(0);
+  });
 });

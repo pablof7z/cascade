@@ -382,7 +382,7 @@
   <section class="market-body">
     <article class="detail-section">
       <div class="detail-header">
-        <h3>The case</h3>
+        <h3>Market case</h3>
       </div>
 
       <div class="case-copy">

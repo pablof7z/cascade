@@ -105,7 +105,20 @@ async function ensureLoggedIn(page: Page, secretKey: string) {
   await waitForUserMenu(page);
 }
 
+async function setSignetCookie(page: Page) {
+  await page.context().addCookies([
+    {
+      name: 'cascade_edition',
+      value: 'signet',
+      domain: '127.0.0.1',
+      path: '/',
+      sameSite: 'Lax'
+    }
+  ]);
+}
+
 async function loginWithPrivateKey(page: Page, secretKey: string) {
+  await setSignetCookie(page);
   await page.goto('/portfolio');
   await ensureLoggedIn(page, secretKey);
 }
@@ -261,9 +274,9 @@ test('funded portfolio users can create a market, buy the other side, and withdr
   await expect(tradePanel.getByText('Available')).toBeVisible();
 
   await tradePanel.getByRole('button', { name: /^SHORT / }).click();
-  await expect(tradePanel.getByRole('button', { name: 'Buy SHORT' })).toBeVisible();
+  await expect(tradePanel.getByRole('button', { name: 'Mint SHORT' })).toBeVisible();
   await tradePanel.locator('input[type="number"]').first().fill('2500');
-  await tradePanel.getByRole('button', { name: 'Buy SHORT' }).click();
+  await tradePanel.getByRole('button', { name: 'Mint SHORT' }).click();
   await expect(tradePanel.getByText(`Bought SHORT on ${market.slug}.`)).toBeVisible();
 
   const rewroteBuyReceipt = await page.evaluate(() => {
@@ -297,9 +310,14 @@ test('funded portfolio users can create a market, buy the other side, and withdr
     await expect(tradePanel.getByText('Available')).toBeVisible();
   }
 
-  await tradePanel.getByRole('button', { name: /^SHORT / }).click();
-  await tradePanel.locator('input[type="number"]').nth(1).fill('1000');
-  const sellButton = tradePanel.getByRole('button', { name: 'Sell SHORT' });
+  // Enter exit mode for SHORT: select SHORT side if in mint mode, then switch to exit mode
+  const shortSideBtn = tradePanel.getByRole('button', { name: /^SHORT / });
+  if (await shortSideBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await shortSideBtn.click();
+  }
+  await tradePanel.getByRole('button', { name: 'Exit position' }).click();
+  await tradePanel.locator('input[type="number"]').first().fill('1000');
+  const sellButton = tradePanel.getByRole('button', { name: 'Exit SHORT position' });
   await expect(sellButton).toBeEnabled();
   await sellButton.click();
   await expect(tradePanel.getByText(/Sold SHORT on/)).toContainText(market.slug);

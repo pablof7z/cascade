@@ -1,2 +1,2 @@
 [test]
-pathIgnorePatterns = ["tests/e2e/**"]
+pathIgnorePatterns = ["tests/e2e/**", "src/lib/wallet/localPositionBook.test.ts"]

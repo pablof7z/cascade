@@ -7,7 +7,7 @@ _Last verified: 2026-04-16._
 - Web: `https://cascade.f7z.io`
 - Live mint + product API: `https://mint.f7z.io`
 - Practice mint + product API: `https://signet-mint.cascade.f7z.io`
-- Default Nostr relay: `wss://purplepag.es`
+- Default Nostr relays: `wss://purplepag.es,wss://relay.damus.io,wss://relay.primal.net`
 - Practice Cashu info: `https://signet-mint.cascade.f7z.io/v1/info`
 - Practice health check: `https://signet-mint.cascade.f7z.io/health`
 
@@ -22,7 +22,7 @@ PUBLIC_CASCADE_MAINNET_API_URL=https://mint.f7z.io
 PUBLIC_CASCADE_MAINNET_MINT_URL=https://mint.f7z.io
 PUBLIC_CASCADE_SIGNET_API_URL=https://signet-mint.cascade.f7z.io
 PUBLIC_CASCADE_SIGNET_MINT_URL=https://signet-mint.cascade.f7z.io
-PUBLIC_NOSTR_RELAYS=wss://purplepag.es
+PUBLIC_NOSTR_RELAYS=wss://purplepag.es,wss://relay.damus.io,wss://relay.primal.net
 ```
 
 ## Legacy Hosts

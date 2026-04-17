@@ -7,6 +7,7 @@
     { href: '/leaderboard', label: 'Leaderboard' },
     { href: '/analytics', label: 'Analytics' },
     { href: '/bookmarks', label: 'Bookmarks' },
+    { href: '/blog', label: 'Blog' },
     { href: '/how-it-works', label: 'How It Works' },
     { href: '/portfolio', label: 'Portfolio' },
     { href: '/builder', label: 'Create' }

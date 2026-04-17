@@ -1,6 +1,14 @@
-import { redirect } from '@sveltejs/kit';
+import { getAllPosts } from '$lib/blog/posts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-  throw redirect(308, '/');
+  const posts = getAllPosts();
+  return {
+    posts,
+    seo: {
+      title: 'Blog — Cascade',
+      description:
+        'Thinking on prediction markets, belief pricing, and the ideas behind Cascade.'
+    }
+  };
 };

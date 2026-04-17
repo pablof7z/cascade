@@ -113,7 +113,6 @@ export async function fetchMarketBySlug(
     40,
     edition
   );
-  if (trades.length === 0) return null;
   return withLatestPrice(marketFromRelay, trades);
 }
 

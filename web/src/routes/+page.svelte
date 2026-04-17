@@ -3,7 +3,7 @@
   import type { NDKEvent, NDKUserProfile, NostrEvent } from '@nostr-dev-kit/ndk';
   import { ndk } from '$lib/ndk/client';
   import { formatProductAmount } from '$lib/cascade/format';
-  import { getCascadeEdition } from '$lib/cascade/config';
+  import { getCascadeEdition, getAlternateEditionUrl } from '$lib/cascade/config';
   import {
     buildTradeSummary,
     formatRelativeTime,
@@ -32,6 +32,8 @@
   let searchQuery = $state('');
   const selectedEdition = $derived(getCascadeEdition(data.cascadeEdition ?? null));
   const eventKinds = $derived(getCascadeEventKinds(selectedEdition));
+  const isPracticeEdition = $derived(selectedEdition === 'signet');
+  const alternateEditionUrl = $derived(getAlternateEditionUrl(selectedEdition));
 
   const discussionFeed = ndk.$subscribe(() => {
     if (!browser) return undefined;
@@ -243,6 +245,17 @@
 
           <p class="max-w-prose text-neutral-400 leading-relaxed">{truncateText(sanitizeMarketCopy(featuredMarket.description || featuredMarket.body), 180)}</p>
         </a>
+      {:else if isPracticeEdition}
+        <div class="border-l-2 border-primary pl-6 grid gap-4">
+          <h2 class="max-w-[16ch] text-3xl font-bold leading-tight">Practice mode — paper money, real mechanics</h2>
+          <p class="text-neutral-400">No practice markets are live yet. Create one to try the full trading flow with paper funds — nothing real is at stake.</p>
+          <div class="flex items-center gap-4 flex-wrap">
+            <a class="btn btn-primary" href="/builder">Create a Practice Market</a>
+            {#if alternateEditionUrl}
+              <a class="btn btn-outline btn-sm" href={alternateEditionUrl}>Switch to Live →</a>
+            {/if}
+          </div>
+        </div>
       {:else}
         <div class="border-l-2 border-primary pl-6 grid gap-4">
           <h2 class="max-w-[12ch] text-3xl font-bold leading-tight">Be the first to create a market</h2>

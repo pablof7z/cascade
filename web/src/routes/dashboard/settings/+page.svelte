@@ -1,14 +1,29 @@
 <script lang="ts">
-  import { loadAgentSettings, saveAgentSettings } from '$lib/cascade/settings';
+  import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
+  import { loadAgentSettings, saveAgentSettings, type AgentSettings } from '$lib/cascade/settings';
 
-  const initial = loadAgentSettings();
-  let permission = $state<'propose-only' | 'trade-with-approval' | 'autonomous'>(initial.permission);
-  let capitalLimit = $state(initial.capitalLimit);
-  let notifyMeeting = $state(initial.notifyMeeting);
-  let notifyProposals = $state(initial.notifyProposals);
-  let notifyDigest = $state(initial.notifyDigest);
+  // Initialize with defaults (safe for SSR)
+  let permission: AgentSettings['permission'] = $state('propose-only');
+  let capitalLimit = $state('500');
+  let notifyMeeting = $state(true);
+  let notifyProposals = $state(true);
+  let notifyDigest = $state(false);
+
+  let loaded = $state(false);
+
+  onMount(() => {
+    const saved = loadAgentSettings();
+    permission = saved.permission;
+    capitalLimit = saved.capitalLimit;
+    notifyMeeting = saved.notifyMeeting;
+    notifyProposals = saved.notifyProposals;
+    notifyDigest = saved.notifyDigest;
+    loaded = true;
+  });
 
   $effect(() => {
+    if (!loaded) return; // Don't save before loaded
     saveAgentSettings({ permission, capitalLimit, notifyMeeting, notifyProposals, notifyDigest });
   });
 </script>
@@ -35,7 +50,7 @@
     {#if permission === 'autonomous'}
       <div class="settings-inline">
         <span>Capital limit</span>
-        <input bind:value={capitalLimit} type="number" />
+        <input bind:value={capitalLimit} type="number" min="0" step="1" />
       </div>
     {/if}
   </section>

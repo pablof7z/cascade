@@ -15,7 +15,7 @@
     type ProductTradeRequestStatus,
     type ProductTradeStatus
   } from '$lib/cascade/api';
-  import { NDKEvent, type NDKKind, type NostrEvent } from '@nostr-dev-kit/ndk';
+  import { NDKEvent, NDKRelaySet, type NDKKind, type NostrEvent } from '@nostr-dev-kit/ndk';
   import { formatUsdMinor } from '$lib/cascade/format';
   import { getCascadeEdition, getProductApiUrl, isPaperEdition } from '$lib/cascade/config';
   import { normalizeProductTradeSide } from '$lib/cascade/tradeSide';
@@ -37,6 +37,7 @@
   } from '$lib/cascade/builderMarkets';
   import { buildMarketEventTags } from '$lib/cascade/marketEventTags';
   import { ensureClientNdk, ndk } from '$lib/ndk/client';
+  import { DEFAULT_RELAYS } from '$lib/ndk/config';
   import {
     getCascadeEventKinds,
     parseMarketEvent,
@@ -571,15 +572,21 @@
         linkedMarkets
       });
 
+      const publishRelayUrls = DEFAULT_RELAYS.filter((r) => !r.includes('purplepag.es'));
+      const publishRelays = NDKRelaySet.fromRelayUrls(
+        publishRelayUrls.length ? publishRelayUrls : DEFAULT_RELAYS,
+        ndk
+      );
+
       if (!paperEdition) {
-        await marketEvent.publish();
+        await marketEvent.publish(publishRelays);
         await navigateToMarket(slug);
         return;
       }
 
       await marketEvent.sign();
       builderStatus = 'Publishing market.';
-      await marketEvent.publish();
+      await marketEvent.publish(publishRelays);
       const rawEvent = marketEvent.rawEvent();
       const eventId = rawEvent.id || marketEvent.id;
       if (!eventId) {

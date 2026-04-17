@@ -572,21 +572,31 @@
         linkedMarkets
       });
 
+      // Ensure relay connections are established before publishing.
+      // publishMarket() may be called before NDK has connected to explicit relays;
+      // waiting here gives WebSocket connections time to complete before the
+      // per-relay publish timeout begins.
+      await ensureClientNdk();
+
       const publishRelayUrls = DEFAULT_RELAYS.filter((r) => !r.includes('purplepag.es'));
       const publishRelays = NDKRelaySet.fromRelayUrls(
         publishRelayUrls.length ? publishRelayUrls : DEFAULT_RELAYS,
         ndk
       );
 
+      // Use a 10-second per-relay timeout. The NDK default (2500ms) is too short
+      // for initial WebSocket connections to public relays in CI/test environments.
+      const publishTimeoutMs = 10_000;
+
       if (!paperEdition) {
-        await marketEvent.publish(publishRelays);
+        await marketEvent.publish(publishRelays, publishTimeoutMs);
         await navigateToMarket(slug);
         return;
       }
 
       await marketEvent.sign();
       builderStatus = 'Publishing market.';
-      await marketEvent.publish(publishRelays);
+      await marketEvent.publish(publishRelays, publishTimeoutMs);
       const rawEvent = marketEvent.rawEvent();
       const eventId = rawEvent.id || marketEvent.id;
       if (!eventId) {

@@ -1,9 +1,16 @@
 <script lang="ts">
-  let permission = $state<'propose-only' | 'trade-with-approval' | 'autonomous'>('propose-only');
-  let capitalLimit = $state('500');
-  let notifyMeeting = $state(true);
-  let notifyProposals = $state(true);
-  let notifyDigest = $state(false);
+  import { loadAgentSettings, saveAgentSettings } from '$lib/cascade/settings';
+
+  const initial = loadAgentSettings();
+  let permission = $state<'propose-only' | 'trade-with-approval' | 'autonomous'>(initial.permission);
+  let capitalLimit = $state(initial.capitalLimit);
+  let notifyMeeting = $state(initial.notifyMeeting);
+  let notifyProposals = $state(initial.notifyProposals);
+  let notifyDigest = $state(initial.notifyDigest);
+
+  $effect(() => {
+    saveAgentSettings({ permission, capitalLimit, notifyMeeting, notifyProposals, notifyDigest });
+  });
 </script>
 
 <section class="settings-page">

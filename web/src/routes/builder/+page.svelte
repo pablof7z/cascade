@@ -36,7 +36,7 @@
     type AuthoredCreatorMarket
   } from '$lib/cascade/builderMarkets';
   import { buildMarketEventTags } from '$lib/cascade/marketEventTags';
-  import { ensureClientNdk, ndk } from '$lib/ndk/client';
+  import { ensureClientNdk, ndk, waitForAnyRelayConnected } from '$lib/ndk/client';
   import { DEFAULT_RELAYS } from '$lib/ndk/config';
   import {
     getCascadeEventKinds,
@@ -572,17 +572,19 @@
         linkedMarkets
       });
 
-      // Ensure relay connections are established before publishing.
-      // publishMarket() may be called before NDK has connected to explicit relays;
-      // waiting here gives WebSocket connections time to complete before the
-      // per-relay publish timeout begins.
       await ensureClientNdk();
 
       const publishRelayUrls = DEFAULT_RELAYS.filter((r) => !r.includes('purplepag.es'));
-      const publishRelays = NDKRelaySet.fromRelayUrls(
-        publishRelayUrls.length ? publishRelayUrls : DEFAULT_RELAYS,
-        ndk
-      );
+      const targetUrls = publishRelayUrls.length ? publishRelayUrls : DEFAULT_RELAYS;
+
+      // Wait until at least one publish relay is CONNECTED before handing off
+      // to NDK's per-relay publisher. ensureClientNdk() is cached and may have
+      // resolved on an earlier page load; relays can disconnect in the interim.
+      // Allow 15 s — generous enough for cold WebSocket handshakes without
+      // blocking the UI indefinitely on a broken network.
+      await waitForAnyRelayConnected(targetUrls, 15_000);
+
+      const publishRelays = NDKRelaySet.fromRelayUrls(targetUrls, ndk);
 
       // Use a 10-second per-relay timeout. The NDK default (2500ms) is too short
       // for initial WebSocket connections to public relays in CI/test environments.

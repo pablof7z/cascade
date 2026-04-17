@@ -46,21 +46,24 @@ test('mergeCreatorMarkets marks local pending markets as pending and keeps other
       slug: 'draft-market',
       title: 'Draft Market',
       visibility: 'pending',
-      created_at: 300
+      created_at: 300,
+      rawEvent: undefined
     },
     {
       event_id: 'public-event',
       slug: 'public-market',
       title: 'Public Market',
       visibility: 'public',
-      created_at: 200
+      created_at: 200,
+      rawEvent: undefined
     },
     {
       event_id: 'pending-event',
       slug: 'pending-market',
       title: 'Pending Market',
       visibility: 'pending',
-      created_at: 150
+      created_at: 150,
+      rawEvent: undefined
     }
   ]);
 });

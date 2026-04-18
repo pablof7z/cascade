@@ -2,6 +2,7 @@
   import { browser } from '$app/environment';
   import type { NDKEvent, NDKUserProfile, NostrEvent } from '@nostr-dev-kit/ndk';
   import { ndk } from '$lib/ndk/client';
+  import { trackEvent } from '$lib/analytics';
   import { formatProductAmount } from '$lib/cascade/format';
   import { getCascadeEdition, getAlternateEditionUrl } from '$lib/cascade/config';
   import {
@@ -192,6 +193,14 @@
     return [...map.values()];
   }
 
+  $effect(() => {
+    trackEvent('page_view', { path: '/' });
+  });
+
+  function entryClick(surface: string, destination: string, marketId?: string): void {
+    trackEvent('homepage_entry_click', { surface, destination, marketId });
+  }
+
   function authorLabel(pubkey: string): string {
     return displayName(profiles[pubkey], 'Cascade user');
   }
@@ -222,7 +231,7 @@
       </p>
 
       <div class="mt-8 flex items-center gap-4 flex-wrap">
-        <a class="btn btn-primary btn-lg" href="/join">Start Trading</a>
+        <a class="btn btn-primary btn-lg" href="/join" onclick={() => entryClick('hero_cta', '/join')}>Start Trading</a>
         <a class="text-sm text-base-content/60 hover:text-base-content transition-colors" href="/how-it-works">How it works →</a>
       </div>
     </div>
@@ -231,7 +240,7 @@
       <div class="text-xs text-base-content/40 uppercase tracking-widest font-semibold">Featured Thesis</div>
 
       {#if featuredMarket}
-        <a class="card card-border card-side bg-base-200 hover:bg-base-300 border-l-2 border-primary pl-6 grid gap-4 transition-colors" href={marketUrl(featuredMarket.slug)}>
+        <a class="card card-border card-side bg-base-200 hover:bg-base-300 border-l-2 border-primary pl-6 grid gap-4 transition-colors" href={marketUrl(featuredMarket.slug)} onclick={() => entryClick('featured_thesis', marketUrl(featuredMarket.slug), featuredMarket.id)}>
           <h2 class="max-w-[14ch] text-3xl font-bold leading-tight transition-colors group-hover:text-success">{featuredMarket.title}</h2>
 
           <div class="flex items-baseline gap-3">
@@ -418,7 +427,7 @@
 
       {#if primaryTrending}
         <div class="grid gap-0 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] border-y border-base-300">
-          <a class="grid gap-4 p-5 pr-6 md:border-r md:border-base-300 transition-colors duration-150 hover:bg-base-200" href={marketUrl(primaryTrending.slug)}>
+          <a class="grid gap-4 p-5 pr-6 md:border-r md:border-base-300 transition-colors duration-150 hover:bg-base-200" href={marketUrl(primaryTrending.slug)} onclick={() => entryClick('trending_row', marketUrl(primaryTrending.slug), primaryTrending.id)}>
             <span class="text-xs text-base-content/40 uppercase tracking-wide font-semibold text-success">#1 by volume</span>
             <h3 class="max-w-[14ch] text-3xl font-bold leading-tight">{primaryTrending.title}</h3>
 
@@ -447,7 +456,7 @@
 
             {#if rankedTrending.length > 0}
               {#each rankedTrending as market, index (market.id)}
-                <a class="hidden sm:grid grid-cols-[minmax(0,1.7fr)_0.55fr_0.6fr_0.55fr_0.55fr] gap-4 items-center pl-6 py-3 border-t border-base-300 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
+                <a class="hidden sm:grid grid-cols-[minmax(0,1.7fr)_0.55fr_0.6fr_0.55fr_0.55fr] gap-4 items-center pl-6 py-3 border-t border-base-300 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)} onclick={() => entryClick('trending_row', marketUrl(market.slug), market.id)}>
                   <div class="min-w-0 flex items-start gap-4">
                     <span class="font-mono text-sm text-base-content/40 leading-relaxed">{String(index + 2).padStart(2, '0')}</span>
                     <div class="min-w-0 grid">
@@ -494,7 +503,7 @@
                 {#each lowVolumeMarkets as market (market.id)}
                   <tr class="transition-colors duration-150 hover:bg-base-300/50 hover">
                     <td>
-                      <a class="block hover:text-white" href={marketUrl(market.slug)}>
+                      <a class="block hover:text-white" href={marketUrl(market.slug)} onclick={() => entryClick('trending_row', marketUrl(market.slug), market.id)}>
                         <span class="font-semibold text-white">{market.title}</span>
                         <span class="block text-xs text-base-content/40 mt-0.5 truncate max-w-sm">{truncateText(sanitizeMarketCopy(market.description || market.body), 80)}</span>
                       </a>
@@ -526,7 +535,7 @@
           {@const restDisputed = disputedMarkets.slice(1)}
 
           <div class="grid gap-4">
-            <a class="block border-y border-base-300 py-5 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(topDisputed.slug)}>
+            <a class="block border-y border-base-300 py-5 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(topDisputed.slug)} onclick={() => entryClick('most_disputed_row', marketUrl(topDisputed.slug), topDisputed.id)}>
               <h3 class="text-lg font-bold">{topDisputed.title}</h3>
               <div class="mt-2 flex items-baseline gap-3">
                 <span class="text-success font-mono text-4xl font-bold tracking-tight">{centsForMarket(topDisputed.id)}</span>
@@ -541,7 +550,7 @@
 
             <div class="divide-y divide-base-300">
               {#each restDisputed as market, index (market.id)}
-                <a class="flex items-center justify-between gap-4 py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
+                <a class="flex items-center justify-between gap-4 py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)} onclick={() => entryClick('most_disputed_row', marketUrl(market.slug), market.id)}>
                   <div class="flex items-center gap-3 min-w-0">
                     <span class="font-mono text-sm text-base-content/40">{String(index + 2).padStart(2, '0')}</span>
                     <span class="font-semibold truncate">{market.title}</span>
@@ -593,7 +602,7 @@
         <div class="divide-y divide-base-300 border-t border-base-300">
           {#if latestDiscussions.length > 0}
             {#each latestDiscussions as entry (entry.discussion.id)}
-              <a class="block py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketDiscussionUrl(entry.market.slug)}>
+              <a class="block py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketDiscussionUrl(entry.market.slug)} onclick={() => entryClick('latest_discussion_row', marketDiscussionUrl(entry.market.slug), entry.market.id)}>
                 <p class="text-sm text-base-content/70 leading-relaxed">{truncateText(entry.discussion.content, 120)}</p>
                 <div class="mt-1 flex items-center gap-2 text-xs text-base-content/40">
                   <span class="text-base-content/60">{authorLabel(entry.discussion.pubkey)}</span>

@@ -43,6 +43,7 @@
     unblindPreparedOutputs
   } from '$lib/wallet/cashuMint';
   import { applyLocalPositionTradeFromPayload } from '$lib/wallet/localPositionBook';
+  import { trackEvent } from '$lib/analytics';
   import { TradePanelState } from './tradePanelState';
 
   let {
@@ -514,6 +515,7 @@
         payload
       );
 
+      trackEvent('trade_placed', { action: 'buy', side: buySide, marketId, marketSlug });
       if (hasCompletedTradeSettlement(payload)) {
         clearTradeReceipt(requestId);
         setTradeStatus(TradePanelState.Complete, `Bought ${buySide.toUpperCase()} on ${marketSlug}.`);
@@ -654,6 +656,7 @@
         payload
       );
 
+      trackEvent('trade_placed', { action: 'sell', side: sellSide, marketId, marketSlug });
       if (hasCompletedTradeSettlement(payload)) {
         clearTradeReceipt(requestId);
         setTradeStatus(TradePanelState.Complete, `Sold ${sellSide.toUpperCase()} on ${marketSlug}.`);

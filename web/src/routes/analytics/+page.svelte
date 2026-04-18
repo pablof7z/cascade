@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
   import { getCascadeEdition } from '$lib/cascade/config';
   import { formatProductAmount } from '$lib/cascade/format';
   import {
@@ -12,6 +13,7 @@
     type MarketRecord,
     type TradeRecord
   } from '$lib/ndk/cascade';
+  import { getStoredEvents, type AnalyticsEvent } from '$lib/analytics';
   import type { PageProps } from './$types';
 
   let { data }: PageProps = $props();
@@ -97,6 +99,62 @@
   const visibleVolume = $derived(trades.reduce((sum, trade) => sum + trade.amount, 0));
   const activeMarketCount = $derived(marketRows.filter((row) => row.summary.tradeCount > 0).length);
   const uniqueAuthors = $derived(new Set([...markets.map((market) => market.pubkey), ...discussions.map((discussion) => discussion?.pubkey)]).size);
+
+  // ── Homepage Activation Funnel (client-side, session-based) ──
+  let storedEvents = $state<AnalyticsEvent[]>([]);
+
+  $effect(() => {
+    if (browser) storedEvents = getStoredEvents();
+  });
+
+  const funnelStages = $derived.by(() => {
+    if (storedEvents.length === 0) {
+      return { landingSessions: 0, clickedEntry: 0, viewedMarket: 0, openedDiscussion: 0, placedTrade: 0 };
+    }
+
+    // Group events by session, preserving insertion (time) order
+    const bySession = new Map<string, AnalyticsEvent[]>();
+    for (const event of storedEvents) {
+      const bucket = bySession.get(event.sessionId);
+      if (bucket) bucket.push(event);
+      else bySession.set(event.sessionId, [event]);
+    }
+
+    let landingSessions = 0;
+    let clickedEntry = 0;
+    let viewedMarket = 0;
+    let openedDiscussion = 0;
+    let placedTrade = 0;
+
+    for (const events of bySession.values()) {
+      const hasLanding = events.some((e) => e.name === 'page_view' && e.props.path === '/');
+      if (!hasLanding) continue;
+      landingSessions++;
+
+      const entryIdx = events.findIndex((e) => e.name === 'homepage_entry_click');
+      if (entryIdx === -1) continue;
+      clickedEntry++;
+
+      const marketIdx = events.findIndex((e, i) => i > entryIdx && e.name === 'market_view');
+      if (marketIdx === -1) continue;
+      viewedMarket++;
+
+      const discussionIdx = events.findIndex((e, i) => i > marketIdx && e.name === 'discussion_interaction');
+      if (discussionIdx === -1) continue;
+      openedDiscussion++;
+
+      const tradeIdx = events.findIndex((e, i) => i > discussionIdx && e.name === 'trade_placed');
+      if (tradeIdx === -1) continue;
+      placedTrade++;
+    }
+
+    return { landingSessions, clickedEntry, viewedMarket, openedDiscussion, placedTrade };
+  });
+
+  const activationRate = $derived.by(() => {
+    if (funnelStages.landingSessions === 0) return null;
+    return (funnelStages.openedDiscussion / funnelStages.landingSessions) * 100;
+  });
 </script>
 
 <div class="grid gap-4 max-w-[36rem] pt-4">
@@ -120,6 +178,45 @@
     </div>
   {/each}
 </div>
+
+<article class="grid gap-4 pt-8">
+  <div class="flex items-baseline justify-between gap-4">
+    <h2 class="text-[1.18rem] tracking-[-0.03em]">Homepage Activation Funnel</h2>
+    {#if activationRate !== null}
+      <span class="text-base-content/50 text-sm">
+        Landing → Discussion Activation Rate: <strong class="text-white font-mono">{activationRate.toFixed(1)}%</strong>
+      </span>
+    {/if}
+  </div>
+
+  <div class="border-t border-base-300">
+    {#each [
+      { label: 'Landing Sessions', count: funnelStages.landingSessions, description: 'Sessions that viewed the homepage' },
+      { label: 'Clicked Entry Point', count: funnelStages.clickedEntry, description: 'Sessions that clicked a market or CTA from the homepage' },
+      { label: 'Viewed Market', count: funnelStages.viewedMarket, description: 'Sessions that opened a market page after clicking' },
+      { label: 'Opened Discussion', count: funnelStages.openedDiscussion, description: 'Sessions that navigated to a discussion after viewing a market' },
+      { label: 'Placed Trade', count: funnelStages.placedTrade, description: 'Sessions that placed a trade after opening a discussion' },
+    ] as stage, index}
+      {@const barWidth = funnelStages.landingSessions > 0 ? (stage.count / funnelStages.landingSessions) * 100 : 0}
+      <div class="grid gap-2 border-t border-base-300 py-4">
+        <div class="flex items-baseline justify-between gap-4">
+          <div>
+            <span class="eyebrow">{index + 1}. {stage.label}</span>
+            <p class="mt-0.5 text-xs text-base-content/40">{stage.description}</p>
+          </div>
+          <strong class="text-white font-mono shrink-0">{stage.count}</strong>
+        </div>
+        <div class="h-1.5 w-full rounded-full bg-base-300">
+          <div class="h-1.5 rounded-full bg-primary transition-all" style="width: {barWidth.toFixed(1)}%"></div>
+        </div>
+      </div>
+    {/each}
+
+    {#if funnelStages.landingSessions === 0}
+      <div class="py-4 text-base-content/70 text-sm">No session data recorded in this browser yet. Visit the homepage to start tracking.</div>
+    {/if}
+  </div>
+</article>
 
 <div class="grid gap-10 pt-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
   <article class="grid gap-4">

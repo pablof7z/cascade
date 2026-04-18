@@ -22,7 +22,6 @@
     "@nostr-dev-kit/ndk": "^3.0.0",
     "@nostr-dev-kit/sessions": "^1.0.0",
     "@nostr-dev-kit/svelte": "^4.0.0",
-    "bits-ui": "^2.17.2",
     "marked": "^17.0.0",
     "qrcode": "^1.5.4",
     "sharp": "^0.34.5"

@@ -5,7 +5,6 @@
   import { createFetchEvent, createFetchUser } from '@nostr-dev-kit/svelte';
   import { NDKEvent, type NDKFilter, type NostrEvent } from '@nostr-dev-kit/ndk';
   import ArticleMarkdown from '$lib/components/ArticleMarkdown.svelte';
-  import * as Tabs from '$lib/components/ui/tabs';
   import { User } from '$lib/ndk/ui/user';
   import {
     articlePublishedAt,
@@ -319,16 +318,17 @@
       </p>
 
       {#if isArticle}
-        <Tabs.Root bind:value={activeTab} activationMode="manual">
-          <Tabs.List class="article-tabs-list" aria-label="Article views">
-            <Tabs.Trigger value="article">Article</Tabs.Trigger>
-            <Tabs.Trigger value="comments">
+        <div>
+          <div role="tablist" class="tabs tabs-bordered" aria-label="Article views">
+            <button role="tab" class="tab" class:tab-active={activeTab === 'article'} onclick={() => (activeTab = 'article')}>Article</button>
+            <button role="tab" class="tab" class:tab-active={activeTab === 'comments'} onclick={() => (activeTab = 'comments')}>
               <span>Comments</span>
               <span class="article-tab-count">{commentCount}</span>
-            </Tabs.Trigger>
-          </Tabs.List>
+            </button>
+          </div>
 
-          <Tabs.Content value="article" class="article-tab-panel">
+          {#if activeTab === 'article'}
+          <div class="article-tab-panel">
             <div>
               <ArticleMarkdown content={event.content} tags={event.tags} />
             </div>
@@ -370,9 +370,11 @@
                 </a>
               </div>
             </div>
-          </Tabs.Content>
+          </div>
+          {/if}
 
-          <Tabs.Content value="comments" class="article-tab-panel">
+          {#if activeTab === 'comments'}
+          <div class="article-tab-panel">
             <!-- Top-level comment form -->
             {#if currentUser}
               {#if replyingTo === null}
@@ -472,9 +474,10 @@
             {:else}
               <p class="muted" style="margin: 0;">No comments yet. Be the first.</p>
             {/if}
-          </Tabs.Content>
+          </div>
+          {/if}
 
-        </Tabs.Root>
+        </div>
       {:else}
         <pre class="document-copy">{event.content}</pre>
       {/if}
@@ -485,7 +488,7 @@
 
 <style>
   .article-container {
-    max-width: var(--content-width);
+    max-width: 48rem;
     margin: 0 auto;
     display: grid;
     gap: 1.35rem;
@@ -520,14 +523,14 @@
   }
 
   .bookmark-btn:hover {
-    color: var(--accent);
-    border-color: var(--accent);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
   }
 
   .bookmark-btn.bookmarked {
-    color: var(--accent);
-    border-color: var(--accent);
-    background: rgba(255, 103, 25, 0.06);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   }
 
   .bookmark-btn:active {
@@ -557,7 +560,7 @@
     box-sizing: border-box;
     padding: 0.75rem;
     border: 1px solid var(--color-neutral);
-    border-radius: var(--radius-sm);
+    border-radius: 0.375rem;
     background: var(--color-base-200);
     color: var(--color-base-content);
     font-size: 0.95rem;
@@ -657,7 +660,7 @@
   }
 
   .comment-reply-btn:hover {
-    color: var(--accent);
+    color: var(--color-primary);
   }
 
   /* nested indentation via left border line */
@@ -725,7 +728,7 @@
 
   .share-footer-btn:hover {
     border-color: var(--color-base-content);
-    background: var(--color-base-300, rgba(0, 0, 0, 0.03));
+    background: var(--color-base-300);
   }
 
   .share-footer-btn:active {

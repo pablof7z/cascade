@@ -3,7 +3,6 @@
   import { goto } from '$app/navigation';
   import { NDKNip07Signer, NDKNip46Signer, NDKPrivateKeySigner } from '@nostr-dev-kit/ndk';
   import { onDestroy, onMount } from 'svelte';
-  import * as Tabs from '$lib/components/ui/tabs';
   import ExtensionLoginForm from '$lib/features/auth/ExtensionLoginForm.svelte';
   import PrivateKeyLoginForm from '$lib/features/auth/PrivateKeyLoginForm.svelte';
   import RemoteLoginForm from '$lib/features/auth/RemoteLoginForm.svelte';
@@ -398,30 +397,34 @@
           <p>Sign in with the method or device you already use.</p>
         </div>
 
-        <Tabs.Root bind:value={mode}>
-          <Tabs.List class="auth-switcher join-switcher" aria-label="Sign-in methods">
-            <Tabs.Trigger value="extension" class="auth-switcher-button">This browser</Tabs.Trigger>
-            <Tabs.Trigger value="private-key" class="auth-switcher-button">Recovery key</Tabs.Trigger>
-            <Tabs.Trigger value="remote" class="auth-switcher-button">Pair app</Tabs.Trigger>
-          </Tabs.List>
+        <div role="tablist" class="tabs tabs-bordered auth-switcher join-switcher" aria-label="Sign-in methods">
+          <button role="tab" class="tab auth-switcher-button" class:tab-active={mode === 'extension'} onclick={() => (mode = 'extension')}>This browser</button>
+          <button role="tab" class="tab auth-switcher-button" class:tab-active={mode === 'private-key'} onclick={() => (mode = 'private-key')}>Recovery key</button>
+          <button role="tab" class="tab auth-switcher-button" class:tab-active={mode === 'remote'} onclick={() => (mode = 'remote')}>Pair app</button>
+        </div>
 
-          <Tabs.Content value="extension" class="auth-mode-panel join-auth-mode">
+        {#if mode === 'extension'}
+          <div class="auth-mode-panel join-auth-mode">
             <ExtensionLoginForm
               hasExtension={extensionAvailable}
               {pending}
               onLogin={loginWithExtension}
             />
-          </Tabs.Content>
+          </div>
+        {/if}
 
-          <Tabs.Content value="private-key" class="auth-mode-panel join-auth-mode">
+        {#if mode === 'private-key'}
+          <div class="auth-mode-panel join-auth-mode">
             <PrivateKeyLoginForm
               bind:secretKey={privateKey}
               {pending}
               onLogin={loginWithPrivateKey}
             />
-          </Tabs.Content>
+          </div>
+        {/if}
 
-          <Tabs.Content value="remote" class="auth-mode-panel join-auth-mode">
+        {#if mode === 'remote'}
+          <div class="auth-mode-panel join-auth-mode">
             <RemoteLoginForm
               bind:bunkerUri
               {connectingBunker}
@@ -432,8 +435,8 @@
               onLoginWithBunker={loginWithBunker}
               onStartRemoteSigner={startRemoteSigner}
             />
-          </Tabs.Content>
-        </Tabs.Root>
+          </div>
+        {/if}
 
         {#if authError}
           <p class="error" style="margin: 0;">{authError}</p>
@@ -512,7 +515,7 @@
     gap: 1.25rem;
     align-content: start;
     padding: 0 0 2rem;
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
+    border-top: 1px solid var(--color-base-300);
   }
 
   .join-label {
@@ -544,8 +547,8 @@
     display: grid;
     gap: 0.85rem;
     padding: 1rem;
-    border: 1px solid rgba(64, 64, 64, 0.9);
-    background: rgba(23, 23, 23, 0.9);
+    border: 1px solid var(--color-neutral);
+    background: var(--color-base-200);
   }
 
   .join-status strong,
@@ -625,7 +628,7 @@
 
   .join-footnote {
     padding-top: 0.25rem;
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
+    border-top: 1px solid var(--color-base-300);
   }
 
   .join-footnote p {

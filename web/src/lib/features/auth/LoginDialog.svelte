@@ -2,8 +2,6 @@
   import { goto } from '$app/navigation';
   import { NDKNip07Signer, NDKNip46Signer, NDKPrivateKeySigner } from '@nostr-dev-kit/ndk';
   import { onDestroy } from 'svelte';
-  import * as Dialog from '$lib/components/ui/dialog';
-  import * as Tabs from '$lib/components/ui/tabs';
   import { ndk } from '$lib/ndk/client';
   import ExtensionLoginForm from './ExtensionLoginForm.svelte';
   import PrivateKeyLoginForm from './PrivateKeyLoginForm.svelte';
@@ -159,55 +157,63 @@
 </script>
 
 <div class="auth-panel">
-  <Dialog.Root bind:open>
-    <div class="auth-guest-actions">
-      <button class="btn btn-primary auth-join" type="button" onclick={startJoin}>Join</button>
-      <Dialog.Trigger class="btn btn-outline auth-trigger">Log in</Dialog.Trigger>
-    </div>
+  <div class="auth-guest-actions">
+    <button class="btn btn-primary auth-join" type="button" onclick={startJoin}>Join</button>
+    <button class="btn btn-outline auth-trigger" type="button" onclick={() => (open = true)}>Log in</button>
+  </div>
 
-    <Dialog.Content class="auth-dialog">
+  <dialog class="modal" class:modal-open={open}>
+    <div class="modal-box bg-base-200 auth-dialog">
       <div class="auth-dialog-chrome">
         <div class="auth-dialog-handle" aria-hidden="true"></div>
 
-        <Dialog.Header class="auth-dialog-header">
-          <Dialog.Title>Log in</Dialog.Title>
-          <Dialog.Description>
+        <div class="auth-dialog-header pt-1">
+          <h3 class="text-lg font-semibold">Log in</h3>
+          <p class="text-sm text-base-content/60">
             Choose how you want to log in. Your session stays on this device.
-          </Dialog.Description>
-        </Dialog.Header>
+          </p>
+        </div>
 
-        <Dialog.Close class="btn btn-ghost btn-sm rounded-md px-0 text-neutral-400 hover:bg-base-300 hover:text-white" aria-label="Close login">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
+        <button
+          class="btn btn-ghost btn-sm rounded-md px-0 text-base-content/50 hover:bg-base-300 hover:text-white"
+          aria-label="Close login"
+          onclick={() => (open = false)}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
-        </Dialog.Close>
+        </button>
       </div>
 
       <div class="auth-dialog-body">
-        <Tabs.Root bind:value={mode}>
-          <Tabs.List class="auth-switcher" aria-label="Login methods">
-            <Tabs.Trigger value="extension" class="auth-switcher-button">This browser</Tabs.Trigger>
-            <Tabs.Trigger value="private-key" class="auth-switcher-button">Recovery key</Tabs.Trigger>
-            <Tabs.Trigger value="remote" class="auth-switcher-button">Pair app</Tabs.Trigger>
-          </Tabs.List>
+        <div role="tablist" class="tabs tabs-bordered auth-switcher" aria-label="Login methods">
+          <button role="tab" class="tab auth-switcher-button" class:tab-active={mode === 'extension'} onclick={() => (mode = 'extension')}>This browser</button>
+          <button role="tab" class="tab auth-switcher-button" class:tab-active={mode === 'private-key'} onclick={() => (mode = 'private-key')}>Recovery key</button>
+          <button role="tab" class="tab auth-switcher-button" class:tab-active={mode === 'remote'} onclick={() => (mode = 'remote')}>Pair app</button>
+        </div>
 
-          <Tabs.Content value="extension" class="auth-mode-panel">
+        {#if mode === 'extension'}
+          <div class="auth-mode-panel">
             <ExtensionLoginForm
               hasExtension={extensionAvailable}
               {pending}
               onLogin={loginWithExtension}
             />
-          </Tabs.Content>
+          </div>
+        {/if}
 
-          <Tabs.Content value="private-key" class="auth-mode-panel">
+        {#if mode === 'private-key'}
+          <div class="auth-mode-panel">
             <PrivateKeyLoginForm
               bind:secretKey={privateKey}
               {pending}
               onLogin={loginWithPrivateKey}
             />
-          </Tabs.Content>
+          </div>
+        {/if}
 
-          <Tabs.Content value="remote" class="auth-mode-panel">
+        {#if mode === 'remote'}
+          <div class="auth-mode-panel">
             <RemoteLoginForm
               bind:bunkerUri
               {connectingBunker}
@@ -218,13 +224,16 @@
               onLoginWithBunker={loginWithBunker}
               onStartRemoteSigner={startRemoteSigner}
             />
-          </Tabs.Content>
-        </Tabs.Root>
+          </div>
+        {/if}
 
         {#if error}
           <p class="error" style="margin: 0;">{error}</p>
         {/if}
       </div>
-    </Dialog.Content>
-  </Dialog.Root>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button onclick={() => (open = false)} aria-label="Close dialog">close</button>
+    </form>
+  </dialog>
 </div>

@@ -28,5 +28,15 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.cookies.get(CASCADE_EDITION_COOKIE) ?? null
   );
 
-  return resolve(event);
+  const response = await resolve(event);
+
+  // Pages are edition-sensitive: the cascade_edition cookie controls which
+  // markets/trades are shown. Without Vary: Cookie, browsers serve a cached
+  // mainnet page even after the user switches to Practice (or vice versa).
+  const existingVary = response.headers.get('vary');
+  if (!existingVary?.includes('Cookie')) {
+    response.headers.set('vary', existingVary ? `${existingVary}, Cookie` : 'Cookie');
+  }
+
+  return response;
 };

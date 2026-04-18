@@ -7,7 +7,7 @@
     type NDKUserProfile,
     type NostrEvent
   } from '@nostr-dev-kit/ndk';
-  import { onDestroy } from 'svelte';
+
   import { ndk, ensureClientNdk } from '$lib/ndk/client';
   import { cleanText, displayName, profileIdentifier } from '$lib/ndk/format';
   import { sanitizeProfileForPublish } from '$lib/ndk/profilePublish';
@@ -387,9 +387,11 @@
       });
   });
 
-  onDestroy(() => {
-    clearAvatarPreview();
-    clearBannerPreview();
+  $effect(() => {
+    return () => {
+      clearAvatarPreview();
+      clearBannerPreview();
+    };
   });
 </script>
 

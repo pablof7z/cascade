@@ -163,21 +163,23 @@
   </div>
 
   <dialog class="modal" class:modal-open={open}>
-    <div class="modal-box bg-base-200 p-0 auth-dialog">
+    <div class="modal-box bg-base-200 auth-dialog">
       <div class="auth-dialog-chrome">
         <div class="auth-dialog-handle" aria-hidden="true"></div>
 
-        <div class="auth-dialog-header">
-          <h3 class="text-lg font-semibold text-white">Log in</h3>
-          <p class="muted text-sm">Choose how you want to log in. Your session stays on this device.</p>
+        <div class="auth-dialog-header pt-1">
+          <h3 class="text-lg font-semibold">Log in</h3>
+          <p class="text-sm text-base-content/60">
+            Choose how you want to log in. Your session stays on this device.
+          </p>
         </div>
 
         <button
-          class="btn btn-ghost btn-sm rounded-md px-0 text-neutral-400 hover:bg-base-300 hover:text-white"
+          class="btn btn-ghost btn-sm rounded-md px-0 text-base-content/50 hover:bg-base-300 hover:text-white"
           aria-label="Close login"
           onclick={() => (open = false)}
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </button>
@@ -231,7 +233,7 @@
       </div>
     </div>
     <form method="dialog" class="modal-backdrop">
-      <button aria-label="Close dialog" onclick={() => (open = false)}>close</button>
+      <button onclick={() => (open = false)} aria-label="Close dialog">close</button>
     </form>
   </dialog>
 </div>

@@ -33,36 +33,42 @@
 </script>
 
 <div
-  class="pp-card"
+  class="card card-border bg-base-200 overflow-hidden"
   style:background-color={backgroundColor || undefined}
   style:color={foregroundColor || undefined}
 >
   {#if bannerUrl}
-    <div class="pp-banner">
-      <img src={bannerUrl} alt="" />
-    </div>
+    <figure class="aspect-[3/1] overflow-hidden bg-base-300">
+      <img src={bannerUrl} alt="" class="w-full h-full object-cover" width="300" height="100" />
+    </figure>
   {:else}
-    <div class="pp-banner pp-banner-empty"></div>
+    <div class="aspect-[3/1] bg-base-300"></div>
   {/if}
 
-  <div class="pp-body">
-    <div class="pp-avatar-wrap">
+  <div class="card-body gap-2 items-center text-center pt-0">
+    <div class="-mt-8">
       {#if avatarUrl}
-        <img class="pp-avatar" src={avatarUrl} alt={name || 'Avatar'} />
+        <div class="avatar">
+          <div class="h-16 w-16 rounded-full border-4 border-base-200">
+            <img src={avatarUrl} alt={name || 'Avatar'} width="64" height="64" class="object-cover" />
+          </div>
+        </div>
       {:else}
-        <div class="pp-avatar pp-avatar-placeholder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-          </svg>
+        <div class="avatar avatar-placeholder">
+          <div class="h-16 w-16 rounded-full border-4 border-base-200 bg-base-300 text-base-content/60">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-7 h-7">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+            </svg>
+          </div>
         </div>
       {/if}
     </div>
 
-    <h2 class="pp-name">{name || 'Your Name'}</h2>
-    <p class="pp-bio">{bio || 'Your bio will appear here.'}</p>
+    <h2 class="text-lg font-bold font-serif">{name || 'Your Name'}</h2>
+    <p class="text-sm opacity-80 max-w-[36ch]">{bio || 'Your bio will appear here.'}</p>
 
-    <div class="pp-meta">
+    <div class="flex flex-wrap justify-center gap-2 text-xs opacity-60">
       {#if nip05}
         <span>{nip05}</span>
       {/if}
@@ -72,12 +78,12 @@
     </div>
 
     {#if customFields.length > 0}
-      <div class="pp-custom-fields">
+      <div class="w-full border-t border-base-300 mt-2 pt-2 grid gap-1">
         {#each customFields as field (field.key)}
           {#if field.key && field.value}
-            <div class="pp-custom-row">
-              <span class="pp-custom-key">{field.key}</span>
-              <span class="pp-custom-value">{field.value}</span>
+            <div class="grid grid-cols-[5rem_1fr] gap-2 text-left text-xs">
+              <span class="opacity-60 uppercase tracking-[0.04em] text-[0.72rem]">{field.key}</span>
+              <span>{field.value}</span>
             </div>
           {/if}
         {/each}
@@ -85,113 +91,3 @@
     {/if}
   </div>
 </div>
-
-<style>
-  .pp-card {
-    border: 1px solid var(--color-neutral);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    background: var(--color-base-200);
-  }
-
-  .pp-banner {
-    aspect-ratio: 3 / 1;
-    overflow: hidden;
-    background: var(--color-base-300);
-  }
-
-  .pp-banner img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .pp-banner-empty {
-    background: linear-gradient(135deg, var(--color-base-300) 0%, color-mix(in srgb, var(--color-neutral) 72%, white 10%) 100%);
-  }
-
-  .pp-body {
-    display: grid;
-    gap: 0.5rem;
-    padding: 0 1rem 1.25rem;
-    text-align: center;
-    justify-items: center;
-  }
-
-  .pp-avatar-wrap {
-    margin-top: -2rem;
-  }
-
-  .pp-avatar {
-    width: 4rem;
-    height: 4rem;
-    border-radius: 9999px;
-    border: 3px solid var(--color-base-200);
-    object-fit: cover;
-    background: var(--color-base-300);
-  }
-
-  .pp-avatar-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-neutral-content);
-  }
-
-  .pp-avatar-placeholder svg {
-    width: 1.75rem;
-    height: 1.75rem;
-  }
-
-  .pp-name {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: inherit;
-    font-family: var(--font-serif);
-  }
-
-  .pp-bio {
-    margin: 0;
-    font-size: 0.88rem;
-    color: inherit;
-    opacity: 0.8;
-    max-width: 36ch;
-  }
-
-  .pp-meta {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.6rem;
-    font-size: 0.78rem;
-    opacity: 0.6;
-  }
-
-  .pp-custom-fields {
-    width: 100%;
-    border-top: 1px solid var(--color-neutral);
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-  }
-
-  .pp-custom-row {
-    display: grid;
-    grid-template-columns: 5rem 1fr;
-    gap: 0.5rem;
-    padding: 0.3rem 0;
-    text-align: left;
-    font-size: 0.78rem;
-  }
-
-  .pp-custom-key {
-    opacity: 0.6;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-size: 0.72rem;
-  }
-
-  .pp-custom-value {
-    color: inherit;
-  }
-</style>

@@ -14,61 +14,32 @@
     ndk,
     pubkey,
     timestamp,
-    fallbackName = 'Someone',
-    avatarClass = 'article-author-avatar article-author-avatar-compact'
+    fallbackName = 'Someone'
   }: Props = $props();
 
   const dateLabel = $derived(
-    timestamp ? new Date(timestamp * 1000).toLocaleString() : 'Undated'
+    timestamp
+      ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
+          new Date(timestamp * 1000)
+        )
+      : 'Undated'
   );
 </script>
 
-<div class="event-author-header">
+<div class="flex items-center gap-2">
   <User.Root {ndk} {pubkey}>
-    <a class="event-author-avatar-link" href={`/p/${pubkey}`}>
-      <User.Avatar class={avatarClass} />
+    <a class="flex-shrink-0" href={`/p/${pubkey}`}>
+      <div class="avatar">
+        <div class="h-8 w-8 rounded-full">
+          <User.Avatar />
+        </div>
+      </div>
     </a>
-    <div class="event-author-header-copy">
-      <a class="event-author-name" href={`/p/${pubkey}`}>
+    <div class="flex flex-wrap items-baseline gap-1.5 min-w-0">
+      <a class="text-sm font-bold text-white hover:text-primary" href={`/p/${pubkey}`}>
         <User.Name fallback={fallbackName} />
       </a>
-      <span class="event-author-date">{dateLabel}</span>
+      <span class="text-xs text-base-content/60">{dateLabel}</span>
     </div>
   </User.Root>
 </div>
-
-<style>
-  .event-author-header {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-  }
-
-  .event-author-avatar-link {
-    flex-shrink: 0;
-  }
-
-  .event-author-header-copy {
-    display: flex;
-    align-items: baseline;
-    gap: 0.55rem;
-    flex-wrap: wrap;
-    min-width: 0;
-  }
-
-  .event-author-name {
-    font-size: 0.88rem;
-    font-weight: 700;
-    color: white;
-    text-decoration: none;
-  }
-
-  .event-author-name:hover {
-    color: var(--accent);
-  }
-
-  .event-author-date {
-    font-size: 0.78rem;
-    color: var(--color-neutral-content);
-  }
-</style>

@@ -54,30 +54,16 @@
 </script>
 
 {#if user && href}
-  <a data-mention="" class={`mention ${className}`} href={href} onclick={handleClick}>
+  <a
+    data-mention=""
+    class={`inline-flex items-center text-primary underline underline-offset-2 decoration-primary/30 hover:decoration-primary/70 ${className}`}
+    href={href}
+    onclick={handleClick}
+  >
     <User.Root {ndk} {user}>
-      @<User.Name class="mention-name" field="name" fallback="someone" />
+      @<User.Name class="inline" field="name" fallback="someone" />
     </User.Root>
   </a>
 {:else}
-  <span data-mention="" class={`mention ${className}`}>@someone</span>
+  <span data-mention="" class={`inline-flex items-center text-primary ${className}`}>@someone</span>
 {/if}
-
-<style>
-  .mention {
-    display: inline-flex;
-    align-items: center;
-    color: white;
-    text-decoration: underline;
-    text-decoration-color: rgba(17, 17, 17, 0.25);
-    text-underline-offset: 0.16em;
-  }
-
-  .mention:hover {
-    text-decoration-color: rgba(17, 17, 17, 0.5);
-  }
-
-  .mention-name {
-    display: inline;
-  }
-</style>

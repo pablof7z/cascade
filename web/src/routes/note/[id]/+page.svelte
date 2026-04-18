@@ -411,7 +411,6 @@
                           pubkey={node.event.pubkey}
                           timestamp={node.event.created_at}
                           fallbackName="Commenter"
-                          avatarClass="article-author-avatar comment-avatar"
                         />
                       </div>
 

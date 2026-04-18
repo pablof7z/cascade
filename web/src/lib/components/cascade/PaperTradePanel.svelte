@@ -104,6 +104,7 @@
   const sellQuantityValid = $derived(
     hasPosition && parsedSellQuantity > 0 && parsedSellQuantity <= (currentPosition?.quantity ?? 0)
   );
+
   function proofMintUrl(): string {
     return getProductApiUrl(selectedEdition).replace(/\/+$/, '');
   }
@@ -577,8 +578,6 @@
       if (!spendProofs.length) {
         throw new Error(`Not enough ${sellSide.toUpperCase()} available on this device to sell.`);
       }
-      // For zero-value sells (position worth nothing after fees), skip USD output preparation.
-      // The trade completes successfully but issues no USD tokens.
       const { outputs: issuedOutputs, preparation: issuedPreparation } =
         quote.net_minor > 0
           ? await prepareProofOutputs(proofMintUrl(), 'usd', quote.net_minor)
@@ -658,7 +657,6 @@
       if (hasCompletedTradeSettlement(payload)) {
         clearTradeReceipt(requestId);
         setTradeStatus(TradePanelState.Complete, `Sold ${sellSide.toUpperCase()} on ${marketSlug}.`);
-        // Switch to mint mode if we sold all shares
         if (quantity >= currentPosition.quantity) {
           tradeMode = 'mint';
         }
@@ -683,355 +681,181 @@
   });
 </script>
 
-<aside class="trade-panel" data-state={tradePanelState}>
+<div class="grid gap-4" data-state={tradePanelState}>
   {#if currentUser}
-    <div class="trade-balance">
-      <span>Available</span>
-      <strong>{formatUsdMinor(availableMinor)}</strong>
+    <div class="flex items-center justify-between text-sm">
+      <span class="text-base-content/60">Available</span>
+      <strong class="font-mono">{formatUsdMinor(availableMinor)}</strong>
     </div>
   {/if}
 
-    <!-- Mode tabs -->
-    <div class="trade-mode-tabs">
-      <button
-        class={tradeMode === 'mint' ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
-        onclick={() => { tradeMode = 'mint'; errorMessage = ''; validationError = ''; }}
-      >
-        Mint LONG/SHORT
-      </button>
-      <button
-        class={tradeMode === 'exit' ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
-        onclick={() => { tradeMode = 'exit'; errorMessage = ''; validationError = ''; }}
-        disabled={!hasPosition}
-      >
-        Exit position
-      </button>
-    </div>
+  <!-- Mode tabs -->
+  <div role="tablist" class="tabs tabs-boxed">
+    <button
+      role="tab"
+      class="tab"
+      class:tab-active={tradeMode === 'mint'}
+      onclick={() => { tradeMode = 'mint'; errorMessage = ''; validationError = ''; }}
+    >
+      Mint LONG/SHORT
+    </button>
+    <button
+      role="tab"
+      class="tab"
+      class:tab-active={tradeMode === 'exit'}
+      onclick={() => { tradeMode = 'exit'; errorMessage = ''; validationError = ''; }}
+      disabled={!hasPosition}
+    >
+      Exit position
+    </button>
+  </div>
 
-    {#if tradeMode === 'mint'}
-      <div class="trade-form">
-        <!-- Side selection -->
-        <div class="trade-field-compact">
-          <span class="trade-label">Side</span>
-          <div class="trade-side-row">
-            <button
-              class={buySide === 'long' ? 'btn btn-primary' : 'btn btn-outline'}
-              type="button"
-              onclick={() => { buySide = 'long'; updateBuyPreview(); }}
-            >
-              LONG {formatProbability(yesProbability)}
-            </button>
-            <button
-              class={buySide === 'short' ? 'btn btn-error' : 'btn btn-outline'}
-              type="button"
-              onclick={() => { buySide = 'short'; updateBuyPreview(); }}
-            >
-              SHORT {formatProbability(noProbability)}
-            </button>
-          </div>
+  {#if tradeMode === 'mint'}
+    <div class="grid gap-4">
+      <!-- Side selection -->
+      <div class="grid gap-2">
+        <span class="text-sm font-medium">Side</span>
+        <div class="grid grid-cols-2 gap-3">
+          <button
+            class={buySide === 'long' ? 'btn btn-primary' : 'btn btn-outline'}
+            type="button"
+            onclick={() => { buySide = 'long'; updateBuyPreview(); }}
+          >
+            LONG {formatProbability(yesProbability)}
+          </button>
+          <button
+            class={buySide === 'short' ? 'btn btn-error' : 'btn btn-outline'}
+            type="button"
+            onclick={() => { buySide = 'short'; updateBuyPreview(); }}
+          >
+            SHORT {formatProbability(noProbability)}
+          </button>
         </div>
+      </div>
 
-        <!-- Amount input with tight coupling -->
-        <div class="trade-field-tight">
-          <div class="trade-field-header">
-            <span class="trade-label">Amount to spend</span>
-            <span class="trade-helper">Max: {maxBuyAmount}</span>
-          </div>
-          <div class="trade-input-group">
-            <span class="trade-input-prefix">$</span>
+      <!-- Amount input -->
+      <div class="grid gap-1.5">
+        <div class="flex items-baseline justify-between">
+          <span class="text-sm font-medium">Amount to spend</span>
+          <span class="text-xs text-base-content/50">Max: {maxBuyAmount}</span>
+        </div>
+        <label class="form-control">
+          <div class="join w-full">
+            <span class="join-item btn btn-ghost btn-sm no-animation border border-base-300 px-3">$</span>
             <input
-              class="input input-bordered trade-input-amount"
+              class="input input-bordered join-item flex-1"
               bind:value={buySpend}
               oninput={() => { validationError = ''; updateBuyPreview(); }}
               placeholder="25.00"
               type="number"
               min="1"
               step="1"
+              inputmode="decimal"
             />
-            <span class="trade-input-suffix">USD</span>
+            <span class="join-item btn btn-ghost btn-sm no-animation border border-base-300 px-3">USD</span>
           </div>
-          <span class="trade-constraint">Minimum: $1.00 • Step: $1.00</span>
+        </label>
+        <span class="text-xs text-base-content/50">Minimum: $1.00 • Step: $1.00</span>
 
-          {#if validationError}<p class="trade-error-inline">{validationError}</p>{/if}
-          {#if tradePreview?.quantity}
-            <div class="trade-preview">
-              <span>↓</span>
-              <span>You'll receive ~{tradePreview.quantity.toFixed(2)} shares</span>
-            </div>
-          {/if}
+        {#if validationError}
+          <p class="text-error text-sm">{validationError}</p>
+        {/if}
+        {#if tradePreview?.quantity}
+          <div class="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
+            <span>↓</span>
+            <span>You'll receive ~{tradePreview.quantity.toFixed(2)} shares</span>
+          </div>
+        {/if}
 
-          {#if currentUser}
-            <button class="btn btn-primary w-full" onclick={buy} disabled={!buySpendValid}>
-              Mint {buySide === 'long' ? 'LONG' : 'SHORT'}
-            </button>
-          {:else}
-            <a href="/join" class="trade-signin-link">Sign in to trade →</a>
-          {/if}
+        {#if currentUser}
+          <button class="btn btn-primary w-full" onclick={buy} disabled={!buySpendValid}>
+            Mint {buySide === 'long' ? 'LONG' : 'SHORT'}
+          </button>
+        {:else}
+          <a href="/join" class="btn btn-outline w-full">Sign in to trade →</a>
+        {/if}
 
-          {#if statusMessage}<p class="trade-status-inline">{statusMessage}</p>{/if}
-          {#if errorMessage}<p class="trade-error-inline">{errorMessage}</p>{/if}
-        </div>
+        {#if statusMessage}
+          <p class="rounded-md bg-success/10 px-3 py-2 text-sm text-success">{statusMessage}</p>
+        {/if}
+        {#if errorMessage}
+          <p class="rounded-md bg-error/10 px-3 py-2 text-sm text-error">{errorMessage}</p>
+        {/if}
       </div>
-    {:else}
-      <div class="trade-form">
-        {#if hasPosition && currentPosition}
-          <!-- Position summary -->
-          <div class="trade-position-summary">
-            <div class="trade-position-row">
-              <span class="trade-label">Position</span>
-              <strong>{currentPosition.quantity.toFixed(2)} {currentPosition.side === 'long' ? 'LONG' : 'SHORT'} shares</strong>
-            </div>
-            <div class="trade-position-row">
-              <span class="trade-label-muted">Current price</span>
-              <span>{formatProbability(currentPosition.side === 'long' ? yesProbability : noProbability)}</span>
-            </div>
+    </div>
+  {:else}
+    <div class="grid gap-4">
+      {#if hasPosition && currentPosition}
+        <!-- Position summary -->
+        <div class="rounded-md bg-base-300 p-3 grid gap-1.5">
+          <div class="flex items-baseline justify-between">
+            <span class="text-sm font-medium">Position</span>
+            <strong class="font-mono text-sm">{currentPosition.quantity.toFixed(2)} {currentPosition.side === 'long' ? 'LONG' : 'SHORT'} shares</strong>
           </div>
+          <div class="flex items-baseline justify-between">
+            <span class="text-xs text-base-content/50">Current price</span>
+            <span class="text-sm">{formatProbability(currentPosition.side === 'long' ? yesProbability : noProbability)}</span>
+          </div>
+        </div>
 
-          <!-- Quantity input with tight coupling -->
-          <div class="trade-field-tight">
-            <div class="trade-field-header">
-              <span class="trade-label">Quantity to exit</span>
-              <button class="trade-action-link" onclick={() => { if (currentPosition) { sellQuantity = currentPosition.quantity.toString(); updateSellPreview(); } }}>
-                Exit all
-              </button>
-            </div>
-            <div class="trade-input-group">
+        <!-- Quantity input -->
+        <div class="grid gap-1.5">
+          <div class="flex items-baseline justify-between">
+            <span class="text-sm font-medium">Quantity to exit</span>
+            <button
+              class="text-xs text-primary underline underline-offset-2 cursor-pointer bg-transparent border-none p-0"
+              onclick={() => { if (currentPosition) { sellQuantity = currentPosition.quantity.toString(); updateSellPreview(); } }}
+            >
+              Exit all
+            </button>
+          </div>
+          <label class="form-control">
+            <div class="join w-full">
               <input
-                class="input input-bordered trade-input-quantity"
+                class="input input-bordered join-item flex-1"
                 bind:value={sellQuantity}
                 oninput={() => { validationError = ''; updateSellPreview(); }}
                 placeholder={currentPosition.quantity.toFixed(2)}
                 type="number"
                 min="0"
                 step="0.01"
+                inputmode="decimal"
               />
-              <span class="trade-input-suffix">shares</span>
+              <span class="join-item btn btn-ghost btn-sm no-animation border border-base-300 px-3">shares</span>
             </div>
-            <span class="trade-constraint">Max: {currentPosition.quantity.toFixed(2)} shares</span>
+          </label>
+          <span class="text-xs text-base-content/50">Max: {currentPosition.quantity.toFixed(2)} shares</span>
 
-            {#if validationError}<p class="trade-error-inline">{validationError}</p>{/if}
-            {#if tradePreview?.amount}
-              <div class="trade-preview">
-                <span>↓</span>
-                <span>You'll receive ~{formatUsdMinor(tradePreview.amount)}</span>
-              </div>
-            {/if}
+          {#if validationError}
+            <p class="text-error text-sm">{validationError}</p>
+          {/if}
+          {#if tradePreview?.amount}
+            <div class="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
+              <span>↓</span>
+              <span>You'll receive ~{formatUsdMinor(tradePreview.amount)}</span>
+            </div>
+          {/if}
 
-            {#if currentUser}
-              <button class="btn btn-outline w-full" onclick={sell} disabled={!sellQuantityValid}>
-                Exit {currentPosition.side === 'long' ? 'LONG' : 'SHORT'} position
-              </button>
-            {:else}
-              <a href="/join" class="trade-signin-link">Sign in to trade →</a>
-            {/if}
+          {#if currentUser}
+            <button class="btn btn-outline w-full" onclick={sell} disabled={!sellQuantityValid}>
+              Exit {currentPosition.side === 'long' ? 'LONG' : 'SHORT'} position
+            </button>
+          {:else}
+            <a href="/join" class="btn btn-outline w-full">Sign in to trade →</a>
+          {/if}
 
-            {#if statusMessage}<p class="trade-status-inline">{statusMessage}</p>{/if}
-            {#if errorMessage}<p class="trade-error-inline">{errorMessage}</p>{/if}
-          </div>
-        {:else}
-          <div class="trade-empty-state">
-            <p>No position yet. Mint LONG or SHORT to start trading.</p>
-          </div>
-        {/if}
-      </div>
-    {/if}
-</aside>
-
-<style>
-  .trade-panel {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .trade-balance {
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  .trade-balance strong {
-    color: white;
-  }
-
-  .trade-balance span {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .trade-mode-tabs {
-    display: flex;
-    gap: 0.5rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .trade-form {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .trade-field-compact {
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  .trade-field-tight {
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .trade-field-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-  }
-
-  .trade-label {
-    color: white;
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-
-  .trade-label-muted {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.875rem;
-  }
-
-  .trade-helper {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.75rem;
-  }
-
-  .trade-input-group {
-    display: flex;
-    align-items: center;
-    border: 1px solid color-mix(in srgb, var(--color-neutral) 100%, transparent);
-    border-radius: 0.375rem;
-    background: var(--color-base-100);
-  }
-
-  .trade-input-group:focus-within {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
-  .trade-input-prefix,
-  .trade-input-suffix {
-    padding: 0 0.75rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-
-  .trade-input-amount,
-  .trade-input-quantity {
-    flex: 1;
-    border: none;
-    background: transparent;
-    padding: 0.5rem 0;
-  }
-
-  .trade-input-amount:focus,
-  .trade-input-quantity:focus {
-    outline: none;
-  }
-
-  .trade-constraint {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-  }
-
-  .trade-preview {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-    border-radius: 0.375rem;
-    color: var(--color-primary);
-    font-size: 0.875rem;
-  }
-
-  .trade-status-inline {
-    padding: 0.5rem 0.75rem;
-    background: color-mix(in srgb, var(--color-success) 12%, transparent);
-    border-radius: 0.375rem;
-    color: var(--color-success);
-    font-size: 0.875rem;
-    margin: 0;
-  }
-
-  .trade-error-inline {
-    padding: 0.5rem 0.75rem;
-    background: color-mix(in srgb, var(--color-error) 12%, transparent);
-    border-radius: 0.375rem;
-    color: var(--color-error);
-    font-size: 0.875rem;
-    margin: 0;
-  }
-
-  .trade-action-link {
-    border: none;
-    background: transparent;
-    color: var(--color-primary);
-    font-size: 0.75rem;
-    font-weight: 500;
-    text-decoration: underline;
-    text-underline-offset: 0.2rem;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  .trade-action-link:hover {
-    color: color-mix(in srgb, var(--color-primary) 80%, white);
-  }
-
-  .trade-position-summary {
-    display: grid;
-    gap: 0.35rem;
-    padding: 0.75rem;
-    background: var(--color-base-200);
-    border-radius: 0.375rem;
-  }
-
-  .trade-position-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-  }
-
-  .trade-position-row strong {
-    color: white;
-  }
-
-  .trade-empty-state {
-    padding: 2rem 1rem;
-    text-align: center;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    background: var(--color-base-200);
-    border-radius: 0.375rem;
-  }
-
-  .trade-empty-state p {
-    margin: 0;
-  }
-
-  .trade-side-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-  }
-
-  .trade-signin-link {
-    display: block;
-    width: 100%;
-    padding: 0.5rem 1rem;
-    text-align: center;
-    color: var(--color-primary);
-    text-decoration: none;
-    border: 1px solid var(--color-primary);
-    border-radius: 0.375rem;
-  }
-
-  .trade-signin-link:hover {
-    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  }
-</style>
+          {#if statusMessage}
+            <p class="rounded-md bg-success/10 px-3 py-2 text-sm text-success">{statusMessage}</p>
+          {/if}
+          {#if errorMessage}
+            <p class="rounded-md bg-error/10 px-3 py-2 text-sm text-error">{errorMessage}</p>
+          {/if}
+        </div>
+      {:else}
+        <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">
+          <p>No position yet. Mint LONG or SHORT to start trading.</p>
+        </div>
+      {/if}
+    </div>
+  {/if}
+</div>

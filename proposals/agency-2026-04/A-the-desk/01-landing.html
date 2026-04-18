@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Desk / Landing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg: #070708;
+    --surface: #0d0d10;
+    --elev: #15151a;
+    --border: #1d1d24;
+    --border-strong: #27272f;
+    --text: #e7e7ec;
+    --text-2: #b6b6be;
+    --text-3: #707079;
+    --text-4: #47474f;
+    --yes: #47c585;
+    --yes-dim: #2a6b48;
+    --no: #f04870;
+    --no-dim: #6b2a39;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: 'tnum' 1; }
+  .display { font-family: 'Inter Tight', 'Inter', sans-serif; letter-spacing: -.015em; }
+
+  /* App shell */
+  .app { display: grid; grid-template-columns: 60px 1fr; min-height: 100vh; }
+
+  /* Left rail */
+  .rail { background: var(--bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: .75rem 0; position: sticky; top: 0; height: 100vh; }
+  .rail .brand { width: 32px; height: 32px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1rem; letter-spacing: -.05em; color: var(--text); border: 1px solid var(--border-strong); margin-bottom: 1rem; }
+  .rail .nav { display: flex; flex-direction: column; gap: .2rem; width: 100%; align-items: center; }
+  .rail .nav-item { width: 38px; height: 38px; display: grid; place-items: center; color: var(--text-3); border-left: 2px solid transparent; position: relative; }
+  .rail .nav-item:hover { color: var(--text); }
+  .rail .nav-item.active { color: var(--text); background: var(--elev); border-left-color: var(--yes); }
+  .rail .nav-item svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+  .rail .spacer { flex: 1; }
+  .rail .edition { writing-mode: vertical-rl; transform: rotate(180deg); font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .18em; color: var(--text-3); text-transform: uppercase; padding: .5rem 0; }
+
+  /* Main column */
+  .main-col { display: flex; flex-direction: column; min-width: 0; }
+
+  /* Top bar */
+  .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 1.2rem; gap: 1rem; background: var(--bg); position: sticky; top: 0; z-index: 5; }
+  .crumbs { display: flex; align-items: center; gap: .5rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .06em; }
+  .crumbs span.sep { color: var(--text-4); }
+  .crumbs .cur { color: var(--text); }
+  .search { flex: 1; max-width: 520px; margin: 0 auto; display: flex; align-items: center; gap: .6rem; padding: 0 .8rem; height: 32px; background: var(--surface); border: 1px solid var(--border); }
+  .search .mag { color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .75rem; }
+  .search input { flex: 1; background: transparent; border: 0; color: var(--text); font-size: .85rem; outline: none; }
+  .search .kbd { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); padding: .1rem .35rem; border: 1px solid var(--border-strong); }
+  .top-actions { display: flex; align-items: center; gap: .7rem; }
+  .pill { display: inline-flex; align-items: center; gap: .45rem; padding: .3rem .55rem; border: 1px solid var(--border-strong); font-family: 'JetBrains Mono', monospace; font-size: .7rem; letter-spacing: .08em; color: var(--text-2); }
+  .pill .dot { width: .4rem; height: .4rem; background: var(--yes); display: inline-block; }
+  .avatar { width: 26px; height: 26px; border: 1px solid var(--border-strong); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-size: .7rem; background: var(--elev); }
+
+  /* Body grid: content + right rail */
+  .body { display: grid; grid-template-columns: minmax(0,1fr) 340px; min-height: calc(100vh - 52px); }
+  .content { padding: 2rem; min-width: 0; }
+  .right-rail { border-left: 1px solid var(--border); background: var(--bg); padding: 2rem 1.3rem; display: flex; flex-direction: column; gap: 1.8rem; }
+  @media (max-width: 1100px) {
+    .body { grid-template-columns: 1fr; }
+    .right-rail { border-left: 0; border-top: 1px solid var(--border); }
+  }
+
+  /* Header block */
+  .head { display: grid; gap: .4rem; margin-bottom: 1.2rem; }
+  .head .kicker { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+  .head h1 { margin: 0; font-size: 1.8rem; font-weight: 600; letter-spacing: -.02em; }
+  .head .sub { color: var(--text-2); font-size: .94rem; }
+
+  /* Brief strip */
+  .brief { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 1.8rem; }
+  .brief-cell { background: var(--bg); padding: 1rem 1.1rem; }
+  .brief-cell dt { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .12em; color: var(--text-3); text-transform: uppercase; margin-bottom: .45rem; }
+  .brief-cell dd { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: var(--text); }
+  .brief-cell dd small { font-size: .7rem; color: var(--text-3); margin-left: .4rem; letter-spacing: .05em; }
+  .brief-cell .up { color: var(--yes); }
+  .brief-cell .down { color: var(--no); }
+
+  /* Toolbar (view switches) */
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: .6rem .1rem; margin-bottom: .2rem; }
+  .chips { display: flex; gap: .2rem; flex-wrap: wrap; }
+  .chip { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); padding: .32rem .6rem; border: 1px solid transparent; letter-spacing: .04em; }
+  .chip:hover { color: var(--text); border-color: var(--border); }
+  .chip.active { color: var(--text); border-color: var(--border-strong); background: var(--elev); }
+  .sort { display: flex; align-items: center; gap: .8rem; font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); }
+  .sort a.on { color: var(--text); }
+
+  /* Market list */
+  .mlist { display: grid; }
+  .row-head, .row { display: grid; grid-template-columns: minmax(0, 3fr) 1.1fr 1.4fr 1fr 1fr 1fr; gap: 1rem; align-items: center; padding: .85rem .2rem; border-bottom: 1px solid var(--border); }
+  .row-head { border-bottom: 1px solid var(--border-strong); color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; padding: .55rem .2rem; }
+  .row:hover { background: var(--surface); }
+  .row:last-child { border-bottom: 1px solid var(--border); }
+  .row .claim { min-width: 0; display: grid; gap: .15rem; }
+  .row .claim .title { font-size: .97rem; color: var(--text); font-weight: 500; letter-spacing: -.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .claim .meta { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .04em; }
+  .row .price { font-family: 'JetBrains Mono', monospace; font-size: 1.05rem; }
+  .row .price.yes { color: var(--yes); }
+  .row .price.no { color: var(--no); }
+  .row .spark { height: 26px; }
+  .row .delta { font-family: 'JetBrains Mono', monospace; font-size: .78rem; }
+  .row .delta.up { color: var(--yes); }
+  .row .delta.down { color: var(--no); }
+  .row .mono-cell { font-family: 'JetBrains Mono', monospace; font-size: .78rem; color: var(--text-2); }
+
+  /* Right rail blocks */
+  .rail-block h4 { margin: 0 0 .8rem; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+  .rail-list { display: grid; gap: .4rem; }
+  .rail-item { display: grid; grid-template-columns: 1fr auto; gap: .8rem; padding: .55rem 0; border-bottom: 1px solid var(--border); }
+  .rail-item:last-child { border-bottom: 0; }
+  .rail-item .t { color: var(--text); font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rail-item .p { font-family: 'JetBrains Mono', monospace; font-size: .78rem; color: var(--text-2); }
+  .rail-item .p.up { color: var(--yes); }
+  .rail-item .p.down { color: var(--no); }
+  .rail-item .sub { font-family: 'JetBrains Mono', monospace; font-size: .65rem; color: var(--text-3); letter-spacing: .06em; }
+
+  .cta-card { border: 1px solid var(--border); padding: 1rem; display: grid; gap: .8rem; }
+  .cta-card p { margin: 0; color: var(--text-2); font-size: .88rem; }
+  .cta-card strong { display: block; font-size: .95rem; font-weight: 600; color: var(--text); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .55rem .9rem; border: 1px solid var(--border-strong); background: var(--elev); font-family: 'Inter', sans-serif; font-size: .85rem; font-weight: 500; color: var(--text); cursor: pointer; }
+  .btn:hover { border-color: var(--text-3); }
+  .btn.primary { background: var(--text); color: #000; border-color: var(--text); }
+  .btn.primary:hover { background: #fff; }
+  .btn .arr { color: var(--text-3); }
+  .btn.primary .arr { color: #333; }
+
+  /* Footer strip */
+  .foot { border-top: 1px solid var(--border); background: var(--bg); padding: .5rem 2rem; display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .08em; }
+
+  /* Helpers */
+  .hsep { height: 1px; background: var(--border); margin: 1.4rem 0; }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Left rail -->
+    <aside class="rail">
+      <div class="brand">C</div>
+      <nav class="nav">
+        <a class="nav-item active" title="Markets" href="#"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 16l4-6 4 4 6-10"/></svg></a>
+        <a class="nav-item" title="Portfolio" href="#"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18"/></svg></a>
+        <a class="nav-item" title="Activity" href="#"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></a>
+        <a class="nav-item" title="Watchlist" href="#"><svg viewBox="0 0 24 24"><path d="M12 3l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.8 6.1 21l1.2-6.5L2.5 9.9 9 9z"/></svg></a>
+        <a class="nav-item" title="Leaderboard" href="#"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M6 3h12v5a6 6 0 01-12 0V3zM3 5h3v3a3 3 0 01-3-3zM21 5h-3v3a3 3 0 003-3z"/></svg></a>
+        <a class="nav-item" title="Research" href="#"><svg viewBox="0 0 24 24"><path d="M4 4h10l6 6v10H4zM14 4v6h6"/></svg></a>
+        <a class="nav-item" title="Create" href="03-create.html"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></a>
+      </nav>
+      <div class="spacer"></div>
+      <div class="edition">Practice</div>
+    </aside>
+
+    <div class="main-col">
+
+      <!-- Top bar -->
+      <header class="topbar">
+        <div class="crumbs"><span>CASCADE</span><span class="sep">/</span><span class="cur">Markets</span></div>
+        <div class="search">
+          <span class="mag">⌘</span>
+          <input placeholder="Search markets, authors, or jump to…" aria-label="Search" />
+          <span class="kbd">K</span>
+        </div>
+        <div class="top-actions">
+          <span class="pill"><i class="dot"></i> Live</span>
+          <button class="btn" title="Notifications">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 8a6 6 0 1112 0c0 5 3 6 3 6H3s3-1 3-6zM10 20a2 2 0 004 0"/></svg>
+          </button>
+          <div class="avatar mono">pf</div>
+        </div>
+      </header>
+
+      <div class="body">
+
+        <!-- Main content -->
+        <main class="content">
+          <div class="head">
+            <span class="kicker">Saturday, 18 April — 14:32 UTC</span>
+            <h1 class="display">Your brief</h1>
+            <p class="sub">Six markets on your watchlist moved more than three cents today. Three new claims were published since you last visited.</p>
+          </div>
+
+          <dl class="brief">
+            <div class="brief-cell"><dt>Cash balance</dt><dd>$1,284.20</dd></div>
+            <div class="brief-cell"><dt>Open positions</dt><dd>12 <small>/ 4 mkts</small></dd></div>
+            <div class="brief-cell"><dt>Today</dt><dd class="up">+$47.30 <small>+3.8%</small></dd></div>
+            <div class="brief-cell"><dt>Contested most</dt><dd>3 mkts <small>±2¢ band</small></dd></div>
+          </dl>
+
+          <div class="toolbar">
+            <div class="chips">
+              <a class="chip active" href="#">Watchlist</a>
+              <a class="chip" href="#">All markets</a>
+              <a class="chip" href="#">Contested</a>
+              <a class="chip" href="#">New</a>
+              <a class="chip" href="#">Under the radar</a>
+              <a class="chip" href="#">Linked to open positions</a>
+            </div>
+            <div class="sort">
+              <span>Sort by</span>
+              <a class="on" href="#">24h Δ</a>
+              <a href="#">Volume</a>
+              <a href="#">Spread</a>
+              <a href="#">Age</a>
+            </div>
+          </div>
+
+          <div class="mlist">
+            <div class="row-head">
+              <span>Claim</span>
+              <span>Crowd price</span>
+              <span>7-day</span>
+              <span>24h Δ</span>
+              <span>Vol 24h</span>
+              <span>Threads</span>
+            </div>
+
+            <a class="row" href="02-market.html">
+              <div class="claim">
+                <span class="title">OpenAI will ship GPT-5 before Google ships Gemini 2 Pro.</span>
+                <span class="meta">by @north · 2,814 trades · linked to 3</span>
+              </div>
+              <span class="price yes mono">71¢</span>
+              <svg class="spark" viewBox="0 0 120 26" preserveAspectRatio="none"><polyline fill="none" stroke="#47c585" stroke-width="1.5" points="0,18 10,16 20,15 30,13 40,14 50,11 60,10 70,8 80,9 90,7 100,6 110,5 120,4"/></svg>
+              <span class="delta up">+3¢</span>
+              <span class="mono-cell">$8,240</span>
+              <span class="mono-cell">24</span>
+            </a>
+
+            <a class="row" href="02-market.html">
+              <div class="claim">
+                <span class="title">Bitcoin trades above $150,000 by Q3 2026.</span>
+                <span class="meta">by @greta · 1,201 trades · linked to 1</span>
+              </div>
+              <span class="price yes mono">58¢</span>
+              <svg class="spark" viewBox="0 0 120 26" preserveAspectRatio="none"><polyline fill="none" stroke="#47c585" stroke-width="1.5" points="0,8 10,12 20,11 30,15 40,13 50,16 60,12 70,11 80,9 90,12 100,10 110,7 120,8"/></svg>
+              <span class="delta up">+1¢</span>
+              <span class="mono-cell">$15,980</span>
+              <span class="mono-cell">47</span>
+            </a>
+
+            <a class="row" href="02-market.html">
+              <div class="claim">
+                <span class="title">Nostr daily active users exceed one million before 2028.</span>
+                <span class="meta">by @mutiny · 308 trades · linked to 0</span>
+              </div>
+              <span class="price no mono">32¢</span>
+              <svg class="spark" viewBox="0 0 120 26" preserveAspectRatio="none"><polyline fill="none" stroke="#f04870" stroke-width="1.5" points="0,6 10,8 20,10 30,12 40,14 50,13 60,17 70,16 80,18 90,19 100,20 110,22 120,21"/></svg>
+              <span class="delta down">−4¢</span>
+              <span class="mono-cell">$1,430</span>
+              <span class="mono-cell">58</span>
+            </a>
+
+            <a class="row" href="02-market.html">
+              <div class="claim">
+                <span class="title">At least one G7 nation launches a retail CBDC before 2027.</span>
+                <span class="meta">by @sono · 482 trades · linked to 2</span>
+              </div>
+              <span class="price no mono">22¢</span>
+              <svg class="spark" viewBox="0 0 120 26" preserveAspectRatio="none"><polyline fill="none" stroke="#f04870" stroke-width="1.5" points="0,10 10,11 20,13 30,14 40,14 50,15 60,16 70,17 80,18 90,19 100,20 110,21 120,22"/></svg>
+              <span class="delta down">−2¢</span>
+              <span class="mono-cell">$2,110</span>
+              <span class="mono-cell">12</span>
+            </a>
+
+            <a class="row" href="02-market.html">
+              <div class="claim">
+                <span class="title">Apple ships AI-first glasses before Meta's next Ray-Ban generation.</span>
+                <span class="meta">by @ashe · 622 trades · linked to 2</span>
+              </div>
+              <span class="price yes mono">49¢</span>
+              <svg class="spark" viewBox="0 0 120 26" preserveAspectRatio="none"><polyline fill="none" stroke="#47c585" stroke-width="1.5" points="0,14 10,13 20,15 30,14 40,13 50,14 60,12 70,13 80,14 90,13 100,13 110,14 120,13"/></svg>
+              <span class="delta up">+0¢</span>
+              <span class="mono-cell">$6,040</span>
+              <span class="mono-cell">91</span>
+            </a>
+
+            <a class="row" href="02-market.html">
+              <div class="claim">
+                <span class="title">The Fed funds rate is below 3% at any point in 2026.</span>
+                <span class="meta">by @quincy · 1,944 trades · linked to 1</span>
+              </div>
+              <span class="price yes mono">64¢</span>
+              <svg class="spark" viewBox="0 0 120 26" preserveAspectRatio="none"><polyline fill="none" stroke="#47c585" stroke-width="1.5" points="0,20 10,18 20,17 30,16 40,14 50,13 60,13 70,12 80,11 90,9 100,9 110,8 120,7"/></svg>
+              <span class="delta up">+2¢</span>
+              <span class="mono-cell">$9,320</span>
+              <span class="mono-cell">31</span>
+            </a>
+
+            <a class="row" href="02-market.html">
+              <div class="claim">
+                <span class="title">Tesla's robotaxi network reaches 100,000 active vehicles.</span>
+                <span class="meta">by @fourier · 207 trades · linked to 1</span>
+              </div>
+              <span class="price no mono">18¢</span>
+              <svg class="spark" viewBox="0 0 120 26" preserveAspectRatio="none"><polyline fill="none" stroke="#f04870" stroke-width="1.5" points="0,8 10,10 20,11 30,13 40,14 50,15 60,17 70,17 80,18 90,19 100,20 110,20 120,21"/></svg>
+              <span class="delta down">−1¢</span>
+              <span class="mono-cell">$780</span>
+              <span class="mono-cell">9</span>
+            </a>
+          </div>
+        </main>
+
+        <!-- Right rail -->
+        <aside class="right-rail">
+
+          <div class="cta-card">
+            <strong>Found a question nobody's priced yet?</strong>
+            <p>Write the case. Back your view. Let the crowd counter-price it.</p>
+            <a class="btn primary" href="03-create.html">Create a market <span class="arr">→</span></a>
+          </div>
+
+          <div class="rail-block">
+            <h4>Your positions — top movers</h4>
+            <div class="rail-list">
+              <div class="rail-item">
+                <div><div class="t">OpenAI ships GPT-5 first</div><div class="sub">YES · $220 · avg 68¢</div></div>
+                <span class="p up mono">+$6.60</span>
+              </div>
+              <div class="rail-item">
+                <div><div class="t">BTC above $150K by Q3</div><div class="sub">YES · $140 · avg 55¢</div></div>
+                <span class="p up mono">+$4.20</span>
+              </div>
+              <div class="rail-item">
+                <div><div class="t">Fed &lt; 3% in 2026</div><div class="sub">YES · $300 · avg 58¢</div></div>
+                <span class="p up mono">+$12.00</span>
+              </div>
+              <div class="rail-item">
+                <div><div class="t">CBDC in G7 by 2027</div><div class="sub">NO · $80 · avg 76¢</div></div>
+                <span class="p up mono">+$3.40</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="rail-block">
+            <h4>Just published</h4>
+            <div class="rail-list">
+              <div class="rail-item">
+                <div><div class="t">Solana flips Ethereum on fees this year</div><div class="sub">14m ago · @aria</div></div>
+                <span class="p mono">41¢</span>
+              </div>
+              <div class="rail-item">
+                <div><div class="t">First US state passes AI liability law</div><div class="sub">1h ago · @pine</div></div>
+                <span class="p mono">62¢</span>
+              </div>
+              <div class="rail-item">
+                <div><div class="t">SpaceX Starship reaches LEO cadence &gt;20/yr</div><div class="sub">3h ago · @glass</div></div>
+                <span class="p mono">55¢</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="rail-block">
+            <h4>Contested now — crowd is split</h4>
+            <div class="rail-list">
+              <div class="rail-item">
+                <div><div class="t">Apple ships AI glasses before Meta</div><div class="sub">spread 2¢ · 91 threads</div></div>
+                <span class="p mono">49¢</span>
+              </div>
+              <div class="rail-item">
+                <div><div class="t">Nvidia remains &gt;$4T market cap end-2026</div><div class="sub">spread 1¢ · 44 threads</div></div>
+                <span class="p mono">51¢</span>
+              </div>
+              <div class="rail-item">
+                <div><div class="t">A single AI model earns Nobel mention</div><div class="sub">spread 4¢ · 12 threads</div></div>
+                <span class="p mono">46¢</span>
+              </div>
+            </div>
+          </div>
+
+        </aside>
+      </div>
+
+      <footer class="foot">
+        <span>Relays · 7 of 8 connected</span>
+        <span>Edition · Practice — no real funds at stake</span>
+        <span>Last event · 4s ago</span>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

@@ -91,170 +91,69 @@
   }
 </script>
 
-<section class="section">
-  <div class="bookmarks-header">
-    <div>
-      <div class="eyebrow">Bookmarks</div>
-      <h1>My Bookmarks</h1>
-      <p>Markets you've saved for later.</p>
-    </div>
-  </div>
-</section>
+<div class="grid gap-2 pb-6">
+  <div class="eyebrow">Bookmarks</div>
+  <h1 class="text-[2rem] tracking-[-0.04em]">My Bookmarks</h1>
+  <p class="text-base-content/70">Markets you've saved for later.</p>
+</div>
 
-<div class="bookmarks-grid">
-  <section class="bookmarks-panel">
-    <div class="bookmarks-panel-header">
-      <h2>Saved markets</h2>
-      <a href="/">Browse Markets</a>
+<div class="grid gap-8 md:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+  <section class="grid gap-4">
+    <div class="flex items-end justify-between gap-4">
+      <h2 class="text-[1.1rem] font-semibold">Saved markets</h2>
+      <a class="text-base-content/50 text-sm hover:text-white" href="/">Browse Markets</a>
     </div>
 
     {#if currentUser}
-      <div class="bookmarks-list">
+      <div class="divide-y divide-base-300 border-t border-base-300">
         {#if orderedMyMarkets.length > 0}
           {#each orderedMyMarkets as market (market.id)}
-            <div class="bookmark-row">
-              <a class="bookmark-link" href="/market/{market.slug}">
-                <strong>{market.title}</strong>
-                <p>{market.description || market.body || 'No summary yet.'}</p>
+            <div class="flex items-start justify-between gap-4 py-4">
+              <a class="grid gap-1 min-w-0 hover:text-white" href="/market/{market.slug}">
+                <strong class="text-white text-base">{market.title}</strong>
+                <p class="text-base-content/70 leading-[1.6]">{market.description || market.body || 'No summary yet.'}</p>
               </a>
-              <button class="btn btn-ghost btn-sm" onclick={() => removeBookmark(market.id)}>Remove</button>
+              <button class="btn btn-ghost btn-sm shrink-0" onclick={() => removeBookmark(market.id)}>Remove</button>
             </div>
           {/each}
         {:else if myMarketIds.length > 0}
-          <div class="bookmark-empty">Loading saved markets...</div>
+          <div class="py-6 text-base-content/70">Loading saved markets...</div>
         {:else}
-          <div class="bookmark-empty">
-            <strong>No bookmarks yet</strong>
-            <p>Bookmark markets you want to track. Click the bookmark icon on any market card.</p>
-            <a class="btn btn-primary" href="/">Browse Markets</a>
+          <div class="grid gap-2 py-6 border-b border-base-300">
+            <strong class="text-white">No bookmarks yet</strong>
+            <p class="text-base-content/70 leading-[1.6]">Bookmark markets you want to track. Click the bookmark icon on any market card.</p>
+            <a class="btn btn-primary w-fit mt-1" href="/">Browse Markets</a>
           </div>
         {/if}
       </div>
     {:else}
-      <div class="bookmark-empty">
-        <strong>Sign in to manage your bookmarks.</strong>
-        <p>Saved markets stay attached to your account so you can return to them quickly.</p>
+      <div class="grid gap-2 py-6 border-t border-base-300 border-b border-base-300">
+        <strong class="text-white">Sign in to manage your bookmarks.</strong>
+        <p class="text-base-content/70 leading-[1.6]">Saved markets stay attached to your account so you can return to them quickly.</p>
       </div>
     {/if}
   </section>
 
-  <section class="bookmarks-panel">
-    <div class="bookmarks-panel-header">
-      <h2>What others are saving</h2>
-    </div>
+  <section class="grid gap-4">
+    <h2 class="text-[1.1rem] font-semibold">What others are saving</h2>
 
-    <div class="bookmarks-list">
+    <div class="divide-y divide-base-300 border-t border-base-300">
       {#if orderedTrending.length > 0}
         {#each orderedTrending as entry (entry.market.id)}
-          <a class="bookmark-row bookmark-row-link" href="/market/{entry.market.slug}">
-            <div class="bookmark-link">
-              <strong>{entry.market.title}</strong>
-              <p>{entry.market.description || entry.market.body || 'No summary yet.'}</p>
+          <a class="flex items-start justify-between gap-4 py-4 hover:text-white" href="/market/{entry.market.slug}">
+            <div class="grid gap-1 min-w-0">
+              <strong class="text-white text-base">{entry.market.title}</strong>
+              <p class="text-base-content/70 leading-[1.6]">{entry.market.description || entry.market.body || 'No summary yet.'}</p>
             </div>
-            <span class="bookmark-count">{entry.count} save{entry.count === 1 ? '' : 's'}</span>
+            <span class="text-base-content/50 font-mono text-sm whitespace-nowrap shrink-0">{entry.count} save{entry.count === 1 ? '' : 's'}</span>
           </a>
         {/each}
       {:else}
-        <div class="bookmark-empty">
-          <strong>No bookmarks yet</strong>
-          <p>As people save markets, the most followed ones will show up here.</p>
+        <div class="grid gap-2 py-6 border-b border-base-300">
+          <strong class="text-white">No bookmarks yet</strong>
+          <p class="text-base-content/70 leading-[1.6]">As people save markets, the most followed ones will show up here.</p>
         </div>
       {/if}
     </div>
   </section>
 </div>
-
-<style>
-  .bookmarks-header h1 {
-    font-size: 2rem;
-    letter-spacing: -0.04em;
-  }
-
-  .bookmarks-header p,
-  .bookmark-link p,
-  .bookmark-empty p {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .bookmarks-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
-    gap: 2rem;
-  }
-
-  .bookmarks-panel {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .bookmarks-panel-header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .bookmarks-panel-header h2 {
-    font-size: 1.1rem;
-  }
-
-  .bookmarks-panel-header a {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.84rem;
-  }
-
-  .bookmarks-list {
-    display: grid;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .bookmark-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .bookmark-row-link:hover strong {
-    color: var(--color-base-content);
-  }
-
-  .bookmark-link {
-    display: grid;
-    gap: 0.35rem;
-    min-width: 0;
-  }
-
-  .bookmark-link strong,
-  .bookmark-empty strong {
-    color: white;
-    font-size: 0.98rem;
-  }
-
-  .bookmark-link p,
-  .bookmark-empty p {
-    line-height: 1.6;
-  }
-
-  .bookmark-count {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    white-space: nowrap;
-  }
-
-  .bookmark-empty {
-    display: grid;
-    gap: 0.65rem;
-    padding: 1.5rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  @media (max-width: 900px) {
-    .bookmarks-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>

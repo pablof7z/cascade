@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Gazette / Write a Market</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --paper:#0a0a0a; --paper-2:#121212; --ink:#e9e3d4; --ink-2:#c0b9a8; --ink-3:#86806f;
+    --rule:#1d1c1a; --rule-strong:#2c2b27; --yes:#3fb570; --no:#d74566; --accent:#efe7d3;
+  }
+  html,body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; }
+  .shell { width: min(100% - 3rem, 1240px); margin: 0 auto; }
+
+  .masthead-c { padding: .8rem 0; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--ink-3); letter-spacing: .14em; text-transform: uppercase; }
+  .masthead-c .logo { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.6rem; color: var(--accent); letter-spacing: -.02em; text-transform: none; }
+
+  .topnav { padding: .65rem 0; border-bottom: 3px double var(--rule-strong); }
+  .topnav .row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .topnav ul { list-style: none; padding: 0; margin: 0; display: flex; gap: 1.6rem; }
+  .topnav a { font-family: 'Inter', sans-serif; font-size: .86rem; color: var(--ink-2); padding: .2rem 0; border-bottom: 1px solid transparent; }
+  .topnav a.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: 500; }
+
+  .submitter-head { padding: 3rem 0 2rem; text-align: center; border-bottom: 3px double var(--rule-strong); }
+  .submitter-head .k { font-family: 'JetBrains Mono', monospace; font-size: .76rem; color: var(--yes); letter-spacing: .22em; text-transform: uppercase; }
+  .submitter-head h1 { font-family: 'Fraunces', serif; font-weight: 400; font-style: italic; font-size: clamp(2.8rem, 6vw, 5rem); letter-spacing: -.03em; line-height: 1; margin: 1rem 0 1rem; color: var(--accent); }
+  .submitter-head .deck { font-family: 'Fraunces', serif; font-size: 1.3rem; color: var(--ink-2); max-width: 42rem; margin: 0 auto; line-height: 1.45; }
+  .submitter-head .meta-bar { margin-top: 2rem; display: inline-flex; gap: 2rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--ink-3); letter-spacing: .14em; text-transform: uppercase; padding-top: 1rem; border-top: 1px solid var(--rule-strong); }
+
+  .wrap { display: grid; grid-template-columns: 1fr 400px; gap: 3rem; padding: 3rem 0 5rem; }
+  @media (max-width: 1000px) { .wrap { grid-template-columns: 1fr; } }
+
+  /* Form */
+  .form-col { max-width: 56ch; }
+  .field { padding: 1.5rem 0; border-bottom: 1px solid var(--rule); }
+  .field .label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: .7rem; }
+  .field label { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--ink-3); letter-spacing: .18em; text-transform: uppercase; }
+  .field .hint { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--ink-3); letter-spacing: .06em; }
+  .field .hint strong { color: var(--ink-2); }
+
+  .input-serif { width: 100%; background: transparent; border: 0; color: var(--accent); font-family: 'Fraunces', serif; font-size: 2.4rem; font-weight: 500; letter-spacing: -.02em; line-height: 1.1; padding: .4rem 0; outline: none; border-bottom: 1px solid var(--rule-strong); }
+  .input-serif:focus { border-bottom-color: var(--accent); }
+
+  .input-lede { width: 100%; background: transparent; border: 0; color: var(--ink); font-family: 'Fraunces', serif; font-size: 1.35rem; font-style: italic; letter-spacing: -.005em; line-height: 1.45; padding: .4rem 0; outline: none; border-bottom: 1px solid var(--rule-strong); resize: vertical; min-height: 90px; }
+  .input-lede:focus { border-bottom-color: var(--accent); }
+
+  .textarea-body { width: 100%; background: transparent; border: 1px solid var(--rule-strong); color: var(--ink); padding: 1rem 1.1rem; font-family: 'Fraunces', serif; font-size: 1.05rem; line-height: 1.65; min-height: 220px; resize: vertical; outline: none; }
+  .textarea-body:focus { border-color: var(--accent); }
+
+  .cat-row { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .cat-pick { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--ink-2); padding: .4rem .65rem; border: 1px solid var(--rule-strong); letter-spacing: .06em; cursor: pointer; }
+  .cat-pick.on { color: var(--accent); border-color: var(--accent); background: rgba(239,231,211,.04); }
+  .cat-pick:hover { color: var(--ink); }
+
+  .link-search { width: 100%; background: var(--paper-2); border: 1px solid var(--rule-strong); color: var(--ink); padding: .65rem .8rem; font-family: 'Inter', sans-serif; font-size: .92rem; outline: none; margin-bottom: .8rem; }
+  .link-result { display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; padding: .65rem 0; border-bottom: 1px solid var(--rule); }
+  .link-result .t { font-family: 'Fraunces', serif; font-size: 1.02rem; }
+  .link-result .p { font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: var(--ink-2); }
+  .link-result .add { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--ink-3); padding: .2rem .45rem; border: 1px solid var(--rule-strong); letter-spacing: .1em; cursor: pointer; }
+  .link-result .add.added { color: var(--yes); border-color: var(--yes); }
+
+  /* Seed */
+  .seed-block { padding: 2rem 0; border-top: 3px double var(--rule-strong); border-bottom: 3px double var(--rule-strong); margin-top: 1.5rem; }
+  .seed-block h3 { font-family: 'Fraunces', serif; font-size: 1.6rem; color: var(--accent); letter-spacing: -.015em; margin: 0 0 .8rem; font-weight: 500; }
+  .seed-block p { color: var(--ink-2); font-size: .96rem; margin: 0 0 1.3rem; }
+  .seed-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+  .seed-side { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule-strong); margin-bottom: 1rem; }
+  .seed-side button { background: transparent; border: 0; color: var(--ink-2); padding: .8rem 0; font-family: 'Fraunces', serif; font-size: 1rem; cursor: pointer; }
+  .seed-side button.yes.on { background: rgba(63,181,112,.08); color: var(--yes); }
+  .seed-side button.yes { border-right: 1px solid var(--rule-strong); }
+  .seed-side button.no.on { background: rgba(215,69,102,.08); color: var(--no); }
+  .seed-amt { display: grid; grid-template-columns: 4.5rem 1fr 4.5rem; border: 1px solid var(--rule-strong); }
+  .seed-amt .lbl { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--ink-3); display: grid; place-items: center; border-right: 1px solid var(--rule-strong); letter-spacing: .1em; }
+  .seed-amt input { border: 0; background: transparent; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; padding: .8rem; text-align: right; outline: none; }
+  .seed-amt .suf { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--ink-3); display: grid; place-items: center; border-left: 1px solid var(--rule-strong); letter-spacing: .1em; }
+
+  .action-row { display: flex; justify-content: space-between; align-items: center; padding: 2rem 0 0; margin-top: 1.5rem; }
+  .action-row .m { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--ink-3); letter-spacing: .1em; text-transform: uppercase; }
+  .btn-primary { padding: .9rem 1.4rem; background: var(--accent); color: #0a0a0a; border: 0; font-family: 'Inter', sans-serif; font-weight: 600; font-size: .96rem; cursor: pointer; letter-spacing: .005em; }
+  .btn-primary:hover { background: #fff; }
+  .btn-ghost { padding: .9rem 1.2rem; border: 1px solid var(--rule-strong); background: transparent; color: var(--ink-2); font-size: .9rem; cursor: pointer; font-family: 'Inter', sans-serif; }
+  .btn-ghost:hover { color: var(--ink); border-color: var(--ink-2); }
+
+  /* Preview aside */
+  .preview-col { position: sticky; top: 1rem; align-self: start; }
+  .preview-head { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--ink-3); letter-spacing: .18em; text-transform: uppercase; padding: .6rem 0; border-bottom: 1px solid var(--rule-strong); margin-bottom: 1.2rem; }
+
+  .mini-paper { padding: 1.4rem; border: 1px solid var(--rule-strong); background: var(--paper); }
+  .mini-mast { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: .64rem; color: var(--ink-3); letter-spacing: .16em; text-transform: uppercase; padding-bottom: .6rem; border-bottom: 1px solid var(--rule); margin-bottom: .8rem; }
+  .mini-mast .logo-s { font-family: 'Fraunces', serif; font-size: 1.1rem; color: var(--accent); text-transform: none; letter-spacing: -.015em; }
+  .mini-brief-head { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--ink-3); letter-spacing: .16em; text-transform: uppercase; border-bottom: 1px solid var(--rule); padding-bottom: .5rem; margin-bottom: .7rem; }
+  .mini-brief .cat { font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--ink-3); letter-spacing: .14em; text-transform: uppercase; }
+  .mini-brief h4 { font-family: 'Fraunces', serif; font-size: 1.1rem; color: var(--accent); margin: .3rem 0; letter-spacing: -.005em; line-height: 1.25; font-weight: 500; }
+  .mini-brief .row { display: flex; justify-content: space-between; align-items: baseline; padding-top: .35rem; border-top: 1px solid var(--rule); }
+  .mini-brief .p { font-family: 'JetBrains Mono', monospace; color: var(--yes); font-size: 1rem; }
+  .mini-brief .m { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--ink-3); letter-spacing: .05em; }
+
+  .preview-meta { margin-top: 1.4rem; display: grid; gap: .45rem; }
+  .preview-meta .line { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: .76rem; color: var(--ink-3); }
+  .preview-meta .line .v { color: var(--ink); }
+
+  .notice { margin-top: 1.6rem; padding: 1rem; border: 1px solid var(--rule-strong); font-family: 'Fraunces', serif; font-size: .96rem; line-height: 1.55; color: var(--ink-2); font-style: italic; }
+  .notice strong { color: var(--accent); font-style: normal; display: block; margin-bottom: .4rem; font-family: 'Inter', sans-serif; font-weight: 500; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+  <div class="shell masthead-c">
+    <span>Vol. 2 · No. 47</span>
+    <span class="logo">Cascade</span>
+    <span>Saturday, 18 April 2026</span>
+  </div>
+
+  <nav class="topnav">
+    <div class="shell row">
+      <ul>
+        <li><a href="01-landing.html">Front Page</a></li>
+        <li><a href="#">Markets</a></li>
+        <li><a href="#">Briefs</a></li>
+        <li><a href="#">Leaderboard</a></li>
+        <li><a href="#">Archive</a></li>
+        <li><a class="active" href="#">Write a Market</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section class="submitter-head">
+    <div class="shell">
+      <span class="k">For publication</span>
+      <h1>Write a Market.</h1>
+      <p class="deck">Your claim, on the record. Pitch a question worth pricing — the crowd will counter-price it by the time you finish your coffee.</p>
+      <div class="meta-bar">
+        <span>Author · @pf</span>
+        <span>Edition · Practice</span>
+        <span>Visibility · public on first trade</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="shell wrap">
+
+    <section class="form-col">
+
+      <div class="field">
+        <div class="label-row">
+          <label>Category</label>
+          <span class="hint">Pick one. It sets where the market shows up on the Front Page.</span>
+        </div>
+        <div class="cat-row">
+          <span class="cat-pick">AI</span>
+          <span class="cat-pick on">Crypto</span>
+          <span class="cat-pick">Macro</span>
+          <span class="cat-pick">Policy</span>
+          <span class="cat-pick">Tech</span>
+          <span class="cat-pick">Nostr</span>
+          <span class="cat-pick">Sports</span>
+          <span class="cat-pick">Culture</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label>The headline</label>
+          <span class="hint"><strong>A single sentence.</strong> End with a period. Be specific.</span>
+        </div>
+        <input class="input-serif" value="Bitcoin trades above $150,000 at any point before 1 July 2026." />
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label>The lede</label>
+          <span class="hint">Two sentences. What the crowd is betting on, why it's interesting.</span>
+        </div>
+        <textarea class="input-lede">A market on a single price print before mid-year, not a sustained level. The crowd is currently pricing $145K futures at sixty-one percent.</textarea>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label>The case for YES</label>
+          <span class="hint">Your argument. The body of your op-ed. At least a paragraph, ideally three.</span>
+        </div>
+        <textarea class="textarea-body">On-chain accumulation at the $140K shelf has been steady for five weeks. ETF net flows have been net-positive for seven of the last ten days. The CME curve is in mild contango and has been since mid-March — a sign that the spot–futures basis is working against shorts rather than pressing them.
+
+What breaks this thesis? A regulatory bomb, a large custodial failure, or a macro risk-off event that takes liquidity out of everything. Below 50¢, I will add. Above 75¢, I will trim.
+
+I'm opening with $500 on YES and leaving the price to find itself.</textarea>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label>Tags</label>
+          <span class="hint">Optional. Make the market findable.</span>
+        </div>
+        <div class="cat-row">
+          <span class="cat-pick on">BTC</span>
+          <span class="cat-pick on">price-target</span>
+          <span class="cat-pick on">2026-H1</span>
+          <span class="cat-pick">ETF-flows</span>
+          <span class="cat-pick">macro</span>
+          <span class="cat-pick">+ add a tag</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label>Linked markets</label>
+          <span class="hint">Informational only. Linked markets don't influence this one's price.</span>
+        </div>
+        <input class="link-search" placeholder="search markets to link…" />
+        <div class="link-result">
+          <span class="t">Bitcoin halving reward cycle drives a new ATH by 2026.</span>
+          <span class="p">72¢</span>
+          <span class="add added">LINKED</span>
+        </div>
+        <div class="link-result">
+          <span class="t">Spot BTC ETFs have net inflows every month of Q2 2026.</span>
+          <span class="p">58¢</span>
+          <span class="add added">LINKED</span>
+        </div>
+        <div class="link-result">
+          <span class="t">Fed funds rate is below 3% at any point in 2026.</span>
+          <span class="p">64¢</span>
+          <span class="add">+ LINK</span>
+        </div>
+      </div>
+
+      <div class="seed-block">
+        <h3>Seed your opening position.</h3>
+        <p>Every market needs a first trade. Yours sets the initial price and funds the book. This is also your public conviction — thick or thin.</p>
+
+        <div class="seed-side">
+          <button class="yes on">Back YES · I believe this happens</button>
+          <button class="no">Back NO · I don't</button>
+        </div>
+
+        <div class="seed-amt">
+          <span class="lbl">STAKE</span>
+          <input type="text" value="500.00" />
+          <span class="suf">USD</span>
+        </div>
+
+        <div class="seed-grid" style="margin-top: 1rem;">
+          <div>
+            <dl class="preview-meta">
+              <div class="line"><span>Shares minted</span><span class="v">990 YES</span></div>
+              <div class="line"><span>Opening price</span><span class="v">50¢ · 50¢</span></div>
+              <div class="line"><span>Fee (1%)</span><span class="v">$5.00</span></div>
+              <div class="line"><span>Your starting stake</span><span class="v">$495.00</span></div>
+            </dl>
+          </div>
+          <div>
+            <p style="margin:0; color: var(--ink-3); font-size: .86rem;">No expiry, no oracle, no closing date. The only exit is a cash-out at the current crowd price — whenever that works for you.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <span class="m">Publish goes to relays immediately</span>
+        <div style="display: flex; gap: .5rem;">
+          <button class="btn-ghost">Save draft</button>
+          <button class="btn-primary">Publish &amp; back YES · $500</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="preview-col">
+      <div class="preview-head">Preview · how it appears in the Gazette</div>
+      <div class="mini-paper">
+        <div class="mini-mast">
+          <span>Vol. 2 · No. 47</span>
+          <span class="logo-s">Cascade</span>
+          <span>Sat 18 Apr</span>
+        </div>
+
+        <div class="mini-brief-head">Today's Briefs · Crypto</div>
+        <article class="mini-brief">
+          <span class="cat">CRYPTO · YOUR CLAIM</span>
+          <h4>Bitcoin trades above $150,000 at any point before 1 July 2026.</h4>
+          <div class="row">
+            <span class="p">50¢</span>
+            <span class="m">seed · @pf</span>
+          </div>
+        </article>
+      </div>
+
+      <dl class="preview-meta">
+        <div class="line"><span>Author byline</span><span class="v">@pf</span></div>
+        <div class="line"><span>Category</span><span class="v">Crypto</span></div>
+        <div class="line"><span>Tags</span><span class="v">BTC, price-target, 2026-H1</span></div>
+        <div class="line"><span>Linked</span><span class="v">2 markets</span></div>
+        <div class="line"><span>Seed</span><span class="v">$495 on YES</span></div>
+        <div class="line"><span>Edition</span><span class="v">Practice</span></div>
+      </dl>
+
+      <div class="notice">
+        <strong>Before you publish</strong>
+        Your claim is immutable once published. You can cash out your opening stake at any time, but the headline, lede, and case are on the record forever. Make sure you'd be happy to see it framed on a wall.
+      </div>
+    </aside>
+
+  </div>
+</body>
+</html>

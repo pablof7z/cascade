@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Trace / Market</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#000; --bg-2:#0a0a0a; --rule:#1a1a1a; --rule-strong:#2a2a2a;
+    --text-100:#fff; --text-70:rgba(255,255,255,.7); --text-55:rgba(255,255,255,.55); --text-40:rgba(255,255,255,.4); --text-25:rgba(255,255,255,.25);
+    --yes:#3ec48a; --yes-dim:rgba(62,196,138,.15); --no:#ec4a6e; --no-dim:rgba(236,74,110,.15);
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text-70); font-family: 'Inter', system-ui, sans-serif; font-size: 13px; line-height: 1.55; -webkit-font-smoothing: antialiased; font-feature-settings: 'ss03' 1, 'cv11' 1; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; }
+  .shell { width: min(100% - 2rem, 1440px); margin: 0 auto; }
+
+  .bar { display: flex; align-items: center; justify-content: space-between; padding: .7rem 0; border-bottom: 1px solid var(--rule); position: sticky; top: 0; background: var(--bg); z-index: 4; }
+  .bar .inner { display: flex; align-items: center; gap: 1.3rem; }
+  .bar .brand { font-weight: 600; font-size: .86rem; color: var(--text-100); letter-spacing: -.015em; }
+  .bar nav { display: flex; gap: 1.3rem; }
+  .bar nav a { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-40); padding: .2rem 0; }
+  .bar nav a.on { color: var(--text-100); }
+  .bar .crumb { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-25); }
+  .bar .k { display: inline-flex; align-items: center; gap: .5rem; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-40); letter-spacing: .1em; border: 1px solid var(--rule-strong); padding: .2rem .45rem; }
+
+  /* Market path */
+  .path { padding: 1rem 0 .4rem; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-40); }
+  .path a { color: var(--text-55); }
+  .path .sep { margin: 0 .5rem; color: var(--text-25); }
+  .path .cur { color: var(--text-70); }
+
+  .hdr { padding: .3rem 0 1rem; display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: end; border-bottom: 1px solid var(--rule); }
+  .hdr h1 { margin: 0; font-size: 24px; color: var(--text-100); font-weight: 500; letter-spacing: -.015em; max-width: 52rem; line-height: 1.2; }
+  .hdr .by { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-40); letter-spacing: .08em; text-align: right; }
+  .hdr .by .name { color: var(--text-70); }
+
+  /* Chart */
+  .chart-box { padding: 1.4rem 0; border-bottom: 1px solid var(--rule); }
+  .chart-top { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: .8rem; }
+  .chart-top .price-big { font-family: 'JetBrains Mono', monospace; font-size: 64px; color: var(--yes); line-height: .9; letter-spacing: -.02em; }
+  .chart-top .price-big small { font-size: 11px; color: var(--yes); letter-spacing: .1em; margin-left: .8rem; vertical-align: top; }
+  .chart-right { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-40); text-align: right; line-height: 1.5; }
+  .chart-right strong { color: var(--text-100); font-weight: 500; }
+  .range-tabs { display: flex; gap: 1rem; margin-top: .5rem; justify-content: flex-end; }
+  .range-tabs a { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-40); padding: 0 0 2px; }
+  .range-tabs a.on { color: var(--text-100); border-bottom: 1px solid var(--text-100); }
+
+  .big-chart { height: 340px; position: relative; margin-top: 1rem; border-top: 1px solid var(--rule); }
+  .big-chart svg { width: 100%; height: 100%; overflow: visible; }
+  .big-chart .y-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; fill: var(--text-25); letter-spacing: .06em; }
+  .big-chart .h-grid { stroke: var(--rule); stroke-width: 1; }
+  .big-chart .line { stroke: var(--yes); stroke-width: 1.5; fill: none; }
+  .big-chart .area { fill: var(--yes); opacity: .06; }
+  .big-chart .trade-y { fill: var(--yes); }
+  .big-chart .trade-n { fill: var(--no); }
+  .big-chart .mid { stroke: var(--text-25); stroke-dasharray: 3 3; stroke-width: 1; }
+  .big-chart .seed-ann { stroke: var(--text-40); stroke-width: 1; stroke-dasharray: 2 2; }
+  .big-chart .seed-tx { font-family: 'JetBrains Mono', monospace; font-size: 10px; fill: var(--text-40); letter-spacing: .04em; }
+
+  .x-axis { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-25); padding-top: .5rem; letter-spacing: .06em; }
+
+  /* Stats row */
+  .stats-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--rule); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  .stats-row .s { background: var(--bg); padding: .55rem 0 .55rem .7rem; }
+  .stats-row .s dt { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-25); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .25rem; }
+  .stats-row .s dd { margin: 0; font-family: 'JetBrains Mono', monospace; color: var(--text-100); font-size: 12px; letter-spacing: -.005em; }
+
+  /* Below chart: claim body + inline trade */
+  .body-grid { display: grid; grid-template-columns: 1fr 300px; gap: 3rem; padding: 1.8rem 0; border-bottom: 1px solid var(--rule); }
+  @media (max-width: 1000px) { .body-grid { grid-template-columns: 1fr; } }
+
+  .case-txt .l { font-size: 10px; color: var(--text-40); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .6rem; display: block; }
+  .case-txt h2 { margin: 0 0 .8rem; font-size: 15px; color: var(--text-100); font-weight: 500; letter-spacing: -.005em; }
+  .case-txt p { margin: 0 0 .9rem; color: var(--text-70); font-size: 13px; line-height: 1.7; max-width: 58ch; }
+  .case-txt p sup { color: var(--text-100); font-weight: 500; font-size: 10px; vertical-align: super; margin-left: .05em; }
+
+  /* Inline trade */
+  .inline-trade { border-top: 1px solid var(--rule); padding-top: 1rem; }
+  .inline-trade .l { font-size: 10px; color: var(--text-40); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .7rem; display: block; }
+  .it-row { display: grid; grid-template-columns: 1fr 1fr; gap: .3rem; margin-bottom: 1rem; }
+  .it-row a { display: block; padding: .7rem 0; text-align: center; font-size: 12px; color: var(--text-100); border: 1px solid var(--rule-strong); }
+  .it-row a.yes.on { color: var(--yes); border-color: var(--yes); background: var(--yes-dim); }
+  .it-row a.no.on { color: var(--no); border-color: var(--no); background: var(--no-dim); }
+  .it-amt { display: grid; grid-template-columns: 1fr auto; gap: 0; border: 1px solid var(--rule-strong); margin-bottom: .8rem; }
+  .it-amt input { background: transparent; border: 0; color: var(--text-100); font-family: 'JetBrains Mono', monospace; font-size: 15px; padding: .55rem .7rem; text-align: right; outline: none; }
+  .it-amt .suf { padding: 0 .7rem; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-40); letter-spacing: .1em; border-left: 1px solid var(--rule-strong); display: grid; place-items: center; }
+  .it-quote { display: grid; grid-template-columns: 1fr auto; gap: .3rem; font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: .6rem 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); margin-bottom: .8rem; }
+  .it-quote dt { color: var(--text-40); }
+  .it-quote dd { margin: 0; color: var(--text-100); }
+  .it-quote dd.up { color: var(--yes); }
+  .it-submit { display: block; width: 100%; text-align: center; padding: .7rem 0; background: var(--yes); color: #000; font-weight: 500; border: 0; font-size: 13px; cursor: pointer; letter-spacing: -.005em; font-family: 'Inter', sans-serif; }
+  .it-submit:hover { background: #fff; color: #000; }
+  .it-foot { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-25); letter-spacing: .08em; text-align: center; margin-top: .5rem; }
+
+  .pos-block { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  .pos-block .l { font-size: 10px; color: var(--text-40); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .5rem; display: block; }
+  .pos-row { display: grid; grid-template-columns: auto 1fr auto; gap: .6rem; font-family: 'JetBrains Mono', monospace; font-size: 11px; align-items: center; padding: .35rem 0; border-bottom: 1px solid var(--rule); }
+  .pos-row .sd { color: var(--yes); border: 1px solid var(--yes); padding: .1rem .3rem; font-size: 9px; letter-spacing: .1em; }
+  .pos-row .sz { color: var(--text-70); }
+  .pos-row .pl.up { color: var(--yes); }
+
+  /* Discussion (footnotes) */
+  .notes { padding: 1.6rem 0 .4rem; border-bottom: 1px solid var(--rule); }
+  .notes .l { font-size: 10px; color: var(--text-40); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 1rem; display: block; }
+  .note { display: grid; grid-template-columns: 30px auto 1fr auto; gap: .8rem; padding: .65rem 0; border-bottom: 1px solid var(--rule); align-items: start; }
+  .note .sup { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-100); font-weight: 500; }
+  .note .who { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-55); letter-spacing: .08em; min-width: 12ch; }
+  .note .who .side { color: var(--yes); margin-left: .4rem; }
+  .note .who .side.no { color: var(--no); }
+  .note .txt { color: var(--text-70); font-size: 12.5px; line-height: 1.6; }
+  .note .t { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-25); letter-spacing: .06em; }
+
+  /* Trade tape */
+  .tape { padding: 1.6rem 0; border-bottom: 1px solid var(--rule); }
+  .tape .l { font-size: 10px; color: var(--text-40); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .6rem; display: block; }
+  .tape-row { display: grid; grid-template-columns: 70px 90px 100px 1fr auto; gap: 1rem; font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: .3rem 0; border-bottom: 1px solid var(--rule); align-items: center; }
+  .tape-row .t { color: var(--text-25); }
+  .tape-row .side.y { color: var(--yes); } .tape-row .side.n { color: var(--no); }
+  .tape-row .who { color: var(--text-55); }
+  .tape-row .sz { color: var(--text-100); text-align: right; }
+  .tape-row .p { color: var(--text-70); text-align: right; }
+
+  /* Related footnote */
+  .related { padding: 1.4rem 0 2rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; border-top: 1px solid var(--rule); }
+  @media (max-width: 800px) { .related { grid-template-columns: 1fr; } }
+  .rel { display: block; padding: 0; }
+  .rel .l { font-size: 10px; color: var(--text-40); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .4rem; display: block; }
+  .rel .t { color: var(--text-100); font-size: 13px; margin: 0 0 .4rem; }
+  .rel .spark { height: 22px; width: 100%; display: block; }
+  .rel .r { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-top: .3rem; }
+  .rel .r .p.up { color: var(--yes); } .rel .r .p.no { color: var(--no); }
+  .rel .r .d { color: var(--text-25); }
+
+  .foot { padding: 1rem 0 1.5rem; display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-25); letter-spacing: .06em; }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <header class="bar">
+      <div class="inner">
+        <a class="brand" href="01-landing.html">Cascade</a>
+        <nav>
+          <a class="on" href="01-landing.html">Markets</a>
+          <a href="#">Portfolio</a>
+          <a href="#">Activity</a>
+          <a href="#">Leaderboard</a>
+        </nav>
+      </div>
+      <div class="inner">
+        <span class="crumb">PRACTICE · 4S AGO</span>
+        <span class="k">⌘K</span>
+      </div>
+    </header>
+
+    <div class="path">
+      <a href="01-landing.html">Markets</a><span class="sep">›</span>
+      <a href="#">AI</a><span class="sep">›</span>
+      <span class="cur">OPENAI / GPT-5</span>
+    </div>
+
+    <section class="hdr">
+      <h1>OpenAI will ship GPT-5 before Google ships Gemini 2 Pro.</h1>
+      <div class="by">
+        PUBLISHED 14 MAR 2026 · <span class="name">@NORTH</span><br/>
+        2,814 TRADES · LINKED TO 3
+      </div>
+    </section>
+
+    <section class="chart-box">
+      <div class="chart-top">
+        <div>
+          <span class="price-big">71¢<small>YES · +3¢ 24H</small></span>
+        </div>
+        <div class="chart-right">
+          <strong>21¢</strong> spread · <strong>$74,120</strong> 30d · <strong>318</strong> traders<br/>
+          range <strong>60¢ — 74¢</strong> since 14 Mar
+          <div class="range-tabs">
+            <a href="#">1D</a><a href="#">7D</a><a class="on" href="#">30D</a><a href="#">ALL</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="big-chart">
+        <svg viewBox="0 0 1200 340" preserveAspectRatio="none">
+          <!-- grid -->
+          <line class="h-grid" x1="0" y1="34" x2="1200" y2="34"/>
+          <line class="h-grid" x1="0" y1="102" x2="1200" y2="102"/>
+          <line class="mid" x1="0" y1="170" x2="1200" y2="170"/>
+          <line class="h-grid" x1="0" y1="238" x2="1200" y2="238"/>
+          <line class="h-grid" x1="0" y1="306" x2="1200" y2="306"/>
+          <text class="y-label" x="0" y="30">100¢</text>
+          <text class="y-label" x="0" y="98">75¢</text>
+          <text class="y-label" x="0" y="166">50¢</text>
+          <text class="y-label" x="0" y="234">25¢</text>
+          <text class="y-label" x="0" y="302">0¢</text>
+          <!-- area + line -->
+          <path class="area" d="M30,268 L100,262 L170,250 L240,235 L310,240 L380,220 L450,205 L520,195 L590,200 L660,180 L730,160 L800,168 L870,145 L940,135 L1010,118 L1080,105 L1150,94 L1150,338 L30,338 Z"/>
+          <polyline class="line" points="30,268 100,262 170,250 240,235 310,240 380,220 450,205 520,195 590,200 660,180 730,160 800,168 870,145 940,135 1010,118 1080,105 1150,94"/>
+          <!-- seed marker -->
+          <line class="seed-ann" x1="30" y1="268" x2="30" y2="320"/>
+          <text class="seed-tx" x="34" y="316">SEED · $500 @ 61¢</text>
+          <!-- trade markers YES and NO -->
+          <circle class="trade-y" cx="150" cy="258" r="2.4"/>
+          <circle class="trade-y" cx="310" cy="240" r="2.4"/>
+          <circle class="trade-n" cx="480" cy="205" r="2.4"/>
+          <circle class="trade-y" cx="600" cy="200" r="2.4"/>
+          <circle class="trade-y" cx="780" cy="168" r="2.4"/>
+          <circle class="trade-y" cx="900" cy="140" r="2.4"/>
+          <circle class="trade-n" cx="1020" cy="120" r="2.4"/>
+          <circle class="trade-y" cx="1150" cy="94" r="3"/>
+        </svg>
+      </div>
+      <div class="x-axis">
+        <span>14 MAR</span><span>21 MAR</span><span>28 MAR</span><span>4 APR</span><span>11 APR</span><span>18 APR · NOW</span>
+      </div>
+    </section>
+
+    <dl class="stats-row">
+      <div class="s"><dt>YES</dt><dd>71¢</dd></div>
+      <div class="s"><dt>NO</dt><dd>29¢</dd></div>
+      <div class="s"><dt>Spread</dt><dd>21¢</dd></div>
+      <div class="s"><dt>30d vol</dt><dd>$74,120</dd></div>
+      <div class="s"><dt>Traders</dt><dd>318</dd></div>
+      <div class="s"><dt>Trades</dt><dd>2,814</dd></div>
+      <div class="s"><dt>Top stake</dt><dd>@north $2,400</dd></div>
+    </dl>
+
+    <section class="body-grid">
+
+      <article class="case-txt">
+        <span class="l">The case · @north · 14 Mar</span>
+        <h2>Eight weeks gate-to-launch is the whole trade.</h2>
+        <p>OpenAI has run three internal model gates on GPT-5 in the last six weeks<sup>1</sup>. Their pattern since GPT-4 is roughly eight weeks from gate to launch. Google's Gemini 2 Pro remains gated behind Vertex AI preview, and the hardware pipeline for the internal TPU cycle slipped in April<sup>2</sup>.</p>
+        <p>The compounding evidence is not subtle: Altman's public appearances, DevDay pre-announcement cadence, and the documented two-week window between the final safety eval and shipping<sup>3</sup>. I put this at 70–72¢. The market agrees — but not enough to close the door.</p>
+        <p>What would move me? A Google hardware announcement on the week of 21 April with a Gemini 2 Pro date attached<sup>4</sup>. Without that, OpenAI's lead compounds daily.</p>
+      </article>
+
+      <aside class="inline-trade">
+        <span class="l">Back a side</span>
+        <div class="it-row">
+          <a class="yes on" href="#">YES · 71¢</a>
+          <a class="no" href="#">NO · 29¢</a>
+        </div>
+        <div class="it-amt">
+          <input type="text" value="25.00" />
+          <span class="suf">USD</span>
+        </div>
+        <dl class="it-quote">
+          <dt>SHARES</dt><dd>35</dd>
+          <dt>AVG FILL</dt><dd>71.4¢</dd>
+          <dt>FEE 1%</dt><dd>$0.25</dd>
+          <dt>IF RIGHT</dt><dd class="up">+$10.28</dd>
+        </dl>
+        <button class="it-submit">Back YES · $25</button>
+        <p class="it-foot">CASH OUT ANYTIME · NO EXPIRY</p>
+
+        <div class="pos-block">
+          <span class="l">Your position</span>
+          <div class="pos-row">
+            <span class="sd">YES</span>
+            <span class="sz">$220 · avg 68¢</span>
+            <span class="pl up">+$6.60</span>
+          </div>
+        </div>
+      </aside>
+
+    </section>
+
+    <section class="notes">
+      <span class="l">Replies · threaded</span>
+
+      <div class="note">
+        <span class="sup">1</span>
+        <span class="who">@jules <span class="side">YES $120</span></span>
+        <p class="txt">The eight-week pattern holds. I'm at 78¢ floor today — have been adding. Safety eval cadence hasn't moved, which is informative by itself.</p>
+        <span class="t">2M</span>
+      </div>
+
+      <div class="note">
+        <span class="sup">2</span>
+        <span class="who">@mark-s <span class="side no">NO $15</span></span>
+        <p class="txt">A gate is not a launch candidate. I don't believe the eight-week pattern generalizes to a generation change. Small NO here.</p>
+        <span class="t">41S</span>
+      </div>
+
+      <div class="note">
+        <span class="sup">3</span>
+        <span class="who">@arca <span class="side no">NO $25</span></span>
+        <p class="txt">The tell is Google's hardware note on the 21st. If it lands with a date, this flips. If not, the crowd punishes and pushes 80¢.</p>
+        <span class="t">7M</span>
+      </div>
+
+      <div class="note">
+        <span class="sup">4</span>
+        <span class="who">@tessa <span class="side">YES $40</span></span>
+        <p class="txt">Just backed YES at 71¢. Eight weeks ≥ shipping. That's the whole trade.</p>
+        <span class="t">2S</span>
+      </div>
+    </section>
+
+    <section class="tape">
+      <span class="l">Trade tape · realtime</span>
+      <div class="tape-row"><span class="t">2s</span><span class="side y">BACK YES</span><span class="who">@tessa</span><span class="sz">$40</span><span class="p">71¢</span></div>
+      <div class="tape-row"><span class="t">41s</span><span class="side n">BACK NO</span><span class="who">@mark-s</span><span class="sz">$15</span><span class="p">29¢</span></div>
+      <div class="tape-row"><span class="t">2m</span><span class="side y">BACK YES</span><span class="who">@jules</span><span class="sz">$120</span><span class="p">70¢</span></div>
+      <div class="tape-row"><span class="t">4m</span><span class="side y">CASH OUT</span><span class="who">@neo</span><span class="sz">$78</span><span class="p">70¢</span></div>
+      <div class="tape-row"><span class="t">7m</span><span class="side n">BACK NO</span><span class="who">@arca</span><span class="sz">$25</span><span class="p">30¢</span></div>
+      <div class="tape-row"><span class="t">14m</span><span class="side y">BACK YES</span><span class="who">@greta</span><span class="sz">$50</span><span class="p">68¢</span></div>
+      <div class="tape-row"><span class="t">22m</span><span class="side y">BACK YES</span><span class="who">@aria</span><span class="sz">$200</span><span class="p">67¢</span></div>
+      <div class="tape-row"><span class="t">31m</span><span class="side n">CASH OUT</span><span class="who">@quark</span><span class="sz">$15</span><span class="p">32¢</span></div>
+    </section>
+
+    <section class="related">
+      <a class="rel" href="#">
+        <span class="l">Linked · AI</span>
+        <div class="t">GPT-5 has native agent tool-use at launch.</div>
+        <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.3" points="0,8 10,7 20,6 30,5 40,5 50,4 60,4 70,3 80,3 90,2 100,2"/></svg>
+        <div class="r"><span class="p up">82¢</span><span class="d">+1¢ · 11 threads</span></div>
+      </a>
+      <a class="rel" href="#">
+        <span class="l">Linked · AI</span>
+        <div class="t">Anthropic ships Claude 5 before end-2026.</div>
+        <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.3" points="0,11 10,10 20,11 30,10 40,9 50,10 60,9 70,10 80,9 90,8 100,9"/></svg>
+        <div class="r"><span class="p up">54¢</span><span class="d">−1¢ · 18 threads</span></div>
+      </a>
+      <a class="rel" href="#">
+        <span class="l">Linked · AI</span>
+        <div class="t">A model scores above 90% on Frontier Math.</div>
+        <svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none"><polyline fill="none" stroke="#ec4a6e" stroke-width="1.3" points="0,10 10,11 20,10 30,12 40,13 50,14 60,14 70,15 80,14 90,15 100,15"/></svg>
+        <div class="r"><span class="p no">39¢</span><span class="d">+0¢ · 9 threads</span></div>
+      </a>
+    </section>
+
+    <footer class="foot">
+      <span>Cascade · market · updated 4s ago</span>
+      <span>Relays 7/8 · edition Practice</span>
+      <span>No oracle · no expiry · exit anytime</span>
+    </footer>
+  </div>
+</body>
+</html>

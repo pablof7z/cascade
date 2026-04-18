@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cascade — Proposal 2: The Editorial</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0c0c0e;
+    --bg-surface: #131316;
+    --bg-elevated: #1a1a1f;
+    --bg-interactive: #222229;
+    --border: #27272f;
+    --border-subtle: #1e1e25;
+    --text: #ebebf0;
+    --text-secondary: #a0a0b0;
+    --text-muted: #707088;
+    --text-faint: #50506a;
+    --serif: 'Newsreader', Georgia, serif;
+    --sans: 'Inter', -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+    --positive: #34d399;
+    --positive-dim: rgba(52, 211, 153, 0.12);
+    --negative: #f87171;
+    --negative-dim: rgba(248, 113, 113, 0.12);
+    --accent: #a78bfa;
+    --accent-dim: rgba(167, 139, 250, 0.1);
+    --content-width: 1200px;
+    --narrow: 720px;
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- Header ---- */
+  .header {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-inner {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .logo {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 1.75rem;
+    color: var(--text);
+    letter-spacing: -0.03em;
+  }
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+  .header-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: color 0.15s;
+  }
+  .header-link:hover { color: var(--text); }
+  .header-balance {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--positive);
+    background: var(--positive-dim);
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+  }
+  .header-cta {
+    background: var(--text);
+    color: var(--bg);
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .header-cta:hover { opacity: 0.85; }
+
+  .nav-bar {
+    display: flex;
+    gap: 0;
+    padding: 0;
+  }
+  .nav-bar a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 0.75rem 1rem 0.75rem 0;
+    margin-right: 0.5rem;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .nav-bar a:hover { color: var(--text-secondary); }
+  .nav-bar a.active { color: var(--text); border-bottom-color: var(--text); }
+
+  /* ---- Hero / Featured Thesis ---- */
+  .hero {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 3rem 2rem;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 3rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-content {}
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  .hero-title {
+    font-family: var(--serif);
+    font-size: 2.75rem;
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.25rem;
+    max-width: 620px;
+  }
+  .hero-description {
+    font-family: var(--serif);
+    font-size: 1.15rem;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    max-width: 540px;
+    margin-bottom: 1.5rem;
+  }
+  .hero-meta {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+  }
+  .hero-meta strong { color: var(--text-secondary); font-weight: 500; }
+  .hero-modules {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .hero-modules-label {
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .module-ref {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .module-ref:hover { border-color: var(--border); }
+  .module-ref-name { font-size: 0.85rem; color: var(--text-secondary); }
+  .module-ref-price {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .hero-actions { display: flex; gap: 0.75rem; }
+  .btn-primary {
+    background: var(--text);
+    color: var(--bg);
+    padding: 0.6rem 1.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 0.6rem 1.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { color: var(--text); border-color: var(--text-muted); }
+
+  /* Hero Price Card */
+  .hero-price-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .hero-price-header {
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .hero-price-main {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+  .hero-price-value {
+    font-family: var(--mono);
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--positive);
+    line-height: 1;
+  }
+  .hero-price-unit {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .hero-price-change {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--positive);
+    background: var(--positive-dim);
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+  }
+  .hero-chart {
+    height: 120px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-chart svg { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; }
+  .hero-price-sides {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+  .hero-side {
+    text-align: center;
+    padding: 0.75rem;
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .hero-side:hover { border-color: var(--border); }
+  .hero-side-label {
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+  }
+  .hero-side-price {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 1.2rem;
+  }
+  .side-long .hero-side-price { color: var(--positive); }
+  .side-short .hero-side-price { color: var(--negative); }
+  .hero-price-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .hero-price-stats strong {
+    display: block;
+    font-family: var(--mono);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-top: 0.15rem;
+  }
+
+  /* ---- Content Sections ---- */
+  .content {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* Section: Theses */
+  .section {
+    padding: 2.5rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+  }
+  .section-label {
+    font-family: var(--serif);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .section-link {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .section-link:hover { color: var(--text); }
+
+  /* Thesis Cards (Editorial Layout) */
+  .thesis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .thesis-card {
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    transition: border-color 0.15s;
+    cursor: pointer;
+    background: var(--bg-surface);
+  }
+  .thesis-card:hover { border-color: var(--text-muted); }
+  .thesis-card-eyebrow {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+  }
+  .thesis-card-eyebrow .thesis-type { color: var(--accent); }
+  .thesis-card-title {
+    font-family: var(--serif);
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 0.6rem;
+    letter-spacing: -0.01em;
+  }
+  .thesis-card-body {
+    font-family: var(--serif);
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin-bottom: 1rem;
+  }
+  .thesis-card-modules {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .module-tag {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border-subtle);
+  }
+  .thesis-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .thesis-card-price {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .thesis-card-volume {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  /* Module Table */
+  .module-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .module-table th {
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.6rem 0;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+  .module-table th.right { text-align: right; }
+  .module-table td {
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+  }
+  .module-table tr { cursor: pointer; transition: background 0.1s; }
+  .module-table tr:hover { background: var(--bg-elevated); }
+  .module-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+  .module-cat {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .module-price {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-align: right;
+  }
+  .module-change {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    text-align: right;
+  }
+  .module-vol {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: right;
+  }
+
+  /* Discussion Section (Editorial) */
+  .discussion-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.25rem;
+  }
+  .discussion-card {
+    padding: 1.25rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .discussion-card:hover { border-color: var(--border); }
+  .discussion-stance {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+  }
+  .stance-long { color: var(--positive); }
+  .stance-short { color: var(--negative); }
+  .stance-neutral { color: var(--text-muted); }
+  .discussion-excerpt {
+    font-family: var(--serif);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .discussion-meta {
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    display: flex;
+    justify-content: space-between;
+  }
+  .discussion-meta strong { color: var(--text-muted); font-weight: 500; }
+
+  /* Why Cascade Section */
+  .why-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2rem;
+  }
+  .why-item {}
+  .why-symbol {
+    font-family: var(--mono);
+    font-size: 1.25rem;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+  }
+  .why-title {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .why-body {
+    font-family: var(--serif);
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* Footer */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 3rem 2rem;
+    max-width: var(--content-width);
+    margin: 0 auto;
+  }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 2rem;
+  }
+  .footer-brand {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .footer-tagline {
+    font-family: var(--serif);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+    line-height: 1.5;
+  }
+  .footer-col-title {
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.75rem;
+  }
+  .footer-col a {
+    display: block;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    padding: 0.25rem 0;
+    transition: color 0.15s;
+  }
+  .footer-col a:hover { color: var(--text); }
+  .footer-bottom {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; }
+    .thesis-grid { grid-template-columns: 1fr; }
+    .discussion-grid { grid-template-columns: 1fr; }
+    .why-grid { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-inner">
+    <div class="header-top">
+      <div class="logo">Cascade</div>
+      <div class="header-actions">
+        <a href="#" class="header-link">How it works</a>
+        <a href="#" class="header-link">About</a>
+        <span class="header-balance">$142.50</span>
+        <a href="#" class="header-cta">Build a thesis</a>
+      </div>
+    </div>
+    <nav class="nav-bar">
+      <a href="#" class="active">Home</a>
+      <a href="#">Markets</a>
+      <a href="#">Activity</a>
+      <a href="#">Leaderboard</a>
+      <a href="#">Analytics</a>
+      <a href="#">Wallet</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Hero: Featured Thesis -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-eyebrow">Featured Thesis</div>
+    <h1 class="hero-title">If the Fed cuts rates, tech stocks will outperform value</h1>
+    <p class="hero-description">
+      A compositional thesis linking monetary policy expectations to sector rotation.
+      The market currently prices a 68% probability that rate cuts will benefit growth stocks
+      disproportionately&mdash;but the linked modules tell a more nuanced story.
+    </p>
+    <div class="hero-meta">
+      <span>by <strong>@macro_whale</strong></span>
+      <span><strong>847</strong> trades</span>
+      <span><strong>$12,840</strong> volume</span>
+      <span><strong>14</strong> discussion threads</span>
+    </div>
+    <div class="hero-modules">
+      <div class="hero-modules-label">Linked modules (informational)</div>
+      <div class="module-ref">
+        <span class="module-ref-name">Fed cuts rates before September 2026</span>
+        <span class="module-ref-price" style="color: var(--positive)">72c</span>
+      </div>
+      <div class="module-ref">
+        <span class="module-ref-name">NASDAQ outperforms S&P Value Index H2 2026</span>
+        <span class="module-ref-price" style="color: var(--positive)">54c</span>
+      </div>
+      <div class="module-ref">
+        <span class="module-ref-name">US 10Y yield below 3.5% by December</span>
+        <span class="module-ref-price" style="color: var(--negative)">39c</span>
+      </div>
+    </div>
+    <div class="hero-actions">
+      <button class="btn-primary">Read full thesis</button>
+      <button class="btn-secondary">Trade this market</button>
+    </div>
+  </div>
+
+  <div class="hero-price-card">
+    <div class="hero-price-header">Market Price</div>
+    <div class="hero-price-main">
+      <div class="hero-price-value">68c</div>
+      <div class="hero-price-change">+4.2% today</div>
+    </div>
+    <div class="hero-chart">
+      <svg viewBox="0 0 380 120" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="hgrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#34d399" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,90 Q40,85 80,75 T160,60 T240,45 T320,35 L380,28 L380,120 L0,120 Z" fill="url(#hgrad)"/>
+        <polyline fill="none" stroke="#34d399" stroke-width="2"
+          points="0,90 40,85 80,75 120,68 160,60 200,52 240,45 280,40 320,35 360,30 380,28"/>
+      </svg>
+    </div>
+    <div class="hero-price-sides">
+      <div class="hero-side side-long">
+        <div class="hero-side-label">Long</div>
+        <div class="hero-side-price">$0.68</div>
+      </div>
+      <div class="hero-side side-short">
+        <div class="hero-side-label">Short</div>
+        <div class="hero-side-price">$0.32</div>
+      </div>
+    </div>
+    <div class="hero-price-stats">
+      <div>
+        <span>Volume</span>
+        <strong>$12,840</strong>
+      </div>
+      <div>
+        <span>Trades</span>
+        <strong>847</strong>
+      </div>
+      <div>
+        <span>Threads</span>
+        <strong>14</strong>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Content Area -->
+<div class="content">
+
+  <!-- Active Theses -->
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-label">Active Theses</h2>
+      <a href="#" class="section-link">View all theses &rarr;</a>
+    </div>
+    <div class="thesis-grid">
+      <div class="thesis-card">
+        <div class="thesis-card-eyebrow">
+          <span class="thesis-type">Thesis</span>
+          <span>Geopolitics</span>
+        </div>
+        <h3 class="thesis-card-title">If tariffs persist, US manufacturing jobs will increase</h3>
+        <p class="thesis-card-body">The protectionist bet: can trade barriers actually rebuild domestic manufacturing capacity, or will automation absorb the investment instead?</p>
+        <div class="thesis-card-modules">
+          <span class="module-tag">Trump tariffs persist &middot; 61c</span>
+          <span class="module-tag">US mfg employment +2% &middot; 29c</span>
+        </div>
+        <div class="thesis-card-footer">
+          <span class="thesis-card-price" style="color: var(--negative)">29c</span>
+          <span class="thesis-card-volume">$5,870 vol &middot; 301 trades</span>
+        </div>
+      </div>
+      <div class="thesis-card">
+        <div class="thesis-card-eyebrow">
+          <span class="thesis-type">Thesis</span>
+          <span>Crypto</span>
+        </div>
+        <h3 class="thesis-card-title">If BTC exceeds $150k, DeFi TVL will surpass $500B</h3>
+        <p class="thesis-card-body">The wealth effect thesis: a Bitcoin supercycle would unlock speculative capital that flows downstream into DeFi protocols, repeating the 2021 pattern.</p>
+        <div class="thesis-card-modules">
+          <span class="module-tag">BTC &gt; $150k &middot; 34c</span>
+          <span class="module-tag">DeFi TVL &gt; $500B &middot; 22c</span>
+        </div>
+        <div class="thesis-card-footer">
+          <span class="thesis-card-price" style="color: var(--positive)">51c</span>
+          <span class="thesis-card-volume">$2,980 vol &middot; 167 trades</span>
+        </div>
+      </div>
+      <div class="thesis-card">
+        <div class="thesis-card-eyebrow">
+          <span class="thesis-type">Thesis</span>
+          <span>AI &middot; Regulation</span>
+        </div>
+        <h3 class="thesis-card-title">If EU AI Act enforced strictly, US tech restructures operations</h3>
+        <p class="thesis-card-body">Brussels as the global AI regulator: will compliance costs force structural changes at Google, Meta, and OpenAI, or will they simply wall off Europe?</p>
+        <div class="thesis-card-modules">
+          <span class="module-tag">EU AI Act strict enforcement &middot; 63c</span>
+          <span class="module-tag">US tech EU restructuring &middot; 58c</span>
+        </div>
+        <div class="thesis-card-footer">
+          <span class="thesis-card-price" style="color: var(--positive)">55c</span>
+          <span class="thesis-card-volume">$4,120 vol &middot; 254 trades</span>
+        </div>
+      </div>
+      <div class="thesis-card">
+        <div class="thesis-card-eyebrow">
+          <span class="thesis-type">Thesis</span>
+          <span>Energy &middot; Climate</span>
+        </div>
+        <h3 class="thesis-card-title">If AI energy demand doubles, nuclear renaissance accelerates</h3>
+        <p class="thesis-card-body">Data centers need baseload power. The thesis: AI compute demands will overcome decades of nuclear skepticism faster than any climate argument could.</p>
+        <div class="thesis-card-modules">
+          <span class="module-tag">AI datacenter demand 2x &middot; 71c</span>
+          <span class="module-tag">New US nuclear plant approved &middot; 44c</span>
+        </div>
+        <div class="thesis-card-footer">
+          <span class="thesis-card-price" style="color: var(--positive)">62c</span>
+          <span class="thesis-card-volume">$3,450 vol &middot; 198 trades</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trending Modules -->
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-label">Trending Modules</h2>
+      <a href="#" class="section-link">All modules &rarr;</a>
+    </div>
+    <table class="module-table">
+      <thead>
+        <tr>
+          <th>Market</th>
+          <th class="right">Price</th>
+          <th class="right">24h</th>
+          <th class="right">Volume</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <div class="module-name">Fed cuts rates before September 2026</div>
+            <div class="module-cat">Macro</div>
+          </td>
+          <td class="module-price" style="color: var(--positive)">72c</td>
+          <td class="module-change" style="color: var(--positive)">+2.1%</td>
+          <td class="module-vol">$9,420</td>
+        </tr>
+        <tr>
+          <td>
+            <div class="module-name">Bitcoin exceeds $150,000 by end of 2026</div>
+            <div class="module-cat">Crypto</div>
+          </td>
+          <td class="module-price" style="color: var(--negative)">34c</td>
+          <td class="module-change" style="color: var(--negative)">-2.1%</td>
+          <td class="module-vol">$8,190</td>
+        </tr>
+        <tr>
+          <td>
+            <div class="module-name">Spot Ethereum ETF approved before Q3 2026</div>
+            <div class="module-cat">Crypto</div>
+          </td>
+          <td class="module-price" style="color: var(--positive)">83c</td>
+          <td class="module-change" style="color: var(--positive)">+6.3%</td>
+          <td class="module-vol">$3,440</td>
+        </tr>
+        <tr>
+          <td>
+            <div class="module-name">Nvidia market cap exceeds $5 trillion by Q4</div>
+            <div class="module-cat">Tech</div>
+          </td>
+          <td class="module-price" style="color: var(--positive)">62c</td>
+          <td class="module-change" style="color: var(--positive)">+3.1%</td>
+          <td class="module-vol">$4,520</td>
+        </tr>
+        <tr>
+          <td>
+            <div class="module-name">US enters technical recession before 2027</div>
+            <div class="module-cat">Macro</div>
+          </td>
+          <td class="module-price" style="color: var(--negative)">41c</td>
+          <td class="module-change" style="color: var(--positive)">+1.8%</td>
+          <td class="module-vol">$4,110</td>
+        </tr>
+        <tr>
+          <td>
+            <div class="module-name">China invades or blockades Taiwan before 2028</div>
+            <div class="module-cat">Geopolitics</div>
+          </td>
+          <td class="module-price" style="color: var(--negative)">8c</td>
+          <td class="module-change" style="color: var(--negative)">-0.3%</td>
+          <td class="module-vol">$3,890</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Discussion Highlights -->
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-label">Discussion Highlights</h2>
+      <a href="#" class="section-link">All discussions &rarr;</a>
+    </div>
+    <div class="discussion-grid">
+      <div class="discussion-card">
+        <div class="discussion-stance stance-long">Long &middot; Fed rate cuts</div>
+        <p class="discussion-excerpt">"The labor market data is softening faster than consensus expects. Watch the JOLTS revision next week&mdash;if openings drop below 7M, the September cut is locked in."</p>
+        <div class="discussion-meta">
+          <span><strong>@macro_whale</strong></span>
+          <span>2h ago &middot; 12 replies</span>
+        </div>
+      </div>
+      <div class="discussion-card">
+        <div class="discussion-stance stance-short">Short &middot; BTC $150k</div>
+        <p class="discussion-excerpt">"Everyone pricing in the halving effect is ignoring miner capitulation dynamics. Post-halving sell pressure from miners with thin margins could suppress price for 6-8 months."</p>
+        <div class="discussion-meta">
+          <span><strong>@defi_skeptic</strong></span>
+          <span>5h ago &middot; 8 replies</span>
+        </div>
+      </div>
+      <div class="discussion-card">
+        <div class="discussion-stance stance-neutral">Analysis &middot; Nuclear thesis</div>
+        <p class="discussion-excerpt">"The NRC permitting timeline alone makes a 2027 plant approval highly unlikely. This thesis needs to be reframed around SMR technology to have realistic signal value."</p>
+        <div class="discussion-meta">
+          <span><strong>@energy_analyst</strong></span>
+          <span>8h ago &middot; 5 replies</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why Cascade -->
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-label">Why Cascade</h2>
+    </div>
+    <div class="why-grid">
+      <div class="why-item">
+        <div class="why-symbol">&infin;</div>
+        <h3 class="why-title">Markets never close</h3>
+        <p class="why-body">No oracle. No expiration date. Reality asserts itself through price. When information becomes clear, markets exhaust naturally through trading.</p>
+      </div>
+      <div class="why-item">
+        <div class="why-symbol">&loz;</div>
+        <h3 class="why-title">Compositional theses</h3>
+        <p class="why-body">Link markets informationally without forcing synthetic outcomes. Build "if X then Y" arguments where each component trades independently on its own merits.</p>
+      </div>
+      <div class="why-item">
+        <div class="why-symbol">&rarr;</div>
+        <h3 class="why-title">Public commitments</h3>
+        <p class="why-body">Every trade is a public statement. Every discussion is attached to a market. Put your money where your analysis is&mdash;or fade the consensus.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <div class="footer-brand">Cascade</div>
+      <p class="footer-tagline">Public markets for infinite games.<br>Where theses meet capital.</p>
+    </div>
+    <div class="footer-col">
+      <div class="footer-col-title">Navigate</div>
+      <a href="#">Markets</a>
+      <a href="#">Build a Thesis</a>
+      <a href="#">Analytics</a>
+      <a href="#">Leaderboard</a>
+    </div>
+    <div class="footer-col">
+      <div class="footer-col-title">Account</div>
+      <a href="#">Join</a>
+      <a href="#">Portfolio</a>
+      <a href="#">Wallet</a>
+      <a href="#">Bookmarks</a>
+    </div>
+    <div class="footer-col">
+      <div class="footer-col-title">Reference</div>
+      <a href="#">How It Works</a>
+      <a href="#">Blog</a>
+      <a href="#">Terms</a>
+      <a href="#">Privacy</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>&copy; 2026 Cascade</span>
+    <span>Built on Nostr &middot; Powered by Cashu</span>
+  </div>
+</footer>
+
+</body>
+</html>

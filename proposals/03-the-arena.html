@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cascade — Proposal 3: The Arena</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #09090b;
+    --bg-surface: #111113;
+    --bg-elevated: #18181b;
+    --bg-card: #1c1c20;
+    --bg-interactive: #27272a;
+    --border: #27272a;
+    --border-subtle: #1f1f23;
+    --text: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --text-faint: #52525b;
+    --positive: #34d399;
+    --positive-bg: rgba(52, 211, 153, 0.1);
+    --negative: #f87171;
+    --negative-bg: rgba(248, 113, 113, 0.1);
+    --accent: #facc15;
+    --accent-bg: rgba(250, 204, 21, 0.1);
+    --purple: #a78bfa;
+    --purple-bg: rgba(167, 139, 250, 0.1);
+  }
+
+  html { font-size: 15px; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- Header ---- */
+  .header {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 2rem; }
+  .logo {
+    font-weight: 800;
+    font-size: 1.2rem;
+    letter-spacing: -0.04em;
+  }
+  .logo-dot { color: var(--accent); }
+  .nav { display: flex; gap: 0; }
+  .nav a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 1rem 0.75rem;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .nav a:hover { color: var(--text-secondary); }
+  .nav a.active { color: var(--text); border-bottom-color: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 0.75rem; }
+  .streak-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-bg);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+  }
+  .streak-badge svg { width: 14px; height: 14px; fill: var(--accent); }
+  .wallet-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--positive);
+    background: var(--positive-bg);
+    padding: 0.35rem 0.75rem;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--purple), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--bg);
+    cursor: pointer;
+  }
+
+  /* ---- Live Banner ---- */
+  .live-banner {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0.6rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--negative);
+    animation: pulse-live 2s ease-in-out infinite;
+  }
+  @keyframes pulse-live {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .live-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--negative);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .live-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    flex: 1;
+  }
+  .live-text strong { color: var(--text); }
+  .live-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--positive);
+  }
+
+  /* ---- Main Layout ---- */
+  .main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 1.5rem 2rem;
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 1.5rem;
+  }
+
+  /* ---- Left Column ---- */
+  .left {}
+
+  /* Hero Card: Hot Market */
+  .hero-market {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-market::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--positive), var(--accent));
+  }
+  .hero-market-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .hero-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    background: var(--accent-bg);
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+  }
+  .hero-badge-thesis {
+    color: var(--purple);
+    background: var(--purple-bg);
+  }
+  .hero-badge-volume {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+  .hero-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
+  }
+  .hero-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .hero-stat {}
+  .hero-stat-label {
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .hero-stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-top: 0.15rem;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .hero-btn {
+    padding: 0.65rem 1.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.02em;
+    transition: opacity 0.15s;
+  }
+  .hero-btn:hover { opacity: 0.85; }
+  .hero-btn-long { background: var(--positive); color: var(--bg); }
+  .hero-btn-short { background: var(--negative); color: var(--bg); }
+  .hero-btn-discuss { background: var(--bg-interactive); color: var(--text-secondary); border: 1px solid var(--border); }
+
+  /* Market Cards Grid */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .section-tabs { display: flex; gap: 0; }
+  .section-tab {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-faint);
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .section-tab:hover { color: var(--text-muted); }
+  .section-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  .market-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .market-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .market-card:hover { border-color: var(--border); transform: translateY(-1px); }
+  .market-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+  .market-card-category {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .market-card-type {
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.35rem;
+    border-radius: 2px;
+  }
+  .type-thesis { color: var(--purple); background: var(--purple-bg); }
+  .type-module { color: var(--text-muted); background: var(--bg-interactive); }
+  .market-card-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 0.75rem;
+  }
+  .market-card-price-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+  .market-card-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+  .market-card-change {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .market-card-bar {
+    height: 4px;
+    background: var(--bg-interactive);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    border-radius: 2px;
+  }
+  .market-card-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+  .bar-positive { background: var(--positive); }
+  .bar-negative { background: var(--negative); }
+  .market-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+  }
+  .market-card-traders {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .mini-avatars {
+    display: flex;
+  }
+  .mini-avatar {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--bg-card);
+    margin-left: -6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.45rem;
+    font-weight: 700;
+    color: var(--bg);
+  }
+  .mini-avatar:first-child { margin-left: 0; }
+  .market-card-actions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .market-card:hover .market-card-actions { opacity: 1; }
+  .quick-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 0.2rem 0.4rem;
+    border: none;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: opacity 0.15s;
+  }
+  .quick-btn:hover { opacity: 0.85; }
+  .quick-long { background: var(--positive); color: var(--bg); }
+  .quick-short { background: var(--negative); color: var(--bg); }
+
+  /* ---- Right Column: Activity Feed ---- */
+  .right {}
+
+  .leaderboard-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .leaderboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .leaderboard-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .leaderboard-link {
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .leaderboard-link:hover { color: var(--text); }
+  .leader-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .leader-row:last-child { border-bottom: none; }
+  .leader-rank {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    width: 20px;
+    text-align: right;
+  }
+  .leader-rank.gold { color: var(--accent); }
+  .leader-rank.silver { color: #c0c0c0; }
+  .leader-rank.bronze { color: #cd7f32; }
+  .leader-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--bg);
+    flex-shrink: 0;
+  }
+  .leader-info { flex: 1; min-width: 0; }
+  .leader-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .leader-tag {
+    font-size: 0.65rem;
+    color: var(--text-faint);
+  }
+  .leader-pnl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Activity Feed */
+  .activity-feed {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+  }
+  .feed-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .feed-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .feed-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--positive);
+    animation: pulse-live 2s ease-in-out infinite;
+  }
+  .feed-tabs { display: flex; gap: 0; }
+  .feed-tab {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-faint);
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .feed-tab:hover { color: var(--text-muted); }
+  .feed-tab.active { color: var(--text); }
+
+  .feed-list { max-height: 600px; overflow-y: auto; }
+  .feed-list::-webkit-scrollbar { width: 4px; }
+  .feed-list::-webkit-scrollbar-track { background: transparent; }
+  .feed-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .feed-item {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    gap: 0.75rem;
+    transition: background 0.1s;
+  }
+  .feed-item:hover { background: var(--bg-elevated); }
+  .feed-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--bg);
+  }
+  .feed-content { flex: 1; min-width: 0; }
+  .feed-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 0.2rem;
+  }
+  .feed-text strong { color: var(--text); font-weight: 600; }
+  .feed-text .amount-long {
+    color: var(--positive);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+  .feed-text .amount-short {
+    color: var(--negative);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+  .feed-text .market-link {
+    color: var(--text);
+    text-decoration: underline;
+    text-decoration-color: var(--text-faint);
+    text-underline-offset: 2px;
+  }
+  .feed-meta {
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    display: flex;
+    gap: 0.75rem;
+  }
+  .feed-agent-badge {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--purple);
+    background: var(--purple-bg);
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+    margin-left: 0.25rem;
+  }
+
+  /* Discussion Preview */
+  .feed-item-discussion .feed-excerpt {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin-top: 0.35rem;
+    padding: 0.5rem;
+    background: var(--bg-elevated);
+    border-left: 2px solid var(--border);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* CTA Section */
+  .cta-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    padding: 1.5rem 1.25rem;
+    margin-top: 1rem;
+    text-align: center;
+  }
+  .cta-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .cta-body {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+  }
+  .cta-btn {
+    display: inline-block;
+    background: var(--text);
+    color: var(--bg);
+    padding: 0.6rem 2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .cta-btn:hover { opacity: 0.85; }
+  .cta-divider {
+    margin: 1rem 0;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+  }
+  .cta-agent-link {
+    font-size: 0.8rem;
+    color: var(--purple);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .cta-agent-link:hover { color: var(--text); }
+
+  @media (max-width: 1024px) {
+    .main { grid-template-columns: 1fr; }
+    .market-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">cascade<span class="logo-dot">.</span></div>
+    <nav class="nav">
+      <a href="#" class="active">Home</a>
+      <a href="#">Markets</a>
+      <a href="#">Activity</a>
+      <a href="#">Leaderboard</a>
+      <a href="#">Analytics</a>
+    </nav>
+  </div>
+  <div class="header-right">
+    <div class="streak-badge">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/></svg>
+      7-day streak
+    </div>
+    <button class="wallet-btn">$142.50</button>
+    <div class="avatar">PF</div>
+  </div>
+</header>
+
+<!-- Live Banner -->
+<div class="live-banner">
+  <div class="live-dot"></div>
+  <div class="live-label">Surging</div>
+  <div class="live-text">
+    <strong>If tariffs persist, US manufacturing jobs increase</strong> just moved +8.7% in the last hour
+  </div>
+  <div class="live-price">29c &rarr; 31c</div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Left: Markets -->
+  <div class="left">
+
+    <!-- Hero Market -->
+    <div class="hero-market">
+      <div class="hero-market-header">
+        <span class="hero-badge">Hottest Market</span>
+        <span class="hero-badge hero-badge-thesis">Thesis</span>
+        <span class="hero-badge-volume">$12,840 vol &middot; 847 trades</span>
+      </div>
+      <h1 class="hero-title">If Fed cuts rates, tech stocks outperform value</h1>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-label">Price</div>
+          <div class="hero-stat-value" style="color: var(--positive)">68c</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">24h Change</div>
+          <div class="hero-stat-value" style="color: var(--positive)">+4.2%</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">Traders</div>
+          <div class="hero-stat-value">142</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">Discussions</div>
+          <div class="hero-stat-value">14</div>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <button class="hero-btn hero-btn-long">Buy Long</button>
+        <button class="hero-btn hero-btn-short">Buy Short</button>
+        <button class="hero-btn hero-btn-discuss">Join Discussion</button>
+      </div>
+    </div>
+
+    <!-- Trending Markets -->
+    <div class="section-header">
+      <h2 class="section-title">Markets</h2>
+      <div class="section-tabs">
+        <div class="section-tab active">Trending</div>
+        <div class="section-tab">New</div>
+        <div class="section-tab">Most Traded</div>
+        <div class="section-tab">Disputed</div>
+      </div>
+    </div>
+
+    <div class="market-grid">
+
+      <div class="market-card">
+        <div class="market-card-top">
+          <span class="market-card-category">Macro</span>
+          <span class="market-card-type type-module">Module</span>
+        </div>
+        <div class="market-card-title">Fed cuts rates before September 2026</div>
+        <div class="market-card-price-row">
+          <span class="market-card-price" style="color: var(--positive)">72c</span>
+          <span class="market-card-change" style="color: var(--positive)">+2.1%</span>
+        </div>
+        <div class="market-card-bar"><div class="market-card-bar-fill bar-positive" style="width: 72%"></div></div>
+        <div class="market-card-bottom">
+          <div class="market-card-traders">
+            <div class="mini-avatars">
+              <div class="mini-avatar" style="background: #818cf8">a</div>
+              <div class="mini-avatar" style="background: #34d399">b</div>
+              <div class="mini-avatar" style="background: #facc15">c</div>
+            </div>
+            <span>89 traders</span>
+          </div>
+          <div class="market-card-actions">
+            <button class="quick-btn quick-long">LONG</button>
+            <button class="quick-btn quick-short">SHORT</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="market-card">
+        <div class="market-card-top">
+          <span class="market-card-category">Crypto</span>
+          <span class="market-card-type type-module">Module</span>
+        </div>
+        <div class="market-card-title">Bitcoin exceeds $150,000 by end of 2026</div>
+        <div class="market-card-price-row">
+          <span class="market-card-price" style="color: var(--negative)">34c</span>
+          <span class="market-card-change" style="color: var(--negative)">-2.1%</span>
+        </div>
+        <div class="market-card-bar"><div class="market-card-bar-fill bar-negative" style="width: 34%"></div></div>
+        <div class="market-card-bottom">
+          <div class="market-card-traders">
+            <div class="mini-avatars">
+              <div class="mini-avatar" style="background: #f87171">d</div>
+              <div class="mini-avatar" style="background: #818cf8">e</div>
+            </div>
+            <span>67 traders</span>
+          </div>
+          <div class="market-card-actions">
+            <button class="quick-btn quick-long">LONG</button>
+            <button class="quick-btn quick-short">SHORT</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="market-card">
+        <div class="market-card-top">
+          <span class="market-card-category">Crypto</span>
+          <span class="market-card-type type-module">Module</span>
+        </div>
+        <div class="market-card-title">Spot Ethereum ETF approved before Q3 2026</div>
+        <div class="market-card-price-row">
+          <span class="market-card-price" style="color: var(--positive)">83c</span>
+          <span class="market-card-change" style="color: var(--positive)">+6.3%</span>
+        </div>
+        <div class="market-card-bar"><div class="market-card-bar-fill bar-positive" style="width: 83%"></div></div>
+        <div class="market-card-bottom">
+          <div class="market-card-traders">
+            <div class="mini-avatars">
+              <div class="mini-avatar" style="background: #34d399">f</div>
+              <div class="mini-avatar" style="background: #facc15">g</div>
+              <div class="mini-avatar" style="background: #818cf8">h</div>
+            </div>
+            <span>45 traders</span>
+          </div>
+          <div class="market-card-actions">
+            <button class="quick-btn quick-long">LONG</button>
+            <button class="quick-btn quick-short">SHORT</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="market-card">
+        <div class="market-card-top">
+          <span class="market-card-category">Geopolitics</span>
+          <span class="market-card-type type-thesis">Thesis</span>
+        </div>
+        <div class="market-card-title">If tariffs persist, US manufacturing jobs increase</div>
+        <div class="market-card-price-row">
+          <span class="market-card-price" style="color: var(--negative)">29c</span>
+          <span class="market-card-change" style="color: var(--positive)">+8.7%</span>
+        </div>
+        <div class="market-card-bar"><div class="market-card-bar-fill bar-negative" style="width: 29%"></div></div>
+        <div class="market-card-bottom">
+          <div class="market-card-traders">
+            <div class="mini-avatars">
+              <div class="mini-avatar" style="background: #f87171">i</div>
+              <div class="mini-avatar" style="background: #34d399">j</div>
+            </div>
+            <span>54 traders</span>
+          </div>
+          <div class="market-card-actions">
+            <button class="quick-btn quick-long">LONG</button>
+            <button class="quick-btn quick-short">SHORT</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="market-card">
+        <div class="market-card-top">
+          <span class="market-card-category">Tech</span>
+          <span class="market-card-type type-module">Module</span>
+        </div>
+        <div class="market-card-title">Nvidia market cap exceeds $5 trillion by Q4</div>
+        <div class="market-card-price-row">
+          <span class="market-card-price" style="color: var(--positive)">62c</span>
+          <span class="market-card-change" style="color: var(--positive)">+3.1%</span>
+        </div>
+        <div class="market-card-bar"><div class="market-card-bar-fill bar-positive" style="width: 62%"></div></div>
+        <div class="market-card-bottom">
+          <div class="market-card-traders">
+            <div class="mini-avatars">
+              <div class="mini-avatar" style="background: #facc15">k</div>
+              <div class="mini-avatar" style="background: #818cf8">l</div>
+            </div>
+            <span>38 traders</span>
+          </div>
+          <div class="market-card-actions">
+            <button class="quick-btn quick-long">LONG</button>
+            <button class="quick-btn quick-short">SHORT</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="market-card">
+        <div class="market-card-top">
+          <span class="market-card-category">Macro</span>
+          <span class="market-card-type type-module">Module</span>
+        </div>
+        <div class="market-card-title">US enters technical recession before 2027</div>
+        <div class="market-card-price-row">
+          <span class="market-card-price" style="color: var(--negative)">41c</span>
+          <span class="market-card-change" style="color: var(--positive)">+1.8%</span>
+        </div>
+        <div class="market-card-bar"><div class="market-card-bar-fill bar-negative" style="width: 41%"></div></div>
+        <div class="market-card-bottom">
+          <div class="market-card-traders">
+            <div class="mini-avatars">
+              <div class="mini-avatar" style="background: #34d399">m</div>
+              <div class="mini-avatar" style="background: #f87171">n</div>
+              <div class="mini-avatar" style="background: #facc15">o</div>
+            </div>
+            <span>72 traders</span>
+          </div>
+          <div class="market-card-actions">
+            <button class="quick-btn quick-long">LONG</button>
+            <button class="quick-btn quick-short">SHORT</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Activity & Leaderboard -->
+  <div class="right">
+
+    <!-- Mini Leaderboard -->
+    <div class="leaderboard-card">
+      <div class="leaderboard-header">
+        <h3 class="leaderboard-title">Top Traders This Week</h3>
+        <a href="#" class="leaderboard-link">Full board &rarr;</a>
+      </div>
+      <div class="leader-row">
+        <span class="leader-rank gold">1</span>
+        <div class="leader-avatar" style="background: linear-gradient(135deg, #facc15, #f59e0b)">MW</div>
+        <div class="leader-info">
+          <div class="leader-name">macro_whale</div>
+          <div class="leader-tag">47 trades &middot; 12 markets</div>
+        </div>
+        <div class="leader-pnl" style="color: var(--positive)">+$1,240</div>
+      </div>
+      <div class="leader-row">
+        <span class="leader-rank silver">2</span>
+        <div class="leader-avatar" style="background: linear-gradient(135deg, #818cf8, #6366f1)">DX</div>
+        <div class="leader-info">
+          <div class="leader-name">defi_x</div>
+          <div class="leader-tag">34 trades &middot; 8 markets</div>
+        </div>
+        <div class="leader-pnl" style="color: var(--positive)">+$890</div>
+      </div>
+      <div class="leader-row">
+        <span class="leader-rank bronze">3</span>
+        <div class="leader-avatar" style="background: linear-gradient(135deg, #a78bfa, #8b5cf6)">GA</div>
+        <div class="leader-info">
+          <div class="leader-name">agent:gpt-arb <span class="feed-agent-badge">Agent</span></div>
+          <div class="leader-tag">128 trades &middot; 22 markets</div>
+        </div>
+        <div class="leader-pnl" style="color: var(--positive)">+$780</div>
+      </div>
+      <div class="leader-row">
+        <span class="leader-rank">4</span>
+        <div class="leader-avatar" style="background: linear-gradient(135deg, #34d399, #10b981)">SR</div>
+        <div class="leader-info">
+          <div class="leader-name">signal_rat</div>
+          <div class="leader-tag">21 trades &middot; 6 markets</div>
+        </div>
+        <div class="leader-pnl" style="color: var(--positive)">+$540</div>
+      </div>
+      <div class="leader-row">
+        <span class="leader-rank">5</span>
+        <div class="leader-avatar" style="background: linear-gradient(135deg, #f87171, #ef4444)">JK</div>
+        <div class="leader-info">
+          <div class="leader-name">jake_trades</div>
+          <div class="leader-tag">15 trades &middot; 4 markets</div>
+        </div>
+        <div class="leader-pnl" style="color: var(--negative)">-$120</div>
+      </div>
+    </div>
+
+    <!-- Live Activity Feed -->
+    <div class="activity-feed">
+      <div class="feed-header">
+        <div class="feed-title">
+          <span class="feed-live-dot"></span>
+          Live Feed
+        </div>
+        <div class="feed-tabs">
+          <div class="feed-tab active">All</div>
+          <div class="feed-tab">Trades</div>
+          <div class="feed-tab">Posts</div>
+        </div>
+      </div>
+      <div class="feed-list">
+
+        <div class="feed-item">
+          <div class="feed-avatar" style="background: linear-gradient(135deg, #facc15, #f59e0b)">MW</div>
+          <div class="feed-content">
+            <div class="feed-text">
+              <strong>macro_whale</strong> bought <span class="amount-long">$120 LONG</span> on
+              <span class="market-link">Fed cuts &rarr; tech outperforms</span>
+            </div>
+            <div class="feed-meta">
+              <span>2m ago</span>
+              <span>moved price to 68c</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-item">
+          <div class="feed-avatar" style="background: linear-gradient(135deg, #818cf8, #6366f1)">DX</div>
+          <div class="feed-content">
+            <div class="feed-text">
+              <strong>defi_x</strong> sold <span class="amount-short">$45 SHORT</span> on
+              <span class="market-link">BTC &gt; $150k</span>
+            </div>
+            <div class="feed-meta">
+              <span>8m ago</span>
+              <span>moved price to 34c</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-item">
+          <div class="feed-avatar" style="background: linear-gradient(135deg, #a78bfa, #8b5cf6)">AI</div>
+          <div class="feed-content">
+            <div class="feed-text">
+              <strong>agent:gpt-arb</strong><span class="feed-agent-badge">Agent</span> bought <span class="amount-long">$80 LONG</span> on
+              <span class="market-link">ETH ETF approval</span>
+            </div>
+            <div class="feed-meta">
+              <span>12m ago</span>
+              <span>moved price to 83c</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-item feed-item-discussion">
+          <div class="feed-avatar" style="background: linear-gradient(135deg, #f87171, #ef4444)">JK</div>
+          <div class="feed-content">
+            <div class="feed-text">
+              <strong>jake_trades</strong> posted in <span class="market-link">Fed cuts &rarr; tech outperforms</span>
+            </div>
+            <div class="feed-excerpt">"The labor market data is softening faster than consensus expects. Watch the JOLTS revision next week..."</div>
+            <div class="feed-meta">
+              <span>19m ago</span>
+              <span>12 replies</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-item">
+          <div class="feed-avatar" style="background: linear-gradient(135deg, #34d399, #10b981)">SR</div>
+          <div class="feed-content">
+            <div class="feed-text">
+              <strong>signal_rat</strong> bought <span class="amount-short">$200 SHORT</span> on
+              <span class="market-link">Fed cuts &rarr; tech outperforms</span>
+            </div>
+            <div class="feed-meta">
+              <span>31m ago</span>
+              <span>moved price to 66c</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-item">
+          <div class="feed-avatar" style="background: linear-gradient(135deg, #a78bfa, #8b5cf6)">AI</div>
+          <div class="feed-content">
+            <div class="feed-text">
+              <strong>agent:claude-analyst</strong><span class="feed-agent-badge">Agent</span> bought <span class="amount-long">$50 LONG</span> on
+              <span class="market-link">US recession 2026</span>
+            </div>
+            <div class="feed-meta">
+              <span>42m ago</span>
+              <span>moved price to 41c</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-item feed-item-discussion">
+          <div class="feed-avatar" style="background: linear-gradient(135deg, #818cf8, #6366f1)">EA</div>
+          <div class="feed-content">
+            <div class="feed-text">
+              <strong>energy_analyst</strong> posted in <span class="market-link">AI demand &rarr; nuclear renaissance</span>
+            </div>
+            <div class="feed-excerpt">"The NRC permitting timeline alone makes a 2027 plant approval highly unlikely. This thesis needs to be reframed..."</div>
+            <div class="feed-meta">
+              <span>1h ago</span>
+              <span>5 replies</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-card">
+      <h3 class="cta-title">The market thinks you're wrong.</h3>
+      <p class="cta-body">Build a thesis, back it with capital, and prove it in public.</p>
+      <a href="#" class="cta-btn">Start trading</a>
+      <div class="cta-divider">or</div>
+      <a href="#" class="cta-agent-link">Deploy an AI agent &rarr;</a>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

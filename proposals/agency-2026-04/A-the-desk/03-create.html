@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Desk / Create Market</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#070708; --surface:#0d0d10; --elev:#15151a; --border:#1d1d24; --border-strong:#27272f;
+    --text:#e7e7ec; --text-2:#b6b6be; --text-3:#707079; --text-4:#47474f;
+    --yes:#47c585; --no:#f04870;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; }
+  .display { font-family: 'Inter Tight', 'Inter', sans-serif; letter-spacing: -.02em; }
+
+  .app { display: grid; grid-template-columns: 60px 1fr; min-height: 100vh; }
+  .rail { background: var(--bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: .75rem 0; position: sticky; top: 0; height: 100vh; }
+  .rail .brand { width: 32px; height: 32px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1rem; border: 1px solid var(--border-strong); margin-bottom: 1rem; }
+  .rail .nav { display: flex; flex-direction: column; gap: .2rem; width: 100%; align-items: center; }
+  .rail .nav-item { width: 38px; height: 38px; display: grid; place-items: center; color: var(--text-3); border-left: 2px solid transparent; }
+  .rail .nav-item svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+  .rail .nav-item.active { color: var(--text); background: var(--elev); border-left-color: var(--yes); }
+  .rail .spacer { flex: 1; }
+  .rail .edition { writing-mode: vertical-rl; transform: rotate(180deg); font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .18em; color: var(--text-3); text-transform: uppercase; padding: .5rem 0; }
+
+  .main-col { display: flex; flex-direction: column; min-width: 0; }
+  .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 1.2rem; gap: 1rem; background: var(--bg); }
+  .crumbs { display: flex; align-items: center; gap: .5rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .06em; }
+  .crumbs .sep { color: var(--text-4); }
+  .crumbs .cur { color: var(--text); }
+  .top-actions { margin-left: auto; display: flex; gap: .7rem; align-items: center; }
+  .close-link { color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; padding: .3rem .55rem; border: 1px solid var(--border-strong); }
+  .close-link:hover { color: var(--text); }
+
+  .body { display: grid; grid-template-columns: minmax(0, 1fr) 400px; min-height: calc(100vh - 52px); }
+  .content { padding: 2.5rem 3rem; max-width: 800px; width: 100%; }
+  .right-rail { border-left: 1px solid var(--border); padding: 2.5rem 1.6rem; background: var(--surface); position: sticky; top: 52px; align-self: start; }
+  @media (max-width: 1100px) { .body { grid-template-columns: 1fr; } .right-rail { border-left: 0; border-top: 1px solid var(--border); position: relative; top: 0; } .content { padding: 2rem 1.4rem; } }
+
+  /* Steps header */
+  .step-head { display: grid; gap: .6rem; margin-bottom: 2rem; }
+  .step-kicker { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+  .step-head h1 { margin: 0; font-size: 2rem; font-weight: 600; letter-spacing: -.02em; max-width: 24ch; }
+  .step-head p.lede { color: var(--text-2); max-width: 60ch; font-size: 1rem; }
+
+  .stepper { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 2.4rem; }
+  .stepper .s { background: var(--bg); padding: .7rem .9rem; display: grid; gap: .2rem; }
+  .stepper .s .n { font-family: 'JetBrains Mono', monospace; font-size: .64rem; color: var(--text-4); letter-spacing: .12em; }
+  .stepper .s .l { font-size: .83rem; color: var(--text-3); }
+  .stepper .s.done .n, .stepper .s.done .l { color: var(--text-2); }
+  .stepper .s.done .n { color: var(--yes); }
+  .stepper .s.on { background: var(--elev); }
+  .stepper .s.on .n { color: var(--yes); }
+  .stepper .s.on .l { color: var(--text); font-weight: 500; }
+
+  /* Form blocks */
+  .field { display: grid; gap: .45rem; margin-bottom: 1.8rem; }
+  .field label { font-family: 'Inter', sans-serif; font-size: .84rem; color: var(--text-2); letter-spacing: .005em; }
+  .field .hint { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .06em; }
+  .input, .textarea { width: 100%; background: var(--surface); border: 1px solid var(--border-strong); color: var(--text); padding: .8rem .9rem; font-family: 'Inter', sans-serif; font-size: 1rem; outline: none; }
+  .textarea { min-height: 140px; resize: vertical; font-size: .96rem; line-height: 1.6; }
+  .input:focus, .textarea:focus { border-color: var(--text-3); }
+  .input.big { font-size: 1.35rem; padding: 1.1rem 1rem; letter-spacing: -.015em; }
+
+  .pair-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .tags { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .tag-pick { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-2); padding: .35rem .65rem; border: 1px solid var(--border-strong); letter-spacing: .04em; cursor: pointer; }
+  .tag-pick:hover { color: var(--text); }
+  .tag-pick.on { color: var(--text); background: var(--elev); border-color: var(--text-3); }
+
+  .link-search { display: grid; gap: .5rem; }
+  .link-results { display: grid; }
+  .link-opt { display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid var(--border); align-items: center; }
+  .link-opt .t { font-size: .92rem; }
+  .link-opt .p { font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: var(--text-2); }
+  .link-opt .add { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); padding: .2rem .45rem; border: 1px solid var(--border-strong); letter-spacing: .08em; cursor: pointer; }
+  .link-opt .add:hover { color: var(--text); border-color: var(--text-3); }
+  .link-opt .add.added { color: var(--yes); border-color: var(--yes); }
+
+  /* Seed block */
+  .seed-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 2.2rem; margin-top: 1rem; }
+  @media (max-width: 700px) { .seed-grid { grid-template-columns: 1fr; } }
+  .seed-preview { display: grid; gap: .55rem; padding: 1rem 1.1rem; border: 1px solid var(--border-strong); background: var(--surface); }
+  .seed-preview dt { font-family: 'JetBrains Mono', monospace; font-size: .64rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+  .seed-preview dd { margin: 0 0 .55rem; font-family: 'JetBrains Mono', monospace; font-size: 1.05rem; color: var(--text); }
+  .seed-preview dd.big { font-size: 2rem; letter-spacing: -.01em; }
+
+  .sidebuttons { display: flex; gap: .4rem; margin-top: .3rem; }
+  .side-chip { flex: 1; text-align: center; padding: .7rem 0; font-weight: 500; border: 1px solid var(--border-strong); font-family: 'Inter', sans-serif; font-size: .9rem; color: var(--text-2); cursor: pointer; }
+  .side-chip.yes.on { color: var(--yes); border-color: var(--yes); background: rgba(71,197,133,.07); }
+  .side-chip.no.on { color: var(--no); border-color: var(--no); background: rgba(240,72,112,.07); }
+
+  .amt-input { display: grid; grid-template-columns: 4rem 1fr 4rem; margin-top: .6rem; border: 1px solid var(--border-strong); align-items: stretch; }
+  .amt-input .lbl { color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .72rem; display: grid; place-items: center; border-right: 1px solid var(--border-strong); letter-spacing: .08em; }
+  .amt-input input { border: 0; background: transparent; text-align: right; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; padding: .8rem .8rem; outline: none; }
+  .amt-input .suf { color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .72rem; border-left: 1px solid var(--border-strong); display: grid; place-items: center; letter-spacing: .08em; }
+
+  .quick-pick { display: flex; gap: .3rem; margin-top: .4rem; }
+  .quick-pick button { flex: 1; background: transparent; border: 1px solid var(--border); color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .74rem; padding: .4rem 0; letter-spacing: .05em; cursor: pointer; }
+  .quick-pick button:hover { color: var(--text); border-color: var(--text-3); }
+
+  /* Action bar */
+  .action-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 2rem; padding-top: 1.6rem; border-top: 1px solid var(--border); }
+  .action-bar .meta { color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .06em; }
+  .actions { display: flex; gap: .6rem; }
+  .btn { display: inline-flex; align-items: center; gap: .5rem; padding: .65rem 1rem; border: 1px solid var(--border-strong); background: var(--elev); color: var(--text); font-size: .88rem; font-weight: 500; cursor: pointer; font-family: 'Inter', sans-serif; }
+  .btn:hover { border-color: var(--text-3); }
+  .btn.primary { background: var(--text); color: #000; border-color: var(--text); }
+  .btn.primary:hover { background: #fff; }
+
+  /* Right rail preview */
+  .preview-h { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .8rem; }
+  .card-preview { border: 1px solid var(--border-strong); padding: 1.1rem 1.2rem; display: grid; gap: .7rem; background: var(--bg); }
+  .card-preview .tags-mini { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .card-preview .tags-mini span { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); padding: .2rem .4rem; border: 1px solid var(--border); letter-spacing: .04em; }
+  .card-preview h3 { margin: 0; font-size: 1.15rem; letter-spacing: -.015em; line-height: 1.25; }
+  .card-preview .price-line { display: flex; align-items: baseline; justify-content: space-between; padding-top: .6rem; border-top: 1px solid var(--border); }
+  .card-preview .price-line .v { font-family: 'JetBrains Mono', monospace; color: var(--yes); font-size: 2rem; letter-spacing: -.01em; }
+  .card-preview .price-line .side { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--yes); letter-spacing: .1em; border: 1px solid var(--yes); padding: .15rem .4rem; }
+  .preview-meta { display: grid; gap: .35rem; margin-top: 1rem; }
+  .preview-meta div { display: flex; justify-content: space-between; gap: 1rem; font-family: 'JetBrains Mono', monospace; font-size: .74rem; color: var(--text-3); }
+  .preview-meta div span.v { color: var(--text); }
+
+  .safety { margin-top: 1.6rem; padding-top: 1.2rem; border-top: 1px solid var(--border); color: var(--text-2); font-size: .82rem; line-height: 1.6; }
+  .safety strong { color: var(--text); display: block; margin-bottom: .4rem; font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <aside class="rail">
+      <div class="brand">C</div>
+      <nav class="nav">
+        <a class="nav-item" href="01-landing.html"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 16l4-6 4 4 6-10"/></svg></a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18"/></svg></a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></a>
+        <a class="nav-item" href="#"><svg viewBox="0 0 24 24"><path d="M12 3l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.8 6.1 21l1.2-6.5L2.5 9.9 9 9z"/></svg></a>
+        <a class="nav-item active" href="03-create.html"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></a>
+      </nav>
+      <div class="spacer"></div>
+      <div class="edition">Practice</div>
+    </aside>
+
+    <div class="main-col">
+
+      <header class="topbar">
+        <div class="crumbs">
+          <a href="01-landing.html">Markets</a><span class="sep">/</span><span class="cur">Create</span>
+        </div>
+        <div class="top-actions">
+          <a class="close-link" href="01-landing.html">Esc · close</a>
+        </div>
+      </header>
+
+      <div class="body">
+        <main class="content">
+
+          <div class="step-head">
+            <span class="step-kicker">New market · Step 4 of 4</span>
+            <h1 class="display">Seed your opening position.</h1>
+            <p class="lede">Every market needs a first trade. Yours sets the initial price and funds the book. The more you put in, the more conviction the market starts with — and the more you stand to gain or lose.</p>
+          </div>
+
+          <div class="stepper" role="tablist">
+            <div class="s done"><span class="n">01 · Done</span><span class="l">Claim</span></div>
+            <div class="s done"><span class="n">02 · Done</span><span class="l">Case</span></div>
+            <div class="s done"><span class="n">03 · Done</span><span class="l">Tags &amp; links</span></div>
+            <div class="s on"><span class="n">04 · Active</span><span class="l">Seed</span></div>
+          </div>
+
+          <div class="field">
+            <label>Your side</label>
+            <span class="hint">You are publicly backing this side with real money. Everyone can see.</span>
+            <div class="sidebuttons">
+              <button class="side-chip yes on" type="button">Back YES · I believe this will happen</button>
+              <button class="side-chip no" type="button">Back NO · I believe this won't</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Opening stake</label>
+            <span class="hint">Includes the 1% fee. Minimum $10.</span>
+            <div class="amt-input">
+              <span class="lbl">AMOUNT</span>
+              <input type="text" value="500.00" aria-label="Seed amount in USD" />
+              <span class="suf">USD</span>
+            </div>
+            <div class="quick-pick">
+              <button type="button">$50</button>
+              <button type="button">$100</button>
+              <button type="button">$250</button>
+              <button type="button">$500</button>
+              <button type="button">$1,000</button>
+            </div>
+          </div>
+
+          <div class="seed-grid">
+            <dl class="seed-preview">
+              <dt>You'll back</dt><dd>YES at ~50¢</dd>
+              <dt>Shares minted</dt><dd>990</dd>
+              <dt>Fee (1%)</dt><dd>$5.00</dd>
+              <dt>Opening spread</dt><dd>50¢ · 50¢</dd>
+              <dt>Your starting stake</dt><dd class="big">$495.00</dd>
+            </dl>
+
+            <div>
+              <p style="margin:0 0 .8rem; color: var(--text-2); font-size: .94rem;">A thick opening stake signals conviction. The crowd notices who seeded what.</p>
+              <p style="margin:0; color: var(--text-3); font-size: .86rem;">There is no expiry, no oracle, no closing date. The only way you exit is by cashing out at the current crowd price, whenever that works for you.</p>
+            </div>
+          </div>
+
+          <div class="action-bar">
+            <span class="meta">Step 4 of 4 · publish to relays on confirm</span>
+            <div class="actions">
+              <button class="btn" type="button">← Back</button>
+              <button class="btn primary" type="button">Publish &amp; back YES · $500</button>
+            </div>
+          </div>
+        </main>
+
+        <aside class="right-rail">
+          <div class="preview-h">Preview · how others will see it</div>
+          <div class="card-preview">
+            <div class="tags-mini"><span>Crypto</span><span>BTC</span><span>2026 H1</span></div>
+            <h3>Bitcoin trades above $150,000 at any point before 1 July 2026.</h3>
+            <div class="price-line">
+              <span class="v">50¢</span>
+              <span class="side">YES · SEED</span>
+            </div>
+          </div>
+
+          <div class="preview-meta">
+            <div><span>Author</span><span class="v">@pf</span></div>
+            <div><span>Published</span><span class="v">in a moment</span></div>
+            <div><span>Seed</span><span class="v">$495 · YES</span></div>
+            <div><span>Linked markets</span><span class="v">2</span></div>
+            <div><span>Edition</span><span class="v">Practice</span></div>
+          </div>
+
+          <div class="safety">
+            <strong>What happens on publish</strong>
+            Your market goes live immediately and becomes visible in Markets feeds once the first trade settles — that's your opening stake. Until then, only people with the link can see it.
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

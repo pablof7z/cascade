@@ -1,0 +1,1991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cascade — UI Proposals</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&family=Newsreader:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #08080a;
+    --bg-surface: #111114;
+    --bg-card: #161619;
+    --bg-elevated: #1c1c20;
+    --border: #27272f;
+    --border-subtle: #1e1e25;
+    --text: #e8e8ec;
+    --text-secondary: #a0a0b0;
+    --text-muted: #707088;
+    --text-faint: #50506a;
+    --accent: #818cf8;
+    --accent-dim: rgba(129, 140, 248, 0.1);
+    --positive: #34d399;
+    --negative: #f87171;
+    --yellow: #fbbf24;
+    --purple: #a78bfa;
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* ---- Header ---- */
+  .page-header {
+    padding: 4rem 0 3rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 3rem;
+  }
+  .page-header-inner {
+    max-width: 700px;
+  }
+  .page-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 1rem;
+  }
+  .page-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: 1.25rem;
+  }
+  .page-subtitle {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    max-width: 600px;
+  }
+
+  /* ---- Executive Summary ---- */
+  .summary {
+    padding: 2.5rem 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 3rem;
+  }
+  .summary-title {
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1.25rem;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .summary-card {
+    padding: 1.25rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+  }
+  .summary-card-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.5rem;
+  }
+  .summary-card-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+  .summary-card-body {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .summary-body {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    max-width: 700px;
+  }
+  .summary-body p { margin-bottom: 1rem; }
+  .summary-body strong { color: var(--text); font-weight: 600; }
+
+  /* ---- Proposals ---- */
+  .proposal {
+    padding: 3rem 0;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 3rem;
+    align-items: start;
+  }
+  .proposal:last-child { border-bottom: none; }
+
+  .proposal-info {}
+  .proposal-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.5rem;
+  }
+  .proposal-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.35rem;
+  }
+  .proposal-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+    font-style: italic;
+  }
+  .proposal-description {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    margin-bottom: 1.5rem;
+  }
+  .proposal-description p { margin-bottom: 0.75rem; }
+
+  .proposal-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 1.5rem;
+  }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+  }
+  .tag-positive { color: var(--positive); border-color: rgba(52, 211, 153, 0.3); }
+  .tag-negative { color: var(--negative); border-color: rgba(248, 113, 113, 0.3); }
+  .tag-accent { color: var(--accent); border-color: rgba(129, 140, 248, 0.3); }
+  .tag-yellow { color: var(--yellow); border-color: rgba(251, 191, 36, 0.3); }
+  .tag-purple { color: var(--purple); border-color: rgba(167, 139, 250, 0.3); }
+
+  .proposal-meta {
+    margin-bottom: 1.5rem;
+  }
+  .proposal-meta-title {
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+  }
+  .proposal-meta-list {
+    list-style: none;
+  }
+  .proposal-meta-list li {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    padding: 0.25rem 0;
+    padding-left: 1rem;
+    position: relative;
+  }
+  .proposal-meta-list li::before {
+    content: '+';
+    position: absolute;
+    left: 0;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .proposal-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+    padding: 0.6rem 1.25rem;
+    border: 1px solid var(--accent);
+    transition: all 0.15s;
+  }
+  .proposal-link:hover {
+    background: var(--accent-dim);
+  }
+
+  /* Preview Frame */
+  .proposal-preview {
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    position: relative;
+    overflow: hidden;
+  }
+  .preview-browser-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .preview-dots {
+    display: flex;
+    gap: 4px;
+  }
+  .preview-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+  .preview-url {
+    flex: 1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    background: var(--bg-surface);
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border-subtle);
+    text-align: center;
+  }
+  .preview-iframe-wrap {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    overflow: hidden;
+  }
+  .preview-iframe-wrap iframe {
+    width: 200%;
+    height: 200%;
+    transform: scale(0.5);
+    transform-origin: top left;
+    border: none;
+    pointer-events: none;
+  }
+  .preview-overlay {
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+  }
+  .preview-overlay:hover + .preview-open-label,
+  .preview-open-label:hover {
+    opacity: 1;
+  }
+  .preview-open-label {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.75rem;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+  }
+
+  /* ---- Competitive Context ---- */
+  .context {
+    padding: 3rem 0;
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+  .context-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.01em;
+  }
+  .context-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .context-card {
+    padding: 1.25rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+  }
+  .context-card-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+  .context-card-approach {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.5rem;
+  }
+  .context-card-body {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+  .context-card-gap {
+    font-size: 0.8rem;
+    color: var(--yellow);
+    margin-top: 0.5rem;
+    font-weight: 500;
+  }
+
+  /* ---- Recommendation ---- */
+  .recommendation {
+    padding: 2.5rem 0 4rem;
+    border-top: 1px solid var(--border);
+  }
+  .rec-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    letter-spacing: -0.01em;
+  }
+  .rec-body {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    max-width: 700px;
+  }
+  .rec-body p { margin-bottom: 1rem; }
+  .rec-body strong { color: var(--text); }
+  .rec-highlight {
+    padding: 1.25rem 1.5rem;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-dim);
+    margin: 1.5rem 0;
+    font-size: 0.9rem;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  @media (max-width: 900px) {
+    .proposal { grid-template-columns: 1fr; }
+    .summary-grid { grid-template-columns: 1fr; }
+    .context-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Page Header -->
+  <header class="page-header">
+    <div class="page-header-inner">
+      <div class="page-eyebrow">UI/UX Proposals &middot; April 2026</div>
+      <h1 class="page-title">Cascade Homepage:<br>Ten Directions</h1>
+      <p class="page-subtitle">
+        Each proposal represents a distinct strategic vision for how Cascade presents itself
+        to the world. Same product. Same mechanics. Radically different experiences&mdash;because
+        the homepage is a statement about who you're building for. The first five explore conventional
+        approaches. The second five break the frame entirely.
+      </p>
+    </div>
+  </header>
+
+  <!-- Executive Summary -->
+  <section class="summary">
+    <div class="summary-title">Executive Summary</div>
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-card-label">Core Insight</div>
+        <div class="summary-card-value">Theses are the differentiator</div>
+        <div class="summary-card-body">No competitor offers compositional "if X then Y" markets. Every proposal must make this the hero concept&mdash;not a feature buried in navigation.</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Market Gap</div>
+        <div class="summary-card-value">Research &rarr; Trade pipeline</div>
+        <div class="summary-card-body">Polymarket and Kalshi are trading tools. Metaculus is a research tool. Nobody connects analysis to execution. Cascade can own this gap.</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Key Tension</div>
+        <div class="summary-card-value">Density vs. accessibility</div>
+        <div class="summary-card-body">Power traders want Bloomberg density. Newcomers want one clear action. The proposals explore different positions on this spectrum.</div>
+      </div>
+    </div>
+    <div class="summary-body">
+      <p>
+        <strong>Cascade's unique value is compositional belief markets.</strong> Polymarket asks "Will X happen?"
+        Cascade asks "If X happens, then what?" This is the thesis concept&mdash;markets that reference other markets
+        informationally, creating a network of interconnected predictions.
+      </p>
+      <p>
+        The ten proposals below explore different ways to make this concept visceral and immediate on the homepage.
+        Proposals 01&ndash;05 explore the conventional spectrum from maximum data density (The Terminal) to radical
+        minimalism (The Signal). Proposals 06&ndash;10 break out of fintech conventions entirely, borrowing from
+        kinetic typography, data journalism, knowledge graphs, debate platforms, and museum curation.
+      </p>
+      <p>
+        <strong>Common constraints across all proposals:</strong> dark theme with neutral palette, no spinners or skeleton loaders,
+        dollar-denominated UX, monospace typography for prices, LONG/SHORT (not YES/NO) market sides,
+        markets that never close, and agents as first-class traders.
+      </p>
+    </div>
+  </section>
+
+  <!-- Proposal 1: The Terminal -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 01 of 10</div>
+      <h2 class="proposal-name">The Terminal</h2>
+      <p class="proposal-subtitle">Bloomberg for prediction markets</p>
+      <div class="proposal-description">
+        <p>
+          Maximum information density. A master-detail layout with a sortable, filterable market table on the left
+          and a deep detail panel with live chart, trading interface, and activity feed on the right.
+        </p>
+        <p>
+          This is the power trader's homepage. Every pixel earns its space with data. The live ticker strip,
+          command bar with keyboard shortcut hints, and status bar create a full workstation feel. Markets are rows,
+          not cards&mdash;scannable at a glance with price, change, volume, trade count, and inline sparklines.
+        </p>
+        <p>
+          The detail panel collapses the entire market experience into a sidebar: price display with LONG/SHORT
+          split, mini chart with configurable timeframes, a trade execution panel, and live activity feed
+          showing trades and discussion posts.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-positive">Power Users</span>
+        <span class="tag tag-accent">High Density</span>
+        <span class="tag">Data-First</span>
+        <span class="tag tag-yellow">Keyboard-Driven</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Key design decisions</div>
+        <ul class="proposal-meta-list">
+          <li>Market table with inline sparklines, not cards</li>
+          <li>Live ticker strip with price/change for all markets</li>
+          <li>Command bar with category filters and Ctrl+K hint</li>
+          <li>Master-detail: click a row, detail panel updates</li>
+          <li>Trade execution in sidebar, never leaves context</li>
+          <li>Status bar showing connection, network stats, mode</li>
+          <li>Monospace throughout for data alignment</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Active traders monitoring multiple markets</li>
+          <li>Users who want everything visible simultaneously</li>
+          <li>Keyboard-first power users</li>
+          <li>Sessions longer than 30 minutes</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Tradeoffs</div>
+        <ul class="proposal-meta-list">
+          <li>Intimidating for newcomers</li>
+          <li>Thesis concept hidden in table metadata</li>
+          <li>Mobile experience requires fundamentally different layout</li>
+        </ul>
+      </div>
+      <a href="01-the-terminal.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="01-the-terminal.html" loading="lazy"></iframe>
+        <a href="01-the-terminal.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 2: The Editorial -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 02 of 10</div>
+      <h2 class="proposal-name">The Editorial</h2>
+      <p class="proposal-subtitle">The Economist meets prediction markets</p>
+      <div class="proposal-description">
+        <p>
+          Thesis-first, narrative-driven. Uses serif typography (Newsreader) for editorial gravitas combined with
+          monospace for data, creating a reading experience that positions markets as intellectual arguments rather
+          than trading instruments.
+        </p>
+        <p>
+          The hero features a single thesis with full editorial treatment: title, description explaining the market
+          narrative, linked modules shown as clickable references, and a sidebar price card with chart. Below,
+          active theses are presented as editorial cards with descriptions, module tags, and pricing.
+        </p>
+        <p>
+          This is the approach for users who think before they trade. Discussion highlights are given prominent
+          space, with stance indicators (LONG/SHORT/Analysis) creating a debate-like experience. The "Why Cascade"
+          section uses the three core differentiators as editorial columns.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-purple">Narrative-Driven</span>
+        <span class="tag tag-accent">Thesis-First</span>
+        <span class="tag">Serif Typography</span>
+        <span class="tag tag-positive">Discussion-Heavy</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Key design decisions</div>
+        <ul class="proposal-meta-list">
+          <li>Serif + monospace dual typography system</li>
+          <li>Hero thesis with full editorial narrative</li>
+          <li>Linked modules shown as interactive references</li>
+          <li>Thesis cards with descriptions, not just prices</li>
+          <li>Discussion highlights with stance badges</li>
+          <li>Module table for data-dense browsing</li>
+          <li>"Read full thesis" as primary CTA (not "Trade")</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Analytical users who research before trading</li>
+          <li>Users coming from news/analysis backgrounds</li>
+          <li>Building Cascade as an "intelligent" brand</li>
+          <li>Differentiating from Polymarket's news-feed approach</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Tradeoffs</div>
+        <ul class="proposal-meta-list">
+          <li>Slower path to first trade</li>
+          <li>May feel academic to action-oriented traders</li>
+          <li>Requires strong editorial content to sustain</li>
+        </ul>
+      </div>
+      <a href="02-the-editorial.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="02-the-editorial.html" loading="lazy"></iframe>
+        <a href="02-the-editorial.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 3: The Arena -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 03 of 10</div>
+      <h2 class="proposal-name">The Arena</h2>
+      <p class="proposal-subtitle">Trading as a spectator sport</p>
+      <div class="proposal-description">
+        <p>
+          Social-first trading community. The homepage is a live arena where you see what other traders
+          are doing in real time. Mini-leaderboard, live activity feed with trade amounts and price impact,
+          discussion excerpts, and agent activity badges create a sense of constant motion.
+        </p>
+        <p>
+          Markets are presented as cards with quick LONG/SHORT buttons that appear on hover, mini-avatar
+          stacks showing active traders, and a prominent "Hottest Market" hero with gradient accent bar.
+          The right sidebar is a persistent activity feed with trades, discussion posts, and a weekly
+          leaderboard with P&L figures.
+        </p>
+        <p>
+          This is the approach that builds a community. The live banner highlights surging markets.
+          Agent activity is flagged with purple badges, making human-vs-AI trading visible and exciting.
+          The CTA pairs "Start trading" with "Deploy an AI agent" as equal pathways.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-yellow">Social Proof</span>
+        <span class="tag tag-positive">Live Activity</span>
+        <span class="tag tag-purple">Agent-Visible</span>
+        <span class="tag">Community</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Key design decisions</div>
+        <ul class="proposal-meta-list">
+          <li>Live activity feed as persistent right sidebar</li>
+          <li>Mini-leaderboard with weekly P&L rankings</li>
+          <li>Agent trades flagged with purple badges</li>
+          <li>Quick LONG/SHORT buttons on card hover</li>
+          <li>Surging market banner with live price movement</li>
+          <li>Trader avatars on market cards (social proof)</li>
+          <li>Streak badges and gamification elements</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Building engagement and daily active users</li>
+          <li>Users motivated by competition and social proof</li>
+          <li>Making agent trading visible and exciting</li>
+          <li>Creating FOMO and urgency around markets</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Tradeoffs</div>
+        <ul class="proposal-meta-list">
+          <li>Can feel noisy/overwhelming for analytical users</li>
+          <li>Gamification risks undermining intellectual credibility</li>
+          <li>Activity feed requires sustained trading volume to feel alive</li>
+        </ul>
+      </div>
+      <a href="03-the-arena.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="03-the-arena.html" loading="lazy"></iframe>
+        <a href="03-the-arena.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 4: The Signal -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 04 of 10</div>
+      <h2 class="proposal-name">The Signal</h2>
+      <p class="proposal-subtitle">Radical minimalism, singular focus</p>
+      <div class="proposal-description">
+        <p>
+          One market dominates the viewport. A massive 8rem price in neon green on pure black,
+          with the market question centered beneath it. Two large LONG/SHORT boxes with clear pricing.
+          Nothing else above the fold except the price, the question, and the action.
+        </p>
+        <p>
+          This is the Apple approach: dramatic restraint. The header barely exists&mdash;a transparent
+          overlay that fades into gradient. Below the hero, markets are simple rows (no cards),
+          and theses get a dedicated spotlight section with editorial descriptions.
+        </p>
+        <p>
+          The philosophy: if someone arrives at Cascade, they should immediately understand
+          what the most important market is saying. No cognitive load. The featured market IS
+          the homepage. Scroll for more. The "How Cascade Works" section uses numbered steps,
+          not feature grids.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-positive">High Impact</span>
+        <span class="tag">Minimal Chrome</span>
+        <span class="tag tag-accent">Mobile-First</span>
+        <span class="tag tag-yellow">Bold Typography</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Key design decisions</div>
+        <ul class="proposal-meta-list">
+          <li>Full-viewport hero with single market + giant price</li>
+          <li>Pure black background, neon green price (#00ff88)</li>
+          <li>Transparent, gradient-fade header overlay</li>
+          <li>Market list as simple rows below the fold</li>
+          <li>Thesis spotlight with editorial descriptions</li>
+          <li>Numbered "How it Works" (01, 02, 03) not icons</li>
+          <li>Scroll-to-discover pattern with arrow indicator</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Maximum visual impact and brand memorability</li>
+          <li>Newcomers who need one clear concept immediately</li>
+          <li>Mobile users (scales beautifully to small screens)</li>
+          <li>Screenshot/sharing virality (that giant price number)</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Tradeoffs</div>
+        <ul class="proposal-meta-list">
+          <li>Hides market breadth behind the fold</li>
+          <li>Power users can't scan multiple markets quickly</li>
+          <li>Hero market selection becomes critical editorial decision</li>
+          <li>Less information density per screen than any other proposal</li>
+        </ul>
+      </div>
+      <a href="04-the-signal.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="04-the-signal.html" loading="lazy"></iframe>
+        <a href="04-the-signal.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 5: The Atlas -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 05 of 10</div>
+      <h2 class="proposal-name">The Atlas</h2>
+      <p class="proposal-subtitle">Map the network, trade the gaps</p>
+      <div class="proposal-description">
+        <p>
+          Research-to-trade pipeline. The homepage leads with a network visualization showing how theses
+          connect to modules, with prices displayed on each node. A four-step research pipeline
+          (Discover &rarr; Analyze &rarr; Trade &rarr; Build) guides the user journey.
+        </p>
+        <p>
+          This is the approach that makes Cascade's unique "compositional thesis" concept impossible
+          to miss. The hero graph literally draws the connections between markets. Thesis network cards
+          include a connection visualization showing each linked module with directional arrows and prices,
+          making the "conviction gap" between thesis and module prices immediately visible.
+        </p>
+        <p>
+          A "Research Insights" section surfaces automatically detected patterns: divergence signals
+          (thesis-module price gaps widening), convergence signals (prices aligning), and volume anomalies
+          (unusual agent trading activity). The module browser adds a "Referenced By" column showing
+          how many theses link to each module.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-purple">Network Visualization</span>
+        <span class="tag tag-accent">Research Pipeline</span>
+        <span class="tag tag-positive">Thesis Connections</span>
+        <span class="tag tag-yellow">Insight Signals</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Key design decisions</div>
+        <ul class="proposal-meta-list">
+          <li>SVG network graph as hero visualization</li>
+          <li>Four-step research pipeline (Discover &rarr; Build)</li>
+          <li>Thesis cards with module connection diagrams</li>
+          <li>Research Insights: divergence, convergence, anomaly signals</li>
+          <li>Module browser with "Referenced By" thesis count</li>
+          <li>"Atlas" sub-brand reinforcing the mapping metaphor</li>
+          <li>Deep blue-indigo color variant (not neutral gray)</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Making "compositional theses" the hero concept</li>
+          <li>Systematic researchers and analysts</li>
+          <li>Differentiating from every other prediction market</li>
+          <li>Users who want to understand before they act</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Tradeoffs</div>
+        <ul class="proposal-meta-list">
+          <li>Highest conceptual complexity for newcomers</li>
+          <li>Network graph needs minimum market volume to look compelling</li>
+          <li>Research insights require analytical infrastructure</li>
+          <li>May feel too cerebral for action-oriented traders</li>
+        </ul>
+      </div>
+      <a href="05-the-atlas.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="05-the-atlas.html" loading="lazy"></iframe>
+        <a href="05-the-atlas.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- =============================================== -->
+  <!-- EXPANDED HORIZON: Proposals 06–10              -->
+  <!-- =============================================== -->
+
+  <div style="padding:3rem 0 1rem;border-top:2px solid var(--accent);margin-top:1rem;">
+    <div class="page-eyebrow" style="color:var(--accent);margin-bottom:0.75rem;">Expanded Horizon &middot; Proposals 06–10</div>
+    <h2 style="font-size:1.75rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.5rem;">Breaking the Frame</h2>
+    <p style="font-size:0.9rem;color:var(--text-secondary);max-width:700px;line-height:1.7;">
+      The five proposals above work within prediction market conventions. The five below abandon them.
+      These borrow from kinetic typography, scrollytelling journalism, knowledge graphs, structured debate,
+      and museum curation&mdash;domains where information architecture has been solved differently.
+    </p>
+  </div>
+
+  <!-- Proposal 6: The Front Page -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 06 of 10</div>
+      <h2 class="proposal-name">The Front Page</h2>
+      <p class="proposal-subtitle">Markets as headlines, conviction as typography</p>
+      <div class="proposal-description">
+        <p>
+          A kinetic newspaper where typographic weight encodes probability. Markets are not cards or rows&mdash;they
+          are headlines that compete for visual prominence. A market at $0.92 renders in font-weight 900 at large size;
+          a market at $0.30 renders in font-weight 200, nearly whispered.
+        </p>
+        <p>
+          The "Conviction Spectrum" visualization replaces traditional charts with a horizontal bar where each market
+          is a segment, width proportional to its probability, creating an at-a-glance sense of what the crowd believes.
+          The "Because" section below each headline reveals linked modules with their own weight-encoded prices.
+        </p>
+        <p>
+          This treats the homepage as a living newspaper front page that reshuffles itself as beliefs change.
+          The entire layout is the data visualization.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-accent">Kinetic Typography</span>
+        <span class="tag tag-yellow">Data as Layout</span>
+        <span class="tag tag-purple">Generative Design</span>
+        <span class="tag">Newspaper Metaphor</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Key design decisions</div>
+        <ul class="proposal-meta-list">
+          <li>Font-weight 100–900 encodes probability ($0.10–$0.90)</li>
+          <li>Font-size scales with trading volume (prominence = attention)</li>
+          <li>Markets "compete" for visual space like newspaper headlines</li>
+          <li>Conviction Spectrum bar chart replaces traditional price displays</li>
+          <li>"Because" section shows linked modules with weight-encoded prices</li>
+          <li>Layout reshuffles dynamically as prices change</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Making probability viscerally legible without reading numbers</li>
+          <li>Creating a homepage that is itself a live data visualization</li>
+          <li>Brand differentiation (nobody does this)</li>
+          <li>Screenshot virality (striking, unprecedented layout)</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Tradeoffs</div>
+        <ul class="proposal-meta-list">
+          <li>Requires explanation for first-time users</li>
+          <li>Accessibility challenges with very light font weights</li>
+          <li>Needs enough markets to fill a compelling "front page"</li>
+        </ul>
+      </div>
+      <a href="06-the-front-page.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="06-the-front-page.html" loading="lazy"></iframe>
+        <a href="06-the-front-page.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 7: The Briefing -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 07 of 10</div>
+      <h2 class="proposal-name">The Briefing</h2>
+      <p class="proposal-subtitle">Scrollytelling for markets</p>
+      <div class="proposal-description">
+        <p>
+          Inspired by The Pudding and NYT's immersive data journalism, this turns the homepage into a daily
+          scrollytelling narrative. A single featured thesis unfolds in five sections as you scroll: the Opening Number
+          (giant 12rem price), the Movement (annotated timeline), the Debate (LONG vs SHORT arguments side by side),
+          the Connections (module relationship map), and the Invitation (CTA to take a position).
+        </p>
+        <p>
+          A progress spine on the left tracks your journey through the story. Serif typography for narrative,
+          monospace for data, creating a dual-register reading experience. Each section fills the viewport,
+          demanding focus before revealing the next layer.
+        </p>
+        <p>
+          This reframes the homepage visit as a briefing you receive each day&mdash;not a dashboard you monitor.
+          The experience has a beginning, middle, and end, unlike every other prediction market homepage.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-accent">Scrollytelling</span>
+        <span class="tag tag-purple">Data Journalism</span>
+        <span class="tag tag-positive">Narrative Arc</span>
+        <span class="tag tag-yellow">Immersive</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Key design decisions</div>
+        <ul class="proposal-meta-list">
+          <li>Five-section scrollytelling narrative per featured thesis</li>
+          <li>12rem Opening Number as giant hero moment</li>
+          <li>LONG vs SHORT debate as side-by-side argument panels</li>
+          <li>Progress spine tracking scroll position on left edge</li>
+          <li>Full-viewport sections demand single-focus attention</li>
+          <li>Daily rotation creates reason to return</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Converting visitors who need a story, not a dashboard</li>
+          <li>Mobile (scroll-native, no complex layouts)</li>
+          <li>Making the depth of a single market compelling</li>
+          <li>Creating a daily ritual (the morning briefing)</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Tradeoffs</div>
+        <ul class="proposal-meta-list">
+          <li>Only one thesis visible at a time (editorial bottleneck)</li>
+          <li>Power users can't scan/compare markets</li>
+          <li>Requires strong editorial curation to sustain daily</li>
+        </ul>
+      </div>
+      <a href="07-the-briefing.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="07-the-briefing.html" loading="lazy"></iframe>
+        <a href="07-the-briefing.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 8: The Constellation -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 08 of 10</div>
+      <h2 class="proposal-name">The Constellation</h2>
+      <p class="proposal-subtitle">Navigate a belief graph</p>
+      <div class="proposal-description">
+        <p>
+          A full-viewport SVG force-directed graph on a deep-space background. Thesis nodes (purple, larger) and
+          module nodes (blue, smaller) float in space, connected by dashed edges. Click any node and a focus panel
+          slides in with full market details. The featured node pulses gently to draw attention.
+        </p>
+        <p>
+          Inspired by Obsidian's graph view and interactive data art, this makes the network of interconnected
+          beliefs the entire interface. Users navigate by exploring connections rather than scrolling lists.
+          The spatial layout means proximity encodes relatedness&mdash;clusters of connected theses and modules
+          visually group themselves.
+        </p>
+        <p>
+          This is the most radical proposal: no cards, no tables, no lists. The homepage IS the knowledge graph.
+          The network topology IS the product.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-purple">Force-Directed Graph</span>
+        <span class="tag tag-accent">Spatial Navigation</span>
+        <span class="tag">Knowledge Graph</span>
+        <span class="tag tag-positive">Interactive Art</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Key design decisions</div>
+        <ul class="proposal-meta-list">
+          <li>Full-viewport SVG canvas, no scroll needed above the fold</li>
+          <li>Force-directed layout: proximity = relatedness</li>
+          <li>Purple thesis nodes (larger) vs blue module nodes (smaller)</li>
+          <li>Dashed edges show informational connections</li>
+          <li>Click-to-focus panel for market details</li>
+          <li>Deep-space aesthetic (dark indigo, glow effects)</li>
+          <li>Pulse animation on featured/trending node</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Making "compositional markets" the undeniable hero</li>
+          <li>Wow factor and brand memorability</li>
+          <li>Users who think spatially (researchers, analysts)</li>
+          <li>Demonstrating network effects as markets grow</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Tradeoffs</div>
+        <ul class="proposal-meta-list">
+          <li>Needs 15+ markets minimum to look compelling as a graph</li>
+          <li>Mobile experience is fundamentally different</li>
+          <li>Accessibility: screen readers can't navigate a graph</li>
+          <li>Users unfamiliar with graph UIs may feel lost</li>
+        </ul>
+      </div>
+      <a href="08-the-constellation.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="08-the-constellation.html" loading="lazy"></iframe>
+        <a href="08-the-constellation.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 9: The Argument -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 09 of 10</div>
+      <h2 class="proposal-name">The Argument</h2>
+      <p class="proposal-subtitle">Discussion IS the market interface</p>
+      <div class="proposal-description">
+        <p>
+          Inspired by Kialo's structured debate platform, this makes the dual-column argument tree the primary
+          market interface. LONG arguments on the left, SHORT arguments on the right, each weighted by the capital
+          backing them. The "conviction bar" across the top shows aggregate weight.
+        </p>
+        <p>
+          Arguments reference linked modules inline ("This depends on [Fed Rate Decision @ $0.73]"), making
+          the compositional thesis structure visible within the debate itself. Users contribute by posting
+          arguments AND backing them with capital&mdash;skin in the game makes every argument meaningful.
+        </p>
+        <p>
+          This inverts the typical prediction market approach: instead of price charts that you can discuss,
+          this presents discussions that you can price. The market emerges from argument, not the other way around.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-yellow">Argument Mapping</span>
+        <span class="tag tag-positive">Capital-Weighted Debate</span>
+        <span class="tag tag-accent">Kialo-Inspired</span>
+        <span class="tag tag-purple">Discussion-First</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Key design decisions</div>
+        <ul class="proposal-meta-list">
+          <li>Dual-column LONG/SHORT argument tree as primary UI</li>
+          <li>Arguments weighted by capital backing (visual bar width)</li>
+          <li>Inline module references with live prices</li>
+          <li>Conviction bar shows aggregate LONG/SHORT weight</li>
+          <li>"Back this argument" CTA on each node (trade by arguing)</li>
+          <li>Argument tree IS the order book, rendered as discourse</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Audiences who want to understand WHY, not just WHAT</li>
+          <li>Making discussion integral (not a tab you ignore)</li>
+          <li>Demonstrating that Cascade is for thinkers, not gamblers</li>
+          <li>Creating viral "best argument" moments on social media</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Tradeoffs</div>
+        <ul class="proposal-meta-list">
+          <li>Requires active community generating arguments</li>
+          <li>Cold-start problem: empty debate is worse than no debate</li>
+          <li>Price information is secondary (may frustrate traders)</li>
+          <li>Unfamiliar paradigm for prediction market users</li>
+        </ul>
+      </div>
+      <a href="09-the-argument.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="09-the-argument.html" loading="lazy"></iframe>
+        <a href="09-the-argument.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 10: The Exhibition -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 10 of 10</div>
+      <h2 class="proposal-name">The Exhibition</h2>
+      <p class="proposal-subtitle">Markets curated like museum rooms</p>
+      <div class="proposal-description">
+        <p>
+          Inspired by museum curation and diegetic UI from gaming, this organizes markets into thematic "rooms"
+          with distinct ambient color and energy. "Surging Now" glows warm red with CSS shake animation on cards.
+          "Deeply Contested" bathes in cool blue with slow pulse. "Newly Seeded" uses dim green with calm, still cards.
+        </p>
+        <p>
+          The key innovation is diegetic state visualization: a market's visual urgency (vibration, brightness,
+          color temperature) communicates its state without requiring the user to read numbers. You can feel
+          which markets are hot and which are dormant at a glance.
+        </p>
+        <p>
+          Between rooms, pull quotes from actual market discussions serve as the "wall text"&mdash;visitors
+          encounter the community's thinking as they walk through the exhibition. The experience is unhurried,
+          contemplative, and radically different from every trading interface.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-negative">Diegetic State</span>
+        <span class="tag tag-purple">Museum Curation</span>
+        <span class="tag tag-accent">Ambient Design</span>
+        <span class="tag tag-yellow">Sensory Encoding</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Key design decisions</div>
+        <ul class="proposal-meta-list">
+          <li>Thematic rooms with distinct ambient color + energy</li>
+          <li>Diegetic state: urgent markets vibrate, calm markets still</li>
+          <li>CSS animations encode volatility/momentum directly</li>
+          <li>Pull-quote "wall text" from real discussions between rooms</li>
+          <li>Gallery/museum navigation metaphor</li>
+          <li>Color temperature as data channel (warm = active, cool = contested)</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Emotional, intuitive market state communication</li>
+          <li>Users who browse rather than search</li>
+          <li>Brand differentiation (no trading platform looks like this)</li>
+          <li>Making market state legible without reading numbers</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Tradeoffs</div>
+        <ul class="proposal-meta-list">
+          <li>Requires editorial curation to assign markets to rooms</li>
+          <li>Animations may cause accessibility/motion-sensitivity issues</li>
+          <li>Low information density per viewport</li>
+          <li>Power users will find browsing too slow</li>
+        </ul>
+      </div>
+      <a href="10-the-exhibition.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="10-the-exhibition.html" loading="lazy"></iframe>
+        <a href="10-the-exhibition.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- =============================================== -->
+  <!-- DISCUSSION-FIRST: Proposals 11–17              -->
+  <!-- =============================================== -->
+
+  <div style="padding:3rem 0 1rem;border-top:2px solid var(--positive);margin-top:1rem;">
+    <div class="page-eyebrow" style="color:var(--positive);margin-bottom:0.75rem;">Discussion-First &middot; Proposals 11–17</div>
+    <h2 style="font-size:1.75rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.5rem;">The Inversion</h2>
+    <p style="font-size:0.9rem;color:var(--text-secondary);max-width:700px;line-height:1.7;">
+      What if Cascade isn't a trading platform with discussions, but a <strong style="color:var(--text)">discussion platform
+      with trading</strong>? These proposals treat arguments as the primary content and market positions as
+      conviction signals on those arguments. The audience isn't traders&mdash;it's futurists, thinkers, and
+      AI agents reasoning about what comes next.
+    </p>
+    <p style="font-size:0.8rem;color:var(--text-muted);max-width:700px;line-height:1.7;margin-top:0.5rem;">
+      Proposals 11&ndash;15 are thesis-detail views (what you see inside a conversation).
+      Proposals 16&ndash;17 are proper homepage proposals.
+    </p>
+  </div>
+
+  <!-- Proposal 11: The Forum -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 11 &middot; Detail View</div>
+      <h2 class="proposal-name">The Forum</h2>
+      <p class="proposal-subtitle">HN meets capital-weighted conviction</p>
+      <div class="proposal-description">
+        <p>
+          A single-column argument feed that looks like Hacker News or LessWrong, but where the "upvote"
+          is a dollar amount. Arguments are ranked by capital backing, not popularity. Each argument shows
+          the thesis it references, the author (human or agent), the capital behind it, and linked module prices.
+        </p>
+        <p>
+          The compose bar at the bottom requires you to choose LONG or SHORT and set a dollar amount
+          before posting. The sidebar shows trending theses by argument count and active AI agents.
+          The sort explain line makes it explicit: "Ranked by capital backing, not upvotes."
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-positive">Capital as Upvote</span>
+        <span class="tag tag-accent">Feed-Based</span>
+        <span class="tag tag-purple">Agent-Visible</span>
+        <span class="tag">HN-Style</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Users familiar with forum/feed UX patterns</li>
+          <li>Lowest learning curve among discussion-first proposals</li>
+          <li>Making capital-weighted ranking feel natural</li>
+        </ul>
+      </div>
+      <a href="11-the-forum.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io/thesis/fed-cuts-tech</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="11-the-forum.html" loading="lazy"></iframe>
+        <a href="11-the-forum.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 12: The Tribunal -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 12 &middot; Detail View</div>
+      <h2 class="proposal-name">The Tribunal</h2>
+      <p class="proposal-subtitle">Every thesis is a hearing</p>
+      <div class="proposal-description">
+        <p>
+          A structured courtroom metaphor. The thesis is on trial. LONG arguments on the left, SHORT on the
+          right, each weighted by capital backing. The conviction bar at the top is the jury's current verdict.
+          Each argument card shows a weight bar proportional to its share of total capital.
+        </p>
+        <p>
+          Linked modules are presented as "premises this thesis depends on," reinforcing the logical
+          structure. The "Other Active Hearings" section lists additional theses with their conviction bars.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-yellow">Adversarial Structure</span>
+        <span class="tag tag-positive">Capital-Weighted</span>
+        <span class="tag tag-accent">Kialo-Inspired</span>
+        <span class="tag">Courtroom Metaphor</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Making the LONG/SHORT structure immediately clear</li>
+          <li>Users who want to see both sides before deciding</li>
+          <li>Showcasing the logical dependency on linked modules</li>
+        </ul>
+      </div>
+      <a href="12-the-tribunal.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io/thesis/fed-cuts-tech</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="12-the-tribunal.html" loading="lazy"></iframe>
+        <a href="12-the-tribunal.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 13: The Commons -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 13 &middot; Detail View</div>
+      <h2 class="proposal-name">The Commons</h2>
+      <p class="proposal-subtitle">The shape of disagreement</p>
+      <div class="proposal-description">
+        <p>
+          Inspired by Pol.is opinion clustering, this shows the conversation landscape&mdash;not individual
+          arguments but clusters of reasoning. The hero is an SVG opinion map where dots cluster by reasoning
+          pattern: "Rate-Cut Bulls," "Growth Skeptics," "Category Skeptics." Bridge arguments that resonate
+          across clusters are highlighted in green.
+        </p>
+        <p>
+          Each cluster gets a section with its summarized position, top arguments, and capital backing.
+          The "Bridge" section surfaces common ground across all clusters. This is the only proposal that
+          answers "where do people agree?" in addition to "what do they disagree about?"
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-accent">Opinion Clustering</span>
+        <span class="tag tag-positive">Consensus Surfacing</span>
+        <span class="tag tag-purple">Pol.is-Inspired</span>
+        <span class="tag tag-yellow">Bridge Arguments</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Understanding the topology of belief, not just individual opinions</li>
+          <li>Finding common ground within disagreement</li>
+          <li>Audiences who think in systems (futurists, researchers)</li>
+        </ul>
+      </div>
+      <a href="13-the-commons.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io/thesis/fed-cuts-tech</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="13-the-commons.html" loading="lazy"></iframe>
+        <a href="13-the-commons.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 14: The Salon -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 14 &middot; Detail View</div>
+      <h2 class="proposal-name">The Salon</h2>
+      <p class="proposal-subtitle">Curated intellectual conversations</p>
+      <div class="proposal-description">
+        <p>
+          A magazine-quality reading experience of curated exchanges between the most compelling voices
+          (humans and AI agents). Each "salon" is a thesis where thinkers have exchanged substantive
+          arguments in a threaded conversation format with avatars, stance badges, and capital figures.
+        </p>
+        <p>
+          The editorial introduction summarizes what the conversation revealed. The thread format
+          makes it feel like reading a published intellectual debate. The conviction card at the bottom
+          invites readers to join with "Join Long" or "Join Short" buttons.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-purple">Curated Quality</span>
+        <span class="tag tag-accent">Magazine Feel</span>
+        <span class="tag">Thread Format</span>
+        <span class="tag tag-positive">Editorial Voice</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Quality-first audiences (thinkers, not gamblers)</li>
+          <li>Making human-agent dialogue feel natural and compelling</li>
+          <li>Building Cascade as an intellectual brand</li>
+        </ul>
+      </div>
+      <a href="14-the-salon.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io/thesis/fed-cuts-tech</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="14-the-salon.html" loading="lazy"></iframe>
+        <a href="14-the-salon.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 15: The Wire -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 15 &middot; Detail View</div>
+      <h2 class="proposal-name">The Wire</h2>
+      <p class="proposal-subtitle">Real-time conviction feed</p>
+      <div class="proposal-description">
+        <p>
+          A live chronological feed of arguments as they happen, across all theses. Each item shows
+          who argued, their stance (LONG/SHORT), the capital behind it, and crucially: the price impact.
+          "Thesis moved 66c &rarr; 68c after this argument." You see conviction forming in real time.
+        </p>
+        <p>
+          The sidebar shows active theses with conviction bars, today's activity summary, and a
+          "Most Compelling Voices" leaderboard ranked by accuracy. The live indicator pulses to
+          signal the feed is updating. Silent trades (positions without arguments) are noted but
+          ranked lower&mdash;on Cascade, the argument IS the trade.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-positive">Real-Time</span>
+        <span class="tag tag-yellow">Price Impact Visible</span>
+        <span class="tag tag-accent">Cross-Thesis Feed</span>
+        <span class="tag tag-purple">Live Conviction</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Creating a sense of liveness and ongoing discourse</li>
+          <li>Showing that arguments move markets (not just trades)</li>
+          <li>Active users monitoring multiple conversations</li>
+        </ul>
+      </div>
+      <a href="15-the-wire.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io/wire</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="15-the-wire.html" loading="lazy"></iframe>
+        <a href="15-the-wire.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- ======== HOMEPAGE PROPOSALS ======== -->
+
+  <div style="padding:2rem 0 1rem;border-top:1px solid var(--border);margin-top:1rem;">
+    <div class="page-eyebrow" style="margin-bottom:0.5rem;">Homepage Proposals</div>
+    <p style="font-size:0.85rem;color:var(--text-secondary);max-width:700px;line-height:1.7;">
+      The two proposals below are proper front pages&mdash;what a first-time visitor sees when they
+      land on cascade.f7z.io. They answer: what is this place, why should I care, what's happening right now.
+    </p>
+  </div>
+
+  <!-- Proposal 16: The Lobby -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 16 &middot; Homepage</div>
+      <h2 class="proposal-name">The Lobby</h2>
+      <p class="proposal-subtitle">"Where every opinion has capital behind it"</p>
+      <div class="proposal-description">
+        <p>
+          A clean, confident homepage that leads with the value proposition: "Where every opinion has capital
+          behind it." Hero stats show total conviction deployed, active arguments, and participating AI agents.
+          The featured conversation card shows a thesis with the two strongest opposing arguments quoted inline,
+          with author names and capital amounts visible.
+        </p>
+        <p>
+          Below: a 2x2 grid of active conversations (sorted by Most Debated / Highest Stakes / New), each
+          showing the thesis title, a preview of the debate, conviction bar, and total backing. The value
+          proposition section explains three differentiators: capital as signal, agents as interlocutors,
+          and compositional "if X then Y" logic. A "Happening Now" activity strip shows recent arguments.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-positive">Clear Value Prop</span>
+        <span class="tag tag-accent">Discussion-First</span>
+        <span class="tag tag-purple">Agent-Forward</span>
+        <span class="tag tag-yellow">Homepage</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>First-time visitors who need to understand the product</li>
+          <li>Making capital-weighted discussion the hero concept</li>
+          <li>Clean, professional presentation with clear CTA</li>
+          <li>Scales well from 3 conversations to 300</li>
+        </ul>
+      </div>
+      <a href="16-the-lobby.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="16-the-lobby.html" loading="lazy"></iframe>
+        <a href="16-the-lobby.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 17: The Digest -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 17 &middot; Homepage</div>
+      <h2 class="proposal-name">The Digest</h2>
+      <p class="proposal-subtitle">Today's arguments, editorially curated</p>
+      <div class="proposal-description">
+        <p>
+          A daily editorial digest that reads like the front page of an intellectual newspaper.
+          "Today on Cascade" introduces the day's arguments with serif typography and journalistic framing.
+          The lead story gets full treatment: thesis, editorial summary, the key exchange that moved the
+          market (Long quote, Short counter-quote, both with capital amounts), and a sidebar with
+          conviction data, voice count, and linked premises.
+        </p>
+        <p>
+          Below: a 2x2 story grid where each conversation is presented as a story with a lede, a
+          featured excerpt from the most compelling argument, conviction bar, and metadata. The bottom
+          section has three columns: Trending Modules, Most Compelling Agents, and How Cascade Works.
+          This makes Cascade feel like a publication, not a platform.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-purple">Editorial Curation</span>
+        <span class="tag tag-accent">Newspaper Feel</span>
+        <span class="tag tag-positive">Story-Driven</span>
+        <span class="tag tag-yellow">Homepage</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Building Cascade as an intellectual brand/publication</li>
+          <li>Audiences who read before they act (futurists, researchers)</li>
+          <li>Making human-agent exchanges feel like compelling journalism</li>
+          <li>Creating a daily ritual ("check the digest")</li>
+        </ul>
+      </div>
+      <a href="17-the-digest.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="17-the-digest.html" loading="lazy"></iframe>
+        <a href="17-the-digest.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- =============================================== -->
+  <!-- MARKET DETAIL: Proposals 18–19                -->
+  <!-- =============================================== -->
+
+  <div style="padding:3rem 0 1rem;border-top:2px solid var(--yellow);margin-top:1rem;">
+    <div class="page-eyebrow" style="color:var(--yellow);margin-bottom:0.75rem;">Market Detail Pages &middot; Proposals 18–19</div>
+    <h2 style="font-size:1.75rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.5rem;">Inside the Conversation</h2>
+    <p style="font-size:0.9rem;color:var(--text-secondary);max-width:700px;line-height:1.7;">
+      What happens when you click into a specific thesis or market? Every competitor&mdash;Polymarket, Kalshi,
+      Manifold, Metaculus&mdash;leads with a chart and buries discussion in a tab. These proposals invert that:
+      <strong style="color:var(--text)">arguments are the primary content, price is the sidebar.</strong>
+      Researched against all major prediction market detail pages.
+    </p>
+    <p style="font-size:0.8rem;color:var(--text-muted);max-width:700px;line-height:1.7;margin-top:0.5rem;">
+      Key competitor patterns rejected: chart-dominant hero (Polymarket), orderbook-first layout (Kalshi),
+      comment thread buried below fold (all competitors). Key pattern adopted: integrated discussion (Manifold),
+      research depth (Metaculus), clean trading sidebar (Polymarket).
+    </p>
+  </div>
+
+  <!-- Proposal 18: The Hearing Room -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 18 &middot; Market Detail</div>
+      <h2 class="proposal-name">The Hearing Room</h2>
+      <p class="proposal-subtitle">Arguments as the primary market interface</p>
+      <div class="proposal-description">
+        <p>
+          The thesis is on trial. A market header with thesis title, description, and metadata sits above a
+          two-column argument arena: LONG arguments on the left, SHORT on the right. Each argument shows its
+          capital weight as a proportional bar, the author (human or agent), module references, and "Back this"
+          / "Reply" actions. A sticky trading card in the right sidebar shows price, conviction bar, and
+          LONG/SHORT buttons.
+        </p>
+        <p>
+          The chart is <em>collapsed by default</em>&mdash;available in a "Chart" tab but not dominating the page.
+          Linked premises (modules) are presented as cards below the argument arena with their prices and reference
+          counts. The tabs read: Arguments (84), Chart, Activity (247), Related (6)&mdash;argument count is primary.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-yellow">Adversarial Layout</span>
+        <span class="tag tag-positive">Arguments-First</span>
+        <span class="tag tag-accent">Sticky Trading</span>
+        <span class="tag tag-purple">Chart Collapsed</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Key design decisions</div>
+        <ul class="proposal-meta-list">
+          <li>Two-column LONG/SHORT argument arena as primary content</li>
+          <li>Sticky sidebar trading card (price, conviction bar, trade buttons)</li>
+          <li>Chart collapsed by default, available as tab</li>
+          <li>Capital weight bar on each argument (visual prominence = backing)</li>
+          <li>Linked premises as module cards with prices</li>
+          <li>"Back this" action on each argument (trade by endorsing reasoning)</li>
+          <li>Arguments tab shows count, reinforcing discussion-first identity</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Competitor contrast</div>
+        <ul class="proposal-meta-list">
+          <li>Polymarket: chart hero, comment tab buried → Cascade: arguments hero, chart tab buried</li>
+          <li>Kalshi: orderbook-first → Cascade: reasoning-first</li>
+          <li>Manifold: social comments integrated but unstructured → Cascade: adversarial LONG/SHORT structure</li>
+          <li>Metaculus: resolution criteria prominent → Cascade: linked premises prominent</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Making LONG/SHORT debate structure immediately legible</li>
+          <li>Users who want to see both sides before taking a position</li>
+          <li>Showcasing that capital-weighted arguments are the product</li>
+          <li>Quick access to trading without leaving the debate</li>
+        </ul>
+      </div>
+      <a href="18-market-the-hearing-room.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io/market/fed-cuts-boost-tech</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="18-market-the-hearing-room.html" loading="lazy"></iframe>
+        <a href="18-market-the-hearing-room.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 19: The Dossier -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 19 &middot; Market Detail</div>
+      <h2 class="proposal-name">The Dossier</h2>
+      <p class="proposal-subtitle">Research-first with evidence chain</p>
+      <div class="proposal-description">
+        <p>
+          A single-column research document with a sticky trading sidebar. The page reads top-to-bottom like
+          an intelligence briefing: market case (long-form editorial body), then "Evidence Chain" showing
+          linked modules as a vertical logical flow ("↓ if true, then" / "↓ counterweight"), then "Market
+          Signals" analysis, then threaded discussion.
+        </p>
+        <p>
+          The Evidence Chain is the standout element: it treats linked modules not as a flat list but as
+          a logical dependency graph with directional flow, showing how supporting and countervailing evidence
+          connects. Market Signals shows conditional probability, counterevidence discount, argument quality,
+          and agent consensus as colored status indicators. Discussion uses a threaded format with stance
+          badges, capital amounts, and module references inline.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-accent">Evidence Chain</span>
+        <span class="tag tag-positive">Research-First</span>
+        <span class="tag tag-purple">Market Signals</span>
+        <span class="tag tag-yellow">Intelligence Briefing</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Key design decisions</div>
+        <ul class="proposal-meta-list">
+          <li>Single-column narrative flow (not tabbed) with sticky trading sidebar</li>
+          <li>Evidence Chain: vertical module dependency graph with directional connectors</li>
+          <li>Market Signals: computed analytical metrics (conditional probability, quality, consensus)</li>
+          <li>Threaded discussion with stance badges and capital amounts</li>
+          <li>Mini chart in sidebar, not hero chart</li>
+          <li>Module references inline within discussion posts</li>
+          <li>Reads like a research document, trades like a market</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Competitor contrast</div>
+        <ul class="proposal-meta-list">
+          <li>Polymarket: flat chart + comments → Cascade: evidence chain + threaded discussion</li>
+          <li>Metaculus: probability distribution + resolution criteria → Cascade: evidence flow + market signals</li>
+          <li>Kalshi: orderbook + basic info → Cascade: intelligence briefing + logical dependencies</li>
+          <li>All competitors: modules are isolated → Cascade: modules are connected premises</li>
+        </ul>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">Best for</div>
+        <ul class="proposal-meta-list">
+          <li>Analytical users who want to understand the full evidence base</li>
+          <li>Making compositional "if X then Y" logic the centerpiece</li>
+          <li>Users who read research before taking positions</li>
+          <li>AI agents that process structured information</li>
+        </ul>
+      </div>
+      <a href="19-market-the-dossier.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io/market/fed-cuts-boost-tech</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="19-market-the-dossier.html" loading="lazy"></iframe>
+        <a href="19-market-the-dossier.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- =============================================== -->
+  <!-- BREAKING THE MOLD: Proposals 20–22             -->
+  <!-- =============================================== -->
+
+  <div style="padding:3rem 0 1rem;border-top:2px solid var(--negative);margin-top:1rem;">
+    <div class="page-eyebrow" style="color:var(--negative);margin-bottom:0.75rem;">Breaking the Mold &middot; Proposals 20–22</div>
+    <h2 style="font-size:1.75rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.5rem;">Actually Different</h2>
+    <p style="font-size:0.9rem;color:var(--text-secondary);max-width:700px;line-height:1.7;">
+      Proposals 18&ndash;19 shuffled the same components. These three break the design system entirely:
+      different color palettes (light backgrounds, paper textures, messaging blues), different font stacks
+      (no Inter, no JetBrains Mono, no Newsreader), different component vocabularies (no conviction bars,
+      no module pills, no sticky sidebars, no tab navigation). Each borrows from a genuinely different
+      interaction paradigm.
+    </p>
+  </div>
+
+  <!-- Proposal 20: The Annotated Page -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 20 &middot; Market Detail</div>
+      <h2 class="proposal-name">The Annotated Page</h2>
+      <p class="proposal-subtitle">Genius.com meets prediction markets</p>
+      <div class="proposal-description">
+        <p>
+          The thesis is a readable document on cream paper. Key phrases are highlighted in yellow, blue,
+          or pink. The right margin contains annotations attached to those highlights&mdash;arguments,
+          counterarguments, and evidence, each with author, stance, capital backing, and "Agree &middot; back
+          this annotation" actions. The left gutter shows the price, market stats, and a debate heat
+          visualization. Trading buttons sit quietly at the bottom of the left gutter.
+        </p>
+        <p>
+          There are no cards, no conviction bars, no tabs, no sticky sidebar. The page is a three-column
+          layout: market data in the left gutter, the document in the center, annotations in the right margin.
+          Modules appear as footnote references [1][2][3] with a footnote section at the bottom of the document.
+          The font stack is Source Serif 4 + DM Sans + IBM Plex Mono. The background is warm cream (#f5f0e8),
+          not dark. Colors are earth tones with deep green (long) and deep red (short).
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-yellow">Light Theme</span>
+        <span class="tag tag-negative">Annotation Paradigm</span>
+        <span class="tag tag-accent">No Cards</span>
+        <span class="tag">Document-First</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">What's actually different</div>
+        <ul class="proposal-meta-list">
+          <li>Light/warm background (cream paper) — breaks the dark theme</li>
+          <li>No cards, no conviction bars, no tabs, no sticky sidebar</li>
+          <li>Source Serif 4 + DM Sans + IBM Plex Mono (entirely new font stack)</li>
+          <li>Arguments as margin annotations on highlighted text, not standalone components</li>
+          <li>Modules as footnote references, not pills</li>
+          <li>Deep green/red instead of emerald/rose</li>
+          <li>Three-column Tufte-inspired layout (gutter / document / margin)</li>
+          <li>The thesis reads like a Medium article with Genius.com annotations</li>
+        </ul>
+      </div>
+      <a href="20-market-the-annotated-page.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io/market/fed-cuts-boost-tech</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="20-market-the-annotated-page.html" loading="lazy"></iframe>
+        <a href="20-market-the-annotated-page.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 21: The Conversation -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 21 &middot; Market Detail</div>
+      <h2 class="proposal-name">The Conversation</h2>
+      <p class="proposal-subtitle">iMessage for prediction markets</p>
+      <div class="proposal-description">
+        <p>
+          The entire market page is a chronological message stream. Arguments appear as chat bubbles
+          with avatars, stance badges, and backing amounts. System messages announce trades and price
+          movements inline: "@bear_case opened SHORT &middot; $0.57 → $0.55". Linked modules appear
+          as rich link cards (like a shared URL in iMessage). Emoji reactions replace upvotes.
+        </p>
+        <p>
+          The bottom of the screen is a message input bar with three buttons: Post, Long, Short.
+          Market data lives in a collapsible side rail triggered by a toggle button in the top bar.
+          The page is a fixed-height viewport that scrolls internally (messaging app behavior, not web
+          page behavior). The font stack is Nunito Sans + Fira Code. The background is slate blue (#1a1d27),
+          not near-black. Bubbles use iMessage-style rounded corners with tail positioning.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-accent">Messaging Paradigm</span>
+        <span class="tag tag-positive">Chat Bubbles</span>
+        <span class="tag tag-negative">No Sidebar</span>
+        <span class="tag tag-purple">Emoji Reactions</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">What's actually different</div>
+        <ul class="proposal-meta-list">
+          <li>Fixed viewport with internal scroll (app, not web page)</li>
+          <li>Chat bubbles instead of argument cards</li>
+          <li>Trades and price moves as system messages in the stream</li>
+          <li>Nunito Sans + Fira Code (no Inter, no Newsreader, no JetBrains)</li>
+          <li>Emoji reactions instead of upvotes or capital-weight bars</li>
+          <li>Combined post/trade input bar at the bottom</li>
+          <li>Collapsible info rail (hidden by default) instead of persistent sidebar</li>
+          <li>Modules as rich link preview cards in the stream</li>
+          <li>Slate blue background, not near-black</li>
+        </ul>
+      </div>
+      <a href="21-market-the-conversation.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io/market/fed-cuts-boost-tech</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="21-market-the-conversation.html" loading="lazy"></iframe>
+        <a href="21-market-the-conversation.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Proposal 22: The Paper -->
+  <article class="proposal">
+    <div class="proposal-info">
+      <div class="proposal-number">Proposal 22 &middot; Market Detail</div>
+      <h2 class="proposal-name">The Paper</h2>
+      <p class="proposal-subtitle">arXiv for prediction markets</p>
+      <div class="proposal-description">
+        <p>
+          The market page is an academic paper. Narrow 560px column with wide margins for Tufte-style
+          sidenotes. White background, black text, blue links. Sections follow academic convention:
+          Abstract, Introduction, Resolution Methodology, Evidence For (Long), Evidence Against (Short),
+          Market Data, Discussion, References. "Authors" are contributors with accuracy percentages
+          listed like institutional affiliations.
+        </p>
+        <p>
+          The right margin contains an infobox (Wikipedia-style, not a sticky sidebar) with market data and
+          a "Take a position" button. Sidenotes in the margin provide context (module prices, evidence
+          strength assessments, rebuttals) without breaking the reading flow. Market data is presented
+          as a data table (Figure 1 with caption), not as a chart hero. A minimal fixed bottom bar shows
+          price and Long/Short buttons. The font stack is Crimson Pro + Libre Franklin + Anonymous Pro.
+        </p>
+      </div>
+      <div class="proposal-tags">
+        <span class="tag tag-yellow">White Background</span>
+        <span class="tag tag-accent">Academic Format</span>
+        <span class="tag tag-purple">Tufte Sidenotes</span>
+        <span class="tag">Wikipedia Infobox</span>
+      </div>
+      <div class="proposal-meta">
+        <div class="proposal-meta-title">What's actually different</div>
+        <ul class="proposal-meta-list">
+          <li>White/cream background with black text (academic paper aesthetic)</li>
+          <li>Narrow 560px column with wide margins (Tufte layout)</li>
+          <li>Crimson Pro + Libre Franklin + Anonymous Pro (no shared fonts with other proposals)</li>
+          <li>Academic section numbering (1. Introduction, 2. Methodology, etc.)</li>
+          <li>Sidenotes instead of sidebars, tooltips, or popovers</li>
+          <li>Wikipedia-style infobox (static, not sticky) for market data</li>
+          <li>Data table with caption ("Figure 1") instead of interactive chart</li>
+          <li>Evidence as cited sections with author credentials, not standalone cards</li>
+          <li>Reference list with [1][2][3] citation style</li>
+          <li>Minimal bottom bar instead of sidebar for trading</li>
+        </ul>
+      </div>
+      <a href="22-market-the-paper.html" class="proposal-link">View full proposal &rarr;</a>
+    </div>
+    <div class="proposal-preview">
+      <div class="preview-browser-bar">
+        <div class="preview-dots"><div class="preview-dot"></div><div class="preview-dot"></div><div class="preview-dot"></div></div>
+        <div class="preview-url">cascade.f7z.io/market/fed-cuts-boost-tech</div>
+      </div>
+      <div class="preview-iframe-wrap">
+        <iframe src="22-market-the-paper.html" loading="lazy"></iframe>
+        <a href="22-market-the-paper.html" class="preview-overlay"></a>
+        <div class="preview-open-label">Open full proposal</div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Competitive Context -->
+  <section class="context">
+    <h2 class="context-title">Competitive Context</h2>
+    <div class="context-grid">
+      <div class="context-card">
+        <div class="context-card-name">Polymarket</div>
+        <div class="context-card-approach">News-first, trading-second</div>
+        <div class="context-card-body">Cards with trending markets, cents-as-probability, social commentary layer. Reframed as a news source (hit #1 in iOS Magazines category). Light/dark toggle.</div>
+        <div class="context-card-gap">Gap: No compositional theses. No research depth. No agents.</div>
+      </div>
+      <div class="context-card">
+        <div class="context-card-name">Kalshi</div>
+        <div class="context-card-approach">Professional brokerage</div>
+        <div class="context-card-body">CFTC-regulated exchange. Customizable panels, order books, advanced order types. "Reads like a brokerage screen." $22B valuation. Heavy sports focus (90% volume).</div>
+        <div class="context-card-gap">Gap: No theses. No discussion. No agent integration. Feels like a sportsbook.</div>
+      </div>
+      <div class="context-card">
+        <div class="context-card-name">Manifold Markets</div>
+        <div class="context-card-approach">Social network with markets</div>
+        <div class="context-card-body">Dark-mode-first, algorithmic feed, community discussions, leagues, badges, user-created markets. Play-money primary. Strong social engagement mechanics.</div>
+        <div class="context-card-gap">Gap: Play-money limits seriousness. No compositional markets. No agent-first design.</div>
+      </div>
+      <div class="context-card">
+        <div class="context-card-name">Metaculus</div>
+        <div class="context-card-approach">Research tool for forecasters</div>
+        <div class="context-card-body">Probability distributions, Brier scores, calibration curves, weighted aggregation. Academic aesthetic. Institutional clients (Radiant). No real money.</div>
+        <div class="context-card-gap">Gap: No trading. No capital at stake. No market connections. Pure research with no action path.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recommendation -->
+  <section class="recommendation">
+    <h2 class="rec-title">Our Recommendation</h2>
+    <div class="rec-body">
+      <div class="rec-highlight">
+        The discussion-first inversion changes everything. If Cascade is a discussion platform where arguments
+        carry financial weight, the homepage should read like an intellectual venue, not a trading terminal.
+        Our recommendation is now a <strong>two-layer system</strong>: a homepage and a thesis-detail experience.
+      </div>
+
+      <p><strong>Homepage: The Digest (Proposal 17)</strong></p>
+      <p>
+        The Digest treats the homepage as a daily editorial publication. It frames conversations as stories,
+        quotes the most compelling exchanges (with capital amounts visible), and makes human-agent dialogue
+        feel like journalism, not trading. This creates a daily ritual and positions Cascade as a publication
+        you check, not a platform you use. The Lobby (Proposal 16) is a strong alternative if you want
+        a more product-forward feel instead of editorial.
+      </p>
+
+      <p><strong>Market Detail: The Hearing Room (Proposal 18) or The Dossier (Proposal 19)</strong></p>
+      <p>
+        For market detail pages, both proposals invert the competitor pattern: arguments first, chart buried.
+        <strong>The Hearing Room</strong> works best for active, contested markets&mdash;its adversarial
+        two-column layout makes the LONG/SHORT debate immediately scannable. <strong>The Dossier</strong>
+        works best for complex theses with deep module dependencies&mdash;its evidence chain and market
+        signals make the logical structure visible. Both use a sticky trading sidebar rather than chart-hero.
+        These replace the earlier thesis-detail proposals (12&ndash;14) with proper market page UX informed
+        by competitor research.
+      </p>
+
+      <p><strong>Supporting pages:</strong></p>
+      <p>
+        <strong>The Wire</strong> (Proposal 15) as the Activity/Live feed page.
+        <strong>The Commons</strong> (Proposal 13) as an "Insights" page that surfaces consensus and disagreement patterns.
+        <strong>The Forum</strong> (Proposal 11) as the default browse/list view for all active conversations.
+      </p>
+
+      <p><strong>What we'd retire:</strong></p>
+      <p>
+        Proposals 01&ndash;05 were designed for a trading audience. The discussion-first direction makes them
+        irrelevant except for The Atlas (network visualization), which could become an "Explore" page
+        showing how theses connect through shared modules. Proposals 06&ndash;10 were experimental;
+        The Front Page's typographic weight-encoding and The Briefing's scrollytelling could be incorporated
+        into individual thesis pages as progressive disclosure.
+      </p>
+    </div>
+  </section>
+
+</div>
+
+</body>
+</html>

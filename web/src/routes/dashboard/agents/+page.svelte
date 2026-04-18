@@ -20,203 +20,54 @@
   }
 </script>
 
-<section class="agents-page">
-  <div class="agents-header">
+<div class="grid gap-8 p-7">
+  <div class="flex items-start justify-between gap-4">
     <div>
       <div class="eyebrow">Agents</div>
-      <h1>Agents</h1>
-      <p>AI agents working across your fields.</p>
+      <h1 class="text-xl mt-1">Agents</h1>
+      <p class="mt-2 text-base-content/70">AI agents working across your fields.</p>
     </div>
-    <a class="agents-button" href="/dashboard/agents">Hire Agent</a>
+    <a class="btn btn-outline btn-sm" href="/dashboard/agents">Hire Agent</a>
   </div>
 
-  <section class="agents-summary">
-    <div>
-      <span>Total agents</span>
-      <strong>{agents.length}</strong>
-    </div>
-    <div>
-      <span>Active</span>
-      <strong class="positive">{activeCount}</strong>
-    </div>
-    <div>
-      <span>Idle</span>
-      <strong>{idleCount}</strong>
-    </div>
-    <div>
-      <span>Capital deployed</span>
-      <strong>{formatUsd(totalCapital)}</strong>
-    </div>
-  </section>
+  <div class="grid grid-cols-2 gap-px bg-base-300 sm:grid-cols-4">
+    {#each [
+      { label: 'Total agents', value: String(agents.length), highlight: false },
+      { label: 'Active', value: String(activeCount), highlight: true },
+      { label: 'Idle', value: String(idleCount), highlight: false },
+      { label: 'Capital deployed', value: formatUsd(totalCapital), highlight: false },
+    ] as stat}
+      <div class="grid gap-1 bg-base-100 p-4">
+        <span class="eyebrow">{stat.label}</span>
+        <strong class="font-mono text-base {stat.highlight ? 'text-success' : 'text-white'}">{stat.value}</strong>
+      </div>
+    {/each}
+  </div>
 
-  <div class="agents-list">
+  <div class="border-t border-base-300">
     {#each agents as agent (`${agent.fieldId}-${agent.id}`)}
-      <div class="agent-row">
-        <div class="agent-avatar">{initials(agent.name).toUpperCase()}</div>
-        <div class="agent-copy">
-          <strong>{agent.name}</strong>
-          <p>{agent.role}</p>
-          <small>{agent.focus}</small>
+      <div class="grid grid-cols-[auto_minmax(0,1fr)] md:grid-cols-[auto_minmax(0,1fr)_minmax(8rem,auto)_minmax(8rem,auto)_minmax(6rem,auto)] gap-4 items-center py-4 border-b border-base-300">
+        <div class="flex size-9 items-center justify-center border border-base-300 bg-base-200 text-xs font-semibold">
+          {initials(agent.name).toUpperCase()}
         </div>
-        <div class="agent-meta">
-          <span>Field</span>
-          <strong>{agent.fieldName}</strong>
+        <div class="min-w-0">
+          <strong class="text-white block text-sm">{agent.name}</strong>
+          <p class="mt-0.5 text-base-content/70 text-xs">{agent.role}</p>
+          <small class="block mt-1 text-base-content/70 text-xs leading-[1.5]">{agent.focus}</small>
         </div>
-        <div class="agent-meta">
-          <span>Portfolio</span>
-          <strong>{formatUsd(agent.wallet.balanceUsd)}</strong>
+        <div class="hidden md:grid gap-1 text-right">
+          <span class="eyebrow">Field</span>
+          <strong class="text-white font-mono text-xs">{agent.fieldName}</strong>
         </div>
-        <div class="agent-meta">
-          <span>Status</span>
-          <strong>{agent.status === 'monitoring' ? 'Idle' : 'Active'}</strong>
+        <div class="hidden md:grid gap-1 text-right">
+          <span class="eyebrow">Portfolio</span>
+          <strong class="text-white font-mono text-xs">{formatUsd(agent.wallet.balanceUsd)}</strong>
+        </div>
+        <div class="hidden md:grid gap-1 text-right">
+          <span class="eyebrow">Status</span>
+          <strong class="text-white font-mono text-xs">{agent.status === 'monitoring' ? 'Idle' : 'Active'}</strong>
         </div>
       </div>
     {/each}
   </div>
-</section>
-
-<style>
-  .agents-page {
-    display: grid;
-    gap: 2rem;
-    padding: 1.75rem;
-  }
-
-  .agents-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .agents-header h1 {
-    font-size: 1.2rem;
-  }
-
-  .agents-header p {
-    margin-top: 0.4rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .agents-button {
-    border: 1px solid var(--color-neutral);
-    padding: 0.7rem 0.95rem;
-    color: white;
-    font-size: 0.92rem;
-    font-weight: 500;
-  }
-
-  .agents-summary {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1px;
-    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .agents-summary div {
-    display: grid;
-    gap: 0.35rem;
-    background: var(--color-base-100);
-    padding: 1rem;
-  }
-
-  .agents-summary span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.74rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .agents-summary strong {
-    color: white;
-    font-family: var(--font-mono);
-    font-size: 1rem;
-  }
-
-  .agents-summary strong.positive {
-    color: var(--color-success);
-  }
-
-  .agents-list {
-    display: grid;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .agent-row {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) minmax(8rem, auto) minmax(8rem, auto) minmax(6rem, auto);
-    gap: 1rem;
-    align-items: center;
-    padding: 1rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .agent-avatar {
-    display: flex;
-    height: 2.2rem;
-    width: 2.2rem;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--color-neutral);
-    background: var(--color-base-200);
-    color: var(--color-base-content);
-    font-size: 0.78rem;
-    font-weight: 600;
-  }
-
-  .agent-copy strong {
-    display: block;
-    color: white;
-    font-size: 0.94rem;
-  }
-
-  .agent-copy p,
-  .agent-copy small,
-  .agent-meta span {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .agent-copy p {
-    margin-top: 0.2rem;
-    font-size: 0.82rem;
-  }
-
-  .agent-copy small {
-    display: block;
-    margin-top: 0.35rem;
-    font-size: 0.78rem;
-    line-height: 1.5;
-  }
-
-  .agent-meta {
-    display: grid;
-    gap: 0.25rem;
-    text-align: right;
-  }
-
-  .agent-meta span {
-    font-size: 0.72rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .agent-meta strong {
-    color: white;
-    font-family: var(--font-mono);
-    font-size: 0.82rem;
-  }
-
-  @media (max-width: 980px) {
-    .agents-summary {
-      grid-template-columns: 1fr;
-    }
-
-    .agent-row {
-      grid-template-columns: auto 1fr;
-    }
-
-    .agent-meta {
-      text-align: left;
-    }
-  }
-</style>
+</div>

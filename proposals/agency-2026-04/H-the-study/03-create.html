@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Study / Write a Claim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0a0a0b; --surface:#111113; --elev:#17171a; --border:#1e1e22; --border-strong:#2a2a30;
+    --text:#e8e8ec; --text-2:#a0a0a8; --text-3:#64646c; --text-4:#3e3e46;
+    --yes:#3ec48a; --yes-dim:rgba(62,196,138,.14); --no:#e85d7a; --no-dim:rgba(232,93,122,.14);
+    --serif: 'Fraunces', 'Source Serif 4', Georgia, serif;
+    --tight: 'Inter Tight', 'Inter', sans-serif;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; letter-spacing: -.01em; }
+  .tight { font-family: var(--tight); letter-spacing: -.02em; }
+  .serif { font-family: var(--serif); }
+
+  .app { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; }
+  @media (max-width: 880px) { .app { grid-template-columns: 1fr; } .rail { display: none; } }
+
+  /* Rail */
+  .rail { border-right: 1px solid var(--border); padding: 1.1rem 0 1.4rem; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 1.4rem; }
+  .rail-brand { padding: 0 1.2rem; display: flex; align-items: baseline; gap: .5rem; }
+  .rail-brand .mark { font-weight: 700; font-size: 1.05rem; letter-spacing: -.02em; color: var(--text); }
+  .rail-brand .ed { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); }
+  .rail-search { margin: 0 1.2rem; display: flex; align-items: center; gap: .5rem; height: 32px; padding: 0 .6rem; background: var(--surface); border: 1px solid var(--border); }
+  .rail-search svg { width: 13px; height: 13px; stroke: var(--text-3); fill: none; stroke-width: 1.7; }
+  .rail-search input { flex: 1; background: transparent; border: 0; color: var(--text); font-size: .82rem; outline: none; }
+  .rail-search .kbd { font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--text-3); letter-spacing: .08em; padding: .08rem .3rem; border: 1px solid var(--border-strong); }
+  .rail-group { display: flex; flex-direction: column; }
+  .rail-group h4 { margin: 0; padding: 0 1.2rem .35rem; font-family: 'JetBrains Mono', monospace; font-size: .62rem; letter-spacing: .16em; color: var(--text-3); text-transform: uppercase; font-weight: 500; }
+  .rail-item { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .32rem 1.2rem; color: var(--text-2); font-size: .88rem; }
+  .rail-item:hover { color: var(--text); background: var(--surface); }
+  .rail-item.active { color: var(--text); background: var(--surface); box-shadow: inset 2px 0 0 var(--yes); }
+  .rail-item .c { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); }
+  .rail-spacer { flex: 1; }
+  .rail-create { margin: 0 1rem; padding: .55rem .8rem; text-align: center; border: 1px solid var(--yes); color: var(--yes); font-size: .84rem; font-weight: 500; }
+
+  /* Top bar */
+  .main-col { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { height: 54px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1.6rem; background: var(--bg); position: sticky; top: 0; z-index: 5; }
+  .crumbs { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .06em; display: flex; gap: .5rem; align-items: center; }
+  .crumbs a { color: var(--text-2); }
+  .crumbs .sep { color: var(--text-4); }
+  .crumbs .cur { color: var(--text); }
+  .progress-bar { display: flex; gap: 3px; align-items: center; }
+  .progress-bar .p { width: 24px; height: 3px; background: var(--border-strong); }
+  .progress-bar .p.done { background: var(--yes); }
+  .progress-bar .p.on { background: var(--text); }
+  .progress-bar .lbl { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .08em; margin-left: .6rem; }
+  .top-right { display: flex; align-items: center; gap: .8rem; }
+  .top-right .meta { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .06em; }
+  .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .8rem; border: 1px solid var(--border-strong); background: transparent; color: var(--text); font-size: .84rem; font-weight: 500; cursor: pointer; font-family: 'Inter', sans-serif; }
+  .btn:hover { border-color: var(--text-3); background: var(--surface); }
+  .btn.primary { background: var(--text); color: #000; border-color: var(--text); }
+  .btn.primary:hover { background: #fff; }
+  .btn.ghost { border-color: transparent; color: var(--text-3); }
+
+  /* Body */
+  .body { display: grid; grid-template-columns: minmax(0, 1fr) 360px; min-height: calc(100vh - 54px); }
+  .content { padding: 2rem 2.4rem 7rem; min-width: 0; }
+  .context { border-left: 1px solid var(--border); padding: 2rem 1.4rem; display: flex; flex-direction: column; gap: 1.4rem; position: sticky; top: 54px; align-self: start; max-height: calc(100vh - 54px); overflow-y: auto; }
+  @media (max-width: 1180px) { .body { grid-template-columns: 1fr; } .context { border-left: 0; border-top: 1px solid var(--border); position: relative; top: 0; max-height: none; } }
+
+  /* Page heading */
+  .ph { padding-bottom: 1.4rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; max-width: 48rem; }
+  .ph .k { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--yes); letter-spacing: .18em; text-transform: uppercase; }
+  .ph h1 { margin: .5rem 0 .5rem; font-family: var(--tight); font-size: 1.8rem; font-weight: 600; letter-spacing: -.02em; }
+  .ph p { margin: 0; color: var(--text-2); font-size: .98rem; max-width: 52ch; line-height: 1.6; }
+
+  /* Form sections */
+  form { max-width: 48rem; }
+  .sec { padding: 1.8rem 0; border-bottom: 1px solid var(--border); }
+  .sec:last-of-type { border-bottom: 0; }
+  .sec .sh { display: grid; grid-template-columns: 2.5rem 1fr auto; gap: .8rem; align-items: baseline; margin-bottom: 1rem; }
+  .sec .sh .n { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .08em; padding-top: .15rem; }
+  .sec .sh h2 { margin: 0; font-family: var(--tight); font-size: 1.15rem; font-weight: 600; letter-spacing: -.015em; color: var(--text); }
+  .sec .sh p { margin: .2rem 0 0; color: var(--text-3); font-size: .84rem; letter-spacing: 0; }
+  .sec .sh .status { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .08em; }
+  .sec .sh .status.ok { color: var(--yes); }
+  .sec .inner { padding-left: 3.3rem; }
+
+  /* Category chips */
+  .cats { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .cat-pick { font-family: 'Inter', sans-serif; font-size: .85rem; color: var(--text-2); padding: .4rem .8rem; border: 1px solid var(--border-strong); cursor: pointer; }
+  .cat-pick:hover { color: var(--text); }
+  .cat-pick.on { color: var(--text); border-color: var(--text); background: var(--elev); }
+
+  /* Claim input (editorial) */
+  .claim-input { width: 100%; background: transparent; border: 0; color: var(--text); font-family: var(--serif); font-weight: 500; font-size: clamp(1.8rem, 3vw, 2.6rem); letter-spacing: -.02em; line-height: 1.08; padding: .3rem 0 .5rem; outline: none; resize: none; }
+  .claim-input::placeholder { color: var(--text-4); }
+  .claim-under { display: flex; justify-content: space-between; align-items: baseline; padding-top: .6rem; border-top: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .05em; }
+
+  /* Lede textarea */
+  .lede-input { width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--border); color: var(--text); font-family: var(--serif); font-size: 1.2rem; line-height: 1.55; font-style: italic; padding: .4rem 0 .6rem; min-height: 70px; resize: vertical; outline: none; }
+  .lede-input:focus { border-bottom-color: var(--text-3); }
+  .lede-input::placeholder { color: var(--text-4); font-style: italic; }
+
+  /* Case textarea */
+  .case-input { width: 100%; background: var(--surface); border: 1px solid var(--border-strong); color: var(--text); font-family: 'Inter', sans-serif; font-size: 1rem; line-height: 1.7; padding: 1rem 1.1rem; min-height: 220px; resize: vertical; outline: none; }
+  .case-input:focus { border-color: var(--text-3); }
+  .case-hint { display: flex; gap: 1.2rem; margin-top: .5rem; font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .06em; }
+
+  /* Tags + links */
+  .link-search { width: 100%; background: var(--surface); border: 1px solid var(--border-strong); color: var(--text); padding: .5rem .8rem; font-size: .86rem; outline: none; margin-bottom: .6rem; }
+  .link-search:focus { border-color: var(--text-3); }
+  .link-row { display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid var(--border); align-items: center; }
+  .link-row .t { font-family: var(--serif); font-size: 1rem; color: var(--text); letter-spacing: -.005em; }
+  .link-row .p { font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: var(--text-2); }
+  .link-row .add { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); padding: .2rem .45rem; border: 1px solid var(--border-strong); letter-spacing: .1em; cursor: pointer; }
+  .link-row .add.added { color: var(--yes); border-color: var(--yes); }
+
+  /* Seed */
+  .seed-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; }
+  @media (max-width: 640px) { .seed-grid { grid-template-columns: 1fr; } }
+  .side-pick { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border-strong); }
+  .side-pick button { background: transparent; border: 0; padding: .8rem 0; color: var(--text-2); font-family: 'Inter', sans-serif; font-weight: 500; font-size: .95rem; cursor: pointer; }
+  .side-pick button.yes { border-right: 1px solid var(--border-strong); }
+  .side-pick button.yes.on { color: var(--yes); background: var(--yes-dim); }
+  .side-pick button.no.on { color: var(--no); background: var(--no-dim); }
+  .side-pick button .sub { display: block; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .06em; margin-top: .15rem; font-weight: 400; }
+  .side-pick button.yes.on .sub { color: var(--yes); opacity: .8; }
+  .side-pick button.no.on .sub { color: var(--no); opacity: .8; }
+
+  .amt-input { display: grid; grid-template-columns: auto 1fr auto; align-items: stretch; border: 1px solid var(--border-strong); margin-top: 1rem; }
+  .amt-input .lbl { padding: 0 .8rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .1em; display: grid; place-items: center; border-right: 1px solid var(--border-strong); }
+  .amt-input input { padding: .7rem .9rem; border: 0; background: transparent; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 1.3rem; outline: none; text-align: right; letter-spacing: -.01em; }
+  .amt-input .suf { padding: 0 .8rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .72rem; border-left: 1px solid var(--border-strong); display: grid; place-items: center; letter-spacing: .1em; }
+
+  .quick-amt { display: flex; gap: .3rem; margin-top: .5rem; }
+  .quick-amt button { flex: 1; background: transparent; border: 1px solid var(--border); color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .74rem; padding: .4rem 0; letter-spacing: .04em; cursor: pointer; }
+  .quick-amt button.on { color: var(--text); border-color: var(--text); background: var(--elev); }
+
+  .seed-quote { display: grid; gap: .3rem; font-family: 'JetBrains Mono', monospace; font-size: .82rem; padding: .8rem 0 0; }
+  .seed-quote .r { display: flex; justify-content: space-between; padding: .15rem 0; }
+  .seed-quote .r dt { color: var(--text-3); }
+  .seed-quote .r dd { margin: 0; color: var(--text); }
+  .seed-quote .r dd.em { color: var(--yes); }
+
+  /* Sticky publish bar */
+  .publish-bar { position: fixed; left: 220px; right: 360px; bottom: 0; background: var(--bg); border-top: 1px solid var(--border); padding: .75rem 2.4rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; z-index: 10; backdrop-filter: blur(6px); }
+  .publish-bar .status { display: flex; align-items: center; gap: 1rem; }
+  .publish-bar .status .st { font-family: 'JetBrains Mono', monospace; font-size: .74rem; color: var(--text-3); letter-spacing: .06em; }
+  .publish-bar .status .st strong { color: var(--text); font-weight: 500; }
+  .publish-bar .actions { display: flex; gap: .5rem; }
+  @media (max-width: 1180px) { .publish-bar { left: 0; right: 0; } }
+  @media (max-width: 880px) { .publish-bar { left: 0; right: 0; } }
+
+  /* Context preview */
+  .ctx-h { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .16em; text-transform: uppercase; margin-bottom: .7rem; }
+  .preview-card { padding: 1.2rem 1.2rem 1rem; border: 1px solid var(--border-strong); background: var(--bg); display: grid; gap: .8rem; }
+  .preview-card .ptag-row { display: flex; align-items: baseline; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: .64rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+  .preview-card .ptag-row .cat { color: var(--yes); letter-spacing: .18em; }
+  .preview-card h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.35rem; line-height: 1.15; letter-spacing: -.01em; color: var(--text); }
+  .preview-card .pwhos { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-2); letter-spacing: .02em; }
+  .preview-card .pmeas { padding-top: .6rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: baseline; }
+  .preview-card .pmeas .v { font-family: 'JetBrains Mono', monospace; font-size: 2rem; color: var(--yes); line-height: 1; letter-spacing: -.025em; font-weight: 500; }
+  .preview-card .pmeas .side { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--yes); letter-spacing: .14em; border: 1px solid var(--yes); padding: .15rem .4rem; }
+
+  .preview-meta { display: grid; gap: .35rem; font-family: 'JetBrains Mono', monospace; font-size: .76rem; padding-top: 1rem; }
+  .preview-meta .r { display: flex; justify-content: space-between; }
+  .preview-meta .r dt { color: var(--text-3); }
+  .preview-meta .r dd { margin: 0; color: var(--text); }
+
+  .ctx-note { font-family: 'Inter', sans-serif; font-size: .86rem; line-height: 1.6; color: var(--text-2); padding-top: 1rem; border-top: 1px solid var(--border); }
+  .ctx-note strong { color: var(--text); font-weight: 500; display: block; margin-bottom: .3rem; font-family: var(--tight); }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <aside class="rail">
+      <div class="rail-brand">
+        <span class="mark">Cascade</span><span class="ed">Practice</span>
+      </div>
+      <label class="rail-search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+        <input placeholder="Search claims…" />
+        <span class="kbd">⌘K</span>
+      </label>
+      <div class="rail-group">
+        <h4>You</h4>
+        <a class="rail-item" href="01-landing.html"><span>Home</span></a>
+        <a class="rail-item" href="#"><span>Watchlist</span><span class="c">14</span></a>
+        <a class="rail-item" href="#"><span>Portfolio</span><span class="c">12</span></a>
+        <a class="rail-item" href="#"><span>Activity</span></a>
+      </div>
+      <div class="rail-group">
+        <h4>Categories</h4>
+        <a class="rail-item" href="#"><span>Geopolitics</span><span class="c">42</span></a>
+        <a class="rail-item" href="#"><span>Macro</span><span class="c">38</span></a>
+        <a class="rail-item" href="#"><span>AI</span><span class="c">29</span></a>
+        <a class="rail-item" href="#"><span>Crypto</span><span class="c">24</span></a>
+        <a class="rail-item" href="#"><span>Tech</span><span class="c">21</span></a>
+        <a class="rail-item" href="#"><span>Sports</span><span class="c">18</span></a>
+        <a class="rail-item" href="#"><span>Culture</span><span class="c">12</span></a>
+        <a class="rail-item" href="#"><span>Policy</span><span class="c">9</span></a>
+        <a class="rail-item" href="#"><span>Nostr</span><span class="c">7</span></a>
+      </div>
+      <div class="rail-spacer"></div>
+      <a class="rail-create" href="#">Writing · draft #12</a>
+    </aside>
+
+    <div class="main-col">
+      <header class="topbar">
+        <div class="crumbs">
+          <a href="01-landing.html">Home</a><span class="sep">/</span><span class="cur">Write a claim</span>
+        </div>
+        <div class="top-right">
+          <span class="progress-bar"><span class="p done"></span><span class="p done"></span><span class="p done"></span><span class="p on"></span><span class="p"></span><span class="lbl">3 / 5 complete</span></span>
+          <button class="btn ghost">Save draft</button>
+        </div>
+      </header>
+
+      <div class="body">
+        <main class="content">
+
+          <div class="ph">
+            <span class="k">Write a claim</span>
+            <h1 class="tight">Put a sentence on the record. The crowd will price the rest.</h1>
+            <p>This is one piece, not five screens. Work down the page. Everything is visible in the live preview on the right. Publish when you're ready.</p>
+          </div>
+
+          <form>
+
+            <section class="sec">
+              <div class="sh">
+                <span class="n">01</span>
+                <div>
+                  <h2>Category</h2>
+                  <p>Where the claim lives in the rail. Pick one — it's how people find it.</p>
+                </div>
+                <span class="status ok">Set · Crypto</span>
+              </div>
+              <div class="inner">
+                <div class="cats">
+                  <span class="cat-pick">Geopolitics</span>
+                  <span class="cat-pick">Macro</span>
+                  <span class="cat-pick">AI</span>
+                  <span class="cat-pick on">Crypto</span>
+                  <span class="cat-pick">Tech</span>
+                  <span class="cat-pick">Sports</span>
+                  <span class="cat-pick">Culture</span>
+                  <span class="cat-pick">Policy</span>
+                  <span class="cat-pick">Nostr</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="sec">
+              <div class="sh">
+                <span class="n">02</span>
+                <div>
+                  <h2>The claim</h2>
+                  <p>One sentence, falsifiable, specific. Ends with a period.</p>
+                </div>
+                <span class="status ok">Set · 62 chars</span>
+              </div>
+              <div class="inner">
+                <textarea class="claim-input serif" rows="2" placeholder="e.g. OpenAI will ship GPT-5 before Google's Gemini 2 Pro.">Bitcoin trades above $150,000 at any point before 1 July 2026.</textarea>
+                <div class="claim-under">
+                  <span>62 / 140 characters · 10 words</span>
+                  <span>3 similar claims already live · shown in preview →</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="sec">
+              <div class="sh">
+                <span class="n">03</span>
+                <div>
+                  <h2>The lede</h2>
+                  <p>Two sentences. What the crowd is really pricing, and why it's worth thinking about.</p>
+                </div>
+                <span class="status ok">Set · 180 chars</span>
+              </div>
+              <div class="inner">
+                <textarea class="lede-input serif" placeholder="A single sentence that sets the stakes…">A market on a single print before mid-year, not a sustained level. The crowd is currently pricing $145K futures at sixty-one percent.</textarea>
+              </div>
+            </section>
+
+            <section class="sec">
+              <div class="sh">
+                <span class="n">04</span>
+                <div>
+                  <h2>The case</h2>
+                  <p>Your argument. This becomes the first thing readers see when they open the market. Make it honest — the market is a running audit.</p>
+                </div>
+                <span class="status">Drafting · 4 paragraphs</span>
+              </div>
+              <div class="inner">
+                <textarea class="case-input">On-chain accumulation at the $140K shelf has been steady for five weeks. ETF net flows have been net-positive for seven of the last ten days. The CME curve is in mild contango and has been since mid-March — a sign that the spot–futures basis is working against shorts rather than pressing them.
+
+What breaks this thesis? A regulatory bomb, a large custodial failure, or a macro risk-off event that takes liquidity out of everything. Below 50¢, I will add. Above 75¢, I will trim.
+
+I'm opening with $500 on YES and leaving the price to find itself.</textarea>
+                <div class="case-hint">
+                  <span>Markdown · headings · blockquote</span>
+                  <span>Tip: cite something. Every strong claim names evidence.</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="sec">
+              <div class="sh">
+                <span class="n">05</span>
+                <div>
+                  <h2>Tags &amp; linked markets</h2>
+                  <p>Both optional. Tags make you findable. Linked markets show related pricing — they don't move this market's price.</p>
+                </div>
+                <span class="status">3 tags · 2 links</span>
+              </div>
+              <div class="inner">
+                <div class="cats" style="margin-bottom: 1rem;">
+                  <span class="cat-pick on">BTC</span>
+                  <span class="cat-pick on">price-target</span>
+                  <span class="cat-pick on">2026-H1</span>
+                  <span class="cat-pick">ETF-flows</span>
+                  <span class="cat-pick">macro</span>
+                  <span class="cat-pick">+ add tag</span>
+                </div>
+
+                <input class="link-search" placeholder="Search markets to link…" />
+                <div class="link-row">
+                  <span class="t">Bitcoin halving cycle drives a new ATH by 2026.</span>
+                  <span class="p">72¢</span>
+                  <span class="add added">LINKED</span>
+                </div>
+                <div class="link-row">
+                  <span class="t">Spot BTC ETFs have net inflows every month of Q2 2026.</span>
+                  <span class="p">58¢</span>
+                  <span class="add added">LINKED</span>
+                </div>
+                <div class="link-row">
+                  <span class="t">Fed funds rate is below 3% at any point in 2026.</span>
+                  <span class="p">64¢</span>
+                  <span class="add">+ LINK</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="sec">
+              <div class="sh">
+                <span class="n">06</span>
+                <div>
+                  <h2>Seed your opening position</h2>
+                  <p>Publishing = placing your first trade. It sets the opening price and funds the book. You cash out whenever you want — never a separate &ldquo;close&rdquo; action.</p>
+                </div>
+                <span class="status">Set · YES · $500</span>
+              </div>
+              <div class="inner">
+                <div class="seed-grid">
+                  <div>
+                    <div class="side-pick">
+                      <button type="button" class="yes on">Back YES<span class="sub">I believe it will happen</span></button>
+                      <button type="button" class="no">Back NO<span class="sub">I believe it won't</span></button>
+                    </div>
+
+                    <div class="amt-input">
+                      <span class="lbl">STAKE</span>
+                      <input type="text" value="500.00" aria-label="Amount in USD" />
+                      <span class="suf">USD</span>
+                    </div>
+
+                    <div class="quick-amt">
+                      <button type="button">$50</button>
+                      <button type="button">$100</button>
+                      <button type="button">$250</button>
+                      <button type="button" class="on">$500</button>
+                      <button type="button">$1,000</button>
+                    </div>
+                  </div>
+
+                  <dl class="seed-quote">
+                    <div class="r"><dt>Shares minted</dt><dd>990 YES</dd></div>
+                    <div class="r"><dt>Opening spread</dt><dd>50¢ · 50¢</dd></div>
+                    <div class="r"><dt>Fee (1%)</dt><dd>$5.00</dd></div>
+                    <div class="r"><dt>Your stake</dt><dd class="em">$495.00</dd></div>
+                    <div class="r" style="margin-top: .5rem; padding-top: .6rem; border-top: 1px solid var(--border);"><dt>Available balance</dt><dd>$1,284.20</dd></div>
+                    <div class="r"><dt>After publish</dt><dd>$784.20</dd></div>
+                  </dl>
+                </div>
+              </div>
+            </section>
+
+          </form>
+        </main>
+
+        <aside class="context">
+          <span class="ctx-h">Live preview · how readers see it</span>
+          <div class="preview-card">
+            <div class="ptag-row">
+              <span class="cat">Crypto</span>
+              <span>Lead</span>
+            </div>
+            <h3 class="serif">Bitcoin trades above $150,000 at any point before 1 July 2026.</h3>
+            <span class="pwhos">by @pf · just now · seed $495 on YES</span>
+            <div class="pmeas">
+              <span class="v">50¢</span>
+              <span class="side">YES · SEED</span>
+            </div>
+          </div>
+
+          <dl class="preview-meta">
+            <div class="r"><dt>Author</dt><dd>@pf</dd></div>
+            <div class="r"><dt>Tags</dt><dd>BTC, price-target, 2026-H1</dd></div>
+            <div class="r"><dt>Linked</dt><dd>2 markets</dd></div>
+            <div class="r"><dt>Seed</dt><dd>$495 on YES</dd></div>
+            <div class="r"><dt>Edition</dt><dd>Practice</dd></div>
+            <div class="r"><dt>Visibility</dt><dd>Public on first trade</dd></div>
+          </dl>
+
+          <div class="ctx-note">
+            <strong>Before you publish</strong>
+            The claim, the lede, and the case are immutable once published — you're putting them on a public, permanent record. Your opening stake can be cashed out at any time at the crowd price. There's no expiry, no oracle, no closing date.
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <footer class="publish-bar">
+      <div class="status">
+        <span class="st"><strong>Draft saved</strong> · 3s ago</span>
+        <span class="st">Stake <strong>$500 on YES</strong> at opening 50¢</span>
+      </div>
+      <div class="actions">
+        <button class="btn">Preview</button>
+        <button class="btn primary">Publish &amp; back YES · $500</button>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

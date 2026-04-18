@@ -130,224 +130,93 @@
   }
 </script>
 
-<section class="leaderboard-header">
-  <div class="leaderboard-copy">
-    <div class="leaderboard-kicker">Leaderboard</div>
-    <h1>Leaderboard</h1>
-    <p>Top market creators and the most-followed questions on Cascade.</p>
-  </div>
-</section>
+<div class="grid gap-4 max-w-[38rem] pt-4">
+  <div class="eyebrow">Leaderboard</div>
+  <h1 class="text-[clamp(2.4rem,4vw,4rem)] tracking-[-0.05em] leading-none">Leaderboard</h1>
+  <p class="text-base-content/70 leading-[1.75]">Top market creators and the most-followed questions on Cascade.</p>
+</div>
 
-<nav class="leaderboard-tabs" aria-label="Leaderboard tabs">
+<nav class="flex gap-4 pt-7 border-b border-base-300 overflow-x-auto" aria-label="Leaderboard tabs">
   {#each tabs as tab}
-    <button class:active={activeTab === tab} type="button" onclick={() => (activeTab = tab)}>
+    <button
+      class="mb-[-1px] py-[0.9rem] border-b-2 border-transparent bg-transparent text-sm font-medium cursor-pointer transition-colors {activeTab === tab ? 'border-white text-white' : 'text-base-content/50 hover:text-base-content/80'}"
+      type="button"
+      onclick={() => (activeTab = tab)}
+    >
       {tab}
     </button>
   {/each}
 </nav>
 
 {#if activeTab === 'Top Creators'}
-  <section class="leaderboard-list">
+  <div class="border-t border-base-300 mt-6">
     {#if creatorRows.length > 0}
       {#each creatorRows as row, index (row.pubkey)}
-        <a class="leaderboard-row" href={profileHref(row.pubkey)}>
-          <span class="rank">{index + 1}</span>
-          <div class="leaderboard-main">
-            <strong>{label(row.pubkey)}</strong>
-            <p>{row.marketCount} market{row.marketCount === 1 ? '' : 's'} created</p>
+        <a class="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] sm:grid-cols-[2.5rem_minmax(0,1fr)_auto_auto] gap-4 items-center py-4 border-b border-base-300 hover:text-white" href={profileHref(row.pubkey)}>
+          <span class="text-base-content/50 font-mono text-sm">{index + 1}</span>
+          <div>
+            <strong class="text-white text-base">{label(row.pubkey)}</strong>
+            <p class="mt-1 text-base-content/50 text-sm">{row.marketCount} market{row.marketCount === 1 ? '' : 's'} created</p>
           </div>
-          <div class="leaderboard-metric">
-            <strong>{row.marketCount}</strong>
-            <span>Markets</span>
+          <div class="grid justify-items-end">
+            <strong class="text-white font-mono text-sm">{row.marketCount}</strong>
+            <span class="text-base-content/50 text-xs uppercase tracking-wide">Markets</span>
           </div>
         </a>
       {/each}
     {:else}
-      <div class="leaderboard-empty-inline">No creator data yet.</div>
+      <div class="py-8 text-base-content/70">No creator data yet.</div>
     {/if}
-  </section>
+  </div>
 {/if}
 
 {#if activeTab === 'Top Traders'}
-  <section class="leaderboard-list">
+  <div class="border-t border-base-300 mt-6">
     {#if traderRows.length > 0}
       {#each traderRows as row, index (row.pubkey)}
-        <a class="leaderboard-row" href={profileHref(row.pubkey)}>
-          <span class="rank">{index + 1}</span>
-          <div class="leaderboard-main">
-            <strong>{label(row.pubkey)}</strong>
-            <p>{row.tradeCount} trade{row.tradeCount === 1 ? '' : 's'} placed</p>
+        <a class="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] sm:grid-cols-[2.5rem_minmax(0,1fr)_auto_auto] gap-4 items-center py-4 border-b border-base-300 hover:text-white" href={profileHref(row.pubkey)}>
+          <span class="text-base-content/50 font-mono text-sm">{index + 1}</span>
+          <div>
+            <strong class="text-white text-base">{label(row.pubkey)}</strong>
+            <p class="mt-1 text-base-content/50 text-sm">{row.tradeCount} trade{row.tradeCount === 1 ? '' : 's'} placed</p>
           </div>
-          <div class="leaderboard-metric">
-            <strong>{row.tradeCount}</strong>
-            <span>Trades</span>
+          <div class="grid justify-items-end">
+            <strong class="text-white font-mono text-sm">{row.tradeCount}</strong>
+            <span class="text-base-content/50 text-xs uppercase tracking-wide">Trades</span>
           </div>
         </a>
       {/each}
     {:else}
-      <div class="leaderboard-empty-inline">No trader data yet.</div>
+      <div class="py-8 text-base-content/70">No trader data yet.</div>
     {/if}
-  </section>
+  </div>
 {/if}
 
 {#if activeTab === 'Most Bookmarked'}
   {#if bookmarkedRows.length > 0}
-    <section class="leaderboard-list">
+    <div class="border-t border-base-300 mt-6">
       {#each bookmarkedRows as row (row.market.id)}
-        <a class="leaderboard-row" href="/market/{row.market.slug}">
-          <span class="rank">{row.rank}</span>
-          <div class="leaderboard-main">
-            <strong>{row.market.title}</strong>
-            <p>{row.market.description || 'Prediction market'}</p>
+        <a class="grid grid-cols-[2.5rem_minmax(0,1fr)_auto_auto] gap-4 items-center py-4 border-b border-base-300 hover:text-white" href="/market/{row.market.slug}">
+          <span class="text-base-content/50 font-mono text-sm">{row.rank}</span>
+          <div>
+            <strong class="text-white text-base">{row.market.title}</strong>
+            <p class="mt-1 text-base-content/50 text-sm">{row.market.description || 'Prediction market'}</p>
           </div>
-          <div class="leaderboard-metric">
-            <strong>{row.count}</strong>
-            <span>Bookmarks</span>
+          <div class="grid justify-items-end">
+            <strong class="text-white font-mono text-sm">{row.count}</strong>
+            <span class="text-base-content/50 text-xs uppercase tracking-wide">Bookmarks</span>
           </div>
-          <div class="leaderboard-metric">
-            <strong>{row.discussionCount}</strong>
-            <span>Posts</span>
+          <div class="grid justify-items-end">
+            <strong class="text-white font-mono text-sm">{row.discussionCount}</strong>
+            <span class="text-base-content/50 text-xs uppercase tracking-wide">Posts</span>
           </div>
         </a>
       {/each}
-    </section>
+    </div>
   {:else}
-    <section class="leaderboard-empty">
-      <p>No bookmarked markets yet.</p>
-      <p>Bookmark markets to see them ranked here.</p>
-    </section>
+    <div class="grid gap-2 py-8 border-t border-base-300 mt-6">
+      <strong class="text-white">No bookmarked markets yet.</strong>
+      <p class="text-base-content/70">Bookmark markets to see them ranked here.</p>
+    </div>
   {/if}
 {/if}
-
-<style>
-  .leaderboard-header {
-    padding-top: 1rem;
-  }
-
-  .leaderboard-copy {
-    display: grid;
-    gap: 0.9rem;
-    max-width: 38rem;
-  }
-
-  .leaderboard-kicker {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .leaderboard-copy h1 {
-    font-size: clamp(2.4rem, 4vw, 4rem);
-    letter-spacing: -0.05em;
-    line-height: 1;
-  }
-
-  .leaderboard-copy p {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    line-height: 1.75;
-  }
-
-  .leaderboard-tabs {
-    display: flex;
-    gap: 1rem;
-    padding-top: 1.75rem;
-    border-bottom: 1px solid rgba(38, 38, 38, 0.8);
-    overflow-x: auto;
-  }
-
-  .leaderboard-tabs button {
-    margin-bottom: -1px;
-    padding: 0.9rem 0;
-    border: none;
-    border-bottom: 2px solid transparent;
-    background: transparent;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.88rem;
-    font-weight: 500;
-    cursor: pointer;
-  }
-
-  .leaderboard-tabs button.active {
-    border-bottom-color: white;
-    color: white;
-  }
-
-  .leaderboard-list {
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
-    margin-top: 1.5rem;
-  }
-
-  .leaderboard-row {
-    display: grid;
-    grid-template-columns: 2.5rem minmax(0, 1fr) auto auto;
-    gap: 1rem;
-    align-items: center;
-    padding: 1rem 0;
-    border-bottom: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .rank {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-family: var(--font-mono);
-    font-size: 0.86rem;
-  }
-
-  .leaderboard-main strong {
-    color: white;
-    font-size: 1rem;
-  }
-
-  .leaderboard-main p {
-    margin-top: 0.25rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.82rem;
-    line-height: 1.55;
-  }
-
-  .leaderboard-metric {
-    display: grid;
-    justify-items: end;
-  }
-
-  .leaderboard-metric strong {
-    color: white;
-    font-family: var(--font-mono);
-    font-size: 0.92rem;
-  }
-
-  .leaderboard-metric span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .leaderboard-empty,
-  .leaderboard-empty-inline {
-    padding: 2rem 0;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .leaderboard-empty p:first-child {
-    color: white;
-    font-size: 1rem;
-    font-weight: 600;
-  }
-
-  .leaderboard-empty p:last-child {
-    margin-top: 0.4rem;
-    line-height: 1.7;
-  }
-
-  @media (max-width: 760px) {
-    .leaderboard-row {
-      grid-template-columns: 1fr;
-    }
-
-    .leaderboard-metric {
-      justify-items: start;
-    }
-  }
-</style>

@@ -16,13 +16,13 @@ test('leaderboard page headline and tabs match the leaderboard surfaces', () => 
 
   assert.match(source, /type LeaderboardTab = 'Top Creators' \| 'Top Traders' \| 'Most Bookmarked';/);
   assert.match(source, /const tabs: LeaderboardTab\[] = \['Top Creators', 'Top Traders', 'Most Bookmarked'\];/);
-  assert.match(source, /<h1>Leaderboard<\/h1>/);
-  assert.match(source, /<p>Top market creators and the most-followed questions on Cascade\.<\/p>/);
+  assert.match(source, />Leaderboard<\/h1>/);
+  assert.match(source, />Top market creators and the most-followed questions on Cascade\.<\/p>/);
   assert.doesNotMatch(source, /Who's winning/);
   assert.doesNotMatch(source, /The traders with the best track record\. Public positions, real results\./);
   assert.match(
     source,
-    /\{#if activeTab === 'Top Traders'\}[\s\S]*\{#each traderRows as row, index \(row\.pubkey\)\}[\s\S]*<strong>\{label\(row\.pubkey\)\}<\/strong>[\s\S]*<p>\{row\.tradeCount\} trade\{row\.tradeCount === 1 \? '' : 's'\} placed<\/p>[\s\S]*<strong>\{row\.tradeCount\}<\/strong>[\s\S]*<span>Trades<\/span>/
+    /\{#if activeTab === 'Top Traders'\}[\s\S]*\{#each traderRows as row, index \(row\.pubkey\)\}[\s\S]*>\{label\(row\.pubkey\)\}<\/strong>[\s\S]*>\{row\.tradeCount\} trade\{row\.tradeCount === 1 \? '' : 's'\} placed<\/p>[\s\S]*>\{row\.tradeCount\}<\/strong>[\s\S]*>Trades<\/span>/
   );
 });
 

@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Gazette / Front Page</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --paper: #0a0a0a;
+    --paper-2: #121212;
+    --ink: #e9e3d4;
+    --ink-2: #c0b9a8;
+    --ink-3: #86806f;
+    --rule: #1d1c1a;
+    --rule-strong: #2c2b27;
+    --yes: #3fb570;
+    --no: #d74566;
+    --accent: #efe7d3;
+  }
+  html,body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; }
+  .serif { font-family: 'Fraunces', Georgia, serif; }
+
+  .shell { width: min(100% - 3rem, 1240px); margin: 0 auto; }
+  .rule { border: 0; border-top: 1px solid var(--rule); margin: 0; }
+  .rule-strong { border: 0; border-top: 1px solid var(--rule-strong); margin: 0; }
+  .rule-double { border: 0; border-top: 3px double var(--rule-strong); margin: 0; }
+
+  /* Masthead */
+  .masthead { padding: 1rem 0 .6rem; border-bottom: 1px solid var(--rule); }
+  .masthead-top { display: flex; justify-content: space-between; align-items: baseline; font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--ink-3); letter-spacing: .16em; text-transform: uppercase; padding-bottom: .4rem; }
+  .masthead-title { font-family: 'Fraunces', serif; font-weight: 500; font-size: clamp(3.2rem, 9vw, 7rem); letter-spacing: -.035em; text-align: center; padding: .3rem 0; line-height: .95; color: var(--accent); }
+  .masthead-bottom { display: flex; justify-content: space-between; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--ink-3); letter-spacing: .12em; text-transform: uppercase; padding-top: .3rem; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  .masthead-bottom span em { font-style: italic; color: var(--ink-2); }
+
+  /* Top nav */
+  .topnav { padding: .7rem 0; border-bottom: 3px double var(--rule-strong); }
+  .topnav .row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .topnav ul { list-style: none; padding: 0; margin: 0; display: flex; gap: 1.6rem; }
+  .topnav a { font-family: 'Inter', sans-serif; font-size: .86rem; color: var(--ink-2); padding: .2rem 0; border-bottom: 1px solid transparent; }
+  .topnav a:hover { color: var(--ink); border-bottom-color: var(--ink-2); }
+  .topnav a.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: 500; }
+  .topnav .search { display: inline-flex; align-items: center; gap: .5rem; border: 1px solid var(--rule-strong); padding: .3rem .6rem; font-family: 'JetBrains Mono', monospace; font-size: .74rem; color: var(--ink-3); }
+
+  /* Front page grid */
+  .front { display: grid; grid-template-columns: 1.2fr 2.4fr 1.3fr; gap: 2rem; padding: 2.5rem 0; border-bottom: 3px double var(--rule-strong); }
+  @media (max-width: 1000px) { .front { grid-template-columns: 1fr; } .col-sep { border-left: 0; border-top: 1px solid var(--rule); padding-top: 2rem; margin-top: 2rem; padding-left: 0; } }
+  .col-sep { border-left: 1px solid var(--rule); padding-left: 2rem; }
+
+  /* Briefs column */
+  .col-briefs h3 { font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); padding-bottom: .6rem; border-bottom: 1px solid var(--rule); margin: 0 0 .8rem; }
+  .brief { padding: 1rem 0; border-bottom: 1px solid var(--rule); }
+  .brief:last-child { border-bottom: 0; }
+  .brief .cat { font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+  .brief .t { font-family: 'Fraunces', serif; font-size: 1.12rem; line-height: 1.25; letter-spacing: -.005em; color: var(--accent); margin: .3rem 0 .3rem; }
+  .brief .price-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .brief .price-row .p { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; }
+  .brief .price-row .p.up { color: var(--yes); }
+  .brief .price-row .p.down { color: var(--no); }
+  .brief .meta { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--ink-3); letter-spacing: .04em; }
+
+  /* Lead column */
+  .col-lead .dateline { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--ink-3); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .8rem; }
+  .col-lead .dateline .cat { color: var(--yes); }
+  .col-lead h1 { font-family: 'Fraunces', serif; font-weight: 500; font-size: clamp(2.4rem, 5vw, 4.2rem); line-height: 1; letter-spacing: -.028em; margin: 0 0 1rem; color: var(--accent); max-width: 22ch; }
+  .col-lead .byline { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--ink-3); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 1.4rem; }
+  .col-lead .byline .name { color: var(--ink-2); }
+  .col-lead .lede { font-family: 'Fraunces', serif; font-size: 1.3rem; line-height: 1.45; color: var(--ink); margin-bottom: 1.4rem; font-weight: 400; }
+  .col-lead .body p { margin: 0 0 .9rem; color: var(--ink-2); font-size: 1rem; line-height: 1.75; }
+  .col-lead .body p strong { color: var(--ink); font-weight: 500; }
+
+  /* Pull-out price block */
+  .pull { margin: 1.8rem 0; padding: 1.2rem; border: 1px solid var(--rule-strong); display: grid; grid-template-columns: auto 1fr auto; gap: 2rem; align-items: center; }
+  .pull .pull-label { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--ink-3); letter-spacing: .14em; text-transform: uppercase; }
+  .pull .pull-price { font-family: 'JetBrains Mono', monospace; font-size: 3.4rem; color: var(--yes); line-height: 1; letter-spacing: -.015em; }
+  .pull .pull-mini { height: 38px; }
+  .pull .pull-side { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--yes); padding: .2rem .5rem; border: 1px solid var(--yes); letter-spacing: .1em; }
+
+  .more-link { font-family: 'Inter', sans-serif; font-size: .92rem; color: var(--accent); border-bottom: 1px solid var(--rule-strong); padding-bottom: .2rem; }
+  .more-link:hover { border-bottom-color: var(--accent); }
+
+  /* Also-leading */
+  .col-also h3 { font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); padding-bottom: .6rem; border-bottom: 1px solid var(--rule); margin: 0 0 .8rem; }
+  .also-story { padding: 1.2rem 0; border-bottom: 1px solid var(--rule); }
+  .also-story:last-child { border-bottom: 0; }
+  .also-story .cat { font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+  .also-story h4 { font-family: 'Fraunces', serif; font-size: 1.5rem; line-height: 1.15; letter-spacing: -.015em; margin: .45rem 0 .55rem; color: var(--accent); font-weight: 500; }
+  .also-story p { margin: 0 0 .55rem; color: var(--ink-2); font-size: .94rem; line-height: 1.6; }
+  .also-story .row-end { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: .76rem; align-items: center; }
+  .also-story .row-end .p.up { color: var(--yes); }
+  .also-story .row-end .p.down { color: var(--no); }
+
+  /* Front of the book (markets table) */
+  .section { padding: 2.5rem 0; border-bottom: 3px double var(--rule-strong); }
+  .section-kicker { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--ink-3); letter-spacing: .16em; text-transform: uppercase; }
+  .section-h { font-family: 'Fraunces', serif; font-size: clamp(1.8rem, 3vw, 2.6rem); letter-spacing: -.02em; margin: .4rem 0 .3rem; color: var(--accent); font-weight: 500; }
+  .section-sub { color: var(--ink-2); max-width: 68ch; }
+  .ft-tabs { margin-top: 1.2rem; display: flex; gap: 1.4rem; border-bottom: 1px solid var(--rule-strong); }
+  .ft-tabs a { font-family: 'Inter', sans-serif; font-size: .88rem; padding: .55rem 0; margin-bottom: -1px; color: var(--ink-3); border-bottom: 2px solid transparent; }
+  .ft-tabs a.on { color: var(--ink); border-bottom-color: var(--ink); }
+
+  .ft-table { margin-top: .2rem; }
+  .ft-row { display: grid; grid-template-columns: 4rem 1fr 5rem 6rem 5rem 6rem; gap: 1rem; align-items: center; padding: 1rem 0; border-bottom: 1px solid var(--rule); }
+  .ft-row.head { color: var(--ink-3); font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; padding: .55rem 0; border-bottom: 1px solid var(--rule-strong); }
+  .ft-row .cat { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--ink-3); letter-spacing: .08em; text-transform: uppercase; }
+  .ft-row .ct { display: grid; gap: .15rem; }
+  .ft-row .ct .t { font-family: 'Fraunces', serif; font-size: 1.08rem; color: var(--accent); letter-spacing: -.005em; line-height: 1.3; }
+  .ft-row .ct .t small { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--ink-3); letter-spacing: .05em; margin-left: .5rem; }
+  .ft-row .p { font-family: 'JetBrains Mono', monospace; font-size: 1rem; }
+  .ft-row .p.yes { color: var(--yes); } .ft-row .p.no { color: var(--no); }
+  .ft-row .spark { height: 24px; }
+  .ft-row .d { font-family: 'JetBrains Mono', monospace; font-size: .8rem; }
+  .ft-row .d.up { color: var(--yes); } .ft-row .d.down { color: var(--no); }
+  .ft-row .v { font-family: 'JetBrains Mono', monospace; font-size: .8rem; color: var(--ink-2); }
+
+  /* Op-ed strip */
+  .oped { padding: 2.5rem 0; border-bottom: 3px double var(--rule-strong); }
+  .oped-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem; }
+  @media (max-width: 900px) { .oped-grid { grid-template-columns: 1fr; } }
+  .oped-card .cat { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--ink-3); letter-spacing: .14em; text-transform: uppercase; }
+  .oped-card h3 { font-family: 'Fraunces', serif; font-size: 1.4rem; letter-spacing: -.015em; margin: .4rem 0 .5rem; color: var(--accent); font-weight: 500; line-height: 1.2; }
+  .oped-card blockquote { margin: 0; padding: 0; font-family: 'Fraunces', serif; font-style: italic; font-size: 1.05rem; color: var(--ink-2); line-height: 1.55; border-left: 1px solid var(--rule-strong); padding-left: 1rem; }
+  .oped-card .sig { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--ink-3); letter-spacing: .1em; margin-top: .8rem; }
+
+  /* Footer ticker */
+  .footer-ticker { padding: 1rem 0; border-bottom: 1px solid var(--rule); }
+  .ft-inner { display: flex; align-items: center; gap: 2rem; font-family: 'JetBrains Mono', monospace; font-size: .76rem; color: var(--ink-3); overflow-x: auto; white-space: nowrap; letter-spacing: .04em; }
+  .ft-inner .tick-label { color: var(--ink); letter-spacing: .14em; }
+  .ft-inner .tick-item .n { color: var(--ink); }
+  .ft-inner .tick-item .p { color: var(--yes); }
+  .ft-inner .tick-item .p.d { color: var(--no); }
+
+  footer.colophon { padding: 2rem 0 3rem; }
+  .colophon-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; color: var(--ink-3); font-size: .85rem; }
+  .colophon-row strong { color: var(--accent); font-weight: 500; }
+</style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="shell">
+      <div class="masthead-top">
+        <span>Vol. 2 · No. 47</span>
+        <span>Founded on Nostr, 2024</span>
+        <span>cascade.f7z.io</span>
+      </div>
+      <h1 class="masthead-title">Cascade</h1>
+      <div class="masthead-bottom">
+        <span>Saturday, 18 April 2026</span>
+        <span><em>The crowd has a price. Prove it wrong.</em></span>
+        <span>Practice Edition · Paper money</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="topnav">
+    <div class="shell row">
+      <ul>
+        <li><a class="active" href="#">Front Page</a></li>
+        <li><a href="#">Markets</a></li>
+        <li><a href="#">Briefs</a></li>
+        <li><a href="#">Leaderboard</a></li>
+        <li><a href="#">Archive</a></li>
+        <li><a href="03-create.html">Write a Market →</a></li>
+      </ul>
+      <span class="search">search the paper · ⌘K</span>
+    </div>
+  </nav>
+
+  <section class="front">
+    <div class="shell" style="display: contents;">
+
+      <aside class="col-briefs">
+        <h3>Today's Briefs</h3>
+        <div class="brief">
+          <span class="cat">AI</span>
+          <div class="t">OpenAI will ship GPT-5 before Google's Gemini 2 Pro.</div>
+          <div class="price-row"><span class="p up">71¢</span><span class="meta">+3¢ · 24 threads</span></div>
+        </div>
+        <div class="brief">
+          <span class="cat">Macro</span>
+          <div class="t">The Fed funds rate closes below 3% at any point in 2026.</div>
+          <div class="price-row"><span class="p up">64¢</span><span class="meta">+2¢ · 31 threads</span></div>
+        </div>
+        <div class="brief">
+          <span class="cat">Crypto</span>
+          <div class="t">Bitcoin trades above $150,000 by Q3 2026.</div>
+          <div class="price-row"><span class="p up">58¢</span><span class="meta">+1¢ · 47 threads</span></div>
+        </div>
+        <div class="brief">
+          <span class="cat">Tech</span>
+          <div class="t">Apple ships AI-first glasses before Meta's next Ray-Ban.</div>
+          <div class="price-row"><span class="p up">49¢</span><span class="meta">flat · 91 threads</span></div>
+        </div>
+        <div class="brief">
+          <span class="cat">Policy</span>
+          <div class="t">A G7 nation launches a retail CBDC before 2027.</div>
+          <div class="price-row"><span class="p down">22¢</span><span class="meta">−2¢ · 12 threads</span></div>
+        </div>
+      </aside>
+
+      <article class="col-lead col-sep">
+        <div class="dateline">
+          <span class="cat">Lead · Artificial Intelligence</span>
+          <span> · 18 Apr 2026, 14:32 UTC</span>
+        </div>
+        <h1>OpenAI will ship GPT-5 before Google's Gemini 2 Pro.</h1>
+        <div class="byline">By <span class="name">@north</span> · 2,814 trades · linked to 3 markets</div>
+
+        <p class="lede">
+          For five straight weeks, the shape of Sam Altman's calendar has done most of the talking. The crowd has priced this at seventy-one cents — and the market has been wrong about pace twice already this year.
+        </p>
+
+        <div class="pull">
+          <span class="pull-label">Crowd price<br/>YES</span>
+          <span class="pull-price">71¢</span>
+          <svg class="pull-mini" viewBox="0 0 200 38" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#3fb570" stroke-width="1.5" points="0,30 20,28 40,25 60,22 80,24 100,18 120,16 140,12 160,10 180,8 200,6"/>
+          </svg>
+          <span class="pull-side">YES · +3¢ 24H</span>
+        </div>
+
+        <div class="body">
+          <p><strong>The case is straightforward.</strong> OpenAI has already run three internal model gates on GPT-5 in the last six weeks. Their pattern since GPT-4 is roughly eight weeks gate-to-launch. Google's Gemini 2 Pro remains gated behind Vertex AI preview, and the hardware pipeline for the internal TPU cycle slipped in April.</p>
+          <p>The counter-case isn't trivial. Google has shipped Flash and Ultra variants faster than OpenAI's competing Turbo generations, and the preview → GA cadence has compressed materially since Gemini 1.5. If the crowd is wrong, it will be because it underweights Google's speed-to-GA in the last two generations.</p>
+          <p>The market disagrees with the crowd by twenty-one cents. Someone is going to be wrong, and the price has been drifting up, not down, for seven of the last ten days.</p>
+        </div>
+
+        <a class="more-link" href="02-market.html">Read the full case, defend a side →</a>
+      </article>
+
+      <aside class="col-also col-sep">
+        <h3>Also Leading</h3>
+
+        <article class="also-story">
+          <span class="cat">Crypto · Price</span>
+          <h4>Bitcoin trades above $150,000 by Q3 2026.</h4>
+          <p>The crowd has been nibbling higher for a month. On-chain flows match the thesis.</p>
+          <div class="row-end"><span class="p up mono">58¢</span><span class="mono" style="color:var(--ink-3)">$15,980 · 24h</span></div>
+        </article>
+
+        <article class="also-story">
+          <span class="cat">Nostr · Growth</span>
+          <h4>Nostr daily active users exceed one million before 2028.</h4>
+          <p>A month ago this priced at thirty-eight. Today, thirty-two. The crowd has cooled.</p>
+          <div class="row-end"><span class="p down mono">32¢</span><span class="mono" style="color:var(--ink-3)">$1,430 · 24h</span></div>
+        </article>
+
+        <article class="also-story">
+          <span class="cat">Macro · Policy</span>
+          <h4>The Fed funds rate is below 3% at any point in 2026.</h4>
+          <p>Two rate-cut prints pushed this from fifty-one to sixty-four cents. Sharply.</p>
+          <div class="row-end"><span class="p up mono">64¢</span><span class="mono" style="color:var(--ink-3)">$9,320 · 24h</span></div>
+        </article>
+
+      </aside>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="shell">
+      <span class="section-kicker">Front of the book</span>
+      <h2 class="section-h">What the crowd is pricing right now.</h2>
+      <p class="section-sub">Markets never close and nobody declares a winner. The price is simply what people are willing to put money behind today.</p>
+
+      <nav class="ft-tabs">
+        <a class="on" href="#">Most active</a>
+        <a href="#">Most contested</a>
+        <a href="#">Fresh claims</a>
+        <a href="#">Under the radar</a>
+        <a href="#">Linked to the lead</a>
+      </nav>
+
+      <div class="ft-table">
+        <div class="ft-row head">
+          <span>CATEGORY</span><span>CLAIM</span><span>PRICE</span><span>7-DAY</span><span>24H Δ</span><span>VOLUME</span>
+        </div>
+
+        <a class="ft-row" href="02-market.html">
+          <span class="cat">AI</span>
+          <div class="ct"><span class="t">OpenAI ships GPT-5 before Gemini 2 Pro<small>· linked to 3</small></span></div>
+          <span class="p yes">71¢</span>
+          <svg class="spark" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline fill="none" stroke="#3fb570" stroke-width="1.5" points="0,18 15,16 30,14 45,12 60,11 75,9 90,7 105,5 120,4"/></svg>
+          <span class="d up">+3¢</span>
+          <span class="v">$74,120</span>
+        </a>
+
+        <a class="ft-row" href="02-market.html">
+          <span class="cat">CRYPTO</span>
+          <div class="ct"><span class="t">Bitcoin above $150,000 by Q3 2026</span></div>
+          <span class="p yes">58¢</span>
+          <svg class="spark" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline fill="none" stroke="#3fb570" stroke-width="1.5" points="0,8 15,12 30,11 45,14 60,13 75,10 90,9 105,8 120,7"/></svg>
+          <span class="d up">+1¢</span>
+          <span class="v">$65,450</span>
+        </a>
+
+        <a class="ft-row" href="02-market.html">
+          <span class="cat">NOSTR</span>
+          <div class="ct"><span class="t">Nostr DAU exceeds 1M before 2028</span></div>
+          <span class="p no">32¢</span>
+          <svg class="spark" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline fill="none" stroke="#d74566" stroke-width="1.5" points="0,6 15,9 30,12 45,14 60,15 75,17 90,18 105,20 120,21"/></svg>
+          <span class="d down">−4¢</span>
+          <span class="v">$8,300</span>
+        </a>
+
+        <a class="ft-row" href="02-market.html">
+          <span class="cat">POLICY</span>
+          <div class="ct"><span class="t">A G7 nation launches retail CBDC before 2027</span></div>
+          <span class="p no">22¢</span>
+          <svg class="spark" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline fill="none" stroke="#d74566" stroke-width="1.5" points="0,10 15,11 30,13 45,14 60,15 75,16 90,18 105,20 120,22"/></svg>
+          <span class="d down">−2¢</span>
+          <span class="v">$12,440</span>
+        </a>
+
+        <a class="ft-row" href="02-market.html">
+          <span class="cat">TECH</span>
+          <div class="ct"><span class="t">Apple ships AI-first glasses before Meta's next Ray-Ban</span></div>
+          <span class="p yes">49¢</span>
+          <svg class="spark" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline fill="none" stroke="#3fb570" stroke-width="1.5" points="0,14 15,13 30,14 45,13 60,14 75,13 90,13 105,14 120,13"/></svg>
+          <span class="d up">+0¢</span>
+          <span class="v">$43,180</span>
+        </a>
+
+        <a class="ft-row" href="02-market.html">
+          <span class="cat">MACRO</span>
+          <div class="ct"><span class="t">Fed funds rate below 3% at any point in 2026</span></div>
+          <span class="p yes">64¢</span>
+          <svg class="spark" viewBox="0 0 120 24" preserveAspectRatio="none"><polyline fill="none" stroke="#3fb570" stroke-width="1.5" points="0,20 15,18 30,16 45,14 60,13 75,12 90,11 105,9 120,7"/></svg>
+          <span class="d up">+2¢</span>
+          <span class="v">$58,720</span>
+        </a>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="oped">
+    <div class="shell">
+      <span class="section-kicker">Op-Ed · From the floor</span>
+      <h2 class="section-h">What the traders are saying.</h2>
+      <div class="oped-grid" style="margin-top: 1.4rem;">
+        <div class="oped-card">
+          <span class="cat">On GPT-5</span>
+          <h3>"The pattern since GPT-4 is eight weeks. That window closes at the end of May."</h3>
+          <blockquote>Three gate events, two weeks between the last safety eval and shipping. The math isn't subtle. I've been adding on every two-cent dip since 62¢.</blockquote>
+          <div class="sig">@north · $2,400 on YES</div>
+        </div>
+        <div class="oped-card">
+          <span class="cat">On Bitcoin</span>
+          <h3>"The flow is stubborn. Below 50¢ this is a steal."</h3>
+          <blockquote>On-chain accumulation at the $140K shelf has been steady for five weeks. If you squint at the ETF net flows you can see the thesis pricing in — slowly, against a skeptical tape.</blockquote>
+          <div class="sig">@greta · $840 on YES</div>
+        </div>
+        <div class="oped-card">
+          <span class="cat">On Nostr</span>
+          <h3>"Growth is real but not a million DAU by 2028."</h3>
+          <blockquote>I want this to happen. I'm also short it. The relay map, the client concentration, the retention curves — all three have to bend the right way. The crowd has priced that correctly.</blockquote>
+          <div class="sig">@mutiny · $310 on NO</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer-ticker">
+    <div class="shell">
+      <div class="ft-inner">
+        <span class="tick-label">CASCADE · 18 APR</span>
+        <span class="tick-item">GPT-5 · <span class="p">71¢ +3</span></span>
+        <span class="tick-item">BTC $150K · <span class="p">58¢ +1</span></span>
+        <span class="tick-item">NOSTR 1M · <span class="p d">32¢ −4</span></span>
+        <span class="tick-item">G7 CBDC · <span class="p d">22¢ −2</span></span>
+        <span class="tick-item">AAPL GLASSES · <span class="p">49¢ 0</span></span>
+        <span class="tick-item">FED &lt;3% · <span class="p">64¢ +2</span></span>
+        <span class="tick-item">ROBOTAXI 100K · <span class="p d">18¢ −1</span></span>
+        <span class="tick-item">SOL/ETH FEES · <span class="p">41¢ +5</span></span>
+      </div>
+    </div>
+  </div>
+
+  <footer class="colophon">
+    <div class="shell colophon-row">
+      <span><strong>Cascade</strong> · A publication of live markets. Every position on the record.</span>
+      <span>Relays: 7/8 · Last event: 4s ago · Practice edition — no real funds at stake.</span>
+    </div>
+  </footer>
+</body>
+</html>

@@ -27,6 +27,7 @@
   import EventAuthorHeader from '$lib/components/EventAuthorHeader.svelte';
   import BookmarkIcon from '$lib/components/BookmarkIcon.svelte';
   import SharePopover from '$lib/components/SharePopover.svelte';
+  import { formatDateTime } from '$lib/cascade/format';
   import { mergeUniqueEvents } from '$lib/ndk/events';
 
   let { data }: PageProps = $props();
@@ -277,7 +278,7 @@
                 {#if isArticle}
                   {formatDisplayDate(articlePublishedAt(event.rawEvent()))}
                 {:else if event.created_at}
-                  {new Date(event.created_at * 1000).toLocaleString()}
+                  {formatDateTime(event.created_at)}
                 {/if}
               </span>
               {#if isArticle}

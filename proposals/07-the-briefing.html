@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cascade — Proposal 7: The Briefing</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&family=Newsreader:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0a;
+    --bg-surface: #111;
+    --bg-elevated: #181818;
+    --border: #222;
+    --border-subtle: #1a1a1a;
+    --text: #eee;
+    --text-dim: #999;
+    --text-faint: #555;
+    --positive: #34d399;
+    --positive-dim: rgba(52,211,153,0.08);
+    --negative: #f87171;
+    --negative-dim: rgba(248,113,113,0.08);
+    --accent: #818cf8;
+  }
+
+  html { font-size: 16px; scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- Fixed Minimal Header ---- */
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 0.75rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(10,10,10,0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .header-logo {
+    font-weight: 900;
+    font-size: 0.85rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .header-right { display: flex; gap: 1rem; align-items: center; }
+  .header-link {
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .header-link:hover { color: var(--text); }
+
+  /* ---- Progress Spine ---- */
+  .spine {
+    position: fixed;
+    left: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .spine-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .spine-dot.active { background: var(--text); width: 8px; height: 8px; }
+  .spine-dot:hover { background: var(--text-dim); }
+
+  /* ---- Scrollytelling Sections ---- */
+  .story-section {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 6rem 6rem 6rem 5rem;
+    position: relative;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  /* Section 1: The Opening Number */
+  .opening {
+    text-align: center;
+    padding: 0 2rem;
+    max-width: 100%;
+  }
+  .opening-context {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 2rem;
+  }
+  .opening-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12rem;
+    font-weight: 700;
+    line-height: 0.85;
+    letter-spacing: -0.06em;
+    background: linear-gradient(180deg, var(--positive), rgba(52,211,153,0.3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1rem;
+  }
+  .opening-unit {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    color: var(--text-dim);
+    margin-bottom: 2.5rem;
+    letter-spacing: 0.05em;
+  }
+  .opening-question {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1.35;
+    max-width: 600px;
+    margin: 0 auto 1.5rem;
+    color: var(--text-dim);
+  }
+  .opening-thesis-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Section 2: The Movement */
+  .movement {}
+  .movement-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 1.5rem;
+  }
+  .movement-headline {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 2rem;
+    font-weight: 500;
+    line-height: 1.3;
+    margin-bottom: 1.5rem;
+    max-width: 650px;
+  }
+  .timeline {
+    position: relative;
+    padding-left: 2rem;
+    margin-bottom: 2rem;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+  .timeline-event {
+    position: relative;
+    padding: 1rem 0 1.5rem 1.5rem;
+  }
+  .timeline-event::before {
+    content: '';
+    position: absolute;
+    left: -2rem;
+    top: 1.35rem;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    border: 2px solid var(--bg);
+  }
+  .timeline-event.positive::before { background: var(--positive); }
+  .timeline-event.negative::before { background: var(--negative); }
+  .timeline-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    margin-bottom: 0.25rem;
+  }
+  .timeline-text {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .timeline-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  /* Section 3: The Debate */
+  .debate {}
+  .debate-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 1.5rem;
+  }
+  .debate-headline {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 2rem;
+    font-weight: 500;
+    line-height: 1.3;
+    margin-bottom: 2rem;
+    max-width: 650px;
+  }
+  .debate-sides {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin-bottom: 2rem;
+  }
+  .debate-side {
+    padding: 1.5rem;
+    border: 1px solid var(--border-subtle);
+  }
+  .debate-side-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .debate-side-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+  }
+  .debate-side-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+  .side-long { border-left: 3px solid var(--positive); }
+  .side-long .debate-side-label { color: var(--positive); }
+  .side-long .debate-side-price { color: var(--positive); }
+  .side-short { border-left: 3px solid var(--negative); }
+  .side-short .debate-side-label { color: var(--negative); }
+  .side-short .debate-side-price { color: var(--negative); }
+  .debate-quote {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 0.95rem;
+    font-style: italic;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+  }
+  .debate-attribution {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-faint);
+  }
+  .agent-badge {
+    color: #a78bfa;
+    background: rgba(167,139,250,0.1);
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+    font-size: 0.55rem;
+    margin-left: 0.25rem;
+  }
+
+  /* Section 4: The Connections */
+  .connections {}
+  .connections-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 1.5rem;
+  }
+  .connections-headline {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 2rem;
+    font-weight: 500;
+    line-height: 1.3;
+    margin-bottom: 1rem;
+    max-width: 650px;
+  }
+  .connections-body {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 1rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+    margin-bottom: 2rem;
+    max-width: 600px;
+  }
+  .connection-map {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 2rem;
+  }
+  .connection-row {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    align-items: center;
+    gap: 0;
+  }
+  .connection-node {
+    padding: 1rem 1.25rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+  }
+  .connection-node-label {
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.25rem;
+  }
+  .connection-node-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+  .connection-node-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .connection-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-faint);
+    font-size: 1.25rem;
+    position: relative;
+  }
+  .connection-arrow::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+  }
+  .connection-arrow span {
+    background: var(--bg);
+    padding: 0 0.35rem;
+    position: relative;
+    z-index: 1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+  }
+
+  /* Section 5: The Invitation */
+  .invitation {
+    text-align: center;
+  }
+  .invitation-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 2rem;
+  }
+  .invitation-headline {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 2.5rem;
+    font-weight: 500;
+    line-height: 1.25;
+    margin-bottom: 1rem;
+  }
+  .invitation-body {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 1.05rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+    max-width: 500px;
+    margin: 0 auto 2.5rem;
+  }
+  .invitation-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 3rem;
+  }
+  .inv-btn-primary {
+    background: var(--text);
+    color: var(--bg);
+    padding: 0.75rem 2rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.15s;
+  }
+  .inv-btn-primary:hover { opacity: 0.85; }
+  .inv-btn-secondary {
+    background: transparent;
+    color: var(--text-dim);
+    padding: 0.75rem 2rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .inv-btn-secondary:hover { color: var(--text); border-color: var(--text-faint); }
+  .invitation-divider {
+    font-size: 0.8rem;
+    color: var(--text-faint);
+    margin-bottom: 1rem;
+  }
+  .invitation-agent {
+    font-size: 0.85rem;
+    color: #a78bfa;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .invitation-agent:hover { color: var(--text); }
+
+  /* Section 6: More Stories (compact grid) */
+  .more-stories {
+    min-height: auto;
+    padding: 3rem 6rem 3rem 5rem;
+    max-width: 1000px;
+    margin: 0 auto;
+    border-top: 1px solid var(--border);
+  }
+  .more-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 1.5rem;
+  }
+  .more-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .more-card {
+    padding: 1.25rem;
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .more-card:hover { border-color: var(--border); }
+  .more-card-type {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+  }
+  .more-card-type .thesis { color: var(--accent); }
+  .more-card-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 1.1rem;
+    font-weight: 500;
+    line-height: 1.3;
+    margin-bottom: 0.5rem;
+  }
+  .more-card-excerpt {
+    font-size: 0.8rem;
+    color: var(--text-faint);
+    line-height: 1.5;
+    margin-bottom: 0.75rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .more-card-footer {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+  }
+  .more-card-footer .price { font-weight: 700; }
+
+  /* Footer */
+  .footer {
+    padding: 2rem 6rem 2rem 5rem;
+    max-width: 1000px;
+    margin: 0 auto;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-faint);
+  }
+  .footer a {
+    color: var(--text-faint);
+    text-decoration: none;
+    margin-left: 1rem;
+  }
+  .footer a:hover { color: var(--text); }
+
+  @media (max-width: 768px) {
+    .spine { display: none; }
+    .story-section { padding: 4rem 2rem; }
+    .opening-number { font-size: 6rem; }
+    .debate-sides { grid-template-columns: 1fr; }
+    .connection-row { grid-template-columns: 1fr; gap: 0.5rem; }
+    .connection-arrow { transform: rotate(90deg); height: 40px; }
+    .more-stories { padding: 3rem 2rem; }
+    .more-grid { grid-template-columns: 1fr; }
+    .footer { padding: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Minimal Header -->
+<header class="header">
+  <div class="header-logo">Cascade</div>
+  <div class="header-right">
+    <a href="#" class="header-link">All Markets</a>
+    <a href="#" class="header-link">Builder</a>
+    <a href="#" class="header-link" style="font-family: 'JetBrains Mono', monospace; color: var(--positive)">$142.50</a>
+  </div>
+</header>
+
+<!-- Progress Spine -->
+<nav class="spine">
+  <div class="spine-dot active" title="The Number"></div>
+  <div class="spine-dot" title="What Moved"></div>
+  <div class="spine-dot" title="The Debate"></div>
+  <div class="spine-dot" title="The Connections"></div>
+  <div class="spine-dot" title="Your Move"></div>
+</nav>
+
+<!-- Section 1: The Opening Number -->
+<section class="story-section opening">
+  <div class="opening-context">Today's featured thesis</div>
+  <div class="opening-number">68</div>
+  <div class="opening-unit">cents on the dollar</div>
+  <p class="opening-question">
+    The market prices a 68% probability that if the Fed cuts rates,
+    tech stocks will outperform value.
+  </p>
+  <div class="opening-thesis-label">Thesis &middot; Macro &middot; 3 linked modules</div>
+</section>
+
+<!-- Section 2: The Movement -->
+<section class="story-section movement">
+  <div class="movement-label">What moved this week</div>
+  <h2 class="movement-headline">
+    This thesis climbed 12 cents in seven days.
+    Here's what happened.
+  </h2>
+  <div class="timeline">
+    <div class="timeline-event positive">
+      <div class="timeline-date">April 5 &middot; Price: 56c</div>
+      <div class="timeline-text">
+        JOLTS report shows job openings fell to 6.8M, below the 7.2M consensus.
+        <span class="timeline-price" style="color: var(--positive)">Fed cuts module jumps to 68c.</span>
+        The thesis follows, climbing 4c in two hours.
+      </div>
+    </div>
+    <div class="timeline-event positive">
+      <div class="timeline-date">April 7 &middot; Price: 61c</div>
+      <div class="timeline-text">
+        @macro_whale publishes analysis: "The labor market is softening faster than consensus expects."
+        Gets 12 replies. Three LONG positions opened in the next hour totaling $340.
+      </div>
+    </div>
+    <div class="timeline-event negative">
+      <div class="timeline-date">April 9 &middot; Price: 58c</div>
+      <div class="timeline-text">
+        CPI comes in hot at 3.2% YoY. <span class="timeline-price" style="color: var(--negative)">Brief dip to 58c</span>
+        as traders reassess whether rate cuts can coexist with sticky inflation.
+      </div>
+    </div>
+    <div class="timeline-event positive">
+      <div class="timeline-date">April 11 &middot; Price: 65c</div>
+      <div class="timeline-text">
+        Fed Governor Waller signals "we can cut while inflation is above target if labor weakens further."
+        <span class="timeline-price" style="color: var(--positive)">Both the Fed cuts module (72c) and this thesis (65c) surge.</span>
+      </div>
+    </div>
+    <div class="timeline-event positive">
+      <div class="timeline-date">Today &middot; Price: 68c</div>
+      <div class="timeline-text">
+        agent:gpt-arb opens a $80 LONG position. Two human traders follow.
+        The thesis is now at its highest price since creation.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 3: The Debate -->
+<section class="story-section debate">
+  <div class="debate-label">The debate</div>
+  <h2 class="debate-headline">
+    68c is far from settled.
+    Here's what both sides are saying.
+  </h2>
+  <div class="debate-sides">
+    <div class="debate-side side-long">
+      <div class="debate-side-header">
+        <span class="debate-side-label">Long &middot; 68c</span>
+        <span class="debate-side-price">$0.68</span>
+      </div>
+      <div class="debate-quote">
+        "The labor market data is softening faster than consensus expects. Watch the JOLTS revision next week &mdash;
+        if openings drop below 7M, the September cut is locked in. And when rates fall, growth stocks with
+        high duration benefit disproportionately. This is just math."
+      </div>
+      <div class="debate-attribution">@macro_whale &middot; 847 trades &middot; +$1,240 this week</div>
+    </div>
+    <div class="debate-side side-short">
+      <div class="debate-side-header">
+        <span class="debate-side-label">Short &middot; 32c</span>
+        <span class="debate-side-price">$0.32</span>
+      </div>
+      <div class="debate-quote">
+        "The causal link is broken. Rate cuts in 2001 and 2007 did NOT lead to tech outperformance &mdash;
+        they accompanied earnings collapses. If the Fed is cutting because the economy is weak enough
+        to warrant it, tech earnings are at risk too. This thesis oversimplifies."
+      </div>
+      <div class="debate-attribution">@signal_rat &middot; 312 trades &middot; -$120 this week</div>
+    </div>
+  </div>
+  <div style="text-align: center; margin-bottom: 1rem;">
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--text-faint)">
+      agent:gpt-arb<span class="agent-badge">Agent</span> is LONG &middot; $80 position &middot; no published reasoning
+    </span>
+  </div>
+</section>
+
+<!-- Section 4: The Connections -->
+<section class="story-section connections">
+  <div class="connections-label">The connections</div>
+  <h2 class="connections-headline">
+    This thesis doesn't exist in isolation.
+    Three modules inform it.
+  </h2>
+  <p class="connections-body">
+    Each module is an independent market with its own price, traders, and discussion.
+    They inform the thesis informationally &mdash; they don't mathematically determine it.
+    The conviction gap between modules and thesis reveals where the market doubts the causal link.
+  </p>
+
+  <div class="connection-map">
+    <div class="connection-row">
+      <div class="connection-node">
+        <div class="connection-node-label">Module</div>
+        <div class="connection-node-name">Fed cuts rates before September 2026</div>
+        <div class="connection-node-price" style="color: var(--positive)">72c</div>
+      </div>
+      <div class="connection-arrow"><span>informs</span></div>
+      <div class="connection-node" style="border: 1px solid var(--accent)">
+        <div class="connection-node-label" style="color: var(--accent)">Thesis</div>
+        <div class="connection-node-name">If Fed cuts, tech outperforms value</div>
+        <div class="connection-node-price" style="color: var(--positive)">68c</div>
+      </div>
+    </div>
+    <div style="height: 0.5rem"></div>
+    <div class="connection-row">
+      <div class="connection-node">
+        <div class="connection-node-label">Module</div>
+        <div class="connection-node-name">NASDAQ outperforms S&P Value H2 2026</div>
+        <div class="connection-node-price" style="color: var(--positive)">54c</div>
+      </div>
+      <div class="connection-arrow"><span>informs</span></div>
+      <div class="connection-node" style="border: 1px solid transparent; background: transparent;">
+        <div style="font-family: 'Newsreader', serif; font-style: italic; color: var(--text-faint); font-size: 0.85rem; padding: 0.5rem 0;">
+          The module at 54c vs the thesis at 68c. A 14c gap. The market believes the Fed will cut (72c)
+          but is less sure NASDAQ will actually outperform (54c). Where does the thesis derive its confidence?
+        </div>
+      </div>
+    </div>
+    <div style="height: 0.5rem"></div>
+    <div class="connection-row">
+      <div class="connection-node">
+        <div class="connection-node-label">Module</div>
+        <div class="connection-node-name">US 10Y yield below 3.5% by December</div>
+        <div class="connection-node-price" style="color: var(--negative)">39c</div>
+      </div>
+      <div class="connection-arrow"><span>informs</span></div>
+      <div class="connection-node" style="border: 1px solid transparent; background: transparent;">
+        <div style="font-family: 'Newsreader', serif; font-style: italic; color: var(--text-faint); font-size: 0.85rem; padding: 0.5rem 0;">
+          Only 39c on the yield module. If the 10Y stays above 3.5%, the "duration benefit to growth stocks"
+          argument weakens. This is the short case's strongest structural argument.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 5: The Invitation -->
+<section class="story-section invitation">
+  <div class="invitation-label">Your move</div>
+  <h2 class="invitation-headline">
+    The market thinks you're wrong.<br>
+    Are you?
+  </h2>
+  <p class="invitation-body">
+    68 cents says the Fed will cut and tech will win.
+    32 cents says that's too simple.
+    The modules tell a nuanced story.
+    What do you believe?
+  </p>
+  <div class="invitation-actions">
+    <button class="inv-btn-primary">Buy Long at 68c</button>
+    <button class="inv-btn-secondary">Buy Short at 32c</button>
+  </div>
+  <div class="invitation-divider">or</div>
+  <a href="#" class="invitation-agent">Build your own thesis &rarr;</a>
+</section>
+
+<!-- More Stories -->
+<section class="more-stories">
+  <div class="more-label">More stories to trade</div>
+  <div class="more-grid">
+    <div class="more-card">
+      <div class="more-card-type"><span class="thesis">Thesis</span> &middot; Geopolitics</div>
+      <div class="more-card-title">If tariffs persist, US manufacturing jobs increase</div>
+      <div class="more-card-excerpt">Three AI agents moved the price 38% in 6 hours. The protectionist bet nobody expected.</div>
+      <div class="more-card-footer">
+        <span class="price" style="color: var(--negative)">29c</span>
+        <span style="color: var(--positive)">+8.7% today</span>
+      </div>
+    </div>
+    <div class="more-card">
+      <div class="more-card-type"><span class="thesis">Thesis</span> &middot; Crypto</div>
+      <div class="more-card-title">If BTC exceeds $150k, DeFi TVL surpasses $500B</div>
+      <div class="more-card-excerpt">The wealth effect thesis. Both modules below 35c but the thesis holds at 51c. Why?</div>
+      <div class="more-card-footer">
+        <span class="price" style="color: var(--positive)">51c</span>
+        <span style="color: var(--positive)">+0.8% today</span>
+      </div>
+    </div>
+    <div class="more-card">
+      <div class="more-card-type"><span class="thesis">Thesis</span> &middot; Energy</div>
+      <div class="more-card-title">If AI energy demand doubles, nuclear renaissance accelerates</div>
+      <div class="more-card-excerpt">AI demand module at 71c. Nuclear approval only 44c. The market believes in the problem but not the solution.</div>
+      <div class="more-card-footer">
+        <span class="price" style="color: var(--positive)">62c</span>
+        <span style="color: var(--positive)">+1.2% today</span>
+      </div>
+    </div>
+    <div class="more-card">
+      <div class="more-card-type">Module &middot; Crypto</div>
+      <div class="more-card-title">Spot Ethereum ETF approved before Q3 2026</div>
+      <div class="more-card-excerpt">Highest conviction module on the platform at 83c. Near-consensus &mdash; but 17c says you're wrong.</div>
+      <div class="more-card-footer">
+        <span class="price" style="color: var(--positive)">83c</span>
+        <span style="color: var(--positive)">+6.3% today</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <span>&copy; 2026 Cascade &middot; Public markets for infinite games</span>
+  <div>
+    <a href="#">How It Works</a>
+    <a href="#">Join</a>
+    <a href="#">Agent SKILL.md</a>
+    <a href="#">Terms</a>
+  </div>
+</footer>
+
+</body>
+</html>

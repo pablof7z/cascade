@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Study / Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0a0a0b; --surface:#111113; --elev:#17171a; --border:#1e1e22; --border-strong:#2a2a30;
+    --text:#e8e8ec; --text-2:#a0a0a8; --text-3:#64646c; --text-4:#3e3e46;
+    --yes:#3ec48a; --yes-dim:rgba(62,196,138,.14); --no:#e85d7a; --no-dim:rgba(232,93,122,.14);
+    --serif: 'Fraunces', 'Source Serif 4', Georgia, serif;
+    --tight: 'Inter Tight', 'Inter', sans-serif;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: 'tnum' 1; letter-spacing: -.01em; }
+  .tight { font-family: var(--tight); letter-spacing: -.02em; }
+  .serif { font-family: var(--serif); }
+
+  /* App shell */
+  .app { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; }
+  @media (max-width: 880px) { .app { grid-template-columns: 1fr; } .rail { display: none; } }
+
+  /* Left rail */
+  .rail { border-right: 1px solid var(--border); background: var(--bg); padding: 1.1rem 0 1.4rem; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 1.4rem; }
+  .rail::-webkit-scrollbar { width: 6px; } .rail::-webkit-scrollbar-thumb { background: var(--border); }
+  .rail-brand { padding: 0 1.2rem 0; display: flex; align-items: baseline; gap: .5rem; }
+  .rail-brand .mark { font-weight: 700; font-size: 1.05rem; letter-spacing: -.02em; color: var(--text); }
+  .rail-brand .ed { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); }
+  .rail-search { margin: 0 1.2rem; display: flex; align-items: center; gap: .5rem; height: 32px; padding: 0 .6rem; background: var(--surface); border: 1px solid var(--border); }
+  .rail-search svg { width: 13px; height: 13px; stroke: var(--text-3); fill: none; stroke-width: 1.7; }
+  .rail-search input { flex: 1; background: transparent; border: 0; color: var(--text); font-size: .82rem; outline: none; }
+  .rail-search .kbd { font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--text-3); letter-spacing: .08em; padding: .08rem .3rem; border: 1px solid var(--border-strong); }
+
+  .rail-group { display: flex; flex-direction: column; }
+  .rail-group h4 { margin: 0; padding: 0 1.2rem .35rem; font-family: 'JetBrains Mono', monospace; font-size: .62rem; letter-spacing: .16em; color: var(--text-3); text-transform: uppercase; font-weight: 500; }
+  .rail-item { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .32rem 1.2rem; color: var(--text-2); font-size: .88rem; }
+  .rail-item:hover { color: var(--text); background: var(--surface); }
+  .rail-item.active { color: var(--text); background: var(--surface); box-shadow: inset 2px 0 0 var(--yes); }
+  .rail-item .c { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .02em; }
+
+  .rail-spacer { flex: 1; }
+  .rail-create { margin: 0 1rem; padding: .55rem .8rem; text-align: center; border: 1px solid var(--text-3); color: var(--text); font-size: .84rem; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: .4rem; }
+  .rail-create:hover { border-color: var(--text); background: var(--surface); }
+  .rail-create .plus { color: var(--yes); font-family: 'JetBrains Mono', monospace; font-size: .92rem; }
+
+  /* Main */
+  .main-col { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { height: 54px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1.6rem; background: var(--bg); position: sticky; top: 0; z-index: 5; }
+  .crumbs { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .06em; display: flex; gap: .5rem; align-items: center; }
+  .crumbs .sep { color: var(--text-4); }
+  .crumbs .cur { color: var(--text); }
+  .top-right { display: flex; align-items: center; gap: .8rem; }
+  .top-right .time { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .06em; }
+  .top-right .pill { display: inline-flex; align-items: center; gap: .4rem; padding: .25rem .55rem; border: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: .68rem; letter-spacing: .1em; color: var(--text-2); }
+  .top-right .pill .d { width: .38rem; height: .38rem; background: var(--yes); display: inline-block; animation: pulse 1.9s infinite; }
+  .av { width: 26px; height: 26px; border: 1px solid var(--border-strong); background: var(--surface); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-size: .7rem; }
+
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(62,196,138,.5)} 50%{box-shadow:0 0 0 5px rgba(62,196,138,0)} }
+
+  /* Body — content + context rail */
+  .body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; min-height: calc(100vh - 54px); }
+  .content { padding: 1.8rem 2.2rem 3rem; min-width: 0; }
+  .context { border-left: 1px solid var(--border); padding: 1.8rem 1.3rem; display: flex; flex-direction: column; gap: 1.6rem; }
+  @media (max-width: 1180px) { .body { grid-template-columns: 1fr; } .context { border-left: 0; border-top: 1px solid var(--border); } }
+
+  /* Small header */
+  .head-row { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding-bottom: .6rem; border-bottom: 1px solid var(--border); margin-bottom: 1.8rem; }
+  .head-row h1 { margin: 0; font-family: var(--tight); font-size: 1.25rem; font-weight: 600; letter-spacing: -.015em; }
+  .head-row .r { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .06em; }
+
+  /* Featured claim — the editorial moment */
+  .feature { padding: .2rem 0 2rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(260px, 1fr); gap: 2.6rem; align-items: start; }
+  @media (max-width: 900px) { .feature { grid-template-columns: 1fr; gap: 1.4rem; } }
+  .feature .meta { display: flex; align-items: center; gap: .8rem; font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 1.1rem; }
+  .feature .meta .cat { color: var(--yes); letter-spacing: .2em; }
+  .feature .meta .sep { color: var(--text-4); }
+  .feature h2 { margin: 0 0 1.2rem; font-family: var(--serif); font-weight: 500; font-size: clamp(2rem, 3.6vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--text); max-width: 22ch; }
+  .feature .by { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; font-size: .85rem; }
+  .feature .by .av { width: 24px; height: 24px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 999px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-size: .66rem; font-weight: 600; color: var(--text); }
+  .feature .by .who { color: var(--text); font-weight: 500; }
+  .feature .by .sub { color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .02em; }
+  .feature .lede { color: var(--text-2); font-size: 1rem; line-height: 1.7; max-width: 56ch; }
+  .feature .lede em { color: var(--text); font-style: normal; font-weight: 500; }
+  .feature-actions { margin-top: 1.4rem; display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+  .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .85rem; border: 1px solid var(--border-strong); background: transparent; color: var(--text); font-size: .85rem; font-weight: 500; cursor: pointer; }
+  .btn:hover { border-color: var(--text-3); background: var(--surface); }
+  .btn.primary { background: var(--text); color: #000; border-color: var(--text); }
+  .btn.primary:hover { background: #fff; }
+  .btn .arr { color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
+  .btn.primary .arr { color: #444; }
+
+  /* Feature right column — the measurement */
+  .feature-m { display: flex; flex-direction: column; gap: 1rem; }
+  .feature-m .price-now { display: flex; align-items: baseline; gap: 1rem; border-top: 1px solid var(--border); padding-top: 1.1rem; }
+  .feature-m .price-now .v { font-family: 'JetBrains Mono', monospace; font-size: 3.4rem; color: var(--yes); line-height: .9; letter-spacing: -.03em; font-weight: 500; }
+  .feature-m .price-now .tilt { font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: var(--yes); letter-spacing: .06em; }
+  .feature-m .chart { height: 84px; }
+  .feature-m .chart svg { width: 100%; height: 100%; }
+  .feature-m .chart .line { fill: none; stroke: var(--yes); stroke-width: 1.5; }
+  .feature-m .chart .area { fill: var(--yes); opacity: .08; }
+  .feature-m .chart .now { fill: var(--yes); stroke: var(--bg); stroke-width: 2; }
+  .feature-m .facts { display: grid; gap: .35rem; font-family: 'JetBrains Mono', monospace; font-size: .78rem; border-top: 1px solid var(--border); padding-top: .9rem; }
+  .feature-m .facts .r { display: flex; justify-content: space-between; }
+  .feature-m .facts .r dt { color: var(--text-3); }
+  .feature-m .facts .r dd { margin: 0; color: var(--text); }
+
+  /* Category rails */
+  .cat-rail { padding: 1.4rem 0; border-bottom: 1px solid var(--border); }
+  .cat-rail:last-of-type { border-bottom: 0; }
+  .cat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .9rem; }
+  .cat-head h3 { margin: 0; font-family: var(--tight); font-size: 1.1rem; font-weight: 600; letter-spacing: -.015em; display: inline-flex; align-items: center; gap: .7rem; }
+  .cat-head h3 .ct { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .04em; font-weight: 400; }
+  .cat-head .lead-meta { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .04em; }
+  .cat-head .more { font-size: .82rem; color: var(--text-3); border-bottom: 1px solid var(--border-strong); padding-bottom: 1px; }
+  .cat-head .more:hover { color: var(--text); border-bottom-color: var(--text-3); }
+
+  /* Category claim list */
+  .claim-list { display: grid; }
+  .claim-row { display: grid; grid-template-columns: minmax(0, 1fr) 64px 120px 60px 70px; gap: 1rem; align-items: center; padding: .7rem 0; border-bottom: 1px solid var(--border); }
+  .claim-row:last-child { border-bottom: 0; }
+  .claim-row:hover { background: var(--surface); }
+  .claim-row .t-wrap { min-width: 0; display: grid; gap: .15rem; }
+  .claim-row .t { font-family: var(--serif); font-size: 1.05rem; line-height: 1.25; letter-spacing: -.005em; color: var(--text); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .claim-row .t-sub { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .04em; }
+  .claim-row .p { font-family: 'JetBrains Mono', monospace; font-size: 1rem; text-align: right; }
+  .claim-row .p.yes { color: var(--yes); } .claim-row .p.no { color: var(--no); }
+  .claim-row .spark { height: 22px; }
+  .claim-row .delta { font-family: 'JetBrains Mono', monospace; font-size: .78rem; text-align: right; }
+  .claim-row .delta.up { color: var(--yes); } .claim-row .delta.down { color: var(--no); } .claim-row .delta.flat { color: var(--text-3); }
+  .claim-row .vol { font-family: 'JetBrains Mono', monospace; font-size: .78rem; text-align: right; color: var(--text-2); }
+  @media (max-width: 720px) { .claim-row { grid-template-columns: minmax(0, 1fr) auto; } .claim-row .spark, .claim-row .delta, .claim-row .vol { display: none; } }
+
+  /* Context rail */
+  .ctx-block { display: grid; gap: .8rem; }
+  .ctx-block h4 { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .14em; color: var(--text-3); text-transform: uppercase; font-weight: 500; padding-bottom: .5rem; border-bottom: 1px solid var(--border); }
+  .ctx-pos { display: grid; grid-template-columns: auto 1fr auto; gap: .7rem; padding: .5rem 0; border-bottom: 1px solid var(--border); align-items: center; }
+  .ctx-pos:last-child { border-bottom: 0; }
+  .ctx-pos .side { font-family: 'JetBrains Mono', monospace; font-size: .66rem; padding: .15rem .38rem; border: 1px solid var(--border-strong); letter-spacing: .1em; }
+  .ctx-pos .side.y { color: var(--yes); border-color: var(--yes); }
+  .ctx-pos .side.n { color: var(--no); border-color: var(--no); }
+  .ctx-pos .t { font-size: .86rem; line-height: 1.3; color: var(--text); }
+  .ctx-pos .sub { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .04em; margin-top: .1rem; }
+  .ctx-pos .pl { font-family: 'JetBrains Mono', monospace; font-size: .86rem; }
+  .ctx-pos .pl.up { color: var(--yes); } .ctx-pos .pl.down { color: var(--no); }
+
+  .ctx-activity { display: grid; gap: .4rem; font-family: 'JetBrains Mono', monospace; font-size: .76rem; }
+  .ctx-activity .r { display: grid; grid-template-columns: 3ch auto 1fr auto; gap: .6rem; padding: .3rem 0; border-bottom: 1px solid var(--border); }
+  .ctx-activity .r:last-child { border-bottom: 0; }
+  .ctx-activity .t { color: var(--text-3); }
+  .ctx-activity .who { color: var(--text-2); }
+  .ctx-activity .act.y { color: var(--yes); }
+  .ctx-activity .act.n { color: var(--no); }
+  .ctx-activity .p { color: var(--text); text-align: right; }
+
+  .ctx-compose { padding: .9rem; border: 1px solid var(--border-strong); background: var(--surface); display: grid; gap: .6rem; }
+  .ctx-compose .lbl { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+  .ctx-compose p { margin: 0; color: var(--text-2); font-size: .86rem; }
+  .ctx-compose strong { color: var(--text); font-weight: 500; }
+
+  /* First-principles banner — shows reviewer what's happening */
+  .principles { margin-top: 2rem; padding: 1rem 1.2rem; border: 1px solid var(--border); background: var(--surface); border-radius: 0; color: var(--text-2); font-size: .86rem; line-height: 1.65; }
+  .principles strong { color: var(--text); font-weight: 500; }
+  .principles .mark { color: var(--yes); font-family: 'JetBrains Mono', monospace; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; display: block; margin-bottom: .3rem; }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Left rail: categories + personal -->
+    <aside class="rail">
+      <div class="rail-brand">
+        <span class="mark">Cascade</span>
+        <span class="ed">Practice</span>
+      </div>
+
+      <label class="rail-search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+        <input placeholder="Search claims, authors, tags…" aria-label="Search" />
+        <span class="kbd">⌘K</span>
+      </label>
+
+      <div class="rail-group">
+        <h4>You</h4>
+        <a class="rail-item active" href="#"><span>Home</span></a>
+        <a class="rail-item" href="#"><span>Watchlist</span><span class="c">14</span></a>
+        <a class="rail-item" href="#"><span>Portfolio</span><span class="c">12 pos</span></a>
+        <a class="rail-item" href="#"><span>Activity</span></a>
+      </div>
+
+      <div class="rail-group">
+        <h4>Categories</h4>
+        <a class="rail-item" href="#"><span>Geopolitics</span><span class="c">42</span></a>
+        <a class="rail-item" href="#"><span>Macro</span><span class="c">38</span></a>
+        <a class="rail-item" href="#"><span>AI</span><span class="c">29</span></a>
+        <a class="rail-item" href="#"><span>Crypto</span><span class="c">24</span></a>
+        <a class="rail-item" href="#"><span>Tech</span><span class="c">21</span></a>
+        <a class="rail-item" href="#"><span>Sports</span><span class="c">18</span></a>
+        <a class="rail-item" href="#"><span>Culture</span><span class="c">12</span></a>
+        <a class="rail-item" href="#"><span>Policy</span><span class="c">9</span></a>
+        <a class="rail-item" href="#"><span>Nostr</span><span class="c">7</span></a>
+      </div>
+
+      <div class="rail-spacer"></div>
+      <a class="rail-create" href="03-create.html"><span class="plus">+</span> Write a claim</a>
+    </aside>
+
+    <!-- Main column -->
+    <div class="main-col">
+
+      <header class="topbar">
+        <div class="crumbs">
+          <span>Cascade</span><span class="sep">/</span><span class="cur">Home</span>
+        </div>
+        <div class="top-right">
+          <span class="time mono">Sat 18 Apr · 14:32 UTC</span>
+          <span class="pill"><i class="d"></i> Live · 7 of 8 relays</span>
+          <span class="av mono">pf</span>
+        </div>
+      </header>
+
+      <div class="body">
+        <main class="content">
+
+          <div class="head-row">
+            <h1 class="tight">Today on Cascade</h1>
+            <span class="r">147 live claims · 38 moved today · $128K volume (24h)</span>
+          </div>
+
+          <!-- Featured: editorial moment -->
+          <article class="feature">
+            <div>
+              <div class="meta">
+                <span class="cat">Geopolitics · Featured</span>
+                <span class="sep">·</span>
+                <span>Lead claim · published 14 Mar</span>
+              </div>
+
+              <h2 class="serif">Taiwan holds a recognised national election in 2026 without a cross-strait military incident.</h2>
+
+              <div class="by">
+                <span class="av mono">S</span>
+                <span>
+                  <span class="who">@sono</span>
+                  <span class="sub"> · 482 trades · linked to 2 markets</span>
+                </span>
+              </div>
+
+              <p class="lede">
+                <em>The spread is narrower than the news cycle suggests.</em> The crowd has been holding this between 74¢ and 79¢ for six weeks, even through two naval incidents and a cabinet reshuffle in Taipei. That kind of stubbornness usually means the market knows something the headlines don't — or that it's about to be wrong.
+              </p>
+
+              <div class="feature-actions">
+                <a class="btn primary" href="02-market.html">Read the case <span class="arr">→</span></a>
+                <a class="btn" href="02-market.html">Back YES · 77¢</a>
+                <a class="btn" href="02-market.html">Back NO · 23¢</a>
+              </div>
+            </div>
+
+            <aside class="feature-m">
+              <div class="price-now">
+                <span class="v">77¢</span>
+                <span class="tilt">YES · +2¢ · 24h</span>
+              </div>
+              <div class="chart">
+                <svg viewBox="0 0 300 84" preserveAspectRatio="none">
+                  <path class="area" d="M0,40 L25,42 L50,36 L75,30 L100,34 L125,28 L150,24 L175,28 L200,22 L225,24 L250,18 L275,16 L300,14 L300,84 L0,84 Z"/>
+                  <polyline class="line" points="0,40 25,42 50,36 75,30 100,34 125,28 150,24 175,28 200,22 225,24 250,18 275,16 300,14"/>
+                  <circle class="now" cx="300" cy="14" r="3.5"/>
+                </svg>
+              </div>
+              <dl class="facts">
+                <div class="r"><dt>Spread</dt><dd>54¢</dd></div>
+                <div class="r"><dt>30-day volume</dt><dd>$42,800</dd></div>
+                <div class="r"><dt>Participants</dt><dd>218</dd></div>
+                <div class="r"><dt>Last trade</dt><dd>6s · $40 on YES</dd></div>
+              </dl>
+            </aside>
+          </article>
+
+          <!-- Category rail: Geopolitics -->
+          <section class="cat-rail">
+            <div class="cat-head">
+              <h3 class="tight">Geopolitics <span class="ct">· 42 live claims</span></h3>
+              <a class="more" href="#">More in Geopolitics →</a>
+            </div>
+            <div class="claim-list">
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">Russia and Ukraine sign a formal ceasefire before year-end 2026.</span><span class="t-sub">by @kira · 1,244 trades</span></div>
+                <span class="p no">34¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#e85d7a" stroke-width="1.4" points="0,8 15,10 30,12 45,13 60,14 75,15 90,17 105,19 120,20"/></svg>
+                <span class="delta down">−3¢</span>
+                <span class="vol">$4.2K</span>
+              </a>
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">Iran signs a new nuclear framework before end of 2026.</span><span class="t-sub">by @doreen · 612 trades</span></div>
+                <span class="p no">27¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#e85d7a" stroke-width="1.4" points="0,12 15,12 30,14 45,13 60,15 75,17 90,16 105,18 120,19"/></svg>
+                <span class="delta down">−1¢</span>
+                <span class="vol">$2.8K</span>
+              </a>
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">A NATO member holds a snap election in 2026 driven by migration politics.</span><span class="t-sub">by @halden · 380 trades</span></div>
+                <span class="p yes">61¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,16 15,15 30,14 45,12 60,13 75,11 90,10 105,8 120,7"/></svg>
+                <span class="delta up">+4¢</span>
+                <span class="vol">$5.9K</span>
+              </a>
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">A G7 leader resigns or is replaced before mid-year.</span><span class="t-sub">by @isla · 218 trades</span></div>
+                <span class="p no">42¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#e85d7a" stroke-width="1.4" points="0,11 15,10 30,11 45,12 60,11 75,13 90,12 105,13 120,12"/></svg>
+                <span class="delta flat">+0¢</span>
+                <span class="vol">$1.4K</span>
+              </a>
+            </div>
+          </section>
+
+          <!-- Category rail: Macro -->
+          <section class="cat-rail">
+            <div class="cat-head">
+              <h3 class="tight">Macro <span class="ct">· 38 live claims</span></h3>
+              <a class="more" href="#">More in Macro →</a>
+            </div>
+            <div class="claim-list">
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">The Fed funds rate is below 3% at any point in 2026.</span><span class="t-sub">by @quincy · 1,944 trades</span></div>
+                <span class="p yes">64¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,18 15,16 30,15 45,14 60,12 75,11 90,10 105,8 120,6"/></svg>
+                <span class="delta up">+2¢</span>
+                <span class="vol">$9.3K</span>
+              </a>
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">US CPI prints below 2.5% year-over-year in any month of Q2 2026.</span><span class="t-sub">by @alma · 818 trades</span></div>
+                <span class="p yes">52¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,14 15,13 30,12 45,14 60,13 75,11 90,12 105,10 120,11"/></svg>
+                <span class="delta flat">+1¢</span>
+                <span class="vol">$6.6K</span>
+              </a>
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">The S&amp;P 500 closes above 7,000 at any point in H1 2026.</span><span class="t-sub">by @rhys · 720 trades</span></div>
+                <span class="p yes">58¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,10 15,12 30,11 45,13 60,11 75,14 90,10 105,8 120,9"/></svg>
+                <span class="delta flat">+0¢</span>
+                <span class="vol">$8.1K</span>
+              </a>
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">US unemployment prints above 4.5% in any month of 2026.</span><span class="t-sub">by @meer · 504 trades</span></div>
+                <span class="p no">41¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#e85d7a" stroke-width="1.4" points="0,12 15,13 30,12 45,13 60,14 75,15 90,14 105,16 120,15"/></svg>
+                <span class="delta down">−1¢</span>
+                <span class="vol">$3.1K</span>
+              </a>
+            </div>
+          </section>
+
+          <!-- Category rail: AI & Tech -->
+          <section class="cat-rail">
+            <div class="cat-head">
+              <h3 class="tight">AI &amp; Tech <span class="ct">· 50 live claims</span></h3>
+              <a class="more" href="#">More →</a>
+            </div>
+            <div class="claim-list">
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">OpenAI ships GPT-5 before Google ships Gemini 2 Pro.</span><span class="t-sub">by @north · 2,814 trades · linked to 3</span></div>
+                <span class="p yes">71¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,17 15,16 30,14 45,12 60,13 75,10 90,8 105,6 120,4"/></svg>
+                <span class="delta up">+3¢</span>
+                <span class="vol">$8.2K</span>
+              </a>
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">A model scores above 90% on Frontier Math before year-end.</span><span class="t-sub">by @otto · 308 trades</span></div>
+                <span class="p no">39¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#e85d7a" stroke-width="1.4" points="0,10 15,11 30,10 45,12 60,13 75,14 90,14 105,15 120,15"/></svg>
+                <span class="delta flat">+0¢</span>
+                <span class="vol">$2.2K</span>
+              </a>
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">Apple ships AI-first glasses before Meta's next Ray-Ban.</span><span class="t-sub">by @ashe · 622 trades</span></div>
+                <span class="p yes">49¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,13 15,13 30,14 45,13 60,14 75,13 90,13 105,13 120,13"/></svg>
+                <span class="delta flat">+0¢</span>
+                <span class="vol">$6.0K</span>
+              </a>
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">Nvidia stays above $4T market cap at end-2026.</span><span class="t-sub">by @jens · 954 trades</span></div>
+                <span class="p yes">51¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,12 15,11 30,12 45,11 60,12 75,10 90,11 105,11 120,10"/></svg>
+                <span class="delta flat">+0¢</span>
+                <span class="vol">$7.8K</span>
+              </a>
+            </div>
+          </section>
+
+          <!-- Sports (user mentioned) -->
+          <section class="cat-rail">
+            <div class="cat-head">
+              <h3 class="tight">Sports <span class="ct">· 18 live claims</span></h3>
+              <a class="more" href="#">More in Sports →</a>
+            </div>
+            <div class="claim-list">
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">The Lakers make the Western Conference Finals in 2026.</span><span class="t-sub">by @pip · 1,208 trades</span></div>
+                <span class="p yes">56¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,14 15,13 30,12 45,11 60,11 75,10 90,9 105,8 120,8"/></svg>
+                <span class="delta up">+2¢</span>
+                <span class="vol">$4.5K</span>
+              </a>
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">A first-time F1 driver wins a Grand Prix this season.</span><span class="t-sub">by @row · 194 trades</span></div>
+                <span class="p no">28¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#e85d7a" stroke-width="1.4" points="0,10 15,11 30,12 45,14 60,14 75,16 90,15 105,17 120,17"/></svg>
+                <span class="delta down">−2¢</span>
+                <span class="vol">$800</span>
+              </a>
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">A European club wins the Club World Cup next cycle.</span><span class="t-sub">by @pete · 384 trades</span></div>
+                <span class="p yes">64¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,16 15,14 30,13 45,12 60,11 75,10 90,9 105,8 120,7"/></svg>
+                <span class="delta up">+3¢</span>
+                <span class="vol">$1.9K</span>
+              </a>
+            </div>
+          </section>
+
+          <!-- Principles note — optional for the reviewer -->
+          <aside class="principles">
+            <span class="mark">Direction H · The Study</span>
+            <strong>Workspace chrome, essay content.</strong> Left rail is a tool. Breadcrumbs, search, status — tool. <strong>Inside</strong> a featured claim: editorial typography, air around the sentence, author credit, prose lede, price pulled out. The serif appears only where the argument lives. Categories are nav, not sections — Geopolitics isn't a briefing, it's a view you select.
+          </aside>
+        </main>
+
+        <!-- Right rail: your context -->
+        <aside class="context">
+          <div class="ctx-block">
+            <h4>Today, your positions</h4>
+            <div class="ctx-pos">
+              <span class="side y">YES</span>
+              <div>
+                <div class="t">OpenAI ships GPT-5 first</div>
+                <div class="sub">$220 · avg 68¢</div>
+              </div>
+              <span class="pl up">+$6.60</span>
+            </div>
+            <div class="ctx-pos">
+              <span class="side y">YES</span>
+              <div>
+                <div class="t">Fed funds &lt; 3% in 2026</div>
+                <div class="sub">$300 · avg 58¢</div>
+              </div>
+              <span class="pl up">+$12.00</span>
+            </div>
+            <div class="ctx-pos">
+              <span class="side y">YES</span>
+              <div>
+                <div class="t">BTC above $150K by Q3</div>
+                <div class="sub">$140 · avg 55¢</div>
+              </div>
+              <span class="pl up">+$4.20</span>
+            </div>
+            <div class="ctx-pos">
+              <span class="side n">NO</span>
+              <div>
+                <div class="t">CBDC in G7 by 2027</div>
+                <div class="sub">$80 · avg 76¢</div>
+              </div>
+              <span class="pl up">+$3.40</span>
+            </div>
+          </div>
+
+          <div class="ctx-block">
+            <h4>Latest across Cascade</h4>
+            <div class="ctx-activity">
+              <div class="r"><span class="t">2s</span><span class="act y">BACK YES</span><span class="who">@tessa</span><span class="p">$40 · 71¢</span></div>
+              <div class="r"><span class="t">41s</span><span class="act n">BACK NO</span><span class="who">@mark-s</span><span class="p">$15 · 29¢</span></div>
+              <div class="r"><span class="t">2m</span><span class="act y">CASH OUT</span><span class="who">@neo</span><span class="p">$78 · 70¢</span></div>
+              <div class="r"><span class="t">3m</span><span class="act y">BACK YES</span><span class="who">@jules</span><span class="p">$120 · 68¢</span></div>
+              <div class="r"><span class="t">7m</span><span class="act n">BACK NO</span><span class="who">@arca</span><span class="p">$25 · 30¢</span></div>
+              <div class="r"><span class="t">14m</span><span class="act y">BACK YES</span><span class="who">@greta</span><span class="p">$50 · 58¢</span></div>
+            </div>
+          </div>
+
+          <div class="ctx-compose">
+            <span class="lbl">Author a claim</span>
+            <p><strong>Don't see a question worth pricing?</strong> Write one. The crowd will counter-price it within minutes.</p>
+            <a class="btn primary" href="03-create.html" style="text-align:center; justify-content:center;">Write a claim <span class="arr">→</span></a>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -17,25 +17,25 @@
   }
 </script>
 
-<section class="fields-page">
-  <div class="fields-header">
+<div class="grid gap-8 p-7">
+  <div class="flex items-start justify-between gap-4">
     <div>
       <div class="eyebrow">Fields</div>
-      <h1>Fields</h1>
-      <p>{fields.length} active workspaces across research, debate, and capital allocation.</p>
+      <h1 class="text-xl mt-1">Fields</h1>
+      <p class="mt-2 text-base-content/70">{fields.length} active workspaces across research, debate, and capital allocation.</p>
     </div>
-    <a class="fields-button" href="/dashboard/fields">New Field</a>
+    <a class="btn btn-outline btn-sm" href="/dashboard/fields">New Field</a>
   </div>
 
   {#each sections as section (section.label)}
-    <section class="field-section">
-      <div class="field-section-meta">
+    <section class="grid gap-3">
+      <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-base-content/50">
         <span>{section.label}</span>
         <small>{section.items.length}</small>
       </div>
 
-      <div class="field-table">
-        <div class="field-head">
+      <div class="border-t border-base-300">
+        <div class="hidden md:grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto] gap-4 items-start py-3 eyebrow">
           <span>Name / Conviction</span>
           <span>Status</span>
           <span>Agents</span>
@@ -45,126 +45,19 @@
         </div>
 
         {#each section.items as field (field.id)}
-          <a class="field-row" href="/dashboard/field/{field.id}">
-            <div>
-              <strong>{field.name}</strong>
-              <p>{field.conviction}</p>
+          <a class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto] gap-1 md:gap-4 items-start py-4 border-t border-base-300 hover:bg-base-300/20" href="/dashboard/field/{field.id}">
+            <div class="min-w-0">
+              <strong class="text-white block text-sm">{field.name}</strong>
+              <p class="mt-1 text-base-content/70 text-sm leading-[1.6]">{field.conviction}</p>
             </div>
-            <span>{attentionLabel(field.attention)}</span>
-            <span>{field.council.length}</span>
-            <span>{field.candidateMarkets.length}</span>
-            <span>{formatUsd(field.capital.deployedUsd)}</span>
-            <span>{field.meeting.updatedAt}</span>
+            <span class="text-base-content/50 font-mono text-xs whitespace-nowrap">{attentionLabel(field.attention)}</span>
+            <span class="text-base-content/50 font-mono text-xs whitespace-nowrap">{field.council.length}</span>
+            <span class="text-base-content/50 font-mono text-xs whitespace-nowrap">{field.candidateMarkets.length}</span>
+            <span class="text-base-content/50 font-mono text-xs whitespace-nowrap">{formatUsd(field.capital.deployedUsd)}</span>
+            <span class="text-base-content/50 font-mono text-xs whitespace-nowrap">{field.meeting.updatedAt}</span>
           </a>
         {/each}
       </div>
     </section>
   {/each}
-</section>
-
-<style>
-  .fields-page {
-    display: grid;
-    gap: 2rem;
-    padding: 1.75rem;
-  }
-
-  .fields-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .fields-header h1 {
-    font-size: 1.2rem;
-  }
-
-  .fields-header p {
-    margin-top: 0.4rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .fields-button {
-    border: 1px solid var(--color-neutral);
-    padding: 0.7rem 0.95rem;
-    color: white;
-    font-size: 0.92rem;
-    font-weight: 500;
-  }
-
-  .field-section {
-    display: grid;
-    gap: 0.7rem;
-  }
-
-  .field-section-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.76rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .field-table {
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .field-head,
-  .field-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto auto auto auto;
-    gap: 1rem;
-    align-items: start;
-  }
-
-  .field-head {
-    padding: 0.7rem 0;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.74rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .field-row {
-    padding: 1rem 0;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .field-row:hover {
-    background: rgba(255, 255, 255, 0.02);
-  }
-
-  .field-row strong {
-    display: block;
-    color: white;
-    font-size: 0.95rem;
-  }
-
-  .field-row p {
-    margin-top: 0.35rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 0.86rem;
-    line-height: 1.6;
-  }
-
-  .field-row span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    white-space: nowrap;
-  }
-
-  @media (max-width: 960px) {
-    .field-head {
-      display: none;
-    }
-
-    .field-row {
-      grid-template-columns: 1fr;
-      gap: 0.4rem;
-    }
-  }
-</style>
+</div>

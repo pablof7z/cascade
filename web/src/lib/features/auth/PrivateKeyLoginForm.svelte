@@ -10,7 +10,7 @@
 
 <div class="grid gap-3">
   <label class="grid gap-2">
-    <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Recovery key</span>
+    <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Recovery key</span>
     <textarea
       class="textarea textarea-bordered min-h-32"
       bind:value={secretKey}

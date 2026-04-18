@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Cascade — The Feed / Create</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Inter+Tight:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0b0b0e; --phone-bg:#07070a; --surface:#121218; --elev:#191922; --border:#23232e; --border-strong:#2e2e3b;
+    --text:#efeff4; --text-2:#b0b0bc; --text-3:#6e6e7a; --text-4:#45454f;
+    --yes:#3ec48a; --yes-glow: rgba(62,196,138,.2); --no:#ec4a6e; --no-glow: rgba(236,74,110,.2);
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; letter-spacing: -.01em; }
+  .display { font-family: 'Inter Tight', 'Inter', sans-serif; letter-spacing: -.03em; }
+
+  .stage { min-height: 100vh; padding: 2rem; display: grid; grid-template-columns: minmax(0, 1fr) auto auto minmax(0, 1fr); align-items: center; gap: 2rem; background: radial-gradient(circle at 70% 25%, rgba(62,196,138,.045), transparent 60%), var(--bg); }
+  @media (max-width: 1300px) { .stage { grid-template-columns: 1fr; padding: 1rem; gap: 1.5rem; justify-items: center; } }
+  @media (max-width: 480px) { .stage { padding: 0; gap: 0; align-items: stretch; } }
+
+  /* Left context */
+  .ctx-left { max-width: 20rem; justify-self: end; }
+  .ctx-left .badge { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: .7rem; letter-spacing: .18em; color: var(--yes); padding: .3rem .6rem; border: 1px solid var(--yes); text-transform: uppercase; margin-bottom: 1rem; }
+  .ctx-left h1 { margin: 0; font-size: 1.8rem; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; }
+  .ctx-left h1 em { font-style: normal; color: var(--yes); }
+  .ctx-left p { color: var(--text-2); font-size: .94rem; line-height: 1.65; margin-top: 1rem; }
+  .flow-steps { margin-top: 1.4rem; display: grid; gap: 0; }
+  .flow-steps .s { display: grid; grid-template-columns: 32px 1fr; gap: .8rem; padding: .8rem 0; border-top: 1px solid var(--border); align-items: start; }
+  .flow-steps .s:first-child { border-top: 0; padding-top: 0; }
+  .flow-steps .s .n { font-family: 'JetBrains Mono', monospace; font-size: .74rem; color: var(--text-3); letter-spacing: .04em; padding-top: .1rem; }
+  .flow-steps .s.on .n { color: var(--yes); }
+  .flow-steps .s .v strong { display: block; color: var(--text); font-size: .94rem; font-weight: 500; margin-bottom: .2rem; }
+  .flow-steps .s .v span { color: var(--text-2); font-size: .84rem; line-height: 1.55; }
+  .flow-steps .s.on .v strong { color: var(--yes); }
+  @media (max-width: 1300px) { .ctx-left { display: none; } }
+
+  /* Two phones */
+  .phone { width: 392px; height: 812px; background: var(--phone-bg); border: 1px solid var(--border-strong); border-radius: 52px; padding: 10px; box-shadow: 0 40px 80px rgba(0,0,0,.6); position: relative; overflow: hidden; }
+  .phone::after { content: ''; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 110px; height: 30px; background: #000; border-radius: 16px; z-index: 200; }
+  .phone-screen { width: 100%; height: 100%; border-radius: 44px; overflow: hidden; background: var(--phone-bg); position: relative; display: flex; flex-direction: column; }
+  .phone-caption { text-align: center; font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .16em; text-transform: uppercase; margin-top: 1rem; }
+  .phone-caption span { color: var(--text); }
+  .phone-wrap { display: flex; flex-direction: column; align-items: center; }
+  @media (max-width: 1300px) { .phone-wrap { margin: 1rem 0; } }
+  @media (max-width: 900px) { .phone-wrap:nth-child(3) { display: none; } }
+  @media (max-width: 480px) { .phone-wrap { width: 100vw; } .phone { width: 100vw; height: 100vh; border-radius: 0; border: 0; padding: 0; } .phone::after { display: none; } .phone-screen { border-radius: 0; } .phone-caption { display: none; } }
+
+  .status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px 0 24px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--text); }
+  .status-bar .icons { display: flex; align-items: center; gap: 5px; }
+  .bars { display: flex; align-items: flex-end; gap: 1.5px; height: 10px; }
+  .bars span { width: 3px; background: var(--text); border-radius: .5px; }
+  .bars span:nth-child(1){ height:3px; }.bars span:nth-child(2){ height:5px; }.bars span:nth-child(3){ height:7px; }.bars span:nth-child(4){ height:10px; }
+
+  /* Sheet */
+  .sheet { flex: 1; display: flex; flex-direction: column; padding: 6px 20px 20px; overflow: hidden; }
+  .grabber { width: 44px; height: 4px; background: var(--border-strong); border-radius: 999px; margin: 6px auto 8px; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 0 16px; }
+  .sheet-head .close { width: 34px; height: 34px; display: grid; place-items: center; color: var(--text-2); border: 0; background: transparent; }
+  .sheet-head .close svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+  .sheet-head .title { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .16em; text-transform: uppercase; }
+
+  .stepdots { display: flex; justify-content: center; gap: 6px; padding: 0 0 10px; }
+  .stepdots .d { width: 24px; height: 3px; background: var(--border-strong); border-radius: 2px; }
+  .stepdots .d.done { background: var(--yes); }
+  .stepdots .d.on { background: var(--text); }
+
+  .sheet-kicker { display: block; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .18em; text-transform: uppercase; margin-top: 6px; }
+  .sheet-h { margin: .4rem 0 .6rem; font-size: 1.7rem; font-weight: 700; letter-spacing: -.025em; line-height: 1.1; }
+  .sheet-p { color: var(--text-2); font-size: .94rem; line-height: 1.55; }
+
+  /* Phone 1: claim input */
+  .big-input-wrap { margin-top: 1.2rem; position: relative; flex: 1; display: flex; flex-direction: column; }
+  .big-input { width: 100%; background: transparent; border: 0; color: var(--text); font-family: 'Inter Tight', Inter, sans-serif; font-weight: 700; font-size: 1.75rem; letter-spacing: -.025em; line-height: 1.15; resize: none; outline: none; min-height: 5.5rem; padding: .4rem 0 .6rem; }
+  .big-input::placeholder { color: var(--text-4); }
+  .char-count { position: absolute; right: 0; top: 0; font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .06em; }
+  .input-sep { height: 1px; background: var(--border-strong); margin: .2rem 0 .8rem; }
+
+  .auto-box { border: 1px dashed var(--border-strong); padding: .8rem 1rem; border-radius: 12px; margin-top: .6rem; }
+  .auto-box .l { display: block; font-family: 'JetBrains Mono', monospace; font-size: .64rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .5rem; }
+  .auto-box .row { display: flex; align-items: center; gap: .6rem; font-size: .9rem; color: var(--text-2); }
+  .auto-box .row .tag { font-family: 'JetBrains Mono', monospace; font-size: .64rem; color: var(--yes); letter-spacing: .1em; padding: .2rem .45rem; border: 1px solid var(--yes); text-transform: uppercase; }
+
+  .similar { margin-top: 1rem; }
+  .similar .l { display: block; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .4rem; }
+  .sim-row { padding: .7rem 0; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; }
+  .sim-row .t { font-size: .92rem; color: var(--text); letter-spacing: -.005em; line-height: 1.3; }
+  .sim-row .p { font-family: 'JetBrains Mono', monospace; font-size: .86rem; color: var(--yes); }
+  .sim-row .p.n { color: var(--no); }
+  .sim-note { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .04em; padding: .6rem 0 0; }
+
+  /* Phone 2: seed step */
+  .preview-card { border: 1px solid var(--border-strong); border-radius: 16px; padding: 1rem 1rem .9rem; margin-top: 1rem; background: var(--phone-bg); }
+  .pc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .6rem; }
+  .pc-head .tag { font-family: 'JetBrains Mono', monospace; font-size: .6rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; padding: .18rem .4rem; border: 1px solid var(--border-strong); }
+  .pc-head .by { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .05em; }
+  .pc-claim { font-size: 1.15rem; line-height: 1.2; font-weight: 700; letter-spacing: -.015em; margin: .2rem 0 .6rem; color: var(--text); }
+  .pc-row { display: flex; justify-content: space-between; padding-top: .55rem; border-top: 1px solid var(--border); align-items: baseline; }
+  .pc-row .p { font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; color: var(--yes); letter-spacing: -.02em; }
+  .pc-row .side { font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--yes); padding: .2rem .4rem; border: 1px solid var(--yes); letter-spacing: .1em; }
+
+  .side-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 1rem; }
+  .side-toggle button { padding: .9rem 0; border: 1px solid var(--border-strong); background: var(--elev); color: var(--text-2); font-family: 'Inter', sans-serif; font-weight: 600; font-size: .95rem; border-radius: 14px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .side-toggle .yes.on { color: var(--yes); border-color: var(--yes); background: rgba(62,196,138,.06); }
+  .side-toggle .no.on { color: var(--no); border-color: var(--no); background: rgba(236,74,110,.06); }
+  .side-toggle .p { font-family: 'JetBrains Mono', monospace; font-size: .68rem; letter-spacing: .06em; opacity: .75; }
+
+  .amt-row { margin-top: 1rem; background: var(--elev); border: 1px solid var(--border-strong); border-radius: 14px; padding: 16px; }
+  .amt-row .label { display: flex; justify-content: space-between; align-items: baseline; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .3rem; }
+  .amt-row .label .bal { color: var(--text-2); }
+  .amt-row .big-amt { font-family: 'JetBrains Mono', monospace; font-size: 2.6rem; color: var(--text); letter-spacing: -.025em; line-height: 1; display: flex; align-items: baseline; gap: .25rem; }
+  .amt-row .big-amt small { font-size: 1rem; color: var(--text-3); letter-spacing: .08em; }
+  .amt-row .big-amt input { background: transparent; border: 0; color: var(--text); font: inherit; width: 100%; outline: none; letter-spacing: inherit; }
+  .quick-amt { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 1rem; }
+  .quick-amt button { background: transparent; border: 1px solid var(--border-strong); color: var(--text-2); font-family: 'JetBrains Mono', monospace; font-size: .74rem; padding: .5rem 0; letter-spacing: .06em; border-radius: 10px; cursor: pointer; }
+  .quick-amt button.on { color: var(--text); border-color: var(--text); background: var(--surface); }
+
+  .mini-quote { margin-top: 1rem; padding: .75rem 1rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: .3rem .8rem; font-family: 'JetBrains Mono', monospace; font-size: .78rem; }
+  .mini-quote dt { color: var(--text-3); }
+  .mini-quote dd { margin: 0; color: var(--text); text-align: right; }
+  .mini-quote dd.up { color: var(--yes); }
+
+  /* Hold to publish */
+  .publish-wrap { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 30; }
+  .publish-btn { position: relative; width: 100%; height: 64px; border-radius: 18px; border: 1px solid var(--yes); background: rgba(62,196,138,.07); color: var(--yes); font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1rem; overflow: hidden; -webkit-tap-highlight-color: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; letter-spacing: -.005em; }
+  .publish-btn .fill { position: absolute; left: 0; bottom: 0; height: 100%; width: 72%; background: var(--yes); opacity: .12; animation: holdFill 2.3s ease-in-out infinite; border-right: 1.5px solid var(--yes); }
+  .publish-btn .hint { position: absolute; top: 8px; right: 12px; font-family: 'JetBrains Mono', monospace; font-size: .58rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; z-index: 2; }
+  .publish-btn .sub { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--yes); opacity: .7; letter-spacing: .05em; margin-top: .1rem; }
+  .publish-foot { text-align: center; margin-top: .5rem; font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+
+  @keyframes holdFill { 0%{ width: 0; } 90%{ width: 72%; } 100%{ width: 0; } }
+
+  /* Next button on step 1 */
+  .next-wrap { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 30; }
+  .next-btn { width: 100%; height: 56px; border-radius: 18px; background: var(--text); color: #000; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 1rem; border: 0; cursor: pointer; letter-spacing: -.005em; }
+  .next-btn[disabled] { background: var(--border-strong); color: var(--text-3); }
+  .next-foot { text-align: center; margin-top: .5rem; font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+
+  /* Right ctx */
+  .ctx-right { max-width: 20rem; justify-self: start; }
+  .ctx-right h3 { margin: 0 0 .8rem; font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .18em; text-transform: uppercase; }
+  .ctx-right .d { padding: .9rem 0; border-top: 1px solid var(--border); }
+  .ctx-right .d:first-of-type { border-top: 0; padding-top: 0; }
+  .ctx-right .d strong { display: block; color: var(--text); font-size: .94rem; font-weight: 500; margin-bottom: .3rem; }
+  .ctx-right .d span { color: var(--text-2); font-size: .85rem; line-height: 1.55; }
+  .ctx-right .nav-row { margin-top: 1.4rem; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .ctx-right .nav-row a { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-2); letter-spacing: .06em; padding: .4rem .65rem; border: 1px solid var(--border-strong); text-transform: uppercase; }
+  .ctx-right .nav-row a.primary { color: var(--yes); border-color: var(--yes); }
+  @media (max-width: 1300px) { .ctx-right { display: none; } }
+
+  /* Cursor animation in the big input */
+  .cursor { display: inline-block; width: 2px; height: 1.6rem; background: var(--yes); vertical-align: text-bottom; animation: blink 1.1s infinite; margin-left: 1px; }
+  @keyframes blink { 0%,50%{ opacity: 1; } 51%,100%{ opacity: 0; } }
+</style>
+</head>
+<body>
+  <div class="stage">
+
+    <aside class="ctx-left">
+      <span class="badge">Direction G · Create</span>
+      <h1>Four steps. Four <em>sheets</em>. One thumb.</h1>
+      <p>Market creation is not a form — it's a conversation. Each step is a bottom sheet you pull up, commit to, and swipe away. The publish moment reuses the same hold-to-commit gesture as trading, so it feels like putting your name on something.</p>
+
+      <div class="flow-steps">
+        <div class="s"><span class="n">01</span><div class="v"><strong>Claim</strong><span>A single sentence. Category auto-detects as you type. Similar markets surface below to avoid duplicates.</span></div></div>
+        <div class="s"><span class="n">02</span><div class="v"><strong>Case</strong><span>Your argument. Can be written first or imported from a draft. Counts as a &ldquo;reply from the author&rdquo; on the market.</span></div></div>
+        <div class="s"><span class="n">03</span><div class="v"><strong>Tags &amp; links</strong><span>Search to link related markets. Their prices render as context but never affect this one's.</span></div></div>
+        <div class="s on"><span class="n">04</span><div class="v"><strong>Seed</strong><span>Side, stake, and hold-to-publish. Publishing IS your opening position — never a separate step.</span></div></div>
+      </div>
+    </aside>
+
+    <!-- Phone 1: Step 1 Claim -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+
+          <div class="status-bar">
+            <span>9:41</span>
+            <div class="icons">
+              <div class="bars"><span></span><span></span><span></span><span></span></div>
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="#fff"><path d="M8 10a2 2 0 100-4 2 2 0 000 4z"/></svg>
+              <svg width="27" height="12" viewBox="0 0 27 12"><rect x="1" y="2" width="22" height="8" rx="2" stroke="#fff" stroke-width="1" fill="none"/><rect x="3" y="4" width="15" height="4" rx="1" fill="#fff"/><rect x="24" y="4" width="2" height="4" rx="1" fill="#fff"/></svg>
+            </div>
+          </div>
+
+          <div class="sheet">
+            <div class="grabber"></div>
+            <div class="sheet-head">
+              <button class="close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6l-12 12"/></svg></button>
+              <span class="title">New market</span>
+              <span style="width: 34px;"></span>
+            </div>
+            <div class="stepdots">
+              <span class="d on"></span><span class="d"></span><span class="d"></span><span class="d"></span>
+            </div>
+
+            <span class="sheet-kicker">Step 1 of 4</span>
+            <h2 class="sheet-h display">Write your claim.</h2>
+            <p class="sheet-p">One sentence. Specific and falsifiable. The crowd will price the rest.</p>
+
+            <div class="big-input-wrap">
+              <span class="char-count">62 / 140</span>
+              <div class="big-input" contenteditable="true" style="white-space: pre-wrap; cursor: text;">Bitcoin trades above $150,000 at any point before 1 July 2026.<span class="cursor"></span></div>
+              <div class="input-sep"></div>
+
+              <div class="auto-box">
+                <span class="l">Detected</span>
+                <div class="row">
+                  <span class="tag">Crypto</span>
+                  <span>Tagged #BTC · #price-target · #2026-H1</span>
+                </div>
+              </div>
+
+              <div class="similar">
+                <span class="l">Similar markets already live</span>
+                <div class="sim-row">
+                  <div class="t">Bitcoin trades above $140,000 at any point in Q2 2026.</div>
+                  <span class="p">72¢</span>
+                </div>
+                <div class="sim-row">
+                  <div class="t">Bitcoin's all-time-high is set in 2026.</div>
+                  <span class="p">68¢</span>
+                </div>
+                <div class="sim-row">
+                  <div class="t">Bitcoin ends 2026 above $120,000.</div>
+                  <span class="p n">41¢</span>
+                </div>
+                <div class="sim-note">Link these on step 3 — or keep your claim distinct from them.</div>
+              </div>
+            </div>
+
+            <div class="next-wrap">
+              <button class="next-btn">Next · the case →</button>
+              <div class="next-foot">Step 1 of 4 · &uarr; pull to edit &middot; esc to discard</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-caption">Step 01 · <span>Claim</span></div>
+    </div>
+
+    <!-- Phone 2: Step 4 Seed / Publish -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+
+          <div class="status-bar">
+            <span>9:42</span>
+            <div class="icons">
+              <div class="bars"><span></span><span></span><span></span><span></span></div>
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="#fff"><path d="M8 10a2 2 0 100-4 2 2 0 000 4z"/></svg>
+              <svg width="27" height="12" viewBox="0 0 27 12"><rect x="1" y="2" width="22" height="8" rx="2" stroke="#fff" stroke-width="1" fill="none"/><rect x="3" y="4" width="15" height="4" rx="1" fill="#fff"/><rect x="24" y="4" width="2" height="4" rx="1" fill="#fff"/></svg>
+            </div>
+          </div>
+
+          <div class="sheet">
+            <div class="grabber"></div>
+            <div class="sheet-head">
+              <button class="close" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+              <span class="title">Seed your claim</span>
+              <span style="width: 34px;"></span>
+            </div>
+            <div class="stepdots">
+              <span class="d done"></span><span class="d done"></span><span class="d done"></span><span class="d on"></span>
+            </div>
+
+            <span class="sheet-kicker">Step 4 of 4</span>
+            <h2 class="sheet-h display">Stake a side.</h2>
+            <p class="sheet-p">Your first trade seeds the book and sets the opening price. Publish = put money behind your own claim.</p>
+
+            <div class="preview-card">
+              <div class="pc-head">
+                <span class="tag">CRYPTO</span>
+                <span class="by">@pf · just now</span>
+              </div>
+              <div class="pc-claim">Bitcoin trades above $150,000 at any point before 1 July 2026.</div>
+              <div class="pc-row">
+                <span class="p">50¢</span>
+                <span class="side">YES · SEED</span>
+              </div>
+            </div>
+
+            <div class="side-toggle">
+              <button class="yes on"><span>Back YES</span><span class="p">I believe it</span></button>
+              <button class="no"><span>Back NO</span><span class="p">I don't</span></button>
+            </div>
+
+            <div class="amt-row">
+              <div class="label"><span>Opening stake</span><span class="bal">$1,284 balance</span></div>
+              <div class="big-amt"><small>$</small><input type="text" value="500.00" /></div>
+              <div class="quick-amt">
+                <button>$50</button>
+                <button>$100</button>
+                <button>$250</button>
+                <button class="on">$500</button>
+                <button>$1K</button>
+              </div>
+            </div>
+
+            <dl class="mini-quote">
+              <dt>Shares</dt><dd>990 YES</dd>
+              <dt>Opening price</dt><dd>50¢ · 50¢</dd>
+              <dt>Fee (1%)</dt><dd>$5.00</dd>
+              <dt>Your stake</dt><dd class="up">$495.00</dd>
+            </dl>
+
+            <div class="publish-wrap">
+              <button class="publish-btn" aria-label="Hold to publish and back YES at 50¢">
+                <span class="hint">HOLD · 1s</span>
+                <span class="fill"></span>
+                <span>Publish &amp; back YES · $500</span>
+                <span class="sub">relays publish on release · no takebacks</span>
+              </button>
+              <div class="publish-foot">No expiry · no oracle · exit anytime at the crowd price</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-caption">Step 04 · <span>Seed · hold to publish</span></div>
+    </div>
+
+    <!-- Right: micro decisions -->
+    <aside class="ctx-right">
+      <h3>Decisions · create flow</h3>
+      <div class="d">
+        <strong>Publish = first trade.</strong>
+        <span>There's no "publish draft then place first order." The publish gesture IS the opening position. One hold, one commit, one record.</span>
+      </div>
+      <div class="d">
+        <strong>Category is detected, not chosen.</strong>
+        <span>As the claim is typed, the category and obvious tags auto-fill. The user can edit, but the default path has zero taxonomy friction.</span>
+      </div>
+      <div class="d">
+        <strong>Similar markets surface early.</strong>
+        <span>Before the user writes a case, we show three adjacent claims already trading. They can link, differentiate, or change course.</span>
+      </div>
+      <div class="d">
+        <strong>Seed picker feels like a trade.</strong>
+        <span>The same side-toggle + amount pad + quote strip + hold-button as every other Cascade trade. Users never learn a second interaction for publishing.</span>
+      </div>
+      <div class="d">
+        <strong>The whole flow is one drag away from cancel.</strong>
+        <span>Any step can be swiped down to minimize to a "draft" chip in the feed. No modal dead-ends. No losing work.</span>
+      </div>
+
+      <div class="nav-row">
+        <a href="01-landing.html">← Feed</a>
+        <a href="02-market.html">← Market</a>
+        <a class="primary" href="03-create.html">Create ✓</a>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

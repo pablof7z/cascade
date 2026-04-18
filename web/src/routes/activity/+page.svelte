@@ -96,204 +96,55 @@
         return [...marketEntries, ...tradeEntries, ...discussionEntries].sort((left, right) => right.createdAt - left.createdAt);
     }
   });
+
+  const totalVolume = $derived(trades.reduce((sum, trade) => sum + trade.amount, 0));
 </script>
 
-<section class="activity-header">
-  <div class="activity-copy">
-    <div class="activity-kicker">Activity</div>
-    <h1>What's moving</h1>
-    <p>New markets, trades, and debate — live.</p>
-  </div>
-</section>
+<div class="grid gap-4 max-w-[40rem] pt-4">
+  <div class="eyebrow">Activity</div>
+  <h1 class="text-[clamp(2.4rem,4vw,4rem)] tracking-[-0.05em] leading-none">What's moving</h1>
+  <p class="text-base-content/70 leading-[1.75]">New markets, trades, and debate — live.</p>
+</div>
 
-<section class="activity-stats">
-  <div>
-    <span>Markets</span>
-    <strong>{markets.length}</strong>
-  </div>
-  <div>
-    <span>Trades</span>
-    <strong>{trades.length}</strong>
-  </div>
-  <div>
-    <span>Discussion</span>
-    <strong>{discussions.length}</strong>
-  </div>
-  <div>
-    <span>Volume</span>
-    <strong>{formatProductAmount(trades.reduce((sum, trade) => sum + trade.amount, 0), 'usd')}</strong>
-  </div>
-</section>
+<div class="grid grid-cols-2 gap-4 pt-8 sm:grid-cols-4">
+  {#each [
+    { label: 'Markets', value: String(markets.length) },
+    { label: 'Trades', value: String(trades.length) },
+    { label: 'Discussion', value: String(discussions.length) },
+    { label: 'Volume', value: formatProductAmount(totalVolume, 'usd') },
+  ] as stat}
+    <div class="grid gap-1 py-4 border-t border-base-300">
+      <span class="eyebrow">{stat.label}</span>
+      <strong class="text-white font-mono">{stat.value}</strong>
+    </div>
+  {/each}
+</div>
 
-<nav class="activity-tabs" aria-label="Activity filters">
+<nav class="flex gap-4 pt-6 border-b border-base-300 overflow-x-auto" aria-label="Activity filters">
   {#each filters as filter}
-    <button class:active={activeFilter === filter} type="button" onclick={() => (activeFilter = filter)}>
+    <button
+      class="mb-[-1px] py-[0.9rem] border-b-2 border-transparent bg-transparent text-sm font-medium cursor-pointer transition-colors {activeFilter === filter ? 'border-white text-white' : 'text-base-content/50 hover:text-base-content/80'}"
+      type="button"
+      onclick={() => (activeFilter = filter)}
+    >
       {filter}
     </button>
   {/each}
 </nav>
 
-<section class="activity-list">
+<div class="border-t border-base-300 mt-6">
   {#if visibleEntries.length > 0}
     {#each visibleEntries as entry (entry.id)}
-      <a class="activity-row" href={entry.href}>
-        <div class="row-main">
-          <span class="row-label">{entry.label}</span>
-          <strong>{entry.title}</strong>
-          <p>{entry.subtitle}</p>
+      <a class="flex items-start justify-between gap-4 py-4 border-b border-base-300 hover:text-white" href={entry.href}>
+        <div class="grid gap-1 min-w-0">
+          <span class="eyebrow">{entry.label}</span>
+          <strong class="text-white text-base">{entry.title}</strong>
+          <p class="text-base-content/50 text-sm leading-[1.6]">{entry.subtitle}</p>
         </div>
-        <span class="row-time">{formatRelativeTime(entry.createdAt)}</span>
+        <span class="text-base-content/50 font-mono text-sm shrink-0">{formatRelativeTime(entry.createdAt)}</span>
       </a>
     {/each}
   {:else}
-    <div class="activity-empty">No activity found.</div>
+    <div class="py-4 text-base-content/70">No activity found.</div>
   {/if}
-</section>
-
-<style>
-  .activity-header {
-    padding-top: 1rem;
-  }
-
-  .activity-copy {
-    display: grid;
-    gap: 0.9rem;
-    max-width: 40rem;
-  }
-
-  .activity-kicker {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .activity-copy h1 {
-    font-size: clamp(2.4rem, 4vw, 4rem);
-    letter-spacing: -0.05em;
-    line-height: 1;
-  }
-
-  .activity-copy p {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    line-height: 1.75;
-  }
-
-  .activity-stats {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1rem;
-    padding-top: 2rem;
-  }
-
-  .activity-stats div {
-    display: grid;
-    gap: 0.35rem;
-    padding: 1rem 0;
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .activity-stats span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.76rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .activity-stats strong {
-    color: white;
-    font-family: var(--font-mono);
-    font-size: 1rem;
-  }
-
-  .activity-tabs {
-    display: flex;
-    gap: 1rem;
-    padding-top: 1.5rem;
-    border-bottom: 1px solid rgba(38, 38, 38, 0.8);
-    overflow-x: auto;
-  }
-
-  .activity-tabs button {
-    margin-bottom: -1px;
-    padding: 0.9rem 0;
-    border: none;
-    border-bottom: 2px solid transparent;
-    background: transparent;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.88rem;
-    font-weight: 500;
-    cursor: pointer;
-  }
-
-  .activity-tabs button.active {
-    border-bottom-color: white;
-    color: white;
-  }
-
-  .activity-list {
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
-    margin-top: 1.5rem;
-  }
-
-  .activity-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .row-main {
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  .row-label {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  .row-main strong {
-    color: white;
-    font-size: 1rem;
-  }
-
-  .row-main p,
-  .row-time {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.82rem;
-    line-height: 1.6;
-  }
-
-  .row-time {
-    flex: 0 0 auto;
-    font-family: var(--font-mono);
-  }
-
-  .activity-empty {
-    padding: 1rem 0;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  @media (max-width: 900px) {
-    .activity-stats {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .activity-stats {
-      grid-template-columns: 1fr;
-    }
-
-    .activity-row {
-      flex-direction: column;
-    }
-  }
-</style>
+</div>

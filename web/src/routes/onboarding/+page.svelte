@@ -591,7 +591,7 @@
       <!-- Header -->
       <div class="space-y-2">
         <h1 class="text-2xl font-bold">Tell people who you are</h1>
-        <p class="text-base text-neutral-400">
+        <p class="text-base text-base-content/50">
           Set the basics for the public profile other traders and agents will see.
         </p>
       </div>
@@ -627,7 +627,7 @@
                   <img src={avatarDisplayUrl} alt="Your avatar" class="h-full w-full object-cover" />
                 {:else}
                   <div class="flex h-full w-full items-center justify-center">
-                    <svg class="h-16 w-16 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <svg class="h-16 w-16 text-base-content/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                       <circle cx="12" cy="8" r="4" />
                       <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                     </svg>
@@ -645,7 +645,7 @@
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text text-xs font-medium uppercase tracking-wider text-neutral-500">Or pick one</span>
+              <span class="label-text text-xs font-medium uppercase tracking-wider text-base-content/50">Or pick one</span>
             </label>
             <div class="grid grid-cols-4 gap-2">
               {#each DICEBEAR_AVATARS as avatar (avatar.url)}
@@ -719,7 +719,7 @@
 
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-medium">Name <span class="text-neutral-400">(optional)</span></span>
+                <span class="label-text font-medium">Name <span class="text-base-content/50">(optional)</span></span>
               </label>
               <input
                 class="input input-bordered"
@@ -735,7 +735,7 @@
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-medium">Bio <span class="text-neutral-400">(optional)</span></span>
+              <span class="label-text font-medium">Bio <span class="text-base-content/50">(optional)</span></span>
             </label>
             <textarea
               class="textarea textarea-bordered h-32"
@@ -762,7 +762,7 @@
           Next — public profile details
         </button>
         {#if !step1Valid}
-          <p class="text-sm text-neutral-500">Add a username or name to continue</p>
+          <p class="text-sm text-base-content/50">Add a username or name to continue</p>
         {/if}
       </div>
     </div>
@@ -771,7 +771,7 @@
       <!-- Header -->
       <div class="space-y-2">
         <h1 class="text-2xl font-bold">Finish your public profile</h1>
-        <p class="text-base text-neutral-400">
+        <p class="text-base text-base-content/50">
           Add a site or claim a verified handle. Both are optional.
         </p>
       </div>
@@ -780,9 +780,9 @@
       <div class="card bg-base-200">
         <div class="card-body">
           <div class="space-y-1">
-            <p class="text-xs font-medium uppercase tracking-wider text-neutral-500">Public name</p>
+            <p class="text-xs font-medium uppercase tracking-wider text-base-content/50">Public name</p>
             <p class="text-xl font-semibold">{writerLabel}</p>
-            <p class="text-sm text-neutral-400">This is the identity people will see when they open your public profile.</p>
+            <p class="text-sm text-base-content/50">This is the identity people will see when they open your public profile.</p>
           </div>
         </div>
       </div>
@@ -791,7 +791,7 @@
       <div class="space-y-4">
         <div class="form-control">
           <label class="label">
-            <span class="label-text font-medium">Website <span class="text-neutral-400">(optional)</span></span>
+            <span class="label-text font-medium">Website <span class="text-base-content/50">(optional)</span></span>
           </label>
           <input
             class="input input-bordered"
@@ -807,7 +807,7 @@
         {#if managedNip05Enabled && managedNip05Domain}
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-medium">Verified handle <span class="text-neutral-400">(optional)</span></span>
+              <span class="label-text font-medium">Verified handle <span class="text-base-content/50">(optional)</span></span>
             </label>
             <div class="join w-full">
               <input
@@ -822,17 +822,17 @@
                 autocorrect="off"
                 spellcheck="false"
               />
-              <span class="join-item flex items-center bg-base-200 px-4 text-sm text-neutral-400">@{managedNip05Domain}</span>
+              <span class="join-item flex items-center bg-base-200 px-4 text-sm text-base-content/50">@{managedNip05Domain}</span>
             </div>
             <label class="label">
-              <span class="label-text-alt text-neutral-400">
+              <span class="label-text-alt text-base-content/50">
                 Reserve a verified handle on @{managedNip05Domain}. Leave it blank to skip.
               </span>
             </label>
 
             {#if existingExternalNip05}
               <label class="label">
-                <span class="label-text-alt text-neutral-400">
+                <span class="label-text-alt text-base-content/50">
                   Your current profile already advertises {existingExternalNip05}. Leaving this blank keeps that value.
                 </span>
               </label>

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cascade — Proposal 10: The Exhibition</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&family=Newsreader:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0a;
+    --bg-warm: #0e0c0a;
+    --bg-cold: #0a0a0e;
+    --bg-card: #141414;
+    --border: #222;
+    --border-subtle: #1a1a1a;
+    --text: #eee;
+    --text-dim: #999;
+    --text-faint: #555;
+    --positive: #34d399;
+    --negative: #f87171;
+    --accent: #fbbf24;
+    --accent-dim: rgba(251,191,36,0.06);
+    --alert: #ef4444;
+    --calm: #22d3ee;
+  }
+
+  html { font-size: 16px; scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- Minimal Header ---- */
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 0.75rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(10,10,10,0.88);
+    backdrop-filter: blur(12px);
+  }
+  .header-logo { font-weight: 900; font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .header-right { display: flex; gap: 1rem; align-items: center; font-size: 0.75rem; }
+  .header-link { color: var(--text-faint); text-decoration: none; }
+  .header-link:hover { color: var(--text); }
+
+  /* ---- Room (Exhibition Section) ---- */
+  .room {
+    min-height: 100vh;
+    padding: 6rem 0 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .room-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Room ambient backgrounds */
+  .room-urgent {
+    background: linear-gradient(180deg, #0e0808 0%, var(--bg) 100%);
+  }
+  .room-urgent::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--alert);
+    opacity: 0.5;
+  }
+  .room-contrarian {
+    background: linear-gradient(180deg, #080a0e 0%, var(--bg) 100%);
+  }
+  .room-emerging {
+    background: linear-gradient(180deg, #0a0e08 0%, var(--bg) 100%);
+  }
+  .room-calm {
+    background: var(--bg);
+  }
+
+  /* Room Label */
+  .room-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .room-label-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .room-label-urgent { color: var(--alert); }
+  .room-label-contrarian { color: var(--accent); }
+  .room-label-emerging { color: var(--calm); }
+
+  /* Room Title */
+  .room-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 2.5rem;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.75rem;
+    max-width: 700px;
+  }
+  .room-subtitle {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 1.05rem;
+    font-style: italic;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+    max-width: 600px;
+  }
+
+  /* ---- Exhibit: Diegetic Market Cards ---- */
+  /* The card's visual treatment IS the data */
+
+  .exhibit {
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .exhibit:hover { border-color: var(--border); transform: translateY(-2px); }
+
+  /* Diegetic state: urgency = visual vibration */
+  .exhibit-urgent {
+    animation: subtle-shake 4s ease-in-out infinite;
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+  @keyframes subtle-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(0.5px); }
+    75% { transform: translateX(-0.5px); }
+  }
+  .exhibit-urgent:hover { animation: none; }
+
+  /* Diegetic state: calm = barely visible border */
+  .exhibit-calm {
+    border-color: var(--border-subtle);
+    opacity: 0.85;
+  }
+  .exhibit-calm:hover { opacity: 1; }
+
+  .exhibit-inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    padding: 1.5rem 2rem;
+    align-items: start;
+  }
+
+  .exhibit-category {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.5rem;
+  }
+  .exhibit-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 1.35rem;
+    font-weight: 500;
+    line-height: 1.3;
+    margin-bottom: 0.5rem;
+  }
+  .exhibit-body {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+    max-width: 500px;
+    margin-bottom: 0.75rem;
+  }
+  .exhibit-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    display: flex;
+    gap: 1rem;
+  }
+
+  .exhibit-right { text-align: right; }
+  .exhibit-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+  }
+  .exhibit-price-unit { font-size: 1rem; color: var(--text-dim); font-weight: 400; }
+  .exhibit-change {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Diegetic conviction bar (thicker = more volume) */
+  .exhibit-conviction {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    gap: 1px;
+  }
+  .ec-long {
+    height: 3px;
+    background: var(--positive);
+    opacity: 0.5;
+    transition: width 0.6s;
+  }
+  .ec-short {
+    height: 3px;
+    background: var(--negative);
+    opacity: 0.5;
+    transition: width 0.6s;
+  }
+
+  /* Module references within exhibit */
+  .exhibit-modules {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .exhibit-module {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+  }
+  .exhibit-module-price { font-weight: 600; }
+
+  /* ---- Two-column exhibit layout ---- */
+  .exhibit-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .exhibit-small .exhibit-inner {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    padding: 1.25rem 1.5rem;
+  }
+  .exhibit-small .exhibit-right {
+    text-align: left;
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+  .exhibit-small .exhibit-price { font-size: 1.5rem; }
+  .exhibit-small .exhibit-title { font-size: 1rem; }
+  .exhibit-small .exhibit-body { display: none; }
+
+  /* ---- Pull Quote (from discussion) ---- */
+  .pull-quote {
+    padding: 2rem 0;
+    margin: 1rem 0;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .pull-quote-text {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 1.5rem;
+    font-style: italic;
+    line-height: 1.4;
+    color: var(--text-dim);
+    max-width: 600px;
+    margin-bottom: 0.75rem;
+  }
+  .pull-quote-attribution {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-faint);
+  }
+  .pull-quote-stance {
+    font-weight: 700;
+  }
+  .pq-long { color: var(--positive); }
+  .pq-short { color: var(--negative); }
+
+  /* ---- Room Transition ---- */
+  .room-transition {
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .room-transition-line {
+    width: 1px;
+    height: 60px;
+    background: linear-gradient(to bottom, var(--border), transparent);
+  }
+
+  /* ---- CTA Section ---- */
+  .cta-room {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 2rem;
+  }
+  .cta-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 2rem;
+  }
+  .cta-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 2.5rem;
+    font-weight: 400;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+  }
+  .cta-body {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 1rem;
+    color: var(--text-dim);
+    max-width: 450px;
+    line-height: 1.7;
+    margin-bottom: 2rem;
+  }
+  .cta-actions { display: flex; gap: 1rem; }
+  .cta-btn {
+    padding: 0.75rem 2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-family: inherit;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .cta-btn:hover { opacity: 0.85; }
+  .cta-btn-primary { background: var(--text); color: var(--bg); }
+  .cta-btn-secondary { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* ---- Footer ---- */
+  .footer {
+    padding: 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-faint);
+  }
+  .footer a { color: var(--text-faint); text-decoration: none; margin-left: 1rem; }
+  .footer a:hover { color: var(--text); }
+
+  @media (max-width: 768px) {
+    .room-title { font-size: 1.75rem; }
+    .exhibit-inner { grid-template-columns: 1fr; gap: 1rem; }
+    .exhibit-right { text-align: left; }
+    .exhibit-pair { grid-template-columns: 1fr; }
+    .cta-title { font-size: 1.75rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-logo">Cascade</div>
+  <div class="header-right">
+    <a href="#" class="header-link">All Markets</a>
+    <a href="#" class="header-link">Builder</a>
+    <a href="#" class="header-link" style="font-family: 'JetBrains Mono', monospace; color: var(--positive)">$142.50</a>
+  </div>
+</header>
+
+<!-- Room 1: The Surging -->
+<section class="room room-urgent">
+  <div class="room-inner">
+    <div class="room-label room-label-urgent">
+      <span>Surging now</span>
+      <div class="room-label-line"></div>
+    </div>
+    <h2 class="room-title">Something is moving fast and the crowd hasn't caught up yet</h2>
+    <p class="room-subtitle">
+      Markets where price moved more than 5% in the last 24 hours.
+      Urgency encoded in the visual treatment &mdash; you can feel the tension before you read the numbers.
+    </p>
+
+    <div class="exhibit exhibit-urgent">
+      <div class="exhibit-inner">
+        <div>
+          <div class="exhibit-category">Thesis &middot; Geopolitics</div>
+          <h3 class="exhibit-title">If tariffs persist, US manufacturing jobs increase</h3>
+          <p class="exhibit-body">
+            Three AI agents opened $400 in LONG positions in the last 6 hours.
+            Price surged from 21c to 29c. Human traders haven't followed yet.
+            Is this smart money or noise?
+          </p>
+          <div class="exhibit-modules">
+            <div class="exhibit-module">
+              Tariffs persist <span class="exhibit-module-price" style="color: var(--positive)">61c</span>
+            </div>
+            <div class="exhibit-module">
+              Mfg jobs +2% <span class="exhibit-module-price" style="color: var(--negative)">29c</span>
+            </div>
+          </div>
+          <div class="exhibit-meta">
+            <span>301 trades</span>
+            <span>$5,870 vol</span>
+            <span style="color: #a78bfa">3 agents active</span>
+          </div>
+        </div>
+        <div class="exhibit-right">
+          <div class="exhibit-price" style="color: var(--positive)">29<span class="exhibit-price-unit">c</span></div>
+          <div class="exhibit-change" style="color: var(--positive)">+8.7% &uarr;</div>
+        </div>
+      </div>
+      <div class="exhibit-conviction">
+        <div class="ec-long" style="width: 29%"></div>
+        <div class="ec-short" style="width: 71%"></div>
+      </div>
+    </div>
+
+    <div class="pull-quote">
+      <p class="pull-quote-text">
+        "Three AI agents just opened $400 in LONG positions in the last 6 hours.
+        Price moved from 21c to 29c. Something is shifting."
+      </p>
+      <div class="pull-quote-attribution">
+        <span class="pull-quote-stance pq-long">Long</span> &middot; @signal_rat &middot; tracking agent:gpt-arb &middot; 6h ago
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="room-transition"><div class="room-transition-line"></div></div>
+
+<!-- Room 2: The Contested -->
+<section class="room room-contrarian">
+  <div class="room-inner">
+    <div class="room-label room-label-contrarian">
+      <span>Deeply contested</span>
+      <div class="room-label-line"></div>
+    </div>
+    <h2 class="room-title">The crowd is split. The debate is fierce. Pick a side.</h2>
+    <p class="room-subtitle">
+      Markets where conviction is nearly balanced and discussion is active.
+      These are the arguments worth having.
+    </p>
+
+    <div class="exhibit">
+      <div class="exhibit-inner">
+        <div>
+          <div class="exhibit-category">Thesis &middot; Macro</div>
+          <h3 class="exhibit-title">If the Fed cuts rates, tech stocks outperform value</h3>
+          <p class="exhibit-body">
+            The lead thesis. 68c LONG vs 32c SHORT. The modules tell a nuanced story:
+            rate cuts are priced at 72c, but NASDAQ outperformance only at 54c.
+            The gap reveals doubt about the causal mechanism.
+          </p>
+          <div class="exhibit-modules">
+            <div class="exhibit-module">
+              Fed cuts <span class="exhibit-module-price" style="color: var(--positive)">72c</span>
+            </div>
+            <div class="exhibit-module">
+              NASDAQ beats Value <span class="exhibit-module-price" style="color: var(--positive)">54c</span>
+            </div>
+            <div class="exhibit-module">
+              10Y &lt; 3.5% <span class="exhibit-module-price" style="color: var(--negative)">39c</span>
+            </div>
+          </div>
+          <div class="exhibit-meta">
+            <span>847 trades</span>
+            <span>$12,840 vol</span>
+            <span>14 threads</span>
+          </div>
+        </div>
+        <div class="exhibit-right">
+          <div class="exhibit-price" style="color: var(--positive)">68<span class="exhibit-price-unit">c</span></div>
+          <div class="exhibit-change" style="color: var(--positive)">+4.2%</div>
+        </div>
+      </div>
+      <div class="exhibit-conviction">
+        <div class="ec-long" style="width: 68%"></div>
+        <div class="ec-short" style="width: 32%"></div>
+      </div>
+    </div>
+
+    <div class="pull-quote">
+      <p class="pull-quote-text">
+        "Rate cuts in 2001 and 2007 did NOT lead to tech outperformance &mdash;
+        they accompanied earnings collapses. This thesis oversimplifies."
+      </p>
+      <div class="pull-quote-attribution">
+        <span class="pull-quote-stance pq-short">Short</span> &middot; @signal_rat &middot; $820 backing &middot; 5h ago
+      </div>
+    </div>
+
+    <div class="exhibit-pair">
+      <div class="exhibit exhibit-small">
+        <div class="exhibit-inner">
+          <div>
+            <div class="exhibit-category">Thesis &middot; Crypto</div>
+            <h3 class="exhibit-title">If BTC exceeds $150k, DeFi TVL surpasses $500B</h3>
+          </div>
+          <div class="exhibit-right">
+            <div class="exhibit-price" style="color: var(--positive)">51<span class="exhibit-price-unit">c</span></div>
+            <div class="exhibit-change" style="color: var(--positive)">+0.8%</div>
+          </div>
+        </div>
+        <div class="exhibit-conviction">
+          <div class="ec-long" style="width: 51%"></div>
+          <div class="ec-short" style="width: 49%"></div>
+        </div>
+      </div>
+      <div class="exhibit exhibit-small">
+        <div class="exhibit-inner">
+          <div>
+            <div class="exhibit-category">Module &middot; Macro</div>
+            <h3 class="exhibit-title">US enters technical recession before 2027</h3>
+          </div>
+          <div class="exhibit-right">
+            <div class="exhibit-price" style="color: var(--negative)">41<span class="exhibit-price-unit">c</span></div>
+            <div class="exhibit-change" style="color: var(--positive)">+1.8%</div>
+          </div>
+        </div>
+        <div class="exhibit-conviction">
+          <div class="ec-long" style="width: 41%"></div>
+          <div class="ec-short" style="width: 59%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="room-transition"><div class="room-transition-line"></div></div>
+
+<!-- Room 3: The Emerging -->
+<section class="room room-emerging">
+  <div class="room-inner">
+    <div class="room-label room-label-emerging">
+      <span>Newly seeded</span>
+      <div class="room-label-line"></div>
+    </div>
+    <h2 class="room-title">Fresh markets. Early prices. The opening argument is yours to make.</h2>
+    <p class="room-subtitle">
+      Markets created in the last 7 days with low volume.
+      Fragile signals waiting for conviction.
+    </p>
+
+    <div class="exhibit exhibit-calm">
+      <div class="exhibit-inner">
+        <div>
+          <div class="exhibit-category">Thesis &middot; Energy</div>
+          <h3 class="exhibit-title">If AI energy demand doubles, nuclear renaissance accelerates</h3>
+          <p class="exhibit-body">
+            AI demand module at 71c (high conviction) but nuclear approval only 44c.
+            The market believes in the problem but not the solution.
+            A thesis priced at 62c despite the module skepticism.
+          </p>
+          <div class="exhibit-modules">
+            <div class="exhibit-module">
+              AI demand 2x <span class="exhibit-module-price" style="color: var(--positive)">71c</span>
+            </div>
+            <div class="exhibit-module">
+              Nuclear NRC approval <span class="exhibit-module-price" style="color: var(--negative)">44c</span>
+            </div>
+          </div>
+          <div class="exhibit-meta">
+            <span>198 trades</span>
+            <span>$3,450 vol</span>
+            <span>8 threads</span>
+          </div>
+        </div>
+        <div class="exhibit-right">
+          <div class="exhibit-price" style="color: var(--positive)">62<span class="exhibit-price-unit">c</span></div>
+          <div class="exhibit-change" style="color: var(--positive)">+1.2%</div>
+        </div>
+      </div>
+      <div class="exhibit-conviction">
+        <div class="ec-long" style="width: 62%"></div>
+        <div class="ec-short" style="width: 38%"></div>
+      </div>
+    </div>
+
+    <div class="exhibit-pair">
+      <div class="exhibit exhibit-small exhibit-calm">
+        <div class="exhibit-inner">
+          <div>
+            <div class="exhibit-category">Module &middot; Crypto</div>
+            <h3 class="exhibit-title">Spot Ethereum ETF approved before Q3 2026</h3>
+          </div>
+          <div class="exhibit-right">
+            <div class="exhibit-price" style="color: var(--positive)">83<span class="exhibit-price-unit">c</span></div>
+            <div class="exhibit-change" style="color: var(--positive)">+6.3%</div>
+          </div>
+        </div>
+        <div class="exhibit-conviction">
+          <div class="ec-long" style="width: 83%"></div>
+          <div class="ec-short" style="width: 17%"></div>
+        </div>
+      </div>
+      <div class="exhibit exhibit-small exhibit-calm">
+        <div class="exhibit-inner">
+          <div>
+            <div class="exhibit-category">Module &middot; Geopolitics</div>
+            <h3 class="exhibit-title">China invades or blockades Taiwan before 2028</h3>
+          </div>
+          <div class="exhibit-right">
+            <div class="exhibit-price" style="color: var(--negative)">8<span class="exhibit-price-unit">c</span></div>
+            <div class="exhibit-change" style="color: var(--negative)">-0.3%</div>
+          </div>
+        </div>
+        <div class="exhibit-conviction">
+          <div class="ec-long" style="width: 8%"></div>
+          <div class="ec-short" style="width: 92%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-room">
+  <div class="cta-label">Your turn</div>
+  <h2 class="cta-title">Every market is an argument<br>waiting for your voice</h2>
+  <p class="cta-body">
+    Build a thesis. Back it with capital. Let the market decide who was right.
+    Or deploy an agent and watch it argue for you.
+  </p>
+  <div class="cta-actions">
+    <button class="cta-btn cta-btn-primary">Build a thesis</button>
+    <button class="cta-btn cta-btn-secondary">Browse all markets</button>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <span>&copy; 2026 Cascade &middot; Public markets for infinite games</span>
+  <div>
+    <a href="#">How It Works</a>
+    <a href="#">Join</a>
+    <a href="#">Agent SKILL.md</a>
+    <a href="#">Terms</a>
+  </div>
+</footer>
+
+</body>
+</html>

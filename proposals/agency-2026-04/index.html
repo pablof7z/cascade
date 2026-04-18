@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — Three Directions (Apr 2026)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  html,body { margin: 0; padding: 0; background: #070708; color: #e7e7ec; font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .shell { width: min(100% - 3rem, 1200px); margin: 0 auto; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  /* Masthead */
+  .masthead { border-bottom: 1px solid #1c1c23; padding: 1.1rem 0; }
+  .masthead-row { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
+  .logo { display: inline-flex; align-items: baseline; gap: .6rem; }
+  .logo strong { font-weight: 700; letter-spacing: -.02em; font-size: 1.05rem; }
+  .logo .tick { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: #707079; letter-spacing: .12em; text-transform: uppercase; }
+  .crumb { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: #707079; letter-spacing: .14em; text-transform: uppercase; }
+
+  /* Hero */
+  .hero { padding: 6rem 0 3rem; border-bottom: 1px solid #1c1c23; }
+  .hero-kicker { font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: #47c585; }
+  .hero h1 { margin: 1.25rem 0 0; font-size: clamp(2.6rem, 5.5vw, 4.4rem); font-weight: 600; letter-spacing: -.035em; line-height: 1; max-width: 24ch; }
+  .hero h1 em { font-family: 'Fraunces', serif; font-style: italic; font-weight: 400; color: #fff; }
+  .hero-sub { margin-top: 1.4rem; max-width: 62ch; color: #9a9aa4; font-size: 1.05rem; line-height: 1.6; }
+  .hero-meta { margin-top: 2.2rem; display: flex; flex-wrap: wrap; gap: 2rem 3rem; }
+  .hero-meta dt { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: #707079; letter-spacing: .12em; text-transform: uppercase; margin-bottom: .35rem; }
+  .hero-meta dd { margin: 0; color: #d4d4d8; font-size: .95rem; }
+
+  /* Section rules */
+  .section { padding: 4rem 0; border-bottom: 1px solid #1c1c23; }
+  .section-kicker { font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: #707079; }
+  .section h2 { margin: .6rem 0 .4rem; font-size: 2rem; letter-spacing: -.02em; font-weight: 600; }
+  .section-lede { color: #9a9aa4; max-width: 62ch; }
+
+  /* Direction card */
+  .dirs { margin-top: 3rem; display: grid; gap: 2.5rem; }
+  .dir { display: grid; grid-template-columns: 7rem 1fr; gap: 2rem; padding-top: 2rem; border-top: 1px solid #1c1c23; }
+  .dir:first-child { border-top: none; padding-top: 0; }
+  .dir-number { font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: #707079; letter-spacing: .1em; }
+  .dir-body h3 { margin: 0; font-size: 2.4rem; letter-spacing: -.028em; }
+  .dir-body h3 em { font-family: 'Fraunces', serif; font-style: italic; font-weight: 400; color: #e7e7ec; }
+  .dir-tag { font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .12em; color: #47c585; text-transform: uppercase; margin-top: .3rem; display: inline-block; }
+  .dir-pitch { margin-top: 1.2rem; color: #c9c9cf; max-width: 68ch; font-size: 1.03rem; line-height: 1.65; }
+  .dir-tenets { margin-top: 1.6rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1.2rem 2rem; }
+  .dir-tenet { border-left: 1px solid #1c1c23; padding-left: .9rem; }
+  .dir-tenet dt { font-family: 'JetBrains Mono', monospace; font-size: .64rem; color: #707079; letter-spacing: .12em; text-transform: uppercase; margin-bottom: .25rem; }
+  .dir-tenet dd { margin: 0; color: #d4d4d8; font-size: .92rem; }
+  .dir-links { margin-top: 1.8rem; display: flex; flex-wrap: wrap; gap: .5rem .8rem; }
+  .dir-link { display: inline-flex; align-items: center; gap: .55rem; padding: .55rem .85rem; border: 1px solid #27272f; color: #e7e7ec; font-size: .85rem; transition: border-color .12s, background .12s; }
+  .dir-link:hover { border-color: #47c585; background: #0f0f12; }
+  .dir-link .arr { color: #707079; transition: color .12s; }
+  .dir-link:hover .arr { color: #47c585; }
+  .dir-link.primary { background: #15151a; border-color: #2a2a33; }
+
+  /* Swatches */
+  .swatches { margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .4rem; }
+  .sw { font-family: 'JetBrains Mono', monospace; font-size: .7rem; display: inline-flex; align-items: center; gap: .5rem; padding: .25rem .6rem; border: 1px solid #1c1c23; color: #9a9aa4; }
+  .sw .dot { width: .7rem; height: .7rem; border-radius: 1px; display: inline-block; }
+
+  /* Asked/Unasked */
+  .asked { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 2rem; }
+  @media (max-width: 780px) { .asked { grid-template-columns: 1fr; } .dir { grid-template-columns: 1fr; } }
+  .asked h4 { margin: 0 0 .8rem; font-size: .78rem; font-family: 'JetBrains Mono', monospace; letter-spacing: .14em; color: #707079; text-transform: uppercase; }
+  .asked ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .8rem; }
+  .asked li { display: grid; grid-template-columns: auto 1fr; gap: .8rem; align-items: start; color: #c9c9cf; }
+  .asked li .mark { font-family: 'JetBrains Mono', monospace; font-size: .8rem; color: #707079; letter-spacing: .1em; padding-top: .1rem; }
+  .asked li.new .mark { color: #47c585; }
+
+  /* Footer */
+  footer { padding: 3rem 0 4rem; color: #707079; font-size: .85rem; }
+  .foot-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+</style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="shell masthead-row">
+      <a class="logo" href="#">
+        <strong>Cascade</strong>
+        <span class="tick">Design Review · Vol 1</span>
+      </a>
+      <span class="crumb">April 18, 2026</span>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="shell">
+      <span class="hero-kicker">Four Directions — Not Four Skins</span>
+      <h1>If Cascade is a product for <em>defending a thesis</em>, what should the rest of the product look like?</h1>
+      <p class="hero-sub">
+        You already have twenty-two landing-page explorations. This review goes further: four fully-formed product identities, each with its own navigation, typography, color treatment, and market creation flow — not just a front door. Three sit on the desktop spectrum (analyst desk, daily gazette, Tufte data-grid); the fourth re-asks the question from the phone-first angle the existing product has never answered. Every direction is buildable on top of daisyUI + Tailwind with the hard brand rules respected (neutrals, emerald/rose, no pills, no gradients, USD-only, no Nostr jargon), and each takes a clear position on the questions you haven't asked yet.
+      </p>
+
+      <dl class="hero-meta">
+        <div><dt>Scope</dt><dd>Landing · Market detail · Market creation</dd></div>
+        <div><dt>Constraints</dt><dd>daisyUI + Tailwind, Svelte 5, dark-only</dd></div>
+        <div><dt>Decisions surfaced</dt><dd>Nav pattern · Type scale · Density · Motion · Authorship</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="shell">
+      <span class="section-kicker">Overview · 01 → 03</span>
+      <h2>The three directions, in one paragraph each.</h2>
+
+      <div class="dirs">
+
+        <article class="dir">
+          <div class="dir-number">A / 01</div>
+          <div class="dir-body">
+            <h3>The <em>Desk</em></h3>
+            <span class="dir-tag">Research workflow · 3-pane · Command bar</span>
+            <p class="dir-pitch">
+              Cascade as an analyst's workstation. A persistent left rail for navigation, a main reading pane, and a right rail that carries context — your positions, linked markets, live discussion. Density without noise. Keyboard-first, command-palette-driven. Market creation becomes a short authoring wizard rather than a single form. For the trader who thinks of Cascade as part of their workflow, not a site they visit.
+            </p>
+            <div class="dir-tenets">
+              <div class="dir-tenet"><dt>Nav</dt><dd>Persistent left rail + ⌘K palette</dd></div>
+              <div class="dir-tenet"><dt>Type</dt><dd>Inter Tight + JetBrains Mono</dd></div>
+              <div class="dir-tenet"><dt>Density</dt><dd>Medium-high · sparkline per row</dd></div>
+              <div class="dir-tenet"><dt>Creation</dt><dd>4-step wizard</dd></div>
+            </div>
+            <div class="swatches">
+              <span class="sw"><i class="dot" style="background:#070708"></i>#070708</span>
+              <span class="sw"><i class="dot" style="background:#15151a"></i>#15151a</span>
+              <span class="sw"><i class="dot" style="background:#27272f"></i>#27272f</span>
+              <span class="sw"><i class="dot" style="background:#47c585"></i>#47c585</span>
+              <span class="sw"><i class="dot" style="background:#f04870"></i>#f04870</span>
+            </div>
+            <div class="dir-links">
+              <a class="dir-link primary" href="A-the-desk/01-landing.html">Landing <span class="arr">→</span></a>
+              <a class="dir-link" href="A-the-desk/02-market.html">Market detail <span class="arr">→</span></a>
+              <a class="dir-link" href="A-the-desk/03-create.html">Create market <span class="arr">→</span></a>
+            </div>
+          </div>
+        </article>
+
+        <article class="dir">
+          <div class="dir-number">B / 02</div>
+          <div class="dir-body">
+            <h3>The <em>Gazette</em></h3>
+            <span class="dir-tag">Editorial · Daily issue · Author-first</span>
+            <p class="dir-pitch">
+              Cascade as a daily briefing. The homepage is a front page with a masthead, a dateline, a lead story, and a rail of briefs. Market pages read like long-form op-eds with a pull-out trading aside. Authorship is celebrated — the creator's argument sits above the chart. Creation is framed as pitching a story, not filing a form. This direction leans into Cascade's real edge: markets as arguments with a price attached. It pushes against one of the hard rules (serif display) — worth discussing.
+            </p>
+            <div class="dir-tenets">
+              <div class="dir-tenet"><dt>Nav</dt><dd>Masthead + inline sections</dd></div>
+              <div class="dir-tenet"><dt>Type</dt><dd>Fraunces display + Inter body</dd></div>
+              <div class="dir-tenet"><dt>Density</dt><dd>Editorial · high contrast</dd></div>
+              <div class="dir-tenet"><dt>Creation</dt><dd>Pitch a story form</dd></div>
+            </div>
+            <div class="swatches">
+              <span class="sw"><i class="dot" style="background:#0a0a0a"></i>#0a0a0a</span>
+              <span class="sw"><i class="dot" style="background:#141414"></i>#141414</span>
+              <span class="sw"><i class="dot" style="background:#efe7d3"></i>#efe7d3</span>
+              <span class="sw"><i class="dot" style="background:#3fb570"></i>#3fb570</span>
+              <span class="sw"><i class="dot" style="background:#d74566"></i>#d74566</span>
+            </div>
+            <div class="dir-links">
+              <a class="dir-link primary" href="B-the-gazette/01-landing.html">Landing <span class="arr">→</span></a>
+              <a class="dir-link" href="B-the-gazette/02-market.html">Market detail <span class="arr">→</span></a>
+              <a class="dir-link" href="B-the-gazette/03-create.html">Create market <span class="arr">→</span></a>
+            </div>
+          </div>
+        </article>
+
+        <article class="dir">
+          <div class="dir-number">C / 03</div>
+          <div class="dir-body">
+            <h3>The <em>Trace</em></h3>
+            <span class="dir-tag">Tufte · Data-first · Zero chrome</span>
+            <p class="dir-pitch">
+              Cascade as pure information. No cards, no boxes, no headers — only the data. The homepage is a single dense grid of markets with sparklines. The market page is a chart with annotations. Discussion is footnoted, not central. Every trade is a dot. Every argument earns its real estate by being informative, not decorative. This is the direction that respects the existing style guide most literally and pushes the bar on density and restraint.
+            </p>
+            <div class="dir-tenets">
+              <div class="dir-tenet"><dt>Nav</dt><dd>Breadcrumb + ⌘K only</dd></div>
+              <div class="dir-tenet"><dt>Type</dt><dd>Inter only · one weight</dd></div>
+              <div class="dir-tenet"><dt>Density</dt><dd>Maximum · hairline rules</dd></div>
+              <div class="dir-tenet"><dt>Creation</dt><dd>Single screen</dd></div>
+            </div>
+            <div class="swatches">
+              <span class="sw"><i class="dot" style="background:#000"></i>#000000</span>
+              <span class="sw"><i class="dot" style="background:#0c0c0c"></i>#0c0c0c</span>
+              <span class="sw"><i class="dot" style="background:#2a2a2a"></i>#2a2a2a</span>
+              <span class="sw"><i class="dot" style="background:#3ec48a"></i>#3ec48a</span>
+              <span class="sw"><i class="dot" style="background:#ec4a6e"></i>#ec4a6e</span>
+            </div>
+            <div class="dir-links">
+              <a class="dir-link primary" href="C-the-trace/01-landing.html">Landing <span class="arr">→</span></a>
+              <a class="dir-link" href="C-the-trace/02-market.html">Market detail <span class="arr">→</span></a>
+              <a class="dir-link" href="C-the-trace/03-create.html">Create market <span class="arr">→</span></a>
+            </div>
+          </div>
+        </article>
+
+        <article class="dir">
+          <div class="dir-number">H / 04</div>
+          <div class="dir-body">
+            <h3>The <em>Study</em></h3>
+            <span class="dir-tag">Workspace chrome, essay content · Category-nav</span>
+            <p class="dir-pitch">
+              Re-derived from first principles in response to "Gazette is too newspaper-y, Desk is too spreadsheet-y." The synthesis isn't a skin-swap: the product's chrome is a quiet workspace (persistent category rail, breadcrumbs, right-side context, command palette), but every claim gets editorial typography — the sentence gets air, the author's case reads like well-laid-out prose, the price pulls out as a measurement, not a sales pitch. Serif appears <em>only</em> on claim content, never on chrome. Categories (Geopolitics, Macro, Sports, AI, Tech, Culture, Policy) are nav destinations, not newspaper sections.
+            </p>
+            <div class="dir-tenets">
+              <div class="dir-tenet"><dt>Nav</dt><dd>Category rail + breadcrumbs + ⌘K</dd></div>
+              <div class="dir-tenet"><dt>Type</dt><dd>Inter + Fraunces (claim only)</dd></div>
+              <div class="dir-tenet"><dt>Density</dt><dd>Editorial air on lead · dense rails</dd></div>
+              <div class="dir-tenet"><dt>Creation</dt><dd>Single-page essay · live preview</dd></div>
+            </div>
+            <div class="swatches">
+              <span class="sw"><i class="dot" style="background:#0a0a0b"></i>#0a0a0b</span>
+              <span class="sw"><i class="dot" style="background:#17171a"></i>#17171a</span>
+              <span class="sw"><i class="dot" style="background:#2a2a30"></i>#2a2a30</span>
+              <span class="sw"><i class="dot" style="background:#3ec48a"></i>#3ec48a</span>
+              <span class="sw"><i class="dot" style="background:#e85d7a"></i>#e85d7a</span>
+            </div>
+            <div class="dir-links">
+              <a class="dir-link primary" href="H-the-study/01-landing.html">Home <span class="arr">→</span></a>
+              <a class="dir-link" href="H-the-study/02-market.html">Market detail <span class="arr">→</span></a>
+              <a class="dir-link" href="H-the-study/03-create.html">Write a claim <span class="arr">→</span></a>
+            </div>
+          </div>
+        </article>
+
+        <article class="dir">
+          <div class="dir-number">G / 05</div>
+          <div class="dir-body">
+            <h3>The <em>Feed</em></h3>
+            <span class="dir-tag">Mobile-native · Hold-to-commit · Thumb-first</span>
+            <p class="dir-pitch">
+              Cascade designed as a phone-first product, not a responsive afterthought. The homepage is a vertical scroll-snap feed — one claim fills the viewport, swipe up for the next. Back YES / Back NO are dock-bottom thumb buttons, and they require a deliberate hold, not a tap — the commitment matches the copy ("put money behind your view"). The create flow reuses the same gesture to publish, so authorship and trading feel like the same act. This direction answers the audience you're probably under-serving: the five-minute-between-meetings user forming conviction on a phone.
+            </p>
+            <div class="dir-tenets">
+              <div class="dir-tenet"><dt>Nav</dt><dd>Bottom bar · 5 tabs · raised Create</dd></div>
+              <div class="dir-tenet"><dt>Type</dt><dd>Inter Tight display + JetBrains Mono</dd></div>
+              <div class="dir-tenet"><dt>Density</dt><dd>One market per viewport</dd></div>
+              <div class="dir-tenet"><dt>Creation</dt><dd>4-sheet stepper · hold to publish</dd></div>
+            </div>
+            <div class="swatches">
+              <span class="sw"><i class="dot" style="background:#07070a"></i>#07070a</span>
+              <span class="sw"><i class="dot" style="background:#121218"></i>#121218</span>
+              <span class="sw"><i class="dot" style="background:#23232e"></i>#23232e</span>
+              <span class="sw"><i class="dot" style="background:#3ec48a"></i>#3ec48a</span>
+              <span class="sw"><i class="dot" style="background:#ec4a6e"></i>#ec4a6e</span>
+            </div>
+            <div class="dir-links">
+              <a class="dir-link primary" href="G-the-feed/01-landing.html">Feed <span class="arr">→</span></a>
+              <a class="dir-link" href="G-the-feed/02-market.html">Market detail <span class="arr">→</span></a>
+              <a class="dir-link" href="G-the-feed/03-create.html">Create market <span class="arr">→</span></a>
+            </div>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="shell">
+      <span class="section-kicker">The unasked questions</span>
+      <h2>What these proposals decide for you.</h2>
+      <p class="section-lede">Every decision left unmade becomes an inconsistency later. Here's what each direction commits to that the current product doesn't.</p>
+
+      <div class="asked">
+        <div>
+          <h4>Asked in your brief</h4>
+          <ul>
+            <li><span class="mark">&gt;</span> Typography system</li>
+            <li><span class="mark">&gt;</span> Color palette</li>
+            <li><span class="mark">&gt;</span> Layouts</li>
+            <li><span class="mark">&gt;</span> Navigation</li>
+          </ul>
+        </div>
+        <div>
+          <h4>Unasked — decided anyway</h4>
+          <ul>
+            <li class="new"><span class="mark">+</span> Information density mode (compact/default/roomy)</li>
+            <li class="new"><span class="mark">+</span> Empty-state voice and first-run feel</li>
+            <li class="new"><span class="mark">+</span> Motion language (how a new trade arrives)</li>
+            <li class="new"><span class="mark">+</span> Authorship surface (who owns a claim)</li>
+            <li class="new"><span class="mark">+</span> Linked-market relationships in the UI</li>
+            <li class="new"><span class="mark">+</span> Mobile treatment (compact vs. scroll)</li>
+            <li class="new"><span class="mark">+</span> Creation as a form vs. as an authoring tool</li>
+            <li class="new"><span class="mark">+</span> Trade confirmation voice and celebration budget</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="shell foot-row">
+      <span class="mono">Cascade · design review</span>
+      <span>Open any direction to see the three pages. Feedback welcome on each.</span>
+    </div>
+  </footer>
+</body>
+</html>

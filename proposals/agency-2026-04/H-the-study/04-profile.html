@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Study / Profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0a0a0b; --surface:#111113; --elev:#17171a; --border:#1e1e22; --border-strong:#2a2a30;
+    --text:#e8e8ec; --text-2:#a0a0a8; --text-3:#64646c; --text-4:#3e3e46;
+    --yes:#3ec48a; --yes-dim:rgba(62,196,138,.14); --no:#e85d7a; --no-dim:rgba(232,93,122,.14);
+    --serif:'Fraunces','Source Serif 4',Georgia,serif;
+    --tight:'Inter Tight','Inter',sans-serif;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; letter-spacing: -.01em; }
+  .tight { font-family: var(--tight); letter-spacing: -.02em; }
+  .serif { font-family: var(--serif); }
+
+  .app { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; }
+  @media (max-width: 880px) { .app { grid-template-columns: 1fr; } .rail { display: none; } }
+
+  /* --- Rail (shared) --- */
+  .rail { border-right: 1px solid var(--border); padding: 1.1rem 0 1.4rem; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 1.4rem; }
+  .rail-brand { padding: 0 1.2rem; display: flex; align-items: baseline; gap: .5rem; }
+  .rail-brand .mark { font-weight: 700; font-size: 1.05rem; letter-spacing: -.02em; color: var(--text); }
+  .rail-brand .ed { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); }
+  .rail-search { margin: 0 1.2rem; display: flex; align-items: center; gap: .5rem; height: 32px; padding: 0 .6rem; background: var(--surface); border: 1px solid var(--border); }
+  .rail-search svg { width: 13px; height: 13px; stroke: var(--text-3); fill: none; stroke-width: 1.7; }
+  .rail-search input { flex: 1; background: transparent; border: 0; color: var(--text); font-size: .82rem; outline: none; }
+  .rail-search .kbd { font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--text-3); letter-spacing: .08em; padding: .08rem .3rem; border: 1px solid var(--border-strong); }
+  .rail-group { display: flex; flex-direction: column; }
+  .rail-group h4 { margin: 0; padding: 0 1.2rem .35rem; font-family: 'JetBrains Mono', monospace; font-size: .62rem; letter-spacing: .16em; color: var(--text-3); text-transform: uppercase; font-weight: 500; }
+  .rail-item { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .32rem 1.2rem; color: var(--text-2); font-size: .88rem; }
+  .rail-item:hover { color: var(--text); background: var(--surface); }
+  .rail-item.active { color: var(--text); background: var(--surface); box-shadow: inset 2px 0 0 var(--yes); }
+  .rail-item .c { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); }
+  .rail-spacer { flex: 1; }
+  .rail-create { margin: 0 1rem; padding: .55rem .8rem; text-align: center; border: 1px solid var(--text-3); color: var(--text); font-size: .84rem; font-weight: 500; }
+  .rail-create:hover { border-color: var(--text); background: var(--surface); }
+  .rail-create .plus { color: var(--yes); font-family: 'JetBrains Mono', monospace; font-size: .92rem; }
+
+  /* --- Top bar --- */
+  .main-col { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { height: 54px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1.6rem; background: var(--bg); position: sticky; top: 0; z-index: 5; }
+  .crumbs { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .06em; display: flex; gap: .5rem; align-items: center; }
+  .crumbs a { color: var(--text-2); }
+  .crumbs .sep { color: var(--text-4); }
+  .crumbs .cur { color: var(--text); }
+  .top-right { display: flex; align-items: center; gap: .8rem; }
+  .pill { display: inline-flex; align-items: center; gap: .4rem; padding: .25rem .55rem; border: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: .68rem; letter-spacing: .1em; color: var(--text-2); }
+  .pill .d { width: .38rem; height: .38rem; background: var(--yes); display: inline-block; animation: pulse 1.9s infinite; }
+  .av-chip { width: 26px; height: 26px; border: 1px solid var(--border-strong); background: var(--surface); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-size: .7rem; }
+  .icon-btn { width: 32px; height: 32px; display: grid; place-items: center; color: var(--text-2); background: transparent; border: 0; cursor: pointer; }
+  .icon-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(62,196,138,.5)} 50%{box-shadow:0 0 0 5px rgba(62,196,138,0)} }
+
+  /* --- Body --- */
+  .body { display: grid; grid-template-columns: minmax(0, 1fr) 340px; min-height: calc(100vh - 54px); }
+  .content { padding: 2rem 2.4rem 3rem; min-width: 0; }
+  .context { border-left: 1px solid var(--border); padding: 2rem 1.3rem; display: flex; flex-direction: column; gap: 1.8rem; position: sticky; top: 54px; align-self: start; max-height: calc(100vh - 54px); overflow-y: auto; }
+  .context::-webkit-scrollbar { width: 6px; } .context::-webkit-scrollbar-thumb { background: var(--border); }
+  @media (max-width: 1180px) { .body { grid-template-columns: 1fr; } .context { border-left: 0; border-top: 1px solid var(--border); position: relative; top: 0; max-height: none; } }
+
+  /* --- Profile header --- */
+  .profile-head { padding-bottom: 1.8rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; display: grid; grid-template-columns: 112px 1fr auto; gap: 1.8rem; align-items: center; }
+  @media (max-width: 720px) { .profile-head { grid-template-columns: 72px 1fr; gap: 1rem; } .profile-head .actions { grid-column: 1 / -1; margin-top: .5rem; } }
+  .profile-av { width: 112px; height: 112px; border: 1px solid var(--border-strong); background: var(--surface); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-size: 2.6rem; font-weight: 600; color: var(--text); letter-spacing: -.04em; }
+  @media (max-width: 720px) { .profile-av { width: 72px; height: 72px; font-size: 1.8rem; } }
+  .profile-who h1 { margin: 0; font-family: var(--tight); font-size: clamp(1.6rem, 2.6vw, 2rem); font-weight: 600; letter-spacing: -.02em; }
+  .profile-who .handle { display: block; margin-top: .2rem; font-family: 'JetBrains Mono', monospace; font-size: .88rem; color: var(--text-3); letter-spacing: .02em; }
+  .profile-who .bio { margin-top: .8rem; font-family: var(--serif); font-style: italic; font-size: 1.12rem; line-height: 1.5; color: var(--text-2); max-width: 46ch; font-weight: 400; }
+  .profile-who .join { display: inline-flex; gap: 1rem; margin-top: 1rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .04em; }
+  .profile-who .join span em { color: var(--text-2); font-style: normal; }
+  .profile-actions { display: flex; gap: .5rem; }
+  .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .55rem .9rem; border: 1px solid var(--border-strong); background: transparent; color: var(--text); font-size: .86rem; font-weight: 500; cursor: pointer; font-family: 'Inter', sans-serif; }
+  .btn:hover { border-color: var(--text-3); background: var(--surface); }
+  .btn.primary { background: var(--text); color: #000; border-color: var(--text); }
+  .btn.primary:hover { background: #fff; }
+
+  /* --- Facts row --- */
+  .facts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--border); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
+  .facts .f { background: var(--bg); padding: 1rem 1.1rem; display: grid; gap: .25rem; }
+  .facts .f dt { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .14em; color: var(--text-3); text-transform: uppercase; }
+  .facts .f dd { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 1.08rem; color: var(--text); letter-spacing: -.01em; }
+  .facts .f dd.up { color: var(--yes); }
+  @media (max-width: 900px) { .facts { grid-template-columns: repeat(2, 1fr); } }
+
+  /* --- Tabs --- */
+  .tabs { display: flex; gap: 1.4rem; border-bottom: 1px solid var(--border); margin-bottom: 1.6rem; }
+  .tab { padding: .6rem 0; color: var(--text-3); font-size: .9rem; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab:hover { color: var(--text-2); }
+  .tab.on { color: var(--text); border-bottom-color: var(--text); }
+  .tab .c { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); margin-left: .3rem; }
+
+  /* --- Pinned claim (editorial) --- */
+  .pinned { padding: .3rem 0 2rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(260px, 1fr); gap: 2.4rem; align-items: start; }
+  @media (max-width: 900px) { .pinned { grid-template-columns: 1fr; gap: 1.4rem; } }
+  .pinned .meta { display: flex; align-items: center; gap: .8rem; font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 1rem; }
+  .pinned .meta .cat { color: var(--yes); letter-spacing: .2em; }
+  .pinned .meta .pinned-mark { color: var(--text); letter-spacing: .18em; }
+  .pinned h2 { margin: 0 0 1rem; font-family: var(--serif); font-weight: 500; font-size: clamp(1.8rem, 3vw, 2.4rem); line-height: 1.1; letter-spacing: -.02em; color: var(--text); max-width: 24ch; }
+  .pinned .lede { color: var(--text-2); font-size: 1rem; line-height: 1.65; max-width: 52ch; }
+  .pinned .lede em { color: var(--text); font-style: normal; font-weight: 500; }
+  .pinned .actions-inline { margin-top: 1rem; display: flex; gap: .5rem; flex-wrap: wrap; }
+  .pinned-m { display: flex; flex-direction: column; gap: .8rem; }
+  .pinned-m .price-now { display: flex; align-items: baseline; gap: 1rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+  .pinned-m .price-now .v { font-family: 'JetBrains Mono', monospace; font-size: 2.8rem; color: var(--yes); line-height: .9; letter-spacing: -.03em; font-weight: 500; }
+  .pinned-m .price-now .tilt { font-family: 'JetBrains Mono', monospace; font-size: .78rem; color: var(--yes); letter-spacing: .06em; }
+  .pinned-m .chart { height: 72px; }
+  .pinned-m .chart svg { width: 100%; height: 100%; }
+  .pinned-m .chart .line { fill: none; stroke: var(--yes); stroke-width: 1.5; }
+  .pinned-m .chart .area { fill: var(--yes); opacity: .07; }
+  .pinned-m .chart .now { fill: var(--yes); stroke: var(--bg); stroke-width: 2; }
+  .pinned-m .facts-s { display: grid; gap: .3rem; font-family: 'JetBrains Mono', monospace; font-size: .78rem; border-top: 1px solid var(--border); padding-top: .8rem; }
+  .pinned-m .facts-s .r { display: flex; justify-content: space-between; }
+  .pinned-m .facts-s .r dt { color: var(--text-3); }
+  .pinned-m .facts-s .r dd { margin: 0; color: var(--text); }
+
+  /* --- Authored claim list grouped by category --- */
+  .group { padding: 1.4rem 0; border-bottom: 1px solid var(--border); }
+  .group:last-of-type { border-bottom: 0; }
+  .group .gh { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: .9rem; gap: 1rem; }
+  .group .gh h3 { margin: 0; font-family: var(--tight); font-size: 1.05rem; font-weight: 600; letter-spacing: -.015em; display: inline-flex; align-items: center; gap: .7rem; }
+  .group .gh h3 .ct { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .04em; font-weight: 400; }
+  .group .gh .performance { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .04em; }
+  .group .gh .performance strong { color: var(--text); font-weight: 500; }
+  .claim-list { display: grid; }
+  .claim-row { display: grid; grid-template-columns: minmax(0, 1fr) 64px 120px 70px 80px; gap: 1rem; align-items: center; padding: .7rem 0; border-bottom: 1px solid var(--border); }
+  .claim-row:last-child { border-bottom: 0; }
+  .claim-row:hover { background: var(--surface); }
+  .claim-row .t-wrap { min-width: 0; display: grid; gap: .15rem; }
+  .claim-row .t { font-family: var(--serif); font-size: 1.02rem; line-height: 1.25; letter-spacing: -.005em; color: var(--text); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .claim-row .t-sub { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .04em; }
+  .claim-row .t-sub .seed { color: var(--yes); margin-right: .4rem; }
+  .claim-row .t-sub .seed.n { color: var(--no); }
+  .claim-row .p { font-family: 'JetBrains Mono', monospace; font-size: 1rem; text-align: right; }
+  .claim-row .p.yes { color: var(--yes); } .claim-row .p.no { color: var(--no); }
+  .claim-row .spark { height: 22px; }
+  .claim-row .drift { font-family: 'JetBrains Mono', monospace; font-size: .78rem; text-align: right; }
+  .claim-row .drift.up { color: var(--yes); } .claim-row .drift.down { color: var(--no); } .claim-row .drift.flat { color: var(--text-3); }
+  .claim-row .vol { font-family: 'JetBrains Mono', monospace; font-size: .78rem; text-align: right; color: var(--text-2); }
+  @media (max-width: 720px) { .claim-row { grid-template-columns: minmax(0, 1fr) auto; } .claim-row .spark, .claim-row .drift, .claim-row .vol { display: none; } }
+
+  /* --- Context rail: record, positions, coverage --- */
+  .ctx-block { display: grid; gap: .6rem; }
+  .ctx-block h4 { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .14em; color: var(--text-3); text-transform: uppercase; font-weight: 500; padding-bottom: .5rem; border-bottom: 1px solid var(--border); }
+
+  /* Record — simple stacked bar "since joining" */
+  .record { display: grid; gap: .55rem; padding: .3rem 0; }
+  .record .line { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: baseline; }
+  .record .line dt { font-size: .82rem; color: var(--text-2); }
+  .record .line dd { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: .92rem; color: var(--text); }
+  .record-bar { height: 10px; width: 100%; background: var(--elev); position: relative; border: 1px solid var(--border); overflow: hidden; }
+  .record-bar .b { position: absolute; top: 0; bottom: 0; }
+  .record-bar .drift-up { left: 0; width: 65%; background: var(--yes); opacity: .6; }
+  .record-bar .drift-flat { left: 65%; width: 21%; background: var(--text-3); opacity: .4; }
+  .record-bar .drift-down { right: 0; width: 14%; background: var(--no); opacity: .6; }
+  .record-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; font-family: 'JetBrains Mono', monospace; font-size: .64rem; color: var(--text-3); letter-spacing: .06em; }
+  .record-legend .l { display: flex; align-items: center; gap: .35rem; }
+  .record-legend .sq { width: .6rem; height: .6rem; }
+  .record-legend .sq.u { background: var(--yes); opacity: .7; }
+  .record-legend .sq.f { background: var(--text-3); opacity: .5; }
+  .record-legend .sq.d { background: var(--no); opacity: .7; }
+
+  /* Coverage — categories they write in, with frequency */
+  .cov { display: grid; gap: .3rem; }
+  .cov-row { display: grid; grid-template-columns: 1fr auto auto; gap: .8rem; padding: .3rem 0; border-bottom: 1px solid var(--border); align-items: center; font-size: .84rem; }
+  .cov-row:last-child { border-bottom: 0; }
+  .cov-row .n { color: var(--text); }
+  .cov-row .c { font-family: 'JetBrains Mono', monospace; color: var(--text-2); font-size: .76rem; }
+  .cov-row .bar { height: 3px; width: 60px; background: var(--elev); position: relative; border: 1px solid var(--border); }
+  .cov-row .bar .fill { position: absolute; top: 0; left: 0; bottom: 0; background: var(--yes); opacity: .7; }
+
+  /* Open positions — what they're holding now */
+  .pos { display: grid; grid-template-columns: auto 1fr auto; gap: .7rem; padding: .55rem 0; border-bottom: 1px solid var(--border); align-items: center; }
+  .pos:last-child { border-bottom: 0; }
+  .pos .side { font-family: 'JetBrains Mono', monospace; font-size: .66rem; padding: .15rem .38rem; border: 1px solid var(--border-strong); letter-spacing: .1em; }
+  .pos .side.y { color: var(--yes); border-color: var(--yes); }
+  .pos .side.n { color: var(--no); border-color: var(--no); }
+  .pos .t { font-family: var(--serif); font-size: .95rem; line-height: 1.25; color: var(--text); letter-spacing: -.005em; }
+  .pos .sub { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); margin-top: .1rem; }
+  .pos .sz { font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: var(--text-2); }
+
+  /* Followers mini */
+  .followers { display: flex; align-items: center; gap: .4rem; padding: .3rem 0; }
+  .followers .stack { display: flex; }
+  .followers .stack .av-s { width: 22px; height: 22px; border-radius: 999px; background: var(--surface); border: 1px solid var(--bg); box-shadow: 0 0 0 1px var(--border-strong); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-size: .56rem; font-weight: 600; color: var(--text); margin-left: -.35rem; }
+  .followers .stack .av-s:first-child { margin-left: 0; }
+  .followers .count { font-family: 'JetBrains Mono', monospace; font-size: .78rem; color: var(--text-2); margin-left: .4rem; }
+  .followers .count strong { color: var(--text); font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Rail -->
+    <aside class="rail">
+      <div class="rail-brand"><span class="mark">Cascade</span><span class="ed">Practice</span></div>
+      <label class="rail-search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+        <input placeholder="Search claims, authors…" />
+        <span class="kbd">⌘K</span>
+      </label>
+      <div class="rail-group">
+        <h4>You</h4>
+        <a class="rail-item" href="01-landing.html"><span>Home</span></a>
+        <a class="rail-item" href="#"><span>Watchlist</span><span class="c">14</span></a>
+        <a class="rail-item" href="#"><span>Portfolio</span><span class="c">12</span></a>
+        <a class="rail-item" href="#"><span>Activity</span></a>
+      </div>
+      <div class="rail-group">
+        <h4>Categories</h4>
+        <a class="rail-item" href="#"><span>Geopolitics</span><span class="c">42</span></a>
+        <a class="rail-item" href="#"><span>Macro</span><span class="c">38</span></a>
+        <a class="rail-item" href="#"><span>AI</span><span class="c">29</span></a>
+        <a class="rail-item" href="#"><span>Crypto</span><span class="c">24</span></a>
+        <a class="rail-item" href="#"><span>Tech</span><span class="c">21</span></a>
+        <a class="rail-item" href="#"><span>Sports</span><span class="c">18</span></a>
+        <a class="rail-item" href="#"><span>Culture</span><span class="c">12</span></a>
+        <a class="rail-item" href="#"><span>Policy</span><span class="c">9</span></a>
+        <a class="rail-item" href="#"><span>Nostr</span><span class="c">7</span></a>
+      </div>
+      <div class="rail-spacer"></div>
+      <a class="rail-create" href="03-create.html"><span class="plus">+</span> Write a claim</a>
+    </aside>
+
+    <!-- Main -->
+    <div class="main-col">
+      <header class="topbar">
+        <div class="crumbs">
+          <a href="01-landing.html">Home</a><span class="sep">/</span>
+          <a href="#">Authors</a><span class="sep">/</span>
+          <span class="cur">@north</span>
+        </div>
+        <div class="top-right">
+          <button class="icon-btn" title="Share profile"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 11l8-4M8 13l8 4"/></svg></button>
+          <span class="pill"><i class="d"></i> Live</span>
+          <span class="av-chip mono">pf</span>
+        </div>
+      </header>
+
+      <div class="body">
+        <main class="content">
+
+          <!-- Profile head -->
+          <section class="profile-head">
+            <div class="profile-av">N</div>
+            <div class="profile-who">
+              <h1 class="tight">Nina Ortega</h1>
+              <span class="handle mono">@north · writes in AI, Tech, Macro</span>
+              <p class="bio serif">Writes about corporate timing. Publishes usually before the market expects, holds through the chop. Right roughly six times in ten — never eight.</p>
+              <div class="join">
+                <span>Joined <em>March 2024</em></span>
+                <span>48 claims authored</span>
+                <span>847 followers</span>
+                <span>Follows 32</span>
+              </div>
+            </div>
+            <div class="profile-actions">
+              <button class="btn">Message</button>
+              <button class="btn primary">+ Follow</button>
+            </div>
+          </section>
+
+          <!-- Public record: facts -->
+          <dl class="facts">
+            <div class="f"><dt>Claims authored</dt><dd>48</dd></div>
+            <div class="f"><dt>Drifting toward seed side</dt><dd class="up">31 · 65%</dd></div>
+            <div class="f"><dt>Open conviction</dt><dd>$12,400</dd></div>
+            <div class="f"><dt>Lifetime volume</dt><dd>$218K</dd></div>
+            <div class="f"><dt>First published</dt><dd>14 Mar 2024</dd></div>
+          </dl>
+
+          <!-- Tabs -->
+          <nav class="tabs" role="tablist">
+            <a class="tab on" href="#" role="tab" aria-selected="true">Authored<span class="c">48</span></a>
+            <a class="tab" href="#" role="tab">Open positions<span class="c">29</span></a>
+            <a class="tab" href="#" role="tab">Replies<span class="c">214</span></a>
+            <a class="tab" href="#" role="tab">Followed by<span class="c">847</span></a>
+          </nav>
+
+          <!-- Pinned / featured claim -->
+          <article class="pinned">
+            <div>
+              <div class="meta">
+                <span class="cat">AI</span>
+                <span>·</span>
+                <span class="pinned-mark">Pinned by author</span>
+              </div>
+              <h2 class="serif">OpenAI will ship GPT-5 before Google ships Gemini 2 Pro.</h2>
+              <p class="lede">
+                <em>The crowd agreed with the thesis slowly, then all at once.</em> Opened at 61¢ five weeks ago with a $500 seed; drifted higher in 11 of 24 weekdays since. The market and the author are in rare alignment — which is usually a sign one of them is wrong.
+              </p>
+              <div class="actions-inline">
+                <a class="btn primary" href="02-market.html">Read the case <span style="color:#444">→</span></a>
+                <a class="btn" href="02-market.html">Back YES · 71¢</a>
+              </div>
+            </div>
+
+            <aside class="pinned-m">
+              <div class="price-now">
+                <span class="v">71¢</span>
+                <span class="tilt">YES · +10¢ since seed</span>
+              </div>
+              <div class="chart">
+                <svg viewBox="0 0 300 72" preserveAspectRatio="none">
+                  <path class="area" d="M0,52 L30,50 L60,46 L90,40 L120,42 L150,34 L180,30 L210,24 L240,26 L270,18 L300,10 L300,72 L0,72 Z"/>
+                  <polyline class="line" points="0,52 30,50 60,46 90,40 120,42 150,34 180,30 210,24 240,26 270,18 300,10"/>
+                  <circle class="now" cx="300" cy="10" r="3.5"/>
+                </svg>
+              </div>
+              <dl class="facts-s">
+                <div class="r"><dt>Seed price</dt><dd>61¢ · YES</dd></div>
+                <div class="r"><dt>Current price</dt><dd>71¢ · +10¢</dd></div>
+                <div class="r"><dt>Lifetime volume</dt><dd>$182,400</dd></div>
+                <div class="r"><dt>Author's position</dt><dd>$2,400 YES</dd></div>
+              </dl>
+            </aside>
+          </article>
+
+          <!-- Authored, grouped by category -->
+          <section class="group">
+            <div class="gh">
+              <h3 class="tight">AI <span class="ct">· 14 claims</span></h3>
+              <span class="performance"><strong>9 drifting toward seed</strong> · 3 flat · 2 against</span>
+            </div>
+            <div class="claim-list">
+              <a class="claim-row" href="02-market.html">
+                <div class="t-wrap"><span class="t">OpenAI ships GPT-5 before Gemini 2 Pro.</span><span class="t-sub"><span class="seed">SEED $500 · YES @ 61¢</span>· 14 Mar 2026</span></div>
+                <span class="p yes">71¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,17 15,16 30,14 45,12 60,13 75,10 90,8 105,6 120,4"/></svg>
+                <span class="drift up">+10¢</span>
+                <span class="vol">$182K</span>
+              </a>
+              <a class="claim-row" href="#">
+                <div class="t-wrap"><span class="t">A frontier model clears 90% on a public agent benchmark in 2026.</span><span class="t-sub"><span class="seed">SEED $300 · YES @ 48¢</span>· 2 Feb 2026</span></div>
+                <span class="p yes">56¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,14 15,13 30,13 45,12 60,11 75,12 90,10 105,9 120,10"/></svg>
+                <span class="drift up">+8¢</span>
+                <span class="vol">$46K</span>
+              </a>
+              <a class="claim-row" href="#">
+                <div class="t-wrap"><span class="t">Anthropic ships Claude 5 before end-2026.</span><span class="t-sub"><span class="seed">SEED $250 · YES @ 50¢</span>· 18 Jan 2026</span></div>
+                <span class="p yes">54¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,12 15,11 30,11 45,12 60,10 75,11 90,10 105,11 120,10"/></svg>
+                <span class="drift up">+4¢</span>
+                <span class="vol">$38K</span>
+              </a>
+              <a class="claim-row" href="#">
+                <div class="t-wrap"><span class="t">A US state passes an AI liability statute before year-end.</span><span class="t-sub"><span class="seed n">SEED $200 · NO @ 68¢</span>· 4 Dec 2025</span></div>
+                <span class="p yes">62¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,10 15,11 30,10 45,11 60,9 75,8 90,9 105,8 120,7"/></svg>
+                <span class="drift up">+6¢ vs seed</span>
+                <span class="vol">$12K</span>
+              </a>
+              <a class="claim-row" href="#">
+                <div class="t-wrap"><span class="t">OpenAI releases an open-weights model in 2026.</span><span class="t-sub"><span class="seed n">SEED $150 · NO @ 82¢</span>· 21 Oct 2025</span></div>
+                <span class="p no">81¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#e85d7a" stroke-width="1.4" points="0,5 15,6 30,7 45,7 60,8 75,7 90,8 105,7 120,6"/></svg>
+                <span class="drift flat">+0¢</span>
+                <span class="vol">$22K</span>
+              </a>
+            </div>
+          </section>
+
+          <section class="group">
+            <div class="gh">
+              <h3 class="tight">Tech <span class="ct">· 11 claims</span></h3>
+              <span class="performance"><strong>7 drifting toward seed</strong> · 2 flat · 2 against</span>
+            </div>
+            <div class="claim-list">
+              <a class="claim-row" href="#">
+                <div class="t-wrap"><span class="t">Apple ships AI-first glasses before Meta's next Ray-Ban.</span><span class="t-sub"><span class="seed">SEED $300 · YES @ 42¢</span>· 22 Feb 2026</span></div>
+                <span class="p yes">49¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,14 15,13 30,13 45,12 60,12 75,11 90,11 105,10 120,11"/></svg>
+                <span class="drift up">+7¢</span>
+                <span class="vol">$58K</span>
+              </a>
+              <a class="claim-row" href="#">
+                <div class="t-wrap"><span class="t">Nvidia stays above $4T market cap at end-2026.</span><span class="t-sub"><span class="seed">SEED $400 · YES @ 44¢</span>· 6 Jan 2026</span></div>
+                <span class="p yes">51¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,13 15,12 30,13 45,12 60,13 75,11 90,12 105,12 120,11"/></svg>
+                <span class="drift up">+7¢</span>
+                <span class="vol">$74K</span>
+              </a>
+              <a class="claim-row" href="#">
+                <div class="t-wrap"><span class="t">Tesla's robotaxi network reaches 100,000 active vehicles.</span><span class="t-sub"><span class="seed n">SEED $100 · NO @ 22¢</span>· 4 Apr 2026</span></div>
+                <span class="p no">18¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#e85d7a" stroke-width="1.4" points="0,16 15,17 30,18 45,18 60,19 75,19 90,20 105,20 120,21"/></svg>
+                <span class="drift up">+4¢ vs seed</span>
+                <span class="vol">$780</span>
+              </a>
+              <a class="claim-row" href="#">
+                <div class="t-wrap"><span class="t">A major US carrier deploys lunar comms before Starlink Direct does.</span><span class="t-sub"><span class="seed n">SEED $80 · NO @ 72¢</span>· 2 Feb 2026</span></div>
+                <span class="p no">74¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#e85d7a" stroke-width="1.4" points="0,6 15,6 30,7 45,7 60,6 75,7 90,6 105,7 120,6"/></svg>
+                <span class="drift flat">+2¢ vs seed</span>
+                <span class="vol">$4.2K</span>
+              </a>
+            </div>
+          </section>
+
+          <section class="group">
+            <div class="gh">
+              <h3 class="tight">Macro <span class="ct">· 8 claims</span></h3>
+              <span class="performance"><strong>5 drifting toward seed</strong> · 2 flat · 1 against</span>
+            </div>
+            <div class="claim-list">
+              <a class="claim-row" href="#">
+                <div class="t-wrap"><span class="t">The S&amp;P 500 closes above 7,000 at any point in H1 2026.</span><span class="t-sub"><span class="seed">SEED $500 · YES @ 51¢</span>· 12 Dec 2025</span></div>
+                <span class="p yes">58¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,11 15,12 30,11 45,13 60,11 75,14 90,10 105,8 120,9"/></svg>
+                <span class="drift up">+7¢</span>
+                <span class="vol">$36K</span>
+              </a>
+              <a class="claim-row" href="#">
+                <div class="t-wrap"><span class="t">Long-end US yields close below 3.5% in any month of 2026.</span><span class="t-sub"><span class="seed">SEED $200 · YES @ 38¢</span>· 28 Nov 2025</span></div>
+                <span class="p yes">47¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,16 15,15 30,14 45,13 60,12 75,13 90,11 105,10 120,11"/></svg>
+                <span class="drift up">+9¢</span>
+                <span class="vol">$14K</span>
+              </a>
+              <a class="claim-row" href="#">
+                <div class="t-wrap"><span class="t">A recession is called by NBER for a period covering any 2026 month.</span><span class="t-sub"><span class="seed n">SEED $150 · NO @ 28¢</span>· 18 Oct 2025</span></div>
+                <span class="p no">33¢</span>
+                <svg class="spark" viewBox="0 0 120 22" preserveAspectRatio="none"><polyline fill="none" stroke="#e85d7a" stroke-width="1.4" points="0,10 15,9 30,11 45,10 60,12 75,11 90,12 105,13 120,13"/></svg>
+                <span class="drift down">−5¢ vs seed</span>
+                <span class="vol">$3.4K</span>
+              </a>
+            </div>
+          </section>
+
+        </main>
+
+        <!-- Context rail: record, coverage, open positions, followers -->
+        <aside class="context">
+
+          <div class="ctx-block">
+            <h4>Public record · 48 claims since Mar 2024</h4>
+            <dl class="record">
+              <div class="line"><dt>Claims drifting toward seed side</dt><dd>31 · 65%</dd></div>
+              <div class="line"><dt>Claims held flat (±2¢)</dt><dd>10 · 21%</dd></div>
+              <div class="line"><dt>Claims drifting against seed side</dt><dd>7 · 14%</dd></div>
+            </dl>
+            <div class="record-bar">
+              <span class="b drift-up"></span><span class="b drift-flat"></span><span class="b drift-down"></span>
+            </div>
+            <div class="record-legend">
+              <span class="l"><span class="sq u"></span> Drifted toward</span>
+              <span class="l"><span class="sq f"></span> Flat</span>
+              <span class="l"><span class="sq d"></span> Drifted against</span>
+            </div>
+          </div>
+
+          <div class="ctx-block">
+            <h4>Coverage · where she writes</h4>
+            <div class="cov">
+              <div class="cov-row"><span class="n">AI</span><span class="bar"><span class="fill" style="width: 100%"></span></span><span class="c">14</span></div>
+              <div class="cov-row"><span class="n">Tech</span><span class="bar"><span class="fill" style="width: 78%"></span></span><span class="c">11</span></div>
+              <div class="cov-row"><span class="n">Macro</span><span class="bar"><span class="fill" style="width: 57%"></span></span><span class="c">8</span></div>
+              <div class="cov-row"><span class="n">Crypto</span><span class="bar"><span class="fill" style="width: 43%"></span></span><span class="c">6</span></div>
+              <div class="cov-row"><span class="n">Policy</span><span class="bar"><span class="fill" style="width: 36%"></span></span><span class="c">5</span></div>
+              <div class="cov-row"><span class="n">Culture</span><span class="bar"><span class="fill" style="width: 28%"></span></span><span class="c">4</span></div>
+            </div>
+          </div>
+
+          <div class="ctx-block">
+            <h4>Open positions · public</h4>
+            <div class="pos">
+              <span class="side y">YES</span>
+              <div><div class="t serif">OpenAI ships GPT-5 first.</div><div class="sub">$2,400 · avg 62¢</div></div>
+              <span class="sz">+$432</span>
+            </div>
+            <div class="pos">
+              <span class="side y">YES</span>
+              <div><div class="t serif">S&amp;P above 7,000 in H1.</div><div class="sub">$500 · avg 51¢</div></div>
+              <span class="sz">+$70</span>
+            </div>
+            <div class="pos">
+              <span class="side n">NO</span>
+              <div><div class="t serif">OpenAI open-weights model.</div><div class="sub">$150 · avg 82¢</div></div>
+              <span class="sz">flat</span>
+            </div>
+            <div class="pos">
+              <span class="side y">YES</span>
+              <div><div class="t serif">AI state liability statute.</div><div class="sub">$200 · avg 58¢</div></div>
+              <span class="sz">+$12</span>
+            </div>
+            <a href="#" style="font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .1em; text-transform: uppercase; padding-top: .6rem; border-top: 1px solid var(--border);">See all 29 positions →</a>
+          </div>
+
+          <div class="ctx-block">
+            <h4>Followed by 847 · including</h4>
+            <div class="followers">
+              <div class="stack">
+                <span class="av-s mono">J</span><span class="av-s mono">G</span><span class="av-s mono">A</span><span class="av-s mono">T</span><span class="av-s mono">M</span>
+              </div>
+              <span class="count"><strong>@jules</strong>, <strong>@greta</strong>, <strong>@arca</strong> and 844 others</span>
+            </div>
+            <a href="#" style="font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .1em; text-transform: uppercase; padding-top: .6rem; border-top: 1px solid var(--border);">Browse followers →</a>
+          </div>
+
+        </aside>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

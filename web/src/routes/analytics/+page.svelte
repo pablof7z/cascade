@@ -99,50 +99,37 @@
   const uniqueAuthors = $derived(new Set([...markets.map((market) => market.pubkey), ...discussions.map((discussion) => discussion?.pubkey)]).size);
 </script>
 
-<section class="analytics-header">
-  <div class="analytics-copy">
-    <div class="analytics-kicker">Analytics</div>
-    <h1>Market activity</h1>
-    <p>Trades, markets, and debate — everything happening across Cascade.</p>
-  </div>
-</section>
+<div class="grid gap-4 max-w-[36rem] pt-4">
+  <div class="eyebrow">Analytics</div>
+  <h1 class="text-[clamp(2.4rem,4vw,4rem)] tracking-[-0.05em] leading-none">Market activity</h1>
+  <p class="text-base-content/70 leading-[1.75]">Trades, markets, and debate — everything happening across Cascade.</p>
+</div>
 
-<section class="analytics-stats">
-  <div>
-    <span>Markets</span>
-    <strong>{markets.length}</strong>
-  </div>
-  <div>
-    <span>Trades</span>
-    <strong>{trades.length}</strong>
-  </div>
-  <div>
-    <span>Discussion Opens</span>
-    <strong>{discussions.length}</strong>
-  </div>
-  <div>
-    <span>Volume</span>
-    <strong>{formatProductAmount(visibleVolume, 'usd')}</strong>
-  </div>
-  <div>
-    <span>Active Markets</span>
-    <strong>{activeMarketCount}</strong>
-  </div>
-  <div>
-    <span>Active users</span>
-    <strong>{uniqueAuthors}</strong>
-  </div>
-</section>
+<div class="grid grid-cols-2 gap-4 pt-8 sm:grid-cols-3 lg:grid-cols-6">
+  {#each [
+    { label: 'Markets', value: String(markets.length) },
+    { label: 'Trades', value: String(trades.length) },
+    { label: 'Discussion Opens', value: String(discussions.length) },
+    { label: 'Volume', value: formatProductAmount(visibleVolume, 'usd') },
+    { label: 'Active Markets', value: String(activeMarketCount) },
+    { label: 'Active users', value: String(uniqueAuthors) },
+  ] as stat}
+    <div class="grid gap-1 py-4 border-t border-base-300">
+      <span class="eyebrow">{stat.label}</span>
+      <strong class="text-white font-mono">{stat.value}</strong>
+    </div>
+  {/each}
+</div>
 
-<section class="analytics-grid">
-  <article class="analytics-panel">
-    <div class="panel-header">
-      <h2>Most active markets</h2>
-      <span>Volume</span>
+<div class="grid gap-10 pt-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+  <article class="grid gap-4">
+    <div class="flex items-baseline justify-between gap-4">
+      <h2 class="text-[1.18rem] tracking-[-0.03em]">Most active markets</h2>
+      <span class="text-base-content/50 text-sm">Volume</span>
     </div>
 
-    <div class="analytics-table">
-      <div class="analytics-head">
+    <div class="border-t border-base-300">
+      <div class="hidden sm:grid grid-cols-[minmax(0,2fr)_0.75fr_0.8fr_0.7fr] items-center gap-4 py-4 eyebrow">
         <div>Market</div>
         <div>Volume</div>
         <div>Price</div>
@@ -151,242 +138,62 @@
 
       {#if marketRows.length > 0}
         {#each marketRows as row (row.market.id)}
-          <a class="analytics-row" href="/market/{row.market.slug}">
-            <div class="market-cell">
-              <strong>{sanitizeMarketCopy(row.market.title)}</strong>
-              <p>{formatRelativeTime(row.market.createdAt)}</p>
+          <a class="grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_0.75fr_0.8fr_0.7fr] items-center gap-4 border-t border-base-300 py-4 hover:bg-base-300/30" href="/market/{row.market.slug}">
+            <div>
+              <strong class="text-white">{sanitizeMarketCopy(row.market.title)}</strong>
+              <p class="mt-1 text-base-content/50 text-sm leading-[1.6]">{formatRelativeTime(row.market.createdAt)}</p>
             </div>
-            <div class="mono-cell">{formatProductAmount(row.summary.grossVolume, 'usd')}</div>
-            <div class="mono-cell">{formatProbability(row.summary.latestPricePpm ? row.summary.latestPricePpm / 1_000_000 : null)}</div>
-            <div class="mono-cell">{row.discussionCount}</div>
+            <div class="text-white font-mono text-sm">{formatProductAmount(row.summary.grossVolume, 'usd')}</div>
+            <div class="text-white font-mono text-sm">{formatProbability(row.summary.latestPricePpm ? row.summary.latestPricePpm / 1_000_000 : null)}</div>
+            <div class="text-white font-mono text-sm">{row.discussionCount}</div>
           </a>
         {/each}
       {:else}
-        <div class="analytics-empty">No market activity yet.</div>
+        <div class="py-4 text-base-content/70">No market activity yet.</div>
       {/if}
     </div>
   </article>
 
-  <article class="analytics-panel">
-    <div class="panel-header">
-      <h2>Category distribution</h2>
-      <span>Market count</span>
+  <article class="grid gap-4">
+    <div class="flex items-baseline justify-between gap-4">
+      <h2 class="text-[1.18rem] tracking-[-0.03em]">Category distribution</h2>
+      <span class="text-base-content/50 text-sm">Market count</span>
     </div>
 
-    <div class="stack-list">
+    <div class="divide-y divide-base-300 border-t border-base-300">
       {#if categoryRows.length > 0}
         {#each categoryRows as row}
-          <div class="stack-row">
-            <div>
-              <strong>{row.name}</strong>
-              <p>{row.markets} markets · {row.trades} trades</p>
-            </div>
+          <div class="py-4">
+            <strong class="text-white">{row.name}</strong>
+            <p class="mt-1 text-base-content/50 text-sm leading-[1.6]">{row.markets} markets · {row.trades} trades</p>
           </div>
         {/each}
       {:else}
-        <div class="analytics-empty">No categories yet.</div>
+        <div class="py-4 text-base-content/70">No categories yet.</div>
       {/if}
     </div>
   </article>
-</section>
+</div>
 
-<section class="analytics-panel analytics-panel-wide">
-  <div class="panel-header">
-    <h2>Recent activity</h2>
-    <span>Generated now</span>
+<article class="grid gap-4 pt-8">
+  <div class="flex items-baseline justify-between gap-4">
+    <h2 class="text-[1.18rem] tracking-[-0.03em]">Recent activity</h2>
+    <span class="text-base-content/50 text-sm">Generated now</span>
   </div>
 
-  <div class="stack-list">
+  <div class="divide-y divide-base-300 border-t border-base-300">
     {#if activityRows.length > 0}
       {#each activityRows as row (row.id)}
-        <div class="stack-row stack-row-wide">
+        <div class="flex items-start justify-between gap-4 py-4">
           <div>
-            <span class="event-kind">{row.kind}</span>
-            <strong>{row.detail}</strong>
+            <span class="eyebrow">{row.kind}</span>
+            <strong class="text-white block mt-1">{row.detail}</strong>
           </div>
-          <span class="mono-cell">{formatRelativeTime(row.createdAt)}</span>
+          <span class="text-white font-mono text-sm shrink-0">{formatRelativeTime(row.createdAt)}</span>
         </div>
       {/each}
     {:else}
-      <div class="analytics-empty">No network events yet.</div>
+      <div class="py-4 text-base-content/70">No network events yet.</div>
     {/if}
   </div>
-</section>
-
-<style>
-  .analytics-header {
-    padding-top: 1rem;
-  }
-
-  .analytics-copy {
-    display: grid;
-    gap: 0.9rem;
-    max-width: 36rem;
-  }
-
-  .analytics-kicker,
-  .event-kind {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .analytics-copy h1 {
-    font-size: clamp(2.4rem, 4vw, 4rem);
-    letter-spacing: -0.05em;
-    line-height: 1;
-  }
-
-  .analytics-copy p {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    line-height: 1.75;
-  }
-
-  .analytics-stats {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 1rem;
-    padding-top: 2rem;
-  }
-
-  .analytics-stats div {
-    display: grid;
-    gap: 0.35rem;
-    padding: 1rem 0;
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .analytics-stats span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.76rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .analytics-stats strong {
-    color: white;
-    font-family: var(--font-mono);
-    font-size: 1rem;
-  }
-
-  .analytics-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-    gap: 2.5rem;
-    padding-top: 2rem;
-  }
-
-  .analytics-panel {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .analytics-panel-wide {
-    padding-top: 2rem;
-  }
-
-  .panel-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .panel-header h2 {
-    font-size: 1.18rem;
-    letter-spacing: -0.03em;
-  }
-
-  .panel-header span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.78rem;
-  }
-
-  .analytics-table,
-  .stack-list {
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .analytics-head,
-  .analytics-row {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) 0.75fr 0.8fr 0.7fr;
-    gap: 1rem;
-    align-items: center;
-  }
-
-  .analytics-head {
-    padding: 0.9rem 0;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .analytics-row,
-  .stack-row {
-    padding: 1rem 0;
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .market-cell strong,
-  .stack-row strong {
-    color: white;
-    font-size: 1rem;
-  }
-
-  .market-cell p,
-  .stack-row p {
-    margin-top: 0.25rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.82rem;
-    line-height: 1.6;
-  }
-
-  .mono-cell {
-    color: white;
-    font-family: var(--font-mono);
-    font-size: 0.84rem;
-  }
-
-  .stack-row-wide {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .analytics-empty {
-    padding: 1rem 0;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  @media (max-width: 1100px) {
-    .analytics-stats {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .analytics-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: 760px) {
-    .analytics-stats,
-    .analytics-head,
-    .analytics-row {
-      grid-template-columns: 1fr;
-    }
-
-    .analytics-head {
-      display: none;
-    }
-
-    .stack-row-wide {
-      flex-direction: column;
-    }
-  }
-</style>
+</article>

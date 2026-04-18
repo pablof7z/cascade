@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Study / Discussion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0a0a0b; --surface:#111113; --elev:#17171a; --border:#1e1e22; --border-strong:#2a2a30;
+    --text:#e8e8ec; --text-2:#a0a0a8; --text-3:#64646c; --text-4:#3e3e46;
+    --yes:#3ec48a; --yes-dim:rgba(62,196,138,.14); --yes-bar:rgba(62,196,138,.45);
+    --no:#e85d7a; --no-dim:rgba(232,93,122,.14); --no-bar:rgba(232,93,122,.45);
+    --serif:'Fraunces','Source Serif 4',Georgia,serif;
+    --tight:'Inter Tight','Inter',sans-serif;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; letter-spacing: -.01em; }
+  .tight { font-family: var(--tight); letter-spacing: -.02em; }
+  .serif { font-family: var(--serif); }
+
+  .app { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; }
+  @media (max-width: 880px) { .app { grid-template-columns: 1fr; } .rail { display: none; } }
+
+  /* --- Rail --- */
+  .rail { border-right: 1px solid var(--border); padding: 1.1rem 0 1.4rem; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 1.4rem; }
+  .rail-brand { padding: 0 1.2rem; display: flex; align-items: baseline; gap: .5rem; }
+  .rail-brand .mark { font-weight: 700; font-size: 1.05rem; letter-spacing: -.02em; color: var(--text); }
+  .rail-brand .ed { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); }
+  .rail-search { margin: 0 1.2rem; display: flex; align-items: center; gap: .5rem; height: 32px; padding: 0 .6rem; background: var(--surface); border: 1px solid var(--border); }
+  .rail-search svg { width: 13px; height: 13px; stroke: var(--text-3); fill: none; stroke-width: 1.7; }
+  .rail-search input { flex: 1; background: transparent; border: 0; color: var(--text); font-size: .82rem; outline: none; }
+  .rail-search .kbd { font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--text-3); letter-spacing: .08em; padding: .08rem .3rem; border: 1px solid var(--border-strong); }
+  .rail-group { display: flex; flex-direction: column; }
+  .rail-group h4 { margin: 0; padding: 0 1.2rem .35rem; font-family: 'JetBrains Mono', monospace; font-size: .62rem; letter-spacing: .16em; color: var(--text-3); text-transform: uppercase; font-weight: 500; }
+  .rail-item { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .32rem 1.2rem; color: var(--text-2); font-size: .88rem; }
+  .rail-item:hover { color: var(--text); background: var(--surface); }
+  .rail-item.active { color: var(--text); background: var(--surface); box-shadow: inset 2px 0 0 var(--yes); }
+  .rail-item .c { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); }
+  .rail-spacer { flex: 1; }
+  .rail-create { margin: 0 1rem; padding: .55rem .8rem; text-align: center; border: 1px solid var(--text-3); color: var(--text); font-size: .84rem; font-weight: 500; }
+  .rail-create .plus { color: var(--yes); font-family: 'JetBrains Mono', monospace; font-size: .92rem; }
+
+  /* --- Top bar --- */
+  .main-col { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { height: 54px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1.6rem; background: var(--bg); position: sticky; top: 0; z-index: 10; }
+  .crumbs { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .06em; display: flex; gap: .5rem; align-items: center; }
+  .crumbs a { color: var(--text-2); }
+  .crumbs .sep { color: var(--text-4); }
+  .crumbs .cur { color: var(--text); max-width: 44ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-right { display: flex; align-items: center; gap: .8rem; }
+  .pill { display: inline-flex; align-items: center; gap: .4rem; padding: .25rem .55rem; border: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: .68rem; letter-spacing: .1em; color: var(--text-2); }
+  .pill .d { width: .38rem; height: .38rem; background: var(--yes); display: inline-block; animation: pulse 1.9s infinite; }
+  .av-chip { width: 26px; height: 26px; border: 1px solid var(--border-strong); background: var(--surface); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-size: .7rem; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(62,196,138,.5)} 50%{box-shadow:0 0 0 5px rgba(62,196,138,0)} }
+
+  /* --- Compact market header (always on) --- */
+  .market-head { position: sticky; top: 54px; background: var(--bg); z-index: 9; border-bottom: 1px solid var(--border); padding: 1.1rem 2.4rem .9rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2rem; align-items: center; }
+  .market-head .cat-row { display: flex; gap: .6rem; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-bottom: .3rem; }
+  .market-head .cat-row .cat { color: var(--yes); letter-spacing: .2em; }
+  .market-head h1 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(1.1rem, 2vw, 1.55rem); line-height: 1.15; letter-spacing: -.01em; max-width: 64ch; }
+  .market-head .by { margin-top: .3rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .04em; }
+  .market-head .by a { color: var(--text-2); }
+  .market-head .price-mini { display: flex; align-items: baseline; gap: .8rem; }
+  .market-head .price-mini .v { font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; color: var(--yes); line-height: 1; letter-spacing: -.02em; font-weight: 500; }
+  .market-head .price-mini .t { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--yes); letter-spacing: .08em; }
+  .market-head .spark { height: 26px; width: 120px; }
+
+  /* --- Tabs row --- */
+  .subtabs { display: flex; gap: 1.4rem; padding: 0 2.4rem; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: calc(54px + 73px); z-index: 8; }
+  .subtab { padding: .6rem 0; color: var(--text-3); font-size: .88rem; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .subtab:hover { color: var(--text-2); }
+  .subtab.on { color: var(--text); border-bottom-color: var(--text); }
+  .subtab .c { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); margin-left: .3rem; }
+
+  /* --- Body --- */
+  .body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; min-height: calc(100vh - 54px); }
+  .content { padding: 1.6rem 2.4rem 3rem; min-width: 0; max-width: 980px; }
+  .context { border-left: 1px solid var(--border); padding: 1.8rem 1.3rem; display: flex; flex-direction: column; gap: 1.6rem; }
+  @media (max-width: 1180px) { .body { grid-template-columns: 1fr; } .context { border-left: 0; border-top: 1px solid var(--border); } }
+
+  /* --- Compose box --- */
+  .compose { border: 1px solid var(--border-strong); padding: 1rem 1.1rem 1.1rem; margin-bottom: 1.6rem; background: var(--surface); display: grid; gap: .8rem; }
+  .compose .head { display: grid; grid-template-columns: 36px 1fr auto; gap: .8rem; align-items: center; }
+  .compose .head .av { width: 36px; height: 36px; border-radius: 999px; background: var(--elev); border: 1px solid var(--border-strong); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .88rem; }
+  .compose .head .prompt { font-family: var(--serif); font-style: italic; font-size: 1.1rem; color: var(--text-2); }
+  .compose .head .prompt strong { color: var(--text); font-style: normal; font-weight: 500; font-family: 'Inter', sans-serif; font-size: .88rem; letter-spacing: -.005em; }
+  .compose .head .toggle-stake { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .1em; text-transform: uppercase; padding: .3rem .55rem; border: 1px solid var(--border-strong); cursor: pointer; }
+  .compose .head .toggle-stake:hover { color: var(--text); }
+  .compose textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: 'Inter', sans-serif; font-size: .98rem; line-height: 1.6; padding: .8rem .95rem; min-height: 96px; resize: vertical; outline: none; }
+  .compose textarea:focus { border-color: var(--text-3); }
+  .compose .controls { display: grid; grid-template-columns: auto 1fr auto; gap: .7rem; align-items: center; }
+  .compose .side-pick { display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid var(--border-strong); }
+  .compose .side-pick button { background: transparent; border: 0; padding: .45rem .9rem; color: var(--text-3); font-family: 'Inter', sans-serif; font-size: .82rem; font-weight: 500; cursor: pointer; border-right: 1px solid var(--border-strong); }
+  .compose .side-pick button:last-child { border-right: 0; }
+  .compose .side-pick button.yes.on { color: var(--yes); background: var(--yes-dim); }
+  .compose .side-pick button.no.on { color: var(--no); background: var(--no-dim); }
+  .compose .side-pick button.nostake.on { color: var(--text); background: var(--elev); }
+  .compose .stake-input { display: grid; grid-template-columns: auto 1fr auto; border: 1px solid var(--border-strong); max-width: 200px; }
+  .compose .stake-input .lbl { padding: 0 .6rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .1em; display: grid; place-items: center; border-right: 1px solid var(--border-strong); }
+  .compose .stake-input input { border: 0; background: transparent; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: .9rem; padding: .4rem .6rem; text-align: right; outline: none; }
+  .compose .stake-input .suf { padding: 0 .6rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .1em; border-left: 1px solid var(--border-strong); display: grid; place-items: center; }
+  .compose .post { padding: .55rem 1.1rem; border: 1px solid var(--text); background: var(--text); color: #000; font-weight: 600; font-size: .88rem; cursor: pointer; font-family: 'Inter', sans-serif; letter-spacing: -.005em; }
+  .compose .post:hover { background: #fff; }
+  .compose .fineprint { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .05em; }
+  .compose .fineprint strong { color: var(--text-2); }
+
+  /* --- Sort + filter --- */
+  .sort-row { display: flex; justify-content: space-between; align-items: center; padding: .6rem 0 .9rem; margin-bottom: .4rem; border-bottom: 1px solid var(--border); }
+  .sort-chips { display: flex; gap: 0; }
+  .sort-chips a { font-family: 'Inter', sans-serif; font-size: .82rem; color: var(--text-3); padding: .3rem .75rem; border: 1px solid var(--border); border-right-width: 0; background: transparent; }
+  .sort-chips a:first-child { border-top-left-radius: 2px; }
+  .sort-chips a:last-child { border-right-width: 1px; }
+  .sort-chips a.on { color: var(--text); background: var(--surface); border-color: var(--border-strong); }
+  .sort-chips a:hover { color: var(--text-2); }
+  .filter-toggle { display: inline-flex; align-items: center; gap: .5rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .05em; cursor: pointer; }
+  .filter-toggle .sw { width: 28px; height: 14px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 0; position: relative; }
+  .filter-toggle .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px; background: var(--text-3); transition: .15s; }
+  .filter-toggle.on .sw { background: var(--yes-dim); border-color: var(--yes); }
+  .filter-toggle.on .sw::after { left: 16px; background: var(--yes); }
+
+  /* --- Thread list --- */
+  .threads { display: flex; flex-direction: column; gap: .2rem; }
+  .thread { padding: 1.2rem 0; border-bottom: 1px solid var(--border); }
+  .reply { display: grid; grid-template-columns: 38px 1fr; gap: .8rem; align-items: start; position: relative; }
+  .reply-av { width: 38px; height: 38px; border-radius: 999px; background: var(--elev); border: 1px solid var(--border-strong); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .88rem; color: var(--text); flex-shrink: 0; }
+  .reply-body { min-width: 0; display: grid; gap: .35rem; }
+  .reply-meta { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; font-size: .86rem; }
+  .reply-meta .name { font-weight: 600; color: var(--text); letter-spacing: -.005em; }
+  .reply-meta .handle { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); }
+  .reply-meta .stake { font-family: 'JetBrains Mono', monospace; font-size: .7rem; padding: .15rem .4rem; border: 1px solid var(--border-strong); letter-spacing: .08em; text-transform: uppercase; }
+  .reply-meta .stake.y { color: var(--yes); border-color: var(--yes); background: var(--yes-dim); }
+  .reply-meta .stake.n { color: var(--no); border-color: var(--no); background: var(--no-dim); }
+  .reply-meta .stake.none { color: var(--text-3); }
+  .reply-meta .author-badge { font-family: 'JetBrains Mono', monospace; font-size: .62rem; padding: .15rem .4rem; border: 1px solid var(--text-3); color: var(--text-2); letter-spacing: .12em; text-transform: uppercase; }
+  .reply-meta .time { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); margin-left: auto; letter-spacing: .04em; }
+  .reply-text { font-size: .98rem; line-height: 1.65; color: var(--text-2); }
+  .reply-text.editorial { font-family: var(--serif); font-size: 1.04rem; line-height: 1.7; color: var(--text); }
+  .reply-text.editorial p { margin: 0 0 .7rem; }
+  .reply-text p { margin: 0 0 .55rem; }
+  .reply-text p:last-child { margin-bottom: 0; }
+  .reply-text strong { color: var(--text); }
+  .reply-actions { display: flex; gap: 1.2rem; margin-top: .3rem; font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .05em; }
+  .reply-actions a { cursor: pointer; }
+  .reply-actions a:hover { color: var(--text); }
+  .reply-actions a.emph { color: var(--text-2); }
+
+  /* Children nest with a colored left border showing thread side */
+  .children { margin-top: .9rem; margin-left: 20px; padding-left: 18px; border-left: 2px solid var(--border-strong); display: flex; flex-direction: column; gap: .9rem; }
+  .children.yes-thread { border-left-color: var(--yes-bar); }
+  .children.no-thread { border-left-color: var(--no-bar); }
+  .children .reply { grid-template-columns: 30px 1fr; gap: .7rem; }
+  .children .reply-av { width: 30px; height: 30px; font-size: .78rem; }
+  .children .reply-text { font-size: .94rem; line-height: 1.6; }
+
+  /* Author own reply gets a whisper of background */
+  .thread.by-author { background: linear-gradient(to right, rgba(62,196,138,.04), transparent 70%); padding-left: 1rem; margin-left: -1rem; border-left: 2px solid var(--yes); }
+
+  /* "Show more" footers */
+  .more-bar { padding: .6rem 0; border-top: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .08em; text-align: center; cursor: pointer; }
+  .more-bar:hover { color: var(--text); }
+  .collapse { margin-left: 20px; padding: .4rem 0 .4rem 18px; border-left: 2px dashed var(--border-strong); font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .05em; cursor: pointer; }
+  .collapse:hover { color: var(--text); }
+  .collapse strong { color: var(--text-2); font-weight: 500; }
+
+  /* --- Context rail: discussion summary --- */
+  .ctx-block { display: grid; gap: .5rem; }
+  .ctx-block h4 { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .14em; color: var(--text-3); text-transform: uppercase; font-weight: 500; padding-bottom: .5rem; border-bottom: 1px solid var(--border); }
+  .ctx-split { display: grid; gap: .6rem; padding: .2rem 0; }
+  .split-bar { height: 10px; background: var(--elev); border: 1px solid var(--border); position: relative; }
+  .split-bar .y { position: absolute; top: 0; bottom: 0; left: 0; background: var(--yes); opacity: .7; }
+  .split-bar .n { position: absolute; top: 0; bottom: 0; right: 0; background: var(--no); opacity: .7; }
+  .split-legend { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; }
+  .split-legend .y { color: var(--yes); }
+  .split-legend .n { color: var(--no); text-align: right; }
+  .split-legend em { color: var(--text-3); font-style: normal; }
+
+  .ctx-top { display: grid; gap: .4rem; }
+  .top-stake { display: grid; grid-template-columns: auto 1fr auto; gap: .6rem; align-items: center; padding: .45rem 0; border-bottom: 1px solid var(--border); }
+  .top-stake:last-child { border-bottom: 0; }
+  .top-stake .av-s { width: 26px; height: 26px; border-radius: 999px; background: var(--elev); border: 1px solid var(--border-strong); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-size: .68rem; font-weight: 600; color: var(--text); }
+  .top-stake .t { font-size: .86rem; color: var(--text); }
+  .top-stake .sub { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .04em; }
+  .top-stake .amt { font-family: 'JetBrains Mono', monospace; font-size: .82rem; }
+  .top-stake .amt.y { color: var(--yes); } .top-stake .amt.n { color: var(--no); }
+
+  .ctx-note { font-family: 'Inter', sans-serif; font-size: .84rem; line-height: 1.55; color: var(--text-2); padding: .9rem; border: 1px dashed var(--border-strong); background: transparent; }
+  .ctx-note strong { color: var(--text); font-family: var(--tight); font-weight: 500; display: block; margin-bottom: .35rem; letter-spacing: -.005em; }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <aside class="rail">
+      <div class="rail-brand"><span class="mark">Cascade</span><span class="ed">Practice</span></div>
+      <label class="rail-search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+        <input placeholder="Search claims…" />
+        <span class="kbd">⌘K</span>
+      </label>
+      <div class="rail-group">
+        <h4>You</h4>
+        <a class="rail-item" href="01-landing.html"><span>Home</span></a>
+        <a class="rail-item" href="#"><span>Watchlist</span><span class="c">14</span></a>
+        <a class="rail-item" href="#"><span>Portfolio</span><span class="c">12</span></a>
+        <a class="rail-item" href="#"><span>Activity</span></a>
+      </div>
+      <div class="rail-group">
+        <h4>Categories</h4>
+        <a class="rail-item" href="#"><span>Geopolitics</span><span class="c">42</span></a>
+        <a class="rail-item" href="#"><span>Macro</span><span class="c">38</span></a>
+        <a class="rail-item active" href="#"><span>AI</span><span class="c">29</span></a>
+        <a class="rail-item" href="#"><span>Crypto</span><span class="c">24</span></a>
+        <a class="rail-item" href="#"><span>Tech</span><span class="c">21</span></a>
+        <a class="rail-item" href="#"><span>Sports</span><span class="c">18</span></a>
+        <a class="rail-item" href="#"><span>Culture</span><span class="c">12</span></a>
+        <a class="rail-item" href="#"><span>Policy</span><span class="c">9</span></a>
+        <a class="rail-item" href="#"><span>Nostr</span><span class="c">7</span></a>
+      </div>
+      <div class="rail-spacer"></div>
+      <a class="rail-create" href="03-create.html"><span class="plus">+</span> Write a claim</a>
+    </aside>
+
+    <div class="main-col">
+
+      <header class="topbar">
+        <div class="crumbs">
+          <a href="01-landing.html">Home</a><span class="sep">/</span>
+          <a href="#">AI</a><span class="sep">/</span>
+          <a href="02-market.html">OpenAI ships GPT-5 first</a><span class="sep">/</span>
+          <span class="cur">Discussion</span>
+        </div>
+        <div class="top-right">
+          <span class="pill"><i class="d"></i> Live</span>
+          <span class="av-chip mono">pf</span>
+        </div>
+      </header>
+
+      <!-- Compact market header (always visible) -->
+      <section class="market-head">
+        <div>
+          <div class="cat-row">
+            <span class="cat">AI</span>
+            <span>·</span>
+            <span>Published 14 Mar · 2,814 trades</span>
+          </div>
+          <h1 class="serif">OpenAI will ship GPT-5 before Google ships Gemini 2 Pro.</h1>
+          <div class="by">by <a href="04-profile.html">@north</a> · 24 replies · 18 staked · $4,840 backing YES / $1,220 backing NO in-thread</div>
+        </div>
+        <div class="price-mini">
+          <div>
+            <span class="v">71¢</span>
+            <div class="t">YES · +3¢ 24h</div>
+          </div>
+          <svg class="spark" viewBox="0 0 120 26" preserveAspectRatio="none"><polyline fill="none" stroke="#3ec48a" stroke-width="1.4" points="0,18 15,16 30,14 45,12 60,13 75,10 90,8 105,6 120,4"/></svg>
+        </div>
+      </section>
+
+      <!-- Sub-tabs -->
+      <nav class="subtabs" role="tablist">
+        <a class="subtab" href="02-market.html">The case<span class="c">1</span></a>
+        <a class="subtab on" href="#">Discussion<span class="c">24</span></a>
+        <a class="subtab" href="#">Trade tape<span class="c">2,814</span></a>
+        <a class="subtab" href="#">Linked<span class="c">3</span></a>
+      </nav>
+
+      <div class="body">
+        <main class="content">
+
+          <!-- Compose -->
+          <form class="compose">
+            <div class="head">
+              <span class="av mono">pf</span>
+              <span class="prompt serif"><strong>Reply</strong> — what's your case?</span>
+              <span class="toggle-stake">⌄ options</span>
+            </div>
+            <textarea placeholder="A paragraph is fine. A sentence is fine. Attach a stake if you mean it."></textarea>
+            <div class="controls">
+              <div class="side-pick">
+                <button type="button" class="yes on">Back YES</button>
+                <button type="button" class="no">Back NO</button>
+                <button type="button" class="nostake">No stake</button>
+              </div>
+              <div class="stake-input">
+                <span class="lbl">STAKE</span>
+                <input type="text" value="25" />
+                <span class="suf">USD</span>
+              </div>
+              <button type="button" class="post">Post reply · back YES $25</button>
+            </div>
+            <span class="fineprint"><strong>Posting &amp; trading are one action here.</strong> Your reply and your $25 YES trade publish together. Cash out anytime; the reply stays on the record.</span>
+          </form>
+
+          <!-- Sort / filter row -->
+          <div class="sort-row">
+            <div class="sort-chips">
+              <a class="on" href="#">Top stake</a>
+              <a href="#">Most replies</a>
+              <a href="#">Newest</a>
+              <a href="#">Controversial</a>
+            </div>
+            <div class="filter-toggle" role="switch" aria-checked="false">
+              <span class="sw"></span>
+              <span>Show staked replies only</span>
+            </div>
+          </div>
+
+          <!-- Threads -->
+          <div class="threads">
+
+            <!-- Thread 1: jules YES $120 (top stake) with children -->
+            <article class="thread">
+              <div class="reply">
+                <span class="reply-av mono">J</span>
+                <div class="reply-body">
+                  <div class="reply-meta">
+                    <span class="name">@jules</span>
+                    <span class="handle">· serial-macro, joined Feb 2025</span>
+                    <span class="stake y">BACK YES · $120 @ 70¢</span>
+                    <span class="time">2h ago</span>
+                  </div>
+                  <div class="reply-text editorial">
+                    <p>The eight-week pattern holds, and I think the floor is higher than 71¢ — I'm at 78¢ today, and I've been adding on every two-cent dip since 62¢.</p>
+                    <p>Safety eval cadence hasn't moved, which is informative by itself. If there was a hiccup, we'd see a pause in the posted DevDay slots — and we haven't. The signal is in what <strong>isn't</strong> happening.</p>
+                  </div>
+                  <div class="reply-actions">
+                    <a class="emph">Reply</a>
+                    <a>Bookmark</a>
+                    <a>Share</a>
+                    <span>· 3 replies</span>
+                  </div>
+
+                  <div class="children yes-thread">
+                    <div class="reply">
+                      <span class="reply-av mono">G</span>
+                      <div class="reply-body">
+                        <div class="reply-meta">
+                          <span class="name">@greta</span>
+                          <span class="stake y">BACK YES · $50 @ 68¢</span>
+                          <span class="time">1h ago</span>
+                        </div>
+                        <div class="reply-text"><p>78¢ floor is too high — you're assuming Altman's calendar is deterministic. It usually is, but the launch cadence once included a <em>six</em>-week cycle (GPT-4 Turbo). I'd say floor 73¢, ceiling 84¢.</p></div>
+                        <div class="reply-actions"><a class="emph">Reply</a> · 1 reply</div>
+                      </div>
+                    </div>
+                    <div class="reply">
+                      <span class="reply-av mono">T</span>
+                      <div class="reply-body">
+                        <div class="reply-meta">
+                          <span class="name">@tarek</span>
+                          <span class="stake none">NO STAKE</span>
+                          <span class="time">42m ago</span>
+                        </div>
+                        <div class="reply-text"><p>The "what isn't happening" framing is the most useful part of this thread. Good framing even for the NO side — you have to argue why the absence of a pause is misleading.</p></div>
+                        <div class="reply-actions"><a class="emph">Reply</a></div>
+                      </div>
+                    </div>
+                    <div class="collapse"><strong>Show 1 more reply</strong> · from @jules · 16m ago</div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- Thread 2: mark-s NO $15 with child -->
+            <article class="thread">
+              <div class="reply">
+                <span class="reply-av mono">M</span>
+                <div class="reply-body">
+                  <div class="reply-meta">
+                    <span class="name">@mark-s</span>
+                    <span class="handle">· contrarian, AI/Tech</span>
+                    <span class="stake n">BACK NO · $15 @ 29¢</span>
+                    <span class="time">41m ago</span>
+                  </div>
+                  <div class="reply-text">
+                    <p>A gate is not a launch candidate. Three gates in six weeks is actually consistent with <strong>rework</strong>, not imminent shipping. I don't think this trades below 50¢ — but I also don't think the eight-week pattern generalises to a generation change.</p>
+                    <p>Small NO here. Willing to size up if it gets above 78¢.</p>
+                  </div>
+                  <div class="reply-actions">
+                    <a class="emph">Reply</a>
+                    <a>Bookmark</a>
+                    <a>Share</a>
+                    <span>· 1 reply</span>
+                  </div>
+
+                  <div class="children no-thread">
+                    <div class="reply">
+                      <span class="reply-av mono">J</span>
+                      <div class="reply-body">
+                        <div class="reply-meta">
+                          <span class="name">@jules</span>
+                          <span class="stake y">BACK YES · $120</span>
+                          <span class="time">33m ago</span>
+                        </div>
+                        <div class="reply-text"><p>&ldquo;Gate = rework&rdquo; is the first NO argument I've seen that actually moves me. But the gate <em>cadence</em> has tightened across the last three models, not loosened — which points the other way.</p></div>
+                        <div class="reply-actions"><a class="emph">Reply</a></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- Thread 3: Author (north) with subtle background tint -->
+            <article class="thread by-author">
+              <div class="reply">
+                <span class="reply-av mono">N</span>
+                <div class="reply-body">
+                  <div class="reply-meta">
+                    <span class="name">@north</span>
+                    <span class="author-badge">Author</span>
+                    <span class="handle">· wrote this market · holding $2,400 YES</span>
+                    <span class="time">28m ago</span>
+                  </div>
+                  <div class="reply-text editorial">
+                    <p>Since several of you asked: the three gates I referenced are <em>internal</em> evals (red-teaming, capability, safety). Not public benchmarks. I can't source them — if you don't trust the premise, you should be shorter than I am, not longer.</p>
+                    <p>I'm not adding above 75¢. If the crowd gets there in the next week without a Google counter-note, that's a signal this has priced in and I should start reducing.</p>
+                  </div>
+                  <div class="reply-actions">
+                    <a class="emph">Reply</a>
+                    <a>Bookmark</a>
+                    <a>Share</a>
+                    <span>· 5 replies</span>
+                  </div>
+                  <div class="collapse"><strong>Show 5 replies</strong> · including @arca, @kamil, @iris</div>
+                </div>
+              </div>
+            </article>
+
+            <!-- Thread 4: arca NO $25 with child from author -->
+            <article class="thread">
+              <div class="reply">
+                <span class="reply-av mono">A</span>
+                <div class="reply-body">
+                  <div class="reply-meta">
+                    <span class="name">@arca</span>
+                    <span class="handle">· macro/policy</span>
+                    <span class="stake n">BACK NO · $25 @ 30¢</span>
+                    <span class="time">7m ago</span>
+                  </div>
+                  <div class="reply-text">
+                    <p>The tell is Google's hardware note on the 21st. If it lands with a date, this flips. If it lands without one, the crowd punishes and pushes 80¢+.</p>
+                    <p>Either way the market is mispriced <em>today</em>. I'm taking the cheap side.</p>
+                  </div>
+                  <div class="reply-actions">
+                    <a class="emph">Reply</a>
+                    <a>Bookmark</a>
+                    <a>Share</a>
+                    <span>· 1 reply</span>
+                  </div>
+
+                  <div class="children no-thread">
+                    <div class="reply">
+                      <span class="reply-av mono">N</span>
+                      <div class="reply-body">
+                        <div class="reply-meta">
+                          <span class="name">@north</span>
+                          <span class="author-badge">Author</span>
+                          <span class="stake y">BACK YES · $2,400 total</span>
+                          <span class="time">4m ago</span>
+                        </div>
+                        <div class="reply-text"><p>That's the right frame — a priced-in bet against Google making a counter-announcement. I'm watching the same date. If the 21st passes quietly, I trim at 78¢.</p></div>
+                        <div class="reply-actions"><a class="emph">Reply</a></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- Thread 5: kamil YES $80 -->
+            <article class="thread">
+              <div class="reply">
+                <span class="reply-av mono">K</span>
+                <div class="reply-body">
+                  <div class="reply-meta">
+                    <span class="name">@kamil</span>
+                    <span class="handle">· AI infra, follows @north</span>
+                    <span class="stake y">BACK YES · $80 @ 69¢</span>
+                    <span class="time">3h ago</span>
+                  </div>
+                  <div class="reply-text">
+                    <p>Two data points the case doesn't mention: (1) OpenAI's inference fleet capacity rebalancing started mid-April — which only makes sense ahead of a launch. (2) The Anthropic/OpenAI hiring delta in the last eight weeks tilted sharply toward OpenAI retention. Both suggest someone's running a countdown internally.</p>
+                    <p>I'm at 74¢ ceiling. Above that, the trade's done.</p>
+                  </div>
+                  <div class="reply-actions">
+                    <a class="emph">Reply</a>
+                    <a>Bookmark</a>
+                    <a>Share</a>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- Thread 6: iris no stake, question -->
+            <article class="thread">
+              <div class="reply">
+                <span class="reply-av mono">I</span>
+                <div class="reply-body">
+                  <div class="reply-meta">
+                    <span class="name">@iris</span>
+                    <span class="handle">· asking around, no position</span>
+                    <span class="stake none">NO STAKE · asking</span>
+                    <span class="time">52m ago</span>
+                  </div>
+                  <div class="reply-text">
+                    <p>Genuine question: does "ship" here mean public GA or does a limited preview count? Not clear from the claim text. If it's preview, 71¢ is too low. If it's GA, 71¢ might be too high.</p>
+                  </div>
+                  <div class="reply-actions">
+                    <a class="emph">Reply</a>
+                    <a>Bookmark</a>
+                    <span>· 2 replies from author</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- Thread 7: tessa YES $40, just happened -->
+            <article class="thread">
+              <div class="reply">
+                <span class="reply-av mono">T</span>
+                <div class="reply-body">
+                  <div class="reply-meta">
+                    <span class="name">@tessa</span>
+                    <span class="stake y">BACK YES · $40 @ 71¢</span>
+                    <span class="time">2s ago</span>
+                  </div>
+                  <div class="reply-text">
+                    <p>Just backed YES at 71¢. Eight weeks ≥ shipping. That's the whole trade.</p>
+                  </div>
+                  <div class="reply-actions">
+                    <a class="emph">Reply</a>
+                    <a>Bookmark</a>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <div class="more-bar">Show 17 older replies · including @aria, @quincy, @otto</div>
+
+          </div>
+        </main>
+
+        <!-- Context rail -->
+        <aside class="context">
+
+          <div class="ctx-block">
+            <h4>Discussion split · conviction</h4>
+            <div class="ctx-split">
+              <div class="split-bar">
+                <span class="y" style="width: 80%"></span>
+                <span class="n" style="width: 20%"></span>
+              </div>
+              <div class="split-legend">
+                <span class="y">$4,840 YES<br/><em>13 replies</em></span>
+                <span class="n">$1,220 NO<br/><em>5 replies</em></span>
+              </div>
+              <p style="font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .04em; margin: .3rem 0 0;">6 replies without stake · asking, clarifying, context</p>
+            </div>
+          </div>
+
+          <div class="ctx-block">
+            <h4>Top-staked arguments</h4>
+            <div class="ctx-top">
+              <div class="top-stake">
+                <span class="av-s mono">J</span>
+                <div>
+                  <div class="t">@jules's floor-at-78¢ case</div>
+                  <div class="sub">3 replies · 2h ago</div>
+                </div>
+                <span class="amt y">$120</span>
+              </div>
+              <div class="top-stake">
+                <span class="av-s mono">K</span>
+                <div>
+                  <div class="t">@kamil's infra-rebalance data</div>
+                  <div class="sub">0 replies · 3h ago</div>
+                </div>
+                <span class="amt y">$80</span>
+              </div>
+              <div class="top-stake">
+                <span class="av-s mono">T</span>
+                <div>
+                  <div class="t">@tessa's "eight weeks ≥ shipping"</div>
+                  <div class="sub">just now</div>
+                </div>
+                <span class="amt y">$40</span>
+              </div>
+              <div class="top-stake">
+                <span class="av-s mono">A</span>
+                <div>
+                  <div class="t">@arca's priced-in-counter case</div>
+                  <div class="sub">1 reply · 7m ago</div>
+                </div>
+                <span class="amt n">$25</span>
+              </div>
+              <div class="top-stake">
+                <span class="av-s mono">M</span>
+                <div>
+                  <div class="t">@mark-s's "gate = rework"</div>
+                  <div class="sub">1 reply · 41m ago</div>
+                </div>
+                <span class="amt n">$15</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ctx-note">
+            <strong>How this thread sorts</strong>
+            Replies rank by stake size, not upvotes. Unstaked replies still show — they're questions, clarifications, or context — but the crowd's conviction is what floats the strongest arguments.
+            <br/><br/>
+            Posting a reply and placing a trade are <strong>one action</strong>. Your reply and your stake publish together, to the same relays, in the same event.
+          </div>
+
+        </aside>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

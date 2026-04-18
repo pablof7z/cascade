@@ -55,103 +55,32 @@
     .sort((left, right) => ageRank(left.at) - ageRank(right.at));
 </script>
 
-<section class="workspace-activity">
+<div class="grid gap-6 p-7">
   <div>
     <div class="eyebrow">Activity</div>
-    <h1>Activity</h1>
-    <p>Everything happening across your workspace, most recent first.</p>
+    <h1 class="text-xl mt-1">Activity</h1>
+    <p class="mt-2 text-base-content/70">Everything happening across your workspace, most recent first.</p>
   </div>
 
-  <div class="activity-legend">
+  <div class="flex items-center gap-2 pb-4 border-b border-base-300 text-xs text-base-content/50">
     <span>Entry types:</span>
-    <small>Meeting</small>
-    <small>Proposal</small>
-    <small>Position</small>
-    <small>Source</small>
+    {#each ['Meeting', 'Proposal', 'Position', 'Source'] as type}
+      <span class="border border-base-300 px-2 py-0.5 text-base-content/70">{type}</span>
+    {/each}
   </div>
 
-  <div class="activity-list">
+  <div class="border-t border-base-300">
     {#each items as item (`${item.fieldName}-${item.title}`)}
-      <div class="activity-row">
-        <div class="activity-copy">
-          <strong>{item.title}</strong>
-          <p>{item.fieldName} · {item.detail}</p>
+      <div class="flex items-start justify-between gap-4 py-4 border-b border-base-300">
+        <div class="min-w-0">
+          <strong class="text-white block text-sm">{item.title}</strong>
+          <p class="mt-1 text-base-content/70 text-sm leading-[1.6]">{item.fieldName} · {item.detail}</p>
         </div>
-        <div class="activity-meta">
+        <div class="grid gap-1 text-right shrink-0 text-base-content/50 font-mono text-xs whitespace-nowrap">
           <span>{item.type}</span>
           <span>{item.at}</span>
         </div>
       </div>
     {/each}
   </div>
-</section>
-
-<style>
-  .workspace-activity {
-    display: grid;
-    gap: 1.5rem;
-    padding: 1.75rem;
-  }
-
-  .workspace-activity h1 {
-    font-size: 1.2rem;
-  }
-
-  .workspace-activity p {
-    margin-top: 0.4rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .activity-legend {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    padding-bottom: 1rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.78rem;
-  }
-
-  .activity-legend small {
-    border: 1px solid var(--color-neutral);
-    padding: 0.2rem 0.4rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 0.76rem;
-  }
-
-  .activity-list {
-    display: grid;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .activity-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .activity-copy strong {
-    display: block;
-    color: white;
-    font-size: 0.94rem;
-  }
-
-  .activity-copy p {
-    margin-top: 0.35rem;
-    font-size: 0.86rem;
-    line-height: 1.6;
-  }
-
-  .activity-meta {
-    display: grid;
-    gap: 0.25rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-family: var(--font-mono);
-    font-size: 0.76rem;
-    text-align: right;
-    white-space: nowrap;
-  }
-</style>
+</div>

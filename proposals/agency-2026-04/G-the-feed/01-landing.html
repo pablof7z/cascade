@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Cascade — The Feed / Landing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Inter+Tight:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0b0b0e; --phone-bg:#07070a; --surface:#121218; --elev:#191922; --border:#23232e; --border-strong:#2e2e3b;
+    --text:#efeff4; --text-2:#b0b0bc; --text-3:#6e6e7a; --text-4:#45454f;
+    --yes:#3ec48a; --yes-glow: rgba(62,196,138,.2); --no:#ec4a6e; --no-glow: rgba(236,74,110,.2);
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: 'tnum' 1; letter-spacing: -.01em; }
+  .display { font-family: 'Inter Tight', 'Inter', sans-serif; letter-spacing: -.03em; }
+
+  /* Desktop stage */
+  .stage { min-height: 100vh; padding: 2rem; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 3rem; background: radial-gradient(circle at 30% 20%, rgba(62,196,138,.05), transparent 60%), radial-gradient(circle at 80% 70%, rgba(236,74,110,.04), transparent 60%), var(--bg); }
+  @media (max-width: 1100px) { .stage { grid-template-columns: 1fr; padding: 1rem; gap: 1.5rem; justify-items: center; } }
+  @media (max-width: 480px) { .stage { padding: 0; gap: 0; align-items: stretch; } }
+
+  /* Left context */
+  .ctx-left { max-width: 22rem; justify-self: end; }
+  .ctx-left .badge { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: .7rem; letter-spacing: .18em; color: var(--yes); padding: .3rem .6rem; border: 1px solid var(--yes); text-transform: uppercase; margin-bottom: 1rem; }
+  .ctx-left h1 { margin: 0; font-size: 2.2rem; font-weight: 700; letter-spacing: -.03em; line-height: 1.05; max-width: 14ch; }
+  .ctx-left h1 em { font-style: normal; color: var(--yes); }
+  .ctx-left p { color: var(--text-2); font-size: .98rem; line-height: 1.65; margin-top: 1rem; }
+  .ctx-left ul { list-style: none; padding: 0; margin: 1.4rem 0 0; display: grid; gap: .8rem; }
+  .ctx-left li { display: grid; grid-template-columns: auto 1fr; gap: .8rem; align-items: start; }
+  .ctx-left li .k { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--yes); letter-spacing: .1em; padding-top: .15rem; min-width: 5ch; }
+  .ctx-left li .v { color: var(--text); font-size: .92rem; }
+  .ctx-left li .v em { color: var(--text-3); font-style: normal; font-size: .84rem; display: block; margin-top: .15rem; }
+  @media (max-width: 1100px) { .ctx-left { justify-self: stretch; max-width: none; text-align: left; padding: 0 1rem; } }
+  @media (max-width: 480px) { .ctx-left { display: none; } }
+
+  /* Phone frame */
+  .phone { width: 392px; height: 812px; background: var(--phone-bg); border: 1px solid var(--border-strong); border-radius: 52px; padding: 10px; box-shadow: 0 40px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.02) inset; position: relative; overflow: hidden; }
+  .phone::after { content: ''; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 110px; height: 30px; background: #000; border-radius: 16px; z-index: 200; }
+  .phone-screen { width: 100%; height: 100%; border-radius: 44px; overflow: hidden; background: var(--phone-bg); position: relative; display: flex; flex-direction: column; }
+  @media (max-width: 480px) { .stage { padding: 0; gap: 0; } .phone { width: 100vw; height: 100vh; border-radius: 0; border: 0; padding: 0; } .phone::after { display: none; } .phone-screen { border-radius: 0; } }
+
+  /* Status bar */
+  .status-bar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px 0 24px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
+  .status-bar .icons { display: flex; align-items: center; gap: 5px; }
+  .status-bar svg { fill: var(--text); }
+  .bars { display: flex; align-items: flex-end; gap: 1.5px; height: 10px; }
+  .bars span { width: 3px; background: var(--text); border-radius: .5px; }
+  .bars span:nth-child(1){ height:3px; }.bars span:nth-child(2){ height:5px; }.bars span:nth-child(3){ height:7px; }.bars span:nth-child(4){ height:10px; }
+
+  /* App top bar */
+  .app-top { padding: 10px 20px 6px; display: flex; align-items: center; justify-content: space-between; background: var(--phone-bg); z-index: 10; }
+  .app-top .brand { font-weight: 700; font-size: 1.1rem; letter-spacing: -.02em; }
+  .app-top .center { display: inline-flex; align-items: center; gap: .45rem; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .16em; text-transform: uppercase; border: 1px solid var(--border-strong); padding: .22rem .5rem; border-radius: 999px; }
+  .app-top .center .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--yes); animation: pulse 1.8s infinite; }
+  .app-top .actions { display: flex; align-items: center; gap: .8rem; }
+  .app-top .icon-btn { width: 34px; height: 34px; display: grid; place-items: center; color: var(--text-2); }
+  .app-top .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+
+  /* Feed */
+  .feed { flex: 1; overflow-y: auto; scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+  .feed::-webkit-scrollbar { display: none; }
+  .card { scroll-snap-align: start; scroll-snap-stop: always; height: 100%; min-height: 648px; display: flex; flex-direction: column; padding: 6px 20px 110px; position: relative; }
+
+  .card-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 18px; }
+  .card-head .cat { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .16em; text-transform: uppercase; padding: .25rem .5rem; border: 1px solid var(--border-strong); }
+  .card-head .by { display: inline-flex; align-items: center; gap: .5rem; }
+  .card-head .av { width: 22px; height: 22px; border-radius: 999px; background: var(--elev); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text); border: 1px solid var(--border-strong); font-weight: 600; }
+  .card-head .by-text { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-2); letter-spacing: .02em; }
+  .card-head .by-text .t { color: var(--text-3); margin-left: .35rem; }
+
+  .claim { margin: 0; font-size: 1.95rem; font-weight: 700; line-height: 1.08; letter-spacing: -.025em; color: var(--text); }
+  .claim-meta { margin-top: .6rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .04em; display: flex; gap: 1rem; flex-wrap: wrap; }
+  .claim-meta span { display: inline-flex; align-items: center; gap: .3rem; }
+
+  /* Price block */
+  .price-well { margin-top: 1.2rem; padding: 1.4rem 0 1rem; display: flex; flex-direction: column; align-items: center; gap: .3rem; }
+  .price-well .label { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .18em; text-transform: uppercase; }
+  .price-well .value { font-family: 'JetBrains Mono', monospace; font-size: 5rem; line-height: .9; font-weight: 500; letter-spacing: -.035em; color: var(--yes); text-shadow: 0 0 40px var(--yes-glow); }
+  .price-well .tilt { font-family: 'JetBrains Mono', monospace; font-size: .85rem; color: var(--yes); letter-spacing: .06em; }
+
+  .chart { height: 90px; margin-top: .3rem; position: relative; }
+  .chart svg { width: 100%; height: 100%; }
+  .chart .line { fill: none; stroke: var(--yes); stroke-width: 1.5; }
+  .chart .area { fill: var(--yes); opacity: .08; }
+  .chart .dot-now { fill: var(--yes); stroke: var(--phone-bg); stroke-width: 2; }
+
+  .stat-row { margin-top: .8rem; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--border); padding-top: .75rem; }
+  .stat-row > div { text-align: center; }
+  .stat-row dt { font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--text-3); letter-spacing: .12em; text-transform: uppercase; margin-bottom: .25rem; }
+  .stat-row dd { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: .9rem; color: var(--text); }
+
+  /* Actions */
+  .actions-row { position: absolute; left: 20px; right: 20px; bottom: 86px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; z-index: 20; }
+  .action-btn { position: relative; height: 62px; border-radius: 18px; border: 1px solid var(--border-strong); background: var(--elev); color: var(--text); font-family: 'Inter', sans-serif; font-weight: 600; font-size: 1rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+  .action-btn.yes { border-color: var(--yes); color: var(--yes); }
+  .action-btn.no { border-color: var(--no); color: var(--no); }
+  .action-btn .lbl { font-size: 1rem; font-weight: 600; letter-spacing: -.005em; }
+  .action-btn .price-lbl { font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .08em; margin-top: .15rem; opacity: .75; }
+  .action-btn .fill { position: absolute; left: 0; bottom: 0; height: 100%; width: 72%; background: var(--yes); opacity: .12; animation: holdFill 2.1s ease-in-out infinite; border-right: 1.5px solid var(--yes); }
+  .action-btn.no .fill { background: var(--no); border-right-color: var(--no); width: 0; animation: none; }
+  .action-btn .hint { position: absolute; top: 6px; right: 8px; font-family: 'JetBrains Mono', monospace; font-size: .56rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; z-index: 2; }
+  .actions-meta { position: absolute; left: 20px; right: 20px; bottom: 62px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+
+  @keyframes holdFill { 0%{ width: 0; } 90%{ width: 72%; } 100%{ width: 0; } }
+  @keyframes pulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(62,196,138,.6);} 50%{ box-shadow: 0 0 0 6px rgba(62,196,138,0);} }
+
+  .swipe-hint { position: absolute; left: 50%; transform: translateX(-50%); top: 16px; display: flex; flex-direction: column; align-items: center; gap: .25rem; font-family: 'JetBrains Mono', monospace; font-size: .58rem; color: var(--text-3); letter-spacing: .18em; text-transform: uppercase; opacity: 0; pointer-events: none; animation: upHint 2.6s ease-in-out infinite; }
+  .swipe-hint svg { width: 14px; height: 14px; stroke: var(--text-3); fill: none; stroke-width: 2; }
+  .swipe-hint.bot { top: auto; bottom: 180px; }
+  @keyframes upHint { 0%,80%,100%{ opacity: 0; transform: translate(-50%, 0); } 40%{ opacity: .7; transform: translate(-50%, -4px); } }
+
+  /* Secondary (peeking) card at bottom of feed */
+  .card.next-peek { background: var(--phone-bg); }
+  .card .peek-mask { position: absolute; left: 0; right: 0; bottom: 0; height: 120px; background: linear-gradient(to top, var(--phone-bg), transparent); pointer-events: none; z-index: 5; }
+
+  /* Bottom nav */
+  .nav { position: absolute; left: 10px; right: 10px; bottom: 10px; height: 68px; background: rgba(18,18,24,.92); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid var(--border); border-radius: 22px; display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; z-index: 30; padding-bottom: 6px; }
+  .nav a { display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--text-3); font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; padding: 8px 0; font-family: 'JetBrains Mono', monospace; }
+  .nav a.on { color: var(--text); }
+  .nav a svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+  .nav .create { margin-top: -14px; }
+  .nav .create-inner { width: 44px; height: 44px; border-radius: 14px; background: var(--yes); display: grid; place-items: center; box-shadow: 0 6px 14px rgba(62,196,138,.4); }
+  .nav .create-inner svg { stroke: #052; stroke-width: 2.2; }
+
+  /* Right context */
+  .ctx-right { max-width: 22rem; justify-self: start; }
+  .ctx-right h3 { margin: 0 0 .8rem; font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .18em; text-transform: uppercase; }
+  .ctx-right .decisions { display: grid; gap: .85rem; }
+  .ctx-right .d { display: grid; grid-template-columns: auto 1fr; gap: .8rem; align-items: start; padding: .7rem 0; border-bottom: 1px solid var(--border); }
+  .ctx-right .d .n { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--yes); letter-spacing: .06em; padding-top: .05rem; min-width: 2ch; }
+  .ctx-right .d strong { display: block; color: var(--text); font-size: .96rem; font-weight: 500; margin-bottom: .2rem; }
+  .ctx-right .d span { color: var(--text-2); font-size: .85rem; line-height: 1.55; }
+  .ctx-right .nav-row { margin-top: 1.4rem; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .ctx-right .nav-row a { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-2); letter-spacing: .06em; padding: .4rem .65rem; border: 1px solid var(--border-strong); text-transform: uppercase; }
+  .ctx-right .nav-row a:hover { color: var(--text); border-color: var(--text-3); }
+  .ctx-right .nav-row a.primary { color: var(--yes); border-color: var(--yes); }
+  @media (max-width: 1100px) { .ctx-right { display: none; } }
+</style>
+</head>
+<body>
+  <div class="stage">
+
+    <!-- Left: concept -->
+    <aside class="ctx-left">
+      <span class="badge">Direction G · The Feed</span>
+      <h1>One <em>claim</em> at a time. One thumb.</h1>
+      <p>Your canonical Cascade isn't a desk — it's a phone in a pocket between meetings. A single claim fills the viewport. Hold to back a side. Swipe up for the next market. Put the product where conviction actually gets formed: in five-minute windows between everything else.</p>
+      <ul>
+        <li><span class="k">01 /</span><span class="v">One market per screen.<em>no lists, no density, no choice paralysis</em></span></li>
+        <li><span class="k">02 /</span><span class="v">Hold to back a side.<em>a deliberate gesture, not a slip</em></span></li>
+        <li><span class="k">03 /</span><span class="v">Authorship is present.<em>avatar and handle are always on-screen</em></span></li>
+        <li><span class="k">04 /</span><span class="v">Thumb-zone is law.<em>actions sit where thumbs live</em></span></li>
+      </ul>
+    </aside>
+
+    <!-- Phone -->
+    <div class="phone">
+      <div class="phone-screen">
+
+        <div class="status-bar">
+          <span>9:41</span>
+          <div class="icons">
+            <div class="bars"><span></span><span></span><span></span><span></span></div>
+            <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 10a2 2 0 100-4 2 2 0 000 4zM3.5 6.5a6 6 0 019 0m-10.5-3a10 10 0 0112 0"/></svg>
+            <svg width="27" height="12" viewBox="0 0 27 12"><rect x="1" y="2" width="22" height="8" rx="2" stroke="#fff" stroke-width="1" fill="none"/><rect x="3" y="4" width="15" height="4" rx="1" fill="#fff"/><rect x="24" y="4" width="2" height="4" rx="1" fill="#fff"/></svg>
+          </div>
+        </div>
+
+        <header class="app-top">
+          <span class="brand">Cascade</span>
+          <span class="center"><i class="dot"></i> Practice · Live</span>
+          <div class="actions">
+            <button class="icon-btn" aria-label="Search">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+            </button>
+            <button class="icon-btn" aria-label="Profile">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <main class="feed">
+
+          <!-- Card 1 -->
+          <article class="card">
+            <div class="swipe-hint">
+              <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+              <span>Next market</span>
+            </div>
+
+            <div class="card-head">
+              <span class="cat">AI</span>
+              <span class="by">
+                <span class="av">N</span>
+                <span class="by-text">@north <span class="t">· 2h</span></span>
+              </span>
+            </div>
+
+            <h2 class="claim display">OpenAI will ship GPT-5 before Google's Gemini 2 Pro.</h2>
+            <div class="claim-meta">
+              <span>2,814 trades</span><span>24 replies</span><span>$182K lifetime</span>
+            </div>
+
+            <div class="price-well">
+              <span class="label">Crowd price · YES</span>
+              <span class="value">71¢</span>
+              <span class="tilt">+3¢ · 24h</span>
+            </div>
+
+            <div class="chart">
+              <svg viewBox="0 0 340 90" preserveAspectRatio="none">
+                <path class="area" d="M0,68 L28,64 L56,58 L84,50 L112,54 L140,44 L168,38 L196,32 L224,36 L252,28 L280,22 L308,18 L340,12 L340,90 L0,90 Z"/>
+                <polyline class="line" points="0,68 28,64 56,58 84,50 112,54 140,44 168,38 196,32 224,36 252,28 280,22 308,18 340,12"/>
+                <circle class="dot-now" cx="340" cy="12" r="4.5"/>
+              </svg>
+            </div>
+
+            <dl class="stat-row">
+              <div><dt>Spread</dt><dd>21¢</dd></div>
+              <div><dt>Vol 24h</dt><dd>$8.2K</dd></div>
+              <div><dt>Your pos</dt><dd style="color:var(--yes)">+$6.60</dd></div>
+            </dl>
+
+            <div class="actions-row">
+              <button class="action-btn yes" aria-label="Hold to back YES at 71¢">
+                <span class="hint">HOLD</span>
+                <span class="fill"></span>
+                <span class="lbl">Back YES</span>
+                <span class="price-lbl">71¢</span>
+              </button>
+              <button class="action-btn no" aria-label="Hold to back NO at 29¢">
+                <span class="hint">HOLD</span>
+                <span class="fill"></span>
+                <span class="lbl">Back NO</span>
+                <span class="price-lbl">29¢</span>
+              </button>
+            </div>
+            <div class="actions-meta">Hold · feel it · release to confirm</div>
+            <div class="peek-mask"></div>
+          </article>
+
+          <!-- Card 2 (peek in scroll) -->
+          <article class="card">
+            <div class="card-head">
+              <span class="cat">Crypto</span>
+              <span class="by">
+                <span class="av">G</span>
+                <span class="by-text">@greta <span class="t">· 4h</span></span>
+              </span>
+            </div>
+            <h2 class="claim display">Bitcoin trades above $150,000 at any point before 1 July 2026.</h2>
+            <div class="claim-meta">
+              <span>1,201 trades</span><span>47 replies</span><span>$66K lifetime</span>
+            </div>
+            <div class="price-well">
+              <span class="label">Crowd price · YES</span>
+              <span class="value">58¢</span>
+              <span class="tilt">+1¢ · 24h</span>
+            </div>
+            <div class="chart">
+              <svg viewBox="0 0 340 90" preserveAspectRatio="none">
+                <path class="area" d="M0,30 L30,38 L60,34 L90,44 L120,40 L150,48 L180,36 L210,34 L240,28 L270,36 L300,30 L330,22 L340,26 L340,90 L0,90 Z"/>
+                <polyline class="line" points="0,30 30,38 60,34 90,44 120,40 150,48 180,36 210,34 240,28 270,36 300,30 330,22 340,26"/>
+                <circle class="dot-now" cx="340" cy="26" r="4.5"/>
+              </svg>
+            </div>
+            <dl class="stat-row">
+              <div><dt>Spread</dt><dd>16¢</dd></div>
+              <div><dt>Vol 24h</dt><dd>$16K</dd></div>
+              <div><dt>Your pos</dt><dd style="color:var(--yes)">+$4.20</dd></div>
+            </dl>
+            <div class="actions-row">
+              <button class="action-btn yes"><span class="hint">HOLD</span><span class="fill"></span><span class="lbl">Back YES</span><span class="price-lbl">58¢</span></button>
+              <button class="action-btn no"><span class="hint">HOLD</span><span class="fill"></span><span class="lbl">Back NO</span><span class="price-lbl">42¢</span></button>
+            </div>
+            <div class="actions-meta">Hold · feel it · release to confirm</div>
+          </article>
+
+          <!-- Card 3 -->
+          <article class="card">
+            <div class="card-head">
+              <span class="cat">Macro</span>
+              <span class="by">
+                <span class="av">Q</span>
+                <span class="by-text">@quincy <span class="t">· 6d</span></span>
+              </span>
+            </div>
+            <h2 class="claim display">The Fed funds rate is below 3% at any point in 2026.</h2>
+            <div class="claim-meta">
+              <span>1,944 trades</span><span>31 replies</span><span>$220K lifetime</span>
+            </div>
+            <div class="price-well">
+              <span class="label">Crowd price · YES</span>
+              <span class="value">64¢</span>
+              <span class="tilt">+2¢ · 24h</span>
+            </div>
+            <div class="chart">
+              <svg viewBox="0 0 340 90" preserveAspectRatio="none">
+                <path class="area" d="M0,76 L30,68 L60,62 L90,56 L120,50 L150,44 L180,44 L210,38 L240,32 L270,26 L300,22 L330,18 L340,16 L340,90 L0,90 Z"/>
+                <polyline class="line" points="0,76 30,68 60,62 90,56 120,50 150,44 180,44 210,38 240,32 270,26 300,22 330,18 340,16"/>
+                <circle class="dot-now" cx="340" cy="16" r="4.5"/>
+              </svg>
+            </div>
+            <dl class="stat-row">
+              <div><dt>Spread</dt><dd>28¢</dd></div>
+              <div><dt>Vol 24h</dt><dd>$9.3K</dd></div>
+              <div><dt>Your pos</dt><dd style="color:var(--yes)">+$12.00</dd></div>
+            </dl>
+            <div class="actions-row">
+              <button class="action-btn yes"><span class="hint">HOLD</span><span class="fill"></span><span class="lbl">Back YES</span><span class="price-lbl">64¢</span></button>
+              <button class="action-btn no"><span class="hint">HOLD</span><span class="fill"></span><span class="lbl">Back NO</span><span class="price-lbl">36¢</span></button>
+            </div>
+            <div class="actions-meta">Hold · feel it · release to confirm</div>
+          </article>
+        </main>
+
+        <!-- Bottom nav -->
+        <nav class="nav">
+          <a class="on" href="#">
+            <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="16" height="7" rx="1.5"/></svg>
+            Feed
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><path d="M12 3l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.8 6.1 21l1.2-6.5L2.5 9.9 9 9z"/></svg>
+            Watch
+          </a>
+          <a class="create" href="03-create.html" aria-label="Create market">
+            <span class="create-inner">
+              <svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor"/></svg>
+            </span>
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="1.5"/><path d="M3 10h18M8 4v4M16 4v4"/></svg>
+            Portfolio
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>
+            You
+          </a>
+        </nav>
+
+      </div>
+    </div>
+
+    <!-- Right: decisions -->
+    <aside class="ctx-right">
+      <h3>Decisions this direction commits to</h3>
+      <div class="decisions">
+        <div class="d"><span class="n">01</span><div><strong>Scroll-snap feed</strong><span>Each market claims the whole viewport. No list-scrolling. Cadence replaces density.</span></div></div>
+        <div class="d"><span class="n">02</span><div><strong>Hold-to-confirm</strong><span>A ~1-second press fills a ring, then commits. Tap and swipe never buy — only deliberate pressure does.</span></div></div>
+        <div class="d"><span class="n">03</span><div><strong>Author always present</strong><span>Avatar + handle sit in the header of every card. Claims have faces. Trust accretes.</span></div></div>
+        <div class="d"><span class="n">04</span><div><strong>Ambient price glow</strong><span>The price carries a soft chroma halo that brightens as recent trades arrive. Motion = information.</span></div></div>
+        <div class="d"><span class="n">05</span><div><strong>Five-tab bottom nav</strong><span>Feed · Watch · Create · Portfolio · You. Create is a raised primary, not a menu item.</span></div></div>
+        <div class="d"><span class="n">06</span><div><strong>No modals, only sheets</strong><span>Everything that isn't a card is a bottom sheet dragged up from the edge. Keeps thumbs home.</span></div></div>
+      </div>
+      <div class="nav-row">
+        <a class="primary" href="01-landing.html">Feed ✓</a>
+        <a href="02-market.html">Market →</a>
+        <a href="03-create.html">Create →</a>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

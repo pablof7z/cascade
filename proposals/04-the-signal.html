@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cascade — Proposal 4: The Signal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #000000;
+    --bg-surface: #0a0a0a;
+    --bg-elevated: #141414;
+    --bg-hover: #1a1a1a;
+    --border: #222;
+    --border-subtle: #181818;
+    --text: #e5e5e5;
+    --text-secondary: #999;
+    --text-muted: #666;
+    --text-faint: #444;
+    --positive: #00ff88;
+    --positive-dim: rgba(0, 255, 136, 0.08);
+    --negative: #ff4444;
+    --negative-dim: rgba(255, 68, 68, 0.08);
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  /* ---- Minimal Header ---- */
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.95), transparent);
+  }
+  .logo {
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: -0.04em;
+    color: var(--text);
+  }
+  .nav-minimal { display: flex; gap: 1.5rem; align-items: center; }
+  .nav-minimal a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: color 0.15s;
+  }
+  .nav-minimal a:hover { color: var(--text); }
+  .nav-minimal a.active { color: var(--text); }
+  .wallet-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--positive);
+    background: var(--positive-dim);
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 255, 136, 0.15);
+  }
+
+  /* ---- Hero: Single Focus Market ---- */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    position: relative;
+  }
+
+  .hero-category {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 2rem;
+  }
+
+  .hero-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8rem;
+    font-weight: 700;
+    color: var(--positive);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    margin-bottom: 0.5rem;
+    position: relative;
+  }
+  .hero-price-cents {
+    font-size: 3rem;
+    color: var(--text-muted);
+    vertical-align: super;
+    margin-left: -0.25rem;
+  }
+
+  .hero-change {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: var(--positive);
+    margin-bottom: 3rem;
+    letter-spacing: 0.02em;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.25;
+    max-width: 700px;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+  }
+
+  .hero-description {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    text-align: center;
+    max-width: 500px;
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 3rem;
+    margin-bottom: 3rem;
+  }
+  .hero-stat {
+    text-align: center;
+  }
+  .hero-stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+  }
+  .hero-stat-label {
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .action-long, .action-short {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.25rem 3rem;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 180px;
+  }
+  .action-long:hover { border-color: var(--positive); background: var(--positive-dim); }
+  .action-short:hover { border-color: var(--negative); background: var(--negative-dim); }
+  .action-side {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-faint);
+  }
+  .action-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .action-long .action-price { color: var(--positive); }
+  .action-short .action-price { color: var(--negative); }
+  .action-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .hero-modules {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 560px;
+    margin-bottom: 2rem;
+  }
+  .hero-modules-label {
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: center;
+    margin-bottom: 0.25rem;
+  }
+  .module-pill {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .module-pill:hover { border-color: var(--border); }
+  .module-pill-name {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+  .module-pill-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  /* Scroll indicator */
+  .scroll-indicator {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-faint);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(6px); }
+  }
+  .scroll-indicator svg { width: 20px; height: 20px; stroke: var(--text-faint); }
+
+  /* ---- Market List Section ---- */
+  .markets-section {
+    padding: 4rem 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-title {
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+  .section-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-faint);
+  }
+
+  /* Minimal Market Rows */
+  .market-row {
+    display: grid;
+    grid-template-columns: 1fr 100px 80px 60px;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .market-row:hover { background: var(--bg-surface); margin: 0 -1rem; padding: 1rem; }
+  .market-row-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+  .market-row-type {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.15rem;
+  }
+  .market-row-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: right;
+  }
+  .market-row-change {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    text-align: right;
+  }
+  .market-row-volume {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: right;
+  }
+
+  /* ---- Thesis Spotlight ---- */
+  .thesis-section {
+    padding: 4rem 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+    border-top: 1px solid var(--border);
+  }
+
+  .thesis-card {
+    padding: 2rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+  }
+  .thesis-card:hover .thesis-title { color: var(--text); }
+  .thesis-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.75rem;
+    display: flex;
+    gap: 1.5rem;
+  }
+  .thesis-title {
+    font-size: 1.35rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.015em;
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+    transition: color 0.15s;
+  }
+  .thesis-body {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    max-width: 640px;
+    margin-bottom: 1rem;
+  }
+  .thesis-linked {
+    display: flex;
+    gap: 0.75rem;
+  }
+  .thesis-module {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border-subtle);
+    transition: border-color 0.15s;
+  }
+  .thesis-module:hover { border-color: var(--border); }
+
+  /* ---- Footer ---- */
+  .footer {
+    padding: 4rem 2rem 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+    border-top: 1px solid var(--border);
+  }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 3rem;
+  }
+  .footer-brand {
+    font-weight: 800;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.03em;
+  }
+  .footer-tagline {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .footer-col-title {
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+  }
+  .footer-col a {
+    display: block;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    padding: 0.2rem 0;
+    transition: color 0.15s;
+  }
+  .footer-col a:hover { color: var(--text); }
+  .footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  /* ---- Why Section ---- */
+  .why-section {
+    padding: 4rem 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+    border-top: 1px solid var(--border);
+  }
+  .why-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 3rem;
+    margin-top: 2rem;
+  }
+  .why-item {}
+  .why-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-faint);
+    margin-bottom: 1rem;
+    line-height: 1;
+  }
+  .why-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .why-body {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  @media (max-width: 768px) {
+    .hero-price { font-size: 5rem; }
+    .hero-title { font-size: 1.5rem; }
+    .hero-actions { flex-direction: column; }
+    .market-row { grid-template-columns: 1fr 80px; }
+    .market-row-change, .market-row-volume { display: none; }
+    .why-grid { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Minimal Header -->
+<header class="header">
+  <div class="logo">cascade</div>
+  <nav class="nav-minimal">
+    <a href="#" class="active">Markets</a>
+    <a href="#">Activity</a>
+    <a href="#">Leaderboard</a>
+    <a href="#">Builder</a>
+    <span class="wallet-pill">$142.50</span>
+  </nav>
+</header>
+
+<!-- Hero: Single Market Focus -->
+<section class="hero">
+  <div class="hero-category">Macro &middot; Thesis &middot; Featured</div>
+
+  <div class="hero-price">68<span class="hero-price-cents">c</span></div>
+  <div class="hero-change">+4.2% today</div>
+
+  <h1 class="hero-title">If the Fed cuts rates, tech stocks will outperform value</h1>
+  <p class="hero-description">
+    The market is pricing a 68% probability that rate cuts benefit growth disproportionately.
+    Take a position.
+  </p>
+
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="hero-stat-value">$12,840</div>
+      <div class="hero-stat-label">Volume</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-value">847</div>
+      <div class="hero-stat-label">Trades</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-value">142</div>
+      <div class="hero-stat-label">Traders</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-value">14</div>
+      <div class="hero-stat-label">Threads</div>
+    </div>
+  </div>
+
+  <div class="hero-actions">
+    <div class="action-long">
+      <span class="action-side">Long</span>
+      <span class="action-price">$0.68</span>
+      <span class="action-label">Buy Long</span>
+    </div>
+    <div class="action-short">
+      <span class="action-side">Short</span>
+      <span class="action-price">$0.32</span>
+      <span class="action-label">Buy Short</span>
+    </div>
+  </div>
+
+  <div class="hero-modules">
+    <div class="hero-modules-label">Linked modules</div>
+    <div class="module-pill">
+      <span class="module-pill-name">Fed cuts rates before September 2026</span>
+      <span class="module-pill-price" style="color: var(--positive)">72c</span>
+    </div>
+    <div class="module-pill">
+      <span class="module-pill-name">NASDAQ outperforms S&P Value H2 2026</span>
+      <span class="module-pill-price" style="color: var(--positive)">54c</span>
+    </div>
+  </div>
+
+  <div class="scroll-indicator">
+    <span>More markets</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+      <path d="M12 5v14M19 12l-7 7-7-7"/>
+    </svg>
+  </div>
+</section>
+
+<!-- Market List -->
+<section class="markets-section">
+  <div class="section-header">
+    <span class="section-title">All Markets</span>
+    <span class="section-count">248 active</span>
+  </div>
+
+  <div class="market-row">
+    <div>
+      <div class="market-row-name">Fed cuts rates before September 2026</div>
+      <div class="market-row-type">Macro &middot; Module</div>
+    </div>
+    <div class="market-row-price" style="color: var(--positive)">72c</div>
+    <div class="market-row-change" style="color: var(--positive)">+2.1%</div>
+    <div class="market-row-volume">$9.4k</div>
+  </div>
+
+  <div class="market-row">
+    <div>
+      <div class="market-row-name">Bitcoin exceeds $150,000 by end of 2026</div>
+      <div class="market-row-type">Crypto &middot; Module</div>
+    </div>
+    <div class="market-row-price" style="color: var(--negative)">34c</div>
+    <div class="market-row-change" style="color: var(--negative)">-2.1%</div>
+    <div class="market-row-volume">$8.2k</div>
+  </div>
+
+  <div class="market-row">
+    <div>
+      <div class="market-row-name">Spot Ethereum ETF approved before Q3 2026</div>
+      <div class="market-row-type">Crypto &middot; Module</div>
+    </div>
+    <div class="market-row-price" style="color: var(--positive)">83c</div>
+    <div class="market-row-change" style="color: var(--positive)">+6.3%</div>
+    <div class="market-row-volume">$3.4k</div>
+  </div>
+
+  <div class="market-row">
+    <div>
+      <div class="market-row-name">EU AI Act forces major US tech restructuring</div>
+      <div class="market-row-type">Tech &middot; Module</div>
+    </div>
+    <div class="market-row-price" style="color: var(--positive)">58c</div>
+    <div class="market-row-change" style="color: var(--negative)">-0.5%</div>
+    <div class="market-row-volume">$6.3k</div>
+  </div>
+
+  <div class="market-row">
+    <div>
+      <div class="market-row-name">Nvidia market cap exceeds $5 trillion by Q4</div>
+      <div class="market-row-type">Tech &middot; Module</div>
+    </div>
+    <div class="market-row-price" style="color: var(--positive)">62c</div>
+    <div class="market-row-change" style="color: var(--positive)">+3.1%</div>
+    <div class="market-row-volume">$4.5k</div>
+  </div>
+
+  <div class="market-row">
+    <div>
+      <div class="market-row-name">US enters technical recession before 2027</div>
+      <div class="market-row-type">Macro &middot; Module</div>
+    </div>
+    <div class="market-row-price" style="color: var(--negative)">41c</div>
+    <div class="market-row-change" style="color: var(--positive)">+1.8%</div>
+    <div class="market-row-volume">$4.1k</div>
+  </div>
+
+  <div class="market-row">
+    <div>
+      <div class="market-row-name">China invades or blockades Taiwan before 2028</div>
+      <div class="market-row-type">Geopolitics &middot; Module</div>
+    </div>
+    <div class="market-row-price" style="color: var(--negative)">8c</div>
+    <div class="market-row-change" style="color: var(--negative)">-0.3%</div>
+    <div class="market-row-volume">$3.9k</div>
+  </div>
+</section>
+
+<!-- Thesis Spotlight -->
+<section class="thesis-section">
+  <div class="section-header">
+    <span class="section-title">Thesis Spotlight</span>
+    <span class="section-count">12 active theses</span>
+  </div>
+
+  <div class="thesis-card">
+    <div class="thesis-meta">
+      <span>Geopolitics</span>
+      <span>by @trade_realist</span>
+      <span style="color: var(--negative)">29c</span>
+      <span style="color: var(--positive)">+8.7%</span>
+    </div>
+    <h3 class="thesis-title">If tariffs persist, US manufacturing jobs will increase</h3>
+    <p class="thesis-body">The protectionist bet: can trade barriers rebuild domestic manufacturing, or will automation absorb the investment? The market is deeply skeptical at 29c.</p>
+    <div class="thesis-linked">
+      <span class="thesis-module">Tariffs persist &middot; 61c</span>
+      <span class="thesis-module">Mfg jobs +2% &middot; 29c</span>
+    </div>
+  </div>
+
+  <div class="thesis-card">
+    <div class="thesis-meta">
+      <span>Crypto</span>
+      <span>by @defi_thesis</span>
+      <span style="color: var(--positive)">51c</span>
+      <span style="color: var(--positive)">+0.8%</span>
+    </div>
+    <h3 class="thesis-title">If BTC exceeds $150k, DeFi TVL will surpass $500B</h3>
+    <p class="thesis-body">The wealth effect thesis: a Bitcoin supercycle unlocks speculative capital flowing downstream into DeFi. A repeat of 2021, or has the market matured past it?</p>
+    <div class="thesis-linked">
+      <span class="thesis-module">BTC &gt; $150k &middot; 34c</span>
+      <span class="thesis-module">DeFi TVL &gt; $500B &middot; 22c</span>
+    </div>
+  </div>
+
+  <div class="thesis-card">
+    <div class="thesis-meta">
+      <span>Energy</span>
+      <span>by @grid_watcher</span>
+      <span style="color: var(--positive)">62c</span>
+      <span style="color: var(--positive)">+1.2%</span>
+    </div>
+    <h3 class="thesis-title">If AI energy demand doubles, the nuclear renaissance accelerates</h3>
+    <p class="thesis-body">Data centers need baseload power. AI compute demands may overcome decades of nuclear skepticism faster than any climate policy argument could.</p>
+    <div class="thesis-linked">
+      <span class="thesis-module">AI datacenter 2x &middot; 71c</span>
+      <span class="thesis-module">New nuclear approved &middot; 44c</span>
+    </div>
+  </div>
+</section>
+
+<!-- Why Cascade -->
+<section class="why-section">
+  <div class="section-header">
+    <span class="section-title">How Cascade Works</span>
+  </div>
+  <div class="why-grid">
+    <div class="why-item">
+      <div class="why-number">01</div>
+      <h3 class="why-title">Markets never close</h3>
+      <p class="why-body">No oracle. No expiration. Reality asserts itself through price as information enters the market and traders act on conviction.</p>
+    </div>
+    <div class="why-item">
+      <div class="why-number">02</div>
+      <h3 class="why-title">Build linked theses</h3>
+      <p class="why-body">Connect markets informationally. "If X then Y" arguments where each component trades independently on its own merits.</p>
+    </div>
+    <div class="why-item">
+      <div class="why-number">03</div>
+      <h3 class="why-title">Trade with conviction</h3>
+      <p class="why-body">Every trade is a public statement. Fund your wallet, take a position in USD, and let the market decide who was right.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <div class="footer-brand">cascade</div>
+      <p class="footer-tagline">Public markets for infinite games.</p>
+    </div>
+    <div class="footer-col">
+      <div class="footer-col-title">Navigate</div>
+      <a href="#">Markets</a>
+      <a href="#">Build a Thesis</a>
+      <a href="#">Analytics</a>
+      <a href="#">Leaderboard</a>
+    </div>
+    <div class="footer-col">
+      <div class="footer-col-title">Account</div>
+      <a href="#">Join</a>
+      <a href="#">Portfolio</a>
+      <a href="#">Wallet</a>
+    </div>
+    <div class="footer-col">
+      <div class="footer-col-title">Reference</div>
+      <a href="#">How It Works</a>
+      <a href="#">Agent SKILL.md</a>
+      <a href="#">Terms</a>
+      <a href="#">Privacy</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>&copy; 2026 Cascade</span>
+    <span>Built on Nostr</span>
+  </div>
+</footer>
+
+</body>
+</html>

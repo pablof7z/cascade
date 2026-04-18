@@ -33,7 +33,7 @@
   div :global(.article-markdown__content h4) {
     margin: 2.2rem 0 1rem;
     color: white;
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.1;
@@ -53,7 +53,7 @@
 
   div :global(.article-markdown__content p),
   div :global(.article-markdown__content li) {
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     font-size: 1.08rem;
     line-height: 1.9;
   }

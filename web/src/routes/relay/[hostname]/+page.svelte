@@ -85,10 +85,10 @@
   {/if}
 </div>
 
-<div class="bookmarks-layout">
-  <div class="bookmarks-main">
+<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+  <div>
     {#if sortedArticles.length > 0}
-      <div class="article-feed" style="max-width: var(--content-width);">
+      <div class="max-w-3xl">
         {#each sortedArticles as event (event.id)}
           <ArticleCard {event} showAuthor />
         {/each}

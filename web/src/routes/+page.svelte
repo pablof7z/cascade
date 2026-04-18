@@ -331,17 +331,17 @@
 <!-- LIVE TICKER                                                   -->
 <!-- ============================================================ -->
 <section class="full-bleed bg-base-200" aria-label="Live market strip">
-  <div class="shell live-strip">
-    <div class="live-label">
-      <span class="live-dot"></span>
+  <div class="shell marquee-strip">
+    <div class="marquee-label">
+      <span class="marquee-dot"></span>
       <span>Live</span>
     </div>
 
-    <div class="ticker-shell">
+    <div class="marquee-shell">
       {#if tickerMarkets.length > 0}
-        <div class="ticker-track">
+        <div class="marquee-belt">
           {#each [...tickerMarkets, ...tickerMarkets] as market, index (`${market.id}-${index}`)}
-            <a class="ticker-item" href={marketUrl(market.slug)}>
+            <a class="marquee-item" href={marketUrl(market.slug)}>
               <span class="font-mono text-xs text-base-content/40 uppercase">{market.categories[0] || 'Market'}</span>
               <span class="text-base-content">{market.title}</span>
               <span class:text-success={probabilityForMarket(market.id) >= 0.5} class:text-error={probabilityForMarket(market.id) < 0.5}>
@@ -639,7 +639,7 @@
   }
 
   /* ── Live ticker strip ─────────────────────────────────────── */
-  .live-strip {
+  .marquee-strip {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 1rem;
@@ -648,7 +648,7 @@
     padding-bottom: 0.75rem;
   }
 
-  .live-label {
+  .marquee-label {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
@@ -660,7 +660,7 @@
     opacity: 0.4;
   }
 
-  .live-dot {
+  .marquee-dot {
     width: 0.45rem;
     height: 0.45rem;
     background: var(--color-success);
@@ -668,12 +668,12 @@
     animation: pulse 1.9s infinite;
   }
 
-  .ticker-shell {
+  .marquee-shell {
     min-width: 0;
     overflow: hidden;
   }
 
-  .ticker-track {
+  .marquee-belt {
     display: flex;
     align-items: center;
     gap: 1.8rem;
@@ -681,7 +681,7 @@
     animation: ticker 42s linear infinite;
   }
 
-  .ticker-item {
+  .marquee-item {
     display: inline-flex;
     align-items: center;
     gap: 0.65rem;

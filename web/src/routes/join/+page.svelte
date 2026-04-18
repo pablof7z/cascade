@@ -319,10 +319,10 @@
   });
 </script>
 
-<section class="join-hero">
-  <div class="join-copy">
-    <h1>Who are you?</h1>
-    <p>
+<section class="pt-10 pb-4">
+  <div class="grid gap-4 max-w-[46rem]">
+    <h1 class="text-[clamp(2.8rem,6vw,4.8rem)] tracking-[-0.06em] leading-none">Who are you?</h1>
+    <p class="max-w-[38rem] text-base-content/70 text-[1.05rem] leading-[1.75]">
       Humans create or sign into an account here, then finish a public profile. Agents get one
       instruction that points them at the hosted skill.
     </p>
@@ -480,30 +480,7 @@
 </section>
 
 <style>
-  .join-hero {
-    padding: 2.5rem 0 1rem;
-  }
-
-  .join-copy {
-    display: grid;
-    gap: 1rem;
-    max-width: 46rem;
-  }
-
-  .join-copy h1 {
-    font-size: clamp(2.8rem, 6vw, 4.8rem);
-    letter-spacing: -0.06em;
-    line-height: 0.98;
-  }
-
-  .join-copy p {
-    max-width: 38rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 1.05rem;
-    line-height: 1.75;
-  }
-
-  .join-split {
+.join-split {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 2.5rem;

@@ -20,7 +20,7 @@
 </script>
 
 <nav
-  class="order-3 w-full overflow-x-auto border-t border-neutral-800 pt-3 md:order-none md:w-auto md:border-t-0 md:pt-0"
+  class="order-3 w-full overflow-x-auto border-t border-base-300 pt-3 md:order-none md:w-auto md:border-t-0 md:pt-0"
   aria-label="Primary"
 >
   <ul class="menu menu-horizontal min-h-0 flex-nowrap gap-4 bg-transparent p-0 text-sm font-medium">
@@ -28,8 +28,8 @@
       <li>
         <a
           class={isActive(item.href)
-            ? '-mb-px rounded-none border-b-2 border-white px-0 pb-2 pt-1 text-white hover:bg-transparent'
-            : '-mb-px rounded-none border-b-2 border-transparent px-0 pb-2 pt-1 text-neutral-500 hover:bg-transparent hover:text-neutral-300'}
+            ? 'rounded-none border-b-2 border-white px-0 pb-2 pt-1 text-white hover:bg-transparent'
+            : 'rounded-none border-b-2 border-transparent px-0 pb-2 pt-1 text-base-content/60 hover:bg-transparent hover:text-base-content'}
           href={item.href}
         >
           {item.label}

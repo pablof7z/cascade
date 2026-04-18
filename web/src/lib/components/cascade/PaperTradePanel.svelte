@@ -684,13 +684,12 @@
 </script>
 
 <aside class="trade-panel" data-state={tradePanelState}>
-  {#if !currentUser}
-    <p class="trade-muted">Sign in to buy or sell positions.</p>
-  {:else}
+  {#if currentUser}
     <div class="trade-balance">
       <span>Available</span>
       <strong>{formatUsdMinor(availableMinor)}</strong>
     </div>
+  {/if}
 
     <!-- Mode tabs -->
     <div class="trade-mode-tabs">
@@ -761,9 +760,13 @@
             </div>
           {/if}
 
-          <button class="btn btn-primary w-full" onclick={buy} disabled={!buySpendValid}>
-            Mint {buySide === 'long' ? 'LONG' : 'SHORT'}
-          </button>
+          {#if currentUser}
+            <button class="btn btn-primary w-full" onclick={buy} disabled={!buySpendValid}>
+              Mint {buySide === 'long' ? 'LONG' : 'SHORT'}
+            </button>
+          {:else}
+            <a href="/join" class="trade-signin-link">Sign in to trade →</a>
+          {/if}
 
           {#if statusMessage}<p class="trade-status-inline">{statusMessage}</p>{/if}
           {#if errorMessage}<p class="trade-error-inline">{errorMessage}</p>{/if}
@@ -814,9 +817,13 @@
               </div>
             {/if}
 
-            <button class="btn btn-outline w-full" onclick={sell} disabled={!sellQuantityValid}>
-              Exit {currentPosition.side === 'long' ? 'LONG' : 'SHORT'} position
-            </button>
+            {#if currentUser}
+              <button class="btn btn-outline w-full" onclick={sell} disabled={!sellQuantityValid}>
+                Exit {currentPosition.side === 'long' ? 'LONG' : 'SHORT'} position
+              </button>
+            {:else}
+              <a href="/join" class="trade-signin-link">Sign in to trade →</a>
+            {/if}
 
             {#if statusMessage}<p class="trade-status-inline">{statusMessage}</p>{/if}
             {#if errorMessage}<p class="trade-error-inline">{errorMessage}</p>{/if}
@@ -828,7 +835,6 @@
         {/if}
       </div>
     {/if}
-  {/if}
 </aside>
 
 <style>
@@ -1014,8 +1020,18 @@
     gap: 0.75rem;
   }
 
-  .trade-muted {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    margin: 0;
+  .trade-signin-link {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    text-align: center;
+    color: var(--color-primary);
+    text-decoration: none;
+    border: 1px solid var(--color-primary);
+    border-radius: 0.375rem;
+  }
+
+  .trade-signin-link:hover {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   }
 </style>

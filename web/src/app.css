@@ -6,7 +6,10 @@
 }
 
 @import 'tailwindcss';
-@plugin 'daisyui';
+@plugin 'daisyui' {
+  themes: ['dark --default'];
+  logs: false;
+}
 
 @layer base {
   [data-theme='dark'] {

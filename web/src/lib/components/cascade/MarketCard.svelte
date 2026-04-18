@@ -27,43 +27,41 @@
   const authorLabel = $derived(displayName(profile, 'Cascade user'));
 </script>
 
-<article class="grid gap-3 border-b border-neutral-800 py-4">
-  <div class="flex items-center justify-between gap-4 text-xs text-neutral-500">
-    <span>{formatRelativeTime(market.createdAt)}</span>
-    <span>{discussionCount} discussion{discussionCount === 1 ? '' : 's'}</span>
-  </div>
-
-  <a
-    class="text-xl font-heading font-semibold leading-tight text-white hover:text-neutral-200"
-    href={marketUrl(market.slug)}
-  >
-    {market.title}
-  </a>
-  <p class="text-sm leading-6 text-neutral-400">
-    {truncateText(market.description || market.body || 'No market summary yet.', 170)}
-  </p>
-
-  <dl class="grid gap-3 sm:grid-cols-3">
-    <div class="grid gap-1">
-      <dt class="text-xs uppercase tracking-[0.08em] text-neutral-500">Price</dt>
-      <dd class="m-0 font-mono text-sm text-white">
-        {formatProbability(tradeSummary?.latestPricePpm ? tradeSummary.latestPricePpm / 1_000_000 : null)}
-      </dd>
+<article class="card card-border bg-base-200 transition-colors hover:bg-base-300">
+  <div class="card-body gap-3">
+    <div class="flex items-center justify-between gap-4 text-xs text-base-content/50">
+      <span>{formatRelativeTime(market.createdAt)}</span>
+      <span>{discussionCount} discussion{discussionCount === 1 ? '' : 's'}</span>
     </div>
-    <div class="grid gap-1">
-      <dt class="text-xs uppercase tracking-[0.08em] text-neutral-500">Volume</dt>
-      <dd class="m-0 font-mono text-sm text-white">{formatProductAmount(tradeSummary?.grossVolume, 'usd')}</dd>
-    </div>
-    <div class="grid gap-1">
-      <dt class="text-xs uppercase tracking-[0.08em] text-neutral-500">Trades</dt>
-      <dd class="m-0 font-mono text-sm text-white">{tradeSummary?.tradeCount ?? 0}</dd>
-    </div>
-  </dl>
 
-  <div class="flex items-center justify-between gap-4 text-xs text-neutral-500">
-    <span>by {authorLabel}</span>
-    <a class="text-sm font-medium text-white hover:text-neutral-200" href={marketUrl(market.slug)}
-      >Open market</a
-    >
+    <a class="card-title text-xl font-semibold leading-tight hover:text-base-content/80" href={marketUrl(market.slug)}>
+      {market.title}
+    </a>
+
+    <p class="text-sm leading-6 text-base-content/60">
+      {truncateText(market.description || market.body || 'No market summary yet.', 170)}
+    </p>
+
+    <div class="stats stats-horizontal w-full bg-base-300">
+      <div class="stat py-2 px-3">
+        <div class="stat-title text-xs">Price</div>
+        <div class="stat-value font-mono text-sm">
+          {formatProbability(tradeSummary?.latestPricePpm ? tradeSummary.latestPricePpm / 1_000_000 : null)}
+        </div>
+      </div>
+      <div class="stat py-2 px-3">
+        <div class="stat-title text-xs">Volume</div>
+        <div class="stat-value font-mono text-sm">{formatProductAmount(tradeSummary?.grossVolume, 'usd')}</div>
+      </div>
+      <div class="stat py-2 px-3">
+        <div class="stat-title text-xs">Trades</div>
+        <div class="stat-value font-mono text-sm">{tradeSummary?.tradeCount ?? 0}</div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between gap-4 text-xs text-base-content/50">
+      <span>by {authorLabel}</span>
+      <a class="text-sm font-medium text-base-content hover:text-base-content/80" href={marketUrl(market.slug)}>Open market</a>
+    </div>
   </div>
 </article>

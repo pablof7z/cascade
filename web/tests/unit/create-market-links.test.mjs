@@ -26,6 +26,6 @@ test('authenticated user menu includes a Create market action before Finish setu
   assert.match(source, /function navigateToBuilder\(\) \{\s*void goto\('\/builder'\);\s*\}/);
   assert.match(
     source,
-    /<DropdownMenu\.Item onSelect=\{navigateToEditProfile\}>[\s\S]*?<span>Edit profile<\/span>[\s\S]*?<\/DropdownMenu\.Item>\s*<DropdownMenu\.Item onSelect=\{navigateToBuilder\}>[\s\S]*?<path d="M12 4\.5v15m7\.5-7\.5h-15" \/>[\s\S]*?<span>Create market<\/span>[\s\S]*?<\/DropdownMenu\.Item>\s*\{#if shouldFinishOnboarding\}/
+    /<button onclick=\{navigateToEditProfile\}>[\s\S]*?<span>Edit profile<\/span>[\s\S]*?<\/button>[\s\S]*?<button onclick=\{navigateToBuilder\}>[\s\S]*?<path d="M12 4\.5v15m7\.5-7\.5h-15" \/>[\s\S]*?<span>Create market<\/span>[\s\S]*?<\/button>[\s\S]*?\{#if shouldFinishOnboarding\}/
   );
 });

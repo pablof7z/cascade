@@ -34,6 +34,6 @@ test('homepage and market surface keep perpetual-market copy without resolution 
   );
   assert.doesNotMatch(homeSource, /settled — or forever/);
   assert.match(marketSurfaceSource, /const tradingContext = \$derived\(/);
-  assert.match(marketSurfaceSource, /<h3>Trading context<\/h3>/);
+  assert.match(marketSurfaceSource, /<h3[^>]*>Trading context<\/h3>/);
   assert.doesNotMatch(marketSurfaceSource, /resolution criteria/i);
 });

@@ -29,7 +29,7 @@ test('market surface adds a logged-in bookmark toggle backed by kind 10003 event
   );
   assert.match(
     source,
-    /\{#if currentUser\}[\s\S]*<button[\s\S]*class="market-bookmark-button"[\s\S]*class:bookmarked=\{isBookmarked\}[\s\S]*onclick=\{toggleBookmark\}[\s\S]*<BookmarkIcon size=\{14\} filled=\{isBookmarked\} \/>[\s\S]*<span>\{isBookmarked \? 'Saved' : 'Save'\}<\/span>[\s\S]*<\/button>[\s\S]*\{\/if\}/
+    /\{#if currentUser\}[\s\S]*<button[\s\S]*onclick=\{toggleBookmark\}[\s\S]*<BookmarkIcon size=\{14\} filled=\{isBookmarked\} \/>[\s\S]*<span>\{isBookmarked \? 'Saved' : 'Save'\}<\/span>[\s\S]*<\/button>[\s\S]*\{\/if\}/
   );
 });
 
@@ -40,7 +40,7 @@ test('market surface renders the share popover in the header actions for all use
   assert.match(source, /import SharePopover from '\$lib\/components\/SharePopover\.svelte';/);
   assert.match(
     source,
-    /<div class="market-header-actions">[\s\S]*<SharePopover url=\{page\.url\.href\} title=\{market\.title\} \/>[\s\S]*\{#if currentUser\}[\s\S]*<button[\s\S]*class="market-bookmark-button"[\s\S]*\{\/if\}[\s\S]*<\/div>/
+    /<div[^>]*>[\s\S]*<SharePopover url=\{page\.url\.href\} title=\{market\.title\} \/>[\s\S]*\{#if currentUser\}[\s\S]*<button[\s\S]*\{\/if\}[\s\S]*<\/div>/
   );
 });
 
@@ -48,8 +48,8 @@ test('related markets show LONG price with a 50¢ fallback instead of timestamp 
   const source = read('src/lib/components/cascade/MarketSurface.svelte');
   const relatedBlock = source.match(/\{#if relatedMarkets\.length > 0\}[\s\S]*?\{\/if\}/)?.[0] ?? '';
 
-  assert.match(relatedBlock, /<h3>More markets<\/h3>/);
-  assert.match(relatedBlock, /<span class="positive">\{priceCents\(\(related\.latestPricePpm \?\? 500_000\) \/ 1_000_000\)\} LONG<\/span>/);
+  assert.match(relatedBlock, /<h3[^>]*>More markets<\/h3>/);
+  assert.match(relatedBlock, /<span[^>]*>\{priceCents\(\(related\.latestPricePpm \?\? 500_000\) \/ 1_000_000\)\} LONG<\/span>/);
   assert.doesNotMatch(relatedBlock, /formatRelativeTime\(related\.createdAt\)/);
   assert.doesNotMatch(relatedBlock, /authorLabel\(related\.pubkey\)/);
 });

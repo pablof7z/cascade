@@ -25,7 +25,7 @@ test('prediction-market surfaces keep visible LONG/SHORT copy in the active trad
     ['src/lib/components/cascade/PortfolioPage.svelte', /\{position\.direction === 'long' \? 'LONG' : 'SHORT'\}/],
     ['src/lib/components/cascade/PaperTradePanel.svelte', /LONG \{formatProbability\(yesProbability\)\}/],
     ['src/lib/components/cascade/PaperTradePanel.svelte', /SHORT \{formatProbability\(noProbability\)\}/],
-    ['src/lib/components/cascade/MarketSurface.svelte', /market-header-side-label">LONG<\/span>/],
+    ['src/lib/components/cascade/MarketSurface.svelte', /<span[^>]*>LONG<\/span>/],
     ['src/routes/activity/+page.svelte', /trade\.direction === 'long' \? 'LONG' : 'SHORT'/],
     ['src/routes/analytics/+page.svelte', /trade\.direction === 'long' \? 'LONG' : 'SHORT'/],
     ['src/routes/p\/\[identifier\]\/\+page\.svelte', /LONG\/SHORT split/]

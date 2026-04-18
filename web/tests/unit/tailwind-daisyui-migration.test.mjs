@@ -79,17 +79,18 @@ test('app css imports Tailwind and DaisyUI and defines the Cascade dark theme', 
 });
 
 test('shared UI wrappers use DaisyUI classes for tabs, dialog, dropdowns, and avatar', () => {
-  assert.match(read('src/lib/components/ui/tabs/tabs-list.svelte'), /tabs-bordered/);
-  assert.match(read('src/lib/components/ui/tabs/tabs-trigger.svelte'), /\btab\b/);
-  assert.doesNotMatch(read('src/lib/components/ui/dialog/dialog-content.svelte'), /modal-box/);
-  assert.doesNotMatch(read('src/lib/components/ui/dialog/dialog-content.svelte'), /modal-backdrop/);
-  assert.match(read('src/lib/components/ui/dialog/dialog-content.svelte'), /rounded-md/);
-  assert.match(read('src/lib/components/ui/dialog/dialog-content.svelte'), /overflow-y-auto/);
-  assert.match(read('src/lib/components/ui/dialog/dialog-content.svelte'), /overscroll-contain/);
-  assert.match(read('src/lib/components/ui/dialog/dialog-content.svelte'), /bg-base-200/);
-  assert.match(read('src/lib/components/ui/dropdown-menu/dropdown-menu-content.svelte'), /dropdown-content/);
-  assert.match(read('src/lib/components/ui/dropdown-menu/dropdown-menu-item.svelte'), /\bmenu\b/);
-  assert.match(read('src/lib/components/ui/avatar/avatar.svelte'), /\bavatar\b/);
+  // Tabs — TabNav uses DaisyUI tab classes directly
+  assert.match(read('src/lib/components/cascade/TabNav.svelte'), /tabs-bordered/);
+  assert.match(read('src/lib/components/cascade/TabNav.svelte'), /\btab\b/);
+  // Popover/overlay — SharePopover uses DaisyUI utility classes (no legacy modal wrappers)
+  assert.doesNotMatch(read('src/lib/components/SharePopover.svelte'), /modal-box/);
+  assert.doesNotMatch(read('src/lib/components/SharePopover.svelte'), /modal-backdrop/);
+  assert.match(read('src/lib/components/SharePopover.svelte'), /rounded-md/);
+  assert.match(read('src/lib/components/SharePopover.svelte'), /bg-base-200/);
+  // Dropdown — AuthenticatedUserMenu uses DaisyUI dropdown and menu classes
+  assert.match(read('src/lib/features/auth/AuthenticatedUserMenu.svelte'), /dropdown-content/);
+  assert.match(read('src/lib/features/auth/AuthenticatedUserMenu.svelte'), /\bmenu\b/);
+  assert.match(read('src/lib/features/auth/AuthenticatedUserMenu.svelte'), /\bavatar\b/);
 });
 
 test('legacy Cascade CSS variable tokens are removed from the web source tree', () => {

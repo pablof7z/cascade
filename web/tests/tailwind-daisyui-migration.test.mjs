@@ -42,22 +42,18 @@ test('app.css uses Tailwind v4 and DaisyUI theme config instead of the old :root
   assert.doesNotMatch(appCss, /\.field\b(?!-)/);
 });
 
-test('bits-ui wrappers render DaisyUI styling classes', () => {
-  const tabsList = read('src/lib/components/ui/tabs/tabs-list.svelte');
-  const tabsTrigger = read('src/lib/components/ui/tabs/tabs-trigger.svelte');
-  const dialogContent = read('src/lib/components/ui/dialog/dialog-content.svelte');
-  const dropdownContent = read('src/lib/components/ui/dropdown-menu/dropdown-menu-content.svelte');
-  const avatarRoot = read('src/lib/components/ui/avatar/avatar.svelte');
-
-  assert.match(tabsList, /tabs\s+tabs-bordered/);
-  assert.match(tabsTrigger, /\btab\b/);
-  assert.doesNotMatch(dialogContent, /modal-box/);
-  assert.match(dialogContent, /rounded-md/);
-  assert.match(dialogContent, /overflow-y-auto/);
-  assert.match(dialogContent, /overscroll-contain/);
-  assert.match(dialogContent, /bg-base-200/);
-  assert.match(dropdownContent, /dropdown-content/);
-  assert.match(avatarRoot, /\bavatar\b/);
+test('bits-ui wrappers have been removed', () => {
+  for (const p of [
+    'src/lib/components/ui/tabs/tabs-list.svelte',
+    'src/lib/components/ui/tabs/tabs-trigger.svelte',
+    'src/lib/components/ui/dialog/dialog-content.svelte',
+    'src/lib/components/ui/dropdown-menu/dropdown-menu-content.svelte',
+    'src/lib/components/ui/avatar/avatar.svelte'
+  ]) {
+    assert.throws(() => read(p), /ENOENT/);
+  }
+  const pkg = JSON.parse(read('package.json'));
+  assert.ok(!pkg.dependencies?.['bits-ui'], 'bits-ui dep should be removed');
 });
 
 test('site navigation uses DaisyUI navbar or menu classes', () => {

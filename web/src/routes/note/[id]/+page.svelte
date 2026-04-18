@@ -27,17 +27,15 @@
   import '$lib/ndk/components/embedded-article';
   import EventAuthorHeader from '$lib/components/EventAuthorHeader.svelte';
   import BookmarkIcon from '$lib/components/BookmarkIcon.svelte';
-  import HighlightPopover from '$lib/components/HighlightPopover.svelte';
   import SharePopover from '$lib/components/SharePopover.svelte';
   import { mergeUniqueEvents } from '$lib/ndk/events';
 
   let { data }: PageProps = $props();
-  let activeTab = $state<'article' | 'comments' | 'highlights'>('article');
-  let replyingTo = $state<string | null>(null); // event id being replied to, null = top-level
+  let activeTab = $state<'article' | 'comments'>('article');
+  let replyingTo = $state<string | null>(null);
   let replyText = $state('');
   let submitting = $state(false);
   let bookmarking = $state(false);
-  let articleContentEl = $state<HTMLElement | null>(null);
 
   const currentUser = $derived(ndk.$currentUser);
 
@@ -96,9 +94,6 @@
   const seedComments = $derived(
     (data.comments ?? []).map((comment: NostrEvent) => new NDKEvent(ndk, comment))
   );
-  const seedHighlights = $derived(
-    (data.highlights ?? []).map((highlight: NostrEvent) => new NDKEvent(ndk, highlight))
-  );
   const liveComments = ndk.$subscribe(() => {
     if (!browser || !event || event.kind !== 30023) return undefined;
 
@@ -110,27 +105,10 @@
 
     return filters.length > 0 ? { filters } : undefined;
   });
-  const liveHighlights = ndk.$subscribe(() => {
-    if (!browser || !event || event.kind !== 30023) return undefined;
-
-    const filters = buildReferenceFilters(targetReferences(event), [9802], {
-      addressTag: 'a',
-      idTag: 'e',
-      limit: 80
-    });
-
-    return filters.length > 0 ? { filters } : undefined;
-  });
   const commentEvents = $derived(
     mergeUniqueEvents(
       liveComments.events.filter((comment) => comment.kind === 1111),
       seedComments
-    )
-  );
-  const highlightEvents = $derived(
-    mergeUniqueEvents(
-      liveHighlights.events.filter((highlight) => highlight.kind === 9802),
-      seedHighlights
     )
   );
   const missing = $derived(!event && (browser ? !fetchedEvent.loading : data.missing));
@@ -143,7 +121,6 @@
   const shareUrl = $derived(browser ? page.url.href : '');
   const articleEventId = $derived(event?.id ?? '');
   const commentCount = $derived(commentEvents.length);
-  const highlightCount = $derived(highlightEvents.length);
 
   type CommentNode = {
     event: NDKEvent;
@@ -349,15 +326,11 @@
               <span>Comments</span>
               <span class="article-tab-count">{commentCount}</span>
             </Tabs.Trigger>
-            <Tabs.Trigger value="highlights">
-              <span>Highlights</span>
-              <span class="article-tab-count">{highlightCount}</span>
-            </Tabs.Trigger>
           </Tabs.List>
 
           <Tabs.Content value="article" class="article-tab-panel">
-            <div bind:this={articleContentEl}>
-              <ArticleMarkdown content={event.content} tags={event.tags} highlights={highlightEvents} />
+            <div>
+              <ArticleMarkdown content={event.content} tags={event.tags} />
             </div>
             <div class="share-footer">
               <p class="share-footer-label">Share this article</p>
@@ -501,43 +474,12 @@
             {/if}
           </Tabs.Content>
 
-          <Tabs.Content value="highlights" class="article-tab-panel">
-            {#if highlightEvents.length > 0}
-              <div class="highlight-stack">
-                {#each highlightEvents as highlight (highlight.id)}
-                  <article class="highlight-card">
-                    <EventAuthorHeader
-                      {ndk}
-                      pubkey={highlight.pubkey}
-                      timestamp={highlight.created_at}
-                      fallbackName="Reader"
-                    />
-
-                    <blockquote class="highlight-quote">
-                      {highlight.content || 'This highlight has no text excerpt.'}
-                    </blockquote>
-
-                    {#if tagValue(highlight.tags, 'comment')}
-                      <p class="highlight-note">{tagValue(highlight.tags, 'comment')}</p>
-                    {/if}
-
-                    {#if tagValue(highlight.tags, 'context')}
-                      <p class="caption" style="margin: 0;">Context: {tagValue(highlight.tags, 'context')}</p>
-                    {/if}
-                  </article>
-                {/each}
-              </div>
-            {/if}
-          </Tabs.Content>
         </Tabs.Root>
       {:else}
         <pre class="document-copy">{event.content}</pre>
       {/if}
     </article>
 
-    {#if isArticle}
-      <HighlightPopover articleEvent={event} containerEl={articleContentEl} />
-    {/if}
   </section>
 {/if}
 

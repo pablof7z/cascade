@@ -435,29 +435,6 @@ export async function fetchArticleComments(event: NDKEvent, limit = 120): Promis
     .sort((left, right) => (left.created_at ?? 0) - (right.created_at ?? 0));
 }
 
-export async function fetchArticleHighlights(event: NDKEvent, limit = 80): Promise<NDKEvent[]> {
-  const ndk = await getServerNdk();
-  const filters = buildReferenceFilters(targetReferences(event), [9802], {
-    addressTag: 'a',
-    idTag: 'e',
-    limit
-  });
-
-  if (filters.length === 0) {
-    return [];
-  }
-
-  const events = await withTimeout(
-    ndk.fetchEvents(filters, { closeOnEose: true }),
-    undefined,
-    `fetchArticleHighlights(${event.tagId()})`
-  );
-
-  return Array.from(events ?? [])
-    .filter((highlight) => highlight.kind === 9802)
-    .sort((left, right) => (right.created_at ?? 0) - (left.created_at ?? 0));
-}
-
 function sortByPublishedTime(left: NDKEvent, right: NDKEvent): number {
   return publishedAtSeconds(right) - publishedAtSeconds(left);
 }
@@ -621,41 +598,6 @@ function buildReferenceFilters(
   }
 
   return filters;
-}
-
-export async function fetchRecentHighlights(limit = 100): Promise<NDKEvent[]> {
-  const ndk = await getServerNdk();
-  const events = await withTimeout(
-    ndk.fetchEvents(
-      {
-        kinds: [9802],
-        limit
-      },
-      { closeOnEose: true }
-    ),
-    undefined,
-    `fetchRecentHighlights(${limit})`
-  );
-
-  return Array.from(events ?? []).sort((left, right) => (right.created_at ?? 0) - (left.created_at ?? 0));
-}
-
-export async function fetchHighlightedArticles(highlights: NDKEvent[]): Promise<NDKEvent[]> {
-  if (highlights.length === 0) return [];
-
-  const ndk = await getServerNdk();
-  const { ids, addresses } = collectPointerReferences(highlights);
-  const filters = buildPointedEventFilters(ids, addresses);
-
-  if (filters.length === 0) return [];
-
-  const events = await withTimeout(
-    ndk.fetchEvents(filters, { closeOnEose: true }),
-    undefined,
-    `fetchHighlightedArticles(${filters.length})`
-  );
-
-  return Array.from(events ?? []).filter((event) => event.kind === 30023);
 }
 
 function publishedAtSeconds(event: Pick<NDKEvent, 'created_at' | 'tags'>): number {

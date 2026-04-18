@@ -1,6 +1,5 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { onMount } from 'svelte';
   import { loadAgentSettings, saveAgentSettings, type AgentSettings } from '$lib/cascade/settings';
 
   // Initialize with defaults (safe for SSR)
@@ -12,7 +11,8 @@
 
   let loaded = $state(false);
 
-  onMount(() => {
+  $effect(() => {
+    if (typeof window === 'undefined') return;
     const saved = loadAgentSettings();
     permission = saved.permission;
     capitalLimit = saved.capitalLimit;

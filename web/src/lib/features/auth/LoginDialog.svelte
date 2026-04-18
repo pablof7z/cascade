@@ -1,7 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { NDKNip07Signer, NDKNip46Signer, NDKPrivateKeySigner } from '@nostr-dev-kit/ndk';
-  import { onDestroy } from 'svelte';
   import { ndk } from '$lib/ndk/client';
   import ExtensionLoginForm from './ExtensionLoginForm.svelte';
   import PrivateKeyLoginForm from './PrivateKeyLoginForm.svelte';
@@ -151,8 +150,8 @@
     }
   }
 
-  onDestroy(() => {
-    stopNostrConnectSigner(nostrConnectSigner);
+  $effect(() => {
+    return () => stopNostrConnectSigner(nostrConnectSigner);
   });
 </script>
 

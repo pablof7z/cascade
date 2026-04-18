@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { NDKSvelte } from '@nostr-dev-kit/svelte';
   import { User } from '$lib/ndk/ui/user';
+  import { formatDateTime } from '$lib/cascade/format';
 
   interface Props {
     ndk: NDKSvelte;
@@ -18,57 +19,19 @@
     avatarClass = 'article-author-avatar article-author-avatar-compact'
   }: Props = $props();
 
-  const dateLabel = $derived(
-    timestamp ? new Date(timestamp * 1000).toLocaleString() : 'Undated'
-  );
+  const dateLabel = $derived(timestamp ? formatDateTime(timestamp) : 'Undated');
 </script>
 
-<div class="event-author-header">
+<div class="flex items-center gap-2">
   <User.Root {ndk} {pubkey}>
-    <a class="event-author-avatar-link" href={`/p/${pubkey}`}>
+    <a class="shrink-0" href={`/p/${pubkey}`}>
       <User.Avatar class={avatarClass} />
     </a>
-    <div class="event-author-header-copy">
-      <a class="event-author-name" href={`/p/${pubkey}`}>
+    <div class="flex items-baseline gap-2 flex-wrap min-w-0">
+      <a class="text-sm font-bold text-white hover:text-primary transition-colors" href={`/p/${pubkey}`}>
         <User.Name fallback={fallbackName} />
       </a>
-      <span class="event-author-date">{dateLabel}</span>
+      <span class="text-xs text-base-content/60">{dateLabel}</span>
     </div>
   </User.Root>
 </div>
-
-<style>
-  .event-author-header {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-  }
-
-  .event-author-avatar-link {
-    flex-shrink: 0;
-  }
-
-  .event-author-header-copy {
-    display: flex;
-    align-items: baseline;
-    gap: 0.55rem;
-    flex-wrap: wrap;
-    min-width: 0;
-  }
-
-  .event-author-name {
-    font-size: 0.88rem;
-    font-weight: 700;
-    color: white;
-    text-decoration: none;
-  }
-
-  .event-author-name:hover {
-    color: var(--accent);
-  }
-
-  .event-author-date {
-    font-size: 0.78rem;
-    color: var(--color-neutral-content);
-  }
-</style>

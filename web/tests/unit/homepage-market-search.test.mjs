@@ -117,7 +117,8 @@ test('homepage source filters discovery markets using merged live trades', () =>
 test('homepage source uses how-it-works CTA and probability-driven LONG/SHORT labels', () => {
   const source = read('src/routes/+page.svelte');
 
-  assert.match(source, /<a class="text-sm text-neutral-400 hover:text-white transition-colors" href="\/how-it-works">How it works →<\/a>/);
+  assert.match(source, /href="\/how-it-works">How it works →<\/a>/);
+  assert.doesNotMatch(source, /text-neutral-400/);
   assert.match(
     source,
     /<span class="badge badge-success badge-outline">\{probabilityForMarket\(featuredMarket\.id\) >= 0\.5 \? 'LONG' : 'SHORT'\}<\/span>/

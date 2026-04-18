@@ -11,7 +11,7 @@
 <NavigationMenuPrimitive.Trigger
   {...restProps}
   class={cn(
-    'inline-flex items-center gap-2 rounded-none px-0 py-2 text-sm font-medium text-neutral-500 hover:bg-transparent hover:text-white data-[state=open]:text-white focus-visible:outline-none',
+    'inline-flex items-center gap-2 rounded-none px-0 py-2 text-sm font-medium text-base-content/50 hover:bg-transparent hover:text-white data-[state=open]:text-white focus-visible:outline-none',
     className
   )}
 >

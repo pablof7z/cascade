@@ -11,7 +11,7 @@
 <TabsPrimitive.Trigger
   {...restProps}
   class={cn(
-    'tab h-auto flex-none rounded-none border-b-2 border-transparent px-0 pb-3 pt-0 text-sm font-medium text-neutral-500 hover:text-neutral-300 focus-visible:outline-none data-[state=active]:tab-active data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:text-white',
+    'tab h-auto flex-none rounded-none border-b-2 border-transparent px-0 pb-3 pt-0 text-sm font-medium text-base-content/50 hover:text-base-content/80 focus-visible:outline-none data-[state=active]:tab-active data-[state=active]:border-white data-[state=active]:bg-transparent data-[state=active]:text-white',
     className
   )}
 >

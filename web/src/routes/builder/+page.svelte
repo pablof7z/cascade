@@ -793,120 +793,118 @@
   }
 </script>
 
-<section class="builder-page">
-  <header class="builder-header">
+<div class="grid gap-8 w-[min(calc(100%-2.5rem),68rem)] mx-auto py-8 pb-16">
+  <header class="grid gap-3">
     <div class="eyebrow">Create Market</div>
-    <h1>Create Market</h1>
-    <p>
+    <h1 class="text-[2rem] tracking-[-0.04em]">Create Market</h1>
+    <p class="max-w-[48rem] text-base-content/70">
       Publish the claim, the case, and the surrounding context. Linked markets are informational only. They do not
       move each other.
     </p>
   </header>
 
-  <nav class="builder-steps" aria-label="Builder steps">
+  <nav class="grid grid-cols-4 gap-px bg-base-300" aria-label="Builder steps">
     {#each steps as item, index}
-      <div class:active={index === step}>
-        <span>{index + 1}</span>
-        <strong>{item.label}</strong>
+      <div class="flex items-center gap-3 px-4 py-3 bg-base-100 {index === step ? 'text-white' : 'text-base-content/50'}">
+        <span class="font-mono text-sm">{index + 1}</span>
+        <strong class="text-sm font-medium">{item.label}</strong>
       </div>
     {/each}
   </nav>
 
-  <section class="builder-shell">
+  <div class="grid gap-6">
     {#if step === 0}
-      <div class="builder-section">
+      <div class="grid gap-6">
         <input
           bind:value={title}
-          class="builder-title input input-bordered rounded-none px-0 shadow-none"
+          class="input input-bordered rounded-none px-0 shadow-none min-h-0 pb-4 text-[clamp(2.2rem,4vw,3.2rem)] tracking-[-0.05em]"
           placeholder="Market title"
           type="text"
         />
 
-        <div class="builder-subsection">
-          <span>Examples</span>
-          <div class="builder-chip-row">
+        <div class="grid gap-3">
+          <span class="text-base-content/70 text-sm">Examples</span>
+          <div class="flex flex-wrap gap-3">
             {#each examples as example}
-              <button class="builder-chip btn btn-outline btn-sm" onclick={() => (title = example)} type="button">
+              <button class="btn btn-outline btn-sm" onclick={() => (title = example)} type="button">
                 {example}
               </button>
             {/each}
           </div>
         </div>
 
-        <div class="builder-subsection">
-          <span>Summary</span>
+        <div class="grid gap-3">
+          <span class="text-base-content/70 text-sm">Summary</span>
           <textarea
             bind:value={description}
-            class="builder-summary textarea textarea-bordered"
+            class="textarea textarea-bordered min-h-[10rem] resize-y"
             placeholder="What is this market tracking, and why should someone care?"
           ></textarea>
         </div>
 
-        <div class="builder-note">
+        <div class="pt-4 border-t border-base-300 text-sm text-base-content/70">
           Markets stay open. Price changes as people buy or sell.
         </div>
       </div>
     {/if}
 
     {#if step === 1}
-      <div class="builder-section">
-        <div class="builder-copy">
-          <h2>Make your claim</h2>
-          <p>
+      <div class="grid gap-6">
+        <div class="grid gap-3">
+          <h2 class="text-xl">Make your claim</h2>
+          <p class="text-base-content/70">
             This is your public argument. Write it as if the other side is already reading and looking for weak links.
           </p>
         </div>
 
         <textarea
           bind:value={body}
-          class="builder-body textarea textarea-bordered"
+          class="textarea textarea-bordered min-h-[10rem] resize-y"
           placeholder="Lay out the logic, the evidence, and the path you expect reality to take."
         ></textarea>
       </div>
     {/if}
 
     {#if step === 2}
-      <div class="builder-section">
-        <div class="builder-copy">
-          <h2>Link related markets</h2>
-          <p>
+      <div class="grid gap-6">
+        <div class="grid gap-3">
+          <h2 class="text-xl">Link related markets</h2>
+          <p class="text-base-content/70">
             Attach related markets that strengthen or challenge the case. These are references for readers, not
             pricing dependencies.
           </p>
         </div>
 
-        <div class="builder-search">
-          <input
-            class="input input-bordered"
-            bind:value={linkSearch}
-            placeholder="Search markets to add as references"
-            type="text"
-          />
-        </div>
+        <input
+          class="input input-bordered"
+          bind:value={linkSearch}
+          placeholder="Search markets to add as references"
+          type="text"
+        />
 
-        <div class="builder-link-results">
+        <div class="border-t border-base-300">
           {#if filteredMarkets.length > 0}
             {#each filteredMarkets as market (market.id)}
-              <button class="builder-result" onclick={() => addLink(market)} type="button">
-                <strong>{market.title}</strong>
-                <span>{market.description || market.slug}</span>
+              <button class="grid gap-1 w-full text-left py-4 border-b border-base-300 hover:text-white" onclick={() => addLink(market)} type="button">
+                <strong class="text-white text-sm">{market.title}</strong>
+                <span class="text-base-content/70 text-sm">{market.description || market.slug}</span>
               </button>
             {/each}
           {:else}
-            <div class="builder-empty">No matching markets found.</div>
+            <div class="py-4 text-base-content/70 text-sm border-b border-base-300">No matching markets found.</div>
           {/if}
         </div>
 
-        <div class="builder-selected">
+        <div class="border-t border-base-300">
           {#if linkedMarkets.length > 0}
             {#each linkedMarkets as item (item.id)}
-              <div class="builder-selected-row">
-                <div class="builder-selected-copy">
-                  <strong>{item.title}</strong>
-                  <p>{item.slug}</p>
+              <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(20rem,1.5fr)] gap-4 py-4 border-b border-base-300">
+                <div>
+                  <strong class="text-white text-sm">{item.title}</strong>
+                  <p class="text-base-content/70 text-sm mt-1">{item.slug}</p>
                 </div>
 
-                <div class="builder-selected-controls">
+                <div class="grid grid-cols-1 md:grid-cols-[10rem_minmax(0,1fr)_auto] gap-3 items-center">
                   <select
                     class="select select-bordered"
                     bind:value={item.direction}
@@ -931,19 +929,19 @@
               </div>
             {/each}
           {:else}
-            <div class="builder-empty">
+            <div class="py-4 text-base-content/70 text-sm border-b border-base-300">
               No references yet. You can still publish the market without linked context.
             </div>
           {/if}
         </div>
 
-        <div class="builder-meta-grid">
-          <label class="builder-field">
-            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Categories</span>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label class="grid gap-2">
+            <span class="eyebrow">Categories</span>
             <input class="input input-bordered" bind:value={category} placeholder="ai, economics" type="text" />
           </label>
-          <label class="builder-field">
-            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Topics</span>
+          <label class="grid gap-2">
+            <span class="eyebrow">Topics</span>
             <input class="input input-bordered" bind:value={topics} placeholder="agents, labor, energy" type="text" />
           </label>
         </div>
@@ -951,34 +949,34 @@
     {/if}
 
     {#if step === 3}
-      <div class="builder-section">
-        <div class="builder-copy">
-          <h2>Review</h2>
-          <p>Review how this will appear before you go live.</p>
+      <div class="grid gap-6">
+        <div class="grid gap-3">
+          <h2 class="text-xl">Review</h2>
+          <p class="text-base-content/70">Review how this will appear before you go live.</p>
         </div>
 
-        <div class="review-block">
-          <span>Title</span>
-          <strong>{title || '-'}</strong>
-        </div>
-        <div class="review-block">
-          <span>Summary</span>
-          <p>{description || '-'}</p>
-        </div>
-        <div class="review-block">
-          <span>Case</span>
-          <p>{body || '-'}</p>
-        </div>
-        <div class="review-block">
-          <span>Linked markets</span>
-          <p>{linkedMarkets.length > 0 ? linkedMarkets.map((item) => item.title).join(' · ') : 'None attached.'}</p>
-        </div>
+        {#each [
+          { label: 'Title', content: title || '-', bold: true },
+          { label: 'Summary', content: description || '-' },
+          { label: 'Case', content: body || '-' },
+          { label: 'Linked markets', content: linkedMarkets.length > 0 ? linkedMarkets.map((item) => item.title).join(' · ') : 'None attached.' },
+        ] as block}
+          <div class="grid gap-1 py-4 border-t border-base-300">
+            <span class="eyebrow">{block.label}</span>
+            {#if block.bold}
+              <strong class="text-white">{block.content}</strong>
+            {:else}
+              <p class="text-base-content/70">{block.content}</p>
+            {/if}
+          </div>
+        {/each}
+
         {#if paperEdition}
-          <div class="review-block">
-            <span>Opening stake</span>
-            <div class="builder-launch-grid">
-              <label class="builder-field">
-                <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Initial funding</span>
+          <div class="grid gap-4 py-4 border-t border-base-300">
+            <span class="eyebrow">Opening stake</span>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label class="grid gap-2">
+                <span class="eyebrow">Initial funding</span>
                 <input
                   aria-label="Initial funding"
                   class="input input-bordered"
@@ -988,42 +986,42 @@
                   type="number"
                 />
               </label>
-              <label class="builder-field">
-                <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Your position</span>
+              <label class="grid gap-2">
+                <span class="eyebrow">Your position</span>
                 <select aria-label="Your position" class="select select-bordered" bind:value={seedSide}>
                   <option value="long">LONG</option>
                   <option value="short">SHORT</option>
                 </select>
               </label>
             </div>
-            <p>{formatUsdMinor(parsedSeedAmount)} total spend. Fees stay inside that amount.</p>
+            <p class="text-base-content/70 text-sm">{formatUsdMinor(parsedSeedAmount)} total spend. Fees stay inside that amount.</p>
           </div>
         {/if}
       </div>
     {/if}
 
     {#if errorMessage}
-      <p class="negative">{errorMessage}</p>
+      <p class="text-error">{errorMessage}</p>
     {/if}
     {#if builderStatus}
-      <p class="builder-status">{builderStatus}</p>
+      <p class="text-base-content/70">{builderStatus}</p>
     {/if}
 
     {#if paperEdition && creatorMarkets.length > 0}
-      <section class="builder-section">
-        <div class="builder-copy">
-          <h2>Your markets</h2>
-          <p>Your market goes live with the first trade.</p>
+      <div class="grid gap-6">
+        <div class="grid gap-3">
+          <h2 class="text-xl">Your markets</h2>
+          <p class="text-base-content/70">Your market goes live with the first trade.</p>
         </div>
 
-        <div class="builder-selected">
+        <div class="border-t border-base-300">
           {#each creatorMarkets as market (market.event_id)}
-            <div class="builder-selected-row">
-              <div class="builder-selected-copy">
-                <strong>{market.title}</strong>
-                <p>{market.visibility === 'public' ? 'Public' : 'Pending'}</p>
+            <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(20rem,1.5fr)] gap-4 py-4 border-b border-base-300">
+              <div>
+                <strong class="text-white text-sm">{market.title}</strong>
+                <p class="text-base-content/70 text-sm mt-1">{market.visibility === 'public' ? 'Public' : 'Pending'}</p>
               </div>
-              <div class="builder-selected-controls">
+              <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_auto] gap-3 items-center">
                 <input class="input input-bordered" readonly type="text" value={market.slug} />
                 {#if market.visibility === 'public'}
                   <a class="btn btn-outline" href={`/market/${market.slug}`}>Open market</a>
@@ -1037,10 +1035,10 @@
             </div>
           {/each}
         </div>
-      </section>
+      </div>
     {/if}
 
-    <div class="builder-actions">
+    <div class="flex items-center gap-3 flex-wrap">
       {#if step > 0}
         <button class="btn btn-outline" onclick={previousStep} type="button">Back</button>
       {/if}
@@ -1055,213 +1053,5 @@
 
       <a class="btn btn-ghost" href="/">Back to Markets</a>
     </div>
-  </section>
-</section>
-
-<style>
-  .builder-page {
-    display: grid;
-    gap: 2rem;
-    width: min(calc(100% - 2.5rem), 68rem);
-    margin: 0 auto;
-    padding: 2rem 0 4rem;
-  }
-
-  .builder-header h1 {
-    font-size: 2rem;
-    letter-spacing: -0.04em;
-  }
-
-  .builder-header p {
-    max-width: 48rem;
-    margin-top: 0.7rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .builder-steps {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1px;
-    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .builder-steps div {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    padding: 0.9rem 1rem;
-    background: var(--color-base-100);
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-  }
-
-  .builder-steps div.active {
-    color: white;
-  }
-
-  .builder-steps span {
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-  }
-
-  .builder-steps strong {
-    font-size: 0.92rem;
-    font-weight: 500;
-  }
-
-  .builder-shell {
-    display: grid;
-    gap: 1.5rem;
-  }
-
-  .builder-section {
-    display: grid;
-    gap: 1.5rem;
-  }
-
-  .builder-title {
-    min-height: auto;
-    padding-left: 0;
-    padding-right: 0;
-    padding-bottom: 1rem;
-    font-size: clamp(2.2rem, 4vw, 3.2rem);
-    letter-spacing: -0.05em;
-  }
-
-  .builder-summary,
-  .builder-body {
-    min-height: 10rem;
-    resize: vertical;
-  }
-
-  .builder-subsection,
-  .builder-copy {
-    display: grid;
-    gap: 0.65rem;
-  }
-
-  .builder-subsection span,
-  .builder-copy p,
-  .builder-note,
-  .builder-result span,
-  .builder-selected-copy p,
-  .builder-empty,
-  .review-block span,
-  .review-block p {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .builder-copy h2 {
-    font-size: 1.25rem;
-  }
-
-  .builder-chip-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.65rem;
-  }
-
-  .builder-result:hover {
-    border-color: var(--color-neutral);
-    color: white;
-  }
-
-  .builder-note {
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    padding-top: 1rem;
-    font-size: 0.88rem;
-  }
-
-  .builder-link-results,
-  .builder-selected {
-    display: grid;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .builder-result,
-  .builder-selected-row {
-    display: grid;
-    gap: 0.4rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .builder-result {
-    border-left: 0;
-    border-right: 0;
-    background: transparent;
-    text-align: left;
-  }
-
-  .builder-selected-row {
-    grid-template-columns: minmax(0, 1fr) minmax(20rem, 1.5fr);
-    gap: 1rem;
-  }
-
-  .builder-selected-controls {
-    display: grid;
-    grid-template-columns: 10rem minmax(0, 1fr) auto;
-    gap: 0.75rem;
-    align-items: center;
-  }
-
-  .builder-meta-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-  }
-
-  .builder-launch-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-  }
-
-  .builder-field {
-    display: grid;
-    gap: 0.45rem;
-  }
-
-  .builder-field span,
-  .review-block span {
-    font-size: 0.76rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .review-block {
-    display: grid;
-    gap: 0.35rem;
-    padding: 1rem 0;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .review-block strong {
-    color: white;
-    font-size: 1rem;
-  }
-
-  .builder-status {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .builder-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  @media (max-width: 900px) {
-    .builder-steps,
-    .builder-meta-grid,
-    .builder-launch-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .builder-selected-row,
-    .builder-selected-controls {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>
+  </div>
+</div>

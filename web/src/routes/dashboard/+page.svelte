@@ -10,51 +10,44 @@
   const recentFields = [...fields].sort((left, right) => left.meeting.updatedAt.localeCompare(right.meeting.updatedAt));
 </script>
 
-<section class="dash-page">
-  <div class="dash-header">
-    <div>
-      <div class="eyebrow">Dashboard</div>
-      <h1>Your agents worked overnight. Here is the briefing.</h1>
-      <p>
-        The dashboard is the operator view: fields, staffing, capital, and the current debate across each workspace.
-      </p>
-    </div>
+<div class="grid gap-8 p-7">
+  <div>
+    <div class="eyebrow">Dashboard</div>
+    <h1 class="text-[2rem] tracking-[-0.04em] mt-1">Your agents worked overnight. Here is the briefing.</h1>
+    <p class="max-w-[52rem] mt-3 text-base-content/70">
+      The dashboard is the operator view: fields, staffing, capital, and the current debate across each workspace.
+    </p>
   </div>
 
-  <section class="dash-summary">
-    <div>
-      <span>Fields</span>
-      <strong>{fields.length}</strong>
-    </div>
-    <div>
-      <span>Agents</span>
-      <strong>{totalAgents}</strong>
-    </div>
-    <div>
-      <span>Candidate markets</span>
-      <strong>{totalMarkets}</strong>
-    </div>
-    <div>
-      <span>Total capital</span>
-      <strong>{formatUsd(totalCapital)}</strong>
-    </div>
-  </section>
+  <div class="grid grid-cols-2 gap-px bg-base-300 sm:grid-cols-4">
+    {#each [
+      { label: 'Fields', value: String(fields.length) },
+      { label: 'Agents', value: String(totalAgents) },
+      { label: 'Candidate markets', value: String(totalMarkets) },
+      { label: 'Total capital', value: formatUsd(totalCapital) },
+    ] as stat}
+      <div class="grid gap-1 bg-base-100 p-4">
+        <span class="eyebrow">{stat.label}</span>
+        <strong class="text-white font-mono text-lg">{stat.value}</strong>
+      </div>
+    {/each}
+  </div>
 
-  <section class="dash-grid">
-    <article class="dash-section">
-      <div class="dash-section-header">
-        <h2>Fields at a glance</h2>
-        <a href="/dashboard/fields">View all</a>
+  <div class="grid gap-8 md:grid-cols-2">
+    <article class="grid gap-4">
+      <div class="flex items-end justify-between gap-4">
+        <h2 class="text-base font-medium">Fields at a glance</h2>
+        <a class="text-base-content/50 text-sm hover:text-white" href="/dashboard/fields">View all</a>
       </div>
 
-      <div class="dash-list">
+      <div class="border-t border-base-300">
         {#each recentFields as field (field.id)}
-          <a class="dash-row" href="/dashboard/field/{field.id}">
-            <div>
-              <strong>{field.name}</strong>
-              <p>{field.recentUpdate}</p>
+          <a class="flex items-start justify-between gap-4 py-4 border-b border-base-300 hover:text-white" href="/dashboard/field/{field.id}">
+            <div class="min-w-0">
+              <strong class="text-white block text-sm">{field.name}</strong>
+              <p class="mt-1 text-base-content/70 text-sm leading-[1.6]">{field.recentUpdate}</p>
             </div>
-            <div class="dash-row-aside">
+            <div class="grid gap-1 text-right shrink-0 text-base-content/50 font-mono text-xs whitespace-nowrap">
               <span>{field.council.length} agents</span>
               <span>{formatUsd(field.capital.deployedUsd)} deployed</span>
             </div>
@@ -63,31 +56,31 @@
       </div>
     </article>
 
-    <article class="dash-section">
-      <div class="dash-section-header">
-        <h2>Capital deployment</h2>
-        <a href="/dashboard/treasury">Treasury</a>
+    <article class="grid gap-4">
+      <div class="flex items-end justify-between gap-4">
+        <h2 class="text-base font-medium">Capital deployment</h2>
+        <a class="text-base-content/50 text-sm hover:text-white" href="/dashboard/treasury">Treasury</a>
       </div>
 
-      <div class="capital-stack">
-        <div>
-          <span>Deployed</span>
-          <strong>{formatUsd(deployedCapital)}</strong>
+      <div class="grid grid-cols-2 gap-px bg-base-300">
+        <div class="grid gap-1 bg-base-200 p-4">
+          <span class="eyebrow">Deployed</span>
+          <strong class="text-white font-mono">{formatUsd(deployedCapital)}</strong>
         </div>
-        <div>
-          <span>Available</span>
-          <strong>{formatUsd(totalCapital - deployedCapital)}</strong>
+        <div class="grid gap-1 bg-base-200 p-4">
+          <span class="eyebrow">Available</span>
+          <strong class="text-white font-mono">{formatUsd(totalCapital - deployedCapital)}</strong>
         </div>
       </div>
 
-      <div class="dash-list">
+      <div class="border-t border-base-300">
         {#each fields as field (field.id)}
-          <div class="dash-row">
-            <div>
-              <strong>{field.name}</strong>
-              <p>{field.capital.note}</p>
+          <div class="flex items-start justify-between gap-4 py-4 border-b border-base-300">
+            <div class="min-w-0">
+              <strong class="text-white block text-sm">{field.name}</strong>
+              <p class="mt-1 text-base-content/70 text-sm leading-[1.6]">{field.capital.note}</p>
             </div>
-            <div class="dash-row-aside">
+            <div class="grid gap-1 text-right shrink-0 text-base-content/50 font-mono text-xs whitespace-nowrap">
               <span>{formatUsd(field.capital.availableUsd)} free</span>
               <span>{formatUsd(field.capital.monthlyBudgetUsd)} / mo</span>
             </div>
@@ -95,148 +88,5 @@
         {/each}
       </div>
     </article>
-  </section>
-</section>
-
-<style>
-  .dash-page {
-    display: grid;
-    gap: 2rem;
-    padding: 1.75rem;
-  }
-
-  .dash-header h1 {
-    font-size: 2rem;
-    letter-spacing: -0.04em;
-  }
-
-  .dash-header p {
-    max-width: 52rem;
-    margin-top: 0.7rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .dash-summary {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1px;
-    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .dash-summary div {
-    display: grid;
-    gap: 0.35rem;
-    background: var(--color-base-100);
-    padding: 1rem 1.1rem;
-  }
-
-  .dash-summary span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.76rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .dash-summary strong {
-    color: white;
-    font-family: var(--font-mono);
-    font-size: 1.1rem;
-  }
-
-  .dash-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2rem;
-  }
-
-  .dash-section {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .dash-section-header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .dash-section-header h2 {
-    font-size: 1rem;
-  }
-
-  .dash-section-header a {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.85rem;
-  }
-
-  .dash-list {
-    display: grid;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .dash-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .dash-row strong {
-    display: block;
-    color: white;
-    font-size: 0.95rem;
-  }
-
-  .dash-row p {
-    margin-top: 0.35rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 0.88rem;
-    line-height: 1.6;
-  }
-
-  .dash-row-aside {
-    display: grid;
-    gap: 0.3rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    text-align: right;
-    white-space: nowrap;
-  }
-
-  .capital-stack {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1px;
-    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .capital-stack div {
-    display: grid;
-    gap: 0.4rem;
-    background: var(--color-base-200);
-    padding: 1rem 1.1rem;
-  }
-
-  .capital-stack span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.78rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .capital-stack strong {
-    color: white;
-    font-family: var(--font-mono);
-  }
-
-  @media (max-width: 900px) {
-    .dash-summary,
-    .dash-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>
+  </div>
+</div>

@@ -12,6 +12,6 @@
   {#if children}
     {@render children()}
   {:else}
-    <div class="size-2 rotate-45 border border-neutral-800 bg-base-200"></div>
+    <div class="size-2 rotate-45 border border-base-300 bg-base-200"></div>
   {/if}
 </NavigationMenuPrimitive.Indicator>

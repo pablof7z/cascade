@@ -1,5 +1,17 @@
 import { isPaperEdition } from '$lib/cascade/config';
 
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit'
+});
+
+export function formatDateTime(timestamp: number): string {
+  return DATE_TIME_FORMATTER.format(new Date(timestamp * 1000));
+}
+
 const USD_FORMATTER = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',

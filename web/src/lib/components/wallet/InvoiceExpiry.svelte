@@ -23,31 +23,10 @@
 </script>
 
 {#if secondsLeft === 0}
-  <span class="wallet-expiry-expired">Expired</span>
+  <span class="text-error text-xs">Expired</span>
 {:else}
-  <div class="wallet-expiry">
+  <div class="flex items-center gap-1 text-base-content/50 text-xs">
     <span>Expires in</span>
-    <strong>{formatted}</strong>
+    <strong class="text-base-content font-mono font-medium">{formatted}</strong>
   </div>
 {/if}
-
-<style>
-  .wallet-expiry {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.76rem;
-  }
-
-  .wallet-expiry strong {
-    color: var(--color-base-content);
-    font-family: var(--font-mono);
-    font-weight: 500;
-  }
-
-  .wallet-expiry-expired {
-    color: var(--color-error);
-    font-size: 0.76rem;
-  }
-</style>

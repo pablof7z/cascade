@@ -17,20 +17,6 @@
   }
 </script>
 
-<button class="wallet-copy-button" onclick={handleCopy} type="button">
+<button class="border-0 bg-transparent text-base-content/50 text-xs cursor-pointer hover:text-base-content transition-colors" onclick={handleCopy} type="button">
   {copied ? 'Copied' : label}
 </button>
-
-<style>
-  .wallet-copy-button {
-    border: 0;
-    background: transparent;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.76rem;
-    cursor: pointer;
-  }
-
-  .wallet-copy-button:hover {
-    color: var(--color-base-content);
-  }
-</style>

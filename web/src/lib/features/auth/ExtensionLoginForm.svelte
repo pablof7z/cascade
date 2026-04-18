@@ -9,7 +9,7 @@
 </script>
 
 <div class="grid gap-3">
-  <p class="text-sm leading-6 text-neutral-400">
+  <p class="text-sm leading-6 text-base-content/50">
     Use the sign-in method that is already available in this browser.
   </p>
   <button

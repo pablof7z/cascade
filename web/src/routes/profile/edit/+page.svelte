@@ -406,11 +406,11 @@
       </header>
 
       <!-- Section: Identity -->
-      <div class="grid gap-4 border-t border-neutral-800 pt-5">
+      <div class="grid gap-4 border-t border-base-300 pt-5">
         <div class="eyebrow">Identity</div>
 
         <div
-          class="group relative grid h-40 w-full place-items-center overflow-hidden rounded-md border border-neutral-800 bg-base-200"
+          class="group relative grid h-40 w-full place-items-center overflow-hidden rounded-md border border-base-300 bg-base-200"
           role="button"
           tabindex="0"
           onclick={handleBannerClick}
@@ -419,7 +419,7 @@
           {#if bannerDisplayUrl}
             <img src={bannerDisplayUrl} alt="Banner" class="h-full w-full object-cover" />
           {:else}
-            <div class="grid gap-2 justify-items-center text-neutral-500">
+            <div class="grid gap-2 justify-items-center text-base-content/50">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                 <rect x="3" y="3" width="18" height="18" rx="2" />
                 <circle cx="8.5" cy="8.5" r="1.5" />
@@ -433,7 +433,7 @@
 
         <div class="flex flex-wrap items-center gap-3">
           <button
-            class="group relative grid size-28 place-items-center overflow-hidden rounded-md border border-neutral-800 bg-base-200"
+            class="group relative grid size-28 place-items-center overflow-hidden rounded-md border border-base-300 bg-base-200"
             type="button"
             onclick={handleAvatarClick}
             aria-label="Upload avatar"
@@ -441,7 +441,7 @@
             {#if avatarDisplayUrl}
               <img src={avatarDisplayUrl} alt="Your avatar" class="h-full w-full object-cover" />
             {:else}
-              <div class="grid gap-2 justify-items-center text-neutral-500">
+              <div class="grid gap-2 justify-items-center text-base-content/50">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                   <circle cx="12" cy="8" r="4" />
                   <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
@@ -486,83 +486,83 @@
         <div class="grid gap-4">
           <div class="grid gap-4 md:grid-cols-2">
             <label class="grid gap-2">
-              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Display name</span>
+              <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Display name</span>
               <input class="input input-bordered" bind:value={display} oninput={() => { profileTouched = true; }} placeholder="Your full name" />
             </label>
             <label class="grid gap-2">
-              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Username</span>
+              <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Username</span>
               <input class="input input-bordered" bind:value={name} oninput={() => { profileTouched = true; }} placeholder="username" />
             </label>
           </div>
 
           <label class="grid gap-2">
-            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Bio</span>
+            <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Bio</span>
             <textarea class="textarea textarea-bordered min-h-32" bind:value={about} oninput={() => { profileTouched = true; }} placeholder="Tell people about yourself" rows="3"></textarea>
           </label>
         </div>
       </div>
 
       <!-- Section: Links & Verification -->
-      <div class="grid gap-4 border-t border-neutral-800 pt-5">
+      <div class="grid gap-4 border-t border-base-300 pt-5">
         <div class="eyebrow">Links & Verification</div>
 
         <div class="grid gap-4">
           <label class="grid gap-2">
-            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Verified handle</span>
+            <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Verified handle</span>
             <input class="input input-bordered" bind:value={nip05} oninput={() => { profileTouched = true; }} placeholder="you@example.com" />
           </label>
 
           <label class="grid gap-2">
-            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Lightning address</span>
+            <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Lightning address</span>
             <input class="input input-bordered" bind:value={lud16} oninput={() => { profileTouched = true; }} placeholder="you@wallet.com" />
           </label>
 
           <label class="grid gap-2">
-            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Website</span>
+            <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Website</span>
             <input class="input input-bordered" bind:value={website} oninput={() => { profileTouched = true; }} placeholder="https://yoursite.com" type="url" />
           </label>
         </div>
       </div>
 
       <!-- Section: Appearance (NIP-F1) -->
-      <div class="grid gap-4 border-t border-neutral-800 pt-5">
+      <div class="grid gap-4 border-t border-base-300 pt-5">
         <div class="eyebrow">Appearance</div>
 
         <div class="grid gap-4">
           <div class="grid gap-4 md:grid-cols-2">
             <label class="grid gap-2">
-              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Background color</span>
+              <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Background color</span>
               <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
-                <input class="h-12 w-12 rounded-md border border-neutral-800 bg-base-100 p-1" type="color" value={backgroundColor || '#ffffff'} oninput={(e) => { backgroundColor = (e.currentTarget as HTMLInputElement).value; nipF1Touched = true; }} />
+                <input class="h-12 w-12 rounded-md border border-base-300 bg-base-100 p-1" type="color" value={backgroundColor || '#ffffff'} oninput={(e) => { backgroundColor = (e.currentTarget as HTMLInputElement).value; nipF1Touched = true; }} />
                 <input class="input input-bordered" type="text" bind:value={backgroundColor} oninput={() => { nipF1Touched = true; }} placeholder="#ffffff" />
               </div>
             </label>
             <label class="grid gap-2">
-              <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Text color</span>
+              <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Text color</span>
               <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
-                <input class="h-12 w-12 rounded-md border border-neutral-800 bg-base-100 p-1" type="color" value={foregroundColor || '#000000'} oninput={(e) => { foregroundColor = (e.currentTarget as HTMLInputElement).value; nipF1Touched = true; }} />
+                <input class="h-12 w-12 rounded-md border border-base-300 bg-base-100 p-1" type="color" value={foregroundColor || '#000000'} oninput={(e) => { foregroundColor = (e.currentTarget as HTMLInputElement).value; nipF1Touched = true; }} />
                 <input class="input input-bordered" type="text" bind:value={foregroundColor} oninput={() => { nipF1Touched = true; }} placeholder="#000000" />
               </div>
             </label>
           </div>
 
           <label class="grid gap-2">
-            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Background music URL</span>
+            <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Background music URL</span>
             <input class="input input-bordered" bind:value={backgroundMusic} oninput={() => { nipF1Touched = true; }} placeholder="https://example.com/ambient.mp3" type="url" />
           </label>
 
           <div class="grid gap-2">
-            <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Priority kinds</span>
+            <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Priority kinds</span>
             <div class="grid gap-2">
               {#each PRIORITY_KIND_OPTIONS as opt (opt.kind)}
-                <label class="flex items-center gap-3 rounded-md border border-neutral-800 bg-base-200 px-3 py-2">
+                <label class="flex items-center gap-3 rounded-md border border-base-300 bg-base-200 px-3 py-2">
                   <input
-                    class="checkbox checkbox-sm border-neutral-700"
+                    class="checkbox checkbox-sm border-base-content/40"
                     type="checkbox"
                     checked={priorityKinds.includes(opt.kind)}
                     onchange={() => togglePriorityKind(opt.kind)}
                   />
-                  <span class="text-sm text-neutral-200">{opt.label} <em class="text-neutral-500">(kind:{opt.kind})</em></span>
+                  <span class="text-sm text-base-content/90">{opt.label} <em class="text-base-content/50">(kind:{opt.kind})</em></span>
                 </label>
               {/each}
             </div>
@@ -571,7 +571,7 @@
       </div>
 
       <!-- Section: Custom Fields (NIP-F1) -->
-      <div class="grid gap-4 border-t border-neutral-800 pt-5">
+      <div class="grid gap-4 border-t border-base-300 pt-5">
         <div class="eyebrow">Custom Fields</div>
 
         <div class="grid gap-3">
@@ -605,7 +605,7 @@
       </div>
 
       <!-- Sticky footer -->
-      <div class="flex flex-col gap-3 border-t border-neutral-800 pt-5 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex flex-col gap-3 border-t border-base-300 pt-5 sm:flex-row sm:items-center sm:justify-between">
         {#if saveError}
           <p class="text-sm text-error">{saveError}</p>
         {/if}
@@ -626,7 +626,7 @@
         {previewOpen ? 'Hide preview' : 'Show preview'}
       </button>
       <div
-        class={`overflow-hidden rounded-md border border-neutral-800 bg-base-200 ${
+        class={`overflow-hidden rounded-md border border-base-300 bg-base-200 ${
           previewOpen ? 'block' : 'hidden lg:block'
         }`}
       >

@@ -44,35 +44,7 @@
   );
 </script>
 
-<div class="wallet-health">
-  <span class:connected={status === 'connected'} class:offline={status !== 'connected'}></span>
-  <small>{label}</small>
+<div class="flex items-center gap-2">
+  <span class="size-[0.45rem] rounded-full {status === 'connected' ? 'bg-success' : status !== 'checking' ? 'bg-error' : 'bg-base-content/50'}"></span>
+  <small class="text-base-content/50 text-xs">{label}</small>
 </div>
-
-<style>
-  .wallet-health {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-  }
-
-  .wallet-health span {
-    width: 0.45rem;
-    height: 0.45rem;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-  }
-
-  .wallet-health span.connected {
-    background: var(--color-success);
-  }
-
-  .wallet-health span.offline {
-    background: var(--color-error);
-  }
-
-  .wallet-health small {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.76rem;
-  }
-</style>

@@ -28,102 +28,37 @@
   });
 </script>
 
-<section class="settings-page">
+<div class="grid gap-8 p-7 max-w-[46rem]">
   <div>
     <div class="eyebrow">Settings</div>
-    <h1>Settings</h1>
-    <p>Manage your agents, permissions, and account preferences.</p>
+    <h1 class="text-xl mt-1">Settings</h1>
+    <p class="mt-2 text-base-content/70">Manage your agents, permissions, and account preferences.</p>
   </div>
 
-  <section class="settings-section">
-    <h2>Connected Agents</h2>
-    <p>No connected agents yet.</p>
-    <a class="settings-button" href="/dashboard/agents">Connect Agent</a>
+  <section class="grid gap-4 pt-6 border-t border-base-300">
+    <h2 class="text-base font-medium">Connected Agents</h2>
+    <p class="text-base-content/70 text-sm">No connected agents yet.</p>
+    <a class="btn btn-outline btn-sm w-fit" href="/dashboard/agents">Connect Agent</a>
   </section>
 
-  <section class="settings-section">
-    <h2>Default Permissions</h2>
-    <label><input bind:group={permission} type="radio" value="propose-only" /> Propose only</label>
-    <label><input bind:group={permission} type="radio" value="trade-with-approval" /> Trade with approval</label>
-    <label><input bind:group={permission} type="radio" value="autonomous" /> Autonomous within limits</label>
+  <section class="grid gap-4 pt-6 border-t border-base-300">
+    <h2 class="text-base font-medium">Default Permissions</h2>
+    <label class="flex items-center gap-3 text-sm"><input bind:group={permission} type="radio" value="propose-only" /> Propose only</label>
+    <label class="flex items-center gap-3 text-sm"><input bind:group={permission} type="radio" value="trade-with-approval" /> Trade with approval</label>
+    <label class="flex items-center gap-3 text-sm"><input bind:group={permission} type="radio" value="autonomous" /> Autonomous within limits</label>
 
     {#if permission === 'autonomous'}
-      <div class="settings-inline">
-        <span>Capital limit</span>
-        <input bind:value={capitalLimit} type="number" min="0" step="1" />
+      <div class="flex items-center gap-3">
+        <span class="text-base-content/70 text-sm">Capital limit</span>
+        <input class="w-32 border border-base-300 bg-base-100 text-white px-3 py-2 text-sm" bind:value={capitalLimit} type="number" min="0" step="1" />
       </div>
     {/if}
   </section>
 
-  <section class="settings-section">
-    <h2>Notifications</h2>
-    <label><input bind:checked={notifyProposals} type="checkbox" /> New position proposals</label>
-    <label><input bind:checked={notifyMeeting} type="checkbox" /> Meeting activity</label>
-    <label><input bind:checked={notifyDigest} type="checkbox" /> Daily digest</label>
+  <section class="grid gap-4 pt-6 border-t border-base-300">
+    <h2 class="text-base font-medium">Notifications</h2>
+    <label class="flex items-center gap-3 text-sm"><input bind:checked={notifyProposals} type="checkbox" /> New position proposals</label>
+    <label class="flex items-center gap-3 text-sm"><input bind:checked={notifyMeeting} type="checkbox" /> Meeting activity</label>
+    <label class="flex items-center gap-3 text-sm"><input bind:checked={notifyDigest} type="checkbox" /> Daily digest</label>
   </section>
-</section>
-
-<style>
-  .settings-page {
-    display: grid;
-    gap: 2rem;
-    padding: 1.75rem;
-    max-width: 46rem;
-  }
-
-  .settings-page h1 {
-    font-size: 1.2rem;
-  }
-
-  .settings-page p {
-    margin-top: 0.4rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .settings-section {
-    display: grid;
-    gap: 0.9rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .settings-section h2 {
-    font-size: 1rem;
-  }
-
-  .settings-section label {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    color: var(--color-base-content);
-    font-size: 0.92rem;
-  }
-
-  .settings-button {
-    width: fit-content;
-    border: 1px solid var(--color-neutral);
-    padding: 0.7rem 0.95rem;
-    color: white;
-    font-size: 0.92rem;
-    font-weight: 500;
-  }
-
-  .settings-inline {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .settings-inline span {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 0.86rem;
-  }
-
-  .settings-inline input {
-    width: 8rem;
-    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    background: var(--color-base-100);
-    color: white;
-    padding: 0.55rem 0.7rem;
-  }
-</style>
+</div>

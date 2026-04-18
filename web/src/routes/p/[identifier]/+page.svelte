@@ -75,10 +75,10 @@
   }
 </script>
 
-<section class="profile-header">
+<div class="flex flex-wrap items-end gap-6 pt-4">
   {#if avatarUrl}
     <img
-      class="profile-avatar profile-avatar-image"
+      class="size-20 shrink-0 rounded-full object-cover bg-base-300"
       src={avatarUrl}
       alt={`${profileLabel} avatar`}
       loading="lazy"
@@ -86,121 +86,115 @@
       onerror={handleAvatarError}
     />
   {:else}
-    <div class="profile-avatar profile-avatar-fallback" aria-hidden="true">{avatarMonogram}</div>
+    <div class="size-20 shrink-0 rounded-full bg-base-300 grid place-items-center text-[1.75rem] font-semibold text-white" aria-hidden="true">{avatarMonogram}</div>
   {/if}
 
-  <div class="profile-copy">
-    <h1>{profileLabel}</h1>
-    <p>{resolvedProfile?.about || resolvedProfile?.bio || 'No profile summary yet.'}</p>
+  <div class="grid gap-4 flex-1 min-w-0 max-w-[42rem]">
+    <h1 class="text-[clamp(2.4rem,4vw,4rem)] leading-none tracking-[-0.05em]">{profileLabel}</h1>
+    <p class="text-base-content/70 leading-[1.75]">{resolvedProfile?.about || resolvedProfile?.bio || 'No profile summary yet.'}</p>
 
-    <div class="profile-meta">
-      {#if resolvedProfile?.nip05}
+    {#if resolvedProfile?.nip05}
+      <div class="flex flex-wrap gap-4 text-base-content/50 text-sm">
         <span>{resolvedProfile.nip05}</span>
-      {/if}
-    </div>
+      </div>
+    {/if}
   </div>
 
-  <div class="profile-actions">
+  <div class="flex gap-3 flex-wrap ml-auto">
     {#if currentUser?.pubkey === resolvedPubkey}
       <a class="btn btn-primary" href="/profile/edit">Edit profile</a>
     {/if}
   </div>
-</section>
+</div>
 
-<section class="profile-stats">
-  <div>
-    <span>Markets created</span>
-    <strong>{marketList.length}</strong>
+<div class="grid grid-cols-2 gap-4 pt-8 sm:grid-cols-4">
+  <div class="grid gap-1 py-4 border-t border-base-300">
+    <span class="eyebrow">Markets created</span>
+    <strong class="text-white font-mono">{marketList.length}</strong>
   </div>
-  <div>
+  <div class="grid gap-1 py-4 border-t border-base-300">
     <span>Positions</span>
-    <strong>{positionStats.total}</strong>
+    <strong class="text-white font-mono">{positionStats.total}</strong>
   </div>
-  <div>
+  <div class="grid gap-1 py-4 border-t border-base-300">
     <span>LONG/SHORT split</span>
-    <strong>{positionStats.splitLabel}</strong>
+    <strong class="text-white font-mono">{positionStats.splitLabel}</strong>
   </div>
-  <div>
+  <div class="grid gap-1 py-4 border-t border-base-300">
     <span>Avg entry</span>
-    <strong>{formatProfileProbability(positionStats.averageEntryPrice)}</strong>
+    <strong class="text-white font-mono">{formatProfileProbability(positionStats.averageEntryPrice)}</strong>
   </div>
-</section>
+</div>
 
-<section class="profile-grid">
-  <article class="profile-section">
-    <div class="section-header">
-      <div>
-        <div class="section-kicker">Markets</div>
-        <h2>Markets Created</h2>
-      </div>
+<div class="grid gap-10 pt-8 md:grid-cols-3">
+  <article class="grid gap-4">
+    <div>
+      <div class="eyebrow">Markets</div>
+      <h2 class="mt-1 text-xl tracking-[-0.03em]">Markets Created</h2>
     </div>
 
-    <div class="profile-list">
+    <div class="divide-y divide-base-300 border-t border-base-300">
       {#if marketList.length > 0}
         {#each marketList as market (market.id)}
-          <a class="profile-row" href={marketUrl(market.slug)}>
-            <div>
-              <strong>{market.title}</strong>
-              <p>{sanitizeMarketCopy(market.description) || 'No market summary yet.'}</p>
+          <a class="flex items-start justify-between gap-4 py-4 hover:text-white" href={marketUrl(market.slug)}>
+            <div class="min-w-0">
+              <strong class="text-white text-base leading-[1.45] block">{market.title}</strong>
+              <p class="mt-1 text-base-content/50 text-sm leading-[1.65]">{sanitizeMarketCopy(market.description) || 'No market summary yet.'}</p>
             </div>
-            <span>{formatRelativeTime(market.createdAt)}</span>
+            <span class="shrink-0 text-base-content/50 text-xs">{formatRelativeTime(market.createdAt)}</span>
           </a>
         {/each}
       {:else}
-        <div class="profile-empty">No markets created yet.</div>
+        <div class="py-4 text-base-content/70">No markets created yet.</div>
       {/if}
     </div>
   </article>
 
-  <article class="profile-section">
-    <div class="section-header">
-      <div>
-        <div class="section-kicker">Trading Activity</div>
-        <h2>Public Positions</h2>
-      </div>
+  <article class="grid gap-4">
+    <div>
+      <div class="eyebrow">Trading Activity</div>
+      <h2 class="mt-1 text-xl tracking-[-0.03em]">Public Positions</h2>
     </div>
 
-    <div class="profile-list">
+    <div class="divide-y divide-base-300 border-t border-base-300">
       {#if positionList.length > 0}
         {#each positionList as position (position.id)}
           {@const positionMarket = positionMarketMap.get(position.marketId)}
           <a class="profile-row" href={positionMarket ? marketUrl(positionMarket.slug) : undefined}>
-            <div>
-              <strong title={positionDirectionLabel(position)}>{position.marketTitle || position.marketId}</strong>
-              <p>{formatProfilePositionSummary(position)}</p>
+            <div class="min-w-0">
+              <strong class="text-white text-base leading-[1.45] block" title={positionDirectionLabel(position)}>{position.marketTitle || position.marketId}</strong>
+              <p class="mt-1 text-base-content/50 text-sm leading-[1.65]">{formatProfilePositionSummary(position)}</p>
             </div>
-            <span>{formatRelativeTime(Math.floor(position.createdAt / 1000))}</span>
+            <span class="shrink-0 text-base-content/50 text-xs">{formatRelativeTime(Math.floor(position.createdAt / 1000))}</span>
           </a>
         {/each}
       {:else}
-        <div class="profile-empty">No public position records yet.</div>
+        <div class="py-4 text-base-content/70">No public position records yet.</div>
       {/if}
     </div>
   </article>
 
-  <article class="profile-section">
-    <div class="section-header">
-      <div>
-        <div class="section-kicker">Discussion</div>
-        <h2>Discussions</h2>
-      </div>
+  <article class="grid gap-4">
+    <div>
+      <div class="eyebrow">Discussion</div>
+      <h2>Discussions</h2>
     </div>
 
-    <div class="profile-list">
+    <div class="divide-y divide-base-300 border-t border-base-300">
       {#if discussionEntries.length > 0}
         {#each discussionEntries as discussion (discussion.id)}
-          <div class="profile-row">
-            <div>
-              <strong>
+          <div class="flex items-start justify-between gap-4 py-4">
+            <div class="min-w-0">
+              <strong class="text-white text-base leading-[1.45] block">
                 {#if discussion.threadHref}
-                  <a class="profile-link" href={discussion.threadHref}>{discussion.title}</a>
+                  <a class="hover:text-white" href={discussion.threadHref}>{discussion.title}</a>
                 {:else}
                   {discussion.title}
                 {/if}
               </strong>
-              <p>
+              <p class="mt-1 text-base-content/50 text-sm leading-[1.65]">
                 {#if discussion.marketHref}
-                  <a class="profile-link profile-inline-link" href={discussion.marketHref}>
+                  <a class="underline underline-offset-2 hover:text-white" href={discussion.marketHref}>
                     {discussion.marketLabel}
                   </a>
                 {:else}
@@ -211,245 +205,12 @@
                 {/if}
               </p>
             </div>
-            <span>{formatRelativeTime(discussion.createdAt)}</span>
+            <span class="shrink-0 text-base-content/50 text-xs">{formatRelativeTime(discussion.createdAt)}</span>
           </div>
         {/each}
       {:else}
-        <div class="profile-empty">No discussion threads started yet.</div>
+        <div class="py-4 text-base-content/70">No discussion threads started yet.</div>
       {/if}
     </div>
   </article>
-</section>
-
-<style>
-  .profile-header {
-    display: flex;
-    align-items: flex-end;
-    gap: 1.5rem 2rem;
-    padding-top: 1rem;
-  }
-
-  .profile-avatar,
-  .profile-avatar-image,
-  .profile-avatar-fallback {
-    width: 5rem;
-    height: 5rem;
-    border-radius: 50%;
-    flex: 0 0 auto;
-  }
-
-  .profile-avatar-image {
-    display: block;
-    object-fit: cover;
-    background: rgba(38, 38, 38, 0.8);
-  }
-
-  .profile-avatar-fallback {
-    display: grid;
-    place-items: center;
-    background: rgba(38, 38, 38, 0.8);
-    color: white;
-    font-size: 1.75rem;
-    font-weight: 600;
-    line-height: 1;
-  }
-
-  .profile-copy {
-    display: grid;
-    gap: 0.9rem;
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: 42rem;
-  }
-
-  .section-kicker {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .profile-copy h1 {
-    font-size: clamp(2.4rem, 4vw, 4rem);
-    line-height: 1;
-    letter-spacing: -0.05em;
-  }
-
-  .profile-copy p {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    line-height: 1.75;
-  }
-
-  .profile-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.85rem 1rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.82rem;
-  }
-
-  .profile-actions {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    margin-left: auto;
-  }
-
-  .profile-stats {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1rem;
-    padding-top: 2rem;
-  }
-
-  .profile-stats div {
-    display: grid;
-    gap: 0.4rem;
-    padding: 1rem 0;
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .profile-stats span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.76rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .profile-stats strong {
-    color: white;
-    font-family: var(--font-mono);
-    font-size: 1rem;
-  }
-
-  .profile-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 2.5rem;
-    padding-top: 2rem;
-  }
-
-  .profile-section {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .section-header h2 {
-    margin-top: 0.25rem;
-    font-size: 1.2rem;
-    letter-spacing: -0.03em;
-  }
-
-  .profile-list {
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .profile-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .profile-row strong {
-    color: white;
-    font-size: 1rem;
-    line-height: 1.45;
-  }
-
-  .profile-row p {
-    margin-top: 0.25rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.86rem;
-    line-height: 1.65;
-  }
-
-  .profile-row span {
-    flex: 0 0 auto;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.78rem;
-  }
-
-  .profile-link {
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .profile-link:hover {
-    color: white;
-  }
-
-  .profile-inline-link {
-    text-decoration: underline;
-    text-underline-offset: 0.14em;
-  }
-
-  .profile-empty {
-    padding: 1rem 0;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  @media (max-width: 1100px) {
-    .profile-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .profile-section:last-child {
-      grid-column: 1 / -1;
-    }
-  }
-
-  @media (max-width: 900px) {
-    .profile-header {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .profile-avatar,
-    .profile-avatar-image,
-    .profile-avatar-fallback {
-      width: 3.75rem;
-      height: 3.75rem;
-    }
-
-    .profile-avatar-fallback {
-      font-size: 1.35rem;
-    }
-
-    .profile-actions {
-      margin-left: 0;
-    }
-
-    .profile-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .profile-stats {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .profile-avatar,
-    .profile-avatar-image,
-    .profile-avatar-fallback {
-      width: 3.25rem;
-      height: 3.25rem;
-    }
-
-    .profile-avatar-fallback {
-      font-size: 1.1rem;
-    }
-
-    .profile-stats {
-      grid-template-columns: 1fr;
-    }
-
-    .profile-row {
-      flex-direction: column;
-    }
-  }
-</style>
+</div>

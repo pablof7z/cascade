@@ -21,115 +21,36 @@
   }
 </script>
 
-<section class="dash-shell">
-  <aside class="dash-sidebar">
-    <nav class="dash-nav">
-      <div class="dash-group">
+<section class="flex min-h-[calc(100vh-4rem)] flex-col md:flex-row">
+  <aside class="shrink-0 md:w-[13.5rem] border-b border-base-300 md:border-b-0 md:border-r md:border-base-300">
+    <nav class="flex flex-col gap-0 md:sticky md:top-16 md:min-h-[calc(100vh-4rem)] p-3 md:p-[1.25rem_0.85rem_1rem]">
+      <div class="grid gap-1">
         {#each primaryItems as item}
-          <a class:active={isActive(item.href)} href={item.href}>{item.label}</a>
+          <a
+            class="px-3 py-[0.55rem] text-sm font-medium rounded transition-colors {isActive(item.href) ? 'bg-base-300 text-white' : 'text-base-content/70 hover:bg-base-300 hover:text-white'}"
+            href={item.href}
+          >{item.label}</a>
         {/each}
       </div>
 
-      <div class="dash-divider"></div>
+      <div class="my-3 border-t border-base-300"></div>
 
-      <div class="dash-group">
+      <div class="grid gap-1">
         {#each secondaryItems as item}
-          <a class:active={isActive(item.href)} href={item.href}>{item.label}</a>
+          <a
+            class="px-3 py-[0.55rem] text-sm font-medium rounded transition-colors {isActive(item.href) ? 'bg-base-300 text-white' : 'text-base-content/70 hover:bg-base-300 hover:text-white'}"
+            href={item.href}
+          >{item.label}</a>
         {/each}
       </div>
 
-      <div class="dash-spacer"></div>
+      <div class="flex-1"></div>
 
-      <a class="dash-create" href="/dashboard/fields">New Field</a>
+      <a class="btn btn-outline btn-sm mt-4" href="/dashboard/fields">New Field</a>
     </nav>
   </aside>
 
-  <div class="dash-main">
+  <div class="min-w-0 flex-1">
     {@render children?.()}
   </div>
 </section>
-
-<style>
-  .dash-shell {
-    display: flex;
-    min-height: calc(100vh - 4rem);
-  }
-
-  .dash-sidebar {
-    width: 13.5rem;
-    flex-shrink: 0;
-    border-right: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .dash-nav {
-    position: sticky;
-    top: 4rem;
-    display: flex;
-    min-height: calc(100vh - 4rem);
-    flex-direction: column;
-    padding: 1.25rem 0.85rem 1rem;
-  }
-
-  .dash-group {
-    display: grid;
-    gap: 0.2rem;
-  }
-
-  .dash-group a {
-    padding: 0.55rem 0.8rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 0.92rem;
-    font-weight: 500;
-  }
-
-  .dash-group a:hover,
-  .dash-group a.active {
-    background: var(--color-base-300);
-    color: white;
-  }
-
-  .dash-divider {
-    margin: 0.8rem 0;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .dash-spacer {
-    flex: 1;
-  }
-
-  .dash-create {
-    border: 1px solid var(--color-neutral);
-    padding: 0.7rem 0.8rem;
-    color: var(--color-base-content);
-    font-size: 0.92rem;
-    font-weight: 500;
-    text-align: center;
-  }
-
-  .dash-create:hover {
-    border-color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    color: white;
-  }
-
-  .dash-main {
-    min-width: 0;
-    flex: 1;
-  }
-
-  @media (max-width: 960px) {
-    .dash-shell {
-      flex-direction: column;
-    }
-
-    .dash-sidebar {
-      width: auto;
-      border-right: 0;
-      border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    }
-
-    .dash-nav {
-      min-height: auto;
-      position: static;
-    }
-  }
-</style>

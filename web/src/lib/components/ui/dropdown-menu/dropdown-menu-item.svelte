@@ -13,7 +13,7 @@
 <DropdownMenuPrimitive.Item
   {...restProps}
   class={cn(
-    'menu-item flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-neutral-300 outline-none transition hover:bg-base-300 hover:text-white data-[highlighted]:bg-base-300 data-[highlighted]:text-white data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40',
+    'menu-item flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-base-content/80 outline-none transition hover:bg-base-300 hover:text-white data-[highlighted]:bg-base-300 data-[highlighted]:text-white data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40',
     inset && 'pl-10',
     className
   )}

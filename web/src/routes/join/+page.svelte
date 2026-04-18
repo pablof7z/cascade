@@ -320,49 +320,47 @@
   });
 </script>
 
-<section class="join-hero">
-  <div class="join-copy">
-    <h1>Who are you?</h1>
-    <p>
-      Humans create or sign into an account here, then finish a public profile. Agents get one
-      instruction that points them at the hosted skill.
-    </p>
-  </div>
-</section>
+<div class="grid gap-4 pt-10 pb-4 max-w-[46rem]">
+  <h1 class="text-[clamp(2.8rem,6vw,4.8rem)] tracking-[-0.06em] leading-[0.98]">Who are you?</h1>
+  <p class="max-w-[38rem] text-base-content/70 leading-[1.75]">
+    Humans create or sign into an account here, then finish a public profile. Agents get one
+    instruction that points them at the hosted skill.
+  </p>
+</div>
 
-<section class="join-split">
-  <article class="join-panel">
-    <div class="join-label">I&apos;m a human trader</div>
-    <h2>Set up this device.</h2>
-    <p class="join-summary">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-10 pt-9">
+  <article class="grid gap-5 content-start pb-8 border-t border-base-300">
+    <div class="eyebrow pt-5">I'm a human trader</div>
+    <h2 class="text-[clamp(1.9rem,3.6vw,3rem)] tracking-[-0.05em] leading-[1.08] max-w-[14ch]">Set up this device.</h2>
+    <p class="text-base-content/70 leading-[1.75]">
       Create an account on this device or sign in to an existing one. No email or password.
     </p>
 
     {#if currentUser}
-      <div class="join-status">
-        <strong>You&apos;re already signed in on this device.</strong>
-        <p>Continue to your profile setup or jump straight into the market.</p>
+      <div class="grid gap-3 p-4 border border-base-300 bg-base-200">
+        <strong class="text-sm">You're already signed in on this device.</strong>
+        <p class="text-base-content/70 leading-[1.65] text-sm">Continue to your profile setup or jump straight into the market.</p>
       </div>
 
-      <div class="join-actions">
+      <div class="flex items-center gap-4 flex-wrap pt-1">
         <a class="btn btn-primary" href="/onboarding">Continue setup</a>
         <a class="btn btn-outline" href="/portfolio">Open portfolio</a>
       </div>
     {:else}
-      <div class="join-social">
-        <div class="join-social-head">
-          <h3>Start with profile data you already use.</h3>
-          <p>Bring your identity from another app, or create one here.</p>
+      <div class="grid gap-3 p-4 border border-base-300 bg-base-200">
+        <div class="grid gap-2">
+          <h3 class="text-sm font-medium">Start with profile data you already use.</h3>
+          <p class="text-base-content/70 leading-[1.65] text-sm">Bring your identity from another app, or create one here.</p>
         </div>
 
-        <div class="join-social-actions">
+        <div class="flex flex-wrap gap-3">
           {#each ([
             { provider: 'x', label: 'Continue with X' },
             { provider: 'google', label: 'Continue with Google' },
             { provider: 'telegram', label: 'Continue with Telegram' }
           ] satisfies Array<{ provider: SocialProvider; label: string }>) as option (option.provider)}
             <button
-              class="btn btn-outline join-social-button"
+              class="btn btn-outline min-w-[12.5rem] justify-center"
               type="button"
               disabled={loading || socialAuthPending}
               onclick={() => startSocialProfileBootstrap(option.provider)}
@@ -376,26 +374,26 @@
           {/each}
         </div>
 
-        <p class="join-social-note">
+        <p class="text-base-content/50 text-sm leading-[1.6]">
           This does not replace your Cascade identity. It just saves you from starting your profile from a blank form.
         </p>
 
         {#if socialAuthError}
-          <p class="error" style="margin: 0;">{socialAuthError}</p>
+          <p class="text-error text-sm">{socialAuthError}</p>
         {/if}
       </div>
 
-      <div class="join-actions">
+      <div class="flex items-center gap-4 flex-wrap pt-1">
         <button class="btn btn-primary" type="button" onclick={() => void createAccount()} disabled={loading || pending || socialAuthPending}>
           {pending ? 'Creating account...' : 'Create account'}
         </button>
         <a class="btn btn-outline" href="/how-it-works">How Cascade works</a>
       </div>
 
-      <div class="join-login">
-        <div class="join-login-head">
-          <h3>Already have an account?</h3>
-          <p>Sign in with the method or device you already use.</p>
+      <div class="grid gap-3 p-4 border border-base-300 bg-base-200">
+        <div class="grid gap-2">
+          <h3 class="text-sm font-medium">Already have an account?</h3>
+          <p class="text-base-content/70 leading-[1.65] text-sm">Sign in with the method or device you already use.</p>
         </div>
 
         <Tabs.Root bind:value={mode}>
@@ -436,215 +434,45 @@
         </Tabs.Root>
 
         {#if authError}
-          <p class="error" style="margin: 0;">{authError}</p>
+          <p class="text-error text-sm">{authError}</p>
         {/if}
       </div>
     {/if}
   </article>
 
-  <article class="join-panel">
-    <div class="join-label">I&apos;m an AI agent</div>
-    <h2>Give your agent the hosted skill.</h2>
-    <p class="join-summary">
-      Copy one instruction into your agent. It will read the hosted skill, learn Cascade&apos;s
+  <article class="grid gap-5 content-start pb-8 border-t border-base-300">
+    <div class="eyebrow pt-5">I'm an AI agent</div>
+    <h2 class="text-[clamp(1.9rem,3.6vw,3rem)] tracking-[-0.05em] leading-[1.08]">Give your agent the hosted skill.</h2>
+    <p class="text-base-content/70 leading-[1.75]">
+      Copy one instruction into your agent. It will read the hosted skill, learn Cascade's
       mechanics, and use the same public and authenticated interfaces as everyone else.
     </p>
 
-    <div class="agent-instruction">
-      <span>Copy this into your agent</span>
-      <code
-        >Read {skillOrigin}/SKILL.md in full and follow it. Learn Cascade&apos;s mechanics before
+    <div class="grid gap-3 p-4 border border-base-300 bg-base-200">
+      <span class="eyebrow">Copy this into your agent</span>
+      <code class="text-sm leading-[1.7] whitespace-normal"
+        >Read {skillOrigin}/SKILL.md in full and follow it. Learn Cascade's mechanics before
         acting: markets never close, prices move with trading activity, and agents use the same
         product interface as everyone else.</code
       >
     </div>
 
-    <div class="join-points">
-      <p>Research markets and find mispriced beliefs.</p>
-      <p>Ask you focused questions when your edge matters.</p>
-      <p>Create markets, trade, and monitor them continuously.</p>
+    <div class="grid gap-3 pt-1">
+      {#each ['Research markets and find mispriced beliefs.', 'Ask you focused questions when your edge matters.', 'Create markets, trade, and monitor them continuously.'] as point}
+        <p class="relative pl-4 text-sm leading-[1.65]">
+          <span class="absolute left-0 text-success">•</span>
+          {point}
+        </p>
+      {/each}
     </div>
 
-    <div class="join-actions">
+    <div class="flex items-center gap-4 flex-wrap pt-1">
       <a class="btn btn-primary" href="/SKILL.md">Open SKILL.md</a>
       <a class="btn btn-outline" href="/how-it-works">How Cascade works</a>
     </div>
   </article>
-</section>
+</div>
 
-<section class="join-footnote">
-  <p>The human chooses the context. The agent executes within it.</p>
-</section>
-
-<style>
-  .join-hero {
-    padding: 2.5rem 0 1rem;
-  }
-
-  .join-copy {
-    display: grid;
-    gap: 1rem;
-    max-width: 46rem;
-  }
-
-  .join-copy h1 {
-    font-size: clamp(2.8rem, 6vw, 4.8rem);
-    letter-spacing: -0.06em;
-    line-height: 0.98;
-  }
-
-  .join-copy p {
-    max-width: 38rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 1.05rem;
-    line-height: 1.75;
-  }
-
-  .join-split {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2.5rem;
-    padding-top: 2.25rem;
-  }
-
-  .join-panel {
-    display: grid;
-    gap: 1.25rem;
-    align-content: start;
-    padding: 0 0 2rem;
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .join-label {
-    padding-top: 1.2rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .join-panel h2 {
-    max-width: 14ch;
-    font-size: clamp(1.9rem, 3.6vw, 3rem);
-    letter-spacing: -0.05em;
-    line-height: 1.08;
-  }
-
-  .join-summary {
-    max-width: 34rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    line-height: 1.75;
-  }
-
-  .join-status,
-  .join-login,
-  .join-social,
-  .agent-instruction {
-    display: grid;
-    gap: 0.85rem;
-    padding: 1rem;
-    border: 1px solid rgba(64, 64, 64, 0.9);
-    background: rgba(23, 23, 23, 0.9);
-  }
-
-  .join-status strong,
-  .join-social-head h3,
-  .join-login-head h3 {
-    color: var(--color-base-content);
-    font-size: 0.98rem;
-  }
-
-  .join-status p,
-  .join-social-head p,
-  .join-login-head p {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    line-height: 1.65;
-  }
-
-  .join-social-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-  }
-
-  .join-social-button {
-    min-width: 12.5rem;
-    justify-content: center;
-  }
-
-  .join-social-note {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.86rem;
-    line-height: 1.6;
-  }
-
-  .agent-instruction span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .agent-instruction code {
-    color: var(--color-base-content);
-    font-size: 0.92rem;
-    line-height: 1.7;
-    white-space: normal;
-  }
-
-  .join-points {
-    display: grid;
-    gap: 0.75rem;
-    padding-top: 0.25rem;
-  }
-
-  .join-points p {
-    position: relative;
-    padding-left: 1rem;
-    color: var(--color-base-content);
-    font-size: 0.95rem;
-    line-height: 1.65;
-  }
-
-  .join-points p::before {
-    content: '•';
-    position: absolute;
-    left: 0;
-    color: var(--color-success);
-  }
-
-  .join-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.9rem;
-    flex-wrap: wrap;
-    padding-top: 0.25rem;
-  }
-
-  .join-footnote {
-    padding-top: 0.25rem;
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .join-footnote p {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.86rem;
-  }
-
-  @media (max-width: 900px) {
-    .join-split {
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-    }
-
-    .join-panel {
-      padding-bottom: 1.5rem;
-    }
-
-    .join-panel h2 {
-      max-width: none;
-    }
-  }
-</style>
+<div class="pt-1 border-t border-base-300">
+  <p class="text-base-content/50 text-sm">The human chooses the context. The agent executes within it.</p>
+</div>

@@ -14,42 +14,37 @@
   );
 </script>
 
-<section class="treasury-page">
+<div class="grid gap-8 p-7">
   <div>
     <div class="eyebrow">Treasury</div>
-    <h1>Treasury</h1>
-    <p>Capital allocation across all fields and agents.</p>
+    <h1 class="text-xl mt-1">Treasury</h1>
+    <p class="mt-2 text-base-content/70">Capital allocation across all fields and agents.</p>
   </div>
 
-  <section class="treasury-summary">
-    <div>
-      <span>Total capital</span>
-      <strong>{formatUsd(totalCapital)}</strong>
-    </div>
-    <div>
-      <span>Deployed</span>
-      <strong>{formatUsd(deployed)}</strong>
-    </div>
-    <div>
-      <span>Available</span>
-      <strong>{formatUsd(available)}</strong>
-    </div>
-    <div>
-      <span>Overall P&amp;L</span>
-      <strong>-</strong>
-    </div>
-  </section>
+  <div class="grid grid-cols-2 gap-px bg-base-300 sm:grid-cols-4">
+    {#each [
+      { label: 'Total capital', value: formatUsd(totalCapital) },
+      { label: 'Deployed', value: formatUsd(deployed) },
+      { label: 'Available', value: formatUsd(available) },
+      { label: 'Overall P&L', value: '-' },
+    ] as stat}
+      <div class="grid gap-1 bg-base-100 p-4">
+        <span class="eyebrow">{stat.label}</span>
+        <strong class="text-white font-mono">{stat.value}</strong>
+      </div>
+    {/each}
+  </div>
 
-  <section class="treasury-section">
-    <h2>By Field</h2>
-    <div class="treasury-list">
+  <section class="grid gap-3">
+    <h2 class="text-base font-medium">By Field</h2>
+    <div class="border-t border-base-300">
       {#each fields as field (field.id)}
-        <div class="treasury-row">
-          <div>
-            <strong>{field.name}</strong>
-            <p>{field.capital.note}</p>
+        <div class="flex items-start justify-between gap-4 py-4 border-b border-base-300">
+          <div class="min-w-0">
+            <strong class="text-white block text-sm">{field.name}</strong>
+            <p class="mt-1 text-base-content/70 text-sm leading-[1.6]">{field.capital.note}</p>
           </div>
-          <div class="treasury-aside">
+          <div class="grid gap-1 text-right shrink-0 text-base-content/50 font-mono text-xs whitespace-nowrap">
             <span>{formatUsd(field.capital.deployedUsd)} deployed</span>
             <span>{formatUsd(field.capital.availableUsd)} available</span>
           </div>
@@ -58,16 +53,16 @@
     </div>
   </section>
 
-  <section class="treasury-section">
-    <h2>Open Positions</h2>
-    <div class="treasury-list">
+  <section class="grid gap-3">
+    <h2 class="text-base font-medium">Open Positions</h2>
+    <div class="border-t border-base-300">
       {#each positions as position (position.id)}
-        <div class="treasury-row">
-          <div>
-            <strong>{position.label}</strong>
-            <p>{position.fieldName} · {position.thesis}</p>
+        <div class="flex items-start justify-between gap-4 py-4 border-b border-base-300">
+          <div class="min-w-0">
+            <strong class="text-white block text-sm">{position.label}</strong>
+            <p class="mt-1 text-base-content/70 text-sm leading-[1.6]">{position.fieldName} · {position.thesis}</p>
           </div>
-          <div class="treasury-aside">
+          <div class="grid gap-1 text-right shrink-0 text-base-content/50 font-mono text-xs whitespace-nowrap">
             <span>{formatUsd(position.exposureUsd)}</span>
             <span>{position.status}</span>
           </div>
@@ -76,115 +71,20 @@
     </div>
   </section>
 
-  <section class="treasury-section">
-    <h2>Recent Transactions</h2>
-    <div class="treasury-list">
+  <section class="grid gap-3">
+    <h2 class="text-base font-medium">Recent Transactions</h2>
+    <div class="border-t border-base-300">
       {#each transactions as action (action.id)}
-        <div class="treasury-row">
-          <div>
-            <strong>{action.title}</strong>
-            <p>{action.fieldName} · {action.rationale}</p>
+        <div class="flex items-start justify-between gap-4 py-4 border-b border-base-300">
+          <div class="min-w-0">
+            <strong class="text-white block text-sm">{action.title}</strong>
+            <p class="mt-1 text-base-content/70 text-sm leading-[1.6]">{action.fieldName} · {action.rationale}</p>
           </div>
-          <div class="treasury-aside">
+          <div class="grid gap-1 text-right shrink-0 text-base-content/50 font-mono text-xs whitespace-nowrap">
             <span>{action.status}</span>
           </div>
         </div>
       {/each}
     </div>
   </section>
-</section>
-
-<style>
-  .treasury-page {
-    display: grid;
-    gap: 2rem;
-    padding: 1.75rem;
-  }
-
-  .treasury-page h1 {
-    font-size: 1.2rem;
-  }
-
-  .treasury-page p {
-    margin-top: 0.4rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .treasury-summary {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1px;
-    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .treasury-summary div {
-    display: grid;
-    gap: 0.35rem;
-    background: var(--color-base-100);
-    padding: 1rem;
-  }
-
-  .treasury-summary span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.74rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .treasury-summary strong {
-    color: white;
-    font-family: var(--font-mono);
-    font-size: 1rem;
-  }
-
-  .treasury-section {
-    display: grid;
-    gap: 0.8rem;
-  }
-
-  .treasury-section h2 {
-    font-size: 1rem;
-  }
-
-  .treasury-list {
-    display: grid;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .treasury-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .treasury-row strong {
-    display: block;
-    color: white;
-    font-size: 0.94rem;
-  }
-
-  .treasury-row p {
-    margin-top: 0.35rem;
-    font-size: 0.86rem;
-    line-height: 1.6;
-  }
-
-  .treasury-aside {
-    display: grid;
-    gap: 0.25rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    text-align: right;
-    white-space: nowrap;
-  }
-
-  @media (max-width: 900px) {
-    .treasury-summary {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>
+</div>

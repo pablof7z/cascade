@@ -18,7 +18,7 @@
     {align}
     {sideOffset}
     {collisionPadding}
-    class={cn('dropdown-content z-40 min-w-56 rounded-md border border-neutral-800 bg-base-200 p-2 shadow-none', className)}
+    class={cn('dropdown-content z-40 min-w-56 rounded-md border border-base-300 bg-base-200 p-2 shadow-none', className)}
   >
     {@render children?.()}
   </DropdownMenuPrimitive.Content>

@@ -19,7 +19,7 @@
     isPaperEdition,
     isStripeFundingEnabled
   } from '$lib/cascade/config';
-  import { formatUsdMinor } from '$lib/cascade/format';
+  import { formatDateTime, formatUsdMinor } from '$lib/cascade/format';
   import { quantityToShareMinor, shareMinorToQuantity } from '$lib/cascade/shares';
   import {
     patchPendingFunding,
@@ -836,7 +836,7 @@
 
       <div class="funding-row">
         <label class="grid w-full max-w-64 gap-2">
-          <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Amount</span>
+          <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Amount</span>
           <input
             class="input input-bordered"
             aria-label="Amount"
@@ -962,7 +962,7 @@
                 <strong>{formatUsdMinor(event.amountMinor)}</strong>
                 <p class="muted">{fundingRailLabel(event.rail)} · {fundingStatusLabel(event.status, event.rail)}</p>
               </div>
-              <span class="muted">{new Date(event.createdAt).toLocaleString()}</span>
+              <span class="muted">{formatDateTime(Math.floor(event.createdAt / 1000))}</span>
             </div>
           {/each}
         </div>

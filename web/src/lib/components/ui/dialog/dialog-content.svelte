@@ -11,7 +11,7 @@
     <DialogPrimitive.Content
       {...restProps}
       class={cn(
-        'pointer-events-auto relative w-full max-w-xl max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3rem)] overflow-y-auto overscroll-contain rounded-md border border-neutral-800 bg-base-200 p-0 shadow-none',
+        'pointer-events-auto relative w-full max-w-xl max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3rem)] overflow-y-auto overscroll-contain rounded-md border border-base-300 bg-base-200 p-0 shadow-none',
         className
       )}
     >

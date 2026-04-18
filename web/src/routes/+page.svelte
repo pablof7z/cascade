@@ -212,25 +212,25 @@
 <!-- HERO                                                          -->
 <!-- ============================================================ -->
 <section class="py-16 max-md:py-10">
-  <div class="hero-grid">
+  <div class="grid grid-cols-1 items-center gap-20 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
     <div>
-      <h1 class="hero-h1">The crowd has a price. Prove it wrong.</h1>
-      <p class="mt-6 max-w-lg text-neutral-400 text-lg leading-relaxed">
+      <h1 class="max-w-[16ch] text-[clamp(3rem,7vw,5.2rem)] font-bold leading-[0.98] tracking-[-0.06em]">The crowd has a price. Prove it wrong.</h1>
+      <p class="mt-6 max-w-lg text-base-content/60 text-lg leading-relaxed">
         Cascade is a prediction market where positions stay open forever.
         No expiry, no oracle. Create a market, defend your thesis, and trade on your conviction.
       </p>
 
       <div class="mt-8 flex items-center gap-4 flex-wrap">
         <a class="btn btn-primary btn-lg" href="/join">Start Trading</a>
-        <a class="text-sm text-neutral-400 hover:text-white transition-colors" href="/how-it-works">How it works →</a>
+        <a class="text-sm text-base-content/60 hover:text-white transition-colors" href="/how-it-works">How it works →</a>
       </div>
     </div>
 
     <div class="grid gap-4 content-center">
-      <div class="text-xs text-neutral-500 uppercase tracking-widest font-semibold">Featured Thesis</div>
+      <div class="text-xs text-base-content/50 uppercase tracking-widest font-semibold">Featured Thesis</div>
 
       {#if featuredMarket}
-        <a class="featured-market border-l-2 border-primary pl-6 grid gap-4 transition-colors hover:bg-base-200" href={marketUrl(featuredMarket.slug)}>
+        <a class="border-l-2 border-primary pl-6 grid gap-4 transition-colors hover:bg-base-200" href={marketUrl(featuredMarket.slug)}>
           <h2 class="max-w-[14ch] text-3xl font-bold leading-tight transition-colors group-hover:text-success">{featuredMarket.title}</h2>
 
           <div class="flex items-baseline gap-3">
@@ -238,17 +238,17 @@
             <span class="badge badge-success badge-outline">{probabilityForMarket(featuredMarket.id) >= 0.5 ? 'LONG' : 'SHORT'}</span>
           </div>
 
-          <div class="flex flex-wrap gap-5 text-sm text-neutral-500">
+          <div class="flex flex-wrap gap-5 text-sm text-base-content/50">
             <span>{formatProductAmount(tradeSummaries.get(featuredMarket.id)?.grossVolume ?? 0, 'usd')} vol</span>
             <span>{tradeSummaries.get(featuredMarket.id)?.tradeCount ?? 0} trades</span>
           </div>
 
-          <p class="max-w-prose text-neutral-400 leading-relaxed">{truncateText(sanitizeMarketCopy(featuredMarket.description || featuredMarket.body), 180)}</p>
+          <p class="max-w-prose text-base-content/60 leading-relaxed">{truncateText(sanitizeMarketCopy(featuredMarket.description || featuredMarket.body), 180)}</p>
         </a>
       {:else if isPracticeEdition}
         <div class="border-l-2 border-primary pl-6 grid gap-4">
           <h2 class="max-w-[16ch] text-3xl font-bold leading-tight">Practice mode — paper money, real mechanics</h2>
-          <p class="text-neutral-400">No practice markets are live yet. Create one to try the full trading flow with paper funds — nothing real is at stake.</p>
+          <p class="text-base-content/60">No practice markets are live yet. Create one to try the full trading flow with paper funds — nothing real is at stake.</p>
           <div class="flex items-center gap-4 flex-wrap">
             <a class="btn btn-primary" href="/builder">Create a Practice Market</a>
             {#if alternateEditionUrl}
@@ -259,7 +259,7 @@
       {:else}
         <div class="border-l-2 border-primary pl-6 grid gap-4">
           <h2 class="max-w-[12ch] text-3xl font-bold leading-tight">Be the first to create a market</h2>
-          <p class="text-neutral-400">No markets yet. Create the first public market and start the book.</p>
+          <p class="text-base-content/60">No markets yet. Create the first public market and start the book.</p>
           <div class="flex items-center gap-4">
             <a class="btn btn-primary" href="/builder">Create a Market</a>
           </div>
@@ -273,18 +273,18 @@
 <!-- HOW IT WORKS STRIP (NEW)                                      -->
 <!-- ============================================================ -->
 <section class="full-bleed bg-base-200 py-10">
-  <div class="shell how-steps">
+  <div class="shell grid grid-cols-1 gap-8 sm:grid-cols-3">
     <div class="flex items-start gap-3">
-      <span class="font-mono text-sm text-neutral-500">01</span>
-      <p class="text-sm text-neutral-300">Pick a question</p>
+      <span class="font-mono text-sm text-base-content/50">01</span>
+      <p class="text-sm text-base-content/80">Pick a question</p>
     </div>
     <div class="flex items-start gap-3">
-      <span class="font-mono text-sm text-neutral-500">02</span>
-      <p class="text-sm text-neutral-300">Buy LONG or SHORT</p>
+      <span class="font-mono text-sm text-base-content/50">02</span>
+      <p class="text-sm text-base-content/80">Buy LONG or SHORT</p>
     </div>
     <div class="flex items-start gap-3">
-      <span class="font-mono text-sm text-neutral-500">03</span>
-      <p class="text-sm text-neutral-300">Exit anytime</p>
+      <span class="font-mono text-sm text-base-content/50">03</span>
+      <p class="text-sm text-base-content/80">Exit anytime</p>
     </div>
   </div>
 </section>
@@ -295,7 +295,7 @@
 <section class="py-12 grid gap-8">
   <div>
     <h2 class="text-3xl font-bold tracking-tight">Markets that never close.</h2>
-    <p class="mt-1 text-sm text-neutral-500">
+    <p class="mt-1 text-sm text-base-content/50">
       Traditional markets end. Cascade stays open. You can publish a market, defend the case in public,
       and exit when the price makes sense for you.
     </p>
@@ -303,21 +303,21 @@
 
   <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
     <article class="grid gap-3 content-start pt-2">
-      <span class="text-lg text-neutral-400">∞</span>
+      <span class="text-lg text-base-content/60">∞</span>
       <h3 class="font-semibold">No expiry</h3>
-      <p class="text-sm text-neutral-500 leading-relaxed">Take a position today. Trading continues indefinitely, and you can exit whenever the price makes sense for you.</p>
+      <p class="text-sm text-base-content/50 leading-relaxed">Take a position today. Trading continues indefinitely, and you can exit whenever the price makes sense for you.</p>
     </article>
 
     <article class="grid gap-3 content-start pt-2">
-      <span class="text-lg text-neutral-400">◆</span>
+      <span class="text-lg text-base-content/60">◆</span>
       <h3 class="font-semibold">Linked beliefs</h3>
-      <p class="text-sm text-neutral-500 leading-relaxed">Connect related markets. Build a thesis. Each bet stands on its own.</p>
+      <p class="text-sm text-base-content/50 leading-relaxed">Connect related markets. Build a thesis. Each bet stands on its own.</p>
     </article>
 
     <article class="grid gap-3 content-start pt-2">
-      <span class="text-lg text-neutral-400">→</span>
+      <span class="text-lg text-base-content/60">→</span>
       <h3 class="font-semibold">On the record</h3>
-      <p class="text-sm text-neutral-500 leading-relaxed">Anyone can publish a market. Every trade is public. Your conviction is on record.</p>
+      <p class="text-sm text-base-content/50 leading-relaxed">Anyone can publish a market. Every trade is public. Your conviction is on record.</p>
     </article>
   </div>
 
@@ -342,7 +342,7 @@
         <div class="ticker-track">
           {#each [...tickerMarkets, ...tickerMarkets] as market, index (`${market.id}-${index}`)}
             <a class="ticker-item" href={marketUrl(market.slug)}>
-              <span class="font-mono text-xs text-neutral-500 uppercase">{market.categories[0] || 'Market'}</span>
+              <span class="font-mono text-xs text-base-content/50 uppercase">{market.categories[0] || 'Market'}</span>
               <span class="text-base-content">{market.title}</span>
               <span class:positive={probabilityForMarket(market.id) >= 0.5} class:negative={probabilityForMarket(market.id) < 0.5}>
                 {centsForMarket(market.id)}
@@ -351,7 +351,7 @@
           {/each}
         </div>
       {:else}
-        <div class="text-sm text-neutral-500">Markets appear here as they stream in.</div>
+        <div class="text-sm text-base-content/50">Markets appear here as they stream in.</div>
       {/if}
     </div>
   </div>
@@ -372,13 +372,13 @@
     />
 
     {#if hasActiveMarketSearch}
-      <p class="text-sm text-neutral-500">{searchResultCountLabel}</p>
+      <p class="text-sm text-base-content/50">{searchResultCountLabel}</p>
     {/if}
   </div>
 
   {#if hasActiveMarketSearch}
-    <div class="divide-y divide-neutral-800 border-y border-neutral-800">
-      <div class="search-head text-xs text-neutral-500 uppercase tracking-wide font-semibold">
+    <div class="divide-y divide-base-300 border-y border-base-300">
+      <div class="hidden sm:grid grid-cols-[minmax(0,1.9fr)_0.55fr_0.6fr_0.55fr_0.55fr_0.7fr] items-center gap-4 py-3 text-xs text-base-content/50 uppercase tracking-wide font-semibold">
         <span>Market</span>
         <span>Price</span>
         <span>Vol</span>
@@ -389,10 +389,10 @@
 
       {#if filteredMarkets.length > 0}
         {#each filteredMarkets as market (market.id)}
-          <a class="search-row transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
+          <a class="grid grid-cols-1 sm:grid-cols-[minmax(0,1.9fr)_0.55fr_0.6fr_0.55fr_0.55fr_0.7fr] items-center gap-4 py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
             <div class="min-w-0 grid gap-1">
               <span class="truncate text-white font-semibold">{market.title}</span>
-              <span class="text-sm text-neutral-500 truncate">
+              <span class="text-sm text-base-content/50 truncate">
                 {truncateText(sanitizeMarketCopy(market.description || market.body), 120)}
               </span>
             </div>
@@ -400,11 +400,11 @@
             <span class="font-mono text-sm">{formatProductAmount(tradeSummaries.get(market.id)?.grossVolume ?? 0, 'usd')}</span>
             <span class="font-mono text-sm">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
             <span class="font-mono text-sm">{discussionCounts.get(market.id) ?? 0}</span>
-            <span class="text-sm text-neutral-500 text-right">{formatRelativeTime(market.createdAt)}</span>
+            <span class="text-sm text-base-content/50 text-right">{formatRelativeTime(market.createdAt)}</span>
           </a>
         {/each}
       {:else}
-        <div class="py-4 text-sm text-neutral-500">No markets matched your search.</div>
+        <div class="py-4 text-sm text-base-content/50">No markets matched your search.</div>
       {/if}
     </div>
   {:else}
@@ -412,13 +412,13 @@
     <section class="grid gap-6">
       <div>
         <h2 class="text-3xl font-bold tracking-tight">Most Active</h2>
-        <p class="mt-1 text-sm text-neutral-500">Most volume · 24h</p>
+        <p class="mt-1 text-sm text-base-content/50">Most volume · 24h</p>
       </div>
 
       {#if primaryTrending}
-        <div class="trending-layout border-y border-neutral-800">
-          <a class="trending-lead transition-colors duration-150 hover:bg-base-200" href={marketUrl(primaryTrending.slug)}>
-            <span class="text-xs text-neutral-500 uppercase tracking-wide font-semibold positive">#1 by volume</span>
+        <div class="grid grid-cols-1 border-y border-base-300 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <a class="grid gap-4 py-5 pr-0 transition-colors duration-150 hover:bg-base-200 lg:border-r lg:border-base-300 lg:pr-6" href={marketUrl(primaryTrending.slug)}>
+            <span class="text-xs text-success uppercase tracking-wide font-semibold">#1 by volume</span>
             <h3 class="max-w-[14ch] text-3xl font-bold leading-tight">{primaryTrending.title}</h3>
 
             <div class="flex items-baseline gap-3">
@@ -426,9 +426,9 @@
               <span class="badge badge-success badge-outline">{probabilityForMarket(primaryTrending.id) >= 0.5 ? 'LONG' : 'SHORT'}</span>
             </div>
 
-            <p class="max-w-prose text-neutral-400 leading-relaxed">{truncateText(sanitizeMarketCopy(primaryTrending.description || primaryTrending.body), 180)}</p>
+            <p class="max-w-prose text-base-content/60 leading-relaxed">{truncateText(sanitizeMarketCopy(primaryTrending.description || primaryTrending.body), 180)}</p>
 
-            <div class="flex flex-wrap gap-5 text-sm text-neutral-500">
+            <div class="flex flex-wrap gap-5 text-sm text-base-content/50">
               <span>{formatProductAmount(tradeSummaries.get(primaryTrending.id)?.grossVolume ?? 0, 'usd')} vol</span>
               <span>{tradeSummaries.get(primaryTrending.id)?.tradeCount ?? 0} trades</span>
               <span>{discussionCounts.get(primaryTrending.id) ?? 0} posts</span>
@@ -436,7 +436,7 @@
           </a>
 
           <div class="grid content-start">
-            <div class="rank-head text-xs text-neutral-500 uppercase tracking-wide font-semibold">
+            <div class="hidden sm:grid grid-cols-[minmax(0,1.7fr)_0.55fr_0.6fr_0.55fr_0.55fr] items-center gap-4 px-6 py-4 text-xs text-base-content/50 uppercase tracking-wide font-semibold">
               <span>Market</span>
               <span>Price</span>
               <span>Vol</span>
@@ -446,12 +446,12 @@
 
             {#if rankedTrending.length > 0}
               {#each rankedTrending as market, index (market.id)}
-                <a class="rank-row border-t border-neutral-800 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
+                <a class="grid grid-cols-1 sm:grid-cols-[minmax(0,1.7fr)_0.55fr_0.6fr_0.55fr_0.55fr] items-center gap-4 border-t border-base-300 px-0 py-3 transition-colors duration-150 hover:bg-base-300/50 sm:px-6" href={marketUrl(market.slug)}>
                   <div class="min-w-0 flex items-start gap-4">
-                    <span class="font-mono text-sm text-neutral-500 leading-relaxed">{String(index + 2).padStart(2, '0')}</span>
+                    <span class="font-mono text-sm text-base-content/50 leading-relaxed">{String(index + 2).padStart(2, '0')}</span>
                     <div class="min-w-0 grid">
                       <span class="truncate text-white font-semibold">{market.title}</span>
-                      <span class="text-sm text-neutral-500">{authorLabel(market.pubkey)}</span>
+                      <span class="text-sm text-base-content/50">{authorLabel(market.pubkey)}</span>
                     </div>
                   </div>
                   <span class="font-mono text-sm">{centsForMarket(market.id)}</span>
@@ -461,41 +461,41 @@
                 </a>
               {/each}
             {:else}
-              <div class="py-4 text-sm text-neutral-500">No active markets yet. <a class="link link-primary" href="/builder">Create the first one</a></div>
+              <div class="py-4 text-sm text-base-content/50">No active markets yet. <a class="link link-primary" href="/builder">Create the first one</a></div>
             {/if}
           </div>
         </div>
       {:else}
-        <div class="py-4 text-sm text-neutral-500">No markets yet. <a class="link link-primary" href="/builder">Publish the first market from the builder</a></div>
+        <div class="py-4 text-sm text-base-content/50">No markets yet. <a class="link link-primary" href="/builder">Publish the first market from the builder</a></div>
       {/if}
     </section>
 
-    <div class="home-split">
+    <div class="grid grid-cols-1 gap-10 md:grid-cols-2">
       <!-- ====== UNDER THE RADAR (Bloomberg data table) ====== -->
       <section class="grid gap-6 pt-12">
         <div>
           <h2 class="text-3xl font-bold tracking-tight">Under the radar</h2>
-          <p class="mt-1 text-sm text-neutral-500">Less traffic. More opportunity — if you're right.</p>
+          <p class="mt-1 text-sm text-base-content/50">Less traffic. More opportunity — if you're right.</p>
         </div>
 
         <div class="overflow-x-auto">
           <table class="table table-sm w-full">
             <thead>
-              <tr class="text-xs text-neutral-500 uppercase tracking-wide border-neutral-800">
+              <tr class="text-xs text-base-content/50 uppercase tracking-wide border-base-300">
                 <th class="font-semibold">Market</th>
                 <th class="font-semibold text-right">Price</th>
                 <th class="font-semibold text-right">Vol</th>
                 <th class="font-semibold text-right">Posts</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-neutral-800">
+            <tbody class="divide-y divide-base-300">
               {#if lowVolumeMarkets.length > 0}
                 {#each lowVolumeMarkets as market (market.id)}
                   <tr class="transition-colors duration-150 hover:bg-base-300/50 hover">
                     <td>
                       <a class="block hover:text-white" href={marketUrl(market.slug)}>
                         <span class="font-semibold text-white">{market.title}</span>
-                        <span class="block text-xs text-neutral-500 mt-0.5 truncate max-w-sm">{truncateText(sanitizeMarketCopy(market.description || market.body), 80)}</span>
+                        <span class="block text-xs text-base-content/50 mt-0.5 truncate max-w-sm">{truncateText(sanitizeMarketCopy(market.description || market.body), 80)}</span>
                       </a>
                     </td>
                     <td class="font-mono text-right">{centsForMarket(market.id)}</td>
@@ -505,7 +505,7 @@
                 {/each}
               {:else}
                 <tr>
-                  <td colspan="4" class="text-sm text-neutral-500">No markets in this category yet. <a class="link link-primary" href="/builder">Create the first one</a></td>
+                  <td colspan="4" class="text-sm text-base-content/50">No markets in this category yet. <a class="link link-primary" href="/builder">Create the first one</a></td>
                 </tr>
               {/if}
             </tbody>
@@ -517,7 +517,7 @@
       <section class="grid gap-6 pt-12">
         <div>
           <h2 class="text-3xl font-bold tracking-tight">Most Contested</h2>
-          <p class="mt-1 text-sm text-neutral-500">The crowd is split. Someone's going to be wrong.</p>
+          <p class="mt-1 text-sm text-base-content/50">The crowd is split. Someone's going to be wrong.</p>
         </div>
 
         {#if disputedMarkets.length > 0}
@@ -526,60 +526,60 @@
 
           <div class="grid gap-4">
             <!-- Dominant item -->
-            <a class="block border-y border-neutral-800 py-5 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(topDisputed.slug)}>
+            <a class="block border-y border-base-300 py-5 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(topDisputed.slug)}>
               <h3 class="text-lg font-bold">{topDisputed.title}</h3>
               <div class="mt-2 flex items-baseline gap-3">
                 <span class="text-success font-mono text-4xl font-bold tracking-tight">{centsForMarket(topDisputed.id)}</span>
-                <span class="text-sm text-neutral-500">Spread {spreadForMarket(topDisputed.id)}</span>
+                <span class="text-sm text-base-content/50">Spread {spreadForMarket(topDisputed.id)}</span>
                 <span class="badge badge-success badge-outline badge-sm">{probabilityForMarket(topDisputed.id) >= 0.5 ? 'LONG' : 'SHORT'}</span>
               </div>
-              <div class="mt-2 flex gap-4 text-sm text-neutral-500">
+              <div class="mt-2 flex gap-4 text-sm text-base-content/50">
                 <span>{tradeSummaries.get(topDisputed.id)?.tradeCount ?? 0} trades</span>
                 <span>{discussionCounts.get(topDisputed.id) ?? 0} posts</span>
               </div>
             </a>
 
             <!-- Compact numbered list -->
-            <div class="divide-y divide-neutral-800">
+            <div class="divide-y divide-base-300">
               {#each restDisputed as market, index (market.id)}
                 <a class="flex items-center justify-between gap-4 py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
                   <div class="flex items-center gap-3 min-w-0">
-                    <span class="font-mono text-sm text-neutral-500">{String(index + 2).padStart(2, '0')}</span>
+                    <span class="font-mono text-sm text-base-content/50">{String(index + 2).padStart(2, '0')}</span>
                     <span class="font-semibold truncate">{market.title}</span>
                   </div>
                   <div class="flex items-center gap-3 shrink-0">
                     <span class="font-mono text-sm">{centsForMarket(market.id)}</span>
-                    <span class="text-xs text-neutral-500">{spreadForMarket(market.id)}</span>
+                    <span class="text-xs text-base-content/50">{spreadForMarket(market.id)}</span>
                   </div>
                 </a>
               {/each}
             </div>
           </div>
         {:else}
-          <div class="py-4 text-sm text-neutral-500">No disputed markets yet. <a class="link link-primary" href="/builder">Create the first one</a></div>
+          <div class="py-4 text-sm text-base-content/50">No disputed markets yet. <a class="link link-primary" href="/builder">Create the first one</a></div>
         {/if}
       </section>
     </div>
 
-    <div class="home-split">
+    <div class="grid grid-cols-1 gap-10 md:grid-cols-2">
       <!-- ====== NEW THIS WEEK (HN/Reddit numbered list) ====== -->
       <section class="grid gap-6 pt-12">
         <div>
           <h2 class="text-3xl font-bold tracking-tight">New This Week</h2>
-          <p class="mt-1 text-sm text-neutral-500">Recently created</p>
+          <p class="mt-1 text-sm text-base-content/50">Recently created</p>
         </div>
 
-        <div class="divide-y divide-neutral-800 border-t border-neutral-800">
+        <div class="divide-y divide-base-300 border-t border-base-300">
           {#if newThisWeek.length > 0}
             {#each newThisWeek as market, index (market.id)}
               <a class="flex items-baseline gap-3 py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
-                <span class="font-mono text-sm text-neutral-500 shrink-0">{String(index + 1).padStart(2, '0')}</span>
+                <span class="font-mono text-sm text-base-content/50 shrink-0">{String(index + 1).padStart(2, '0')}</span>
                 <span class="font-semibold truncate">{market.title}</span>
-                <span class="text-xs text-neutral-500 shrink-0 ml-auto whitespace-nowrap">by {authorLabel(market.pubkey)} · {formatRelativeTime(market.createdAt)}</span>
+                <span class="text-xs text-base-content/50 shrink-0 ml-auto whitespace-nowrap">by {authorLabel(market.pubkey)} · {formatRelativeTime(market.createdAt)}</span>
               </a>
             {/each}
           {:else}
-            <div class="py-4 text-sm text-neutral-500">No new markets this week. <a class="link link-primary" href="/builder">Create the first one</a></div>
+            <div class="py-4 text-sm text-base-content/50">No new markets this week. <a class="link link-primary" href="/builder">Create the first one</a></div>
           {/if}
         </div>
       </section>
@@ -588,24 +588,24 @@
       <section class="grid gap-6 pt-12">
         <div>
           <h2 class="text-3xl font-bold tracking-tight">Live Debate</h2>
-          <p class="mt-1 text-sm text-neutral-500">The argument, in real time.</p>
+          <p class="mt-1 text-sm text-base-content/50">The argument, in real time.</p>
         </div>
 
-        <div class="divide-y divide-neutral-800 border-t border-neutral-800">
+        <div class="divide-y divide-base-300 border-t border-base-300">
           {#if latestDiscussions.length > 0}
             {#each latestDiscussions as entry (entry.discussion.id)}
               <a class="block py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketDiscussionUrl(entry.market.slug)}>
-                <p class="text-sm text-neutral-300 leading-relaxed">{truncateText(entry.discussion.content, 120)}</p>
-                <div class="mt-1 flex items-center gap-2 text-xs text-neutral-500">
-                  <span class="text-neutral-400">{authorLabel(entry.discussion.pubkey)}</span>
+                <p class="text-sm text-base-content/80 leading-relaxed">{truncateText(entry.discussion.content, 120)}</p>
+                <div class="mt-1 flex items-center gap-2 text-xs text-base-content/50">
+                  <span class="text-base-content/60">{authorLabel(entry.discussion.pubkey)}</span>
                   <span>in</span>
-                  <span class="text-neutral-400 truncate">{entry.market.title}</span>
+                  <span class="text-base-content/60 truncate">{entry.market.title}</span>
                   <span class="ml-auto shrink-0">{formatRelativeTime(entry.discussion.createdAt)}</span>
                 </div>
               </a>
             {/each}
           {:else}
-            <div class="py-4 text-sm text-neutral-500">No discussion yet. <a class="link link-primary" href="/builder">Create a market to start the debate</a></div>
+            <div class="py-4 text-sm text-base-content/50">No discussion yet. <a class="link link-primary" href="/builder">Create a market to start the debate</a></div>
           {/if}
         </div>
       </section>
@@ -619,7 +619,7 @@
 <section class="full-bleed bg-base-200 py-16 mt-16">
   <div class="shell text-center">
     <h2 class="text-3xl font-bold tracking-tight">Ready to put money behind your beliefs?</h2>
-    <p class="mt-2 text-sm text-neutral-500 max-w-md mx-auto">
+    <p class="mt-2 text-sm text-base-content/50 max-w-md mx-auto">
       Create a market, take a position, and defend it in public. Every trade is on the record.
     </p>
     <div class="mt-8 flex items-center justify-center gap-4 flex-wrap">
@@ -640,29 +640,6 @@
     margin-right: -50vw;
   }
 
-  /* ── Hero grid ─────────────────────────────────────────────── */
-  .hero-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
-    gap: 5rem;
-    align-items: center;
-  }
-
-  .hero-h1 {
-    max-width: 16ch;
-    font-size: clamp(3rem, 7vw, 5.2rem);
-    font-weight: 700;
-    letter-spacing: -0.06em;
-    line-height: 0.98;
-  }
-
-  /* ── How-it-works steps ────────────────────────────────────── */
-  .how-steps {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 2rem;
-  }
-
   /* ── Live ticker strip ─────────────────────────────────────── */
   .live-strip {
     display: grid;
@@ -681,7 +658,7 @@
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--color-neutral-500, oklch(0.556 0 0));
+    color: color-mix(in srgb, var(--color-base-content) 50%, transparent);
   }
 
   .live-dot {
@@ -689,7 +666,7 @@
     height: 0.45rem;
     background: var(--color-success);
     border-radius: 999px;
-    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 50%, transparent);
     animation: pulse 1.9s infinite;
   }
 
@@ -712,70 +689,7 @@
     gap: 0.65rem;
     font-size: 0.875rem;
     white-space: nowrap;
-    color: var(--color-neutral-400, oklch(0.556 0 0));
-  }
-
-  /* ── Trending sidebar layout (Most Active) ─────────────────── */
-  .trending-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-    gap: 0;
-  }
-
-  .trending-lead {
-    display: grid;
-    gap: 1rem;
-    padding: 1.25rem 1.5rem 1.25rem 0;
-    border-right: 1px solid oklch(0.3 0 0);
-  }
-
-  .rank-head,
-  .rank-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1.7fr) 0.55fr 0.6fr 0.55fr 0.55fr;
-    gap: 1rem;
-    align-items: center;
-  }
-
-  .rank-head {
-    padding: 1rem 0 0.75rem 1.5rem;
-  }
-
-  .rank-row {
-    padding: 0.75rem 0 0.75rem 1.5rem;
-  }
-
-  /* ── Search results grid ───────────────────────────────────── */
-  .search-head,
-  .search-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1.9fr) 0.55fr 0.6fr 0.55fr 0.55fr 0.7fr;
-    gap: 1rem;
-    align-items: center;
-  }
-
-  .search-head {
-    padding: 0.75rem 0;
-  }
-
-  .search-row {
-    padding: 0.75rem 0;
-  }
-
-  /* ── Two-column market splits ──────────────────────────────── */
-  .home-split {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2.5rem;
-  }
-
-  /* ── Price direction ───────────────────────────────────────── */
-  .positive {
-    color: var(--color-success);
-  }
-
-  .negative {
-    color: var(--color-error);
+    color: color-mix(in srgb, var(--color-base-content) 60%, transparent);
   }
 
   /* ── Keyframes ─────────────────────────────────────────────── */
@@ -791,51 +705,10 @@
   @keyframes pulse {
     0%,
     100% {
-      box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 50%, transparent);
     }
     50% {
-      box-shadow: 0 0 0 0.45rem rgba(52, 211, 153, 0);
-    }
-  }
-
-  /* ── Responsive ────────────────────────────────────────────── */
-  @media (max-width: 1024px) {
-    .hero-grid,
-    .trending-layout,
-    .home-split {
-      grid-template-columns: 1fr;
-    }
-
-    .trending-lead {
-      padding-right: 0;
-      border-right: none;
-      border-bottom: 1px solid oklch(0.3 0 0);
-    }
-
-    .rank-head,
-    .rank-row {
-      padding-left: 0;
-    }
-  }
-
-  @media (max-width: 720px) {
-    .rank-head,
-    .search-head {
-      display: none;
-    }
-
-    .rank-row,
-    .search-row {
-      grid-template-columns: 1fr;
-      gap: 0.5rem;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .how-steps {
-      grid-template-columns: 1fr;
-      gap: 1rem;
+      box-shadow: 0 0 0 0.45rem color-mix(in srgb, var(--color-success) 0%, transparent);
     }
   }
 </style>
-    getCascadeEventKinds,

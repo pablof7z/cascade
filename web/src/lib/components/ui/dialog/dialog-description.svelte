@@ -7,7 +7,7 @@
 
 <DialogPrimitive.Description
   {...restProps}
-  class={cn('mt-1 text-sm leading-6 text-neutral-400', className)}
+  class={cn('mt-1 text-sm leading-6 text-base-content/50', className)}
 >
   {@render children?.()}
 </DialogPrimitive.Description>

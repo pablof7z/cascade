@@ -16,10 +16,10 @@
     return `${page.url.pathname}?tab=${tab}`;
   }
 
-  function attentionClass(value: Field['attention']): string {
-    if (value === 'needs-input') return 'badge badge-review';
-    if (value === 'review') return 'badge badge-watch';
-    return 'badge badge-steady';
+  function attentionBadgeClass(value: Field['attention']): string {
+    if (value === 'needs-input') return 'badge badge-error badge-outline';
+    if (value === 'review') return 'badge badge-warning badge-outline';
+    return 'badge badge-success badge-outline';
   }
 
   function entryKindLabel(value: MeetingEntryKind): string {
@@ -35,97 +35,95 @@
 </script>
 
 {#if !field}
-  <section class="field-missing">
-    <p>Field not found.</p>
-    <a href="/dashboard/fields">Back to Fields</a>
-  </section>
+  <div class="grid gap-3 p-7">
+    <p class="text-base-content/70">Field not found.</p>
+    <a class="btn btn-outline btn-sm w-fit" href="/dashboard/fields">Back to Fields</a>
+  </div>
 {:else}
-  <section class="field-page">
-    <header class="field-header">
-      <div class="field-crumbs">
-        <a href="/dashboard">Overview</a>
+  <div class="min-h-full">
+    <header class="border-b border-base-300 px-7 pt-6 pb-0">
+      <div class="flex items-center gap-2 text-xs text-base-content/50">
+        <a class="hover:text-white" href="/dashboard">Overview</a>
         <span>/</span>
-        <a href="/dashboard/fields">Fields</a>
+        <a class="hover:text-white" href="/dashboard/fields">Fields</a>
         <span>/</span>
         <span>{field.name}</span>
       </div>
 
-      <div class="field-title-block">
-        <span class={attentionClass(field.attention)}>
+      <div class="mt-4">
+        <span class={attentionBadgeClass(field.attention)}>
           {field.attention === 'needs-input' ? 'Needs input' : field.attention === 'review' ? 'Review' : 'Steady'}
         </span>
-        <h1>{field.name}</h1>
-        <p>{field.conviction}</p>
+        <h1 class="text-[1.4rem] tracking-[-0.03em] mt-2">{field.name}</h1>
+        <p class="max-w-[54rem] mt-1 text-base-content/70 leading-[1.6]">{field.conviction}</p>
       </div>
 
-      <div class="field-stats">
+      <div class="flex flex-wrap gap-4 my-4 text-base-content/50 font-mono text-xs">
         <span>{field.council.length} agents</span>
         <span>{field.candidateMarkets.length} markets</span>
         <span>{formatUsd(field.capital.deployedUsd)} deployed</span>
         <span>Updated {field.meeting.updatedAt}</span>
       </div>
 
-      <nav class="field-tabs">
-        <a class:active={activeTab === 'meeting'} href={tabHref('meeting')}>Meeting</a>
-        <a class:active={activeTab === 'positions'} href={tabHref('positions')}>Positions</a>
-        <a class:active={activeTab === 'library'} href={tabHref('library')}>Library</a>
-        <a class:active={activeTab === 'council'} href={tabHref('council')}>Council</a>
+      <nav class="flex gap-3 mb-[-1px]">
+        {#each (['meeting', 'positions', 'library', 'council'] as const) as tab}
+          <a
+            class="py-3 px-0.5 border-b-2 text-sm font-medium transition-colors {activeTab === tab ? 'border-white text-white' : 'border-transparent text-base-content/50 hover:text-base-content/80'}"
+            href={tabHref(tab)}
+          >{tab.charAt(0).toUpperCase() + tab.slice(1)}</a>
+        {/each}
       </nav>
     </header>
 
-    <div class="field-content">
+    <div class="p-7">
       {#if activeTab === 'meeting'}
-        <section class="field-panel">
-          <div class="field-panel-heading">
-            <h2>{field.meeting.title}</h2>
-            <span class="badge badge-watch">{field.meeting.status === 'awaiting-human' ? 'Awaiting you' : field.meeting.status}</span>
+        <div class="grid gap-4 max-w-[60rem]">
+          <div class="flex items-center justify-between gap-4">
+            <h2 class="text-base font-medium">{field.meeting.title}</h2>
+            <span class="badge badge-warning badge-outline">{field.meeting.status === 'awaiting-human' ? 'Awaiting you' : field.meeting.status}</span>
           </div>
-          <p class="field-panel-copy">{field.meeting.summary}</p>
+          <p class="text-base-content/70 leading-[1.6]">{field.meeting.summary}</p>
 
           {#if field.meeting.actions.length > 0}
-            <div class="action-stack">
+            <div class="border-t border-base-300">
               {#each field.meeting.actions as action (action.id)}
-                <div class="action-card">
-                  <div class="action-card-head">
-                    <strong>{action.title}</strong>
-                    <span>{actionLabel(action.status)}</span>
+                <div class="py-4 border-b border-base-300">
+                  <div class="flex items-center flex-wrap gap-2">
+                    <strong class="text-white text-sm">{action.title}</strong>
+                    <span class="text-base-content/70 text-xs">{actionLabel(action.status)}</span>
                   </div>
-                  <p>{action.rationale}</p>
+                  <p class="mt-1 text-base-content/70 text-sm leading-[1.6]">{action.rationale}</p>
                 </div>
               {/each}
             </div>
           {/if}
 
-          <div class="meeting-list">
+          <div class="border-t border-base-300">
             {#each field.meeting.entries as entry (entry.id)}
-              <div class="meeting-row">
-                <div>
-                  <div class="meeting-meta">
-                    <strong>{entry.headline}</strong>
-                    <span>{entryKindLabel(entry.kind)}</span>
-                    <span>{entry.at}</span>
-                  </div>
-                  <p>{entry.body}</p>
+              <div class="py-4 border-b border-base-300">
+                <div class="flex items-center flex-wrap gap-2">
+                  <strong class="text-white text-sm">{entry.headline}</strong>
+                  <span class="text-base-content/70 text-xs">{entryKindLabel(entry.kind)}</span>
+                  <span class="text-base-content/50 text-xs">{entry.at}</span>
                 </div>
+                <p class="mt-1 text-base-content/70 text-sm leading-[1.6]">{entry.body}</p>
               </div>
             {/each}
           </div>
-        </section>
+        </div>
       {/if}
 
       {#if activeTab === 'positions'}
-        <section class="field-panel">
-          <div class="field-panel-heading">
-            <h2>Current positions</h2>
-          </div>
-          <div class="simple-list">
+        <div class="grid gap-4 max-w-[60rem]">
+          <h2 class="text-base font-medium">Current positions</h2>
+          <div class="border-t border-base-300">
             {#each field.positions as position (position.id)}
-              <div class="simple-row">
-                <div>
-                  <strong>{position.label}</strong>
-                  <p>{position.thesis}</p>
+              <div class="flex items-start justify-between gap-4 py-4 border-b border-base-300">
+                <div class="min-w-0">
+                  <strong class="text-white block text-sm">{position.label}</strong>
+                  <p class="mt-1 text-base-content/70 text-sm leading-[1.6]">{position.thesis}</p>
                 </div>
-                <div class="simple-aside">
+                <div class="grid gap-1 text-right shrink-0 text-base-content/50 font-mono text-xs whitespace-nowrap">
                   <span>{formatUsd(position.exposureUsd)}</span>
                   <span>{position.status}</span>
                 </div>
@@ -133,64 +131,62 @@
             {/each}
           </div>
 
-          <div class="field-panel-heading field-panel-heading-spaced">
-            <h2>Candidate markets</h2>
-          </div>
-          <div class="simple-list">
+          <h2 class="text-base font-medium mt-4">Candidate markets</h2>
+          <div class="border-t border-base-300">
             {#each field.candidateMarkets as market (market.id)}
-              <div class="simple-row">
-                <div>
-                  <strong>{market.label}</strong>
-                  <p>{market.framing}</p>
+              <div class="flex items-start justify-between gap-4 py-4 border-b border-base-300">
+                <div class="min-w-0">
+                  <strong class="text-white block text-sm">{market.label}</strong>
+                  <p class="mt-1 text-base-content/70 text-sm leading-[1.6]">{market.framing}</p>
                 </div>
-                <div class="simple-aside">
+                <div class="grid gap-1 text-right shrink-0 text-base-content/50 font-mono text-xs whitespace-nowrap">
                   <span>{market.status}</span>
                 </div>
               </div>
             {/each}
           </div>
-        </section>
+        </div>
       {/if}
 
       {#if activeTab === 'library'}
-        <section class="field-panel">
-          <div class="field-panel-heading">
-            <h2>Source library</h2>
-            <span>{field.sourceLibrary.length} sources</span>
+        <div class="grid gap-4 max-w-[60rem]">
+          <div class="flex items-center justify-between gap-4">
+            <h2 class="text-base font-medium">Source library</h2>
+            <span class="text-base-content/70 text-sm">{field.sourceLibrary.length} sources</span>
           </div>
-          <div class="simple-list">
+          <div class="border-t border-base-300">
             {#each field.sourceLibrary as source (source.id)}
-              <div class="simple-row">
-                <div>
-                  <strong>{source.title}</strong>
-                  <p>{source.author} · {source.note}</p>
-                  <small>{source.relevance}</small>
+              <div class="flex items-start justify-between gap-4 py-4 border-b border-base-300">
+                <div class="min-w-0">
+                  <strong class="text-white block text-sm">{source.title}</strong>
+                  <p class="mt-1 text-base-content/70 text-sm">{source.author} · {source.note}</p>
+                  <small class="block mt-1 text-base-content/70 text-xs leading-[1.5]">{source.relevance}</small>
                 </div>
-                <div class="simple-aside">
-                  <span>{source.addedAt}</span>
+                <div class="shrink-0 text-base-content/50 font-mono text-xs whitespace-nowrap">
+                  {source.addedAt}
                 </div>
               </div>
             {/each}
           </div>
-        </section>
+        </div>
       {/if}
 
       {#if activeTab === 'council'}
-        <section class="field-panel">
-          <div class="field-panel-heading">
-            <h2>Council</h2>
-            <span>{field.council.length} agents</span>
+        <div class="grid gap-4 max-w-[60rem]">
+          <div class="flex items-center justify-between gap-4">
+            <h2 class="text-base font-medium">Council</h2>
+            <span class="text-base-content/70 text-sm">{field.council.length} agents</span>
           </div>
 
-          <div class="simple-list">
+          <div class="border-t border-base-300">
             {#each field.council as agent (agent.id)}
-              <div class="simple-row">
-                <div>
-                  <strong>{agent.name}</strong>
-                  <p>{agent.role} · {agent.focus}</p>
-                  <small>{agent.recentContribution}</small>
+              <div class="flex items-start justify-between gap-4 py-4 border-b border-base-300">
+                <div class="min-w-0">
+                  <strong class="text-white block text-sm">{agent.name}</strong>
+                  <p class="mt-0.5 text-base-content/70 text-sm">{agent.role} · {agent.focus}</p>
+                  <small class="block mt-1 text-base-content/70 text-xs leading-[1.5]">{agent.recentContribution}</small>
                 </div>
-                <div class="simple-aside">
+                <div class="grid gap-1 text-right shrink-0 text-base-content/50 font-mono text-xs whitespace-nowrap">
                   <span>{agent.provisioning}</span>
                   <span>{formatUsd(agent.wallet.balanceUsd)}</span>
                 </div>
@@ -198,253 +194,24 @@
             {/each}
           </div>
 
-          <div class="capital-box">
-            <strong>Capital</strong>
-            <p>{field.capital.note}</p>
-            <div class="capital-box-grid">
-              <div>
-                <span>Field wallet</span>
-                <strong>{formatUsd(field.capital.fieldWalletUsd)}</strong>
-              </div>
-              <div>
-                <span>Deployed</span>
-                <strong>{formatUsd(field.capital.deployedUsd)}</strong>
-              </div>
-              <div>
-                <span>Available</span>
-                <strong>{formatUsd(field.capital.availableUsd)}</strong>
-              </div>
+          <div class="grid gap-3 pt-4 border-t border-base-300">
+            <strong class="text-white text-sm">Capital</strong>
+            <p class="text-base-content/70 text-sm">{field.capital.note}</p>
+            <div class="grid grid-cols-3 gap-px bg-base-300">
+              {#each [
+                { label: 'Field wallet', value: formatUsd(field.capital.fieldWalletUsd) },
+                { label: 'Deployed', value: formatUsd(field.capital.deployedUsd) },
+                { label: 'Available', value: formatUsd(field.capital.availableUsd) },
+              ] as stat}
+                <div class="grid gap-1 bg-base-200 p-4">
+                  <span class="eyebrow">{stat.label}</span>
+                  <strong class="text-white font-mono text-sm">{stat.value}</strong>
+                </div>
+              {/each}
             </div>
           </div>
-        </section>
+        </div>
       {/if}
     </div>
-  </section>
+  </div>
 {/if}
-
-<style>
-  .field-page {
-    min-height: 100%;
-  }
-
-  .field-header {
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    padding: 1.5rem 1.75rem 0;
-  }
-
-  .field-crumbs {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.78rem;
-  }
-
-  .field-title-block {
-    margin-top: 1rem;
-  }
-
-  .field-title-block h1 {
-    margin-top: 0.6rem;
-    font-size: 1.4rem;
-  }
-
-  .field-title-block p {
-    max-width: 54rem;
-    margin-top: 0.45rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    line-height: 1.6;
-  }
-
-  .field-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin: 1rem 0;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-family: var(--font-mono);
-    font-size: 0.76rem;
-  }
-
-  .field-tabs {
-    display: flex;
-    gap: 0.75rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    margin-bottom: -1px;
-  }
-
-  .field-tabs a {
-    padding: 0.8rem 0.1rem;
-    border-bottom: 2px solid transparent;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.92rem;
-    font-weight: 500;
-  }
-
-  .field-tabs a.active {
-    border-bottom-color: white;
-    color: white;
-  }
-
-  .field-content {
-    padding: 1.75rem;
-  }
-
-  .field-panel {
-    display: grid;
-    gap: 1rem;
-    max-width: 60rem;
-  }
-
-  .field-panel-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .field-panel-heading h2 {
-    font-size: 1rem;
-  }
-
-  .field-panel-heading span,
-  .field-panel-copy,
-  .meeting-meta span,
-  .simple-aside span,
-  .capital-box p,
-  .capital-box span,
-  .field-missing p {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .field-panel-heading-spaced {
-    margin-top: 1rem;
-  }
-
-  .action-stack,
-  .meeting-list,
-  .simple-list {
-    display: grid;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .action-card,
-  .meeting-row,
-  .simple-row {
-    padding: 1rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .action-card-head,
-  .meeting-meta {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-  }
-
-  .action-card strong,
-  .meeting-meta strong,
-  .simple-row strong,
-  .capital-box strong {
-    color: white;
-  }
-
-  .action-card p,
-  .meeting-row p,
-  .simple-row p,
-  .simple-row small {
-    margin-top: 0.35rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    line-height: 1.6;
-  }
-
-  .simple-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .simple-aside {
-    display: grid;
-    gap: 0.25rem;
-    font-family: var(--font-mono);
-    font-size: 0.76rem;
-    text-align: right;
-    white-space: nowrap;
-  }
-
-  .capital-box {
-    display: grid;
-    gap: 0.75rem;
-    padding-top: 1rem;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .capital-box-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1px;
-    background: color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .capital-box-grid div {
-    display: grid;
-    gap: 0.35rem;
-    background: var(--color-base-200);
-    padding: 0.9rem 1rem;
-  }
-
-  .capital-box-grid strong {
-    font-family: var(--font-mono);
-  }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    border: 1px solid var(--color-neutral);
-    padding: 0.2rem 0.5rem;
-    font-size: 0.75rem;
-  }
-
-  .badge-steady {
-    color: var(--color-success);
-  }
-
-  .badge-review {
-    color: var(--color-error);
-  }
-
-  .badge-watch {
-    color: var(--color-base-content);
-  }
-
-  .field-missing {
-    display: grid;
-    gap: 0.8rem;
-    padding: 1.75rem;
-  }
-
-  .field-missing a {
-    width: fit-content;
-    border: 1px solid var(--color-neutral);
-    padding: 0.7rem 0.95rem;
-    color: white;
-    font-size: 0.92rem;
-  }
-
-  @media (max-width: 900px) {
-    .simple-row {
-      flex-direction: column;
-    }
-
-    .simple-aside {
-      text-align: left;
-    }
-
-    .capital-box-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>

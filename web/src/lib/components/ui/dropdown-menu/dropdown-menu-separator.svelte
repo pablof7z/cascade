@@ -9,5 +9,5 @@
 
 <DropdownMenuPrimitive.Separator
   {...restProps}
-  class={cn('my-1 h-px bg-neutral-800', className)}
+  class={cn('my-1 h-px bg-base-300', className)}
 />

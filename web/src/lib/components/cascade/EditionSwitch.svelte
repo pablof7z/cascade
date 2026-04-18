@@ -19,14 +19,14 @@
 </script>
 
 <div
-  class="inline-flex h-9 shrink-0 items-center rounded border border-neutral-800 bg-neutral-950 p-0.5 text-xs font-semibold"
+  class="inline-flex h-9 shrink-0 items-center rounded border border-base-300 bg-base-100 p-0.5 text-xs font-semibold"
   role="radiogroup"
   aria-label="Trading mode"
 >
   <a
     class={isActive('mainnet')
-      ? 'grid h-7 min-w-14 place-items-center rounded-sm bg-white px-3 text-neutral-950'
-      : 'grid h-7 min-w-14 place-items-center rounded-sm px-3 text-neutral-500 hover:text-neutral-200'}
+      ? 'grid h-7 min-w-14 place-items-center rounded-sm bg-white px-3 text-base-content'
+      : 'grid h-7 min-w-14 place-items-center rounded-sm px-3 text-base-content/50 hover:text-base-content/90'}
     href={hrefFor('mainnet')}
     aria-checked={isActive('mainnet')}
     role="radio"
@@ -37,8 +37,8 @@
   </a>
   <a
     class={isActive('signet')
-      ? 'grid h-7 min-w-20 place-items-center rounded-sm bg-white px-3 text-neutral-950'
-      : 'grid h-7 min-w-20 place-items-center rounded-sm px-3 text-neutral-500 hover:text-neutral-200'}
+      ? 'grid h-7 min-w-20 place-items-center rounded-sm bg-white px-3 text-base-content'
+      : 'grid h-7 min-w-20 place-items-center rounded-sm px-3 text-base-content/50 hover:text-base-content/90'}
     href={hrefFor('signet')}
     aria-checked={isActive('signet')}
     role="radio"

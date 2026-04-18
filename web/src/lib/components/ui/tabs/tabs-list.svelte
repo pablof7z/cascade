@@ -10,7 +10,7 @@
 
 <TabsPrimitive.List
   {...restProps}
-  class={cn('tabs tabs-bordered w-full justify-start gap-4 border-b border-neutral-800 bg-transparent p-0', className)}
+  class={cn('tabs tabs-bordered w-full justify-start gap-4 border-b border-base-300 bg-transparent p-0', className)}
 >
   {@render children?.()}
 </TabsPrimitive.List>

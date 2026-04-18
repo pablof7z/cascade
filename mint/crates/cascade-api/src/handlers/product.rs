@@ -3809,20 +3809,26 @@ async fn sell_trade_by_event(
                         }
                     }
 
-                    let issued_signatures = match issue_wallet_funding_quote(
-                        state,
-                        &MintBolt11Request {
-                            quote: wallet_quote_id.clone(),
-                            outputs: req.issued_outputs.clone(),
-                        },
-                        "lightning",
-                        "api/trades/sell",
-                    )
-                    .await
-                    {
-                        Ok(response) => response.signatures,
-                        Err((status, detail)) => {
-                            return (status, Json(json!({ "error": detail })));
+                    // For zero-value settlements the wallet_quote_id is an empty sentinel
+                    // (no Lightning payment was made), so there are no USD tokens to issue.
+                    let issued_signatures = if wallet_quote_id.is_empty() {
+                        vec![]
+                    } else {
+                        match issue_wallet_funding_quote(
+                            state,
+                            &MintBolt11Request {
+                                quote: wallet_quote_id.clone(),
+                                outputs: req.issued_outputs.clone(),
+                            },
+                            "lightning",
+                            "api/trades/sell",
+                        )
+                        .await
+                        {
+                            Ok(response) => response.signatures,
+                            Err((status, detail)) => {
+                                return (status, Json(json!({ "error": detail })));
+                            }
                         }
                     };
 
@@ -5024,6 +5030,36 @@ async fn execute_sell_trade_settlement(
     pubkey: &str,
     quote: &ProductTradeQuoteResponse,
 ) -> Result<(Option<TradeSettlementInsert>, String), String> {
+    // Zero-value settlement: position has no market value after LMSR pricing and fees.
+    // Skip the Lightning payment entirely — the trade completes with no USD payout.
+    if quote.settlement_minor == 0 {
+        return Ok((
+            Some(TradeSettlementInsert {
+                quote_id: quote.quote_id.clone(),
+                pubkey: pubkey.to_string(),
+                market_event_id: quote.market_event_id.clone(),
+                trade_type: quote.trade_type.clone(),
+                side: quote.side.clone(),
+                rail: "none".to_string(),
+                mode: "zero_value_exit".to_string(),
+                settlement_minor: 0,
+                settlement_msat: 0,
+                settlement_fee_msat: 0,
+                fx_quote_id: quote.fx_quote_id.clone(),
+                invoice: None,
+                payment_hash: None,
+                metadata_json: Some(
+                    json!({
+                        "zero_settlement": true,
+                        "reason": "position_value_below_minimum"
+                    })
+                    .to_string(),
+                ),
+            }),
+            String::new(), // empty sentinel: no wallet mint quote to issue from
+        ));
+    }
+
     let wallet_mint_quote = create_trade_settlement_wallet_mint_quote(state, quote).await?;
     let wallet_invoice = Bolt11Invoice::from_str(&wallet_mint_quote.request)
         .map_err(|error| format!("invalid_trade_settlement_wallet_invoice: {error}"))?;

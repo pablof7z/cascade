@@ -577,11 +577,12 @@
       if (!spendProofs.length) {
         throw new Error(`Not enough ${sellSide.toUpperCase()} available on this device to sell.`);
       }
-      const { outputs: issuedOutputs, preparation: issuedPreparation } = await prepareProofOutputs(
-        proofMintUrl(),
-        'usd',
-        quote.net_minor
-      );
+      // For zero-value sells (position worth nothing after fees), skip USD output preparation.
+      // The trade completes successfully but issues no USD tokens.
+      const { outputs: issuedOutputs, preparation: issuedPreparation } =
+        quote.net_minor > 0
+          ? await prepareProofOutputs(proofMintUrl(), 'usd', quote.net_minor)
+          : { outputs: [], preparation: undefined };
       const changeMinor =
         spendProofs.reduce((sum, proof) => sum + proof.amount, 0) - quote.quantity_minor;
       const changePreparation =

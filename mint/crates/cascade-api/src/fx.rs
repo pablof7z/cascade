@@ -164,6 +164,26 @@ impl FxQuoteService {
     }
 
     pub async fn quote_wallet_funding(&self, amount_minor: u64) -> Result<FxQuoteEnvelope, String> {
+        if amount_minor == 0 {
+            // Zero-value sell: the position has no market value after LMSR pricing and fees.
+            // Return a synthetic quote so the trade can complete without a Lightning payment.
+            let now = Utc::now().timestamp();
+            return Ok(FxQuoteEnvelope {
+                snapshot: FxQuoteSnapshot {
+                    id: Uuid::new_v4().to_string(),
+                    amount_minor: 0,
+                    amount_msat: 0,
+                    btc_usd_price: 0.0,
+                    reference_btc_usd_price: 0.0,
+                    source: "zero_value_exit".to_string(),
+                    spread_bps: 0,
+                    observations: vec![],
+                    source_metadata: FxQuoteSourceMetadata::default(),
+                    created_at: now,
+                    expires_at: now + 3600,
+                },
+            });
+        }
         self.quote_minor_to_msat(amount_minor).await
     }
 

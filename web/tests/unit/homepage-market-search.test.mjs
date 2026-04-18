@@ -83,6 +83,35 @@ test('filterLiveHomepageMarkets hides markets until a public trade exists', asyn
   );
 });
 
+test('filterLiveHomepageMarkets skips trade filter when skipTradeFilter is true', async () => {
+  const { filterLiveHomepageMarkets } = await loadSearchHelpers();
+
+  const markets = [
+    { id: 'market-live', title: 'Live market', description: 'Has at least one trade.' },
+    { id: 'market-pending', title: 'Pending market', description: 'Published but not live yet.' }
+  ];
+  const trades = [{ marketId: 'market-live' }];
+
+  assert.deepEqual(
+    filterLiveHomepageMarkets(markets, trades, { skipTradeFilter: true }).map((market) => market.id),
+    ['market-live', 'market-pending']
+  );
+});
+
+test('filterLiveHomepageMarkets still strips test markets in practice mode', async () => {
+  const { filterLiveHomepageMarkets } = await loadSearchHelpers();
+
+  const markets = [
+    { id: 'market-real', title: 'Real practice market', description: 'Valid.' },
+    { id: 'market-test', title: 'Public paper market 1776275085367-5049', description: 'E2E test fixture.' }
+  ];
+
+  assert.deepEqual(
+    filterLiveHomepageMarkets(markets, [], { skipTradeFilter: true }).map((market) => market.id),
+    ['market-real']
+  );
+});
+
 test('homepage source wires client-side search state, input UI, and filtered results', () => {
   const source = read('src/routes/+page.svelte');
 
@@ -110,7 +139,7 @@ test('homepage source filters discovery markets using merged live trades', () =>
   );
   assert.match(
     source,
-    /return filterLiveHomepageMarkets\([\s\S]*\.map\(\(event\) => parseMarketEvent\(event, selectedEdition\)\)[\s\S]*\.filter\(\(market\): market is MarketRecord => Boolean\(market\)\)[\s\S]*,\s*trades\s*\)[\s\S]*\.sort\(\(left, right\) => right\.createdAt - left\.createdAt\);/
+    /return filterLiveHomepageMarkets\([\s\S]*\.map\(\(event\) => parseMarketEvent\(event, selectedEdition\)\)[\s\S]*\.filter\(\(market\): market is MarketRecord => Boolean\(market\)\)[\s\S]*,\s*trades\s*,\s*\{ skipTradeFilter: isPracticeEdition \}[\s\S]*\)[\s\S]*\.sort\(\(left, right\) => right\.createdAt - left\.createdAt\);/
   );
 });
 

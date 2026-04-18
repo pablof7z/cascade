@@ -64,7 +64,8 @@
       mergeRawEvents(data.markets, marketFeed.events)
         .map((event) => parseMarketEvent(event, selectedEdition))
         .filter((market): market is MarketRecord => Boolean(market)),
-      trades
+      trades,
+      { skipTradeFilter: isPracticeEdition }
     ).sort((left, right) => right.createdAt - left.createdAt);
   });
 
@@ -129,7 +130,7 @@
 
   const disputedMarkets = $derived.by(() => {
     return [...markets]
-      .filter((market) => tradeSummaries.get(market.id)?.latestPricePpm !== null)
+      .filter((market) => tradeSummaries.get(market.id)?.latestPricePpm != null)
       .sort((left, right) => {
         const leftPrice = tradeSummaries.get(left.id)?.latestPricePpm ?? 500_000;
         const rightPrice = tradeSummaries.get(right.id)?.latestPricePpm ?? 500_000;

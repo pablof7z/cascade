@@ -26,12 +26,17 @@ function normalizeHomepageMarketSearch(query: string): string {
 
 export function filterLiveHomepageMarkets<T extends HomepageLiveMarket>(
   markets: T[],
-  trades: readonly HomepageLiveTrade[]
+  trades: readonly HomepageLiveTrade[],
+  options: { skipTradeFilter?: boolean } = {}
 ): T[] {
-  const liveMarketIds = new Set(trades.map((trade) => trade.marketId));
-  return markets
-    .filter((market) => liveMarketIds.has(market.id))
-    .filter((market) => !isTestMarket(market));
+  const { skipTradeFilter = false } = options;
+  const withTradeFilter = skipTradeFilter
+    ? markets
+    : (() => {
+        const liveMarketIds = new Set(trades.map((trade) => trade.marketId));
+        return markets.filter((market) => liveMarketIds.has(market.id));
+      })();
+  return withTradeFilter.filter((market) => !isTestMarket(market));
 }
 
 export function filterHomepageMarkets<T extends HomepageSearchMarket>(markets: T[], query: string): T[] {

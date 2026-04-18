@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { NDKSvelte } from '@nostr-dev-kit/svelte';
   import { Marked } from 'marked';
-  import { getContext, mount, onMount, setContext, unmount } from 'svelte';
+  import { getContext, mount, setContext, unmount } from 'svelte';
   import { createNostrMarkdownExtensions } from '../../builders/markdown-nostr-extensions/index.js';
   import EmbeddedEvent from '../embedded-event.svelte';
   import { defaultContentRenderer, type ContentRenderer } from '../content-renderer';
@@ -137,20 +137,16 @@
     });
   }
 
-  onMount(() => {
-    hydrateNostrComponents();
-
-    return () => {
-      clearMountedComponents();
-    };
-  });
-
   $effect(() => {
     htmlContent;
 
     if (contentElement) {
       hydrateNostrComponents();
     }
+
+    return () => {
+      clearMountedComponents();
+    };
   });
 </script>
 

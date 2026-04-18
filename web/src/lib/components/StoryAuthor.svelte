@@ -10,11 +10,10 @@
     ndk: NDKSvelte;
     pubkey: string;
     profile?: NDKUserProfile;
-    avatarClass?: string;
     compact?: boolean;
   }
 
-  let { ndk, pubkey, profile: initialProfile, avatarClass = '', compact = false }: Props = $props();
+  let { ndk, pubkey, profile: initialProfile, compact = false }: Props = $props();
 
   const stableNdk = untrack(() => ndk);
   const profileFetcher = createProfileFetcher(
@@ -36,12 +35,16 @@
 </script>
 
 <User.Root {ndk} {pubkey} profile={resolvedProfile}>
-  <a class="story-author-link" href={href}>
-    <User.Avatar class={avatarClass} />
-    <div class={`story-byline-copy${compact ? ' compact' : ''}`}>
-      <strong class="story-author-name">{primaryLabel}</strong>
-      {#if secondaryLabel}
-        <span class="story-author-handle">{secondaryLabel}</span>
+  <a class="inline-flex items-center gap-2 hover:opacity-80 transition-opacity" href={href}>
+    <div class="avatar">
+      <div class={compact ? 'h-6 w-6 rounded-full' : 'h-8 w-8 rounded-full'}>
+        <User.Avatar />
+      </div>
+    </div>
+    <div class="grid gap-px">
+      <strong class="text-sm font-semibold text-white leading-tight">{primaryLabel}</strong>
+      {#if secondaryLabel && !compact}
+        <span class="text-xs text-base-content/60">{secondaryLabel}</span>
       {/if}
     </div>
   </a>

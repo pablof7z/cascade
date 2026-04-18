@@ -106,7 +106,7 @@
   const chartPlotHeight = chartHeight - chartMargin.top - chartMargin.bottom;
   const chartStartTrade = $derived(chronologicalTrades[0] ?? null);
   const chartEndTrade = $derived(chronologicalTrades[chronologicalTrades.length - 1] ?? null);
-  const chartTrendClass = $derived((chartEndTrade?.probability ?? impliedProbability) >= 0.5 ? 'positive' : 'negative');
+  const chartTrendClass = $derived((chartEndTrade?.probability ?? impliedProbability) >= 0.5 ? 'text-success' : 'text-error');
   const chartPoints = $derived.by(() => {
     if (chronologicalTrades.length === 0) {
       return [];
@@ -168,9 +168,8 @@
 
   const marketState = $derived.by(() => {
     const priceLabel = priceCents(impliedProbability);
-    const accentClass = impliedProbability >= 0.5 ? 'positive' : 'negative';
+    const accentClass = impliedProbability >= 0.5 ? 'text-success' : 'text-error';
 
-    // Simple data: just price and volume split
     const longPct = Math.round(flowLong * 100);
     const shortPct = Math.round(flowShort * 100);
     const summary = `${longPct}% LONG • ${shortPct}% SHORT`;
@@ -179,15 +178,12 @@
   });
 
   const recentSignals = $derived.by(() => {
-    // Latest trade - just the data
     const latestFlow = latestTrade
       ? `${latestTrade.direction.toUpperCase()} ${latestTrade.type} ${formatProductAmount(latestTrade.amount, 'usd')} • ${formatRelativeTime(latestTrade.createdAt)}`
       : 'No trades yet';
 
-    // Volume split - just percentages
     const volumeSplit = `${Math.round(flowLong * 100)}% LONG • ${Math.round(flowShort * 100)}% SHORT`;
 
-    // Discussion - just counts
     const totalReplies = discussionThreads.reduce((sum, t) => sum + t.replyCount, 0);
     const discussionActivity = discussionThreads.length > 0
       ? `${discussionThreads.length} thread${discussionThreads.length === 1 ? '' : 's'} • ${totalReplies} repl${totalReplies === 1 ? 'y' : 'ies'}`
@@ -275,14 +271,17 @@
   }
 </script>
 
-<section class="market-shell">
-  <div class="market-header">
-    <div class="market-copy">
-      <div class="market-kicker">Market</div>
-      <h1>{market.title}</h1>
-      <p>{sanitizeMarketCopy(market.description) || 'No summary provided yet.'}</p>
+<!-- Market header -->
+<section class="pt-4">
+  <header class="grid gap-4 pb-6 border-b border-base-300 lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)]">
+    <div class="flex flex-col gap-4 max-w-prose">
+      <div class="eyebrow">Market</div>
+      <h1 class="text-5xl font-bold tracking-tight leading-none">{market.title}</h1>
+      <p class="text-base-content/70 text-base leading-relaxed max-w-xl">
+        {sanitizeMarketCopy(market.description) || 'No summary provided yet.'}
+      </p>
 
-      <div class="market-meta">
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-base-content/50">
         <span>by {author}</span>
         <span>{formatRelativeTime(market.createdAt)}</span>
         {#if market.categories.length > 0}
@@ -290,13 +289,13 @@
         {/if}
       </div>
 
-      <div class="market-header-actions">
+      <div class="flex items-center gap-3 flex-wrap">
         <SharePopover url={page.url.href} title={market.title} />
         {#if currentUser}
           <button
-            class="market-bookmark-button"
-            class:bookmarked={isBookmarked}
-            title={isBookmarked ? 'Remove bookmark' : 'Save market'}
+            class="btn btn-ghost btn-sm gap-2"
+            class:btn-outline={isBookmarked}
+            aria-label={isBookmarked ? 'Remove bookmark' : 'Save market'}
             type="button"
             onclick={toggleBookmark}
           >
@@ -307,197 +306,201 @@
       </div>
     </div>
 
-    <div class="market-header-side">
-      <div class="market-header-price">
-        <span class="market-header-probability">{priceCents(impliedProbability)}</span>
-        <span class="market-header-side-label">LONG</span>
+    <div class="grid gap-4 content-start pt-1">
+      <div class="flex items-baseline gap-3">
+        <span class="font-mono text-success text-5xl font-bold tracking-tight">{priceCents(impliedProbability)}</span>
+        <span class="text-success/70 text-base tracking-wide">LONG</span>
       </div>
 
-      <div class="market-header-stats">
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-base-content/50">
         <span>{formatProductAmount(tradeSummary.grossVolume, 'usd')} vol</span>
         <span>{tradeSummary.tradeCount} trades</span>
         <span>{discussionThreads.length} threads</span>
       </div>
-
     </div>
-  </div>
+  </header>
 </section>
 
-<section class="market-tabs">
+<section class="pt-4">
   <TabNav items={tabs} />
 </section>
 
 {#if tab === 'overview'}
-  <!-- MARKET CONTEXT -->
-  <section class="market-context">
-    <p class="market-state-summary">
+  <!-- Market context -->
+  <section class="max-w-3xl mx-auto pt-8">
+    <p class="text-base-content/80 text-base leading-relaxed mb-6">
       <strong class={marketState.accentClass}>{marketState.label}</strong> • {marketState.summary}
     </p>
 
-    <div class="overview-metrics">
-      <div>
-        <span>Price move since open</span>
-        <strong class:positive={impliedProbability - openingProbability >= 0} class:negative={impliedProbability - openingProbability < 0}>
+    <div class="stats stats-horizontal w-full bg-base-200 mb-6">
+      <div class="stat">
+        <div class="stat-title">Price change</div>
+        <div class="stat-value text-lg font-mono" class:text-success={impliedProbability - openingProbability >= 0} class:text-error={impliedProbability - openingProbability < 0}>
           {impliedProbability - openingProbability >= 0 ? '+' : ''}{((impliedProbability - openingProbability) * 100).toFixed(1)}¢
-        </strong>
+        </div>
+        <div class="stat-desc">Since open</div>
       </div>
-      <div>
-        <span>Traders</span>
-        <strong>{visibleAccounts}</strong>
+      <div class="stat">
+        <div class="stat-title">Traders</div>
+        <div class="stat-value text-lg font-mono">{visibleAccounts}</div>
       </div>
-      <div>
-        <span>Average size</span>
-        <strong>{formatProductAmount(Math.round(averageTradeSize), 'usd')} {valueUnitLabel}</strong>
+      <div class="stat">
+        <div class="stat-title">Avg size</div>
+        <div class="stat-value text-lg font-mono">{formatProductAmount(Math.round(averageTradeSize), 'usd')}</div>
+        <div class="stat-desc">{valueUnitLabel}</div>
       </div>
-      <div>
-        <span>Discussion</span>
-        <strong>{discussionThreads.length} threads</strong>
+      <div class="stat">
+        <div class="stat-title">Discussion</div>
+        <div class="stat-value text-lg font-mono">{discussionThreads.length}</div>
+        <div class="stat-desc">threads</div>
       </div>
     </div>
 
-    <div class="bar-stack">
+    <div class="grid gap-4">
       <div>
-        <div class="bar-label">
+        <div class="flex items-center justify-between gap-4 mb-2 text-sm text-base-content/50">
           <span>LONG share</span>
           <span>{formatProbability(flowLong)} LONG</span>
         </div>
-        <div class="bar-track">
-          <div class="bar-fill positive-fill" style:width={`${flowLong * 100}%`}></div>
+        <div class="h-1.5 rounded-full bg-base-300">
+          <div class="h-full rounded-full bg-success" style:width={`${flowLong * 100}%`}></div>
         </div>
       </div>
 
       <div>
-        <div class="bar-label">
+        <div class="flex items-center justify-between gap-4 mb-2 text-sm text-base-content/50">
           <span>SHORT share</span>
           <span>{formatProbability(flowShort)} SHORT</span>
         </div>
-        <div class="bar-track">
-          <div class="bar-fill negative-fill" style:width={`${flowShort * 100}%`}></div>
+        <div class="h-1.5 rounded-full bg-base-300">
+          <div class="h-full rounded-full bg-error" style:width={`${flowShort * 100}%`}></div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- MARKET TRADING -->
-  <section class="market-trading">
-    <div class="detail-header">
-      <h2>Take a position</h2>
-      <span>Mint LONG or SHORT</span>
+  <!-- Trading section -->
+  <section class="max-w-xl mx-auto mt-8 card card-border bg-base-200">
+    <div class="card-body gap-4">
+      <div class="flex items-baseline justify-between gap-4">
+        <h2 class="card-title">Take a position</h2>
+        <span class="text-sm text-base-content/50">Mint LONG or SHORT</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-5">
+        <div class="grid gap-2">
+          <span class="text-xs font-semibold tracking-widest uppercase text-base-content/50">LONG</span>
+          <strong class="text-success font-mono text-3xl font-bold tracking-tight">{priceCents(impliedProbability)}</strong>
+        </div>
+        <div class="grid gap-2">
+          <span class="text-xs font-semibold tracking-widest uppercase text-base-content/50">SHORT</span>
+          <strong class="text-error font-mono text-3xl font-bold tracking-tight">{priceCents(oppositeProbability)}</strong>
+        </div>
+      </div>
+
+      {#if paperEdition}
+        <PaperTradePanel
+          marketId={market.id}
+          marketSlug={market.slug}
+          yesProbability={impliedProbability}
+          noProbability={oppositeProbability}
+        />
+      {:else if currentUser}
+        <a class="btn btn-primary w-fit" href="/portfolio">Add funds to trade</a>
+        <a href={marketActivityUrl(market.slug)} class="text-sm text-base-content/60">See all trades on this market →</a>
+        <p class="text-sm text-base-content/60">Add funds to your portfolio to take a position.</p>
+      {:else}
+        <a class="btn btn-primary w-fit" href="/join?from=/market/{market.slug}">Take a position</a>
+      {/if}
+
+      <dl class="grid gap-0 border-t border-base-300 mt-2">
+        <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
+          <dt class="text-sm text-base-content/50">Volume</dt>
+          <dd class="font-mono text-sm">{formatProductAmount(tradeSummary.grossVolume, 'usd')} {valueUnitLabel}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
+          <dt class="text-sm text-base-content/50">LONG flow</dt>
+          <dd class="font-mono text-sm">{formatProductAmount(tradeSummary.longVolume, 'usd')} {valueUnitLabel}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
+          <dt class="text-sm text-base-content/50">SHORT flow</dt>
+          <dd class="font-mono text-sm">{formatProductAmount(tradeSummary.shortVolume, 'usd')} {valueUnitLabel}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
+          <dt class="text-sm text-base-content/50">Last trade</dt>
+          <dd class="font-mono text-sm">
+            {#if latestTrade}
+              {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}
+            {:else}
+              None
+            {/if}
+          </dd>
+        </div>
+      </dl>
     </div>
-
-    <div class="price-grid">
-      <div>
-        <span>LONG</span>
-        <strong class="positive">{priceCents(impliedProbability)}</strong>
-      </div>
-      <div>
-        <span>SHORT</span>
-        <strong class="negative">{priceCents(oppositeProbability)}</strong>
-      </div>
-    </div>
-
-    {#if paperEdition}
-      <PaperTradePanel
-        marketId={market.id}
-        marketSlug={market.slug}
-        yesProbability={impliedProbability}
-        noProbability={oppositeProbability}
-      />
-    {:else if currentUser}
-      <a class="btn btn-primary w-fit" href="/portfolio">Add funds to trade</a>
-      <a href={marketActivityUrl(market.slug)}>See all trades on this market →</a>
-      <p class="trade-focus-copy"><small>Add funds to your portfolio to take a position.</small></p>
-    {:else}
-      <a class="btn btn-primary w-fit" href="/join?from=/market/{market.slug}">Take a position</a>
-    {/if}
-
-    <dl class="summary-list">
-      <div>
-        <dt>Volume</dt>
-        <dd>{formatProductAmount(tradeSummary.grossVolume, 'usd')} {valueUnitLabel}</dd>
-      </div>
-      <div>
-        <dt>LONG flow</dt>
-        <dd>{formatProductAmount(tradeSummary.longVolume, 'usd')} {valueUnitLabel}</dd>
-      </div>
-      <div>
-        <dt>SHORT flow</dt>
-        <dd>{formatProductAmount(tradeSummary.shortVolume, 'usd')} {valueUnitLabel}</dd>
-      </div>
-      <div>
-        <dt>Last trade</dt>
-        <dd>
-          {#if latestTrade}
-            {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}
-          {:else}
-            None
-          {/if}
-        </dd>
-      </div>
-    </dl>
   </section>
 
-  <!-- MARKET BODY -->
-  <section class="market-body">
-    <article class="detail-section">
-      <div class="detail-header">
-        <h3>Market case</h3>
+  <!-- Market body -->
+  <section class="grid gap-10 pt-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+    <article class="grid gap-5">
+      <div class="flex items-baseline justify-between gap-4">
+        <h3 class="text-lg font-semibold tracking-tight">Market case</h3>
       </div>
 
-      <div class="case-copy">
+      <div class="grid gap-4 pt-2">
         {#if caseParagraphs.length > 0}
           {#each caseParagraphs as paragraph}
-            <p>{paragraph}</p>
+            <p class="text-sm text-base-content/70 leading-relaxed">{paragraph}</p>
           {/each}
         {:else}
-          <p>No written case yet.</p>
+          <p class="text-sm text-base-content/70">No written case yet.</p>
         {/if}
       </div>
 
       {#if tradingContext.length > 0}
-        <div class="detail-header detail-header-tight">
-          <h3>Trading context</h3>
+        <div class="flex items-baseline justify-between gap-4 pt-1">
+          <h3 class="text-lg font-semibold tracking-tight">Trading context</h3>
         </div>
 
-        <div class="case-copy">
+        <div class="grid gap-4">
           {#each tradingContext as criteria}
-            <p>{criteria}</p>
+            <p class="text-sm text-base-content/70 leading-relaxed">{criteria}</p>
           {/each}
         </div>
       {/if}
 
-      <div class="detail-header detail-header-spaced">
-        <h3>Market signals</h3>
+      <div class="flex items-baseline justify-between gap-4 pt-1">
+        <h3 class="text-lg font-semibold tracking-tight">Market signals</h3>
       </div>
 
-      <div class="signal-list">
+      <div class="grid gap-0 border-t border-base-300">
         {#each recentSignals as signal}
-          <p>{signal}</p>
+          <p class="py-3 border-b border-base-300 text-sm text-base-content/70 leading-relaxed">{signal}</p>
         {/each}
       </div>
     </article>
 
-    <article class="detail-section">
-      <div class="detail-header">
-        <h3>Recent activity</h3>
+    <article class="grid gap-5">
+      <div class="flex items-baseline justify-between gap-4">
+        <h3 class="text-lg font-semibold tracking-tight">Recent activity</h3>
       </div>
 
-      <div class="dense-list">
+      <div class="grid gap-0 border-t border-base-300">
         {#if activityEntries.length > 0}
           {#each activityEntries.slice(0, 8) as entry (entry.id)}
-            <div class="dense-row">
+            <div class="flex items-start justify-between gap-4 py-3 border-b border-base-300">
               <div>
-                <strong>{entry.headline}</strong>
-                <p>{entry.detail}</p>
+                <strong class="text-sm font-semibold">{entry.headline}</strong>
+                <p class="text-sm text-base-content/60 mt-0.5">{entry.detail}</p>
               </div>
-              <div class="dense-aside">
+              <div class="grid justify-items-end gap-1 flex-none text-xs text-base-content/50">
                 <span>{entry.kind}</span>
                 <span>{formatRelativeTime(entry.createdAt)}</span>
               </div>
             </div>
           {/each}
         {:else}
-          <div class="panel-empty">No activity yet.</div>
+          <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">No activity yet.</div>
         {/if}
       </div>
     </article>
@@ -505,22 +508,22 @@
 {/if}
 
 {#if tab === 'discussion'}
-  <section class="detail-section">
-    <div class="detail-header">
-      <h3>Discussion</h3>
-      <span>{discussionThreads.length} threads</span>
+  <section class="grid gap-5">
+    <div class="flex items-baseline justify-between gap-4">
+      <h3 class="text-lg font-semibold tracking-tight">Discussion</h3>
+      <span class="text-sm text-base-content/50">{discussionThreads.length} threads</span>
     </div>
 
-    <div class="dense-list">
+    <div class="grid gap-0 border-t border-base-300">
       {#if discussionThreads.length > 0}
         {#each discussionThreads as thread (thread.post.id)}
-          <a class="dense-row dense-row-link" href={threadUrl(market.slug, thread.post.id)}>
+          <a class="flex items-start justify-between gap-4 py-3 border-b border-base-300 hover:text-base-content" href={threadUrl(market.slug, thread.post.id)}>
             <div>
-              <strong>{thread.post.subject || 'Untitled thread'}</strong>
-              <p>{truncateText(thread.post.content, 160)}</p>
-              <p>by {authorLabel(thread.post.pubkey)}</p>
+              <strong class="text-sm font-semibold">{thread.post.subject || 'Untitled thread'}</strong>
+              <p class="text-sm text-base-content/60 mt-0.5">{truncateText(thread.post.content, 160)}</p>
+              <p class="text-xs text-base-content/40 mt-1">by {authorLabel(thread.post.pubkey)}</p>
             </div>
-            <div class="dense-aside">
+            <div class="grid justify-items-end gap-1 flex-none text-xs text-base-content/50">
               <span>{thread.replyCount} repl{thread.replyCount === 1 ? 'y' : 'ies'}</span>
               <span>{formatRelativeTime(thread.lastActivityAt)}</span>
             </div>
@@ -528,15 +531,15 @@
         {/each}
       {:else}
         {#if currentUser}
-          <div class="discussion-empty-state">
-            <p class="discussion-empty-prompt">No threads yet — be first to make a case.</p>
+          <div class="py-4">
+            <p class="text-sm text-base-content/70">No threads yet — be first to make a case.</p>
           </div>
         {:else}
-          <div class="discussion-empty-state">
-            <p class="discussion-empty-prompt">No threads yet.</p>
-            <p class="discussion-empty-detail">
+          <div class="py-4 grid gap-2">
+            <p class="text-sm text-base-content/70">No threads yet.</p>
+            <p class="text-sm text-base-content/50">
               Discussion is where traders put their reasoning on record — the argument behind the bet.
-              <a href="/join?from=/market/{market.slug}/discussion">Sign in</a>
+              <a href="/join?from=/market/{market.slug}/discussion" class="text-primary">Sign in</a>
               to start one.
             </p>
           </div>
@@ -545,50 +548,50 @@
     </div>
 
     {#if currentUser}
-      <div class="compose-area">
+      <div class="grid gap-3 border-t border-base-300 pt-4 mt-2">
         <input
-          class="input input-bordered compose-subject"
+          class="input input-bordered w-full"
           type="text"
           placeholder="Subject (optional)"
           bind:value={composeSubject}
           disabled={composeSubmitting}
         />
         <textarea
-          class="textarea textarea-bordered compose-body"
+          class="textarea textarea-bordered w-full"
           rows={4}
           placeholder="Start a thread…"
           bind:value={composeBody}
           disabled={composeSubmitting}
         ></textarea>
         {#if composeError}
-          <p class="compose-error">{composeError}</p>
+          <p class="text-error text-sm">{composeError}</p>
         {/if}
-        <div class="compose-actions">
+        <div class="flex justify-end">
           <button class="btn btn-primary" onclick={postThread} disabled={composeSubmitting || !composeBody.trim()}>
             {composeSubmitting ? 'Posting…' : 'Post thread'}
           </button>
         </div>
       </div>
     {:else}
-      <p class="compose-signin">
-        <a href="/join?from=/market/{market.slug}/discussion">Sign in</a> to join the discussion.
+      <p class="border-t border-base-300 pt-4 mt-2 text-sm text-base-content/70">
+        <a href="/join?from=/market/{market.slug}/discussion" class="text-primary">Sign in</a> to join the discussion.
       </p>
     {/if}
   </section>
 {/if}
 
 {#if tab === 'charts'}
-  <section class="overview-grid">
-    <article class="detail-section">
-      <div class="detail-header">
-        <h3>Price curve</h3>
-        <span>Based on public trade history</span>
+  <section class="grid gap-8 lg:grid-cols-2">
+    <article class="grid gap-5">
+      <div class="flex items-baseline justify-between gap-4">
+        <h3 class="text-lg font-semibold tracking-tight">Price curve</h3>
+        <span class="text-sm text-base-content/50">Based on public trade history</span>
       </div>
 
       {#if chronologicalTrades.length > 0}
-        <div class="price-chart">
+        <div class="grid gap-3">
           <svg
-            class="price-chart-svg"
+            class="w-full h-auto block overflow-visible"
             viewBox={`0 0 ${chartWidth} ${chartHeight}`}
             role="img"
             aria-label="Probability over time based on public trade history"
@@ -596,629 +599,143 @@
             {#each chartGridLevels as level (level)}
               {@const y = chartLevelY(level)}
               <line
-                class="price-chart-gridline"
+                stroke="currentColor"
+                stroke-opacity="0.16"
+                stroke-width="1"
+                shape-rendering="crispEdges"
                 x1={chartMargin.left}
                 x2={chartWidth - chartMargin.right}
                 y1={y}
                 y2={y}
               ></line>
-              <text class="price-chart-axis-label" x={chartMargin.left - 10} y={y + 4} text-anchor="end">
+              <text
+                fill="currentColor"
+                fill-opacity="0.64"
+                font-family="var(--font-mono)"
+                font-size="11"
+                x={chartMargin.left - 10}
+                y={y + 4}
+                text-anchor="end"
+              >
                 {formatProbability(level)}
               </text>
             {/each}
 
             <polyline
-              class={`price-chart-line ${chartTrendClass}`}
+              class={chartTrendClass}
               fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="square"
+              stroke-linejoin="miter"
+              vector-effect="non-scaling-stroke"
               points={chartPolylinePoints}
             ></polyline>
 
             {#each chartPoints as point (point.id)}
-              <circle class={`price-chart-point ${chartTrendClass}`} cx={point.x} cy={point.y} r="3.5"></circle>
+              <circle
+                class={chartTrendClass}
+                fill="currentColor"
+                stroke="var(--color-base-100)"
+                stroke-width="1.5"
+                vector-effect="non-scaling-stroke"
+                cx={point.x}
+                cy={point.y}
+                r="3.5"
+              ></circle>
             {/each}
           </svg>
 
-          <div class="price-chart-timestamps">
+          <div class="flex justify-between gap-4 text-xs text-base-content/50 font-mono">
             <span>{formatRelativeTime(chartStartTrade.createdAt)}</span>
             <span>{formatRelativeTime(chartEndTrade.createdAt)}</span>
           </div>
         </div>
-        {:else}
-          <div class="panel-empty">No trade history has been published for this market yet.</div>
+      {:else}
+        <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">
+          No trade history has been published for this market yet.
+        </div>
       {/if}
     </article>
 
-    <article class="detail-section">
-      <div class="detail-header">
-        <h3>Last executed trade</h3>
+    <article class="grid gap-5">
+      <div class="flex items-baseline justify-between gap-4">
+        <h3 class="text-lg font-semibold tracking-tight">Last executed trade</h3>
       </div>
 
       {#if latestTrade}
-        <dl class="summary-list">
-          <div>
-            <dt>Direction</dt>
-            <dd>{latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}</dd>
+        <dl class="grid gap-0 border-t border-base-300">
+          <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
+            <dt class="text-sm text-base-content/50">Direction</dt>
+            <dd class="font-mono text-sm">{latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}</dd>
           </div>
-          <div>
-            <dt>Price</dt>
-            <dd>{priceCents(latestTrade.probability)}</dd>
+          <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
+            <dt class="text-sm text-base-content/50">Price</dt>
+            <dd class="font-mono text-sm">{priceCents(latestTrade.probability)}</dd>
           </div>
-          <div>
-            <dt>Size</dt>
-            <dd>{formatProductAmount(latestTrade.amount, 'usd')} {valueUnitLabel}</dd>
+          <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
+            <dt class="text-sm text-base-content/50">Size</dt>
+            <dd class="font-mono text-sm">{formatProductAmount(latestTrade.amount, 'usd')} {valueUnitLabel}</dd>
           </div>
-          <div>
-            <dt>When</dt>
-            <dd>{formatRelativeTime(latestTrade.createdAt)}</dd>
+          <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
+            <dt class="text-sm text-base-content/50">When</dt>
+            <dd class="font-mono text-sm">{formatRelativeTime(latestTrade.createdAt)}</dd>
           </div>
         </dl>
       {:else}
-        <div class="panel-empty">No trades yet.</div>
+        <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">No trades yet.</div>
       {/if}
     </article>
   </section>
 {/if}
 
 {#if tab === 'activity'}
-  <section class="detail-section">
-    <div class="detail-header">
-      <h3>Activity</h3>
-      <span>Recent activity across this market</span>
+  <section class="grid gap-5">
+    <div class="flex items-baseline justify-between gap-4">
+      <h3 class="text-lg font-semibold tracking-tight">Activity</h3>
+      <span class="text-sm text-base-content/50">Recent activity across this market</span>
     </div>
 
-    <div class="dense-list">
+    <div class="grid gap-0 border-t border-base-300">
       {#if activityEntries.length > 0}
         {#each activityEntries as entry (entry.id)}
-          <div class="dense-row">
+          <div class="flex items-start justify-between gap-4 py-3 border-b border-base-300">
             <div>
-              <strong>{entry.headline}</strong>
-              <p>{entry.detail}</p>
+              <strong class="text-sm font-semibold">{entry.headline}</strong>
+              <p class="text-sm text-base-content/60 mt-0.5">{entry.detail}</p>
             </div>
-            <div class="dense-aside">
+            <div class="grid justify-items-end gap-1 flex-none text-xs text-base-content/50">
               <span>{entry.kind}</span>
               <span>{formatRelativeTime(entry.createdAt)}</span>
             </div>
           </div>
         {/each}
       {:else}
-        <div class="panel-empty">No visible activity yet.</div>
+        <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">No visible activity yet.</div>
       {/if}
     </div>
   </section>
 {/if}
 
 {#if relatedMarkets.length > 0}
-  <section class="detail-section">
-    <div class="detail-header">
-      <h3>More markets</h3>
-      <span>Related reading</span>
+  <section class="grid gap-5">
+    <div class="flex items-baseline justify-between gap-4">
+      <h3 class="text-lg font-semibold tracking-tight">More markets</h3>
+      <span class="text-sm text-base-content/50">Related reading</span>
     </div>
 
-    <div class="dense-list">
+    <div class="grid gap-0 border-t border-base-300">
       {#each relatedMarkets as related (related.id)}
-        <a class="dense-row dense-row-link" href={marketUrl(related.slug)}>
+        <a class="flex items-start justify-between gap-4 py-3 border-b border-base-300 hover:text-base-content" href={marketUrl(related.slug)}>
           <div>
-            <strong>{related.title}</strong>
-            <p>{truncateText(sanitizeMarketCopy(related.description || related.body), 120)}</p>
+            <strong class="text-sm font-semibold">{related.title}</strong>
+            <p class="text-sm text-base-content/60 mt-0.5">{truncateText(sanitizeMarketCopy(related.description || related.body), 120)}</p>
           </div>
-          <div class="dense-aside">
-            <span class="positive">{priceCents((related.latestPricePpm ?? 500_000) / 1_000_000)} LONG</span>
+          <div class="grid justify-items-end gap-1 flex-none text-xs">
+            <span class="text-success">{priceCents((related.latestPricePpm ?? 500_000) / 1_000_000)} LONG</span>
           </div>
         </a>
       {/each}
     </div>
   </section>
 {/if}
-
-<style>
-  .market-shell {
-    padding-top: 1rem;
-  }
-
-  .market-header {
-    display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
-    gap: 3rem;
-    align-items: start;
-  }
-
-  .market-copy {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .market-kicker {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .market-copy h1 {
-    font-size: clamp(2.4rem, 4.6vw, 4.2rem);
-    line-height: 1;
-    letter-spacing: -0.06em;
-  }
-
-  .market-copy > p {
-    max-width: 38rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 1.02rem;
-    line-height: 1.75;
-  }
-
-  .market-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.85rem 1rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.82rem;
-  }
-
-  .market-header-side {
-    display: grid;
-    gap: 1rem;
-    align-content: start;
-    padding-top: 0.25rem;
-  }
-
-  .market-header-price {
-    display: flex;
-    align-items: baseline;
-    gap: 0.8rem;
-  }
-
-  .market-header-probability {
-    color: var(--color-success);
-    font-family: var(--font-mono);
-    font-size: clamp(2.8rem, 4.8vw, 4rem);
-    font-weight: 700;
-    letter-spacing: -0.05em;
-  }
-
-  .market-header-side-label {
-    color: rgba(52, 211, 153, 0.7);
-    font-size: 0.96rem;
-    letter-spacing: 0.08em;
-  }
-
-  .market-header-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.9rem 1rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.82rem;
-  }
-
-  .market-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .market-bookmark-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid rgba(38, 38, 38, 0.8);
-    background: transparent;
-    color: color-mix(in srgb, var(--color-neutral-content) 68%, transparent);
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    cursor: pointer;
-    transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease;
-  }
-
-  .market-bookmark-button:hover,
-  .market-bookmark-button:focus-visible {
-    color: white;
-    border-color: color-mix(in srgb, white 18%, transparent);
-    background: color-mix(in srgb, white 4%, transparent);
-    outline: none;
-  }
-
-  .market-bookmark-button.bookmarked {
-    color: white;
-    border-color: color-mix(in srgb, white 16%, transparent);
-    background: color-mix(in srgb, white 7%, transparent);
-  }
-
-  .market-tabs {
-    padding-top: 1rem;
-  }
-
-  .market-context {
-    max-width: 48rem;
-    margin: 0 auto;
-    padding-top: 2rem;
-  }
-
-  .market-state-summary {
-    margin: 0 0 1.5rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 88%, transparent);
-    font-size: 1.05rem;
-    line-height: 1.7;
-  }
-
-  .market-body {
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-    gap: 2.5rem;
-    padding-top: 2rem;
-  }
-
-  .market-trading {
-    max-width: 40rem;
-    margin: 2rem auto 0;
-    padding: 2rem;
-    border: 1px solid rgba(38, 38, 38, 0.8);
-    background: var(--color-base-200);
-  }
-
-  .detail-section {
-    display: grid;
-    gap: 1.35rem;
-  }
-
-  .overview-metrics {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1rem;
-    padding-top: 0.75rem;
-  }
-
-  .overview-metrics div {
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .overview-metrics span,
-  .detail-header span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.78rem;
-  }
-
-  .overview-metrics strong,
-  .summary-list dd,
-  .price-grid strong {
-    color: white;
-    font-family: var(--font-mono);
-    font-size: 1rem;
-  }
-
-  .price-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
-    padding-bottom: 0.2rem;
-  }
-
-  .price-grid div {
-    display: grid;
-    gap: 0.55rem;
-  }
-
-  .price-grid span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .price-grid strong {
-    font-size: clamp(2.1rem, 3vw, 3rem);
-    letter-spacing: -0.05em;
-  }
-
-  .summary-list {
-    display: grid;
-    gap: 0;
-    margin: 0;
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .summary-list div {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.95rem 0;
-    border-bottom: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .summary-list dt {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.84rem;
-  }
-
-  .detail-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .detail-header-tight {
-    padding-top: 0.4rem;
-  }
-
-  .detail-header-spaced {
-    padding-top: 0.35rem;
-  }
-
-  .detail-header h3 {
-    font-size: 1.1rem;
-    letter-spacing: -0.03em;
-  }
-
-  .trade-focus-copy {
-    margin: 0;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    line-height: 1.75;
-  }
-
-  .bar-stack,
-  .case-copy,
-  .bullet-list,
-  .signal-list,
-  .dense-list {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .bar-label {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 0.45rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.82rem;
-  }
-
-  .bar-track {
-    height: 0.4rem;
-    background: var(--color-base-200);
-  }
-
-  .bar-fill {
-    height: 100%;
-    background: var(--color-success);
-  }
-
-  .positive-fill {
-    background: var(--color-success);
-  }
-
-  .negative-fill {
-    background: var(--color-error);
-  }
-
-  .case-copy {
-    padding-top: 0.5rem;
-  }
-
-  .case-copy p,
-  .signal-list p,
-  .dense-row p {
-    margin: 0;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 0.9rem;
-    line-height: 1.7;
-  }
-
-  .signal-list,
-  .dense-list {
-    border-top: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .dense-row,
-  .dense-row-link {
-    padding: 0.95rem 0;
-    border-bottom: 1px solid rgba(38, 38, 38, 0.8);
-  }
-
-  .signal-list p {
-    margin: 0;
-    padding: 0.95rem 0;
-    border-bottom: 1px solid rgba(38, 38, 38, 0.8);
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 0.92rem;
-    line-height: 1.65;
-  }
-
-  .dense-row strong {
-    color: white;
-    font-size: 0.98rem;
-    font-weight: 600;
-  }
-
-  .dense-row,
-  .dense-row-link {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .dense-row-link:hover,
-  .dense-row-link:focus-visible {
-    color: white;
-    outline: none;
-  }
-
-  .dense-aside {
-    display: grid;
-    justify-items: end;
-    gap: 0.3rem;
-    flex: 0 0 auto;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.78rem;
-    text-align: right;
-  }
-
-
-  .price-chart {
-    display: grid;
-    gap: 0.85rem;
-  }
-
-  .price-chart-svg {
-    width: 100%;
-    height: auto;
-    display: block;
-    overflow: visible;
-  }
-
-  .price-chart-gridline {
-    stroke: color-mix(in srgb, var(--color-neutral-content) 16%, transparent);
-    stroke-width: 1;
-    shape-rendering: crispEdges;
-  }
-
-  .price-chart-axis-label {
-    fill: color-mix(in srgb, var(--color-neutral-content) 64%, transparent);
-    font-family: var(--font-mono);
-    font-size: 11px;
-  }
-
-  .price-chart-line {
-    stroke: currentColor;
-    stroke-width: 2.5;
-    stroke-linecap: square;
-    stroke-linejoin: miter;
-    vector-effect: non-scaling-stroke;
-  }
-
-  .price-chart-point {
-    fill: currentColor;
-    stroke: var(--color-base-100);
-    stroke-width: 1.5;
-    vector-effect: non-scaling-stroke;
-  }
-
-  .price-chart-timestamps {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.78rem;
-    font-family: var(--font-mono);
-  }
-
-  .negative {
-    color: var(--color-error);
-  }
-
-  .positive {
-    color: var(--color-success);
-  }
-
-  .panel-empty {
-    padding: 1rem 0;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .discussion-empty-state {
-    padding: 1rem 0;
-  }
-
-  .discussion-empty-prompt {
-    margin: 0 0 0.25rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 0.9rem;
-  }
-
-  .discussion-empty-detail {
-    margin: 0;
-    color: color-mix(in srgb, var(--color-neutral-content) 60%, transparent);
-    font-size: 0.85rem;
-  }
-
-  @media (max-width: 1024px) {
-    .market-header,
-    .market-body {
-      grid-template-columns: 1fr;
-    }
-
-    .overview-metrics {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-
-  @media (max-width: 720px) {
-    .market-header-actions,
-    .market-meta {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .overview-metrics {
-      grid-template-columns: 1fr;
-    }
-
-    .dense-row,
-    .dense-row-link {
-      grid-template-columns: 1fr;
-      flex-direction: column;
-    }
-
-    .dense-aside {
-      justify-items: start;
-      text-align: left;
-    }
-  }
-
-  .compose-area {
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    padding-top: 1rem;
-    margin-top: 0.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .compose-subject,
-  .compose-body {
-    width: 100%;
-    border: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    border-radius: 2px;
-    background: var(--color-base-200);
-    color: var(--color-base-content);
-    font-family: inherit;
-    font-size: 0.9rem;
-    padding: 0.4rem 0.6rem;
-    box-sizing: border-box;
-    resize: vertical;
-  }
-
-  .compose-subject:focus,
-  .compose-body:focus {
-    outline: none;
-    border-color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .compose-actions {
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .compose-error {
-    color: var(--color-error);
-    font-size: 0.85rem;
-    margin: 0;
-  }
-
-  .compose-signin {
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    padding-top: 1rem;
-    margin-top: 0.5rem;
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-    font-size: 0.875rem;
-  }
-</style>

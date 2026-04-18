@@ -314,8 +314,8 @@
     return rail === 'stripe' ? 'Card' : 'Lightning';
   }
 
-  function fundingStatusLabel(status: string, rail: string): string {
-    switch (status) {
+  function fundingStatusLabel(fundingStatus: string, rail: string): string {
+    switch (fundingStatus) {
       case 'invoice_pending':
         return 'Waiting for payment';
       case 'pending':
@@ -329,7 +329,7 @@
       case 'failed':
         return 'Failed';
       default:
-        return status.replace(/_/g, ' ');
+        return fundingStatus.replace(/_/g, ' ');
     }
   }
 
@@ -360,8 +360,8 @@
     }
   }
 
-  function isPendingFundingStatus(status: string): boolean {
-    return status === 'invoice_pending' || status === 'pending';
+  function isPendingFundingStatus(fundingStatus: string): boolean {
+    return fundingStatus === 'invoice_pending' || fundingStatus === 'pending';
   }
 
   async function createLightningFunding() {
@@ -733,7 +733,6 @@
         }
       } catch (error) {
         console.error('pending_funding_reconcile_failed', trackedFunding, error);
-        // Keep tracked fundings in storage until the status endpoint is reachable again.
       }
     }
 
@@ -769,11 +768,11 @@
   });
 </script>
 
-<section class="wallet-page">
-  <header class="wallet-header">
+<section class="grid gap-6 py-10 pb-16 w-[min(calc(100%-2.5rem),68rem)] mx-auto">
+  <header class="grid gap-3">
     <div class="eyebrow">Portfolio</div>
-    <h1>Your portfolio</h1>
-    <p>
+    <h1 class="text-4xl font-bold tracking-tight">Your portfolio</h1>
+    <p class="text-base-content/60 max-w-prose">
       This portfolio tracks the cash and positions available on this device. Cash is ready to
       trade, and position values follow current public market prices. Exact withdrawal proceeds can
       differ based on trade size.
@@ -781,45 +780,47 @@
   </header>
 
   {#if !currentUser}
-    <section class="wallet-panel">
-      <h2>Connect to view your portfolio</h2>
-      <p class="muted">Track your cash, positions, and current value from this device.</p>
-      <a class="btn btn-primary w-fit" href="/join">Connect</a>
-    </section>
+    <div class="card card-border bg-base-200">
+      <div class="card-body gap-4">
+        <h2 class="card-title">Connect to view your portfolio</h2>
+        <p class="text-base-content/60">Track your cash, positions, and current value from this device.</p>
+        <a class="btn btn-primary w-fit" href="/join">Connect</a>
+      </div>
+    </div>
   {:else}
-    <section class="wallet-grid">
-      <article class="wallet-panel">
-        <span class="label">Your balance</span>
-        <strong>{formatUsdMinor(localBalanceMinor)}</strong>
-        <p class="muted">Cash available to trade from this device.</p>
-      </article>
+    <!-- Summary stats -->
+    <div class="stats stats-horizontal w-full bg-base-200">
+      <div class="stat">
+        <div class="stat-title">Your balance</div>
+        <div class="stat-value font-mono text-2xl">{formatUsdMinor(localBalanceMinor)}</div>
+        <div class="stat-desc">Cash available to trade from this device.</div>
+      </div>
 
-      <article class="wallet-panel">
-        <span class="label">Position Mark</span>
-        <strong>{formatUsdMinor(displayedPositionValueMinor)}</strong>
-        <p class="muted">
+      <div class="stat">
+        <div class="stat-title">Position Mark</div>
+        <div class="stat-value font-mono text-2xl">{formatUsdMinor(displayedPositionValueMinor)}</div>
+        <div class="stat-desc">
           {#if usingLocalPositionMarks}
-            Estimated from your current positions on this device and current public market prices.
+            Estimated from current positions and market prices.
           {:else}
             No positions found on this device yet.
           {/if}
-        </p>
-      </article>
+        </div>
+      </div>
 
-      <article class="wallet-panel">
-        <span class="label">Current Value</span>
-        <strong>{formatUsdMinor(displayedTotalValueMinor)}</strong>
-        <p class="muted">
-          Cash plus current position marks. Exact withdrawal proceeds can differ based on trade size.
-        </p>
-      </article>
-    </section>
+      <div class="stat">
+        <div class="stat-title">Current Value</div>
+        <div class="stat-value font-mono text-2xl">{formatUsdMinor(displayedTotalValueMinor)}</div>
+        <div class="stat-desc">Cash plus position marks.</div>
+      </div>
+    </div>
 
-    <section class="wallet-panel">
-      <div class="panel-header">
+    <!-- Add funds -->
+    <section class="card card-border bg-base-200">
+      <div class="card-body gap-4">
         <div>
-          <h2>Add funds</h2>
-          <p class="muted">
+          <h2 class="card-title">Add funds</h2>
+          <p class="text-base-content/60 text-sm mt-1">
             Add funds to your balance with Stripe or Lightning.
             {#if paperEdition}
               In practice mode, each payment is capped at {formatUsdMinor(signetFundingSingleLimitMinor)}
@@ -827,327 +828,190 @@
             {/if}
           </p>
           {#if !runtime.funding.lightning.available}
-            <p class="muted">{railUnavailableMessage('lightning')}</p>
+            <p class="text-sm text-base-content/60 mt-1">{railUnavailableMessage('lightning')}</p>
           {:else if stripeFundingEnabled && !runtime.funding.stripe.available}
-            <p class="muted">{railUnavailableMessage('stripe')}</p>
+            <p class="text-sm text-base-content/60 mt-1">{railUnavailableMessage('stripe')}</p>
           {/if}
         </div>
-      </div>
 
-      <div class="funding-row">
-        <label class="grid w-full max-w-64 gap-2">
-          <span class="text-xs font-medium tracking-[0.08em] text-neutral-500 uppercase">Amount</span>
-          <input
-            class="input input-bordered"
-            aria-label="Amount"
-            bind:value={fundingAmount}
-            min="100"
-            step="100"
-            type="number"
-          />
-        </label>
-        {#if stripeFundingEnabled}
+        <div class="flex flex-wrap items-end gap-4">
+          <label class="form-control w-full max-w-64">
+            <div class="label"><span class="label-text">Amount</span></div>
+            <input
+              class="input input-bordered"
+              aria-label="Amount"
+              bind:value={fundingAmount}
+              min="100"
+              step="100"
+              type="number"
+            />
+          </label>
+          {#if stripeFundingEnabled}
+            <button
+              class="btn btn-primary"
+              disabled={!stripeFundingAvailable}
+              onclick={createStripeCheckout}
+              type="button"
+            >
+              Checkout with card
+            </button>
+          {/if}
           <button
-            class="btn btn-primary"
-            disabled={!stripeFundingAvailable}
-            onclick={createStripeCheckout}
+            class="btn btn-outline"
+            disabled={!lightningFundingAvailable}
+            onclick={createLightningFunding}
             type="button"
           >
-            Checkout with card
+            Add funds with Lightning
           </button>
-        {/if}
-        <button
-          class="btn btn-outline"
-          disabled={!lightningFundingAvailable}
-          onclick={createLightningFunding}
-          type="button"
-        >
-          Add funds with Lightning
-        </button>
-      </div>
+        </div>
 
-      {#if pendingFundings.length}
-        <div class="history-list">
-          {#each pendingFundings as funding (funding.id)}
-            <div class="history-row history-row-stack">
-              <div class="history-copy">
-                <strong>{formatUsdMinor(funding.amount_minor)}</strong>
-                <p class="muted">
-                  {fundingRailLabel(funding.rail)} · {fundingStatusLabel(funding.status, funding.rail)}
-                </p>
-                {#if funding.invoice}
-                  <div class="funding-payment-card">
-                    <QRCode value={funding.invoice} size={128} />
-                    <div class="funding-payment-copy">
-                      <span>Payment code</span>
-                      <div class="proof-transfer-actions">
-                        <a class="btn btn-outline" href={`lightning:${funding.invoice}`}>Open wallet</a>
-                        <CopyButton text={funding.invoice} label="Copy payment code" />
+        {#if pendingFundings.length}
+          <div class="grid gap-0 border-t border-base-300 mt-2">
+            {#each pendingFundings as funding (funding.id)}
+              <div class="flex items-start justify-between gap-4 py-4 border-b border-base-300">
+                <div class="grid gap-2">
+                  <strong class="font-mono">{formatUsdMinor(funding.amount_minor)}</strong>
+                  <p class="text-sm text-base-content/60">
+                    {fundingRailLabel(funding.rail)} · {fundingStatusLabel(funding.status, funding.rail)}
+                  </p>
+                  {#if funding.invoice}
+                    <div class="flex items-center gap-4 py-2">
+                      <QRCode value={funding.invoice} size={128} />
+                      <div class="grid gap-2">
+                        <span class="eyebrow">Payment code</span>
+                        <div class="flex gap-3">
+                          <a class="btn btn-outline btn-sm" href={`lightning:${funding.invoice}`}>Open wallet</a>
+                          <CopyButton text={funding.invoice} label="Copy payment code" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                {/if}
+                  {/if}
+                </div>
+                <div class="flex gap-3">
+                  {#if funding.checkout_url}
+                    <a class="btn btn-outline btn-sm" href={funding.checkout_url}>Open checkout</a>
+                  {/if}
+                  <button class="btn btn-outline btn-sm" onclick={refreshPendingFundings} type="button">
+                    Refresh status
+                  </button>
+                </div>
               </div>
-              <div class="proof-transfer-actions">
-                {#if funding.checkout_url}
-                  <a class="btn btn-outline" href={funding.checkout_url}>Open checkout</a>
-                {/if}
-                <button class="btn btn-outline" onclick={refreshPendingFundings} type="button">
-                  Refresh status
-                </button>
-              </div>
-            </div>
-          {/each}
-        </div>
-      {:else}
-        <p class="muted">No pending payments.</p>
-      {/if}
+            {/each}
+          </div>
+        {:else}
+          <p class="text-sm text-base-content/60">No pending payments.</p>
+        {/if}
+      </div>
     </section>
 
-    <section class="wallet-panel">
-      <div class="panel-header">
-        <div>
-          <h2>Open positions</h2>
-          <p class="muted">
-            {#if usingLocalPositionMarks}
-              Position size comes from what this device can withdraw right now. Cost basis comes from trades placed here. Current value uses public market prices.
-            {:else}
-              No positions found on this device yet.
-            {/if}
-          </p>
+    <!-- Open positions -->
+    <section class="card card-border bg-base-200">
+      <div class="card-body gap-4">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <h2 class="card-title">Open positions</h2>
+            <p class="text-sm text-base-content/60 mt-1">
+              {#if usingLocalPositionMarks}
+                Position size comes from what this device can withdraw right now. Cost basis comes from trades placed here.
+              {:else}
+                No positions found on this device yet.
+              {/if}
+            </p>
+          </div>
+          <a class="btn btn-outline btn-sm" href="/builder">Create market</a>
         </div>
-        <a class="btn btn-outline" href="/builder">Create market</a>
-      </div>
 
-      {#if localPositions.length}
-        <div class="position-list">
-          {#each localPositions as position (position.market_slug + position.direction)}
-            <a class="position-row" href={`/market/${position.market_slug}`}>
-              <div class="position-copy">
-                <strong>{position.market_title}</strong>
-                <p>{position.direction === 'long' ? 'LONG' : 'SHORT'} · {position.quantity.toFixed(2)} shares · {describePositionPrice(position)}</p>
-              </div>
-              <div class="position-metrics">
-                <span>{formatUsdMinor(position.market_value_minor)}</span>
-                {#if position.unrealized_pnl_minor === null || position.unrealized_pnl_minor === undefined}
-                  <span class="muted">Mark only</span>
-                {:else}
-                  <span class:positive={position.unrealized_pnl_minor >= 0} class:negative={position.unrealized_pnl_minor < 0}>
-                    {position.unrealized_pnl_minor >= 0 ? '+' : ''}{formatUsdMinor(Math.abs(position.unrealized_pnl_minor))}
-                  </span>
-                {/if}
-              </div>
-            </a>
-          {/each}
-        </div>
-      {:else if loading}
-        <p class="muted">Loading portfolio state.</p>
-      {:else}
-        <p class="muted">No open positions yet.</p>
-      {/if}
+        {#if localPositions.length}
+          <div class="overflow-x-auto">
+            <table class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>Market</th>
+                  <th>Direction</th>
+                  <th>Qty</th>
+                  <th>Price</th>
+                  <th class="text-right">Value</th>
+                  <th class="text-right">P&L</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each localPositions as position (position.market_slug + position.direction)}
+                  <tr>
+                    <td>
+                      <a href={`/market/${position.market_slug}`} class="font-medium hover:text-primary">
+                        {position.market_title}
+                      </a>
+                    </td>
+                    <td>
+                      <span class="badge badge-outline badge-sm" class:badge-success={position.direction === 'long'} class:badge-error={position.direction === 'short'}>
+                        {position.direction === 'long' ? 'LONG' : 'SHORT'}
+                      </span>
+                    </td>
+                    <td class="font-mono text-sm">{position.quantity.toFixed(2)}</td>
+                    <td class="font-mono text-sm">{describePositionPrice(position)}</td>
+                    <td class="font-mono text-sm text-right">{formatUsdMinor(position.market_value_minor)}</td>
+                    <td class="font-mono text-sm text-right">
+                      {#if position.unrealized_pnl_minor === null || position.unrealized_pnl_minor === undefined}
+                        <span class="text-base-content/50">Mark only</span>
+                      {:else}
+                        <span class:text-success={position.unrealized_pnl_minor >= 0} class:text-error={position.unrealized_pnl_minor < 0}>
+                          {position.unrealized_pnl_minor >= 0 ? '+' : ''}{formatUsdMinor(Math.abs(position.unrealized_pnl_minor))}
+                        </span>
+                      {/if}
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {:else if loading}
+          <p class="text-sm text-base-content/60">Loading portfolio state.</p>
+        {:else}
+          <p class="text-sm text-base-content/60">No open positions yet.</p>
+        {/if}
+      </div>
     </section>
 
-    <section class="wallet-panel">
-      <div class="panel-header">
-        <div>
-          <h2>Funding history</h2>
-        </div>
-      </div>
+    <!-- Funding history -->
+    <section class="card card-border bg-base-200">
+      <div class="card-body gap-4">
+        <h2 class="card-title">Funding history</h2>
 
-      {#if fundingHistory.length}
-        <div class="history-list">
-          {#each fundingHistory as event (event.id)}
-            <div class="history-row">
-              <div>
-                <strong>{formatUsdMinor(event.amountMinor)}</strong>
-                <p class="muted">{fundingRailLabel(event.rail)} · {fundingStatusLabel(event.status, event.rail)}</p>
-              </div>
-              <span class="muted">{new Date(event.createdAt).toLocaleString()}</span>
-            </div>
-          {/each}
-        </div>
-      {:else}
-        <p class="muted">No funding activity yet.</p>
-      {/if}
+        {#if fundingHistory.length}
+          <div class="overflow-x-auto">
+            <table class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>Amount</th>
+                  <th>Rail</th>
+                  <th>Status</th>
+                  <th class="text-right">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each fundingHistory as event (event.id)}
+                  <tr>
+                    <td class="font-mono">{formatUsdMinor(event.amountMinor)}</td>
+                    <td>{fundingRailLabel(event.rail)}</td>
+                    <td>{fundingStatusLabel(event.status, event.rail)}</td>
+                    <td class="text-right text-sm text-base-content/60">{new Date(event.createdAt).toLocaleString()}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {:else}
+          <p class="text-sm text-base-content/60">No funding activity yet.</p>
+        {/if}
+      </div>
     </section>
   {/if}
 
   {#if status}
-    <p class="wallet-status">{status}</p>
+    <div class="alert"><span class="text-sm">{status}</span></div>
   {/if}
   {#if errorMessage}
-    <p class="wallet-error">{errorMessage}</p>
+    <div class="alert alert-error"><span class="text-sm">{errorMessage}</span></div>
   {/if}
 </section>
-
-<style>
-  .wallet-page {
-    display: grid;
-    gap: 1.5rem;
-    width: min(calc(100% - 2.5rem), 68rem);
-    margin: 0 auto;
-    padding: 2rem 0 4rem;
-  }
-
-  .wallet-header {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .wallet-header h1 {
-    font-size: 2rem;
-    letter-spacing: -0.04em;
-  }
-
-  .wallet-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-    gap: 1rem;
-  }
-
-  .wallet-panel {
-    display: grid;
-    gap: 1rem;
-    padding: 1rem 0;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .wallet-panel strong {
-    font-size: 1.5rem;
-    color: white;
-    font-family: var(--font-mono);
-  }
-
-  .label {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.76rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .muted {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .panel-header,
-  .position-row,
-  .history-row,
-  .funding-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .position-list,
-  .history-list {
-    display: grid;
-    gap: 0;
-    border-top: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-  }
-
-  .position-row,
-  .history-row {
-    padding: 0.85rem 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);
-    text-decoration: none;
-    color: inherit;
-  }
-
-  .history-row-stack {
-    align-items: flex-start;
-  }
-
-  .history-copy {
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .position-copy,
-  .position-metrics {
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .funding-payment-card {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.85rem 0;
-  }
-
-  .funding-payment-copy {
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  .funding-payment-copy > span {
-    color: color-mix(in srgb, var(--color-neutral-content) 58%, transparent);
-    font-size: 0.76rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .proof-transfer-actions {
-    display: grid;
-    grid-auto-flow: column;
-    gap: 0.75rem;
-    align-items: center;
-  }
-
-  .position-metrics {
-    justify-items: end;
-    font-family: var(--font-mono);
-  }
-
-  .positive {
-    color: var(--color-base-content-success);
-  }
-
-  .negative {
-    color: var(--color-base-content-danger);
-  }
-
-  .wallet-status,
-  .wallet-error {
-    margin: 0;
-    font-size: 0.95rem;
-  }
-
-  .wallet-status {
-    color: color-mix(in srgb, var(--color-neutral-content) 78%, transparent);
-  }
-
-  .wallet-error {
-    color: var(--color-base-content-danger);
-  }
-
-  @media (max-width: 720px) {
-    .wallet-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .panel-header,
-    .position-row,
-    .history-row,
-    .funding-row {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .position-metrics {
-      justify-items: start;
-    }
-
-    .proof-transfer-actions {
-      grid-auto-flow: row;
-    }
-
-    .funding-payment-card {
-      align-items: flex-start;
-      flex-direction: column;
-    }
-  }
-</style>

@@ -10,7 +10,6 @@
     type NDKUserProfile,
     type NostrEvent
   } from '@nostr-dev-kit/ndk';
-  import { onDestroy } from 'svelte';
   import { ndk, ensureClientNdk } from '$lib/ndk/client';
   import { cleanText, displayName } from '$lib/ndk/format';
   import {
@@ -541,8 +540,8 @@
     };
   });
 
-  onDestroy(() => {
-    clearAvatarPreview();
+  $effect(() => {
+    return () => clearAvatarPreview();
   });
 
   $effect(() => {

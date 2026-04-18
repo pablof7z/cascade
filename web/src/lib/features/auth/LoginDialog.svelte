@@ -1,7 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { NDKNip07Signer, NDKNip46Signer, NDKPrivateKeySigner } from '@nostr-dev-kit/ndk';
-  import { onDestroy } from 'svelte';
   import * as Dialog from '$lib/components/ui/dialog';
   import * as Tabs from '$lib/components/ui/tabs';
   import { ndk } from '$lib/ndk/client';
@@ -153,8 +152,8 @@
     }
   }
 
-  onDestroy(() => {
-    stopNostrConnectSigner(nostrConnectSigner);
+  $effect(() => {
+    return () => stopNostrConnectSigner(nostrConnectSigner);
   });
 </script>
 

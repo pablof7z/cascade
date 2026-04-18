@@ -2,7 +2,6 @@
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import { NDKNip07Signer, NDKNip46Signer, NDKPrivateKeySigner } from '@nostr-dev-kit/ndk';
-  import { onDestroy, onMount } from 'svelte';
   import * as Tabs from '$lib/components/ui/tabs';
   import ExtensionLoginForm from '$lib/features/auth/ExtensionLoginForm.svelte';
   import PrivateKeyLoginForm from '$lib/features/auth/PrivateKeyLoginForm.svelte';
@@ -260,8 +259,8 @@
     }
   }
 
-  onMount(() => {
-    if (!browser) {
+  $effect(() => {
+    if (typeof window === 'undefined') {
       loading = false;
       return;
     }
@@ -311,12 +310,14 @@
     };
   });
 
-  onDestroy(() => {
-    stopNostrConnectSigner(nostrConnectSigner);
-    if (socialAuthPopup && !socialAuthPopup.closed) {
-      socialAuthPopup.close();
-    }
-    stopSocialAuthWatcher();
+  $effect(() => {
+    return () => {
+      stopNostrConnectSigner(nostrConnectSigner);
+      if (socialAuthPopup && !socialAuthPopup.closed) {
+        socialAuthPopup.close();
+      }
+      stopSocialAuthWatcher();
+    };
   });
 </script>
 

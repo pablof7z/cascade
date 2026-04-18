@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { onMount, setContext } from 'svelte';
+  import { setContext } from 'svelte';
   import type { LayoutProps } from './$types';
   import '../app.css';
   import AuthPanel from '$lib/features/auth/AuthPanel.svelte';
@@ -16,7 +16,8 @@
   const seo = $derived((page.data as { seo?: SeoMetadata }).seo);
   setContext(NDK_CONTEXT_KEY, ndk);
 
-  onMount(() => {
+  $effect(() => {
+    if (typeof window === 'undefined') return;
     void ensureClientNdk().catch((error) => {
       console.error('Failed to connect client NDK', error);
     });

@@ -3,6 +3,10 @@
   let copied = $state(false);
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
+  $effect(() => {
+    return () => clearTimeout(timeoutId);
+  });
+
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(text);

@@ -10,6 +10,11 @@
   let copied = $state(false);
   let buttonEl = $state<HTMLButtonElement | null>(null);
   let popoverEl = $state<HTMLDivElement | null>(null);
+  let copiedTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  $effect(() => {
+    return () => clearTimeout(copiedTimeoutId);
+  });
 
   const encodedUrl = $derived(encodeURIComponent(url));
   const encodedTitle = $derived(encodeURIComponent(title));
@@ -31,7 +36,7 @@
   async function copyLink() {
     await navigator.clipboard.writeText(url);
     copied = true;
-    setTimeout(() => (copied = false), 2000);
+    copiedTimeoutId = setTimeout(() => (copied = false), 2000);
   }
 
   function handleDocumentClick(e: MouseEvent) {

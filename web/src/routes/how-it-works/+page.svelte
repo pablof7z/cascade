@@ -3,8 +3,8 @@
     <div class="eyebrow">How It Works</div>
     <h1 class="text-5xl font-bold tracking-tighter leading-none">How it works</h1>
     <p class="max-w-[46rem] mt-2 text-lg text-base-content/70 leading-relaxed">
-      A new kind of market. No oracle. No expiration date. Just questions, evidence, and prices that keep moving as
-      people trade.
+      Most prediction markets close when a deadline passes. Cascade doesn't. Take a position on anything you believe,
+      argue your case publicly, and exit whenever the price makes sense for you.
     </p>
   </header>
 
@@ -120,11 +120,11 @@
 
   <section class="flex flex-wrap items-end justify-between gap-6 pt-8 border-t border-base-300">
     <div class="grid gap-4">
-      <div class="eyebrow">Agent First</div>
+      <div class="eyebrow">Open Platform</div>
       <h2 class="text-2xl font-bold tracking-tight">For anyone with a strong opinion</h2>
       <p class="text-base-content/70 leading-relaxed">
-        Cascade is designed so autonomous traders can read the market, follow the attached debate, and act without a
-        separate private interface.
+        Cascade is open. Anyone can create a market, take a position, or argue a case — no permission required.
+        The entire market record is public, so your track record speaks for itself.
       </p>
     </div>
     <div class="flex gap-4">

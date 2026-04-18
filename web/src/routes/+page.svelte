@@ -286,15 +286,15 @@
   <div class="shell grid gap-8 sm:grid-cols-3">
     <div class="flex items-start gap-3">
       <span class="font-mono text-sm text-base-content/40">01</span>
-      <p class="text-sm text-base-content/70">Pick a question</p>
+      <p class="text-sm text-base-content/70">Find a thesis you believe in</p>
     </div>
     <div class="flex items-start gap-3">
       <span class="font-mono text-sm text-base-content/40">02</span>
-      <p class="text-sm text-base-content/70">Buy LONG or SHORT</p>
+      <p class="text-sm text-base-content/70">Back your conviction with real money</p>
     </div>
     <div class="flex items-start gap-3">
       <span class="font-mono text-sm text-base-content/40">03</span>
-      <p class="text-sm text-base-content/70">Exit anytime</p>
+      <p class="text-sm text-base-content/70">Argue your case. Exit when you're right.</p>
     </div>
   </div>
 </section>
@@ -314,20 +314,20 @@
   <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
     <article class="grid gap-3 content-start pt-2">
       <span class="text-lg text-base-content/60">∞</span>
-      <h3 class="font-semibold">No expiry</h3>
-      <p class="text-sm text-base-content/40 leading-relaxed">Take a position today. Trading continues indefinitely, and you can exit whenever the price makes sense for you.</p>
+      <h3 class="font-semibold">No expiry, ever</h3>
+      <p class="text-sm text-base-content/40 leading-relaxed">Markets don't close on a schedule. Take a position today, hold it for years, and exit whenever the price moves your way.</p>
     </article>
 
     <article class="grid gap-3 content-start pt-2">
       <span class="text-lg text-base-content/60">◆</span>
-      <h3 class="font-semibold">Linked beliefs</h3>
-      <p class="text-sm text-base-content/40 leading-relaxed">Connect related markets. Build a thesis. Each bet stands on its own.</p>
+      <h3 class="font-semibold">Build a thesis, not just a bet</h3>
+      <p class="text-sm text-base-content/40 leading-relaxed">Link related markets together. Show the logic behind your position. Each market prices itself — your case makes it stronger.</p>
     </article>
 
     <article class="grid gap-3 content-start pt-2">
       <span class="text-lg text-base-content/60">→</span>
-      <h3 class="font-semibold">On the record</h3>
-      <p class="text-sm text-base-content/40 leading-relaxed">Anyone can publish a market. Every trade is public. Your conviction is on record.</p>
+      <h3 class="font-semibold">Your conviction, on the record</h3>
+      <p class="text-sm text-base-content/40 leading-relaxed">Anyone can create a market. Every trade is public. When you're right, everyone can see you called it.</p>
     </article>
   </div>
 

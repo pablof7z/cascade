@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/public';
 
 export const APP_NAME = 'Cascade';
 export const APP_TAGLINE =
-  'Markets as Nostr events. Trading activity published by the mint. No oracle, no expiry, no closing bell.';
+  'Prediction markets that never close. Take a position on any thesis, argue your case, and exit whenever you want.';
 
 const PUBLIC_DIRECTORY_RELAY = 'wss://purplepag.es';
 

@@ -11,6 +11,12 @@ The active frontend lives in `web/`.
 
 `web/` is the only canonical frontend. Any legacy snapshot elsewhere in the repo is non-authoritative.
 
+> **PENDING:** The shared app chrome is being migrated to The Column shell
+> described in [`../product-ux/INDEX.md`](../product-ux/INDEX.md): persistent
+> left rail, centered reading column, right rail search/context cards, warm-ink
+> primary CTA, and no global top navigation bar. Route data contracts stay the
+> same during this slice.
+
 ## Current Route Surface
 
 Public product routes:

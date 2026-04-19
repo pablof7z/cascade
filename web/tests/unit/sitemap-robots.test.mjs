@@ -20,7 +20,7 @@ test('sitemap route builds XML for static and market pages', () => {
 
   assert.match(source, /import type \{ RequestHandler \} from '\.\/\$types';/);
   assert.match(source, /import \{ fetchSitemapMarkets \} from '\$lib\/server\/cascade';/);
-  assert.match(source, /const staticPages(?:\s*:\s*SitemapPage\[\])? = \[[\s\S]*\{ loc: origin, priority: '1\.0', changefreq: 'hourly' \},[\s\S]*\{ loc: `\$\{origin\}\/markets`, priority: '0\.9', changefreq: 'hourly' \},[\s\S]*\{ loc: `\$\{origin\}\/about`, priority: '0\.8', changefreq: 'monthly' \},[\s\S]*\{ loc: `\$\{origin\}\/how-it-works`, priority: '0\.8', changefreq: 'monthly' \},[\s\S]*\{ loc: `\$\{origin\}\/leaderboard`, priority: '0\.6', changefreq: 'daily' \}[\s\S]*\];/);
+  assert.match(source, /const staticPages(?:\s*:\s*SitemapPage\[\])? = \[[\s\S]*\{ loc: origin, priority: '1\.0', changefreq: 'hourly' \},[\s\S]*\{ loc: `\$\{origin\}\/subscriptions`, priority: '0\.8', changefreq: 'hourly' \},[\s\S]*\{ loc: `\$\{origin\}\/markets`, priority: '0\.9', changefreq: 'hourly' \},[\s\S]*\{ loc: `\$\{origin\}\/about`, priority: '0\.8', changefreq: 'monthly' \},[\s\S]*\{ loc: `\$\{origin\}\/how-it-works`, priority: '0\.8', changefreq: 'monthly' \},[\s\S]*\{ loc: `\$\{origin\}\/leaderboard`, priority: '0\.6', changefreq: 'daily' \}[\s\S]*\];/);
   assert.match(source, /const markets = await fetchSitemapMarkets\(500, \{ edition: locals\.cascadeEdition \}\);/);
   assert.match(source, /loc: `\$\{origin\}\/market\/\$\{encodeURIComponent\(market\.slug\)\}`/);
   assert.match(source, /lastmod: new Date\(market\.createdAt \* 1000\)\.toISOString\(\)\.split\('T'\)\[0\]/);

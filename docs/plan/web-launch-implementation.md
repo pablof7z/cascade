@@ -86,6 +86,7 @@ seed-trade quote/buy carries the signed kind `982` when the mint has not seen th
 ### Canonical launch routes
 
 - `/`
+- `/subscriptions`
 - `/markets`
 - `/market/:slug`
 - `/market/:slug/discussion`
@@ -152,6 +153,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 ### Already present in `web/`, but not launch-complete
 
 - homepage
+- subscriptions
 - join
 - onboarding
 - market detail root page
@@ -202,6 +204,18 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Writer suggestions use real profile/follow data.
 - [ ] Load-more and new-post affordances exist.
 - [ ] Home note publishing is backed by the planned note event path.
+
+## Workstream 2A: Subscriptions `/subscriptions`
+
+- [x] Route exists and is linked from The Column rail.
+- [x] Route uses the two-column reading layout with the right rail hidden.
+- [x] Page copy frames Subscriptions as the long-form digest for followed writers.
+- [x] Followed-writer filtering uses real kind `3` follow state.
+- [x] Claim rows come from selected-edition relay market/trade events.
+- [x] Empty states route users to join or markets without mock data.
+- [ ] Read/unread state persists after visiting a claim.
+- [ ] Case revision rows use real revision metadata when that event path exists.
+- [ ] Saved tab is backed by real bookmark state.
 
 ## Workstream 3: Discovery And Search
 

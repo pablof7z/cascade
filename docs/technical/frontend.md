@@ -32,6 +32,7 @@ search, account, and context chrome.
 Public product routes:
 
 - `/`
+- `/subscriptions`
 - `/markets`
 - `/market/:slug`
 - `/market/:slug/discussion`
@@ -74,6 +75,7 @@ Legacy relay browser routes exist only as redirects away from the launch product
 
 - normal UX is USD-denominated
 - `/` is The Column mixed feed and uses relay-backed market, trade, and discussion events
+- `/subscriptions` is a two-column reading digest that filters relay market/trade events through real kind `3` follow state and hides the right rail
 - public discovery surfaces only link to markets after the first public trade exists
 - `/markets` is the global category browse route and shares the relay-backed market/trade data path used by `/`
 - thread detail SSR merges current relay discussion data so newly published threads can open without waiting for a later refresh

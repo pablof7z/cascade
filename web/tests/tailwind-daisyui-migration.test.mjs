@@ -101,8 +101,11 @@ test('major Cascade surfaces use Daisy buttons and form controls instead of lega
   assert.match(builder, /\binput\s+input-bordered\b/);
   assert.match(builder, /\btextarea\s+textarea-bordered\b/);
   assert.match(builder, /\bselect\s+select-bordered\b/);
-  assert.match(portfolio, /\bbtn\b/);
-  assert.match(portfolio, /\binput\s+input-bordered\b/);
+  // PortfolioPage migrated to The Column - no DaisyUI classes
+  assert.doesNotMatch(portfolio, /\bbtn\b/);
+  assert.doesNotMatch(portfolio, /\binput\s+input-bordered\b/);
+  assert.match(portfolio, /\brounded-lg\b/);
+  assert.match(portfolio, /\bborder\b.*bg-base-/);
   assert.match(profileEdit, /\bbtn\b/);
   assert.match(profileEdit, /\btextarea\s+textarea-bordered\b/);
   assert.match(join, /\bbtn\b/);

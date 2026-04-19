@@ -38,10 +38,10 @@ test('PaperTradePanel uses daisyUI form controls, no custom CSS', () => {
 });
 
 // Task 4.4: PortfolioPage
-test('PortfolioPage uses daisyUI stats/table without custom class families', () => {
+test('PortfolioPage uses Column patterns (no DaisyUI stats/table)', () => {
   const src = read('src/lib/components/cascade/PortfolioPage.svelte');
-  assert.match(src, /\bstats\b/);
-  assert.match(src, /\btable\b/);
-  assert.doesNotMatch(src, /\bwallet-(grid|panel)\b/);
-  assert.doesNotMatch(src, /\bbuilder-(field|empty)\b/);
+  assert.doesNotMatch(src, /\bstats\b/);
+  assert.doesNotMatch(src, /\btable-zebra\b/);
+  assert.doesNotMatch(src, /\bcard\b/);
+  assert.match(src, /\brounded-lg\b.*border.*bg-base-/);
 });

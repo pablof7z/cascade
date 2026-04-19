@@ -9,6 +9,7 @@ export const load: PageServerLoad = ({ url }) => {
   return {
     nip05Domain: domain,
     nip05Persistent: hasPersistentNip05Store(),
+    hideRightRail: true,
     seo: buildOnboardingSeo(url)
   };
 };

@@ -37,10 +37,8 @@
 
   let { data }: PageProps = $props();
 
-  // ── wizard step ────────────────────────────────────────────────
   let step = $state<1 | 2>(1);
 
-  // ── fake name placeholders ──────────────────────────────────────
   const FAKE_NAMES = [
     'Milo Vance', 'Sable Quinn', 'Cleo Hartwell', 'Ren Ashford',
     'Piper Strand', 'Callum Wray', 'Indigo Marsh', 'Nox Ellery',
@@ -49,7 +47,6 @@
   ];
   const namePlaceholder = FAKE_NAMES[Math.floor(Math.random() * FAKE_NAMES.length)];
 
-  // ── dicebear avatar presets ─────────────────────────────────────
   const DICEBEAR_AVATARS = [
     { style: 'adventurer', seed: 'Felix' },
     { style: 'adventurer', seed: 'Mia' },
@@ -71,7 +68,6 @@
 
   let selectedDicebear = $state<string | null>(null);
 
-  // ── profile fields ─────────────────────────────────────────────
   let activePubkey = $state<string | null>(null);
   let resolvedProfile: NDKUserProfile | undefined = $state();
   let name = $state('');
@@ -97,7 +93,6 @@
   let fileInput: HTMLInputElement | null = $state(null);
   let importedSocialPrefill: SocialProfilePrefill | null = $state(null);
 
-  // ── derived ─────────────────────────────────────────────────────
   const currentUser = $derived(ndk.$currentUser);
   const blossomEvent = $derived(ndk.$sessions?.getSessionEvent(NDKKind.BlossomList));
   const isReadOnly = $derived(Boolean(ndk.$sessions?.isReadOnly()));
@@ -128,7 +123,7 @@
     if (!managedNip05Valid) return false;
     return managedNip05Status === 'available' || managedNip05Status === 'owned';
   });
-  const writerLabel = $derived(
+  const identityLabel = $derived(
     displayName(
       {
         ...(resolvedProfile ?? {}),
@@ -138,12 +133,12 @@
       'You'
     )
   );
-  const step1Valid = $derived(
-    Boolean(cleanText(name) || cleanText(display))
+  const identityInitial = $derived(
+    (cleanText(display) || cleanText(name) || identityLabel || 'C').trim().slice(0, 1).toUpperCase() || 'C'
   );
+  const step1Valid = $derived(Boolean(cleanText(name) || cleanText(display)));
   const canPublish = $derived(!isReadOnly && !saving && !uploadingAvatar && managedNip05Ready);
 
-  // ── profile helpers ─────────────────────────────────────────────
   function clearMessages() {
     saveError = '';
     uploadError = '';
@@ -220,6 +215,15 @@
     profileTouched = true;
   }
 
+  function removeAvatar() {
+    avatarUrl = '';
+    avatarFile = null;
+    selectedDicebear = null;
+    clearAvatarPreview();
+    if (fileInput) fileInput.value = '';
+    profileTouched = true;
+  }
+
   async function uploadAvatarFile(): Promise<string | null> {
     if (!avatarFile) return avatarUrl || null;
 
@@ -276,7 +280,7 @@
   async function buildManagedNip05Auth(
     action: 'register' | 'clear',
     domain: string,
-    name?: string
+    handle?: string
   ): Promise<NostrEvent> {
     await ensureClientNdk();
 
@@ -287,7 +291,7 @@
         ['t', 'nip05-registration'],
         ['action', action],
         ['domain', domain],
-        ...(name ? [['name', name]] : [])
+        ...(handle ? [['name', handle]] : [])
       ]
     } as NostrEvent);
 
@@ -306,9 +310,7 @@
 
       const response = await fetch('/api/nip05', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           auth: await buildManagedNip05Auth('clear', managedNip05Domain)
         })
@@ -325,9 +327,7 @@
 
     const response = await fetch('/api/nip05', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: normalizedManagedNip05Name,
         auth: await buildManagedNip05Auth('register', managedNip05Domain, normalizedManagedNip05Name)
@@ -345,7 +345,6 @@
     return formatManagedNip05Identifier(normalizedManagedNip05Name, managedNip05Domain);
   }
 
-  // ── publish ─────────────────────────────────────────────────────
   async function publish() {
     if (!ndk.$sessions || !canPublish) return;
 
@@ -431,7 +430,6 @@
     }
   }
 
-  // ── effects ─────────────────────────────────────────────────────
   $effect(() => {
     const pubkey = currentUser?.pubkey ?? null;
     if (activePubkey === pubkey) return;
@@ -559,358 +557,834 @@
   });
 </script>
 
-<div class="mx-auto w-full max-w-4xl space-y-8">
-  <!-- Stepper Navigation -->
-  <ul class="steps w-full">
-    <li class={`step ${step >= 1 ? 'step-primary' : ''}`}>
-      <button
-        type="button"
-        class="text-sm font-medium"
-        onclick={() => { step = 1; }}
-      >
-        About you
-      </button>
-    </li>
-    <li class={`step ${step >= 2 ? 'step-primary' : ''}`}>
-      <button
-        type="button"
-        class="text-sm font-medium"
-        onclick={() => {
-          if (step1Valid) step = 2;
-        }}
-        disabled={!step1Valid}
-      >
-        Public profile
-      </button>
-    </li>
-  </ul>
+<div class="ob-wrap">
+  <header class="ob-top">
+    <div class="ob-eyebrow">
+      <span class="ob-step-label">Step {step} of 2</span>
+      <span class="ob-step-sep" aria-hidden="true">·</span>
+      <span>{step === 1 ? 'You' : 'Handle'}</span>
+    </div>
+    <h1 class="ob-hed">
+      {#if step === 1}
+        Tell people who you are.
+      {:else}
+        A handle and a home on the web.
+      {/if}
+    </h1>
+    <p class="ob-lede">
+      {#if step === 1}
+        This is the identity other traders, writers, and agents will see next to your replies,
+        claims, and trades. You can edit any of it later.
+      {:else}
+        Optional. Reserve a verified handle on Cascade, and point at a site you already have.
+      {/if}
+    </p>
+  </header>
+
+  <nav class="ob-progress" aria-label="Onboarding progress">
+    <button
+      type="button"
+      class="ob-progress-step"
+      class:ob-progress-step--on={step >= 1}
+      onclick={() => { step = 1; }}
+    >
+      <span class="ob-progress-num">1</span>
+      <span class="ob-progress-label">You</span>
+    </button>
+    <span class="ob-progress-rule" aria-hidden="true"></span>
+    <button
+      type="button"
+      class="ob-progress-step"
+      class:ob-progress-step--on={step >= 2}
+      onclick={() => {
+        if (step1Valid) step = 2;
+      }}
+      disabled={!step1Valid}
+    >
+      <span class="ob-progress-num">2</span>
+      <span class="ob-progress-label">Handle</span>
+    </button>
+  </nav>
+
+  {#if importedSocialPrefill && step === 1}
+    <div class="ob-imported" role="status">
+      <span class="ob-imported-eyebrow">Imported</span>
+      <p>
+        Pulled name, handle, and picture from
+        <strong>{socialProviderLabel(importedSocialPrefill.provider)}</strong>. Everything is
+        editable.
+      </p>
+    </div>
+  {/if}
 
   {#if step === 1}
-    <div class="space-y-8">
-      <!-- Header -->
-      <div class="space-y-2">
-        <h1 class="text-2xl font-bold">Tell people who you are</h1>
-        <p class="text-base text-base-content/50">
-          Set the basics for the public profile other traders and agents will see.
-        </p>
-      </div>
-
-      {#if importedSocialPrefill}
-        <div role="alert" class="alert bg-base-200">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="h-6 w-6 shrink-0 stroke-info">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <div>
-            <div class="font-bold">Imported from {socialProviderLabel(importedSocialPrefill.provider)}</div>
-            <div class="text-sm">Everything here is editable before you publish your Cascade profile.</div>
-          </div>
-        </div>
-      {/if}
-
-      <!-- Form Grid -->
-      <div class="grid gap-8 lg:grid-cols-[auto_1fr]">
-        <!-- Avatar Section -->
-        <div class="space-y-4">
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text font-medium">Profile photo</span>
-            </label>
-            <button
-              class="avatar placeholder group relative h-48 w-48"
-              type="button"
-              onclick={handleAvatarClick}
-              aria-label="Upload your own photo"
-            >
-              <div class="w-48 overflow-hidden rounded-lg bg-base-200 ring-1 ring-neutral-700">
-                {#if avatarDisplayUrl}
-                  <img src={avatarDisplayUrl} alt="Your avatar" class="h-full w-full object-cover" />
-                {:else}
-                  <div class="flex h-full w-full items-center justify-center">
-                    <svg class="h-16 w-16 text-base-content/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <circle cx="12" cy="8" r="4" />
-                      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                    </svg>
-                  </div>
-                {/if}
-                <div class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-                  <svg class="h-8 w-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-                  </svg>
-                </div>
-              </div>
-            </button>
-            <input bind:this={fileInput} type="file" accept="image/*" onchange={handleAvatarSelection} class="hidden" tabindex="-1" />
-          </div>
-
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text text-xs font-medium uppercase tracking-wider text-base-content/50">Or pick one</span>
-            </label>
-            <div class="grid grid-cols-4 gap-2">
-              {#each DICEBEAR_AVATARS as avatar (avatar.url)}
-                <button
-                  class={`avatar placeholder ${
-                    selectedDicebear === avatar.url
-                      ? 'ring-2 ring-primary'
-                      : 'ring-1 ring-neutral-700 hover:ring-neutral-500'
-                  }`}
-                  type="button"
-                  onclick={() => {
-                    selectedDicebear = avatar.url;
-                    avatarUrl = '';
-                    avatarFile = null;
-                    clearAvatarPreview();
-                    if (fileInput) fileInput.value = '';
-                    profileTouched = true;
-                  }}
-                >
-                  <div class="w-12 rounded-lg bg-base-100">
-                    <img src={avatar.url} alt={avatar.seed} loading="lazy" />
-                  </div>
-                </button>
-              {/each}
-            </div>
-          </div>
-
-          {#if avatarDisplayUrl}
-            <button
-              class="btn btn-ghost btn-sm"
-              type="button"
-              onclick={() => {
-                avatarUrl = '';
-                avatarFile = null;
-                selectedDicebear = null;
-                clearAvatarPreview();
-                if (fileInput) fileInput.value = '';
-              }}
-            >
-              Remove photo
-            </button>
-          {/if}
-
-          {#if uploadError}
-            <div role="alert" class="alert alert-error">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{uploadError}</span>
-            </div>
-          {/if}
-        </div>
-
-        <!-- Profile Fields -->
-        <div class="space-y-4">
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div class="form-control">
-              <label class="label">
-                <span class="label-text font-medium">Username</span>
-              </label>
-              <input
-                class="input input-bordered"
-                bind:value={name}
-                oninput={() => {
-                  profileTouched = true;
-                }}
-                placeholder={namePlaceholder}
-                autocomplete="username"
-              />
-            </div>
-
-            <div class="form-control">
-              <label class="label">
-                <span class="label-text font-medium">Name <span class="text-base-content/50">(optional)</span></span>
-              </label>
-              <input
-                class="input input-bordered"
-                bind:value={display}
-                oninput={() => {
-                  profileTouched = true;
-                }}
-                placeholder="Your full name"
-                autocomplete="name"
-              />
-            </div>
-          </div>
-
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text font-medium">Bio <span class="text-base-content/50">(optional)</span></span>
-            </label>
-            <textarea
-              class="textarea textarea-bordered h-32"
-              bind:value={about}
-              oninput={() => {
-                profileTouched = true;
-              }}
-              placeholder="What do you write about?"
-            ></textarea>
-          </div>
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <div class="flex flex-wrap items-center justify-between gap-4 border-t border-base-300 pt-6">
+    <section class="ob-step ob-step-one">
+      <div class="ob-avatar-col">
+        <span class="ob-field-eyebrow">Profile picture</span>
         <button
-          class="btn btn-primary"
           type="button"
-          disabled={!step1Valid}
-          onclick={() => {
-            step = 2;
-          }}
+          class="ob-avatar"
+          onclick={handleAvatarClick}
+          aria-label="Upload your own picture"
         >
-          Next — public profile details
+          {#if avatarDisplayUrl}
+            <img src={avatarDisplayUrl} alt="Your avatar" />
+          {:else}
+            <span class="ob-avatar-initial">{identityInitial}</span>
+          {/if}
+          <span class="ob-avatar-hint" aria-hidden="true">Upload</span>
         </button>
-        {#if !step1Valid}
-          <p class="text-sm text-base-content/50">Add a username or name to continue</p>
+        <input
+          bind:this={fileInput}
+          type="file"
+          accept="image/*"
+          onchange={handleAvatarSelection}
+          class="ob-file-input"
+          tabindex="-1"
+        />
+
+        <div class="ob-avatar-options">
+          <div class="ob-field-eyebrow ob-avatar-options-head">Or pick one</div>
+          <div class="ob-avatar-grid">
+            {#each DICEBEAR_AVATARS as avatar (avatar.url)}
+              <button
+                type="button"
+                class="ob-avatar-preset"
+                class:ob-avatar-preset--on={selectedDicebear === avatar.url}
+                onclick={() => {
+                  selectedDicebear = avatar.url;
+                  avatarUrl = '';
+                  avatarFile = null;
+                  clearAvatarPreview();
+                  if (fileInput) fileInput.value = '';
+                  profileTouched = true;
+                }}
+              >
+                <img src={avatar.url} alt={avatar.seed} loading="lazy" />
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        {#if avatarDisplayUrl}
+          <button class="ob-ghost-link" type="button" onclick={removeAvatar}>Remove picture</button>
+        {/if}
+
+        {#if uploadingAvatar && uploadProgress != null}
+          <p class="ob-field-meta">Uploading… {uploadProgress}%</p>
+        {/if}
+
+        {#if uploadError}
+          <p class="ob-field-error" role="alert">{uploadError}</p>
         {/if}
       </div>
+
+      <div class="ob-fields">
+        <label class="ob-field">
+          <span class="ob-field-eyebrow">Username</span>
+          <input
+            class="ob-input"
+            bind:value={name}
+            oninput={() => { profileTouched = true; }}
+            placeholder={namePlaceholder}
+            autocomplete="username"
+          />
+          <span class="ob-field-help">Lowercase, unique-ish. Used in mentions and your profile URL.</span>
+        </label>
+
+        <label class="ob-field">
+          <span class="ob-field-eyebrow">Name <span class="ob-field-optional">Optional</span></span>
+          <input
+            class="ob-input"
+            bind:value={display}
+            oninput={() => { profileTouched = true; }}
+            placeholder="Your full name"
+            autocomplete="name"
+          />
+        </label>
+
+        <label class="ob-field">
+          <span class="ob-field-eyebrow">Bio <span class="ob-field-optional">Optional</span></span>
+          <textarea
+            class="ob-input ob-textarea"
+            bind:value={about}
+            oninput={() => { profileTouched = true; }}
+            placeholder="What do you write about?"
+          ></textarea>
+          <span class="ob-field-help">
+            One or two sentences. The bio appears under your name in the author rail and on the discussion page.
+          </span>
+        </label>
+      </div>
+    </section>
+
+    <div class="ob-nav">
+      <div class="ob-nav-message">
+        {#if !step1Valid}
+          <p>Add a username or name to continue.</p>
+        {/if}
+      </div>
+      <button
+        class="ob-btn-ink"
+        type="button"
+        disabled={!step1Valid}
+        onclick={() => { step = 2; }}
+      >
+        Continue →
+      </button>
     </div>
   {:else if step === 2}
-    <div class="space-y-8">
-      <!-- Header -->
-      <div class="space-y-2">
-        <h1 class="text-2xl font-bold">Finish your public profile</h1>
-        <p class="text-base text-base-content/50">
-          Add a site or claim a verified handle. Both are optional.
-        </p>
-      </div>
-
-      <!-- Profile Summary Card -->
-      <div class="card bg-base-200">
-        <div class="card-body">
-          <div class="space-y-1">
-            <p class="text-xs font-medium uppercase tracking-wider text-base-content/50">Public name</p>
-            <p class="text-xl font-semibold">{writerLabel}</p>
-            <p class="text-sm text-base-content/50">This is the identity people will see when they open your public profile.</p>
-          </div>
+    <section class="ob-step ob-step-two">
+      <article class="ob-preview" aria-label="Identity preview">
+        <div class="ob-preview-av">
+          {#if avatarDisplayUrl}
+            <img src={avatarDisplayUrl} alt="Your avatar" />
+          {:else}
+            <span>{identityInitial}</span>
+          {/if}
         </div>
-      </div>
+        <div class="ob-preview-body">
+          <span class="ob-field-eyebrow">Public identity</span>
+          <p class="ob-preview-name">{identityLabel}</p>
+          {#if cleanText(about)}
+            <p class="ob-preview-bio">{cleanText(about)}</p>
+          {:else}
+            <p class="ob-preview-bio ob-preview-bio--empty">No bio yet — that&rsquo;s fine.</p>
+          {/if}
+        </div>
+      </article>
 
-      <!-- Form Fields -->
-      <div class="space-y-4">
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text font-medium">Website <span class="text-base-content/50">(optional)</span></span>
-          </label>
+      <div class="ob-fields">
+        <label class="ob-field">
+          <span class="ob-field-eyebrow">Website <span class="ob-field-optional">Optional</span></span>
           <input
-            class="input input-bordered"
-            bind:value={website}
-            oninput={() => {
-              profileTouched = true;
-            }}
-            placeholder="https://yoursite.com"
+            class="ob-input"
             type="url"
+            bind:value={website}
+            oninput={() => { profileTouched = true; }}
+            placeholder="https://yoursite.com"
           />
-        </div>
+        </label>
 
         {#if managedNip05Enabled && managedNip05Domain}
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text font-medium">Verified handle <span class="text-base-content/50">(optional)</span></span>
-            </label>
-            <div class="join w-full">
+          <div class="ob-field">
+            <span class="ob-field-eyebrow">Verified handle <span class="ob-field-optional">Optional</span></span>
+            <div class="ob-handle">
               <input
-                class="input input-bordered join-item flex-1"
+                class="ob-input ob-input--handle"
                 bind:value={managedNip05Name}
-                oninput={() => {
-                  managedNip05Touched = true;
-                }}
-                placeholder="writer"
+                oninput={() => { managedNip05Touched = true; }}
+                placeholder="yourhandle"
                 autocomplete="off"
                 autocapitalize="none"
                 autocorrect="off"
                 spellcheck="false"
               />
-              <span class="join-item flex items-center bg-base-200 px-4 text-sm text-base-content/50">@{managedNip05Domain}</span>
+              <span class="ob-handle-domain">@{managedNip05Domain}</span>
             </div>
-            <label class="label">
-              <span class="label-text-alt text-base-content/50">
-                Reserve a verified handle on @{managedNip05Domain}. Leave it blank to skip.
-              </span>
-            </label>
 
-            {#if existingExternalNip05}
-              <label class="label">
-                <span class="label-text-alt text-base-content/50">
-                  Your current profile already advertises {existingExternalNip05}. Leaving this blank keeps that value.
+            <div class="ob-handle-status" aria-live="polite">
+              {#if normalizedManagedNip05Name && !managedNip05Valid}
+                <span class="ob-status ob-status--error">
+                  Use 1–64 lowercase letters, numbers, hyphens, or underscores.
                 </span>
-              </label>
-            {/if}
-
-            {#if normalizedManagedNip05Name && !managedNip05Valid}
-              <div role="alert" class="alert alert-error">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Use 1-64 lowercase letters, numbers, hyphens, or underscores.</span>
-              </div>
-            {:else if managedNip05Status === 'checking'}
-              <div role="alert" class="alert">
-                <span class="loading loading-spinner loading-sm"></span>
-                <span>Checking {managedNip05Identifier}…</span>
-              </div>
-            {:else if managedNip05Status === 'available'}
-              <div role="alert" class="alert alert-success">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>{managedNip05Identifier} is available</span>
-              </div>
-            {:else if managedNip05Status === 'owned'}
-              <div role="alert" class="alert alert-success">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>{managedNip05Identifier} is already linked to this session</span>
-              </div>
-            {:else if managedNip05Status === 'taken'}
-              <div role="alert" class="alert alert-warning">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <span>That handle is already registered</span>
-              </div>
-            {:else if managedNip05Status === 'error'}
-              <div role="alert" class="alert alert-error">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Couldn't check that handle right now</span>
-              </div>
-            {/if}
+              {:else if managedNip05Status === 'checking'}
+                <span class="ob-status ob-status--muted">Checking {managedNip05Identifier}…</span>
+              {:else if managedNip05Status === 'available'}
+                <span class="ob-status ob-status--yes">{managedNip05Identifier} is available.</span>
+              {:else if managedNip05Status === 'owned'}
+                <span class="ob-status ob-status--yes">
+                  {managedNip05Identifier} is already linked to this session.
+                </span>
+              {:else if managedNip05Status === 'taken'}
+                <span class="ob-status ob-status--no">That handle is already registered.</span>
+              {:else if managedNip05Status === 'error'}
+                <span class="ob-status ob-status--error">Couldn&rsquo;t check that handle right now.</span>
+              {:else if existingExternalNip05}
+                <span class="ob-status ob-status--muted">
+                  Your profile already advertises {existingExternalNip05}. Leaving this blank keeps it.
+                </span>
+              {:else}
+                <span class="ob-status ob-status--muted">
+                  Reserve a verified handle on @{managedNip05Domain}. Leave blank to skip.
+                </span>
+              {/if}
+            </div>
           </div>
         {/if}
       </div>
+    </section>
 
-      <!-- Actions -->
-      <div class="flex flex-wrap items-center gap-3 border-t border-base-300 pt-6">
-        <button class="btn btn-outline" type="button" onclick={() => { step = 1; }}>
-          Back
-        </button>
-        <button
-          class="btn btn-primary"
-          type="button"
-          disabled={!canPublish}
-          onclick={() => void publish()}
-        >
-          {#if saving}
-            <span class="loading loading-spinner loading-sm"></span>
-            Saving…
-          {:else}
-            Open profile
-          {/if}
-        </button>
-      </div>
-
-      {#if saveError}
-        <div role="alert" class="alert alert-error">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{saveError}</span>
-        </div>
-      {/if}
+    <div class="ob-nav">
+      <button class="ob-btn-ghost" type="button" onclick={() => { step = 1; }}>← Back</button>
+      <button
+        class="ob-btn-ink"
+        type="button"
+        disabled={!canPublish}
+        onclick={() => void publish()}
+      >
+        {#if saving}
+          Publishing…
+        {:else}
+          Publish profile
+        {/if}
+      </button>
     </div>
+
+    {#if saveError}
+      <p class="ob-save-error" role="alert">{saveError}</p>
+    {/if}
   {/if}
 </div>
 
+<style>
+  .ob-wrap {
+    display: grid;
+    gap: 2.2rem;
+    max-width: 44rem;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+  }
+
+  .ob-top {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .ob-eyebrow,
+  .ob-field-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--color-neutral-content);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .ob-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .ob-step-sep {
+    color: var(--color-base-300);
+  }
+
+  .ob-hed {
+    font-family: var(--font-tight);
+    font-size: clamp(2.1rem, 4.2vw, 3rem);
+    font-weight: 700;
+    letter-spacing: -0.045em;
+    line-height: 1.04;
+    color: var(--color-base-content);
+  }
+
+  .ob-lede {
+    max-width: 36rem;
+    color: color-mix(in srgb, var(--color-base-content) 66%, transparent);
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+
+  .ob-progress {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.3rem 0 0.6rem;
+  }
+
+  .ob-progress-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.1rem 0;
+    background: transparent;
+    border: 0;
+    color: var(--color-neutral-content);
+    font-family: inherit;
+    font-size: 0.85rem;
+    letter-spacing: 0;
+    cursor: pointer;
+    transition: color 120ms ease;
+  }
+
+  .ob-progress-step:disabled {
+    cursor: not-allowed;
+  }
+
+  .ob-progress-step--on {
+    color: var(--color-base-content);
+  }
+
+  .ob-progress-num {
+    display: grid;
+    width: 1.6rem;
+    height: 1.6rem;
+    place-items: center;
+    border: 1px solid var(--color-base-300);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--color-neutral-content);
+    background: transparent;
+  }
+
+  .ob-progress-step--on .ob-progress-num {
+    background: var(--color-primary);
+    color: var(--color-primary-content);
+    border-color: var(--color-primary);
+  }
+
+  .ob-progress-rule {
+    height: 1px;
+    background: var(--color-base-300);
+  }
+
+  .ob-imported {
+    display: grid;
+    gap: 0.3rem;
+    padding: 0.95rem 1.1rem;
+    border: 1px solid var(--color-base-300);
+    border-left: 2px solid var(--color-primary);
+    border-radius: 6px;
+    background: var(--color-base-200);
+  }
+
+  .ob-imported-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-primary);
+  }
+
+  .ob-imported p {
+    color: color-mix(in srgb, var(--color-base-content) 70%, transparent);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .ob-imported strong {
+    color: var(--color-base-content);
+    font-weight: 600;
+  }
+
+  .ob-step-one {
+    display: grid;
+    grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
+    gap: 2.2rem;
+    padding-top: 0.4rem;
+  }
+
+  .ob-step-two {
+    display: grid;
+    gap: 1.6rem;
+    padding-top: 0.4rem;
+  }
+
+  .ob-avatar-col {
+    display: grid;
+    gap: 0.85rem;
+    align-content: start;
+  }
+
+  .ob-avatar {
+    position: relative;
+    display: grid;
+    width: 11rem;
+    height: 11rem;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid var(--color-neutral);
+    border-radius: 999px;
+    background: var(--color-base-200);
+    cursor: pointer;
+    transition: border-color 120ms ease;
+  }
+
+  .ob-avatar:hover {
+    border-color: var(--color-primary);
+  }
+
+  .ob-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ob-avatar-initial {
+    font-family: var(--font-serif);
+    font-size: 3.8rem;
+    font-weight: 500;
+    color: var(--color-primary);
+    letter-spacing: -0.02em;
+  }
+
+  .ob-avatar-hint {
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: 0.45rem 0;
+    background: color-mix(in srgb, #000 62%, transparent);
+    color: var(--color-base-content);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  .ob-avatar:hover .ob-avatar-hint {
+    opacity: 1;
+  }
+
+  .ob-file-input {
+    display: none;
+  }
+
+  .ob-avatar-options {
+    display: grid;
+    gap: 0.6rem;
+    padding-top: 0.4rem;
+  }
+
+  .ob-avatar-options-head {
+    font-size: 0.62rem;
+  }
+
+  .ob-avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .ob-avatar-preset {
+    position: relative;
+    display: grid;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    padding: 0;
+    place-items: center;
+    border: 1px solid var(--color-base-300);
+    border-radius: 999px;
+    background: var(--color-base-100);
+    cursor: pointer;
+    transition: border-color 120ms ease, transform 120ms ease;
+  }
+
+  .ob-avatar-preset:hover {
+    border-color: var(--color-neutral-content);
+  }
+
+  .ob-avatar-preset--on {
+    border-color: var(--color-primary);
+  }
+
+  .ob-avatar-preset img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ob-ghost-link {
+    justify-self: start;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: var(--color-neutral-content);
+    font-family: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: color 120ms ease;
+  }
+
+  .ob-ghost-link:hover {
+    color: var(--color-base-content);
+  }
+
+  .ob-fields {
+    display: grid;
+    gap: 1.2rem;
+    align-content: start;
+  }
+
+  .ob-field {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .ob-field-optional {
+    font-weight: 500;
+    color: var(--color-neutral-content);
+    letter-spacing: 0.12em;
+    margin-left: 0.45rem;
+  }
+
+  .ob-field-help {
+    color: color-mix(in srgb, var(--color-neutral-content) 85%, transparent);
+    font-size: 0.82rem;
+    line-height: 1.55;
+  }
+
+  .ob-field-meta {
+    color: var(--color-neutral-content);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    letter-spacing: 0.06em;
+  }
+
+  .ob-field-error {
+    color: var(--color-error);
+    font-size: 0.86rem;
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  .ob-input {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--color-neutral);
+    border-radius: 6px;
+    background: var(--color-base-200);
+    color: var(--color-base-content);
+    font-family: inherit;
+    font-size: 0.98rem;
+    line-height: 1.45;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+
+  .ob-input::placeholder {
+    color: color-mix(in srgb, var(--color-neutral-content) 80%, transparent);
+  }
+
+  .ob-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background: var(--color-base-100);
+  }
+
+  .ob-textarea {
+    min-height: 7rem;
+    resize: vertical;
+  }
+
+  .ob-handle {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    border: 1px solid var(--color-neutral);
+    border-radius: 6px;
+    background: var(--color-base-200);
+    overflow: hidden;
+    transition: border-color 120ms ease;
+  }
+
+  .ob-handle:focus-within {
+    border-color: var(--color-primary);
+    background: var(--color-base-100);
+  }
+
+  .ob-input--handle {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .ob-input--handle:focus {
+    background: transparent;
+  }
+
+  .ob-handle-domain {
+    display: grid;
+    place-items: center;
+    padding: 0 0.95rem;
+    color: var(--color-neutral-content);
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+    letter-spacing: 0;
+    background: color-mix(in srgb, var(--color-base-300) 70%, transparent);
+    border-left: 1px solid var(--color-base-300);
+  }
+
+  .ob-handle-status {
+    min-height: 1.3rem;
+    padding-top: 0.25rem;
+  }
+
+  .ob-status {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+  }
+
+  .ob-status--muted {
+    color: var(--color-neutral-content);
+  }
+
+  .ob-status--yes {
+    color: var(--color-success);
+  }
+
+  .ob-status--no {
+    color: var(--color-error);
+  }
+
+  .ob-status--error {
+    color: var(--color-error);
+  }
+
+  .ob-preview {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 1.1rem;
+    padding: 1.1rem 1.15rem;
+    border: 1px solid var(--color-base-300);
+    border-radius: 8px;
+    background: var(--color-base-200);
+  }
+
+  .ob-preview-av {
+    display: grid;
+    width: 3.4rem;
+    height: 3.4rem;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid var(--color-neutral);
+    border-radius: 999px;
+    background: var(--color-base-300);
+    color: var(--color-primary);
+    font-family: var(--font-serif);
+    font-size: 1.3rem;
+    font-weight: 500;
+  }
+
+  .ob-preview-av img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ob-preview-body {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .ob-preview-name {
+    font-family: var(--font-tight);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--color-base-content);
+  }
+
+  .ob-preview-bio {
+    color: color-mix(in srgb, var(--color-base-content) 70%, transparent);
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
+  .ob-preview-bio--empty {
+    color: var(--color-neutral-content);
+    font-style: italic;
+  }
+
+  .ob-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--color-base-300);
+  }
+
+  .ob-nav-message {
+    color: var(--color-neutral-content);
+    font-size: 0.86rem;
+  }
+
+  .ob-btn-ink,
+  .ob-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.6rem;
+    padding-inline: 1.2rem;
+    border-radius: 6px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+    cursor: pointer;
+  }
+
+  .ob-btn-ink {
+    background: var(--color-primary);
+    color: var(--color-primary-content);
+    border: 1px solid var(--color-primary);
+  }
+
+  .ob-btn-ink:hover:not(:disabled) {
+    background: #fff8ec;
+    border-color: #fff8ec;
+  }
+
+  .ob-btn-ink:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .ob-btn-ghost {
+    background: transparent;
+    color: var(--color-base-content);
+    border: 1px solid var(--color-neutral);
+  }
+
+  .ob-btn-ghost:hover {
+    border-color: var(--color-neutral-content);
+    background: color-mix(in srgb, var(--color-base-200) 80%, transparent);
+  }
+
+  .ob-save-error {
+    color: var(--color-error);
+    font-size: 0.9rem;
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  @media (max-width: 720px) {
+    .ob-step-one {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.6rem;
+    }
+
+    .ob-avatar {
+      width: 9rem;
+      height: 9rem;
+    }
+
+    .ob-avatar-initial {
+      font-size: 3rem;
+    }
+
+    .ob-nav {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+
+    .ob-nav-message {
+      text-align: center;
+    }
+
+    .ob-btn-ink,
+    .ob-btn-ghost {
+      width: 100%;
+    }
+  }
+</style>

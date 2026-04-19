@@ -61,7 +61,8 @@ Expected behavior:
 - homepage is The Column mixed feed over selected-edition relay market, trade, and discussion events
 - `/subscriptions` is The Column reading digest for claims from followed writers, backed by real kind `3` follow state and selected-edition relay market/trade events
 - `/markets` is the global category-first browse surface over selected-edition relay market and trade events
-- market pages are the main trading surface
+- market pages are The Column detail surface: a reading-first case page with a market-scoped trade rail, text tabs,
+  discussion previews, recent trades, and linked markets in the detail body
 - discussion is append-only
 - analytics and leaderboard are public read surfaces
 - builder publishes the selected edition market event and coordinates the required creator seed trade

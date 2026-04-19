@@ -17,9 +17,12 @@ test('MarketCard uses daisyUI card and no custom styles', () => {
 });
 
 // Task 4.2: MarketSurface
-test('MarketSurface uses daisyUI stats/card/input without custom CSS', () => {
+test('MarketSurface uses The Column market detail layout without custom CSS', () => {
   const src = read('src/lib/components/cascade/MarketSurface.svelte');
-  assert.match(src, /\bstats\b/);
+  assert.match(src, />Back a side</);
+  assert.match(src, />The case</);
+  assert.match(src, /font-serif/);
+  assert.doesNotMatch(src, /<style\b/);
   assert.doesNotMatch(src, /rgba\(/);
   assert.doesNotMatch(src, /var\(--accent/);
   assert.doesNotMatch(src, /var\(--radius-(md|sm)\b/);

@@ -48,8 +48,22 @@ test('related markets show LONG price with a 50¢ fallback instead of timestamp 
   const source = read('src/lib/components/cascade/MarketSurface.svelte');
   const relatedBlock = source.match(/\{#if relatedMarkets\.length > 0\}[\s\S]*?\{\/if\}/)?.[0] ?? '';
 
-  assert.match(relatedBlock, /<h3[^>]*>More markets<\/h3>/);
+  assert.match(relatedBlock, /<h3[^>]*>Linked markets<\/h3>/);
   assert.match(relatedBlock, /<span[^>]*>\{priceCents\(\(related\.latestPricePpm \?\? 500_000\) \/ 1_000_000\)\} LONG<\/span>/);
   assert.doesNotMatch(relatedBlock, /formatRelativeTime\(related\.createdAt\)/);
   assert.doesNotMatch(relatedBlock, /authorLabel\(related\.pubkey\)/);
+});
+
+test('market tab routes hide the generic right rail so MarketSurface can render its own trade rail', () => {
+  const routeFiles = [
+    'src/routes/market/[slug]/+page.server.ts',
+    'src/routes/market/[slug]/discussion/+page.server.ts',
+    'src/routes/market/[slug]/charts/+page.server.ts',
+    'src/routes/market/[slug]/activity/+page.server.ts',
+    'src/routes/market/[slug]/discussion/[threadId]/+page.server.ts'
+  ];
+
+  for (const routeFile of routeFiles) {
+    assert.match(read(routeFile), /hideRightRail: true/, `${routeFile} should hide the generic context rail`);
+  }
 });

@@ -16,6 +16,7 @@ export const load: PageServerLoad = async ({ locals, params, setHeaders, url }) 
 
   return {
     ...data,
+    hideRightRail: true,
     seo: buildMarketSeo({ url, market: data.market })
   };
 };

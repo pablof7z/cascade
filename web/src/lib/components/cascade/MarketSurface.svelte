@@ -79,7 +79,7 @@
   const discussionThreads = $derived(buildDiscussionThreads(mergedDiscussions, market.id));
   const author = $derived(displayName(profiles[market.pubkey], 'Cascade user'));
   const tabs = $derived([
-    { href: marketUrl(market.slug), label: 'Overview', active: tab === 'overview' },
+    { href: marketUrl(market.slug), label: 'Case', active: tab === 'overview' },
     { href: marketDiscussionUrl(market.slug), label: 'Discussion', active: tab === 'discussion' },
     { href: marketChartsUrl(market.slug), label: 'Charts', active: tab === 'charts' },
     { href: marketActivityUrl(market.slug), label: 'Activity', active: tab === 'activity' }
@@ -130,6 +130,16 @@
     });
   });
   const chartPolylinePoints = $derived(chartPoints.map((point) => `${point.x},${point.y}`).join(' '));
+  const categoryLabel = $derived(market.categories[0] ?? 'Market');
+  const categoryTrail = $derived(market.categories.length > 0 ? market.categories.join(' / ') : 'Claim');
+  const authorInitial = $derived((author.trim().charAt(0) || 'C').toUpperCase());
+  const movementCents = $derived((impliedProbability - openingProbability) * 100);
+  const movementLabel = $derived(`${movementCents >= 0 ? '+' : ''}${movementCents.toFixed(1)}¢`);
+  const movementClass = $derived(movementCents >= 0 ? 'text-success' : 'text-error');
+  const recentTradeRows = $derived(orderedTrades.slice(0, 5));
+  const discussionPreviewThreads = $derived(discussionThreads.slice(0, 3));
+  const relatedPreviewMarkets = $derived(relatedMarkets.slice(0, 4));
+  const totalReplyCount = $derived(discussionThreads.reduce((sum, thread) => sum + thread.replyCount, 0));
 
   const bodyParagraphs = $derived(
     (market.body ?? '')
@@ -271,25 +281,107 @@
   }
 </script>
 
-<!-- Market header -->
-<section class="pt-4">
-  <header class="grid gap-4 pb-6 border-b border-base-300 lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)]">
-    <div class="flex flex-col gap-4 max-w-prose">
-      <div class="eyebrow">Market</div>
-      <h1 class="text-3xl sm:text-5xl font-bold tracking-tight leading-none">{market.title}</h1>
-      <p class="text-base-content/70 text-base leading-relaxed max-w-xl">
-        {sanitizeMarketCopy(market.description) || 'No summary provided yet.'}
-      </p>
-
-      <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-base-content/50">
-        <span>by {author}</span>
-        <span>{formatRelativeTime(market.createdAt)}</span>
-        {#if market.categories.length > 0}
-          <span>{market.categories.join(', ')}</span>
-        {/if}
+{#snippet tradeRail()}
+  <aside class="grid gap-5 lg:sticky lg:top-6 lg:self-start">
+    <section class="rounded-md border border-base-300 bg-base-200/70 p-5">
+      <div class="flex items-baseline justify-between gap-4">
+        <h2 class="font-tight text-xl font-semibold tracking-tight">Back a side</h2>
+        <span class="text-xs font-semibold uppercase tracking-widest text-base-content/50">{valueUnitLabel}</span>
       </div>
 
-      <div class="flex items-center gap-3 flex-wrap">
+      <div class="mt-5 grid grid-cols-2 gap-4">
+        <div class="grid gap-1 border-r border-base-300 pr-4">
+          <span>LONG</span>
+          <strong class="font-mono text-3xl font-bold tracking-tight text-success">{priceCents(impliedProbability)}</strong>
+        </div>
+        <div class="grid gap-1">
+          <span>SHORT</span>
+          <strong class="font-mono text-3xl font-bold tracking-tight text-error">{priceCents(oppositeProbability)}</strong>
+        </div>
+      </div>
+
+      <div class="mt-5 grid gap-4">
+        {#if paperEdition}
+          <PaperTradePanel
+            marketId={market.id}
+            marketSlug={market.slug}
+            yesProbability={impliedProbability}
+            noProbability={oppositeProbability}
+          />
+        {:else if currentUser}
+          <a class="btn btn-primary w-full" href="/portfolio">Add funds to trade</a>
+          <p class="text-sm leading-relaxed text-base-content/60">Funds live in your portfolio. Trading here mints LONG or SHORT market proofs.</p>
+        {:else}
+          <a class="btn btn-primary w-full" href="/join?from=/market/{market.slug}">Join to back a side</a>
+          <p class="text-sm leading-relaxed text-base-content/60">Read the case first, then sign in when you are ready to spend USD.</p>
+        {/if}
+      </div>
+    </section>
+
+    <section class="rounded-md border border-base-300 p-5">
+      <h3 class="text-sm font-semibold uppercase tracking-widest text-base-content/50">Market tape</h3>
+      <dl class="mt-3 grid gap-0 border-t border-base-300">
+        <div class="flex items-center justify-between gap-4 border-b border-base-300 py-3">
+          <dt class="text-sm text-base-content/50">Volume</dt>
+          <dd class="font-mono text-sm">{formatProductAmount(tradeSummary.grossVolume, 'usd')}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 border-b border-base-300 py-3">
+          <dt class="text-sm text-base-content/50">LONG flow</dt>
+          <dd class="font-mono text-sm">{formatProductAmount(tradeSummary.longVolume, 'usd')}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 border-b border-base-300 py-3">
+          <dt class="text-sm text-base-content/50">SHORT flow</dt>
+          <dd class="font-mono text-sm">{formatProductAmount(tradeSummary.shortVolume, 'usd')}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 border-b border-base-300 py-3">
+          <dt class="text-sm text-base-content/50">Average size</dt>
+          <dd class="font-mono text-sm">{formatProductAmount(Math.round(averageTradeSize), 'usd')}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-3">
+          <dt class="text-sm text-base-content/50">Last trade</dt>
+          <dd class="font-mono text-sm">
+            {#if latestTrade}
+              {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}
+            {:else}
+              None
+            {/if}
+          </dd>
+        </div>
+      </dl>
+    </section>
+  </aside>
+{/snippet}
+
+<section class="pt-4">
+  <nav class="mb-5 flex flex-wrap items-center gap-2 text-xs uppercase tracking-widest text-base-content/40" aria-label="Breadcrumb">
+    <a class="hover:text-base-content" href="/">Home</a>
+    <span>/</span>
+    <a class="hover:text-base-content" href="/markets">Markets</a>
+    <span>/</span>
+    <span>{categoryLabel}</span>
+  </nav>
+
+  <header class="grid gap-6 border-b border-base-300 pb-6">
+    <div class="grid gap-4">
+      <div class="eyebrow">{categoryLabel} claim</div>
+      <h1 class="font-serif text-4xl font-semibold leading-[1.04] tracking-normal sm:text-5xl">{market.title}</h1>
+      <p class="max-w-[62ch] text-lg leading-relaxed text-base-content/70">
+        {sanitizeMarketCopy(market.description) || 'No summary provided yet.'}
+      </p>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex min-w-0 items-center gap-3">
+        <div class="grid h-10 w-10 flex-none place-items-center rounded-full border border-base-300 bg-base-200 font-serif text-lg text-base-content/80">
+          {authorInitial}
+        </div>
+        <div class="min-w-0">
+          <p class="truncate text-sm font-semibold text-base-content">{author}</p>
+          <p class="text-xs text-base-content/50">{formatRelativeTime(market.createdAt)} / {categoryTrail}</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
         <SharePopover url={page.url.href} title={market.title} />
         {#if currentUser}
           <button
@@ -306,18 +398,24 @@
       </div>
     </div>
 
-    <div class="grid gap-4 content-start pt-1">
-      <div class="flex items-baseline gap-3">
-        <span class="font-mono text-success text-5xl font-bold tracking-tight">{priceCents(impliedProbability)}</span>
-        <span class="text-success/70 text-base tracking-wide">LONG</span>
+    <dl class="grid gap-0 border-y border-base-300 sm:grid-cols-4">
+      <div class="grid gap-1 border-b border-base-300 py-3 sm:border-b-0 sm:border-r sm:px-4 sm:first:pl-0">
+        <dt class="text-xs uppercase tracking-widest text-base-content/40">Current LONG</dt>
+        <dd class="font-mono text-2xl font-bold text-success">{priceCents(impliedProbability)}</dd>
       </div>
-
-      <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-base-content/50">
-        <span>{formatProductAmount(tradeSummary.grossVolume, 'usd')} vol</span>
-        <span>{tradeSummary.tradeCount} trades</span>
-        <span>{discussionThreads.length} threads</span>
+      <div class="grid gap-1 border-b border-base-300 py-3 sm:border-b-0 sm:border-r sm:px-4">
+        <dt class="text-xs uppercase tracking-widest text-base-content/40">Move</dt>
+        <dd class="font-mono text-2xl font-bold {movementClass}">{movementLabel}</dd>
       </div>
-    </div>
+      <div class="grid gap-1 border-b border-base-300 py-3 sm:border-b-0 sm:border-r sm:px-4">
+        <dt class="text-xs uppercase tracking-widest text-base-content/40">Volume</dt>
+        <dd class="font-mono text-2xl font-bold">{formatProductAmount(tradeSummary.grossVolume, 'usd')}</dd>
+      </div>
+      <div class="grid gap-1 py-3 sm:px-4 sm:last:pr-0">
+        <dt class="text-xs uppercase tracking-widest text-base-content/40">Traders</dt>
+        <dd class="font-mono text-2xl font-bold">{visibleAccounts}</dd>
+      </div>
+    </dl>
   </header>
 </section>
 
@@ -326,416 +424,376 @@
 </section>
 
 {#if tab === 'overview'}
-  <!-- Market context -->
-  <section class="max-w-3xl mx-auto pt-8">
-    <p class="text-base-content/80 text-base leading-relaxed mb-6">
-      <strong class={marketState.accentClass}>{marketState.label}</strong> • {marketState.summary}
-    </p>
+  <section class="grid gap-10 pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(290px,320px)]">
+    <div class="grid min-w-0 gap-10">
+      <article class="max-w-[56ch] font-serif text-[1.08rem] leading-8 text-base-content/80">
+        <h2 class="mb-5 font-serif text-2xl font-semibold leading-tight text-base-content">The case</h2>
 
-    <div class="stats stats-vertical sm:stats-horizontal w-full bg-base-200 mb-6">
-      <div class="stat">
-        <div class="stat-title">Price change</div>
-        <div class="stat-value text-lg font-mono" class:text-success={impliedProbability - openingProbability >= 0} class:text-error={impliedProbability - openingProbability < 0}>
-          {impliedProbability - openingProbability >= 0 ? '+' : ''}{((impliedProbability - openingProbability) * 100).toFixed(1)}¢
-        </div>
-        <div class="stat-desc">Since open</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">Traders</div>
-        <div class="stat-value text-lg font-mono">{visibleAccounts}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">Avg size</div>
-        <div class="stat-value text-lg font-mono">{formatProductAmount(Math.round(averageTradeSize), 'usd')}</div>
-        <div class="stat-desc">{valueUnitLabel}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">Discussion</div>
-        <div class="stat-value text-lg font-mono">{discussionThreads.length}</div>
-        <div class="stat-desc">threads</div>
-      </div>
-    </div>
-
-    <div class="grid gap-4">
-      <div>
-        <div class="flex items-center justify-between gap-4 mb-2 text-sm text-base-content/50">
-          <span>LONG share</span>
-          <span>{formatProbability(flowLong)} LONG</span>
-        </div>
-        <div class="h-1.5 rounded-full bg-base-300">
-          <div class="h-full rounded-full bg-success" style:width={`${flowLong * 100}%`}></div>
-        </div>
-      </div>
-
-      <div>
-        <div class="flex items-center justify-between gap-4 mb-2 text-sm text-base-content/50">
-          <span>SHORT share</span>
-          <span>{formatProbability(flowShort)} SHORT</span>
-        </div>
-        <div class="h-1.5 rounded-full bg-base-300">
-          <div class="h-full rounded-full bg-error" style:width={`${flowShort * 100}%`}></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Trading section -->
-  <section class="max-w-xl mx-auto mt-8 card card-border bg-base-200">
-    <div class="card-body gap-4">
-      <div class="flex items-baseline justify-between gap-4">
-        <h2 class="card-title">Take a position</h2>
-        <span class="text-sm text-base-content/50">Mint LONG or SHORT</span>
-      </div>
-
-      <div class="grid grid-cols-2 gap-5">
-        <div class="grid gap-2">
-          <span class="text-xs font-semibold tracking-widest uppercase text-base-content/50">LONG</span>
-          <strong class="text-success font-mono text-3xl font-bold tracking-tight">{priceCents(impliedProbability)}</strong>
-        </div>
-        <div class="grid gap-2">
-          <span class="text-xs font-semibold tracking-widest uppercase text-base-content/50">SHORT</span>
-          <strong class="text-error font-mono text-3xl font-bold tracking-tight">{priceCents(oppositeProbability)}</strong>
-        </div>
-      </div>
-
-      {#if paperEdition}
-        <PaperTradePanel
-          marketId={market.id}
-          marketSlug={market.slug}
-          yesProbability={impliedProbability}
-          noProbability={oppositeProbability}
-        />
-      {:else if currentUser}
-        <a class="btn btn-primary w-fit" href="/portfolio">Add funds to trade</a>
-        <a href={marketActivityUrl(market.slug)} class="text-sm text-base-content/60">See all trades on this market →</a>
-        <p class="text-sm text-base-content/60">Add funds to your portfolio to take a position.</p>
-      {:else}
-        <a class="btn btn-primary w-fit" href="/join?from=/market/{market.slug}">Take a position</a>
-      {/if}
-
-      <dl class="grid gap-0 border-t border-base-300 mt-2">
-        <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
-          <dt class="text-sm text-base-content/50">Volume</dt>
-          <dd class="font-mono text-sm">{formatProductAmount(tradeSummary.grossVolume, 'usd')} {valueUnitLabel}</dd>
-        </div>
-        <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
-          <dt class="text-sm text-base-content/50">LONG flow</dt>
-          <dd class="font-mono text-sm">{formatProductAmount(tradeSummary.longVolume, 'usd')} {valueUnitLabel}</dd>
-        </div>
-        <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
-          <dt class="text-sm text-base-content/50">SHORT flow</dt>
-          <dd class="font-mono text-sm">{formatProductAmount(tradeSummary.shortVolume, 'usd')} {valueUnitLabel}</dd>
-        </div>
-        <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
-          <dt class="text-sm text-base-content/50">Last trade</dt>
-          <dd class="font-mono text-sm">
-            {#if latestTrade}
-              {latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}
-            {:else}
-              None
-            {/if}
-          </dd>
-        </div>
-      </dl>
-    </div>
-  </section>
-
-  <!-- Market body -->
-  <section class="grid gap-10 pt-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-    <article class="grid gap-5">
-      <div class="flex items-baseline justify-between gap-4">
-        <h3 class="text-lg font-semibold tracking-tight">Market case</h3>
-      </div>
-
-      <div class="grid gap-4 pt-2">
         {#if caseParagraphs.length > 0}
-          {#each caseParagraphs as paragraph}
-            <p class="text-sm text-base-content/70 leading-relaxed">{paragraph}</p>
-          {/each}
+          <div class="grid gap-5">
+            {#each caseParagraphs as paragraph, index}
+              <p class={index === 0 ? 'text-xl leading-9 text-base-content' : ''}>{paragraph}</p>
+            {/each}
+          </div>
         {:else}
-          <p class="text-sm text-base-content/70">No written case yet.</p>
+          <p>No written case yet.</p>
         {/if}
-      </div>
+      </article>
 
       {#if tradingContext.length > 0}
-        <div class="flex items-baseline justify-between gap-4 pt-1">
-          <h3 class="text-lg font-semibold tracking-tight">Trading context</h3>
+        <section class="grid max-w-[56ch] gap-4 border-t border-base-300 pt-6">
+          <h3 class="font-tight text-lg font-semibold tracking-tight">Trading context</h3>
+          <div class="grid gap-4">
+            {#each tradingContext as criteria}
+              <p class="text-sm leading-relaxed text-base-content/70">{criteria}</p>
+            {/each}
+          </div>
+        </section>
+      {/if}
+
+      <section class="grid gap-5 border-t border-base-300 pt-6">
+        <div class="flex items-baseline justify-between gap-4">
+          <h3 class="font-tight text-lg font-semibold tracking-tight">Market signals</h3>
+          <span class="text-sm text-base-content/50">{marketState.summary}</span>
         </div>
 
         <div class="grid gap-4">
-          {#each tradingContext as criteria}
-            <p class="text-sm text-base-content/70 leading-relaxed">{criteria}</p>
+          <div>
+            <div class="mb-2 flex items-center justify-between gap-4 text-sm text-base-content/50">
+              <span>LONG share</span>
+              <span>{formatProbability(flowLong)} LONG</span>
+            </div>
+            <div class="h-1.5 rounded-full bg-base-300">
+              <div class="h-full rounded-full bg-success" style:width={`${flowLong * 100}%`}></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="mb-2 flex items-center justify-between gap-4 text-sm text-base-content/50">
+              <span>SHORT share</span>
+              <span>{formatProbability(flowShort)} SHORT</span>
+            </div>
+            <div class="h-1.5 rounded-full bg-base-300">
+              <div class="h-full rounded-full bg-error" style:width={`${flowShort * 100}%`}></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid gap-0 border-t border-base-300">
+          {#each recentSignals as signal}
+            <p class="border-b border-base-300 py-3 text-sm leading-relaxed text-base-content/70">{signal}</p>
           {/each}
         </div>
+      </section>
+
+      <section class="grid gap-5 border-t border-base-300 pt-6">
+        <div class="flex items-baseline justify-between gap-4">
+          <h3 class="font-tight text-lg font-semibold tracking-tight">From the discussion</h3>
+          <a class="text-sm text-base-content/60 hover:text-base-content" href={marketDiscussionUrl(market.slug)}>Read all</a>
+        </div>
+
+        <div class="grid gap-0 border-t border-base-300">
+          {#if discussionPreviewThreads.length > 0}
+            {#each discussionPreviewThreads as thread (thread.post.id)}
+              <a class="grid gap-1 border-b border-base-300 py-3 hover:text-base-content" href={threadUrl(market.slug, thread.post.id)}>
+                <div class="flex items-baseline justify-between gap-4">
+                  <strong class="text-sm font-semibold">{thread.post.subject || 'Untitled thread'}</strong>
+                  <span class="flex-none text-xs text-base-content/50">{thread.replyCount} repl{thread.replyCount === 1 ? 'y' : 'ies'}</span>
+                </div>
+                <p class="text-sm leading-relaxed text-base-content/60">{truncateText(thread.post.content, 150)}</p>
+                <p class="text-xs text-base-content/40">by {authorLabel(thread.post.pubkey)} / {formatRelativeTime(thread.lastActivityAt)}</p>
+              </a>
+            {/each}
+          {:else}
+            <p class="border-b border-base-300 py-3 text-sm text-base-content/60">No discussion yet. Start with the case and add your view from the Discussion tab.</p>
+          {/if}
+        </div>
+      </section>
+
+      <section class="grid gap-5 border-t border-base-300 pt-6">
+        <div class="flex items-baseline justify-between gap-4">
+          <h3 class="font-tight text-lg font-semibold tracking-tight">Recent trades</h3>
+          <a class="text-sm text-base-content/60 hover:text-base-content" href={marketActivityUrl(market.slug)}>See activity</a>
+        </div>
+
+        <div class="grid gap-0 border-t border-base-300">
+          {#if recentTradeRows.length > 0}
+            {#each recentTradeRows as trade (trade.id)}
+              <div class="flex items-start justify-between gap-4 border-b border-base-300 py-3">
+                <div>
+                  <strong class="text-sm font-semibold">{trade.direction === 'long' ? 'LONG' : 'SHORT'} {trade.type === 'buy' ? 'Buy' : 'Sell'}</strong>
+                  <p class="mt-0.5 text-sm text-base-content/60">{formatProductAmount(trade.amount, 'usd')} at {formatProbability(trade.probability)}</p>
+                </div>
+                <span class="flex-none font-mono text-xs text-base-content/50">{formatRelativeTime(trade.createdAt)}</span>
+              </div>
+            {/each}
+          {:else}
+            <p class="border-b border-base-300 py-3 text-sm text-base-content/60">No trades yet.</p>
+          {/if}
+        </div>
+      </section>
+
+      {#if relatedMarkets.length > 0}
+        <section class="grid gap-5 border-t border-base-300 pt-6">
+          <div class="flex items-baseline justify-between gap-4">
+            <h3 class="font-tight text-lg font-semibold tracking-tight">Linked markets</h3>
+            <span class="text-sm text-base-content/50">Informational context</span>
+          </div>
+
+          <div class="grid gap-0 border-t border-base-300">
+            {#each relatedPreviewMarkets as related (related.id)}
+              <a class="flex items-start justify-between gap-4 border-b border-base-300 py-3 hover:text-base-content" href={marketUrl(related.slug)}>
+                <div>
+                  <strong class="text-sm font-semibold">{related.title}</strong>
+                  <p class="mt-0.5 text-sm text-base-content/60">{truncateText(sanitizeMarketCopy(related.description || related.body), 120)}</p>
+                </div>
+                <div class="grid flex-none justify-items-end gap-1 text-xs">
+                  <span class="text-success">{priceCents((related.latestPricePpm ?? 500_000) / 1_000_000)} LONG</span>
+                </div>
+              </a>
+            {/each}
+          </div>
+        </section>
+      {/if}
+    </div>
+
+    {@render tradeRail()}
+  </section>
+{/if}
+
+{#if tab === 'discussion'}
+  <section class="grid gap-10 pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(290px,320px)]">
+    <div class="grid min-w-0 gap-6">
+      <div class="grid gap-4 border-b border-base-300 pb-5">
+        <div class="flex items-baseline justify-between gap-4">
+          <h2 class="font-serif text-2xl font-semibold tracking-normal">Discussion</h2>
+          <span class="text-sm text-base-content/50">{discussionThreads.length} threads / {totalReplyCount} replies</span>
+        </div>
+
+        <div class="grid gap-3">
+          <div class="flex items-center justify-between gap-4 text-sm text-base-content/50">
+            <span>LONG discussion share</span>
+            <span>{formatProbability(flowLong)} LONG / {formatProbability(flowShort)} SHORT</span>
+          </div>
+          <div class="flex h-1.5 overflow-hidden rounded-full bg-base-300">
+            <div class="bg-success" style:width={`${flowLong * 100}%`}></div>
+            <div class="bg-error" style:width={`${flowShort * 100}%`}></div>
+          </div>
+        </div>
+
+        <div class="flex gap-4 text-sm">
+          <button class="border-b border-primary pb-1 text-base-content" type="button">Top</button>
+          <button class="border-b border-transparent pb-1 text-base-content/50" type="button">Newest</button>
+          <button class="border-b border-transparent pb-1 text-base-content/50" type="button">Positioned</button>
+        </div>
+      </div>
+
+      {#if currentUser}
+        <div class="grid gap-3 border-b border-base-300 pb-5">
+          <input
+            class="input input-bordered w-full"
+            type="text"
+            placeholder="Subject (optional)"
+            bind:value={composeSubject}
+            disabled={composeSubmitting}
+          />
+          <textarea
+            class="textarea textarea-bordered w-full"
+            rows={5}
+            placeholder="Add your view on this claim."
+            bind:value={composeBody}
+            disabled={composeSubmitting}
+          ></textarea>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap gap-2 text-xs text-base-content/50">
+              <span class="rounded-full border border-base-300 px-2.5 py-1">Quote passage</span>
+              <span class="rounded-full border border-base-300 px-2.5 py-1">Link market</span>
+              <span class="rounded-full border border-base-300 px-2.5 py-1">Image</span>
+            </div>
+            <button class="btn btn-primary" onclick={postThread} disabled={composeSubmitting || !composeBody.trim()}>
+              {composeSubmitting ? 'Posting...' : 'Post reply'}
+            </button>
+          </div>
+          {#if composeError}
+            <p class="text-sm text-error">{composeError}</p>
+          {/if}
+          <p class="text-xs text-base-content/50">Writing and trading stay separate. Use the rail to back a side.</p>
+        </div>
+      {:else}
+        <p class="border-b border-base-300 pb-5 text-sm text-base-content/70">
+          <a href="/join?from=/market/{market.slug}/discussion" class="text-primary">Sign in</a> to join the discussion.
+        </p>
       {/if}
 
-      <div class="flex items-baseline justify-between gap-4 pt-1">
-        <h3 class="text-lg font-semibold tracking-tight">Market signals</h3>
-      </div>
-
       <div class="grid gap-0 border-t border-base-300">
-        {#each recentSignals as signal}
-          <p class="py-3 border-b border-base-300 text-sm text-base-content/70 leading-relaxed">{signal}</p>
-        {/each}
+        {#if discussionThreads.length > 0}
+          {#each discussionThreads as thread (thread.post.id)}
+            <a class="flex items-start justify-between gap-4 border-b border-base-300 py-4 hover:text-base-content" href={threadUrl(market.slug, thread.post.id)}>
+              <div>
+                <strong class="text-sm font-semibold">{thread.post.subject || 'Untitled thread'}</strong>
+                <p class="mt-1 text-sm leading-relaxed text-base-content/60">{truncateText(thread.post.content, 180)}</p>
+                <p class="mt-1 text-xs text-base-content/40">by {authorLabel(thread.post.pubkey)}</p>
+              </div>
+              <div class="grid flex-none justify-items-end gap-1 text-xs text-base-content/50">
+                <span>{thread.replyCount} repl{thread.replyCount === 1 ? 'y' : 'ies'}</span>
+                <span>{formatRelativeTime(thread.lastActivityAt)}</span>
+              </div>
+            </a>
+          {/each}
+        {:else}
+          <div class="grid gap-2 border-b border-base-300 py-4">
+            <p class="text-sm text-base-content/70">No threads yet.</p>
+            <p class="text-sm text-base-content/50">Be first to put reasoning on the record.</p>
+          </div>
+        {/if}
       </div>
-    </article>
+    </div>
 
-    <article class="grid gap-5">
+    {@render tradeRail()}
+  </section>
+{/if}
+
+{#if tab === 'charts'}
+  <section class="grid gap-10 pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(290px,320px)]">
+    <div class="grid min-w-0 gap-8">
+      <article class="grid gap-5">
+        <div class="flex items-baseline justify-between gap-4">
+          <h3 class="font-tight text-lg font-semibold tracking-tight">Price curve</h3>
+          <span class="text-sm text-base-content/50">Based on public trade history</span>
+        </div>
+
+        {#if chronologicalTrades.length > 0}
+          <div class="grid gap-3">
+            <svg
+              class="block h-auto w-full overflow-visible"
+              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+              role="img"
+              aria-label="Probability over time based on public trade history"
+            >
+              {#each chartGridLevels as level (level)}
+                {@const y = chartLevelY(level)}
+                <line
+                  stroke="currentColor"
+                  stroke-opacity="0.16"
+                  stroke-width="1"
+                  shape-rendering="crispEdges"
+                  x1={chartMargin.left}
+                  x2={chartWidth - chartMargin.right}
+                  y1={y}
+                  y2={y}
+                ></line>
+                <text
+                  fill="currentColor"
+                  fill-opacity="0.64"
+                  font-family="var(--font-mono)"
+                  font-size="11"
+                  x={chartMargin.left - 10}
+                  y={y + 4}
+                  text-anchor="end"
+                >
+                  {formatProbability(level)}
+                </text>
+              {/each}
+
+              <polyline
+                class={chartTrendClass}
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="square"
+                stroke-linejoin="miter"
+                vector-effect="non-scaling-stroke"
+                points={chartPolylinePoints}
+              ></polyline>
+
+              {#each chartPoints as point (point.id)}
+                <circle
+                  class={chartTrendClass}
+                  fill="currentColor"
+                  stroke="var(--color-base-100)"
+                  stroke-width="1.5"
+                  vector-effect="non-scaling-stroke"
+                  cx={point.x}
+                  cy={point.y}
+                  r="3.5"
+                ></circle>
+              {/each}
+            </svg>
+
+            <div class="flex justify-between gap-4 font-mono text-xs text-base-content/50">
+              <span>{formatRelativeTime(chartStartTrade.createdAt)}</span>
+              <span>{formatRelativeTime(chartEndTrade.createdAt)}</span>
+            </div>
+          </div>
+        {:else}
+          <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">
+            No trade history has been published for this market yet.
+          </div>
+        {/if}
+      </article>
+
+      <article class="grid gap-5">
+        <div class="flex items-baseline justify-between gap-4">
+          <h3 class="font-tight text-lg font-semibold tracking-tight">Last executed trade</h3>
+        </div>
+
+        {#if latestTrade}
+          <dl class="grid gap-0 border-t border-base-300">
+            <div class="flex items-center justify-between gap-4 border-b border-base-300 py-3">
+              <dt class="text-sm text-base-content/50">Direction</dt>
+              <dd class="font-mono text-sm">{latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-4 border-b border-base-300 py-3">
+              <dt class="text-sm text-base-content/50">Price</dt>
+              <dd class="font-mono text-sm">{priceCents(latestTrade.probability)}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-4 border-b border-base-300 py-3">
+              <dt class="text-sm text-base-content/50">Size</dt>
+              <dd class="font-mono text-sm">{formatProductAmount(latestTrade.amount, 'usd')} {valueUnitLabel}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-4 border-b border-base-300 py-3">
+              <dt class="text-sm text-base-content/50">When</dt>
+              <dd class="font-mono text-sm">{formatRelativeTime(latestTrade.createdAt)}</dd>
+            </div>
+          </dl>
+        {:else}
+          <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">No trades yet.</div>
+        {/if}
+      </article>
+    </div>
+
+    {@render tradeRail()}
+  </section>
+{/if}
+
+{#if tab === 'activity'}
+  <section class="grid gap-10 pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(290px,320px)]">
+    <div class="grid min-w-0 gap-5">
       <div class="flex items-baseline justify-between gap-4">
-        <h3 class="text-lg font-semibold tracking-tight">Recent activity</h3>
+        <h3 class="font-tight text-lg font-semibold tracking-tight">Activity</h3>
+        <span class="text-sm text-base-content/50">Recent activity across this market</span>
       </div>
 
       <div class="grid gap-0 border-t border-base-300">
         {#if activityEntries.length > 0}
-          {#each activityEntries.slice(0, 8) as entry (entry.id)}
-            <div class="flex items-start justify-between gap-4 py-3 border-b border-base-300">
+          {#each activityEntries as entry (entry.id)}
+            <div class="flex items-start justify-between gap-4 border-b border-base-300 py-3">
               <div>
                 <strong class="text-sm font-semibold">{entry.headline}</strong>
-                <p class="text-sm text-base-content/60 mt-0.5">{entry.detail}</p>
+                <p class="mt-0.5 text-sm text-base-content/60">{entry.detail}</p>
               </div>
-              <div class="grid justify-items-end gap-1 flex-none text-xs text-base-content/50">
+              <div class="grid flex-none justify-items-end gap-1 text-xs text-base-content/50">
                 <span>{entry.kind}</span>
                 <span>{formatRelativeTime(entry.createdAt)}</span>
               </div>
             </div>
           {/each}
         {:else}
-          <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">No activity yet.</div>
+          <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">No visible activity yet.</div>
         {/if}
       </div>
-    </article>
-  </section>
-{/if}
-
-{#if tab === 'discussion'}
-  <section class="grid gap-5">
-    <div class="flex items-baseline justify-between gap-4">
-      <h3 class="text-lg font-semibold tracking-tight">Discussion</h3>
-      <span class="text-sm text-base-content/50">{discussionThreads.length} threads</span>
     </div>
 
-    <div class="grid gap-0 border-t border-base-300">
-      {#if discussionThreads.length > 0}
-        {#each discussionThreads as thread (thread.post.id)}
-          <a class="flex items-start justify-between gap-4 py-3 border-b border-base-300 hover:text-base-content" href={threadUrl(market.slug, thread.post.id)}>
-            <div>
-              <strong class="text-sm font-semibold">{thread.post.subject || 'Untitled thread'}</strong>
-              <p class="text-sm text-base-content/60 mt-0.5">{truncateText(thread.post.content, 160)}</p>
-              <p class="text-xs text-base-content/40 mt-1">by {authorLabel(thread.post.pubkey)}</p>
-            </div>
-            <div class="grid justify-items-end gap-1 flex-none text-xs text-base-content/50">
-              <span>{thread.replyCount} repl{thread.replyCount === 1 ? 'y' : 'ies'}</span>
-              <span>{formatRelativeTime(thread.lastActivityAt)}</span>
-            </div>
-          </a>
-        {/each}
-      {:else}
-        {#if currentUser}
-          <div class="py-4">
-            <p class="text-sm text-base-content/70">No threads yet — be first to make a case.</p>
-          </div>
-        {:else}
-          <div class="py-4 grid gap-2">
-            <p class="text-sm text-base-content/70">No threads yet.</p>
-            <p class="text-sm text-base-content/50">
-              Discussion is where traders put their reasoning on record — the argument behind the bet.
-              <a href="/join?from=/market/{market.slug}/discussion" class="text-primary">Sign in</a>
-              to start one.
-            </p>
-          </div>
-        {/if}
-      {/if}
-    </div>
-
-    {#if currentUser}
-      <div class="grid gap-3 border-t border-base-300 pt-4 mt-2">
-        <input
-          class="input input-bordered w-full"
-          type="text"
-          placeholder="Subject (optional)"
-          bind:value={composeSubject}
-          disabled={composeSubmitting}
-        />
-        <textarea
-          class="textarea textarea-bordered w-full"
-          rows={4}
-          placeholder="Start a thread…"
-          bind:value={composeBody}
-          disabled={composeSubmitting}
-        ></textarea>
-        {#if composeError}
-          <p class="text-error text-sm">{composeError}</p>
-        {/if}
-        <div class="flex justify-end">
-          <button class="btn btn-primary" onclick={postThread} disabled={composeSubmitting || !composeBody.trim()}>
-            {composeSubmitting ? 'Posting…' : 'Post thread'}
-          </button>
-        </div>
-      </div>
-    {:else}
-      <p class="border-t border-base-300 pt-4 mt-2 text-sm text-base-content/70">
-        <a href="/join?from=/market/{market.slug}/discussion" class="text-primary">Sign in</a> to join the discussion.
-      </p>
-    {/if}
-  </section>
-{/if}
-
-{#if tab === 'charts'}
-  <section class="grid gap-8 lg:grid-cols-2">
-    <article class="grid gap-5">
-      <div class="flex items-baseline justify-between gap-4">
-        <h3 class="text-lg font-semibold tracking-tight">Price curve</h3>
-        <span class="text-sm text-base-content/50">Based on public trade history</span>
-      </div>
-
-      {#if chronologicalTrades.length > 0}
-        <div class="grid gap-3">
-          <svg
-            class="w-full h-auto block overflow-visible"
-            viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-            role="img"
-            aria-label="Probability over time based on public trade history"
-          >
-            {#each chartGridLevels as level (level)}
-              {@const y = chartLevelY(level)}
-              <line
-                stroke="currentColor"
-                stroke-opacity="0.16"
-                stroke-width="1"
-                shape-rendering="crispEdges"
-                x1={chartMargin.left}
-                x2={chartWidth - chartMargin.right}
-                y1={y}
-                y2={y}
-              ></line>
-              <text
-                fill="currentColor"
-                fill-opacity="0.64"
-                font-family="var(--font-mono)"
-                font-size="11"
-                x={chartMargin.left - 10}
-                y={y + 4}
-                text-anchor="end"
-              >
-                {formatProbability(level)}
-              </text>
-            {/each}
-
-            <polyline
-              class={chartTrendClass}
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="square"
-              stroke-linejoin="miter"
-              vector-effect="non-scaling-stroke"
-              points={chartPolylinePoints}
-            ></polyline>
-
-            {#each chartPoints as point (point.id)}
-              <circle
-                class={chartTrendClass}
-                fill="currentColor"
-                stroke="var(--color-base-100)"
-                stroke-width="1.5"
-                vector-effect="non-scaling-stroke"
-                cx={point.x}
-                cy={point.y}
-                r="3.5"
-              ></circle>
-            {/each}
-          </svg>
-
-          <div class="flex justify-between gap-4 text-xs text-base-content/50 font-mono">
-            <span>{formatRelativeTime(chartStartTrade.createdAt)}</span>
-            <span>{formatRelativeTime(chartEndTrade.createdAt)}</span>
-          </div>
-        </div>
-      {:else}
-        <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">
-          No trade history has been published for this market yet.
-        </div>
-      {/if}
-    </article>
-
-    <article class="grid gap-5">
-      <div class="flex items-baseline justify-between gap-4">
-        <h3 class="text-lg font-semibold tracking-tight">Last executed trade</h3>
-      </div>
-
-      {#if latestTrade}
-        <dl class="grid gap-0 border-t border-base-300">
-          <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
-            <dt class="text-sm text-base-content/50">Direction</dt>
-            <dd class="font-mono text-sm">{latestTrade.direction === 'long' ? 'LONG' : 'SHORT'} {latestTrade.type === 'buy' ? 'Buy' : 'Sell'}</dd>
-          </div>
-          <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
-            <dt class="text-sm text-base-content/50">Price</dt>
-            <dd class="font-mono text-sm">{priceCents(latestTrade.probability)}</dd>
-          </div>
-          <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
-            <dt class="text-sm text-base-content/50">Size</dt>
-            <dd class="font-mono text-sm">{formatProductAmount(latestTrade.amount, 'usd')} {valueUnitLabel}</dd>
-          </div>
-          <div class="flex items-center justify-between gap-4 py-3 border-b border-base-300">
-            <dt class="text-sm text-base-content/50">When</dt>
-            <dd class="font-mono text-sm">{formatRelativeTime(latestTrade.createdAt)}</dd>
-          </div>
-        </dl>
-      {:else}
-        <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">No trades yet.</div>
-      {/if}
-    </article>
-  </section>
-{/if}
-
-{#if tab === 'activity'}
-  <section class="grid gap-5">
-    <div class="flex items-baseline justify-between gap-4">
-      <h3 class="text-lg font-semibold tracking-tight">Activity</h3>
-      <span class="text-sm text-base-content/50">Recent activity across this market</span>
-    </div>
-
-    <div class="grid gap-0 border-t border-base-300">
-      {#if activityEntries.length > 0}
-        {#each activityEntries as entry (entry.id)}
-          <div class="flex items-start justify-between gap-4 py-3 border-b border-base-300">
-            <div>
-              <strong class="text-sm font-semibold">{entry.headline}</strong>
-              <p class="text-sm text-base-content/60 mt-0.5">{entry.detail}</p>
-            </div>
-            <div class="grid justify-items-end gap-1 flex-none text-xs text-base-content/50">
-              <span>{entry.kind}</span>
-              <span>{formatRelativeTime(entry.createdAt)}</span>
-            </div>
-          </div>
-        {/each}
-      {:else}
-        <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">No visible activity yet.</div>
-      {/if}
-    </div>
-  </section>
-{/if}
-
-{#if relatedMarkets.length > 0}
-  <section class="grid gap-5">
-    <div class="flex items-baseline justify-between gap-4">
-      <h3 class="text-lg font-semibold tracking-tight">More markets</h3>
-      <span class="text-sm text-base-content/50">Related reading</span>
-    </div>
-
-    <div class="grid gap-0 border-t border-base-300">
-      {#each relatedMarkets as related (related.id)}
-        <a class="flex items-start justify-between gap-4 py-3 border-b border-base-300 hover:text-base-content" href={marketUrl(related.slug)}>
-          <div>
-            <strong class="text-sm font-semibold">{related.title}</strong>
-            <p class="text-sm text-base-content/60 mt-0.5">{truncateText(sanitizeMarketCopy(related.description || related.body), 120)}</p>
-          </div>
-          <div class="grid justify-items-end gap-1 flex-none text-xs">
-            <span class="text-success">{priceCents((related.latestPricePpm ?? 500_000) / 1_000_000)} LONG</span>
-          </div>
-        </a>
-      {/each}
-    </div>
+    {@render tradeRail()}
   </section>
 {/if}

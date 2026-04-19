@@ -230,13 +230,16 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 
 ## Workstream 4: Market Detail And Market Tabs
 
+Market detail uses the current The Column pattern: shared post header, text tabs, case-first reading column,
+market-scoped trade rail, discussion preview, recent trades, and linked-market context.
+
 ### Canonical routes
 
-- [ ] `/market/:slug`
-- [ ] `/market/:slug/discussion`
-- [ ] `/market/:slug/discussion/:threadId`
-- [ ] `/market/:slug/charts`
-- [ ] `/market/:slug/activity`
+- [x] `/market/:slug`
+- [x] `/market/:slug/discussion`
+- [x] `/market/:slug/discussion/:threadId`
+- [x] `/market/:slug/charts`
+- [x] `/market/:slug/activity`
 
 ### Overview tab requirements
 

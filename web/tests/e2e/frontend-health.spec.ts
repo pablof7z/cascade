@@ -21,10 +21,10 @@ async function gotoFirstMarket(page: Page) {
   throw new Error('Expected at least one market link to resolve to a live market page.');
 }
 
-test('market detail uses take-a-position CTA for new traders', async ({ page }) => {
+test('market detail uses market-scoped backing copy for new traders', async ({ page }) => {
   await gotoFirstMarket(page);
 
-  await expect(page.getByRole('link', { name: 'Take a position' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Back a side' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Trade this market' })).toHaveCount(0);
 });
 
@@ -46,18 +46,18 @@ test('portfolio signed-out state uses friendly connection copy', async ({ page }
   expect(mainText).not.toMatch(/[0-9a-f]{32,}/i);
 });
 
-test('market detail leads with a trading section before the editorial case', async ({ page }) => {
+test('market detail leads with the editorial case before the trading rail', async ({ page }) => {
   await gotoFirstMarket(page);
 
   const headings = await page.locator('main h2, main h3').evaluateAll((nodes) =>
     nodes.map((node) => node.textContent?.trim() ?? '')
   );
-  const tradeIndex = headings.indexOf('Take a position');
-  const caseIndex = headings.indexOf('Market case');
+  const caseIndex = headings.indexOf('The case');
+  const tradeIndex = headings.indexOf('Back a side');
 
-  expect(tradeIndex).toBeGreaterThan(-1);
   expect(caseIndex).toBeGreaterThan(-1);
-  expect(tradeIndex).toBeLessThan(caseIndex);
+  expect(tradeIndex).toBeGreaterThan(-1);
+  expect(caseIndex).toBeLessThan(tradeIndex);
 });
 
 test('home page renders The Column mixed feed controls', async ({ page }) => {

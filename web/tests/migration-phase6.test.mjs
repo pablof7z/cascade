@@ -10,7 +10,9 @@ function read(rel) { return readFileSync(resolve(webRoot, rel), 'utf8'); }
 
 test('homepage uses daisyUI classes and no Cascade-custom layouts', () => {
   const src = read('src/routes/+page.svelte');
-  assert.match(src, /\bcard\b/);
+  assert.match(src, /\btextarea\b/);
+  assert.match(src, /\bselect\b/);
+  assert.match(src, /\bbtn\b/);
   assert.doesNotMatch(src, /\bhero-(grid|h1)\b/);
   assert.doesNotMatch(src, /\btrending-(layout|lead)\b/);
   assert.doesNotMatch(src, /\brank-(head|row)\b/);

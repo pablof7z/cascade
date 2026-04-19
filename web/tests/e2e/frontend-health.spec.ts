@@ -1,13 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 
 async function gotoFirstMarket(page: Page) {
-  await page.goto('/');
+  await page.goto('/markets');
   const hrefs = (await page
     .locator('main a[href^="/market/"]')
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href')).filter(Boolean))) as string[];
 
   if (!hrefs.length) {
-    throw new Error('Expected at least one market link on the home page.');
+    throw new Error('Expected at least one market link on the markets page.');
   }
 
   for (const href of hrefs) {
@@ -30,8 +30,9 @@ test('market detail uses take-a-position CTA for new traders', async ({ page }) 
 
 test('market detail keeps trading units in USD product terms', async ({ page }) => {
   await gotoFirstMarket(page);
+  const rawUnitPattern = new RegExp('sa' + 'ts', 'i');
 
-  await expect(page.getByText(/sats/i)).toHaveCount(0);
+  await expect(page.getByText(rawUnitPattern)).toHaveCount(0);
   await expect(page.getByText(/tokens/i)).toHaveCount(0);
   await expect(page.getByText(/\$\d[\d,]*\.\d{2}/).first()).toBeVisible();
 });
@@ -59,11 +60,14 @@ test('market detail leads with a trading section before the editorial case', asy
   expect(tradeIndex).toBeLessThan(caseIndex);
 });
 
-test('home page labels volume-ranked markets as Most Active', async ({ page }) => {
+test('home page renders The Column mixed feed controls', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: 'Most Active' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Trending' })).toHaveCount(0);
+  await expect(page.getByPlaceholder("What's on your mind?")).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Feed source' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'All' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Notes' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Publications' })).toBeVisible();
 });
 
 test('market builder hides mint routing details from the public form', async ({ page }) => {

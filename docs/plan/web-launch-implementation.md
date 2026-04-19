@@ -191,21 +191,17 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 
 ## Workstream 2: Homepage `/`
 
-- [ ] Homepage preserves the React discovery hierarchy.
-- [ ] Featured market card is present and visually prioritized.
-- [ ] Trending markets section exists.
-- [ ] Low-volume markets section exists.
-- [ ] Most-disputed markets section exists.
-- [ ] New-this-week markets section exists.
-- [ ] Recent discussion preview exists near the market feed.
-- [ ] Latest discussions feed exists as a distinct reading surface.
-- [ ] Primary CTA leads to trading or account creation.
-- [ ] Secondary CTA leads to the agent path.
-- [ ] Homepage acts as the canonical entry point into market detail, discussion, builder, analytics, and join.
-- [ ] Empty state for no markets points to builder and explains that the first market must be created.
-- [ ] Market cards show enough metadata to choose a click target without opening the full market.
-- [ ] Discussion snippets on the homepage link to market discussion and thread detail.
-- [ ] Homepage content is corrected for current mechanics and uses indefinite-trading and voluntary-exit language.
+- [x] Homepage uses The Column feed shell instead of the transitional marketing/discovery page.
+- [x] Compose box exists with note-oriented copy and non-primary post action.
+- [x] Feed controls expose `For you` source selection and `All / Notes / Publications` text tabs.
+- [x] Feed combines selected-edition relay market, trade, and discussion events.
+- [x] Claim, trade, and discussion feed items link to market or discussion surfaces.
+- [x] Feed actions route to market pages rather than executing trades inline.
+- [x] Empty state routes users to `/markets`.
+- [ ] Personalized graph ranking uses follows, subscriptions, watchlist, and held positions.
+- [ ] Writer suggestions use real profile/follow data.
+- [ ] Load-more and new-post affordances exist.
+- [ ] Home note publishing is backed by the planned note event path.
 
 ## Workstream 3: Discovery And Search
 

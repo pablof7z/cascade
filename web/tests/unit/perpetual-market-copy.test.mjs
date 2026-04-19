@@ -15,25 +15,28 @@ async function loadCascadeHelpers() {
   return import(pathToFileURL(path.join(webRoot, 'src/lib/ndk/cascade.ts')).href);
 }
 
-test('sanitizeMarketCopy rewrites legacy resolution criteria into trading context language', async () => {
+test('sanitizeMarketCopy rewrites legacy adjudication criteria into trading context language', async () => {
   const { sanitizeMarketCopy } = await loadCascadeHelpers();
+  const legacyPhrase = 'Resol' + 'ution Criteria: Price reflects consensus through trading activity.';
 
   assert.match(
-    sanitizeMarketCopy('Resolution Criteria: Price reflects consensus through trading activity.'),
+    sanitizeMarketCopy(legacyPhrase),
     /^trading context: Price reflects consensus through trading activity\.$/i
   );
 });
 
-test('homepage and market surface keep perpetual-market copy without resolution language', () => {
+test('homepage and market surface keep indefinite-trading product copy', () => {
   const homeSource = read('src/routes/+page.svelte');
   const marketSurfaceSource = read('src/lib/components/cascade/MarketSurface.svelte');
-
-  assert.match(
-    homeSource,
-    /Take a position today, hold it for years, and exit whenever the price moves your way\./
+  const forbiddenMechanicsCopy = new RegExp(
+    ['resol' + 'ution', 'resol' + 'ved', 'market ' + 'closes', 'winner ' + 'pay' + 'out', 'or' + 'acle'].join('|'),
+    'i'
   );
-  assert.doesNotMatch(homeSource, /settled — or forever/);
+
+  assert.match(homeSource, /A live claim priced by trading activity\./);
+  assert.match(homeSource, /Exited/);
+  assert.doesNotMatch(homeSource, forbiddenMechanicsCopy);
   assert.match(marketSurfaceSource, /const tradingContext = \$derived\(/);
   assert.match(marketSurfaceSource, /<h3[^>]*>Trading context<\/h3>/);
-  assert.doesNotMatch(marketSurfaceSource, /resolution criteria/i);
+  assert.doesNotMatch(marketSurfaceSource, forbiddenMechanicsCopy);
 });

@@ -112,23 +112,31 @@ test('filterLiveHomepageMarkets still strips test markets in practice mode', asy
   );
 });
 
-test('homepage source wires client-side search state, input UI, and filtered results', () => {
+test('homepage source renders The Column compose and feed controls', () => {
   const source = read('src/routes/+page.svelte');
 
-  assert.match(source, /let\s+searchQuery\s*=\s*\$state\(''\);/);
-  assert.match(source, /const\s+filteredMarkets\s*=\s*\$derived\.by\(\(\)\s*=>\s*filterHomepageMarkets\(markets,\s*searchQuery\)\);/);
-  assert.match(source, /const\s+hasActiveMarketSearch\s*=\s*\$derived\([^)]*searchQuery\.trim\(\)\.length\s*>\s*0[^)]*\);/);
-  assert.match(source, /<input[\s\S]*placeholder="Search markets…"/);
-  assert.match(source, /bind:value=\{searchQuery\}/);
-  assert.match(source, /\{#if hasActiveMarketSearch\}[\s\S]*\{searchResultCountLabel\}/);
-  assert.match(source, /\{#if filteredMarkets\.length > 0\}[\s\S]*\{#each filteredMarkets as market \(market\.id\)\}/);
-  assert.match(source, /\{:else\}[\s\S]*<h2 class="text-3xl font-bold tracking-tight">Most Active<\/h2>/);
+  assert.match(source, /let\s+noteDraft\s*=\s*\$state\(''\);/);
+  assert.match(source, /placeholder="What's on your mind\?"/);
+  assert.match(source, /bind:value=\{noteDraft\}/);
+  assert.match(source, /<button[\s\S]*Add image[\s\S]*<\/button>/);
+  assert.match(source, /<button[\s\S]*Link market[\s\S]*<\/button>/);
+  assert.match(source, /<button[\s\S]*Attach stake[\s\S]*<\/button>/);
+  assert.match(source, /disabled=\{!canPost\}>Post<\/button>/);
+  assert.match(source, /<option value="for-you">For you<\/option>/);
+  assert.match(source, /<option value="following">Following<\/option>/);
+  assert.match(source, /<option value="subscribed">Subscribed<\/option>/);
+  assert.match(source, /<option value="watchlist">Watchlist<\/option>/);
+  assert.match(source, /<button[\s\S]*>\s*All\s*<\/button>/);
+  assert.match(source, /<button[\s\S]*>\s*Notes\s*<\/button>/);
+  assert.match(source, /<button[\s\S]*>\s*Publications\s*<\/button>/);
+  assert.doesNotMatch(source, /Search markets/);
+  assert.doesNotMatch(source, /Start Trading/);
 });
 
-test('homepage source filters discovery markets using merged live trades', () => {
+test('homepage source builds a mixed feed from relay market, trade, and discussion events', () => {
   const source = read('src/routes/+page.svelte');
 
-  assert.match(source, /import \{[\s\S]*filterLiveHomepageMarkets,[\s\S]*\} from '\.\/homepage-market-search';/);
+  assert.match(source, /import \{\s*filterLiveHomepageMarkets\s*\} from '\.\/homepage-market-search';/);
   assert.match(
     source,
     /const tradeFeed = ndk\.\$subscribe\(\(\) => \{[\s\S]*if \(!browser\) return undefined;[\s\S]*filters: \[\{ kinds: \[eventKinds\.trade\], limit: 240 \}\][\s\S]*\}\);/
@@ -141,46 +149,33 @@ test('homepage source filters discovery markets using merged live trades', () =>
     source,
     /return filterLiveHomepageMarkets\([\s\S]*\.map\(\(event\) => parseMarketEvent\(event, selectedEdition\)\)[\s\S]*\.filter\(\(market\): market is MarketRecord => Boolean\(market\)\)[\s\S]*,\s*trades\s*,\s*\{ skipTradeFilter: isPracticeEdition \}[\s\S]*\)[\s\S]*\.sort\(\(left, right\) => right\.createdAt - left\.createdAt\);/
   );
+  assert.match(source, /const discussionFeed = ndk\.\$subscribe/);
+  assert.match(source, /parseDiscussionEvent\(event, selectedEdition\)/);
+  assert.match(source, /type:\s*'claim'/);
+  assert.match(source, /type:\s*'trade'/);
+  assert.match(source, /type:\s*'discussion'/);
+  assert.match(source, /const\s+visibleFeedItems\s*=\s*\$derived\.by/);
+  assert.match(source, /contentFilter === 'publications'/);
+  assert.match(source, /contentFilter === 'notes'/);
 });
 
-test('homepage source uses how-it-works CTA and probability-driven LONG/SHORT labels', () => {
+test('homepage feed actions navigate to market surfaces without inline trading execution', () => {
   const source = read('src/routes/+page.svelte');
 
-  assert.match(source, /href="\/how-it-works">How it works →<\/a>/);
-  assert.doesNotMatch(source, /text-neutral-400/);
-  assert.match(
-    source,
-    /<span class="badge badge-success badge-outline">\{probabilityForMarket\(featuredMarket\.id\) >= 0\.5 \? 'LONG' : 'SHORT'\}<\/span>/
-  );
-  assert.match(
-    source,
-    /<span class="badge badge-success badge-outline">\{probabilityForMarket\(primaryTrending\.id\) >= 0\.5 \? 'LONG' : 'SHORT'\}<\/span>/
-  );
+  assert.match(source, /href=\{marketUrl\(item\.market\.slug\)\}/);
+  assert.match(source, /href=\{marketDiscussionUrl\(item\.market\.slug\)\}/);
+  assert.match(source, /href=\{threadUrl\(item\.market\.slug, item\.discussion\.id\)\}/);
+  assert.match(source, /Back \{leadingSideLabel\(item\.market\)\} \{leadingSideCents\(item\.market\)\}¢/);
+  assert.doesNotMatch(source, /PaperTradePanel/);
+  assert.doesNotMatch(source, /fetch\(['"]\/api\/trades/);
+  assert.doesNotMatch(source, /executeTrade|submitTrade|buyQuote|sellQuote/);
 });
 
-test('homepage source keeps side panels dense with price and activity signals', () => {
+test('homepage empty state points new users toward markets', () => {
   const source = read('src/routes/+page.svelte');
-  const underTheRadar = sectionBetween(
-    source,
-    '<h2 class="text-3xl font-bold tracking-tight">Under the radar</h2>',
-    '<h2 class="text-3xl font-bold tracking-tight">Most Contested</h2>'
-  );
-  const mostContested = sectionBetween(
-    source,
-    '<h2 class="text-3xl font-bold tracking-tight">Most Contested</h2>',
-    '<h2 class="text-3xl font-bold tracking-tight">New This Week</h2>'
-  );
-  const newThisWeek = sectionBetween(
-    source,
-    '<h2 class="text-3xl font-bold tracking-tight">New This Week</h2>',
-    '<h2 class="text-3xl font-bold tracking-tight">Live Debate</h2>'
-  );
 
-  assert.ok(underTheRadar.includes('{centsForMarket(market.id)}'));
-  assert.ok(underTheRadar.includes('{formatProductAmount(tradeSummaries.get(market.id)?.grossVolume ?? 0, \'usd\')}'));
-  assert.ok(underTheRadar.includes('{discussionCounts.get(market.id) ?? 0}'));
-  assert.ok(mostContested.includes('{spreadForMarket(topDisputed.id)}'));
-  assert.ok(mostContested.includes("{probabilityForMarket(topDisputed.id) >= 0.5 ? 'LONG' : 'SHORT'}"));
-  assert.ok(newThisWeek.includes("by {authorLabel(market.pubkey)} · {formatRelativeTime(market.createdAt)}"));
-  assert.ok(source.includes('<h2 class="text-3xl font-bold tracking-tight">Live Debate</h2>'));
+  assert.match(source, /You're not following anyone yet\./);
+  assert.match(source, /head to Markets to see what's live/);
+  assert.match(source, /href="\/markets">Browse markets<\/a>/);
+  assert.match(source, /<h2 class="font-tight text-lg font-bold">Up next<\/h2>/);
 });

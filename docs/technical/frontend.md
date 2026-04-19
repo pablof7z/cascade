@@ -73,6 +73,7 @@ Legacy relay browser routes exist only as redirects away from the launch product
 ## Product Rules
 
 - normal UX is USD-denominated
+- `/` is The Column mixed feed and uses relay-backed market, trade, and discussion events
 - public discovery surfaces only link to markets after the first public trade exists
 - `/markets` is the global category browse route and shares the relay-backed market/trade data path used by `/`
 - thread detail SSR merges current relay discussion data so newly published threads can open without waiting for a later refresh

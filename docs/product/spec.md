@@ -57,12 +57,13 @@ Current public routes in `web/`:
 
 Expected behavior:
 
-- homepage remains the public entry surface until the Home feed rewrite lands
+- homepage is The Column mixed feed over selected-edition relay market, trade, and discussion events
 - `/markets` is the global category-first browse surface over selected-edition relay market and trade events
 - market pages are the main trading surface
 - discussion is append-only
 - analytics and leaderboard are public read surfaces
 - builder publishes the selected edition market event and coordinates the required creator seed trade
+- homepage feed actions route to market and discussion pages; trading execution stays on market pages
 
 ### Identity And Portfolio
 

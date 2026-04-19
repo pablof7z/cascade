@@ -22,6 +22,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
   const staticPages: SitemapPage[] = [
     { loc: origin, priority: '1.0', changefreq: 'hourly' },
+    { loc: `${origin}/markets`, priority: '0.9', changefreq: 'hourly' },
     { loc: `${origin}/about`, priority: '0.8', changefreq: 'monthly' },
     { loc: `${origin}/how-it-works`, priority: '0.8', changefreq: 'monthly' },
     { loc: `${origin}/leaderboard`, priority: '0.6', changefreq: 'daily' }

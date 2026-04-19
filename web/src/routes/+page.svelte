@@ -4,17 +4,17 @@
   import { ndk } from '$lib/ndk/client';
   import { trackEvent } from '$lib/analytics';
   import { formatProductAmount } from '$lib/cascade/format';
-  import { getCascadeEdition, getAlternateEditionUrl } from '$lib/cascade/config';
+  import { getAlternateEditionUrl, getCascadeEdition } from '$lib/cascade/config';
   import {
     buildTradeSummary,
     formatRelativeTime,
     getCascadeEventKinds,
     marketDiscussionUrl,
     marketUrl,
-    sanitizeMarketCopy,
     parseDiscussionEvent,
     parseMarketEvent,
     parseTradeEvent,
+    threadUrl,
     truncateText,
     type DiscussionRecord,
     type MarketRecord,
@@ -22,19 +22,44 @@
     type TradeRecord
   } from '$lib/ndk/cascade';
   import { displayName } from '$lib/ndk/format';
-  import {
-    filterHomepageMarkets,
-    filterLiveHomepageMarkets,
-    formatHomepageMarketMatchCount
-  } from './homepage-market-search';
+  import { filterLiveHomepageMarkets } from './homepage-market-search';
   import type { PageProps } from './$types';
 
+  type FeedItem =
+    | {
+        id: string;
+        type: 'claim';
+        createdAt: number;
+        market: MarketRecord;
+        context: string;
+      }
+    | {
+        id: string;
+        type: 'trade';
+        createdAt: number;
+        market: MarketRecord;
+        trade: TradeRecord;
+        context: string;
+      }
+    | {
+        id: string;
+        type: 'discussion';
+        createdAt: number;
+        market: MarketRecord;
+        discussion: DiscussionRecord;
+        context: string;
+      };
+
   let { data }: PageProps = $props();
-  let searchQuery = $state('');
+  let noteDraft = $state('');
+  let audienceFilter = $state('for-you');
+  let contentFilter = $state('all');
+
   const selectedEdition = $derived(getCascadeEdition(data.cascadeEdition ?? null));
   const eventKinds = $derived(getCascadeEventKinds(selectedEdition));
   const isPracticeEdition = $derived(selectedEdition === 'signet');
   const alternateEditionUrl = $derived(getAlternateEditionUrl(selectedEdition));
+  const profiles = $derived(data.profiles as Record<string, NDKUserProfile>);
 
   const discussionFeed = ndk.$subscribe(() => {
     if (!browser) return undefined;
@@ -50,8 +75,6 @@
     if (!browser) return undefined;
     return { filters: [{ kinds: [eventKinds.trade], limit: 240 }] };
   });
-
-  const profiles = $derived(data.profiles as Record<string, NDKUserProfile>);
 
   const trades = $derived.by(() => {
     return mergeRawEvents(data.trades, tradeFeed.events)
@@ -107,79 +130,72 @@
 
   const marketById = $derived(new Map(markets.map((market) => [market.id, market])));
 
-  const featuredMarket = $derived.by(() => {
-    return [...markets].sort(compareByVolumeThenRecency)[0] ?? null;
-  });
+  const feedItems = $derived.by(() => {
+    const items: FeedItem[] = [];
 
-  const trendingMarkets = $derived.by(() => {
-    return [...markets].sort(compareByVolumeThenRecency).slice(0, 6);
-  });
-
-  const primaryTrending = $derived(trendingMarkets[0] ?? null);
-  const rankedTrending = $derived(trendingMarkets.slice(1, 6));
-
-  const lowVolumeMarkets = $derived.by(() => {
-    return [...markets]
-      .sort((left, right) => {
-        const leftVolume = tradeSummaries.get(left.id)?.grossVolume ?? 0;
-        const rightVolume = tradeSummaries.get(right.id)?.grossVolume ?? 0;
-        if (leftVolume !== rightVolume) return leftVolume - rightVolume;
-        return right.createdAt - left.createdAt;
-      })
-      .slice(0, 6);
-  });
-
-  const disputedMarkets = $derived.by(() => {
-    return [...markets]
-      .filter((market) => tradeSummaries.get(market.id)?.latestPricePpm != null)
-      .sort((left, right) => {
-        const leftPrice = tradeSummaries.get(left.id)?.latestPricePpm ?? 500_000;
-        const rightPrice = tradeSummaries.get(right.id)?.latestPricePpm ?? 500_000;
-        return Math.abs(leftPrice - 500_000) - Math.abs(rightPrice - 500_000);
-      })
-      .slice(0, 6);
-  });
-
-  const newThisWeek = $derived.by(() => {
-    const weekAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
-    return markets.filter((market) => market.createdAt >= weekAgo).slice(0, 6);
-  });
-
-  const latestDiscussions = $derived(
-    discussions
-      .map((discussion) => ({
-        discussion,
-        market: marketById.get(discussion.marketId)
-      }))
-      .filter((entry): entry is { discussion: DiscussionRecord; market: MarketRecord } => Boolean(entry.market))
-      .slice(0, 8)
-  );
-
-  const tickerMarkets = $derived.by(() => {
-    const seen = new Set<string>();
-    const combined = [...trendingMarkets, ...newThisWeek, ...markets];
-    const deduped: MarketRecord[] = [];
-
-    for (const market of combined) {
-      if (seen.has(market.id)) continue;
-      seen.add(market.id);
-      deduped.push(market);
-      if (deduped.length >= 10) break;
+    for (const market of markets.slice(0, 24)) {
+      items.push({
+        id: `claim-${market.id}`,
+        type: 'claim',
+        createdAt: market.createdAt,
+        market,
+        context: `${authorLabel(market.pubkey)} published a claim in ${categoryLabel(market)}`
+      });
     }
 
-    return deduped;
+    for (const trade of trades.slice(0, 60)) {
+      const market = marketById.get(trade.marketId);
+      if (!market) continue;
+
+      items.push({
+        id: `trade-${trade.id}`,
+        type: 'trade',
+        createdAt: trade.createdAt,
+        market,
+        trade,
+        context: `${formatProductAmount(trade.amount, trade.unit)} moved ${sideLabel(trade.direction)} on a claim you can watch`
+      });
+    }
+
+    for (const discussion of discussions.slice(0, 40)) {
+      const market = marketById.get(discussion.marketId);
+      if (!market) continue;
+
+      items.push({
+        id: `discussion-${discussion.id}`,
+        type: 'discussion',
+        createdAt: discussion.createdAt,
+        market,
+        discussion,
+        context: `Thread heating up in ${categoryLabel(market)}`
+      });
+    }
+
+    return items.sort((left, right) => right.createdAt - left.createdAt).slice(0, 48);
   });
 
-  const filteredMarkets = $derived.by(() => filterHomepageMarkets(markets, searchQuery));
-  const hasActiveMarketSearch = $derived(searchQuery.trim().length > 0);
-  const searchResultCountLabel = $derived(formatHomepageMarketMatchCount(filteredMarkets.length));
+  const visibleFeedItems = $derived.by(() => {
+    if (contentFilter === 'publications') return feedItems.filter((item) => item.type === 'claim');
+    if (contentFilter === 'notes') return feedItems.filter((item) => item.type === 'discussion');
+    return feedItems;
+  });
 
-  function compareByVolumeThenRecency(left: MarketRecord, right: MarketRecord): number {
-    const leftVolume = tradeSummaries.get(left.id)?.grossVolume ?? 0;
-    const rightVolume = tradeSummaries.get(right.id)?.grossVolume ?? 0;
-    if (rightVolume !== leftVolume) return rightVolume - leftVolume;
-    return right.createdAt - left.createdAt;
-  }
+  const upNextMarkets = $derived(
+    [...markets]
+      .sort((left, right) => {
+        const leftTradeAt = tradeSummaries.get(left.id)?.latestTradeAt ?? 0;
+        const rightTradeAt = tradeSummaries.get(right.id)?.latestTradeAt ?? 0;
+        if (rightTradeAt !== leftTradeAt) return rightTradeAt - leftTradeAt;
+        return right.createdAt - left.createdAt;
+      })
+      .slice(0, 3)
+  );
+
+  const canPost = $derived(noteDraft.trim().length > 0);
+
+  $effect(() => {
+    trackEvent('page_view', { path: '/' });
+  });
 
   function mergeRawEvents(seed: NostrEvent[], live: NDKEvent[]): NostrEvent[] {
     const map = new Map<string, NostrEvent>();
@@ -193,522 +209,273 @@
     return [...map.values()];
   }
 
-  $effect(() => {
-    trackEvent('page_view', { path: '/' });
-  });
-
-  function entryClick(surface: string, destination: string, marketId?: string): void {
-    trackEvent('homepage_entry_click', { surface, destination, marketId });
-  }
-
   function authorLabel(pubkey: string): string {
     return displayName(profiles[pubkey], 'Cascade user');
   }
 
-  function probabilityForMarket(marketId: string): number {
-    return (tradeSummaries.get(marketId)?.latestPricePpm ?? 500_000) / 1_000_000;
+  function authorInitial(pubkey: string): string {
+    return authorLabel(pubkey).trim().slice(0, 1).toUpperCase() || 'C';
   }
 
-  function centsForMarket(marketId: string): string {
-    return `${Math.round(probabilityForMarket(marketId) * 100)}¢`;
+  function authorProfileUrl(pubkey: string): string {
+    return `/p/${encodeURIComponent(pubkey)}`;
   }
 
-  function spreadForMarket(marketId: string): string {
-    return `${Math.round(Math.abs(probabilityForMarket(marketId) - 0.5) * 100)} pt`;
+  function categoryLabel(market: MarketRecord): string {
+    return market.categories[0] || market.topics[0] || 'General';
+  }
+
+  function marketSummary(marketId: string): MarketTradeSummary | undefined {
+    return tradeSummaries.get(marketId);
+  }
+
+  function longCents(market: MarketRecord): number {
+    return Math.round((marketSummary(market.id)?.latestPricePpm ?? market.latestPricePpm ?? 500_000) / 10_000);
+  }
+
+  function leadingSide(market: MarketRecord): { label: 'LONG' | 'SHORT'; cents: number } {
+    const long = longCents(market);
+    return long >= 50 ? { label: 'LONG', cents: long } : { label: 'SHORT', cents: 100 - long };
+  }
+
+  function leadingSideLabel(market: MarketRecord): 'LONG' | 'SHORT' {
+    return leadingSide(market).label;
+  }
+
+  function leadingSideCents(market: MarketRecord): number {
+    return leadingSide(market).cents;
+  }
+
+  function sideLabel(direction: TradeRecord['direction']): 'LONG' | 'SHORT' {
+    return direction === 'long' ? 'LONG' : 'SHORT';
+  }
+
+  function tradeActionLabel(trade: TradeRecord): string {
+    return trade.type === 'buy' ? 'Backed' : 'Exited';
+  }
+
+  function tradePriceCents(trade: TradeRecord): string {
+    return `${Math.round(trade.pricePpm / 10_000)}¢`;
+  }
+
+  function tradeCountForMarket(market: MarketRecord): number {
+    return marketSummary(market.id)?.tradeCount ?? 0;
+  }
+
+  function marketDescription(market: MarketRecord): string {
+    return truncateText(market.description || market.body || 'A live claim priced by trading activity.', 190);
+  }
+
+  function discussionPreview(discussion: DiscussionRecord): string {
+    return truncateText(discussion.content || discussion.subject || 'New discussion activity on this claim.', 220);
   }
 </script>
 
-<!-- ============================================================ -->
-<!-- HERO                                                          -->
-<!-- ============================================================ -->
-<section class="py-16 max-md:py-10 min-w-0">
-  <div class="grid gap-12 md:gap-20 md:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] items-center">
-    <div>
-      <h1 class="max-w-[16ch] text-4xl sm:text-5xl font-bold tracking-tighter leading-none md:text-7xl">The crowd has a price. Prove it wrong.</h1>
-      <p class="mt-6 max-w-lg text-base-content/60 text-lg leading-relaxed">
-        Cascade is a prediction market where positions stay open forever.
-        No expiry, no oracle. Create a market, defend your thesis, and trade on your conviction.
-      </p>
-
-      <div class="mt-8 flex items-center gap-4 flex-wrap">
-        <a class="btn btn-primary btn-lg" href="/join" onclick={() => entryClick('hero_cta', '/join')}>Start Trading</a>
-        <a class="text-sm text-base-content/60 hover:text-base-content transition-colors" href="/how-it-works">How it works →</a>
-      </div>
+<section class="grid gap-5">
+  <form class="grid gap-4 rounded-lg border border-base-300 bg-base-100 p-4" onsubmit={(event) => event.preventDefault()}>
+    <div class="flex gap-3">
+      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-base-200 font-tight text-sm font-bold text-primary">
+        C
+      </span>
+      <textarea
+        class="textarea min-h-24 flex-1 resize-none border-base-300 bg-base-100 text-base leading-7 focus:border-primary"
+        placeholder="What's on your mind?"
+        bind:value={noteDraft}
+        aria-label="What's on your mind?"
+      ></textarea>
     </div>
 
-    <div class="grid gap-4 content-center">
-      <div class="text-xs text-base-content/40 uppercase tracking-widest font-semibold">Featured Thesis</div>
-
-      {#if featuredMarket}
-        <a class="card card-border card-side bg-base-200 hover:bg-base-300 border-l-2 border-primary pl-6 grid gap-4 transition-colors" href={marketUrl(featuredMarket.slug)} onclick={() => entryClick('featured_thesis', marketUrl(featuredMarket.slug), featuredMarket.id)}>
-          <h2 class="max-w-[14ch] text-3xl font-bold leading-tight transition-colors group-hover:text-success">{featuredMarket.title}</h2>
-
-          <div class="flex items-baseline gap-3">
-            <span class="text-success font-mono text-5xl font-bold tracking-tight">{centsForMarket(featuredMarket.id)}</span>
-            <span class="badge badge-success badge-outline">{probabilityForMarket(featuredMarket.id) >= 0.5 ? 'LONG' : 'SHORT'}</span>
-          </div>
-
-          <div class="flex flex-wrap gap-5 text-sm text-base-content/40">
-            <span>{formatProductAmount(tradeSummaries.get(featuredMarket.id)?.grossVolume ?? 0, 'usd')} vol</span>
-            <span>{tradeSummaries.get(featuredMarket.id)?.tradeCount ?? 0} trades</span>
-          </div>
-
-          <p class="max-w-prose text-base-content/60 leading-relaxed">{truncateText(sanitizeMarketCopy(featuredMarket.description || featuredMarket.body), 180)}</p>
-        </a>
-      {:else if isPracticeEdition}
-        <div class="border-l-2 border-primary pl-6 grid gap-4">
-          <h2 class="max-w-[16ch] text-3xl font-bold leading-tight">Practice mode — paper money, real mechanics</h2>
-          <p class="text-base-content/60">No practice markets are live yet. Create one to try the full trading flow with paper funds — nothing real is at stake.</p>
-          <div class="flex items-center gap-4 flex-wrap">
-            <a class="btn btn-primary" href="/builder">Create a Practice Market</a>
-            {#if alternateEditionUrl}
-              <a class="btn btn-outline btn-sm" href={alternateEditionUrl}>Switch to Live →</a>
-            {/if}
-          </div>
-        </div>
-      {:else}
-        <div class="border-l-2 border-primary pl-6 grid gap-4">
-          <h2 class="max-w-[12ch] text-3xl font-bold leading-tight">Be the first to create a market</h2>
-          <p class="text-base-content/60">No markets yet. Create the first public market and start the book.</p>
-          <div class="flex items-center gap-4">
-            <a class="btn btn-primary" href="/builder">Create a Market</a>
-          </div>
-        </div>
-      {/if}
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- HOW IT WORKS STRIP                                            -->
-<!-- ============================================================ -->
-<section class="full-bleed bg-base-200 py-10">
-  <div class="shell grid gap-8 sm:grid-cols-3">
-    <div class="flex items-start gap-3">
-      <span class="font-mono text-sm text-base-content/40">01</span>
-      <p class="text-sm text-base-content/70">Find a thesis you believe in</p>
-    </div>
-    <div class="flex items-start gap-3">
-      <span class="font-mono text-sm text-base-content/40">02</span>
-      <p class="text-sm text-base-content/70">Back your conviction with real money</p>
-    </div>
-    <div class="flex items-start gap-3">
-      <span class="font-mono text-sm text-base-content/40">03</span>
-      <p class="text-sm text-base-content/70">Argue your case. Exit when you're right.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- VALUE PROPS                                                   -->
-<!-- ============================================================ -->
-<section class="py-12 grid gap-8 min-w-0">
-  <div>
-    <h2 class="text-3xl font-bold tracking-tight">Markets that never close.</h2>
-    <p class="mt-1 text-sm text-base-content/40">
-      Traditional markets end. Cascade stays open. You can publish a market, defend the case in public,
-      and exit when the price makes sense for you.
-    </p>
-  </div>
-
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-    <article class="grid gap-3 content-start pt-2">
-      <span class="text-lg text-base-content/60">∞</span>
-      <h3 class="font-semibold">No expiry, ever</h3>
-      <p class="text-sm text-base-content/40 leading-relaxed">Markets don't close on a schedule. Take a position today, hold it for years, and exit whenever the price moves your way.</p>
-    </article>
-
-    <article class="grid gap-3 content-start pt-2">
-      <span class="text-lg text-base-content/60">◆</span>
-      <h3 class="font-semibold">Build a thesis, not just a bet</h3>
-      <p class="text-sm text-base-content/40 leading-relaxed">Link related markets together. Show the logic behind your position. Each market prices itself — your case makes it stronger.</p>
-    </article>
-
-    <article class="grid gap-3 content-start pt-2">
-      <span class="text-lg text-base-content/60">→</span>
-      <h3 class="font-semibold">Your conviction, on the record</h3>
-      <p class="text-sm text-base-content/40 leading-relaxed">Anyone can create a market. Every trade is public. When you're right, everyone can see you called it.</p>
-    </article>
-  </div>
-
-  <div class="flex items-center gap-4 flex-wrap">
-    <a class="btn btn-primary" href="/builder">Create market</a>
-    <a class="btn btn-outline" href="/how-it-works">How it works</a>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- LIVE TICKER                                                   -->
-<!-- ============================================================ -->
-<section class="full-bleed bg-base-200" aria-label="Live market strip">
-  <div class="shell marquee-strip">
-    <div class="marquee-label">
-      <span class="marquee-dot"></span>
-      <span>Live</span>
-    </div>
-
-    <div class="marquee-shell">
-      {#if tickerMarkets.length > 0}
-        <div class="marquee-belt">
-          {#each [...tickerMarkets, ...tickerMarkets] as market, index (`${market.id}-${index}`)}
-            <a class="marquee-item" href={marketUrl(market.slug)}>
-              <span class="font-mono text-xs text-base-content/40 uppercase">{market.categories[0] || 'Market'}</span>
-              <span class="text-base-content">{market.title}</span>
-              <span class:text-success={probabilityForMarket(market.id) >= 0.5} class:text-error={probabilityForMarket(market.id) < 0.5}>
-                {centsForMarket(market.id)}
-              </span>
-            </a>
-          {/each}
-        </div>
-      {:else}
-        <div class="text-sm text-base-content/40">Markets appear here as they stream in.</div>
-      {/if}
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- MARKET DISCOVERY                                              -->
-<!-- ============================================================ -->
-<div class="grid gap-6 pt-12 min-w-0">
-  <div class="grid gap-2 justify-items-start">
-    <input
-      type="search"
-      name="market-search"
-      class="input input-bordered w-full max-w-md bg-base-100"
-      placeholder="Search markets…"
-      aria-label="Search markets"
-      bind:value={searchQuery}
-    />
-
-    {#if hasActiveMarketSearch}
-      <p class="text-sm text-base-content/40">{searchResultCountLabel}</p>
-    {/if}
-  </div>
-
-  {#if hasActiveMarketSearch}
-    <div class="divide-y divide-base-300 border-y border-base-300">
-      <div class="hidden sm:grid grid-cols-[minmax(0,1.9fr)_0.55fr_0.6fr_0.55fr_0.55fr_0.7fr] gap-4 items-center py-3 text-xs text-base-content/40 uppercase tracking-wide font-semibold">
-        <span>Market</span>
-        <span>Price</span>
-        <span>Vol</span>
-        <span>Trades</span>
-        <span>Threads</span>
-        <span>Time</span>
+    <div class="flex flex-wrap items-center justify-between gap-3 pl-0 sm:pl-13">
+      <div class="flex flex-wrap gap-2">
+        <button class="btn btn-ghost btn-sm gap-2 text-base-content/55" type="button">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 5h16v14H4zM8 13l2.5-2.5L14 14l2-2 4 4M8.5 8.5h.01" />
+          </svg>
+          Add image
+        </button>
+        <button class="btn btn-ghost btn-sm gap-2 text-base-content/55" type="button">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.5 13.5 13.5 10M8.5 16A4.95 4.95 0 0 1 8.5 9l1.25-1.25a4.95 4.95 0 0 1 7 7L15.5 16M15.5 8a4.95 4.95 0 0 1 0 7l-1.25 1.25a4.95 4.95 0 0 1-7-7L8.5 8" />
+          </svg>
+          Link market
+        </button>
+        <button class="btn btn-ghost btn-sm gap-2 text-base-content/55" type="button">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 3v18M7 7.5h7.5a3 3 0 0 1 0 6H9.5a3 3 0 0 0 0 6H17" />
+          </svg>
+          Attach stake
+        </button>
       </div>
 
-      {#if filteredMarkets.length > 0}
-        {#each filteredMarkets as market (market.id)}
-          <a class="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1.9fr)_0.55fr_0.6fr_0.55fr_0.55fr_0.7fr] gap-4 items-center py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
-            <div class="min-w-0 grid gap-1">
-              <span class="truncate text-white font-semibold">{market.title}</span>
-              <span class="text-sm text-base-content/40 truncate">
-                {truncateText(sanitizeMarketCopy(market.description || market.body), 120)}
-              </span>
-            </div>
-            <span class="font-mono text-sm">{centsForMarket(market.id)}</span>
-            <span class="hidden sm:block font-mono text-sm">{formatProductAmount(tradeSummaries.get(market.id)?.grossVolume ?? 0, 'usd')}</span>
-            <span class="hidden sm:block font-mono text-sm">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
-            <span class="hidden sm:block font-mono text-sm">{discussionCounts.get(market.id) ?? 0}</span>
-            <span class="hidden sm:block text-sm text-base-content/40 text-right">{formatRelativeTime(market.createdAt)}</span>
-          </a>
-        {/each}
-      {:else}
-        <div class="py-4 text-sm text-base-content/40">No markets matched your search.</div>
-      {/if}
+      <button class="btn btn-outline btn-sm" type="submit" disabled={!canPost}>Post</button>
     </div>
-  {:else}
-    <!-- ====== MOST ACTIVE ====== -->
-    <section class="grid gap-6">
-      <div>
-        <h2 class="text-3xl font-bold tracking-tight">Most Active</h2>
-        <p class="mt-1 text-sm text-base-content/40">Most volume · 24h</p>
-      </div>
+  </form>
 
-      {#if primaryTrending}
-        <div class="grid gap-0 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] border-y border-base-300">
-          <a class="grid gap-4 p-5 pr-6 md:border-r md:border-base-300 transition-colors duration-150 hover:bg-base-200" href={marketUrl(primaryTrending.slug)} onclick={() => entryClick('trending_row', marketUrl(primaryTrending.slug), primaryTrending.id)}>
-            <span class="text-xs text-base-content/40 uppercase tracking-wide font-semibold text-success">#1 by volume</span>
-            <h3 class="max-w-[14ch] text-3xl font-bold leading-tight">{primaryTrending.title}</h3>
+  <header class="flex flex-wrap items-center justify-between gap-3 border-b border-base-300 pb-3">
+    <label class="flex items-center gap-2 text-sm text-base-content/55">
+      <span class="sr-only">Feed source</span>
+      <select class="select select-sm border-base-300 bg-base-100" bind:value={audienceFilter} aria-label="Feed source">
+        <option value="for-you">For you</option>
+        <option value="following">Following</option>
+        <option value="subscribed">Subscribed</option>
+        <option value="watchlist">Watchlist</option>
+      </select>
+    </label>
 
-            <div class="flex items-baseline gap-3">
-              <span class="text-success font-mono text-5xl font-bold tracking-tight">{centsForMarket(primaryTrending.id)}</span>
-              <span class="badge badge-success badge-outline">{probabilityForMarket(primaryTrending.id) >= 0.5 ? 'LONG' : 'SHORT'}</span>
-            </div>
+    <nav class="flex gap-5" aria-label="Feed type">
+      <button
+        type="button"
+        class={contentFilter === 'all'
+          ? 'border-b-2 border-primary pb-2 text-sm font-semibold text-primary'
+          : 'border-b-2 border-transparent pb-2 text-sm text-base-content/45 hover:text-base-content'}
+        aria-pressed={contentFilter === 'all'}
+        onclick={() => {
+          contentFilter = 'all';
+        }}
+      >
+        All
+      </button>
+      <button
+        type="button"
+        class={contentFilter === 'notes'
+          ? 'border-b-2 border-primary pb-2 text-sm font-semibold text-primary'
+          : 'border-b-2 border-transparent pb-2 text-sm text-base-content/45 hover:text-base-content'}
+        aria-pressed={contentFilter === 'notes'}
+        onclick={() => {
+          contentFilter = 'notes';
+        }}
+      >
+        Notes
+      </button>
+      <button
+        type="button"
+        class={contentFilter === 'publications'
+          ? 'border-b-2 border-primary pb-2 text-sm font-semibold text-primary'
+          : 'border-b-2 border-transparent pb-2 text-sm text-base-content/45 hover:text-base-content'}
+        aria-pressed={contentFilter === 'publications'}
+        onclick={() => {
+          contentFilter = 'publications';
+        }}
+      >
+        Publications
+      </button>
+    </nav>
+  </header>
 
-            <p class="max-w-prose text-base-content/60 leading-relaxed">{truncateText(sanitizeMarketCopy(primaryTrending.description || primaryTrending.body), 180)}</p>
-
-            <div class="flex flex-wrap gap-5 text-sm text-base-content/40">
-              <span>{formatProductAmount(tradeSummaries.get(primaryTrending.id)?.grossVolume ?? 0, 'usd')} vol</span>
-              <span>{tradeSummaries.get(primaryTrending.id)?.tradeCount ?? 0} trades</span>
-              <span>{discussionCounts.get(primaryTrending.id) ?? 0} posts</span>
-            </div>
+  {#if visibleFeedItems.length > 0}
+    <div class="divide-y divide-base-300">
+      {#each visibleFeedItems as item (item.id)}
+        <article class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 py-6">
+          <a
+            class="grid h-10 w-10 place-items-center rounded-full bg-base-200 font-tight text-sm font-bold text-primary"
+            href={authorProfileUrl(item.market.pubkey)}
+            aria-label={authorLabel(item.market.pubkey)}
+          >
+            {authorInitial(item.market.pubkey)}
           </a>
 
-          <div class="grid content-start">
-            <div class="hidden sm:grid grid-cols-[minmax(0,1.7fr)_0.55fr_0.6fr_0.55fr_0.55fr] gap-4 items-center pl-6 py-4 text-xs text-base-content/40 uppercase tracking-wide font-semibold">
-              <span>Market</span>
-              <span>Price</span>
-              <span>Vol</span>
-              <span>Trades</span>
-              <span>Threads</span>
-            </div>
+          <div class="grid min-w-0 gap-3">
+            <p class="flex items-center gap-2 text-sm text-base-content/45">
+              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 12h16M12 4l8 8-8 8" />
+              </svg>
+              <span>{item.context}</span>
+            </p>
 
-            {#if rankedTrending.length > 0}
-              {#each rankedTrending as market, index (market.id)}
-                <a class="hidden sm:grid grid-cols-[minmax(0,1.7fr)_0.55fr_0.6fr_0.55fr_0.55fr] gap-4 items-center pl-6 py-3 border-t border-base-300 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)} onclick={() => entryClick('trending_row', marketUrl(market.slug), market.id)}>
-                  <div class="min-w-0 flex items-start gap-4">
-                    <span class="font-mono text-sm text-base-content/40 leading-relaxed">{String(index + 2).padStart(2, '0')}</span>
-                    <div class="min-w-0 grid">
-                      <span class="truncate text-white font-semibold">{market.title}</span>
-                      <span class="text-sm text-base-content/40">{authorLabel(market.pubkey)}</span>
-                    </div>
-                  </div>
-                  <span class="font-mono text-sm">{centsForMarket(market.id)}</span>
-                  <span class="font-mono text-sm">{formatProductAmount(tradeSummaries.get(market.id)?.grossVolume ?? 0, 'usd')}</span>
-                  <span class="font-mono text-sm">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
-                  <span class="font-mono text-sm">{discussionCounts.get(market.id) ?? 0}</span>
-                </a>
-              {/each}
-            {:else}
-              <div class="py-4 text-sm text-base-content/40">No active markets yet. <a class="link link-primary" href="/builder">Create the first one</a></div>
-            {/if}
-          </div>
-        </div>
-      {:else}
-        <div class="py-4 text-sm text-base-content/40">No markets yet. <a class="link link-primary" href="/builder">Publish the first market from the builder</a></div>
-      {/if}
-    </section>
-
-    <div class="grid gap-10 md:grid-cols-2">
-      <!-- ====== UNDER THE RADAR ====== -->
-      <section class="grid gap-6 pt-12">
-        <div>
-          <h2 class="text-3xl font-bold tracking-tight">Under the radar</h2>
-          <p class="mt-1 text-sm text-base-content/40">Less traffic. More opportunity — if you're right.</p>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="table table-sm w-full">
-            <thead>
-              <tr class="text-xs text-base-content/40 uppercase tracking-wide border-base-300">
-                <th class="font-semibold">Market</th>
-                <th class="font-semibold text-right">Price</th>
-                <th class="font-semibold text-right">Vol</th>
-                <th class="font-semibold text-right">Posts</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-base-300">
-              {#if lowVolumeMarkets.length > 0}
-                {#each lowVolumeMarkets as market (market.id)}
-                  <tr class="transition-colors duration-150 hover:bg-base-300/50 hover">
-                    <td>
-                      <a class="block hover:text-white" href={marketUrl(market.slug)} onclick={() => entryClick('trending_row', marketUrl(market.slug), market.id)}>
-                        <span class="font-semibold text-white">{market.title}</span>
-                        <span class="block text-xs text-base-content/40 mt-0.5 truncate max-w-sm">{truncateText(sanitizeMarketCopy(market.description || market.body), 80)}</span>
-                      </a>
-                    </td>
-                    <td class="font-mono text-right">{centsForMarket(market.id)}</td>
-                    <td class="font-mono text-right">{formatProductAmount(tradeSummaries.get(market.id)?.grossVolume ?? 0, 'usd')}</td>
-                    <td class="font-mono text-right">{discussionCounts.get(market.id) ?? 0}</td>
-                  </tr>
-                {/each}
-              {:else}
-                <tr>
-                  <td colspan="4" class="text-sm text-base-content/40">No markets in this category yet. <a class="link link-primary" href="/builder">Create the first one</a></td>
-                </tr>
-              {/if}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- ====== MOST CONTESTED ====== -->
-      <section class="grid gap-6 pt-12">
-        <div>
-          <h2 class="text-3xl font-bold tracking-tight">Most Contested</h2>
-          <p class="mt-1 text-sm text-base-content/40">The crowd is split. Someone's going to be wrong.</p>
-        </div>
-
-        {#if disputedMarkets.length > 0}
-          {@const topDisputed = disputedMarkets[0]}
-          {@const restDisputed = disputedMarkets.slice(1)}
-
-          <div class="grid gap-4">
-            <a class="block border-y border-base-300 py-5 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(topDisputed.slug)} onclick={() => entryClick('most_disputed_row', marketUrl(topDisputed.slug), topDisputed.id)}>
-              <h3 class="text-lg font-bold">{topDisputed.title}</h3>
-              <div class="mt-2 flex items-baseline gap-3">
-                <span class="text-success font-mono text-4xl font-bold tracking-tight">{centsForMarket(topDisputed.id)}</span>
-                <span class="text-sm text-base-content/40">Spread {spreadForMarket(topDisputed.id)}</span>
-                <span class="badge badge-success badge-outline badge-sm">{probabilityForMarket(topDisputed.id) >= 0.5 ? 'LONG' : 'SHORT'}</span>
-              </div>
-              <div class="mt-2 flex gap-4 text-sm text-base-content/40">
-                <span>{tradeSummaries.get(topDisputed.id)?.tradeCount ?? 0} trades</span>
-                <span>{discussionCounts.get(topDisputed.id) ?? 0} posts</span>
-              </div>
-            </a>
-
-            <div class="divide-y divide-base-300">
-              {#each restDisputed as market, index (market.id)}
-                <a class="flex items-center justify-between gap-4 py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)} onclick={() => entryClick('most_disputed_row', marketUrl(market.slug), market.id)}>
-                  <div class="flex items-center gap-3 min-w-0">
-                    <span class="font-mono text-sm text-base-content/40">{String(index + 2).padStart(2, '0')}</span>
-                    <span class="font-semibold truncate">{market.title}</span>
-                  </div>
-                  <div class="flex items-center gap-3 shrink-0">
-                    <span class="font-mono text-sm">{centsForMarket(market.id)}</span>
-                    <span class="text-xs text-base-content/40">{spreadForMarket(market.id)}</span>
-                  </div>
-                </a>
-              {/each}
-            </div>
-          </div>
-        {:else}
-          <div class="py-4 text-sm text-base-content/40">No disputed markets yet. <a class="link link-primary" href="/builder">Create the first one</a></div>
-        {/if}
-      </section>
-    </div>
-
-    <div class="grid gap-10 md:grid-cols-2">
-      <!-- ====== NEW THIS WEEK ====== -->
-      <section class="grid gap-6 pt-12">
-        <div>
-          <h2 class="text-3xl font-bold tracking-tight">New This Week</h2>
-          <p class="mt-1 text-sm text-base-content/40">Recently created</p>
-        </div>
-
-        <div class="divide-y divide-base-300 border-t border-base-300">
-          {#if newThisWeek.length > 0}
-            {#each newThisWeek as market, index (market.id)}
-              <a class="flex items-baseline gap-3 py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
-                <span class="font-mono text-sm text-base-content/40 shrink-0">{String(index + 1).padStart(2, '0')}</span>
-                <span class="font-semibold truncate">{market.title}</span>
-                <span class="text-xs text-base-content/40 shrink-0 ml-auto whitespace-nowrap">by {authorLabel(market.pubkey)} · {formatRelativeTime(market.createdAt)}</span>
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <a class="font-semibold text-base-content hover:text-primary" href={authorProfileUrl(item.market.pubkey)}>
+                {authorLabel(item.market.pubkey)}
               </a>
-            {/each}
-          {:else}
-            <div class="py-4 text-sm text-base-content/40">No new markets this week. <a class="link link-primary" href="/builder">Create the first one</a></div>
-          {/if}
-        </div>
-      </section>
+              <span class="text-base-content/35">·</span>
+              <span class="text-base-content/45">{categoryLabel(item.market)}</span>
+              <span class="text-base-content/35">·</span>
+              <time class="text-base-content/45" datetime={new Date(item.createdAt * 1000).toISOString()}>
+                {formatRelativeTime(item.createdAt)}
+              </time>
+            </div>
 
-      <!-- ====== LIVE DEBATE ====== -->
-      <section class="grid gap-6 pt-12">
-        <div>
-          <h2 class="text-3xl font-bold tracking-tight">Live Debate</h2>
-          <p class="mt-1 text-sm text-base-content/40">The argument, in real time.</p>
-        </div>
-
-        <div class="divide-y divide-base-300 border-t border-base-300">
-          {#if latestDiscussions.length > 0}
-            {#each latestDiscussions as entry (entry.discussion.id)}
-              <a class="block py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketDiscussionUrl(entry.market.slug)} onclick={() => entryClick('latest_discussion_row', marketDiscussionUrl(entry.market.slug), entry.market.id)}>
-                <p class="text-sm text-base-content/70 leading-relaxed">{truncateText(entry.discussion.content, 120)}</p>
-                <div class="mt-1 flex items-center gap-2 text-xs text-base-content/40">
-                  <span class="text-base-content/60">{authorLabel(entry.discussion.pubkey)}</span>
-                  <span>in</span>
-                  <span class="text-base-content/60 truncate">{entry.market.title}</span>
-                  <span class="ml-auto shrink-0">{formatRelativeTime(entry.discussion.createdAt)}</span>
+            {#if item.type === 'claim'}
+              <p class="text-base leading-7 text-base-content/70">
+                New claim now live. The crowd is pricing the argument as trades arrive.
+              </p>
+              <a class="grid gap-3 rounded-lg border border-base-300 p-4 hover:border-primary" href={marketUrl(item.market.slug)}>
+                <div class="flex flex-wrap items-center gap-3 font-mono text-[0.68rem] uppercase text-base-content/40">
+                  <span>{categoryLabel(item.market)}</span>
+                  <span>New claim</span>
+                  <span>{discussionCounts.get(item.market.id) ?? 0} replies</span>
+                </div>
+                <h2 class="font-serif text-2xl font-medium leading-tight text-base-content">{item.market.title}</h2>
+                <p class="text-sm leading-6 text-base-content/55">{marketDescription(item.market)}</p>
+                <div class="flex flex-wrap items-center gap-4 border-t border-base-300 pt-3 font-mono text-xs">
+                  <span class={leadingSideLabel(item.market) === 'LONG' ? 'text-success' : 'text-error'}>
+                    {leadingSideLabel(item.market)} {leadingSideCents(item.market)}¢
+                  </span>
+                  <span class="text-base-content/45">{formatProductAmount(marketSummary(item.market.id)?.grossVolume ?? 0, 'usd')} volume</span>
                 </div>
               </a>
-            {/each}
-          {:else}
-            <div class="py-4 text-sm text-base-content/40">No discussion yet. <a class="link link-primary" href="/builder">Create a market to start the debate</a></div>
-          {/if}
-        </div>
-      </section>
+            {:else if item.type === 'trade'}
+              <p class="text-base leading-7 text-base-content/70">
+                {tradeActionLabel(item.trade)} {sideLabel(item.trade.direction)} at {tradePriceCents(item.trade)} on a live claim.
+              </p>
+              <a class="grid gap-2 rounded-lg border border-base-300 p-4 hover:border-primary" href={marketUrl(item.market.slug)}>
+                <span class="font-mono text-[0.68rem] uppercase text-base-content/40">Trade alert</span>
+                <h2 class="font-serif text-xl font-medium leading-tight">{item.market.title}</h2>
+                <div class="flex flex-wrap items-center gap-4 font-mono text-xs">
+                  <span class={item.trade.direction === 'long' ? 'text-success' : 'text-error'}>
+                    {sideLabel(item.trade.direction)} · {formatProductAmount(item.trade.amount, item.trade.unit)}
+                  </span>
+                  <span class="text-base-content/45">{tradeCountForMarket(item.market)} trades</span>
+                </div>
+              </a>
+            {:else}
+              <p class="text-base leading-7 text-base-content/70">{discussionPreview(item.discussion)}</p>
+              <a class="grid gap-2 rounded-lg border border-base-300 p-4 hover:border-primary" href={threadUrl(item.market.slug, item.discussion.id)}>
+                <span class="font-mono text-[0.68rem] uppercase text-base-content/40">Discussion</span>
+                <h2 class="font-serif text-xl font-medium leading-tight">{item.market.title}</h2>
+                <span class="font-mono text-xs text-base-content/45">Open thread</span>
+              </a>
+            {/if}
+
+            <div class="flex flex-wrap items-center gap-5 text-sm text-base-content/45">
+              <a class="hover:text-base-content" href={marketDiscussionUrl(item.market.slug)}>Reply</a>
+              <a class="hover:text-base-content" href={marketUrl(item.market.slug)}>
+                Back {leadingSideLabel(item.market)} {leadingSideCents(item.market)}¢
+              </a>
+              <a class="hover:text-base-content" href="/bookmarks">Save</a>
+              <a class="hover:text-base-content" href={marketUrl(item.market.slug)}>Share</a>
+            </div>
+          </div>
+        </article>
+      {/each}
     </div>
+  {:else}
+    <section class="grid gap-4 border-b border-base-300 py-10">
+      <h1 class="font-tight text-2xl font-semibold">You're not following anyone yet.</h1>
+      <p class="max-w-lg text-sm leading-6 text-base-content/60">
+        Subscribe to a writer to start getting claims in your inbox, or head to Markets to see what's live.
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <a class="btn btn-outline btn-sm" href="/markets">Browse markets</a>
+        {#if alternateEditionUrl}
+          <a class="btn btn-ghost btn-sm" href={alternateEditionUrl}>Switch edition</a>
+        {/if}
+      </div>
+    </section>
   {/if}
-</div>
 
-<!-- ============================================================ -->
-<!-- BOTTOM CTA                                                    -->
-<!-- ============================================================ -->
-<section class="full-bleed bg-base-200 py-16 mt-16">
-  <div class="shell text-center">
-    <h2 class="text-3xl font-bold tracking-tight">Ready to put money behind your beliefs?</h2>
-    <p class="mt-2 text-sm text-base-content/40 max-w-md mx-auto">
-      Create a market, take a position, and defend it in public. Every trade is on the record.
-    </p>
-    <div class="mt-8 flex items-center justify-center gap-4 flex-wrap">
-      <a class="btn btn-primary btn-lg" href="/join">Start Trading</a>
-      <a class="btn btn-outline" href="/builder">Create a Market</a>
-    </div>
-  </div>
+  {#if upNextMarkets.length > 0}
+    <footer class="grid gap-3 border-t border-base-300 pt-6">
+      <h2 class="font-tight text-lg font-bold">Up next</h2>
+      <div class="grid gap-3">
+        {#each upNextMarkets as market}
+          <a class="flex items-center justify-between gap-4 border-b border-base-300 pb-3 text-sm hover:text-primary" href={marketUrl(market.slug)}>
+            <span class="line-clamp-2">{market.title}</span>
+            <span class={leadingSideLabel(market) === 'LONG' ? 'font-mono text-success' : 'font-mono text-error'}>
+              {leadingSideLabel(market)} {leadingSideCents(market)}¢
+            </span>
+          </a>
+        {/each}
+      </div>
+    </footer>
+  {/if}
 </section>
-
-<style>
-  /* ── Full-bleed breakout ────────────────────────────────────── */
-  .full-bleed {
-    width: 100vw;
-    position: relative;
-    left: 50%;
-    right: 50%;
-    margin-left: -50vw;
-    margin-right: -50vw;
-  }
-
-  /* ── Live ticker strip ─────────────────────────────────────── */
-  .marquee-strip {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 1rem;
-    align-items: center;
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-  }
-
-  .marquee-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--color-base-content);
-    opacity: 0.4;
-  }
-
-  .marquee-dot {
-    width: 0.45rem;
-    height: 0.45rem;
-    background: var(--color-success);
-    border-radius: 999px;
-    animation: pulse 1.9s infinite;
-  }
-
-  .marquee-shell {
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .marquee-belt {
-    display: flex;
-    align-items: center;
-    gap: 1.8rem;
-    width: max-content;
-    animation: ticker 42s linear infinite;
-  }
-
-  .marquee-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.65rem;
-    font-size: 0.875rem;
-    white-space: nowrap;
-    color: var(--color-base-content);
-    opacity: 0.6;
-  }
-
-  /* ── Keyframes ─────────────────────────────────────────────── */
-  @keyframes ticker {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
-  }
-
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 50%, transparent); }
-    50% { box-shadow: 0 0 0 0.45rem transparent; }
-  }
-</style>

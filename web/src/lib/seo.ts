@@ -68,15 +68,19 @@ export function buildMarketSeo(args: {
   market: MarketRecord;
   summary?: string;
 }): SeoMetadata {
-  const description =
+  const baseDescription =
     cleanSnippet(args.summary) ||
     cleanSnippet(args.market.description) ||
     cleanSnippet(args.market.body) ||
     `${args.market.title} on ${SITE_NAME}.`;
 
+  const description = args.market.latestPricePpm != null
+    ? marketPriceLine(args.market.latestPricePpm)
+    : (baseDescription || `${args.market.title} on ${SITE_NAME}.`);
+
   return {
     title: `${args.market.title} • ${SITE_NAME}`,
-    description: description || `${args.market.title} on ${SITE_NAME}.`,
+    description,
     canonical: canonicalUrl(args.url),
     type: 'article',
     image: {
@@ -177,6 +181,12 @@ export function buildMissingSeo(url: URL, label: string): SeoMetadata {
     image: defaultImage(url, `${label} preview`),
     robots: 'noindex'
   };
+}
+
+function marketPriceLine(latestPricePpm: number): string {
+  const longCents = Math.round(latestPricePpm / 10_000);
+  const shortCents = 100 - longCents;
+  return `LONG: ${longCents}¢ · SHORT: ${shortCents}¢ — ${SITE_NAME}`;
 }
 
 function defaultImage(url: URL, alt: string): SeoImage {

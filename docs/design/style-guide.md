@@ -2,6 +2,13 @@
 
 These are the active visual rules for Cascade. Existing deviations are debt, not precedent.
 
+> **PENDING:** The active product UX direction is now **The Column** in
+> [`docs/product-ux/INDEX.md`](../product-ux/INDEX.md). The next frontend
+> changes will align `web/` with that direction: warm dark surfaces, warm-ink
+> CTA/wordmark accents, Fraunces for claim/case writing, Inter Tight for
+> section display headings, and a persistent rail/center/right-rail shell. This
+> file will be reconciled after the implementation slice lands.
+
 ## Direction
 
 Cascade should feel like editorial authority on a dark terminal-like surface.

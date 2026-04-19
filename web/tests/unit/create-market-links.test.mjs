@@ -11,13 +11,11 @@ function read(relativePath) {
   return readFileSync(path.join(webRoot, relativePath), 'utf8');
 }
 
-test('site navigation includes Create link to the builder as the last item', () => {
-  const source = read('src/lib/components/cascade/SiteNavigation.svelte');
+test('root rail exposes Publish a claim as the primary builder CTA', () => {
+  const source = read('src/routes/+layout.svelte');
 
-  assert.match(
-    source,
-    /const items = \[[\s\S]*\{ href: '\/portfolio', label: 'Portfolio' \},\s*\{ href: '\/builder', label: 'Create' \}\s*\];/
-  );
+  assert.match(source, /<a class="rail-cta" href="\/builder">/);
+  assert.match(source, /Publish a claim/);
 });
 
 test('authenticated user menu includes a Create market action before Finish setup', () => {

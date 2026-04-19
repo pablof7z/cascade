@@ -6,16 +6,26 @@ The active frontend lives in `web/`.
 
 - framework: SvelteKit + Svelte 5
 - deploy target: Vercel at `https://cascade.f7z.io`
-- styling direction: editorial dark theme on neutral grays
+- styling direction: The Column warm dark editorial shell
 - Nostr client: NDK
 
 `web/` is the only canonical frontend. Any legacy snapshot elsewhere in the repo is non-authoritative.
 
-> **PENDING:** The shared app chrome is being migrated to The Column shell
-> described in [`../product-ux/INDEX.md`](../product-ux/INDEX.md): persistent
-> left rail, centered reading column, right rail search/context cards, warm-ink
-> primary CTA, and no global top navigation bar. Route data contracts stay the
-> same during this slice.
+## App Chrome
+
+The shared SvelteKit layout implements The Column shell described in
+[`../product-ux/INDEX.md`](../product-ux/INDEX.md).
+
+- persistent left rail with primary navigation, edition control, auth, and `Publish a claim`
+- centered reading column for route content
+- right context rail with search and contextual cards
+- no global top navigation bar
+- compact icon rail below `1200px`
+- hidden right rail below `880px`
+- single-column mobile layout below `640px`
+
+Route data contracts stay page-owned; the shell only supplies shared navigation,
+search, account, and context chrome.
 
 ## Current Route Surface
 
@@ -64,7 +74,7 @@ Legacy relay browser routes exist only as redirects away from the launch product
 - normal UX is USD-denominated
 - public discovery surfaces only link to markets after the first public trade exists
 - thread detail SSR merges current relay discussion data so newly published threads can open without waiting for a later refresh
-- perpetual-market copy describes indefinite trading and voluntary exits, not oracle outcome declaration or forced shutdown
+- perpetual-market copy describes indefinite trading and voluntary exits, not external outcome processes or forced shutdown
 - `/portfolio` is the capital surface
 - there is no `/wallet` product route
 - no loading spinners

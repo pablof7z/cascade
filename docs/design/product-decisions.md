@@ -320,11 +320,13 @@ No pill tabs, no background-fill tabs. Underline only.
 
 ## 5. Data & Events
 
-### Markets Never Close
+### Markets Trade Indefinitely
 
-Cascade markets keep trading indefinitely. There is no oracle, outcome declaration, or admin-driven settlement. Exit value is continuous and determined solely by the LMSR price at time of exit.
+Cascade markets keep trading indefinitely. There is no external adjudicator,
+fixed end state, or admin-driven settlement. Exit value is continuous and
+determined solely by the LMSR price at time of exit.
 
-> **Do not design features that assume markets close.**
+> **Do not design features that assume a scheduled end.**
 
 ### No Expiry Tags
 
@@ -356,20 +358,33 @@ The mint plan required explicit sign-off before implementation. This principle e
 
 ## 8. Visual Design
 
+### Product UX Direction: The Column
+
+The active visual direction is **The Column**, documented in
+[`../product-ux/INDEX.md`](../product-ux/INDEX.md). It supersedes the older
+neutral-only / Inter-only wording in this section.
+
+- The shell is a persistent left rail, centered reading column, and right context rail.
+- Warm ink `#efe7d3` is allowed for the wordmark, primary CTA, active underline, and publication-name accents.
+- Fraunces is allowed only for claim titles, case writing, anchor quotes, and publication names.
+- Inter Tight is allowed for section display headings.
+- Inter remains the UI and reply-body font.
+- JetBrains Mono remains the font for prices, stats, timestamps, and quantities.
+
 ### Component Framework: Tailwind v4 + DaisyUI
 
 Use **Tailwind CSS v4** with **DaisyUI** for all UI components. No hand-rolled component CSS for things DaisyUI provides (`btn`, `card`, `modal`, `tab`, `badge`, `alert`, `input`, `select`, `textarea`, `toggle`, `dropdown`, etc.).
 
-**bits-ui** remains for headless accessibility primitives (tabs, dialogs, dropdowns) — style them with DaisyUI classes.
+Custom CSS is allowed for The Column shell and product-specific primitives that DaisyUI does not provide directly, such as the persistent rail, right rail, feed items, claim embeds, and case/discussion typography. Keep those classes scoped to the design-system primitive and backed by tests.
 
 This replaces any prior shadcn-svelte or custom CSS approaches.
 
 ### Editorial Minimalism
 
-Dark theme on `neutral-950`. Accents: only `emerald` (bullish/YES) and `rose` (bearish/NO). No other accent colors.
+Warm dark theme. Directional accents stay semantic: emerald for LONG/positive, rose for SHORT/negative. Warm ink is the single non-directional accent and must stay reserved.
 
-Feel: Bloomberg meets The Economist in dark mode. Dense, professional, authoritative.
+Feel: workspace chrome, essay content. Reading-first, with trading available in the right rail.
 
 ### Typography
 
-Inter for all text. JetBrains Mono for all numbers, prices, and percentages.
+Inter for UI and replies. Inter Tight for section display headings. Fraunces only for the argument itself. JetBrains Mono for numbers, prices, percentages, timestamps, and quantities.

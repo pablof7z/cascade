@@ -1,108 +1,112 @@
 # Brand Style Guide
 
-These are the active visual rules for Cascade. Existing deviations are debt, not precedent.
+These are the active high-level visual rules for Cascade. The detailed product UX source of truth is
+[`docs/product-ux/INDEX.md`](../product-ux/INDEX.md), known as **The Column**.
 
-> **PENDING:** The active product UX direction is now **The Column** in
-> [`docs/product-ux/INDEX.md`](../product-ux/INDEX.md). The next frontend
-> changes will align `web/` with that direction: warm dark surfaces, warm-ink
-> CTA/wordmark accents, Fraunces for claim/case writing, Inter Tight for
-> section display headings, and a persistent rail/center/right-rail shell. This
-> file will be reconciled after the implementation slice lands.
+Existing deviations are debt, not precedent.
 
 ## Direction
 
-Cascade should feel like editorial authority on a dark terminal-like surface.
+Cascade is a writer's product with a trade button.
 
-- Professional minimalist dark theme
-- Dense, information-first layout
-- Strong hierarchy through typography and spacing
-- Confidence through restraint, not decoration
+- Workspace chrome, essay content
+- Persistent left rail, centered reading column, and right context rail
+- Reading-first surfaces with trading always accessible but never dominant
+- Strong hierarchy through typography, spacing, and restraint
 
-Target feel: newsroom, research terminal, financial briefing. Not SaaS dashboard chrome.
+Target feel: Substack-shaped reading app with market conviction in the right rail. Not a trading dashboard with comments bolted on.
 
 ## Hard Rules
 
 Never introduce:
 
-- rounded pills
-- background-fill toggles
+- global top navigation
+- background-fill tabs or pill filter chips
 - gratuitous cards
-- gradients
 - blue-tinted grays
 - stacked borders
 - emoji in UI chrome
 - loading spinners or skeleton loaders
+- forced-end language
 
 If an element does not need a border or container, do not give it one.
 
 ## Color
 
-Use only the neutral palette plus the two directional accents.
+Use The Column warm dark palette through DaisyUI/Tailwind theme tokens.
 
-- Page background: `neutral-950`
-- Secondary surfaces: `neutral-900` and `neutral-800`
-- Borders: `neutral-800` and `neutral-700`
-- Primary text: `white`
-- Secondary text: `neutral-300`, `neutral-400`, `neutral-500`
-- Bullish / positive: `emerald`
-- Bearish / negative: `rose`
+- Page background: `#0b0a09`
+- Secondary surface: `#13120f`
+- Hairline border: `#1c1b17`
+- Strong border / neutral edge: `#2a2822`
+- Primary text: `#ece7dc`
+- Muted text: `#8a8678`
+- Warm ink / primary CTA / wordmark: `#efe7d3`
+- LONG / positive: `#3ec48a`
+- SHORT / negative: `#e85d7a`
 
-Use `neutral-*`, not `gray-*`.
+Warm ink is the only non-directional accent. Emerald and rose are semantic and should not become decoration.
 
 ## Typography
 
-- Headings and body: Inter via `font-sans`
-- Numbers, prices, percentages, and quantities: JetBrains Mono via `font-mono`
-- Interactive labels: `text-sm font-medium`
-- Metadata: `text-xs`
+- UI chrome, replies, buttons, forms: Inter via `font-sans`
+- Section display heads: Inter Tight via `font-tight`
+- Claim titles, case writing, anchor quotes, publication names: Fraunces via `font-serif`
+- Numbers, prices, percentages, quantities, timestamps: JetBrains Mono via `font-mono`
 
-Do not use decorative fonts. Do not use all-caps tracking except for small category labels that truly need it.
+Serif marks argumentative writing. Do not use Fraunces on chrome, metadata, tabs, buttons, or reply bodies.
 
 ## Layout
 
-- Prefer full-width sections, dividers, grids, and sidebars over card grids.
-- Use whitespace to separate sections before reaching for borders.
-- Make adjacent sections structurally different when the page is long.
-- Lists should usually use `divide-y divide-neutral-800` without an outer frame.
+- The primary shell is a three-column grid: `200px` rail, center reading column up to `720px`, right rail `340px`, max shell width `1320px`.
+- At `1200px`, the left rail collapses to icons.
+- At `880px`, the right rail hides.
+- At `640px`, the rail hides and content becomes single-column.
+- The center column owns the document scroll. Rails are sticky.
+
+Do not create per-page shell structures unless the relevant product-UX page spec explicitly allows it.
 
 ## Components
 
 Buttons:
 
-- Keep them simple, compact, and rectangular.
-- No pill buttons.
-- Primary action color should stay within the approved palette.
+- Warm-ink primary CTAs are reserved for the highest-leverage action, usually `Publish a claim`.
+- Secondary actions stay transparent or outlined.
+- Trade actions use LONG/SHORT semantic color only inside trading modules.
 
 Tabs:
 
-- Underline style only.
-- Container: `flex gap-1 border-b border-neutral-800`
-- Active: `-mb-px border-b-2 border-white text-white`
-- Inactive: `text-neutral-500 hover:text-neutral-300`
+- Text-only underline tabs.
+- Active state uses warm ink.
+- No pill tabs and no background-fill tabs.
 
 Inputs:
 
-- Keep borders subtle.
+- Subtle borders and warm dark surfaces.
 - No glow, no heavy shadows, no oversized rounded corners.
 
 Cards:
 
 - Avoid by default.
-- Use only when a component genuinely needs container chrome such as a modal box or isolated form block.
+- Right-rail cards, modals, and isolated form blocks may use contained chrome.
+- Lists should normally be divided rows, not card grids.
 
 ## Data Presentation
 
 - Show normal product values in USD.
-- Use `font-mono` for prices, probabilities, and balances.
+- Use `font-mono` for prices, probabilities, balances, and timestamps.
 - Do not expose sats or msats in normal product UI.
-- Use emerald for LONG / YES positive context and rose for SHORT / NO negative context.
+- Use LONG and SHORT in trading/product chrome.
+- Use emerald for LONG/positive context and rose for SHORT/negative context.
 
 ## Interaction States
 
 - Render empty states, not loading spinners.
-- Stream data in as it arrives.
-- Error states should be calm and precise, not dramatic.
+- Stream data in as events arrive.
+- Error states should be calm and precise.
+- Expected actions should update in place rather than producing toast noise.
 
 ## Consistency Rule
 
-When an existing component pattern already works, reuse it. Do not introduce a new visual variant of an established control unless the old one is being deliberately replaced everywhere.
+Before adding a new visual pattern, check [`docs/product-ux/20-components.md`](../product-ux/20-components.md) and
+[`docs/product-ux/51-anti-patterns.md`](../product-ux/51-anti-patterns.md). Reuse The Column primitives unless the old pattern is being deliberately replaced everywhere.

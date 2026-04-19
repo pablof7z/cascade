@@ -11,10 +11,14 @@ function read(relativePath) {
   return readFileSync(path.join(webRoot, relativePath), 'utf8');
 }
 
-test('primary site navigation links to bookmarks and how it works', () => {
+test('primary site navigation uses The Column rail items', () => {
   const source = read('src/lib/components/cascade/SiteNavigation.svelte');
 
-  assert.match(source, /\{ href: '\/bookmarks', label: 'Bookmarks' \}/);
-  assert.match(source, /\{ href: '\/how-it-works', label: 'How It Works' \}/);
+  assert.match(source, /\{ href: '\/', label: 'Home', icon: 'home' \}/);
+  assert.match(source, /\{ href: '\/bookmarks', label: 'Bookmarks', icon: 'bookmark' \}/);
+  assert.match(source, /\{ href: '\/portfolio', label: 'Portfolio', icon: 'portfolio' \}/);
+  assert.match(source, /\{ href: '\/profile', label: 'Profile', icon: 'profile' \}/);
   assert.match(source, /href=\{item\.href\}/);
+  assert.match(source, /class="rail-nav"/);
+  assert.doesNotMatch(source, /menu-horizontal/);
 });

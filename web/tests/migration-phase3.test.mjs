@@ -8,9 +8,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const webRoot = resolve(__dirname, '..');
 function read(rel) { return readFileSync(resolve(webRoot, rel), 'utf8'); }
 
-test('Task 3.1: SiteNavigation uses daisyUI menu-horizontal, no border-neutral, no CSS vars', () => {
+test('Task 3.1: SiteNavigation uses The Column rail, no top-nav menu-horizontal, no CSS vars', () => {
   const siteNavigation = read('src/lib/components/cascade/SiteNavigation.svelte');
-  assert.match(siteNavigation, /navbar|menu\s+menu-horizontal/);
+  assert.match(siteNavigation, /class="rail-nav"/);
+  assert.match(siteNavigation, /class="rail-item"/);
+  assert.doesNotMatch(siteNavigation, /menu\s+menu-horizontal/);
   assert.doesNotMatch(siteNavigation, /var\(--/);
   assert.doesNotMatch(siteNavigation, /border-neutral-\d+/);
 });

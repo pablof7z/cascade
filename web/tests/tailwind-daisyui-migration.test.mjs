@@ -59,10 +59,12 @@ test('bits-ui wrappers have been removed', () => {
   assert.ok(!pkg.dependencies?.['bits-ui'], 'bits-ui dep should be removed');
 });
 
-test('site navigation uses DaisyUI navbar or menu classes', () => {
+test('site navigation uses The Column rail classes', () => {
   const siteNavigation = read('src/lib/components/cascade/SiteNavigation.svelte');
 
-  assert.match(siteNavigation, /navbar|menu\s+menu-horizontal/);
+  assert.match(siteNavigation, /class="rail-nav"/);
+  assert.match(siteNavigation, /class="rail-item"/);
+  assert.doesNotMatch(siteNavigation, /menu\s+menu-horizontal/);
   assert.doesNotMatch(siteNavigation, /var\(--/);
 });
 

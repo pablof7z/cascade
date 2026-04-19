@@ -6,7 +6,6 @@
   import AuthPanel from '$lib/features/auth/AuthPanel.svelte';
   import EditionSwitch from '$lib/components/cascade/EditionSwitch.svelte';
   import SiteNavigation from '$lib/components/cascade/SiteNavigation.svelte';
-  import Footer from '$lib/components/cascade/Footer.svelte';
   import SeoHead from '$lib/components/SeoHead.svelte';
   import { ndk, ensureClientNdk } from '$lib/ndk/client';
   import type { SeoMetadata } from '$lib/seo';
@@ -29,24 +28,63 @@
 {/if}
 
 <div class="site-frame">
-  <header class="site-header">
-    <div class="shell site-header-inner">
-      <a class="site-brand" href="/">Cascade</a>
+  <div class="column-shell">
+    <aside class="column-rail" aria-label="Primary">
+      <a class="column-brand" href="/" aria-label="Cascade home">
+        <span class="column-logo" aria-hidden="true">C</span>
+        <span class="column-wordmark labels">Cascade</span>
+      </a>
 
       <SiteNavigation />
 
-      <div class="flex min-w-0 items-center justify-end gap-3">
+      <a class="rail-cta" href="/builder">
+        <span aria-hidden="true">+</span>
+        <span class="labels">Publish a claim</span>
+      </a>
+
+      <div class="rail-spacer"></div>
+
+      <div class="rail-bottom">
         <EditionSwitch />
         <AuthPanel />
+        <a class="rail-more" href="/how-it-works">
+          <svg class="rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+          <span class="labels">More</span>
+        </a>
       </div>
-    </div>
-  </header>
+    </aside>
 
-  <main class="site-main">
-    <div class="shell page">
-      {@render children?.()}
-    </div>
-  </main>
+    <main class="column-center">
+      <div class="page">
+        {@render children?.()}
+      </div>
+    </main>
 
-  <Footer />
+    <aside class="column-right" aria-label="Context">
+      <label class="column-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />
+        </svg>
+        <input type="search" placeholder="Search Cascade" aria-label="Search Cascade" />
+      </label>
+
+      <section class="rail-card" aria-labelledby="column-up-next">
+        <div class="rail-card-head">
+          <h2 id="column-up-next">Up next</h2>
+          <a href="/activity">Activity</a>
+        </div>
+        <p class="rail-card-empty">Claims from your graph will appear here as live events arrive.</p>
+      </section>
+
+      <section class="rail-card" aria-labelledby="column-writers">
+        <div class="rail-card-head">
+          <h2 id="column-writers">Writers</h2>
+          <a href="/profile">Profile</a>
+        </div>
+        <p class="rail-card-empty">Subscribe suggestions will appear after profile data is available.</p>
+      </section>
+    </aside>
+  </div>
 </div>

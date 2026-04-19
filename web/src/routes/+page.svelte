@@ -54,6 +54,12 @@
   let noteDraft = $state('');
   let audienceFilter = $state('for-you');
   let contentFilter = $state('all');
+  let visibleFeedLimit = $state(18);
+  let viewedFeedHeadId = $state('');
+  let lastFeedFilterKey = $state('');
+
+  const initialFeedLimit = 18;
+  const feedLimitStep = 12;
 
   const selectedEdition = $derived(getCascadeEdition(data.cascadeEdition ?? null));
   const eventKinds = $derived(getCascadeEventKinds(selectedEdition));
@@ -174,10 +180,20 @@
     return items.sort((left, right) => right.createdAt - left.createdAt).slice(0, 48);
   });
 
-  const visibleFeedItems = $derived.by(() => {
+  const filteredFeedItems = $derived.by(() => {
     if (contentFilter === 'publications') return feedItems.filter((item) => item.type === 'claim');
     if (contentFilter === 'notes') return feedItems.filter((item) => item.type === 'discussion');
     return feedItems;
+  });
+
+  const visibleFeedItems = $derived(filteredFeedItems.slice(0, visibleFeedLimit));
+  const hasMoreFeedItems = $derived(filteredFeedItems.length > visibleFeedLimit);
+  const feedFilterKey = $derived(`${audienceFilter}:${contentFilter}`);
+  const newestFilteredFeedItemId = $derived(filteredFeedItems[0]?.id ?? '');
+  const newFeedItemsCount = $derived.by(() => {
+    if (!viewedFeedHeadId) return 0;
+    const viewedIndex = filteredFeedItems.findIndex((item) => item.id === viewedFeedHeadId);
+    return viewedIndex > 0 ? viewedIndex : 0;
   });
 
   const upNextMarkets = $derived(
@@ -195,6 +211,20 @@
 
   $effect(() => {
     trackEvent('page_view', { path: '/' });
+  });
+
+  $effect(() => {
+    if (lastFeedFilterKey !== feedFilterKey) {
+      lastFeedFilterKey = feedFilterKey;
+      visibleFeedLimit = initialFeedLimit;
+      viewedFeedHeadId = newestFilteredFeedItemId;
+    }
+  });
+
+  $effect(() => {
+    if (!viewedFeedHeadId && newestFilteredFeedItemId) {
+      viewedFeedHeadId = newestFilteredFeedItemId;
+    }
   });
 
   function mergeRawEvents(seed: NostrEvent[], live: NDKEvent[]): NostrEvent[] {
@@ -268,6 +298,18 @@
 
   function discussionPreview(discussion: DiscussionRecord): string {
     return truncateText(discussion.content || discussion.subject || 'New discussion activity on this claim.', 220);
+  }
+
+  function showNewestFeedItems() {
+    viewedFeedHeadId = newestFilteredFeedItemId;
+    visibleFeedLimit = Math.max(initialFeedLimit, visibleFeedLimit);
+    if (browser) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  function loadMoreFeedItems() {
+    visibleFeedLimit += feedLimitStep;
   }
 </script>
 
@@ -362,6 +404,14 @@
     </nav>
   </header>
 
+  {#if newFeedItemsCount > 0}
+    <div class="flex justify-center">
+      <button class="btn btn-outline btn-sm rounded-full" type="button" onclick={showNewestFeedItems}>
+        {newFeedItemsCount} new post{newFeedItemsCount === 1 ? '' : 's'} · click to update
+      </button>
+    </div>
+  {/if}
+
   {#if visibleFeedItems.length > 0}
     <div class="divide-y divide-base-300">
       {#each visibleFeedItems as item (item.id)}
@@ -448,6 +498,14 @@
         </article>
       {/each}
     </div>
+
+    {#if hasMoreFeedItems}
+      <div class="flex justify-center border-t border-base-300 pt-5">
+        <button class="btn btn-outline btn-sm" type="button" onclick={loadMoreFeedItems}>
+          Load more
+        </button>
+      </div>
+    {/if}
   {:else}
     <section class="grid gap-4 border-b border-base-300 py-10">
       <h1 class="font-tight text-2xl font-semibold">You're not following anyone yet.</h1>

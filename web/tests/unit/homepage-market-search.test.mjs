@@ -154,9 +154,22 @@ test('homepage source builds a mixed feed from relay market, trade, and discussi
   assert.match(source, /type:\s*'claim'/);
   assert.match(source, /type:\s*'trade'/);
   assert.match(source, /type:\s*'discussion'/);
-  assert.match(source, /const\s+visibleFeedItems\s*=\s*\$derived\.by/);
+  assert.match(source, /const\s+filteredFeedItems\s*=\s*\$derived\.by/);
+  assert.match(source, /const\s+visibleFeedItems\s*=\s*\$derived\(filteredFeedItems\.slice\(0, visibleFeedLimit\)\)/);
   assert.match(source, /contentFilter === 'publications'/);
   assert.match(source, /contentFilter === 'notes'/);
+});
+
+test('homepage source exposes load-more and new-post feed affordances', () => {
+  const source = read('src/routes/+page.svelte');
+
+  assert.match(source, /let\s+visibleFeedLimit\s*=\s*\$state\(18\);/);
+  assert.match(source, /const\s+newFeedItemsCount\s*=\s*\$derived\.by/);
+  assert.match(source, /viewedFeedHeadId/);
+  assert.match(source, /function showNewestFeedItems\(\)/);
+  assert.match(source, /click to update/);
+  assert.match(source, /function loadMoreFeedItems\(\)/);
+  assert.match(source, />\s*Load more\s*<\/button>/);
 });
 
 test('homepage feed actions navigate to market surfaces without inline trading execution', () => {

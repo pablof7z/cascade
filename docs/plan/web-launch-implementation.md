@@ -202,7 +202,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [x] Empty state routes users to `/markets`.
 - [ ] Personalized graph ranking uses follows, subscriptions, watchlist, and held positions.
 - [ ] Writer suggestions use real profile/follow data.
-- [ ] Load-more and new-post affordances exist.
+- [x] Load-more and new-post affordances exist.
 - [ ] Home note publishing is backed by the planned note event path.
 
 ## Workstream 2A: Subscriptions `/subscriptions`

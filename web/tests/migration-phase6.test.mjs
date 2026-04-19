@@ -54,10 +54,11 @@ test('privacy page uses prose wrapper and time element', () => {
   assert.doesNotMatch(src, /<style\b/);
 });
 
-test('error page uses daisyUI hero component', () => {
+test('error page uses Column CSS instead of DaisyUI hero', () => {
   const src = read('src/routes/+error.svelte');
-  assert.match(src, /\bhero\b/);
-  assert.match(src, /hero-content/);
-  assert.doesNotMatch(src, /\bpage-title\b|\bpage-subtitle\b|\bpage-header\b/);
+  assert.doesNotMatch(src, /\bhero\b/);
+  assert.doesNotMatch(src, /hero-content/);
+  assert.match(src, /\bsite-frame\b/);
+  assert.match(src, /\btext-3xl\b.*\bfont-bold\b/);
   assert.doesNotMatch(src, /<style\b/);
 });

@@ -86,63 +86,61 @@
   <title>Relays — Cascade</title>
 </svelte:head>
 
-<div class="bookmarks-layout">
-  <div class="bookmarks-main">
-    {#if currentUser}
-      <section class="bookmarks-section">
-        <div class="bookmarks-section-header">
-          <h2 class="bookmarks-section-title">My Relays</h2>
-          <p class="bookmarks-section-desc">Relays you follow as magazines</p>
-        </div>
-
-        {#if myRelayUrls.length > 0}
-          <div class="trending-grid">
-            {#each myRelayUrls as relayUrl (relayUrl)}
-              <RelayCard
-                {relayUrl}
-                onRemove={() => removeRelay(relayUrl)}
-              />
-            {/each}
-          </div>
-        {:else}
-          <div class="bookmarks-empty">
-            <p>No relays bookmarked yet</p>
-            <p class="muted">Explore relays below and bookmark them to follow</p>
-          </div>
-        {/if}
-      </section>
-    {:else}
-      <section class="bookmarks-section">
-        <div class="bookmarks-section-header">
-          <h2 class="bookmarks-section-title">My Relays</h2>
-          <p class="bookmarks-section-desc">Log in to bookmark and follow relays</p>
-        </div>
-      </section>
-    {/if}
-
-    <section class="bookmarks-section">
-      <div class="bookmarks-section-header">
-        <h2 class="bookmarks-section-title">Relays Readers Are Exploring</h2>
-        <p class="bookmarks-section-desc">Discover relays the community is reading from</p>
+<div class="page">
+  {#if currentUser}
+    <section class="mb-10">
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold">My Relays</h2>
+        <p class="text-base-content/70 mt-1">Relays you follow as magazines</p>
       </div>
 
-      {#if trendingRelays.length > 0}
-        <div class="trending-grid">
-          {#each trendingRelays as { url, userCount } (url)}
+      {#if myRelayUrls.length > 0}
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {#each myRelayUrls as relayUrl (relayUrl)}
             <RelayCard
-              relayUrl={url}
-              {userCount}
-              bookmarked={isBookmarked(url)}
-              showBookmarkToggle={!!currentUser}
-              onToggleBookmark={() => toggleBookmark(url)}
+              {relayUrl}
+              onRemove={() => removeRelay(relayUrl)}
             />
           {/each}
         </div>
-      {:else if networkRelaySets.events.length > 0}
-        <p class="muted">Analyzing which relays people follow...</p>
       {:else}
-        <p class="muted">Discovering relays from the network...</p>
+        <div class="text-center py-8 text-base-content/60">
+          <p>No relays bookmarked yet</p>
+          <p class="muted mt-1">Explore relays below and bookmark them to follow</p>
+        </div>
       {/if}
     </section>
-  </div>
+  {:else}
+    <section class="mb-10">
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold">My Relays</h2>
+        <p class="text-base-content/70 mt-1">Log in to bookmark and follow relays</p>
+      </div>
+    </section>
+  {/if}
+
+  <section>
+    <div class="mb-6">
+      <h2 class="text-lg font-semibold">Relays Readers Are Exploring</h2>
+      <p class="text-base-content/70 mt-1">Discover relays the community is reading from</p>
+    </div>
+
+    {#if trendingRelays.length > 0}
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {#each trendingRelays as { url, userCount } (url)}
+          <RelayCard
+            relayUrl={url}
+            {userCount}
+            bookmarked={isBookmarked(url)}
+            showBookmarkToggle={!!currentUser}
+            onToggleBookmark={() => toggleBookmark(url)}
+          />
+        {/each}
+      </div>
+    {:else if networkRelaySets.events.length > 0}
+      <p class="muted">Analyzing which relays people follow...</p>
+    {:else}
+      <p class="muted">Discovering relays from the network...</p>
+    {/if}
+  </section>
 </div>

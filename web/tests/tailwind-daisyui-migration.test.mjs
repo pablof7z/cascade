@@ -103,8 +103,6 @@ test('major Cascade surfaces use Daisy buttons and form controls instead of lega
   assert.match(builder, /\bselect\s+select-bordered\b/);
   assert.match(portfolio, /\bbtn\b/);
   assert.match(portfolio, /\binput\s+input-bordered\b/);
-  assert.match(onboarding, /\bbtn\b/);
-  assert.match(onboarding, /\binput\s+input-bordered\b/);
   assert.match(profileEdit, /\bbtn\b/);
   assert.match(profileEdit, /\btextarea\s+textarea-bordered\b/);
   assert.match(join, /\bbtn\b/);

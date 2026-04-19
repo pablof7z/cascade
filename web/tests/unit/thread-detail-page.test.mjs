@@ -14,7 +14,7 @@ function read(relativePath) {
 test('thread detail page renders full reply content without truncation', () => {
   const source = read('src/routes/market/[slug]/discussion/[threadId]/+page.svelte');
 
-  assert.match(source, /<p class="page-subtitle">\{node\.post\.content\}<\/p>/);
+  assert.match(source, /<p class="text-base-content\/70 mt-2">\{node\.post\.content\}<\/p>/);
   assert.doesNotMatch(source, /truncateText\(node\.post\.content,\s*400\)/);
   assert.doesNotMatch(source, /formatRelativeTime,\s*marketDiscussionUrl,\s*truncateText/);
 });
@@ -25,7 +25,7 @@ test('thread detail page keeps the heading on the root post only', () => {
   assert.match(source, /\{#snippet renderThread\(node: DiscussionThread, isRoot: boolean = false\)\}/);
   assert.match(source, /\{@render renderThread\(data\.thread, true\)\}/);
   assert.match(source, /\{@render renderThread\(reply, false\)\}/);
-  assert.match(source, /\{#if isRoot && node\.post\.subject\}[\s\S]*<h2 class="section-title">\{node\.post\.subject\}<\/h2>[\s\S]*\{\/if\}/);
+  assert.match(source, /\{#if isRoot && node\.post\.subject\}[\s\S]*<h2 class="text-lg font-semibold mt-3">\{node\.post\.subject\}<\/h2>[\s\S]*\{\/if\}/);
   assert.doesNotMatch(source, /<h2 class="section-title">\{node\.post\.subject \|\| 'Reply'\}<\/h2>/);
 });
 

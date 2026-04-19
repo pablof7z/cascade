@@ -41,18 +41,7 @@
   }
 </script>
 
-<section class="section">
-  <div class="page-header">
-    <div class="eyebrow">Thread</div>
-    <h1 class="page-title">{data.thread.post.subject || 'Discussion thread'}</h1>
-    <p class="page-subtitle">
-      Attached to <a href="/market/{data.market.slug}" class="positive">{data.market.title}</a>.
-    </p>
-    <div class="button-row">
-      <a class="btn btn-outline" href={marketDiscussionUrl(data.market.slug)}>Back to discussion</a>
-    </div>
-  </div>
-
+<div class="page">
   <div class="market-context-bar">
     <a href="/market/{data.market.slug}" class="market-context-market">{data.market.title}</a>
     <span class:positive={impliedProbability >= 0.5} class:negative={impliedProbability < 0.5}>
@@ -60,22 +49,31 @@
     </span>
     <a class="btn btn-outline" href="/market/{data.market.slug}">Buy LONG / Buy SHORT</a>
   </div>
-</section>
 
-<section class="section">
+  <div class="mb-6">
+    <div class="eyebrow">Thread</div>
+    <h1 class="text-2xl font-bold mt-1">{data.thread.post.subject || 'Discussion thread'}</h1>
+    <p class="text-base-content/70 mt-1">
+      Attached to <a href="/market/{data.market.slug}" class="positive">{data.market.title}</a>.
+    </p>
+    <div class="mt-4">
+      <a class="btn btn-outline" href={marketDiscussionUrl(data.market.slug)}>Back to discussion</a>
+    </div>
+  </div>
+
   {@render renderThread(data.thread, true)}
-</section>
+</div>
 
 {#snippet renderThread(node: DiscussionThread, isRoot: boolean = false)}
-  <article class="surface panel">
+  <article class="bg-base-200 rounded-lg border border-base-300 p-5 mt-4">
     <div class="eyebrow">{authorLabel(node.post.pubkey)} · {formatRelativeTime(node.post.createdAt)}</div>
     {#if isRoot && node.post.subject}
-      <h2 class="section-title">{node.post.subject}</h2>
+      <h2 class="text-lg font-semibold mt-3">{node.post.subject}</h2>
     {/if}
-    <p class="page-subtitle">{node.post.content}</p>
+    <p class="text-base-content/70 mt-2">{node.post.content}</p>
 
     {#if node.replies.length > 0}
-      <div class="section" style="margin-top: 1rem; padding-left: 1rem; border-left: 1px solid color-mix(in srgb, var(--color-neutral) 85%, transparent);">
+      <div class="mt-4 pl-4 border-l border-base-300">
         {#each node.replies as reply (reply.post.id)}
           {@render renderThread(reply, false)}
         {/each}
@@ -84,7 +82,7 @@
   </article>
 {/snippet}
 
-<section class="section">
+<div class="mt-6">
   {#if currentUser}
     <div class="reply-compose">
       <textarea
@@ -108,7 +106,7 @@
       <a href="/join">Sign in</a> to reply.
     </p>
   {/if}
-</section>
+</div>
 
 <style>
   .market-context-bar {

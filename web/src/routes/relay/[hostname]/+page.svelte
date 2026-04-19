@@ -62,30 +62,34 @@
   <title>{relayInfo.nip11?.name || hostname} — Cascade</title>
 </svelte:head>
 
-<div class="relay-banner">
-  <a class="relay-banner-back" href="/relays" aria-label="Back to relays">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M19 12H5M12 19l-7-7 7-7" />
-    </svg>
-  </a>
-  <div class="relay-banner-info">
-    <h1 class="relay-banner-name">{relayInfo.nip11?.name || hostname}</h1>
-    {#if relayInfo.nip11?.description}
-      <p class="relay-banner-desc">{relayInfo.nip11.description}</p>
-    {/if}
+<div class="bg-base-200 border-b border-base-300">
+  <div class="page">
+    <div class="flex items-start gap-4">
+      <a class="relay-banner-back" href="/relays" aria-label="Back to relays">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+      </a>
+      <div class="flex-1 min-w-0">
+        <h1 class="text-2xl font-bold">{relayInfo.nip11?.name || hostname}</h1>
+        {#if relayInfo.nip11?.description}
+          <p class="text-base-content/70 mt-1">{relayInfo.nip11.description}</p>
+        {/if}
+      </div>
+      {#if currentUser}
+        <button
+          class="btn btn-outline relay-bookmark-btn"
+          title={isBookmarked ? 'Remove from relays' : 'Bookmark relay'}
+          onclick={toggleBookmark}
+        >
+          <BookmarkIcon size={18} filled={isBookmarked} />
+        </button>
+      {/if}
+    </div>
   </div>
-  {#if currentUser}
-    <button
-      class="relay-bookmark-btn"
-      title={isBookmarked ? 'Remove from relays' : 'Bookmark relay'}
-      onclick={toggleBookmark}
-    >
-      <BookmarkIcon size={18} filled={isBookmarked} />
-    </button>
-  {/if}
 </div>
 
-<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+<div class="page">
   <div>
     {#if sortedArticles.length > 0}
       <div class="max-w-3xl">
@@ -98,3 +102,29 @@
     {/if}
   </div>
 </div>
+
+<style>
+  .relay-banner-back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--color-base-300);
+    color: var(--color-base-content);
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+
+  .relay-banner-back:hover {
+    background: var(--color-neutral);
+  }
+
+  .relay-bookmark-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+</style>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+
 	// Step definitions
 	const STEPS = [
 		{ number: 1, label: 'Title & category' },
@@ -175,11 +177,159 @@
 	// Character count
 	let claimLength = $derived(form.claim.length);
 	let caseLength = $derived(form.caseText.length);
+
+	// ── Autosave ──────────────────────────────────────────────────────────────
+	const DRAFT_KEY = 'cascade-create-draft';
+	let savedAt = $state<number | null>(null);
+	let savedAgo = $state(0);
+	let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function saveDraft() {
+		if (typeof localStorage === 'undefined') return;
+		const data = {
+			step: currentStep,
+			claim: form.claim,
+			category: form.category,
+			caseText: form.caseText,
+			imageMode,
+			imageUrl,
+			summaryText,
+			tags,
+			seedSide,
+			seedAmount,
+			linkedMarkets: form.linkedMarkets,
+			savedAt: Date.now()
+		};
+		localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+		savedAt = data.savedAt;
+		savedAgo = 0;
+	}
+
+	function clearDraft() {
+		if (typeof localStorage !== 'undefined') {
+			localStorage.removeItem(DRAFT_KEY);
+		}
+		savedAt = null;
+	}
+
+	// Debounce autosave on field changes
+	function scheduleSave() {
+		if (saveTimer) clearTimeout(saveTimer);
+		saveTimer = setTimeout(saveDraft, 5000);
+	}
+
+	// Watch all form fields
+	$effect(() => {
+		// Access all fields to track them
+		form.claim; form.category; form.caseText; imageMode; imageUrl;
+		summaryText; tags; seedSide; seedAmount; form.linkedMarkets;
+		if (!published) scheduleSave();
+	});
+
+	// Clear draft when published
+	$effect(() => {
+		if (published) clearDraft();
+	});
+
+	onMount(() => {
+		// Restore draft
+		const raw = localStorage?.getItem(DRAFT_KEY);
+		if (raw) {
+			try {
+				const d = JSON.parse(raw);
+				// Don't restore if draft is older than 7 days
+				if (d.savedAt && Date.now() - d.savedAt < 7 * 24 * 60 * 60 * 1000) {
+					currentStep = d.step ?? 1;
+					form.claim = d.claim ?? '';
+					form.category = d.category ?? '';
+					form.caseText = d.caseText ?? '';
+					imageMode = d.imageMode ?? 'gradient';
+					imageUrl = d.imageUrl ?? '';
+					summaryText = d.summaryText ?? '';
+					tags = d.tags ?? [];
+					seedSide = d.seedSide ?? 'yes';
+					seedAmount = d.seedAmount ?? 100;
+					form.linkedMarkets = d.linkedMarkets ?? [];
+					savedAt = d.savedAt ?? null;
+					savedAgo = savedAt ? Math.floor((Date.now() - savedAt) / 1000) : 0;
+				}
+			} catch {
+				// ignore corrupt draft
+			}
+		}
+
+		// Tick saved-ago counter every second
+		const interval = setInterval(() => {
+			if (savedAt) {
+				savedAgo = Math.floor((Date.now() - savedAt) / 1000);
+			}
+		}, 1000);
+
+		return () => {
+			clearInterval(interval);
+			if (saveTimer) clearTimeout(saveTimer);
+		};
+	});
+
+	// ── Copy helpers ──────────────────────────────────────────────────────────
+	async function copyToClipboard(text: string) {
+		await navigator.clipboard.writeText(text);
+	}
+
+	// ── Post-publish toolkit state ─────────────────────────────────────────────
+	let copyTab = $state<'punchy' | 'thoughtful' | 'direct'>('punchy');
+	let embedTab = $state<'iframe' | 'markdown' | 'html'>('iframe');
+
+	// Build market URL from slug
+	const marketUrl = $derived(
+		typeof window !== 'undefined'
+			? `${window.location.origin}/market/${publishedMarket?.slug ?? ''}`
+			: `/market/${publishedMarket?.slug ?? ''}`
+	);
+
+	// Copy text drafts
+	const copyTexts = $derived({
+		punchy: `I put ${seedAmount} down that ${form.claim}. The crowd's at ${seedMath.openingPrice}¢ ${seedSide.toUpperCase()}. If you disagree, take the other side — the market's open. ${marketUrl}`,
+		thoughtful: `Been thinking about this one: "${form.claim}". Put ${seedAmount} on it — market's live at ${seedMath.openingPrice}¢ ${seedSide.toUpperCase()}. Curious what the odds look like to you. ${marketUrl}`,
+		direct: `"${form.claim}" — market is live. Current price: ${seedMath.openingPrice}¢ ${seedSide.toUpperCase()}. Seed: ${seedAmount}. ${marketUrl}`
+	});
+
+	// Embed codes
+	const embedCodes = $derived({
+		iframe: `<iframe src="${marketUrl}/embed" width="600" height="400" frameborder="0"></iframe>`,
+		markdown: `[![${form.claim}](${marketUrl}/preview.png)](${marketUrl})`,
+		html: `<a href="${marketUrl}">${form.claim}</a>`
+	});
+
+	// QR code: generate a simple SVG data URL using a QR library approach
+	// We'll use a data URL with a QR code API for simplicity
+	const qrCodeUrl = $derived(
+		`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(marketUrl)}`
+	);
+
+	// Twitter share URL
+	function getTwitterShareUrl() {
+		return `https://twitter.com/intent/tweet?text=${encodeURIComponent(copyTexts.punchy)}`;
+	}
+
+	// LinkedIn share URL
+	function getLinkedInShareUrl() {
+		return `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(marketUrl)}`;
+	}
+
+	// Format seed amount for display
+	const seedDisplay = $derived(`${seedAmount} of your own capital behind it at ${seedMath.openingPrice}¢ ${seedSide.toUpperCase()}`);
 </script>
 
 <div class="create-page">
 	<!-- Stepper -->
 	<nav class="stepper" aria-label="Progress">
+		{#if savedAt !== null}
+			<span class="draft-indicator" title="Draft auto-saved">
+				<span class="draft-dot"></span>
+				Draft saved · {savedAgo < 60 ? `${savedAgo}s ago` : savedAgo < 3600 ? `${Math.floor(savedAgo / 60)}m ago` : `${Math.floor(savedAgo / 3600)}h ago`}
+			</span>
+		{/if}
 		{#each STEPS as step, index}
 			<button
 				class="stepper-step"
@@ -588,20 +738,165 @@
 				{/if}
 			</div>
 		{:else if currentStep === 5 && publishedMarket}
-			<!-- Published success state -->
-			<div class="published-state">
-				<svg class="published-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2">
-					<circle cx="32" cy="32" r="28" />
-					<path d="M20 32l8 8 16-16" stroke-linecap="round" stroke-linejoin="round" />
-				</svg>
-				<h2 class="published-title">Market is live!</h2>
-				<p class="published-description">Your market "{publishedMarket.slug}" is now open for trading.</p>
-				<a href="/market/{publishedMarket.slug}" class="published-link">
-					View market
-					<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75">
-						<path d="M3 8h10M9 4l4 4-4 4" stroke-linecap="round" stroke-linejoin="round" />
-					</svg>
-				</a>
+			<!-- Post-publish toolkit -->
+			<div class="toolkit">
+
+				<!-- Hero -->
+				<div class="toolkit-hero">
+					<div class="toolkit-hero-content">
+						<span class="live-eyebrow">
+							<span class="status-dot"></span>
+							YOUR CLAIM IS LIVE
+						</span>
+						<h1 class="toolkit-title">Now help it find its readers.</h1>
+						<p class="toolkit-lede">
+							Your claim sits at {seedMath.openingPrice}¢ {seedSide.toUpperCase()} with {seedDisplay}.
+							Here's how to spread the word.
+						</p>
+						<div class="toolkit-hero-actions">
+							<button class="btn-primary" onclick={() => copyToClipboard(marketUrl)}>
+								<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75">
+									<rect x="5" y="5" width="8" height="8" rx="1.5" />
+									<path d="M3 11H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1" stroke-linecap="round" />
+								</svg>
+								Copy sharing link
+							</button>
+							<a href="/market/{publishedMarket.slug}" class="btn-secondary">
+								View live market
+								<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75">
+									<path d="M3 8h10M9 4l4 4-4 4" stroke-linecap="round" stroke-linejoin="round" />
+								</svg>
+							</a>
+						</div>
+					</div>
+					<!-- Portrait card preview -->
+					<div class="portrait-card">
+						<div class="portrait-inner">
+							<div class="portrait-category">{form.category || 'Market'}</div>
+							<div class="portrait-claim">{form.claim || 'Your claim here'}</div>
+							<div class="portrait-price">
+								<span class="portrait-price-value">{seedMath.openingPrice}¢</span>
+								<span class="portrait-price-side {seedSide}">{seedSide.toUpperCase()}</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Share buttons -->
+				<div class="toolkit-section">
+					<h2 class="toolkit-section-title">Share</h2>
+					<div class="share-grid">
+						<button class="social-btn copy-link" onclick={() => copyToClipboard(marketUrl)}>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+								<rect x="9" y="9" width="13" height="13" rx="2" />
+								<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke-linecap="round" />
+							</svg>
+							<span class="social-btn-label">Copy link</span>
+						</button>
+						<a href={getTwitterShareUrl()} target="_blank" rel="noopener" class="social-btn twitter">
+							<svg viewBox="0 0 24 24" fill="currentColor">
+								<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+							</svg>
+							<span class="social-btn-label">X / Twitter</span>
+						</a>
+						<a href={getLinkedInShareUrl()} target="_blank" rel="noopener" class="social-btn linkedin">
+							<svg viewBox="0 0 24 24" fill="currentColor">
+								<path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+							</svg>
+							<span class="social-btn-label">LinkedIn</span>
+						</a>
+					</div>
+				</div>
+
+				<!-- Copy · three tones -->
+				<div class="toolkit-section">
+					<h2 class="toolkit-section-title">Copy · three tones</h2>
+					<div class="tab-bar">
+						<button class="tab-btn" class:active={copyTab === 'punchy'} onclick={() => copyTab = 'punchy'}>Punchy</button>
+						<button class="tab-btn" class:active={copyTab === 'thoughtful'} onclick={() => copyTab = 'thoughtful'}>Thoughtful</button>
+						<button class="tab-btn" class:active={copyTab === 'direct'} onclick={() => copyTab = 'direct'}>Direct</button>
+					</div>
+					<div class="copy-preview">
+						<p class="copy-text">{copyTexts[copyTab]}</p>
+						<button class="btn-copy" onclick={() => copyToClipboard(copyTexts[copyTab])}>
+							<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75">
+								<rect x="5" y="5" width="8" height="8" rx="1.5" />
+								<path d="M3 11H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1" stroke-linecap="round" />
+							</svg>
+							Copy
+						</button>
+					</div>
+				</div>
+
+				<!-- Embed code -->
+				<div class="toolkit-section">
+					<h2 class="toolkit-section-title">Embed code</h2>
+					<div class="tab-bar">
+						<button class="tab-btn" class:active={embedTab === 'iframe'} onclick={() => embedTab = 'iframe'}>iframe</button>
+						<button class="tab-btn" class:active={embedTab === 'markdown'} onclick={() => embedTab = 'markdown'}>Markdown</button>
+						<button class="tab-btn" class:active={embedTab === 'html'} onclick={() => embedTab = 'html'}>HTML</button>
+					</div>
+					<div class="embed-preview">
+						<code class="embed-code">{embedCodes[embedTab]}</code>
+						<button class="btn-copy" onclick={() => copyToClipboard(embedCodes[embedTab])}>
+							<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75">
+								<rect x="5" y="5" width="8" height="8" rx="1.5" />
+								<path d="M3 11H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1" stroke-linecap="round" />
+							</svg>
+							Copy
+						</button>
+					</div>
+				</div>
+
+				<!-- QR code -->
+				<div class="toolkit-section">
+					<h2 class="toolkit-section-title">QR code</h2>
+					<div class="qr-section">
+						<img src={qrCodeUrl} alt="QR code for {publishedMarket.slug}" class="qr-image" />
+						<a href={qrCodeUrl} download="market-qr.png" class="btn-secondary">
+							<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75">
+								<path d="M2 14l4-4M8 4l4 4M2 10h4M10 6h4M2 6h4" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
+							Download
+						</a>
+					</div>
+				</div>
+
+				<!-- What usually happens next -->
+				<div class="toolkit-section">
+					<h2 class="toolkit-section-title">What usually happens next</h2>
+					<div class="next-cards">
+						<div class="next-card">
+							<span class="next-card-icon">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+									<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+									<circle cx="12" cy="12" r="3" />
+								</svg>
+							</span>
+							<span class="next-card-title">Watch</span>
+							<span class="next-card-desc">Check who's on the other side as traders weigh in.</span>
+						</div>
+						<div class="next-card">
+							<span class="next-card-icon">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+									<path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke-linecap="round" stroke-linejoin="round" />
+								</svg>
+							</span>
+							<span class="next-card-title">Write</span>
+							<span class="next-card-desc">Publish a Note riffing on the claim or your reasoning.</span>
+						</div>
+						<div class="next-card">
+							<span class="next-card-icon">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+									<path d="M18 20V10M12 20V4M6 20v-6" stroke-linecap="round" stroke-linejoin="round" />
+								</svg>
+							</span>
+							<span class="next-card-title">Track</span>
+							<span class="next-card-desc">Set a price-move alert to know when things shift.</span>
+						</div>
+					</div>
+				</div>
+
 			</div>
 		{/if}
 	</div>
@@ -651,6 +946,7 @@
 		--footer-shadow-rgb: 0, 0, 0;
 		--footer-shadow-alpha: 0.3;
 		--footer-shadow: rgba(var(--footer-shadow-rgb), var(--footer-shadow-alpha));
+		--shadow: 0 8px 32px oklch(0 0 0 / 0.2);
 	}
 
 	.create-page {
@@ -1594,52 +1890,444 @@
 		flex-shrink: 0;
 	}
 
-	/* Published success state */
-	.published-state {
-		text-align: center;
-		padding: 3rem 1rem;
+	/* Toolkit */
+	.toolkit {
+		display: flex;
+		flex-direction: column;
+		gap: 2.5rem;
 	}
 
-	.published-icon {
-		width: 64px;
-		height: 64px;
-		margin: 0 auto 1.5rem;
-		color: var(--color-yes);
+	/* Hero */
+	.toolkit-hero {
+		display: flex;
+		gap: 2rem;
+		align-items: flex-start;
+		padding: 2rem;
+		background: var(--color-base-200);
+		border: 1px solid var(--color-base-300);
+		border-radius: 12px;
 	}
 
-	.published-title {
-		font-family: var(--font-tight);
-		font-size: 1.5rem;
-		font-weight: 700;
-		margin-bottom: 0.5rem;
+	.toolkit-hero-content {
+		flex: 1;
 	}
 
-	.published-description {
-		color: var(--color-neutral-content);
-		font-size: 1rem;
-		margin-bottom: 1.5rem;
-	}
-
-	.published-link {
+	.toolkit-eyebrow {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
-		padding: 0.75rem 1.5rem;
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.12em;
+		color: var(--color-yes);
+		text-transform: uppercase;
+		margin-bottom: 0.75rem;
+	}
+
+	.status-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--color-yes);
+		animation: pulse 2s infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.4; }
+	}
+
+	.toolkit-title {
+		font-family: var(--font-tight);
+		font-size: 2rem;
+		font-weight: 700;
+		color: var(--color-base-content);
+		margin: 0 0 0.75rem;
+		line-height: 1.2;
+	}
+
+	.toolkit-lede {
+		font-family: var(--font-serif);
+		font-size: 1rem;
+		line-height: 1.7;
+		color: var(--color-neutral-content);
+		margin: 0 0 1.5rem;
+	}
+
+	.toolkit-hero-actions {
+		display: flex;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.btn-primary {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.6rem 1.25rem;
 		background: var(--color-ink);
 		color: var(--color-primary-content);
+		border: none;
 		border-radius: 999px;
+		font-size: 0.9rem;
 		font-weight: 600;
-		text-decoration: none;
+		cursor: pointer;
 		transition: background 0.15s ease;
+		text-decoration: none;
 	}
 
-	.published-link:hover {
-		background: var(--color-primary);
+	.btn-primary svg { width: 16px; height: 16px; }
+
+	.btn-primary:hover { background: var(--color-primary); }
+
+	.btn-secondary {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.6rem 1.25rem;
+		background: transparent;
+		color: var(--color-base-content);
+		border: 1px solid var(--color-base-300);
+		border-radius: 999px;
+		font-size: 0.9rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.15s ease;
+		text-decoration: none;
 	}
 
-	/* Footer navigation */
+	.btn-secondary svg { width: 16px; height: 16px; }
+
+	.btn-secondary:hover {
+		background: var(--color-base-300);
+		border-color: var(--color-ink);
+	}
+
+	/* Portrait card */
+	.portrait-card {
+		flex-shrink: 0;
+		width: 160px;
+		transform: rotate(2deg);
+		box-shadow: 0 8px 32px var(--color-shadow);
+		border-radius: 10px;
+		overflow: hidden;
+		border: 1px solid var(--color-base-300);
+	}
+
+	.portrait-inner {
+		background: linear-gradient(135deg, hsl(200, 60%, 35%), hsl(250, 50%, 25%));
+		padding: 1rem;
+		min-height: 200px;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+	}
+
+	.portrait-category {
+		font-size: 0.7rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: oklch(90% 0 0 / 0.7);
+		margin-bottom: 0.5rem;
+	}
+
+	.portrait-claim {
+		font-family: var(--font-serif);
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: white;
+		line-height: 1.4;
+		margin-bottom: 1rem;
+	}
+
+	.portrait-price {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.portrait-price-value {
+		font-family: var(--font-mono);
+		font-size: 1.25rem;
+		font-weight: 700;
+		color: white;
+	}
+
+	.portrait-price-side {
+		font-size: 0.7rem;
+		font-weight: 700;
+		padding: 0.15rem 0.5rem;
+		border-radius: 999px;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.portrait-price-side.yes {
+		background: var(--color-yes);
+		color: var(--color-primary-content);
+	}
+
+	.portrait-price-side.no {
+		background: var(--color-no);
+		color: white;
+	}
+
+	/* Toolkit sections */
+	.toolkit-section {
+		padding-top: 1.5rem;
+		border-top: 1px solid var(--color-base-300);
+	}
+
+	.toolkit-section:first-child {
+		border-top: none;
+		padding-top: 0;
+	}
+
+	.toolkit-section-title {
+		font-family: var(--font-tight);
+		font-size: 0.8rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-neutral-content);
+		margin-bottom: 1rem;
+	}
+
+	/* Share grid */
+	.share-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 0.75rem;
+	}
+
+	.social-btn {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 1.25rem;
+		background: var(--color-base-200);
+		border: 1px solid var(--color-base-300);
+		border-radius: 10px;
+		cursor: pointer;
+		transition: all 0.15s ease;
+		text-decoration: none;
+		color: var(--color-base-content);
+	}
+
+	.social-btn svg { width: 28px; height: 28px; }
+
+	.social-btn-label {
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+
+	.social-btn:hover {
+		border-color: var(--color-ink);
+		background: var(--color-base-300);
+	}
+
+	.social-btn.twitter svg { color: #000; }
+	.social-btn.linkedin svg { color: #0A66C2; }
+
+	/* Copy tabs */
+	.tab-bar {
+		display: flex;
+		gap: 0.25rem;
+		margin-bottom: 0.75rem;
+		border-bottom: 1px solid var(--color-base-300);
+	}
+
+	.tab-btn {
+		padding: 0.5rem 1rem;
+		background: none;
+		border: none;
+		border-bottom: 2px solid transparent;
+		font-size: 0.9rem;
+		font-weight: 500;
+		color: var(--color-neutral-content);
+		cursor: pointer;
+		transition: all 0.15s ease;
+		margin-bottom: -1px;
+	}
+
+	.tab-btn:hover { color: var(--color-base-content); }
+
+	.tab-btn.active {
+		color: var(--color-ink);
+		border-bottom-color: var(--color-ink);
+	}
+
+	.copy-preview {
+		background: var(--color-base-200);
+		border: 1px solid var(--color-base-300);
+		border-radius: 8px;
+		padding: 1rem;
+		position: relative;
+	}
+
+	.copy-text {
+		font-family: var(--font-serif);
+		font-size: 0.95rem;
+		line-height: 1.7;
+		color: var(--color-base-content);
+		margin: 0;
+		padding-right: 3rem;
+	}
+
+	.btn-copy {
+		position: absolute;
+		top: 0.75rem;
+		right: 0.75rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.35rem 0.75rem;
+		background: var(--color-base-300);
+		border: 1px solid var(--color-base-300);
+		border-radius: 999px;
+		font-size: 0.8rem;
+		font-weight: 500;
+		color: var(--color-base-content);
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.btn-copy svg { width: 14px; height: 14px; }
+
+	.btn-copy:hover {
+		background: var(--color-ink);
+		color: var(--color-primary-content);
+	}
+
+	/* Embed preview */
+	.embed-preview {
+		background: var(--color-base-200);
+		border: 1px solid var(--color-base-300);
+		border-radius: 8px;
+		padding: 1rem;
+		position: relative;
+	}
+
+	.embed-code {
+		display: block;
+		font-family: var(--font-mono);
+		font-size: 0.8rem;
+		color: var(--color-base-content);
+		word-break: break-all;
+		line-height: 1.6;
+		padding-right: 3rem;
+	}
+
+	/* QR section */
+	.qr-section {
+		display: flex;
+		align-items: center;
+		gap: 1.5rem;
+	}
+
+	.qr-image {
+		width: 160px;
+		height: 160px;
+		border-radius: 8px;
+		border: 1px solid var(--color-base-300);
+	}
+
+	/* What happens next cards */
+	.next-cards {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 0.75rem;
+	}
+
+	.next-card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 1.25rem;
+		background: var(--color-base-200);
+		border: 1px solid var(--color-base-300);
+		border-radius: 10px;
+	}
+
+	.next-card-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 8px;
+		background: var(--color-base-300);
+		color: var(--color-neutral-content);
+	}
+
+	.next-card-icon svg { width: 20px; height: 20px; }
+
+	.next-card-title {
+		font-family: var(--font-tight);
+		font-size: 1rem;
+		font-weight: 700;
+		color: var(--color-base-content);
+	}
+
+	.next-card-desc {
+		font-size: 0.85rem;
+		color: var(--color-neutral-content);
+		line-height: 1.5;
+	}
+
+	/* Draft indicator */
+	.draft-indicator {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.75rem;
+		font-family: var(--font-mono);
+		color: var(--color-yes);
+		margin-right: auto;
+		padding-right: 1rem;
+	}
+
+	.draft-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--color-yes);
+	}
+
+	/* Page footer hidden */
 	.page-footer.hidden {
 		display: none;
+	}
+
+	/* Responsive */
+	@media (max-width: 640px) {
+		.toolkit-hero {
+			flex-direction: column;
+			padding: 1.5rem;
+		}
+
+		.portrait-card {
+			width: 100%;
+			transform: none;
+		}
+
+		.toolkit-title { font-size: 1.5rem; }
+
+		.share-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.next-cards {
+			grid-template-columns: 1fr;
+		}
+
+		.qr-section {
+			flex-direction: column;
+			align-items: flex-start;
+		}
 	}
 
 	.page-footer {

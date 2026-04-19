@@ -34,8 +34,8 @@
 </script>
 
 {#if hasNip11}
-<a class="card card-border bg-base-200 hover:bg-base-300 transition-colors" href={`/relay/${hostname}`}>
-  <div class="card-body gap-2 flex-row items-start">
+<a class="bg-surface rounded-lg border border-base-300 hover:bg-base-300 transition-colors" href={`/relay/${hostname}`}>
+  <div class="flex flex-row gap-3 items-start p-4">
     <div class="flex-shrink-0 w-10 h-10 rounded-full bg-base-300 flex items-center justify-center overflow-hidden">
       {#if relayInfo.nip11?.icon}
         <img src={relayInfo.nip11.icon} alt="" width="40" height="40" class="w-full h-full object-cover" />

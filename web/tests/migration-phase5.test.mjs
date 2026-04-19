@@ -44,11 +44,12 @@ test('SharePopover uses daisyUI dropdown, no share-btn, no style block', () => {
 });
 
 // Task 5.6 — RelayCard
-test('RelayCard uses daisyUI card, no trending-card-body, no relay-card class', () => {
+test('RelayCard uses bg-surface with border, no trending-card-body, no relay-card class', () => {
   const src = read('src/lib/components/RelayCard.svelte');
-  assert.match(src, /\bcard\b/);
+  assert.match(src, /\bbg-surface\b.*\bborder\b/);
   assert.doesNotMatch(src, /\btrending-card-body\b/);
   assert.doesNotMatch(src, /class="relay-card"/);
+  assert.doesNotMatch(src, /\bcard\b/);
 });
 
 // Task 5.7 — StoryAuthor

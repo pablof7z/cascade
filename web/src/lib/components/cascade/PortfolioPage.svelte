@@ -251,7 +251,7 @@
 
     return rail === 'stripe'
       ? 'Card funding is unavailable right now.'
-      : 'Lightning funding is unavailable right now.';
+      : 'Bank transfer funding is unavailable right now.';
   }
 
   async function refreshPortfolioView() {
@@ -311,7 +311,7 @@
   }
 
   function fundingRailLabel(rail: string): string {
-    return rail === 'stripe' ? 'Card' : 'Lightning';
+    return rail === 'stripe' ? 'Card' : 'Bank transfer';
   }
 
   function fundingStatusLabel(fundingStatus: string, rail: string): string {
@@ -768,7 +768,7 @@
   });
 </script>
 
-<section class="grid gap-6 py-10 pb-16 w-[min(calc(100%-2.5rem),68rem)] mx-auto">
+<section class="grid gap-10 py-10 pb-16 w-[min(calc(100%-2.5rem),68rem)] mx-auto">
   <header class="grid gap-3">
     <div class="eyebrow">Portfolio</div>
     <h1 class="text-4xl font-bold tracking-tight">Your portfolio</h1>
@@ -780,238 +780,205 @@
   </header>
 
   {#if !currentUser}
-    <div class="card card-border bg-base-200">
-      <div class="card-body gap-4">
-        <h2 class="card-title">Connect to view your portfolio</h2>
-        <p class="text-base-content/60">Track your cash, positions, and current value from this device.</p>
-        <a class="btn btn-primary w-fit" href="/join">Connect</a>
-      </div>
+    <div class="rounded-lg border border-base-300 bg-base-200 p-6">
+      <h2 class="text-xl font-semibold mb-2">Connect to view your portfolio</h2>
+      <p class="text-base-content/60 text-sm mb-4">Track your cash, positions, and current value from this device.</p>
+      <a class="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-content hover:bg-white" href="/join">Connect</a>
     </div>
   {:else}
-    <!-- Summary stats -->
-    <div class="stats stats-horizontal w-full bg-base-200">
-      <div class="stat">
-        <div class="stat-title">Your balance</div>
-        <div class="stat-value font-mono text-2xl">{formatUsdMinor(localBalanceMinor)}</div>
-        <div class="stat-desc">Cash available to trade from this device.</div>
+    <!-- Summary stats - Column style -->
+    <div class="grid grid-cols-3 gap-6">
+      <div class="rounded-lg border border-base-300 bg-base-200 p-5">
+        <p class="font-mono text-[0.68rem] uppercase tracking-wider text-base-content/45 mb-2">Your balance</p>
+        <p class="font-mono text-3xl font-semibold text-base-content">{formatUsdMinor(localBalanceMinor)}</p>
+        <p class="text-xs text-base-content/50 mt-2">Cash available to trade</p>
       </div>
 
-      <div class="stat">
-        <div class="stat-title">Position Mark</div>
-        <div class="stat-value font-mono text-2xl">{formatUsdMinor(displayedPositionValueMinor)}</div>
-        <div class="stat-desc">
+      <div class="rounded-lg border border-base-300 bg-base-200 p-5">
+        <p class="font-mono text-[0.68rem] uppercase tracking-wider text-base-content/45 mb-2">Position mark</p>
+        <p class="font-mono text-3xl font-semibold text-base-content">{formatUsdMinor(displayedPositionValueMinor)}</p>
+        <p class="text-xs text-base-content/50 mt-2">
           {#if usingLocalPositionMarks}
-            Estimated from current positions and market prices.
+            Estimated from positions and prices.
           {:else}
-            No positions found on this device yet.
+            No positions found yet.
           {/if}
-        </div>
+        </p>
       </div>
 
-      <div class="stat">
-        <div class="stat-title">Current Value</div>
-        <div class="stat-value font-mono text-2xl">{formatUsdMinor(displayedTotalValueMinor)}</div>
-        <div class="stat-desc">Cash plus position marks.</div>
+      <div class="rounded-lg border border-base-300 bg-base-200 p-5">
+        <p class="font-mono text-[0.68rem] uppercase tracking-wider text-base-content/45 mb-2">Current value</p>
+        <p class="font-mono text-3xl font-semibold text-base-content">{formatUsdMinor(displayedTotalValueMinor)}</p>
+        <p class="text-xs text-base-content/50 mt-2">Cash plus position marks</p>
       </div>
     </div>
 
     <!-- Add funds -->
-    <section class="card card-border bg-base-200">
-      <div class="card-body gap-4">
-        <div>
-          <h2 class="card-title">Add funds</h2>
-          <p class="text-base-content/60 text-sm mt-1">
-            Add funds to your balance with Stripe or Lightning.
-            {#if paperEdition}
-              In practice mode, each payment is capped at {formatUsdMinor(signetFundingSingleLimitMinor)}
-              per funding request and {formatUsdMinor(signetFundingWindowLimitMinor)} per 24 hours.
-            {/if}
-          </p>
-          {#if !runtime.funding.lightning.available}
-            <p class="text-sm text-base-content/60 mt-1">{railUnavailableMessage('lightning')}</p>
-          {:else if stripeFundingEnabled && !runtime.funding.stripe.available}
-            <p class="text-sm text-base-content/60 mt-1">{railUnavailableMessage('stripe')}</p>
+    <section class="rounded-lg border border-base-300 bg-base-200 p-6">
+      <div class="mb-5">
+        <h2 class="text-xl font-semibold mb-1">Add funds</h2>
+        <p class="text-sm text-base-content/60">
+          Add funds to your balance with card or bank transfer.
+          {#if paperEdition}
+            In practice mode, each payment is capped at {formatUsdMinor(signetFundingSingleLimitMinor)}
+            per funding request and {formatUsdMinor(signetFundingWindowLimitMinor)} per 24 hours.
           {/if}
-        </div>
-
-        <div class="flex flex-wrap items-end gap-4">
-          <label class="form-control w-full max-w-64">
-            <div class="label"><span class="label-text">Amount</span></div>
-            <input
-              class="input input-bordered"
-              aria-label="Amount"
-              bind:value={fundingAmount}
-              min="100"
-              step="100"
-              type="number"
-            />
-          </label>
-          {#if stripeFundingEnabled}
-            <button
-              class="btn btn-primary"
-              disabled={!stripeFundingAvailable}
-              onclick={createStripeCheckout}
-              type="button"
-            >
-              Checkout with card
-            </button>
-          {/if}
-          <button
-            class="btn btn-outline"
-            disabled={!lightningFundingAvailable}
-            onclick={createLightningFunding}
-            type="button"
-          >
-            Add funds with Lightning
-          </button>
-        </div>
-
-        {#if pendingFundings.length}
-          <div class="grid gap-0 border-t border-base-300 mt-2">
-            {#each pendingFundings as funding (funding.id)}
-              <div class="flex items-start justify-between gap-4 py-4 border-b border-base-300">
-                <div class="grid gap-2">
-                  <strong class="font-mono">{formatUsdMinor(funding.amount_minor)}</strong>
-                  <p class="text-sm text-base-content/60">
-                    {fundingRailLabel(funding.rail)} · {fundingStatusLabel(funding.status, funding.rail)}
-                  </p>
-                  {#if funding.invoice}
-                    <div class="flex items-center gap-4 py-2">
-                      <QRCode value={funding.invoice} size={128} />
-                      <div class="grid gap-2">
-                        <span class="eyebrow">Payment code</span>
-                        <div class="flex gap-3">
-                          <a class="btn btn-outline btn-sm" href={`lightning:${funding.invoice}`}>Open wallet</a>
-                          <CopyButton text={funding.invoice} label="Copy payment code" />
-                        </div>
-                      </div>
-                    </div>
-                  {/if}
-                </div>
-                <div class="flex gap-3">
-                  {#if funding.checkout_url}
-                    <a class="btn btn-outline btn-sm" href={funding.checkout_url}>Open checkout</a>
-                  {/if}
-                  <button class="btn btn-outline btn-sm" onclick={refreshPendingFundings} type="button">
-                    Refresh status
-                  </button>
-                </div>
-              </div>
-            {/each}
-          </div>
-        {:else}
-          <p class="text-sm text-base-content/60">No pending payments.</p>
+        </p>
+        {#if !runtime.funding.lightning.available}
+          <p class="text-sm text-base-content/60 mt-2">{railUnavailableMessage('lightning')}</p>
+        {:else if stripeFundingEnabled && !runtime.funding.stripe.available}
+          <p class="text-sm text-base-content/60 mt-2">{railUnavailableMessage('stripe')}</p>
         {/if}
       </div>
+
+      <div class="flex flex-wrap items-end gap-4">
+        <div class="w-full max-w-48">
+          <label class="block text-xs text-base-content/60 mb-1.5" for="funding-amount">Amount</label>
+          <input
+            id="funding-amount"
+            class="w-full rounded border border-base-300 bg-base-100 px-3 py-2 font-mono text-sm text-base-content placeholder:text-base-content/35"
+            aria-label="Amount"
+            bind:value={fundingAmount}
+            min="100"
+            step="100"
+            type="number"
+          />
+        </div>
+        {#if stripeFundingEnabled}
+          <button
+            class="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-content hover:bg-white disabled:opacity-40"
+            disabled={!stripeFundingAvailable}
+            onclick={createStripeCheckout}
+            type="button"
+          >
+            Checkout with card
+          </button>
+        {/if}
+        <button
+          class="inline-flex items-center justify-center rounded-full border border-base-300 bg-transparent px-5 py-2.5 text-sm font-medium text-base-content hover:border-base-content/60 disabled:opacity-40"
+          disabled={!lightningFundingAvailable}
+          onclick={createLightningFunding}
+          type="button"
+        >
+          Add funds
+        </button>
+      </div>
+
+      {#if pendingFundings.length}
+        <div class="mt-6 border-t border-base-300 pt-5">
+          {#each pendingFundings as funding (funding.id)}
+            <div class="flex items-start justify-between gap-4 py-4 border-b border-base-300 last:border-0">
+              <div class="grid gap-2">
+                <strong class="font-mono text-lg">{formatUsdMinor(funding.amount_minor)}</strong>
+                <p class="text-sm text-base-content/60">
+                  {fundingRailLabel(funding.rail)} · {fundingStatusLabel(funding.status, funding.rail)}
+                </p>
+                {#if funding.invoice}
+                  <div class="flex items-center gap-4 py-2">
+                    <QRCode value={funding.invoice} size={128} />
+                    <div class="grid gap-2">
+                      <span class="eyebrow text-[0.68rem]">Payment code</span>
+                      <div class="flex gap-2">
+                        <a class="inline-flex items-center justify-center rounded-full border border-base-300 bg-transparent px-3 py-1.5 text-xs font-medium text-base-content hover:border-base-content/60" href={`lightning:${funding.invoice}`}>Open wallet</a>
+                        <CopyButton text={funding.invoice} label="Copy payment code" />
+                      </div>
+                    </div>
+                  </div>
+                {/if}
+              </div>
+              <div class="flex gap-2">
+                {#if funding.checkout_url}
+                  <a class="inline-flex items-center justify-center rounded-full border border-base-300 bg-transparent px-3 py-1.5 text-xs font-medium text-base-content hover:border-base-content/60" href={funding.checkout_url}>Open checkout</a>
+                {/if}
+                <button class="inline-flex items-center justify-center rounded-full border border-base-300 bg-transparent px-3 py-1.5 text-xs font-medium text-base-content hover:border-base-content/60" onclick={refreshPendingFundings} type="button">
+                  Refresh
+                </button>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="text-sm text-base-content/50 mt-4">No pending payments.</p>
+      {/if}
     </section>
 
     <!-- Open positions -->
-    <section class="card card-border bg-base-200">
-      <div class="card-body gap-4">
-        <div class="flex items-center justify-between gap-4">
-          <div>
-            <h2 class="card-title">Open positions</h2>
-            <p class="text-sm text-base-content/60 mt-1">
-              {#if usingLocalPositionMarks}
-                Position size comes from what this device can withdraw right now. Cost basis comes from trades placed here.
-              {:else}
-                No positions found on this device yet.
-              {/if}
-            </p>
-          </div>
-          <a class="btn btn-outline btn-sm" href="/builder">Create market</a>
+    <section class="rounded-lg border border-base-300 bg-base-200 p-6">
+      <div class="flex items-center justify-between gap-4 mb-5">
+        <div>
+          <h2 class="text-xl font-semibold mb-1">Open positions</h2>
+          <p class="text-sm text-base-content/60">
+            {#if usingLocalPositionMarks}
+              Position size from what this device can withdraw. Cost basis from trades placed here.
+            {:else}
+              No positions found on this device yet.
+            {/if}
+          </p>
         </div>
-
-        {#if localPositions.length}
-          <div class="overflow-x-auto">
-            <table class="table table-zebra">
-              <thead>
-                <tr>
-                  <th>Market</th>
-                  <th>Direction</th>
-                  <th>Qty</th>
-                  <th>Price</th>
-                  <th class="text-right">Value</th>
-                  <th class="text-right">P&L</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each localPositions as position (position.market_slug + position.direction)}
-                  <tr>
-                    <td>
-                      <a href={`/market/${position.market_slug}`} class="font-medium hover:text-primary">
-                        {position.market_title}
-                      </a>
-                    </td>
-                    <td>
-                      <span class="badge badge-outline badge-sm" class:badge-success={position.direction === 'long'} class:badge-error={position.direction === 'short'}>
-                        {position.direction === 'long' ? 'LONG' : 'SHORT'}
-                      </span>
-                    </td>
-                    <td class="font-mono text-sm">{position.quantity.toFixed(2)}</td>
-                    <td class="font-mono text-sm">{describePositionPrice(position)}</td>
-                    <td class="font-mono text-sm text-right">{formatUsdMinor(position.market_value_minor)}</td>
-                    <td class="font-mono text-sm text-right">
-                      {#if position.unrealized_pnl_minor === null || position.unrealized_pnl_minor === undefined}
-                        <span class="text-base-content/50">Mark only</span>
-                      {:else}
-                        <span class:text-success={position.unrealized_pnl_minor >= 0} class:text-error={position.unrealized_pnl_minor < 0}>
-                          {position.unrealized_pnl_minor >= 0 ? '+' : ''}{formatUsdMinor(Math.abs(position.unrealized_pnl_minor))}
-                        </span>
-                      {/if}
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        {:else if loading}
-          <p class="text-sm text-base-content/60">Loading portfolio state.</p>
-        {:else}
-          <p class="text-sm text-base-content/60">No open positions yet.</p>
-        {/if}
+        <a class="inline-flex items-center justify-center rounded-full border border-base-300 bg-transparent px-4 py-2 text-sm font-medium text-base-content hover:border-base-content/60" href="/builder">Create market</a>
       </div>
+
+      {#if localPositions.length}
+        <div class="divide-y divide-base-300">
+          {#each localPositions as position (position.market_slug + position.direction)}
+            <div class="flex items-center gap-4 py-4">
+              <div class="flex-1 min-w-0">
+                <a href={`/market/${position.market_slug}`} class="font-medium hover:text-primary truncate block">
+                  {position.market_title}
+                </a>
+              </div>
+              <div class="flex items-center gap-4 font-mono text-sm">
+                <span class={position.direction === 'long' ? 'text-success' : 'text-error'}>
+                  {position.direction === 'long' ? 'LONG' : 'SHORT'}
+                </span>
+                <span class="w-16 text-right">{position.quantity.toFixed(2)}</span>
+                <span class="w-16 text-right">{describePositionPrice(position)}</span>
+                <span class="w-20 text-right">{formatUsdMinor(position.market_value_minor)}</span>
+                <span class="w-24 text-right">
+                  {#if position.unrealized_pnl_minor === null || position.unrealized_pnl_minor === undefined}
+                    <span class="text-base-content/50">Mark only</span>
+                  {:else}
+                    <span class={position.unrealized_pnl_minor >= 0 ? 'text-success' : 'text-error'}>
+                      {position.unrealized_pnl_minor >= 0 ? '+' : ''}{formatUsdMinor(Math.abs(position.unrealized_pnl_minor))}
+                    </span>
+                  {/if}
+                </span>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {:else if loading}
+        <p class="text-sm text-base-content/50">Loading portfolio state.</p>
+      {:else}
+        <p class="text-sm text-base-content/50">No open positions yet.</p>
+      {/if}
     </section>
 
     <!-- Funding history -->
-    <section class="card card-border bg-base-200">
-      <div class="card-body gap-4">
-        <h2 class="card-title">Funding history</h2>
+    <section class="rounded-lg border border-base-300 bg-base-200 p-6">
+      <h2 class="text-xl font-semibold mb-5">Funding history</h2>
 
-        {#if fundingHistory.length}
-          <div class="overflow-x-auto">
-            <table class="table table-zebra">
-              <thead>
-                <tr>
-                  <th>Amount</th>
-                  <th>Rail</th>
-                  <th>Status</th>
-                  <th class="text-right">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each fundingHistory as event (event.id)}
-                  <tr>
-                    <td class="font-mono">{formatUsdMinor(event.amountMinor)}</td>
-                    <td>{fundingRailLabel(event.rail)}</td>
-                    <td>{fundingStatusLabel(event.status, event.rail)}</td>
-                    <td class="text-right text-sm text-base-content/60">{new Date(event.createdAt).toLocaleString()}</td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        {:else}
-          <p class="text-sm text-base-content/60">No funding activity yet.</p>
-        {/if}
-      </div>
+      {#if fundingHistory.length}
+        <div class="divide-y divide-base-300">
+          {#each fundingHistory as event (event.id)}
+            <div class="flex items-center gap-4 py-3">
+              <span class="font-mono text-sm w-24">{formatUsdMinor(event.amountMinor)}</span>
+              <span class="text-sm text-base-content/60 w-16">{fundingRailLabel(event.rail)}</span>
+              <span class="text-sm text-base-content/60 flex-1">{fundingStatusLabel(event.status, event.rail)}</span>
+              <span class="font-mono text-xs text-base-content/45">{new Date(event.createdAt).toLocaleDateString()}</span>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="text-sm text-base-content/50">No funding activity yet.</p>
+      {/if}
     </section>
   {/if}
 
   {#if status}
-    <div class="alert"><span class="text-sm">{status}</span></div>
+    <div class="rounded border border-base-300 bg-base-200 px-4 py-3"><span class="text-sm">{status}</span></div>
   {/if}
   {#if errorMessage}
-    <div class="alert alert-error"><span class="text-sm">{errorMessage}</span></div>
+    <div class="rounded border border-error/50 bg-error/10 px-4 py-3"><span class="text-sm text-error">{errorMessage}</span></div>
   {/if}
 </section>

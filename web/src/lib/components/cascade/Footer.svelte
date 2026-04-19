@@ -15,7 +15,6 @@
       <h2 class="text-xs font-medium uppercase tracking-[0.08em] text-white">Navigate</h2>
       <a class="hover:text-white" href="/">Markets</a>
       <a class="hover:text-white" href="/builder">Create Market</a>
-      <a class="hover:text-white" href="/analytics">Analytics</a>
       <a class="hover:text-white" href="/leaderboard">Leaderboard</a>
     </nav>
 

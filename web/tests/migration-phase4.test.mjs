@@ -42,6 +42,8 @@ test('PortfolioPage uses Column patterns (no DaisyUI stats/table)', () => {
   const src = read('src/lib/components/cascade/PortfolioPage.svelte');
   assert.doesNotMatch(src, /\bstats\b/);
   assert.doesNotMatch(src, /\btable-zebra\b/);
-  assert.doesNotMatch(src, /\bcard\b/);
+  // Check for DaisyUI card component class usage, not word 'card' in phrases
+  assert.doesNotMatch(src, /class=["']\s*[^"']*\bcard\b/);
+  assert.doesNotMatch(src, /class=["'][^"']*\bcard-border\b/);
   assert.match(src, /\brounded-lg\b.*border.*bg-base-/);
 });

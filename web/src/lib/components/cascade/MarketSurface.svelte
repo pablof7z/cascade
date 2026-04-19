@@ -83,8 +83,8 @@
     { href: marketDiscussionUrl(market.slug), label: 'Discussion', active: tab === 'discussion', count: totalReplyCount },
     { href: marketChartsUrl(market.slug), label: 'Charts', active: tab === 'charts' },
     { href: marketActivityUrl(market.slug), label: 'Activity', active: tab === 'activity' },
-    { href: marketUrl(market.slug) + 'trades/', label: 'Trades', active: tab === 'trades', count: tradeSummary.tradeCount },
-    { href: marketUrl(market.slug) + 'linked/', label: 'Linked', active: tab === 'linked', count: relatedMarkets.length }
+    { href: marketUrl(market.slug) + '/trades/', label: 'Trades', active: tab === 'trades', count: tradeSummary.tradeCount },
+    { href: marketUrl(market.slug) + '/linked/', label: 'Linked', active: tab === 'linked', count: relatedMarkets.length }
   ]);
 
   const orderedTrades = $derived([...trades].sort((left, right) => right.createdAt - left.createdAt));

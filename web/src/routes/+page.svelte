@@ -221,10 +221,10 @@
 <!-- ============================================================ -->
 <!-- HERO                                                          -->
 <!-- ============================================================ -->
-<section class="py-16 max-md:py-10">
+<section class="py-16 max-md:py-10 min-w-0">
   <div class="grid gap-12 md:gap-20 md:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] items-center">
     <div>
-      <h1 class="max-w-[16ch] text-5xl font-bold tracking-tighter leading-none md:text-7xl">The crowd has a price. Prove it wrong.</h1>
+      <h1 class="max-w-[16ch] text-4xl sm:text-5xl font-bold tracking-tighter leading-none md:text-7xl">The crowd has a price. Prove it wrong.</h1>
       <p class="mt-6 max-w-lg text-base-content/60 text-lg leading-relaxed">
         Cascade is a prediction market where positions stay open forever.
         No expiry, no oracle. Create a market, defend your thesis, and trade on your conviction.
@@ -302,7 +302,7 @@
 <!-- ============================================================ -->
 <!-- VALUE PROPS                                                   -->
 <!-- ============================================================ -->
-<section class="py-12 grid gap-8">
+<section class="py-12 grid gap-8 min-w-0">
   <div>
     <h2 class="text-3xl font-bold tracking-tight">Markets that never close.</h2>
     <p class="mt-1 text-sm text-base-content/40">
@@ -370,7 +370,7 @@
 <!-- ============================================================ -->
 <!-- MARKET DISCOVERY                                              -->
 <!-- ============================================================ -->
-<div class="grid gap-6 pt-12">
+<div class="grid gap-6 pt-12 min-w-0">
   <div class="grid gap-2 justify-items-start">
     <input
       type="search"
@@ -399,7 +399,7 @@
 
       {#if filteredMarkets.length > 0}
         {#each filteredMarkets as market (market.id)}
-          <a class="grid grid-cols-[minmax(0,1.9fr)_0.55fr_0.6fr_0.55fr_0.55fr_0.7fr] gap-4 items-center py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
+          <a class="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1.9fr)_0.55fr_0.6fr_0.55fr_0.55fr_0.7fr] gap-4 items-center py-3 transition-colors duration-150 hover:bg-base-300/50" href={marketUrl(market.slug)}>
             <div class="min-w-0 grid gap-1">
               <span class="truncate text-white font-semibold">{market.title}</span>
               <span class="text-sm text-base-content/40 truncate">
@@ -407,10 +407,10 @@
               </span>
             </div>
             <span class="font-mono text-sm">{centsForMarket(market.id)}</span>
-            <span class="font-mono text-sm">{formatProductAmount(tradeSummaries.get(market.id)?.grossVolume ?? 0, 'usd')}</span>
-            <span class="font-mono text-sm">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
-            <span class="font-mono text-sm">{discussionCounts.get(market.id) ?? 0}</span>
-            <span class="text-sm text-base-content/40 text-right">{formatRelativeTime(market.createdAt)}</span>
+            <span class="hidden sm:block font-mono text-sm">{formatProductAmount(tradeSummaries.get(market.id)?.grossVolume ?? 0, 'usd')}</span>
+            <span class="hidden sm:block font-mono text-sm">{tradeSummaries.get(market.id)?.tradeCount ?? 0}</span>
+            <span class="hidden sm:block font-mono text-sm">{discussionCounts.get(market.id) ?? 0}</span>
+            <span class="hidden sm:block text-sm text-base-content/40 text-right">{formatRelativeTime(market.createdAt)}</span>
           </a>
         {/each}
       {:else}

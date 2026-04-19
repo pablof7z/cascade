@@ -79,17 +79,18 @@
   }
 
   .site-header-inner {
-    @apply flex min-h-16 items-center justify-between gap-6 py-1.5;
+    @apply flex flex-wrap min-h-16 items-center justify-between gap-x-6 py-1.5;
   }
 
   .site-brand {
     @apply inline-block whitespace-nowrap text-base font-semibold tracking-tight text-white;
   }
 
-  .site-main { @apply flex-1; }
+  .site-main { @apply flex-1; overflow-x: clip; }
 
   .page {
-    @apply grid gap-10 py-10 pb-16 sm:py-6 sm:pb-12;
+    @apply grid gap-6 py-6 pb-10 sm:gap-10 sm:py-8 sm:pb-14;
+    min-width: 0;
   }
 
   .eyebrow {

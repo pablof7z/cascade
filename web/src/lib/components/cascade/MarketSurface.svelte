@@ -276,7 +276,7 @@
   <header class="grid gap-4 pb-6 border-b border-base-300 lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)]">
     <div class="flex flex-col gap-4 max-w-prose">
       <div class="eyebrow">Market</div>
-      <h1 class="text-5xl font-bold tracking-tight leading-none">{market.title}</h1>
+      <h1 class="text-3xl sm:text-5xl font-bold tracking-tight leading-none">{market.title}</h1>
       <p class="text-base-content/70 text-base leading-relaxed max-w-xl">
         {sanitizeMarketCopy(market.description) || 'No summary provided yet.'}
       </p>
@@ -332,7 +332,7 @@
       <strong class={marketState.accentClass}>{marketState.label}</strong> • {marketState.summary}
     </p>
 
-    <div class="stats stats-horizontal w-full bg-base-200 mb-6">
+    <div class="stats stats-vertical sm:stats-horizontal w-full bg-base-200 mb-6">
       <div class="stat">
         <div class="stat-title">Price change</div>
         <div class="stat-value text-lg font-mono" class:text-success={impliedProbability - openingProbability >= 0} class:text-error={impliedProbability - openingProbability < 0}>

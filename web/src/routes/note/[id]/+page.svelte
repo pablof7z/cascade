@@ -320,9 +320,9 @@
 
       {#if isArticle}
         <div>
-          <div role="tablist" class="tabs tabs-bordered" aria-label="Article views">
-            <button role="tab" class="tab" class:tab-active={activeTab === 'article'} onclick={() => (activeTab = 'article')}>Article</button>
-            <button role="tab" class="tab" class:tab-active={activeTab === 'comments'} onclick={() => (activeTab = 'comments')}>
+          <div role="tablist" class="article-tabs" aria-label="Article views">
+            <button role="tab" class="article-tab" class:article-tab-active={activeTab === 'article'} onclick={() => (activeTab = 'article')}>Article</button>
+            <button role="tab" class="article-tab" class:article-tab-active={activeTab === 'comments'} onclick={() => (activeTab = 'comments')}>
               <span>Comments</span>
               <span class="article-tab-count">{commentCount}</span>
             </button>
@@ -388,7 +388,7 @@
                   ></textarea>
                   <div class="comment-compose-actions">
                     <button
-                      class="btn btn-primary"
+                      class="rail-cta"
                       disabled={submitting || !replyText.trim()}
                       onclick={() => submitComment(null)}
                     >
@@ -447,7 +447,7 @@
                             ></textarea>
                             <div class="comment-compose-actions">
                               <button
-                                class="btn btn-primary"
+                                class="rail-cta"
                                 disabled={submitting || !replyText.trim()}
                                 onclick={() => submitComment(node.event)}
                               >
@@ -492,6 +492,71 @@
     margin: 0 auto;
     display: grid;
     gap: 1.35rem;
+  }
+
+  /* ── Column underline tabs ─────────────────────────────────── */
+
+  .article-tabs {
+    display: flex;
+    gap: 1.5rem;
+    border-bottom: 1px solid var(--color-base-300);
+  }
+
+  .article-tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 0;
+    background: none;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-neutral-content);
+    cursor: pointer;
+    transition: color 120ms ease;
+  }
+
+  .article-tab:hover {
+    color: var(--color-base-content);
+  }
+
+  .article-tab.article-tab-active {
+    color: var(--color-primary);
+  }
+
+  .article-tab.article-tab-active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-primary);
+  }
+
+  .article-tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.4rem;
+    height: 1.2rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: var(--color-base-200);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-neutral-content);
+    letter-spacing: 0.02em;
+  }
+
+  .article-tab.article-tab-active .article-tab-count {
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    color: var(--color-primary);
+  }
+
+  .article-tab-panel {
+    padding-top: 1.5rem;
   }
 
   /* ── article actions (share + bookmark) ──────────────────── */

@@ -21,12 +21,12 @@
     {@html data.post.body}
   </div>
 
-  <footer class="pt-8 border-t border-base-300">
+      <footer class="pt-8 border-t border-base-300">
     <div class="flex items-center justify-between gap-8 flex-wrap">
       <span class="text-base-content/70">Want to trade on the ideas in this post?</span>
       <div class="flex gap-3">
-        <a class="btn btn-primary" href="/">Explore markets</a>
-        <a class="btn btn-outline" href="/blog">More writing</a>
+        <a class="rail-cta" href="/">Explore markets</a>
+        <a class="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-base-300 rounded-md text-sm font-medium transition-colors hover:border-base-content/50" href="/blog">More writing</a>
       </div>
     </div>
   </footer>

@@ -2,14 +2,14 @@
   import { LEGAL_LAST_UPDATED_ISO, LEGAL_LAST_UPDATED_LABEL } from '$lib/legal/lastUpdated';
 </script>
 
-<div class="grid gap-8 py-8">
+<div class="page">
   <header class="grid gap-2">
     <div class="eyebrow">Legal</div>
-    <h1 class="text-4xl font-bold tracking-tight">Privacy Policy</h1>
+    <h1 class="font-tight text-4xl font-bold tracking-tight">Privacy Policy</h1>
     <p class="text-base-content/60">Effective <time datetime={LEGAL_LAST_UPDATED_ISO}>{LEGAL_LAST_UPDATED_LABEL}</time></p>
   </header>
 
-  <div class="prose prose-invert max-w-3xl">
+  <div class="bg-surface border border-base-300 rounded-lg p-8 max-w-3xl">
     <h2>What we don't store</h2>
     <p>
       Cascade is built on Nostr. Your trades, market positions, and discussion posts are recorded on
@@ -59,3 +59,27 @@
     </p>
   </div>
 </div>
+
+<style>
+  .bg-surface {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .bg-surface :global(h2) {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 1.5rem 0 0;
+  }
+
+  .bg-surface :global(h2:first-child) {
+    margin-top: 0;
+  }
+
+  .bg-surface :global(p) {
+    color: var(--color-base-content);
+    opacity: 0.75;
+    line-height: 1.7;
+  }
+</style>

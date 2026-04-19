@@ -38,20 +38,20 @@ test('how-it-works page uses daisyUI classes and no custom how-* styles', () => 
   assert.doesNotMatch(src, /var\(--font-mono\)/);
 });
 
-test('terms page uses prose wrapper and time element', () => {
+test('terms page uses Column surface panel instead of prose wrapper', () => {
   const src = read('src/routes/terms/+page.svelte');
-  assert.match(src, /prose/);
   assert.match(src, /<time\b/);
-  assert.doesNotMatch(src, /\bsurface\b|\bpanel\b|\bcontent-prose\b/);
-  assert.doesNotMatch(src, /<style\b/);
+  assert.match(src, /\bbg-surface\b/);
+  assert.match(src, /<style\b/);
+  assert.doesNotMatch(src, /\bprose\b/);
 });
 
-test('privacy page uses prose wrapper and time element', () => {
+test('privacy page uses Column surface panel instead of prose wrapper', () => {
   const src = read('src/routes/privacy/+page.svelte');
-  assert.match(src, /prose/);
   assert.match(src, /<time\b/);
-  assert.doesNotMatch(src, /\bsurface\b|\bpanel\b|\bcontent-prose\b/);
-  assert.doesNotMatch(src, /<style\b/);
+  assert.match(src, /\bbg-surface\b/);
+  assert.match(src, /<style\b/);
+  assert.doesNotMatch(src, /\bprose\b/);
 });
 
 test('error page uses Column CSS instead of DaisyUI hero', () => {

@@ -327,6 +327,10 @@
   .positive { @apply text-success; }
   .negative, .error { @apply text-error; }
   .error { @apply text-sm; }
+
+  .bg-surface {
+    background: var(--color-base-200);
+  }
 }
 
 @media (max-width: 640px) {

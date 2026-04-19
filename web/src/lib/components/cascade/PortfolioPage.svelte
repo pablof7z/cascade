@@ -786,7 +786,7 @@
       <a class="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-content hover:bg-white" href="/join">Connect</a>
     </div>
   {:else}
-    <!-- Summary stats - Column style -->
+    <!-- Summary metrics - Column style -->
     <div class="grid grid-cols-3 gap-6">
       <div class="rounded-lg border border-base-300 bg-base-200 p-5">
         <p class="font-mono text-[0.68rem] uppercase tracking-wider text-base-content/45 mb-2">Your balance</p>

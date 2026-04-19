@@ -91,10 +91,9 @@
   }
 </script>
 
-<div class="grid gap-2 pb-6">
-  <div class="eyebrow">Bookmarks</div>
-  <h1 class="text-[2rem] tracking-[-0.04em]">My Bookmarks</h1>
-  <p class="text-base-content/70">Markets you've saved for later.</p>
+<div class="grid gap-2 border-b border-base-300 pb-6">
+  <h1 class="font-serif text-4xl font-semibold leading-none sm:text-5xl">Bookmarks</h1>
+  <p class="max-w-2xl text-sm leading-6 text-base-content/65">Markets you've saved for later.</p>
 </div>
 
 <div class="grid gap-8 md:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
@@ -113,22 +112,22 @@
                 <strong class="text-white text-base">{market.title}</strong>
                 <p class="text-base-content/70 leading-[1.6]">{market.description || market.body || 'No summary yet.'}</p>
               </a>
-              <button class="btn btn-ghost btn-sm shrink-0" onclick={() => removeBookmark(market.id)}>Remove</button>
+              <button class="shrink-0 text-sm text-base-content/50 hover:text-base-content" onclick={() => removeBookmark(market.id)}>Remove</button>
             </div>
           {/each}
         {:else if myMarketIds.length > 0}
-          <div class="py-6 text-base-content/70">Loading saved markets...</div>
+          <div class="py-6 text-base-content/70">No saved markets found.</div>
         {:else}
           <div class="grid gap-2 py-6 border-b border-base-300">
-            <strong class="text-white">No bookmarks yet</strong>
+            <strong class="text-base-content">No bookmarks yet</strong>
             <p class="text-base-content/70 leading-[1.6]">Bookmark markets you want to track. Click the bookmark icon on any market card.</p>
-            <a class="btn btn-primary w-fit mt-1" href="/">Browse Markets</a>
+            <a class="mt-2 inline-flex w-fit items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-content hover:bg-ink" href="/">Browse Markets</a>
           </div>
         {/if}
       </div>
     {:else}
       <div class="grid gap-2 py-6 border-t border-base-300 border-b border-base-300">
-        <strong class="text-white">Sign in to manage your bookmarks.</strong>
+        <strong class="text-base-content">Sign in to manage your bookmarks.</strong>
         <p class="text-base-content/70 leading-[1.6]">Saved markets stay attached to your account so you can return to them quickly.</p>
       </div>
     {/if}
@@ -150,7 +149,7 @@
         {/each}
       {:else}
         <div class="grid gap-2 py-6 border-b border-base-300">
-          <strong class="text-white">No bookmarks yet</strong>
+          <strong class="text-base-content">No bookmarks yet</strong>
           <p class="text-base-content/70 leading-[1.6]">As people save markets, the most followed ones will show up here.</p>
         </div>
       {/if}

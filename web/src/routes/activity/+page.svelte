@@ -100,10 +100,9 @@
   const totalVolume = $derived(trades.reduce((sum, trade) => sum + trade.amount, 0));
 </script>
 
-<div class="grid gap-4 max-w-[40rem] pt-4">
-  <div class="eyebrow">Activity</div>
-  <h1 class="text-[clamp(2.4rem,4vw,4rem)] tracking-[-0.05em] leading-none">What's moving</h1>
-  <p class="text-base-content/70 leading-[1.75]">New markets, trades, and debate — live.</p>
+<div class="grid gap-2 border-b border-base-300 pb-6">
+  <h1 class="font-serif text-4xl font-semibold leading-none sm:text-5xl">Activity</h1>
+  <p class="max-w-2xl text-sm leading-6 text-base-content/65">New markets, trades, and debate — live.</p>
 </div>
 
 <div class="grid grid-cols-2 gap-4 pt-8 sm:grid-cols-4">
@@ -123,7 +122,7 @@
 <nav class="flex gap-4 pt-6 border-b border-base-300 overflow-x-auto" aria-label="Activity filters">
   {#each filters as filter}
     <button
-      class="mb-[-1px] py-[0.9rem] border-b-2 border-transparent bg-transparent text-sm font-medium cursor-pointer transition-colors {activeFilter === filter ? 'border-white text-white' : 'text-base-content/50 hover:text-base-content/80'}"
+      class="mb-[-1px] py-[0.9rem] border-b-2 border-transparent bg-transparent text-sm font-medium cursor-pointer transition-colors {activeFilter === filter ? 'border-primary text-base-content' : 'text-base-content/50 hover:text-base-content/80'}"
       type="button"
       onclick={() => (activeFilter = filter)}
     >
@@ -135,13 +134,13 @@
 <div class="border-t border-base-300 mt-6">
   {#if visibleEntries.length > 0}
     {#each visibleEntries as entry (entry.id)}
-      <a class="flex items-start justify-between gap-4 py-4 border-b border-base-300 hover:text-white" href={entry.href}>
+      <a class="flex items-start justify-between gap-4 py-4 border-b border-base-300 hover:text-primary" href={entry.href}>
         <div class="grid gap-1 min-w-0">
-          <span class="eyebrow">{entry.label}</span>
-          <strong class="text-white text-base">{entry.title}</strong>
+          <span class="text-xs text-base-content/40 uppercase tracking-wide">{entry.label}</span>
+          <strong class="text-base-content text-base">{entry.title}</strong>
           <p class="text-base-content/50 text-sm leading-[1.6]">{entry.subtitle}</p>
         </div>
-        <span class="text-base-content/50 font-mono text-sm shrink-0">{formatRelativeTime(entry.createdAt)}</span>
+        <span class="font-mono text-sm text-base-content/40 shrink-0">{formatRelativeTime(entry.createdAt)}</span>
       </a>
     {/each}
   {:else}

@@ -106,8 +106,12 @@ test('major Cascade surfaces use Daisy buttons and form controls instead of lega
   assert.doesNotMatch(portfolio, /\binput\s+input-bordered\b/);
   assert.match(portfolio, /\brounded-lg\b/);
   assert.match(portfolio, /\bborder\b.*bg-base-/);
-  assert.match(profileEdit, /\bbtn\b/);
-  assert.match(profileEdit, /\btextarea\s+textarea-bordered\b/);
+  // Profile edit migrated to The Column - uses Column button/input patterns
+  assert.doesNotMatch(profileEdit, /\bbtn\s+btn-/);
+  assert.doesNotMatch(profileEdit, /\binput\s+input-bordered\b/);
+  assert.doesNotMatch(profileEdit, /\btextarea\s+textarea-bordered\b/);
+  assert.match(profileEdit, /\brounded-full\b/); // Column pill buttons
+  assert.match(profileEdit, /\bborder\s+border-base-300\b/); // Column form styling
   assert.match(join, /\bbtn\b/);
 });
 

@@ -122,9 +122,10 @@ test('public profile page wires richer stats, entry pricing, and market links in
 
   assert.match(pageSource, /buildPublicProfilePositionStats/);
   assert.match(pageSource, /formatProfilePositionSummary\(position\)/);
-  assert.match(pageSource, /<span>Positions<\/span>/);
-  assert.match(pageSource, /<span>LONG\/SHORT split<\/span>/);
-  assert.match(pageSource, /<span>Avg entry<\/span>/);
+  assert.match(pageSource, /<span class="eyebrow">Markets created<\/span>/);
+  assert.match(pageSource, /<span class="eyebrow">Positions<\/span>/);
+  assert.match(pageSource, /<span class="eyebrow">LONG\/SHORT split<\/span>/);
+  assert.match(pageSource, /<span class="eyebrow">Avg entry<\/span>/);
   assert.match(pageSource, /<h2>Discussions<\/h2>/);
   assert.match(pageSource, /discussionEntries/);
   assert.match(pageSource, /const positionMarketList = \$derived\(data\.positionMarkets as MarketRecord\[\]\);/);

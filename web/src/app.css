@@ -311,6 +311,18 @@
     @apply text-xs font-semibold uppercase tracking-widest text-base-content/60;
   }
 
+  .profile-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 0;
+  }
+
+  .profile-row:hover {
+    color: var(--color-base-content);
+  }
+
   .muted { @apply text-base-content/70; }
   .positive { @apply text-success; }
   .negative, .error { @apply text-error; }

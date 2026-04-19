@@ -462,7 +462,7 @@
           <input bind:this={avatarFileInput} type="file" accept="image/*" onchange={handleAvatarSelection} class="hidden" tabindex="-1" />
 
           {#if avatarDisplayUrl}
-            <button class="btn btn-ghost btn-sm" type="button" onclick={() => {
+            <button class="bg-transparent border border-base-300 text-base-content/70 hover:border-base-content/80 px-3 py-1.5 text-sm rounded-md font-medium" type="button" onclick={() => {
               avatarUrl = '';
               avatarFile = null;
               clearAvatarPreview();
@@ -471,7 +471,7 @@
             }}>Remove avatar</button>
           {/if}
           {#if bannerDisplayUrl}
-            <button class="btn btn-ghost btn-sm" type="button" onclick={() => {
+            <button class="bg-transparent border border-base-300 text-base-content/70 hover:border-base-content/80 px-3 py-1.5 text-sm rounded-md font-medium" type="button" onclick={() => {
               bannerUrl = '';
               bannerFile = null;
               clearBannerPreview();
@@ -489,17 +489,17 @@
           <div class="grid gap-4 md:grid-cols-2">
             <label class="grid gap-2">
               <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Display name</span>
-              <input class="input input-bordered" bind:value={display} oninput={() => { profileTouched = true; }} placeholder="Your full name" />
+              <input class="border border-base-300 bg-transparent px-3 py-2 rounded-md text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:border-base-content/80" bind:value={display} oninput={() => { profileTouched = true; }} placeholder="Your full name" />
             </label>
             <label class="grid gap-2">
               <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Username</span>
-              <input class="input input-bordered" bind:value={name} oninput={() => { profileTouched = true; }} placeholder="username" />
+              <input class="border border-base-300 bg-transparent px-3 py-2 rounded-md text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:border-base-content/80" bind:value={name} oninput={() => { profileTouched = true; }} placeholder="username" />
             </label>
           </div>
 
           <label class="grid gap-2">
             <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Bio</span>
-            <textarea class="textarea textarea-bordered min-h-32" bind:value={about} oninput={() => { profileTouched = true; }} placeholder="Tell people about yourself" rows="3"></textarea>
+            <textarea class="border border-base-300 bg-transparent px-3 py-2 rounded-md text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:border-base-content/80 min-h-[8rem] w-full" bind:value={about} oninput={() => { profileTouched = true; }} placeholder="Tell people about yourself" rows="3"></textarea>
           </label>
         </div>
       </div>
@@ -511,17 +511,17 @@
         <div class="grid gap-4">
           <label class="grid gap-2">
             <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Verified handle</span>
-            <input class="input input-bordered" bind:value={nip05} oninput={() => { profileTouched = true; }} placeholder="you@example.com" />
+            <input class="border border-base-300 bg-transparent px-3 py-2 rounded-md text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:border-base-content/80" bind:value={nip05} oninput={() => { profileTouched = true; }} placeholder="you@example.com" />
           </label>
 
           <label class="grid gap-2">
             <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Lightning address</span>
-            <input class="input input-bordered" bind:value={lud16} oninput={() => { profileTouched = true; }} placeholder="you@wallet.com" />
+            <input class="border border-base-300 bg-transparent px-3 py-2 rounded-md text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:border-base-content/80" bind:value={lud16} oninput={() => { profileTouched = true; }} placeholder="you@wallet.com" />
           </label>
 
           <label class="grid gap-2">
             <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Website</span>
-            <input class="input input-bordered" bind:value={website} oninput={() => { profileTouched = true; }} placeholder="https://yoursite.com" type="url" />
+            <input class="border border-base-300 bg-transparent px-3 py-2 rounded-md text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:border-base-content/80" bind:value={website} oninput={() => { profileTouched = true; }} placeholder="https://yoursite.com" type="url" />
           </label>
         </div>
       </div>
@@ -536,21 +536,21 @@
               <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Background color</span>
               <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
                 <input class="h-12 w-12 rounded-md border border-base-300 bg-base-100 p-1" type="color" value={backgroundColor || '#ffffff'} oninput={(e) => { backgroundColor = (e.currentTarget as HTMLInputElement).value; nipF1Touched = true; }} />
-                <input class="input input-bordered" type="text" bind:value={backgroundColor} oninput={() => { nipF1Touched = true; }} placeholder="#ffffff" />
+                <input class="border border-base-300 bg-transparent px-3 py-2 rounded-md text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:border-base-content/80" type="text" bind:value={backgroundColor} oninput={() => { nipF1Touched = true; }} placeholder="#ffffff" />
               </div>
             </label>
             <label class="grid gap-2">
               <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Text color</span>
               <div class="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
                 <input class="h-12 w-12 rounded-md border border-base-300 bg-base-100 p-1" type="color" value={foregroundColor || '#000000'} oninput={(e) => { foregroundColor = (e.currentTarget as HTMLInputElement).value; nipF1Touched = true; }} />
-                <input class="input input-bordered" type="text" bind:value={foregroundColor} oninput={() => { nipF1Touched = true; }} placeholder="#000000" />
+                <input class="border border-base-300 bg-transparent px-3 py-2 rounded-md text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:border-base-content/80" type="text" bind:value={foregroundColor} oninput={() => { nipF1Touched = true; }} placeholder="#000000" />
               </div>
             </label>
           </div>
 
           <label class="grid gap-2">
             <span class="text-xs font-medium tracking-[0.08em] text-base-content/50 uppercase">Background music URL</span>
-            <input class="input input-bordered" bind:value={backgroundMusic} oninput={() => { nipF1Touched = true; }} placeholder="https://example.com/ambient.mp3" type="url" />
+            <input class="border border-base-300 bg-transparent px-3 py-2 rounded-md text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:border-base-content/80" bind:value={backgroundMusic} oninput={() => { nipF1Touched = true; }} placeholder="https://example.com/ambient.mp3" type="url" />
           </label>
 
           <div class="grid gap-2">
@@ -559,7 +559,7 @@
               {#each PRIORITY_KIND_OPTIONS as opt (opt.kind)}
                 <label class="flex items-center gap-3 rounded-md border border-base-300 bg-base-200 px-3 py-2">
                   <input
-                    class="checkbox checkbox-sm border-base-content/40"
+                    class="form-checkbox w-4 h-4 rounded border-base-content/40 bg-transparent accent-[var(--color-ink)]"
                     type="checkbox"
                     checked={priorityKinds.includes(opt.kind)}
                     onchange={() => togglePriorityKind(opt.kind)}
@@ -580,27 +580,27 @@
           {#each customFields as field, index (index)}
             <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
               <input
-                class="input input-bordered"
+                class="border border-base-300 bg-transparent px-3 py-2 rounded-md text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:border-base-content/80"
                 type="text"
                 placeholder="Key"
                 bind:value={field.key}
                 oninput={() => { nipF1Touched = true; }}
               />
               <input
-                class="input input-bordered"
+                class="border border-base-300 bg-transparent px-3 py-2 rounded-md text-sm text-base-content placeholder:text-base-content/40 focus:outline-none focus:border-base-content/80"
                 type="text"
                 placeholder="Value"
                 bind:value={field.value}
                 oninput={() => { nipF1Touched = true; }}
               />
-              <button type="button" class="btn btn-ghost btn-square" onclick={() => removeCustomField(index)} aria-label="Remove field">
+              <button type="button" class="bg-transparent border border-base-300 text-base-content/70 hover:border-base-content/80 p-1.5 rounded text-sm" onclick={() => removeCustomField(index)} aria-label="Remove field">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 6 6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
           {/each}
-          <button type="button" class="btn btn-outline w-fit" onclick={addCustomField}>
+          <button type="button" class="border border-base-300 bg-transparent hover:border-base-content/80 px-4 py-2 text-sm rounded-full font-medium w-fit" onclick={addCustomField}>
             Add field
           </button>
         </div>
@@ -612,10 +612,10 @@
           <p class="text-sm text-error">{saveError}</p>
         {/if}
         <div class="flex flex-wrap items-center gap-3">
-          <button class="btn btn-primary" type="button" disabled={!canPublish} onclick={() => void publish()}>
+          <button class="rounded-full bg-[var(--color-ink)] text-[#1a1610] font-semibold px-5 py-2.5 text-sm hover:bg-[#fff8ec] disabled:opacity-50 disabled:cursor-not-allowed" type="button" disabled={!canPublish} onclick={() => void publish()}>
             {saving ? 'Saving…' : uploadingAvatar || uploadingBanner ? 'Uploading…' : 'Save profile'}
           </button>
-          <a href="/p/{profileIdentifier(currentUser.profile, currentUser.npub)}" class="btn btn-outline">
+          <a href="/p/{profileIdentifier(currentUser.profile, currentUser.npub)}" class="border border-base-300 bg-transparent hover:border-base-content/80 px-5 py-2.5 text-sm rounded-full font-medium">
             View profile
           </a>
         </div>
@@ -624,7 +624,7 @@
 
     <!-- Live Preview -->
     <div class="grid gap-3 lg:sticky lg:top-24">
-      <button class="btn btn-outline w-fit lg:hidden" type="button" onclick={() => { previewOpen = !previewOpen; }}>
+      <button class="border border-base-300 bg-transparent hover:border-base-content/80 px-4 py-2 text-sm rounded-full font-medium w-fit lg:hidden" type="button" onclick={() => { previewOpen = !previewOpen; }}>
         {previewOpen ? 'Hide preview' : 'Show preview'}
       </button>
       <div

@@ -102,27 +102,27 @@
 
   <div class="flex gap-3 flex-wrap ml-auto">
     {#if currentUser?.pubkey === resolvedPubkey}
-      <a class="btn btn-primary" href="/profile/edit">Edit profile</a>
+      <a class="rounded-full bg-[var(--color-ink)] text-[#1a1610] font-semibold px-5 py-2.5 text-sm hover:bg-[#fff8ec]" href="/profile/edit">Edit profile</a>
     {/if}
   </div>
 </div>
 
-<div class="grid grid-cols-2 gap-4 pt-8 sm:grid-cols-4">
-  <div class="grid gap-1 py-4 border-t border-base-300">
+<div class="grid gap-6 grid-cols-2 sm:grid-cols-4">
+  <div class="grid gap-1.5">
     <span class="eyebrow">Markets created</span>
-    <strong class="text-white font-mono">{marketList.length}</strong>
+    <strong class="font-mono text-xl font-bold tabular-nums text-base-content">{marketList.length}</strong>
   </div>
-  <div class="grid gap-1 py-4 border-t border-base-300">
-    <span>Positions</span>
-    <strong class="text-white font-mono">{positionStats.total}</strong>
+  <div class="grid gap-1.5">
+    <span class="eyebrow">Positions</span>
+    <strong class="font-mono text-xl font-bold tabular-nums text-base-content">{positionStats.total}</strong>
   </div>
-  <div class="grid gap-1 py-4 border-t border-base-300">
-    <span>LONG/SHORT split</span>
-    <strong class="text-white font-mono">{positionStats.splitLabel}</strong>
+  <div class="grid gap-1.5">
+    <span class="eyebrow">LONG/SHORT split</span>
+    <strong class="font-mono text-xl font-bold tabular-nums text-base-content">{positionStats.splitLabel}</strong>
   </div>
-  <div class="grid gap-1 py-4 border-t border-base-300">
-    <span>Avg entry</span>
-    <strong class="text-white font-mono">{formatProfileProbability(positionStats.averageEntryPrice)}</strong>
+  <div class="grid gap-1.5">
+    <span class="eyebrow">Avg entry</span>
+    <strong class="font-mono text-xl font-bold tabular-nums text-base-content">{formatProfileProbability(positionStats.averageEntryPrice)}</strong>
   </div>
 </div>
 

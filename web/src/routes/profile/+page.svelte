@@ -21,8 +21,8 @@
     </p>
 
     <div class="flex gap-3 flex-wrap pt-2">
-      <a class="btn btn-primary" href="/onboarding">Open onboarding</a>
-      <a class="btn btn-outline" href="/profile/edit">Edit profile</a>
+      <a class="rounded-full bg-[var(--color-ink)] text-[#1a1610] font-semibold px-5 py-2.5 text-sm hover:bg-[#fff8ec]" href="/onboarding">Open onboarding</a>
+      <a class="border border-base-300 bg-transparent text-base-content/70 hover:text-base-content hover:border-base-content px-5 py-2 text-sm rounded-full font-medium" href="/profile/edit">Edit profile</a>
     </div>
   </div>
 </section>

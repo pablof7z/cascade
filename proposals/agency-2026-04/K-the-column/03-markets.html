@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Column / Markets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0b0a09; --surface:#13120f; --elev:#1a1814; --border:#1c1b17; --border-strong:#2a2822;
+    --text:#ece7dc; --text-2:#8a8678; --text-3:#5c5849; --text-4:#3a362d;
+    --yes:#3ec48a; --no:#e85d7a;
+    --ink:#efe7d3;
+    --serif:'Fraunces','Source Serif 4',Georgia,serif;
+    --tight:'Inter Tight','Inter',sans-serif;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; letter-spacing: -.01em; }
+  .tight { font-family: var(--tight); letter-spacing: -.02em; }
+  .serif { font-family: var(--serif); }
+
+  /* Same three-column shell as Home */
+  .app { display: grid; grid-template-columns: 200px minmax(0, 720px) 340px; max-width: 1320px; margin: 0 auto; min-height: 100vh; }
+  @media (max-width: 1200px) { .app { grid-template-columns: 76px minmax(0, 1fr) 320px; } .rail .labels { display: none; } .rail .brand .mark { display: none; } }
+  @media (max-width: 880px) { .app { grid-template-columns: 76px minmax(0, 1fr); } .right { display: none; } }
+  @media (max-width: 640px) { .app { grid-template-columns: 1fr; } .rail { display: none; } }
+
+  /* --- Left rail (shared exactly with Home) --- */
+  .rail { padding: 1rem 0 1rem; display: flex; flex-direction: column; gap: .3rem; position: sticky; top: 0; height: 100vh; }
+  .brand { padding: .5rem 1rem .6rem; display: flex; align-items: center; gap: .6rem; }
+  .brand .logo { width: 28px; height: 28px; background: var(--ink); border-radius: 6px; display: grid; place-items: center; color: #1a1610; font-family: var(--serif); font-weight: 700; font-size: 1.05rem; letter-spacing: -.03em; flex-shrink: 0; }
+  .brand .mark { font-family: var(--tight); font-weight: 700; font-size: 1.05rem; letter-spacing: -.025em; color: var(--ink); }
+  .rail-nav { display: flex; flex-direction: column; padding-top: .5rem; }
+  .rail-item { display: grid; grid-template-columns: 20px 1fr auto; gap: .9rem; align-items: center; padding: .6rem 1rem; color: var(--text-2); font-size: 1rem; }
+  .rail-item svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  .rail-item:hover { color: var(--text); }
+  .rail-item.active { color: var(--text); font-weight: 600; }
+  .rail-item.active svg { stroke-width: 2; fill: currentColor; }
+  .rail-item .badge { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .04em; padding: .12rem .4rem; background: var(--ink); color: #1a1610; border-radius: 999px; font-weight: 600; }
+  .rail-item .me-av { width: 22px; height: 22px; border-radius: 999px; background: linear-gradient(135deg, #6a5c7f 0%, #9b7a5e 100%); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .66rem; color: #1a1610; }
+  .rail-spacer { flex: 1; }
+  .rail-cta { margin: .4rem 1rem .6rem; padding: .7rem 1.2rem; background: var(--ink); color: #1a1610; font-weight: 700; font-size: .95rem; text-align: center; cursor: pointer; border: 0; border-radius: 6px; }
+  .rail-cta:hover { background: #fff; }
+  .rail-more { padding: .6rem 1rem; color: var(--text-3); display: flex; align-items: center; gap: .9rem; font-size: .92rem; }
+  .rail-more svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+
+  /* --- Center --- */
+  .center { min-width: 0; padding: 0 2rem 4rem; }
+
+  .page-head { padding: 2.8rem 0 1rem; border-bottom: 1px solid var(--border); }
+  .page-head h1 { margin: 0; font-family: var(--tight); font-weight: 700; font-size: 1.9rem; letter-spacing: -.025em; color: var(--ink); line-height: 1; }
+  .page-head .sub { margin-top: .5rem; color: var(--text-3); font-size: .92rem; max-width: 58ch; }
+
+  /* Sort tabs + category row — both text-only, underline-on-active. Same family as Subscriptions subtabs. */
+  .controls { padding-top: 1.2rem; display: grid; gap: .2rem; }
+  .tab-row { display: flex; gap: 1.5rem; font-size: .9rem; flex-wrap: wrap; }
+  .tab-row a { color: var(--text-3); padding: .35rem 0; border-bottom: 1px solid transparent; }
+  .tab-row a.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .tab-row a:hover { color: var(--text-2); }
+
+  .tab-row.cats { padding-top: .15rem; font-size: .86rem; }
+  .tab-row.cats a { color: var(--text-3); }
+  .tab-row.cats a.on { color: var(--text); border-bottom-color: var(--text); font-weight: 500; }
+
+  .count-line { padding-top: .8rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .04em; }
+  .count-line strong { color: var(--text-2); font-weight: 500; }
+
+  /* --- Market item (same reading card language as Home's claim embeds, but un-boxed) --- */
+  .stream { padding-top: .8rem; }
+
+  .mkt { padding: 1.4rem 0 1.8rem; border-bottom: 1px solid var(--border); display: grid; gap: .45rem; }
+  .mkt:hover { cursor: pointer; }
+  .mkt:hover .title { color: var(--ink); }
+
+  .mkt.lead { padding-top: 1.8rem; padding-bottom: 2.2rem; }
+  .mkt.lead .title { font-size: 2.2rem; max-width: 24ch; }
+  .mkt.lead .excerpt { display: block; }
+
+  .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+  .eyebrow .cat { color: var(--yes); letter-spacing: .2em; }
+  .eyebrow .sep { color: var(--text-4); margin: 0 .4rem; }
+  .eyebrow .lead-kicker { color: var(--ink); letter-spacing: .2em; }
+
+  .title { margin: .2rem 0 .5rem; font-family: var(--serif); font-weight: 500; font-size: 1.6rem; line-height: 1.15; letter-spacing: -.02em; color: var(--text); max-width: 28ch; transition: color .12s; }
+
+  .by { font-size: .88rem; color: var(--text-2); }
+  .by .name { color: var(--text); font-weight: 500; letter-spacing: -.005em; }
+  .by .pub { font-family: var(--serif); font-style: italic; color: var(--text-3); font-size: .88rem; }
+  .by .dot { color: var(--text-4); margin: 0 .3rem; }
+
+  .excerpt { display: none; font-family: var(--serif); font-size: 1.05rem; line-height: 1.6; color: var(--text-2); max-width: 52ch; margin: .35rem 0 0; }
+
+  /* Meta footer — inline, quiet */
+  .meta { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; font-family: 'JetBrains Mono', monospace; font-size: .76rem; color: var(--text-3); letter-spacing: .02em; margin-top: .35rem; }
+  .meta .price { color: var(--yes); letter-spacing: -.005em; font-size: .9rem; }
+  .meta .price.no { color: var(--no); }
+  .meta .delta.up { color: var(--yes); }
+  .meta .delta.down { color: var(--no); }
+  .meta .delta.flat { color: var(--text-3); }
+  .meta .split { color: var(--text-2); }
+  .meta .dot { color: var(--text-4); }
+
+  .more { text-align: center; padding: 2.2rem 0 1rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .1em; text-transform: uppercase; }
+  .more a { color: var(--ink); }
+
+  /* --- Right rail — EXACT same cards as Home, different content --- */
+  .right { padding: 1.1rem 1rem 2rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .right::-webkit-scrollbar { width: 6px; } .right::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .search { display: flex; align-items: center; gap: .55rem; height: 44px; padding: 0 .95rem; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; }
+  .search svg { width: 17px; height: 17px; stroke: var(--text-3); fill: none; stroke-width: 1.7; }
+  .search input { flex: 1; background: transparent; border: 0; color: var(--text); font-size: .9rem; outline: none; }
+  .search input::placeholder { color: var(--text-3); }
+
+  .rail-card { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .rail-card-head { display: flex; align-items: baseline; justify-content: space-between; padding: 1rem 1.2rem .5rem; }
+  .rail-card-head h3 { margin: 0; font-family: var(--tight); font-size: 1.05rem; font-weight: 700; letter-spacing: -.015em; }
+  .rail-card-head a { color: var(--text-3); font-size: .8rem; }
+  .rail-card-head a:hover { color: var(--text); }
+
+  /* Reuse the exact Home up-item structure: title + pub-line + mini chart thumbnail */
+  .up-item { display: grid; grid-template-columns: 1fr 72px; gap: .9rem; padding: .85rem 1.2rem; align-items: start; border-top: 1px solid var(--border); cursor: pointer; }
+  .up-item:hover { background: var(--surface); }
+  .up-item .pub-line { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .06em; display: flex; align-items: center; gap: .35rem; margin-bottom: .3rem; }
+  .up-item .pub-line .sq { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+  .up-item .pub-line .cat { color: var(--yes); letter-spacing: .16em; text-transform: uppercase; }
+  .up-item h4 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: .98rem; line-height: 1.25; letter-spacing: -.005em; color: var(--text); max-width: 22ch; }
+  .up-item .mini-meta { margin-top: .3rem; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .04em; display: flex; gap: .7rem; }
+  .up-item .mini-meta .p { color: var(--yes); }
+  .up-item .mini-meta .p.no { color: var(--no); }
+  .up-thumb { width: 72px; height: 56px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); display: grid; place-items: center; overflow: hidden; }
+  .up-thumb svg { width: 100%; height: 100%; }
+  .up-thumb .line { fill: none; stroke: var(--yes); stroke-width: 1.2; }
+  .up-thumb .line.no { stroke: var(--no); }
+
+  /* Summary line (replaces count-line in page-head) */
+  .summary { padding-top: .9rem; font-family: 'JetBrains Mono', monospace; font-size: .74rem; color: var(--text-3); letter-spacing: .04em; }
+  .summary strong { color: var(--text-2); font-weight: 500; }
+
+  /* --- Featured sections: horizontally-scrollable rails of portrait cards --- */
+  .feat-section { padding: 1.6rem 0 .5rem; border-bottom: 1px solid var(--border); }
+  .feat-section:first-of-type { padding-top: 1.2rem; }
+  .feat-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem; gap: 1rem; }
+  .feat-head h3 { margin: 0; font-family: var(--tight); font-size: 1.1rem; font-weight: 700; letter-spacing: -.015em; color: var(--text); }
+  .feat-head h3 .cnt { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); font-weight: 400; margin-left: .5rem; letter-spacing: .04em; }
+  .feat-head .see-more { font-family: 'Inter', sans-serif; font-size: .84rem; color: var(--text-3); }
+  .feat-head .see-more:hover { color: var(--ink); }
+  .feat-head .see-more .arr { color: var(--text-4); margin-left: .15rem; }
+  .feat-head .see-more:hover .arr { color: var(--ink); }
+
+  .rail-scroller { display: flex; gap: .85rem; overflow-x: auto; scroll-snap-type: x mandatory; padding: .2rem 0 1.2rem 0; margin: 0 -2rem; padding-left: 2rem; padding-right: 2rem; }
+  .rail-scroller::-webkit-scrollbar { height: 6px; }
+  .rail-scroller::-webkit-scrollbar-track { background: transparent; }
+  .rail-scroller::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+
+  /* Portrait card */
+  .pcard { flex: 0 0 196px; scroll-snap-align: start; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg); transition: border-color .12s; cursor: pointer; }
+  .pcard:hover { border-color: var(--border-strong); }
+  .pcard:hover .pcard-body h4 { color: var(--ink); }
+  .pcard-img { width: 100%; aspect-ratio: 4/5; position: relative; overflow: hidden; background: var(--surface); }
+  .pcard-img svg { width: 100%; height: 100%; display: block; }
+  .pcard-body { padding: .75rem .9rem 1rem; display: grid; gap: .4rem; flex: 1; min-height: 0; }
+  .pcard-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: .58rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; display: flex; gap: .35rem; align-items: baseline; }
+  .pcard-eyebrow .cat { color: var(--yes); letter-spacing: .18em; }
+  .pcard-eyebrow .sep { color: var(--text-4); }
+  .pcard-body h4 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: .98rem; line-height: 1.22; letter-spacing: -.005em; color: var(--text); transition: color .12s; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .pcard-author { font-family: 'JetBrains Mono', monospace; font-size: .64rem; color: var(--text-3); letter-spacing: .02em; }
+  .pcard-meta { font-family: 'JetBrains Mono', monospace; font-size: .72rem; display: flex; align-items: baseline; gap: .45rem; color: var(--text-3); margin-top: auto; padding-top: .2rem; border-top: 1px solid var(--border); }
+  .pcard-meta .p { color: var(--yes); font-size: .88rem; font-weight: 500; letter-spacing: -.01em; }
+  .pcard-meta .p.no { color: var(--no); }
+  .pcard-meta .delta.up { color: var(--yes); }
+  .pcard-meta .delta.down { color: var(--no); }
+  .pcard-meta .delta.flat { color: var(--text-3); }
+  .pcard-meta .dot { color: var(--text-4); }
+  .pcard-meta .v { color: var(--text-3); }
+
+  /* --- All markets block — category-filterable flat list --- */
+  .all-markets { padding: 1.8rem 0 0; }
+  .all-markets-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding-bottom: .8rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .all-markets-head h3 { margin: 0; font-family: var(--tight); font-size: 1.1rem; font-weight: 700; letter-spacing: -.015em; color: var(--text); }
+  .all-markets-head h3 .cnt { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); font-weight: 400; margin-left: .5rem; letter-spacing: .04em; }
+  .cat-tabs { display: flex; gap: 1.2rem; font-size: .86rem; flex-wrap: wrap; }
+  .cat-tabs a { color: var(--text-3); padding: .3rem 0; border-bottom: 1px solid transparent; }
+  .cat-tabs a.on { color: var(--text); border-bottom-color: var(--text); font-weight: 500; }
+  .cat-tabs a:hover { color: var(--text-2); }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Rail (shared) -->
+    <aside class="rail">
+      <div class="brand">
+        <span class="logo">C</span>
+        <span class="mark labels">Cascade</span>
+      </div>
+      <nav class="rail-nav">
+        <a class="rail-item" href="01-landing.html">
+          <svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9v9a2 2 0 01-2 2h-4v-7h-6v7H5a2 2 0 01-2-2z"/></svg>
+          <span class="labels">Home</span>
+        </a>
+        <a class="rail-item" href="02-subscriptions.html">
+          <svg viewBox="0 0 24 24"><path d="M21 6H8M21 12H3M21 18h-7"/></svg>
+          <span class="labels">Subscriptions</span>
+          <span class="badge labels">6</span>
+        </a>
+        <a class="rail-item active" href="#">
+          <svg viewBox="0 0 24 24"><path d="M3 20h18M5 16l4-6 4 4 6-10"/></svg>
+          <span class="labels">Markets</span>
+        </a>
+        <a class="rail-item" href="#">
+          <svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1112 0c0 5 3 6 3 6H3s3-1 3-6zM10 20a2 2 0 004 0"/></svg>
+          <span class="labels">Activity</span>
+          <span class="badge labels">12</span>
+        </a>
+        <a class="rail-item" href="#">
+          <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+          <span class="labels">Bookmarks</span>
+        </a>
+        <a class="rail-item" href="#">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18"/></svg>
+          <span class="labels">Portfolio</span>
+        </a>
+        <a class="rail-item" href="04-profile.html">
+          <span class="me-av">pf</span>
+          <span class="labels">Profile</span>
+        </a>
+      </nav>
+      <button class="rail-cta labels" onclick="location.href='03-create.html'">＋ Publish a claim</button>
+      <div class="rail-spacer"></div>
+      <a class="rail-more labels" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+        <span>More</span>
+      </a>
+    </aside>
+
+    <!-- Center -->
+    <main class="center">
+
+      <header class="page-head">
+        <h1 class="tight">Markets</h1>
+        <p class="sub">Every live claim, across every category. Browse without following anyone.</p>
+        <div class="summary"><strong>147</strong> live · <strong>38</strong> moved today · <strong>$128K</strong> in 24h volume</div>
+      </header>
+
+      <!-- 5 featured horizontally-scrollable rails. Cards are portrait with author-attached images. -->
+
+      <section class="feat-section">
+        <header class="feat-head">
+          <h3>Most Active<span class="cnt">by 24h volume</span></h3>
+          <a class="see-more" href="#">See more <span class="arr">→</span></a>
+        </header>
+        <div class="rail-scroller">
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d3218 0%, #1a1509 100%);">
+              <svg viewBox="0 0 200 250" preserveAspectRatio="xMidYMid meet"><g fill="none" stroke="#d4b97a" stroke-width="1" opacity=".28"><circle cx="100" cy="125" r="25"/><circle cx="100" cy="125" r="48"/><circle cx="100" cy="125" r="72"/><circle cx="100" cy="125" r="96"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">AI</span><span class="sep">·</span><span>35d</span></span>
+              <h4>OpenAI will ship GPT-5 before Google ships Gemini 2 Pro.</h4>
+              <span class="pcard-author">@north · Corporate timing</span>
+              <div class="pcard-meta"><span class="p">71¢</span><span class="delta up">+3¢</span><span class="dot">·</span><span class="v">$8.2K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d3218 0%, #1a1509 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#d4b97a" stroke-width=".8" opacity=".3"><polygon points="100,80 140,100 140,140 100,160 60,140 60,100"/><polygon points="100,95 128,110 128,135 100,150 72,135 72,110"/><polygon points="45,60 65,70 65,88 45,98 25,88 25,70"/><polygon points="175,160 195,170 195,188 175,198 155,188 155,170"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Crypto</span><span class="sep">·</span><span>72d</span></span>
+              <h4>Bitcoin trades above $150,000 by Q3 2026.</h4>
+              <span class="pcard-author">@greta · Bitcoin macro</span>
+              <div class="pcard-meta"><span class="p">58¢</span><span class="delta up">+1¢</span><span class="dot">·</span><span class="v">$15.9K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d2b24 0%, #1a120e 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#c48a68" stroke-width=".8" opacity=".32"><path d="M0,60 Q60,40 120,60 T200,55"/><path d="M0,110 Q70,90 130,110 T200,105"/><path d="M0,160 Q50,140 110,155 T200,150"/><path d="M0,210 Q80,190 140,205 T200,200"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Geopolitics</span><span class="sep">·</span><span>49d</span></span>
+              <h4>Taiwan holds a recognised election without cross-strait incident.</h4>
+              <span class="pcard-author">@sono · East Asia watch</span>
+              <div class="pcard-meta"><span class="p">77¢</span><span class="delta up">+2¢</span><span class="dot">·</span><span class="v">$42K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #29332a 0%, #141814 100%);">
+              <svg viewBox="0 0 200 250"><g opacity=".35"><polyline points="10,220 40,195 70,200 100,170 130,155 160,125 190,95" fill="none" stroke="#9ab092" stroke-width="1.6"/><line x1="10" y1="230" x2="190" y2="230" stroke="#9ab092" stroke-width=".5"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Macro</span><span class="sep">·</span><span>128d</span></span>
+              <h4>The Fed funds rate is below 3% at any point in 2026.</h4>
+              <span class="pcard-author">@quincy · The macro weekly</span>
+              <div class="pcard-meta"><span class="p">64¢</span><span class="delta up">+2¢</span><span class="dot">·</span><span class="v">$9.3K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #262a30 0%, #0d1013 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#8a95a4" stroke-width="1" opacity=".28"><circle cx="100" cy="125" r="25"/><circle cx="100" cy="125" r="48"/><circle cx="100" cy="125" r="72"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Tech</span><span class="sep">·</span><span>54d</span></span>
+              <h4>Apple ships AI-first glasses before Meta's next Ray-Ban.</h4>
+              <span class="pcard-author">@ashe · Hardware &amp; what it means</span>
+              <div class="pcard-meta"><span class="p">49¢</span><span class="delta flat">+0¢</span><span class="dot">·</span><span class="v">$6K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #332430 0%, #160e13 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#a47e9a" stroke-width=".7" opacity=".3"><path d="M0,80 Q60,60 120,80 T200,75"/><path d="M0,130 Q70,110 130,130 T200,125"/><path d="M0,180 Q50,160 110,175 T200,170"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Policy</span><span class="sep">·</span><span>92d</span></span>
+              <h4>A G7 nation launches a retail CBDC before 2027.</h4>
+              <span class="pcard-author">@halden · Europe &amp; the election cycle</span>
+              <div class="pcard-meta"><span class="p no">22¢</span><span class="delta down">−2¢</span><span class="dot">·</span><span class="v">$2.1K</span></div>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <section class="feat-section">
+        <header class="feat-head">
+          <h3>New<span class="cnt">published in the last 48 hours</span></h3>
+          <a class="see-more" href="#">See more <span class="arr">→</span></a>
+        </header>
+        <div class="rail-scroller">
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #332430 0%, #160e13 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#a47e9a" stroke-width=".7" opacity=".3"><path d="M0,60 Q60,40 120,60 T200,55"/><path d="M0,110 Q70,90 130,110 T200,105"/><path d="M0,160 Q50,140 110,155 T200,150"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Policy</span><span class="sep">·</span><span>1h new</span></span>
+              <h4>A US state passes an AI liability statute before year-end 2026.</h4>
+              <span class="pcard-author">@isla · Policy &amp; the law</span>
+              <div class="pcard-meta"><span class="p">62¢</span><span class="delta up">+4¢</span><span class="dot">·</span><span class="v">$2.9K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d3218 0%, #1a1509 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#d4b97a" stroke-width=".8" opacity=".3"><polygon points="100,90 136,108 136,142 100,160 64,142 64,108"/><polygon points="40,170 60,180 60,200 40,210 20,200 20,180"/><polygon points="160,60 180,70 180,90 160,100 140,90 140,70"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Crypto</span><span class="sep">·</span><span>8d new</span></span>
+              <h4>Solana flips Ethereum on monthly fees this year.</h4>
+              <span class="pcard-author">@aria</span>
+              <div class="pcard-meta"><span class="p">41¢</span><span class="delta up">+5¢</span><span class="dot">·</span><span class="v">$3.9K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d3218 0%, #1a1509 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#d4b97a" stroke-width="1" opacity=".28"><circle cx="100" cy="125" r="28"/><circle cx="100" cy="125" r="54"/><circle cx="100" cy="125" r="80"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Crypto</span><span class="sep">·</span><span>4h new</span></span>
+              <h4>Bitcoin trades above $150,000 at any point before 1 July 2026.</h4>
+              <span class="pcard-author">@greta · Bitcoin macro</span>
+              <div class="pcard-meta"><span class="p">50¢</span><span class="delta flat">opening</span><span class="dot">·</span><span class="v">$500</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d2b24 0%, #1a120e 100%);">
+              <svg viewBox="0 0 200 250"><g fill="#c48a68" opacity=".32"><circle cx="30" cy="70" r="2"/><circle cx="72" cy="100" r="1.5"/><circle cx="132" cy="80" r="2.5"/><circle cx="162" cy="130" r="1.5"/><circle cx="50" cy="160" r="2"/><circle cx="102" cy="180" r="1.8"/><circle cx="172" cy="200" r="2"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Sports</span><span class="sep">·</span><span>12h new</span></span>
+              <h4>A women's team wins the UEFA Women's Champions League 2026.</h4>
+              <span class="pcard-author">@pete</span>
+              <div class="pcard-meta"><span class="p">43¢</span><span class="delta up">+1¢</span><span class="dot">·</span><span class="v">$680</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d3218 0%, #1a1509 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#d4b97a" stroke-width="1" opacity=".3"><circle cx="100" cy="125" r="22"/><circle cx="100" cy="125" r="44"/><circle cx="100" cy="125" r="66"/><circle cx="100" cy="125" r="88"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">AI</span><span class="sep">·</span><span>1d new</span></span>
+              <h4>GPT-5 has native agent tool-use at launch.</h4>
+              <span class="pcard-author">@north · Corporate timing</span>
+              <div class="pcard-meta"><span class="p">82¢</span><span class="delta up">+1¢</span><span class="dot">·</span><span class="v">$4.1K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #29332a 0%, #141814 100%);">
+              <svg viewBox="0 0 200 250"><g opacity=".35"><polyline points="10,130 40,135 70,140 100,142 130,140 160,138 190,135" fill="none" stroke="#9ab092" stroke-width="1.4"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Macro</span><span class="sep">·</span><span>2d new</span></span>
+              <h4>US CPI prints below 2.5% year-over-year in any month of Q2.</h4>
+              <span class="pcard-author">@alma</span>
+              <div class="pcard-meta"><span class="p">52¢</span><span class="delta up">+1¢</span><span class="dot">·</span><span class="v">$6.6K</span></div>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <section class="feat-section">
+        <header class="feat-head">
+          <h3>Contested<span class="cnt">crowd is split</span></h3>
+          <a class="see-more" href="#">See more <span class="arr">→</span></a>
+        </header>
+        <div class="rail-scroller">
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #262a30 0%, #0d1013 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#8a95a4" stroke-width="1" opacity=".28"><circle cx="100" cy="125" r="25"/><circle cx="100" cy="125" r="48"/><circle cx="100" cy="125" r="72"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Tech</span><span class="sep">·</span><span>spread 2¢</span></span>
+              <h4>Apple ships AI-first glasses before Meta's next Ray-Ban.</h4>
+              <span class="pcard-author">@ashe · 91 replies</span>
+              <div class="pcard-meta"><span class="p">49¢</span><span class="delta flat">+0¢</span><span class="dot">·</span><span class="v">$6K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d3218 0%, #1a1509 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#d4b97a" stroke-width=".8" opacity=".3"><polygon points="100,85 135,105 135,140 100,160 65,140 65,105"/><polygon points="100,100 125,115 125,135 100,150 75,135 75,115"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Tech</span><span class="sep">·</span><span>spread 2¢</span></span>
+              <h4>Nvidia stays above $4T market cap at end-2026.</h4>
+              <span class="pcard-author">@jens · 44 replies</span>
+              <div class="pcard-meta"><span class="p">51¢</span><span class="delta flat">+0¢</span><span class="dot">·</span><span class="v">$7.8K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d3218 0%, #1a1509 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#d4b97a" stroke-width="1" opacity=".3"><circle cx="100" cy="125" r="20"/><circle cx="100" cy="125" r="40"/><circle cx="100" cy="125" r="60"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">AI</span><span class="sep">·</span><span>spread 22¢</span></span>
+              <h4>A frontier model scores above 90% on Frontier Math.</h4>
+              <span class="pcard-author">@otto</span>
+              <div class="pcard-meta"><span class="p no">39¢</span><span class="delta flat">+0¢</span><span class="dot">·</span><span class="v">$2.2K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #262a30 0%, #0d1013 100%);">
+              <svg viewBox="0 0 200 250"><g fill="#8a95a4" opacity=".3"><circle cx="40" cy="80" r="2"/><circle cx="85" cy="110" r="1.5"/><circle cx="135" cy="85" r="2.5"/><circle cx="165" cy="135" r="1.5"/><circle cx="55" cy="165" r="2"/><circle cx="105" cy="185" r="1.8"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Tech</span><span class="sep">·</span><span>spread 8¢</span></span>
+              <h4>A frontier AI model earns Nobel mention by decade's end.</h4>
+              <span class="pcard-author">@otto · AI benchmarks</span>
+              <div class="pcard-meta"><span class="p no">46¢</span><span class="delta up">+1¢</span><span class="dot">·</span><span class="v">$3.4K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d3218 0%, #1a1509 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#d4b97a" stroke-width="1" opacity=".28"><circle cx="100" cy="125" r="25"/><circle cx="100" cy="125" r="50"/><circle cx="100" cy="125" r="75"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">AI</span><span class="sep">·</span><span>spread 4¢</span></span>
+              <h4>Anthropic ships Claude 5 before end-2026.</h4>
+              <span class="pcard-author">@north · Corporate timing</span>
+              <div class="pcard-meta"><span class="p">54¢</span><span class="delta down">−1¢</span><span class="dot">·</span><span class="v">$4.6K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d2b24 0%, #1a120e 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#c48a68" stroke-width=".8" opacity=".3"><path d="M0,80 Q60,60 120,80 T200,75"/><path d="M0,130 Q70,110 130,130 T200,125"/><path d="M0,180 Q50,160 110,175 T200,170"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Geopolitics</span><span class="sep">·</span><span>spread 32¢</span></span>
+              <h4>Russia and Ukraine sign a formal ceasefire before year-end.</h4>
+              <span class="pcard-author">@kira · 34 replies</span>
+              <div class="pcard-meta"><span class="p no">34¢</span><span class="delta down">−3¢</span><span class="dot">·</span><span class="v">$4.2K</span></div>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <section class="feat-section">
+        <header class="feat-head">
+          <h3>Biggest Moves<span class="cnt">largest price moves today</span></h3>
+          <a class="see-more" href="#">See more <span class="arr">→</span></a>
+        </header>
+        <div class="rail-scroller">
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d3218 0%, #1a1509 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#d4b97a" stroke-width=".8" opacity=".3"><polygon points="100,90 136,108 136,142 100,160 64,142 64,108"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Crypto</span><span class="sep">·</span><span>+5¢ · 24h</span></span>
+              <h4>Solana flips Ethereum on monthly fees this year.</h4>
+              <span class="pcard-author">@aria</span>
+              <div class="pcard-meta"><span class="p">41¢</span><span class="delta up">+5¢</span><span class="dot">·</span><span class="v">$3.9K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #332430 0%, #160e13 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#a47e9a" stroke-width=".7" opacity=".3"><path d="M0,60 Q60,40 120,60 T200,55"/><path d="M0,110 Q70,90 130,110 T200,105"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Policy</span><span class="sep">·</span><span>+4¢ · 24h</span></span>
+              <h4>A US state passes an AI liability statute before year-end.</h4>
+              <span class="pcard-author">@isla · Policy &amp; the law</span>
+              <div class="pcard-meta"><span class="p">62¢</span><span class="delta up">+4¢</span><span class="dot">·</span><span class="v">$2.9K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d2b24 0%, #1a120e 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#c48a68" stroke-width=".8" opacity=".3"><path d="M0,80 Q60,60 120,80 T200,75"/><path d="M0,130 Q70,110 130,130 T200,125"/><path d="M0,180 Q50,160 110,175 T200,170"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Nostr</span><span class="sep">·</span><span>−4¢ · 24h</span></span>
+              <h4>Nostr daily active users exceed one million before 2028.</h4>
+              <span class="pcard-author">@mutiny</span>
+              <div class="pcard-meta"><span class="p no">32¢</span><span class="delta down">−4¢</span><span class="dot">·</span><span class="v">$1.4K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d2b24 0%, #1a120e 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#c48a68" stroke-width=".8" opacity=".3"><path d="M0,90 Q60,70 120,90 T200,85"/><path d="M0,150 Q70,130 130,150 T200,145"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Geopolitics</span><span class="sep">·</span><span>−3¢ · 24h</span></span>
+              <h4>Russia and Ukraine sign a formal ceasefire before year-end 2026.</h4>
+              <span class="pcard-author">@kira</span>
+              <div class="pcard-meta"><span class="p no">34¢</span><span class="delta down">−3¢</span><span class="dot">·</span><span class="v">$4.2K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d3218 0%, #1a1509 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#d4b97a" stroke-width="1" opacity=".28"><circle cx="100" cy="125" r="25"/><circle cx="100" cy="125" r="48"/><circle cx="100" cy="125" r="72"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">AI</span><span class="sep">·</span><span>+3¢ · 24h</span></span>
+              <h4>OpenAI will ship GPT-5 before Google ships Gemini 2 Pro.</h4>
+              <span class="pcard-author">@north · Corporate timing</span>
+              <div class="pcard-meta"><span class="p">71¢</span><span class="delta up">+3¢</span><span class="dot">·</span><span class="v">$8.2K</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #29332a 0%, #141814 100%);">
+              <svg viewBox="0 0 200 250"><g opacity=".35"><polyline points="10,210 40,185 70,190 100,160 130,145 160,115 190,85" fill="none" stroke="#9ab092" stroke-width="1.6"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Macro</span><span class="sep">·</span><span>+2¢ · 24h</span></span>
+              <h4>The Fed funds rate is below 3% at any point in 2026.</h4>
+              <span class="pcard-author">@quincy · The macro weekly</span>
+              <div class="pcard-meta"><span class="p">64¢</span><span class="delta up">+2¢</span><span class="dot">·</span><span class="v">$9.3K</span></div>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <section class="feat-section">
+        <header class="feat-head">
+          <h3>Under the Radar<span class="cnt">low volume · interesting divergence</span></h3>
+          <a class="see-more" href="#">See more <span class="arr">→</span></a>
+        </header>
+        <div class="rail-scroller">
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #262a30 0%, #0d1013 100%);">
+              <svg viewBox="0 0 200 250"><g fill="#8a95a4" opacity=".28"><circle cx="40" cy="80" r="1.5"/><circle cx="85" cy="110" r="1"/><circle cx="135" cy="85" r="2"/><circle cx="165" cy="135" r="1.2"/><circle cx="55" cy="170" r="1.5"/><circle cx="105" cy="195" r="1.5"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Tech</span><span class="sep">·</span><span>$780 vol</span></span>
+              <h4>Tesla's robotaxi network reaches 100,000 active vehicles.</h4>
+              <span class="pcard-author">@fourier</span>
+              <div class="pcard-meta"><span class="p no">18¢</span><span class="delta down">−1¢</span><span class="dot">·</span><span class="v">9 replies</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d2b24 0%, #1a120e 100%);">
+              <svg viewBox="0 0 200 250"><g fill="#c48a68" opacity=".3"><circle cx="30" cy="70" r="2.5"/><circle cx="72" cy="100" r="2"/><circle cx="132" cy="80" r="2"/><circle cx="162" cy="130" r="2"/><circle cx="50" cy="170" r="2.5"/><circle cx="102" cy="190" r="2"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Sports</span><span class="sep">·</span><span>$4.5K vol</span></span>
+              <h4>The Lakers make the Western Conference Finals in 2026.</h4>
+              <span class="pcard-author">@pip</span>
+              <div class="pcard-meta"><span class="p">56¢</span><span class="delta up">+2¢</span><span class="dot">·</span><span class="v">12 replies</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d3218 0%, #1a1509 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#d4b97a" stroke-width="1" opacity=".28"><circle cx="100" cy="125" r="30"/><circle cx="100" cy="125" r="56"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">AI</span><span class="sep">·</span><span>$1.8K vol</span></span>
+              <h4>OpenAI releases an open-weights model in 2026.</h4>
+              <span class="pcard-author">@north · Corporate timing</span>
+              <div class="pcard-meta"><span class="p">81¢</span><span class="delta flat">+0¢</span><span class="dot">·</span><span class="v">7 replies</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #29332a 0%, #141814 100%);">
+              <svg viewBox="0 0 200 250"><g opacity=".3"><polyline points="10,180 40,170 70,165 100,155 130,145 160,140 190,130" fill="none" stroke="#9ab092" stroke-width="1.4"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Macro</span><span class="sep">·</span><span>$1.4K vol</span></span>
+              <h4>Long-end US yields close below 3.5% in any month of 2026.</h4>
+              <span class="pcard-author">@alma</span>
+              <div class="pcard-meta"><span class="p">47¢</span><span class="delta up">+1¢</span><span class="dot">·</span><span class="v">14 replies</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #3d2b24 0%, #1a120e 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#c48a68" stroke-width=".7" opacity=".3"><path d="M0,90 Q60,70 120,90 T200,85"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Sports</span><span class="sep">·</span><span>$800 vol</span></span>
+              <h4>A first-time F1 driver wins a Grand Prix this season.</h4>
+              <span class="pcard-author">@row</span>
+              <div class="pcard-meta"><span class="p no">28¢</span><span class="delta down">−2¢</span><span class="dot">·</span><span class="v">4 replies</span></div>
+            </div>
+          </a>
+          <a class="pcard" href="04-market.html">
+            <div class="pcard-img" style="background: linear-gradient(135deg, #332430 0%, #160e13 100%);">
+              <svg viewBox="0 0 200 250"><g fill="none" stroke="#a47e9a" stroke-width=".7" opacity=".3"><path d="M0,80 Q60,60 120,80 T200,75"/><path d="M0,160 Q70,140 130,155 T200,150"/></g></svg>
+            </div>
+            <div class="pcard-body">
+              <span class="pcard-eyebrow"><span class="cat">Culture</span><span class="sep">·</span><span>$1.2K vol</span></span>
+              <h4>A Netflix original takes Best Picture at the 2027 Oscars.</h4>
+              <span class="pcard-author">@lee · Culture &amp; awards</span>
+              <div class="pcard-meta"><span class="p">57¢</span><span class="delta up">+2¢</span><span class="dot">·</span><span class="v">11 replies</span></div>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <!-- All markets — category-filterable flat list -->
+      <section class="all-markets">
+        <header class="all-markets-head">
+          <h3 class="tight">All markets<span class="cnt">147 live</span></h3>
+          <nav class="cat-tabs" role="tablist">
+            <a class="on" href="#">All</a>
+            <a href="#">Geopolitics</a>
+            <a href="#">Macro</a>
+            <a href="#">AI</a>
+            <a href="#">Crypto</a>
+            <a href="#">Tech</a>
+            <a href="#">Sports</a>
+            <a href="#">Culture</a>
+            <a href="#">Policy</a>
+            <a href="#">Nostr</a>
+          </nav>
+        </header>
+
+        <div class="stream">
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">AI</span><span class="sep">·</span><span>35 days old</span></span>
+          <h2 class="title serif">OpenAI will ship GPT-5 before Google ships Gemini 2 Pro.</h2>
+          <div class="by">by <span class="name">Nina Ortega</span><span class="dot">·</span><span class="pub">Corporate timing, weekly-ish</span></div>
+          <div class="meta">
+            <span class="price">71¢ YES</span>
+            <span class="delta up">+3¢ 24h</span>
+            <span class="dot">·</span>
+            <span>2,814 trades</span>
+            <span class="dot">·</span>
+            <span>24 replies</span>
+            <span class="dot">·</span>
+            <span>$74K 30d</span>
+          </div>
+        </article>
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">Crypto</span><span class="sep">·</span><span>72 days old</span></span>
+          <h2 class="title serif">Bitcoin trades above $150,000 by Q3 2026.</h2>
+          <div class="by">by <span class="name">Greta Maddox</span><span class="dot">·</span><span class="pub">Bitcoin, macro &amp; their entanglements</span></div>
+          <div class="meta">
+            <span class="price">58¢ YES</span>
+            <span class="delta up">+1¢ 24h</span>
+            <span class="dot">·</span>
+            <span>1,201 trades</span>
+            <span class="dot">·</span>
+            <span>47 replies</span>
+            <span class="dot">·</span>
+            <span>$65K 30d</span>
+          </div>
+        </article>
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">Macro</span><span class="sep">·</span><span>128 days old</span></span>
+          <h2 class="title serif">The Fed funds rate is below 3% at any point in 2026.</h2>
+          <div class="by">by <span class="name">Quincy Afolabi</span><span class="dot">·</span><span class="pub">The macro weekly</span></div>
+          <div class="meta">
+            <span class="price">64¢ YES</span>
+            <span class="delta up">+2¢ 24h</span>
+            <span class="dot">·</span>
+            <span>1,944 trades</span>
+            <span class="dot">·</span>
+            <span>31 replies</span>
+            <span class="dot">·</span>
+            <span>$58K 30d</span>
+          </div>
+        </article>
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">Geopolitics</span><span class="sep">·</span><span>49 days old</span></span>
+          <h2 class="title serif">Taiwan holds a recognised national election in 2026 without a cross-strait military incident.</h2>
+          <div class="by">by <span class="name">Sono Yamada</span><span class="dot">·</span><span class="pub">East Asia watch</span></div>
+          <div class="meta">
+            <span class="price">77¢ YES</span>
+            <span class="delta up">+2¢ 24h</span>
+            <span class="dot">·</span>
+            <span>482 trades</span>
+            <span class="dot">·</span>
+            <span>28 replies</span>
+            <span class="dot">·</span>
+            <span>$42K 30d</span>
+          </div>
+        </article>
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">Tech</span><span class="sep">·</span><span>54 days old</span><span class="sep">·</span><span class="split">crowd split 49/51</span></span>
+          <h2 class="title serif">Apple ships AI-first glasses before Meta's next Ray-Ban.</h2>
+          <div class="by">by <span class="name">Ashe Kwon</span><span class="dot">·</span><span class="pub">Hardware &amp; what it means</span></div>
+          <div class="meta">
+            <span class="price">49¢ YES</span>
+            <span class="delta flat">+0¢ 24h</span>
+            <span class="dot">·</span>
+            <span>622 trades</span>
+            <span class="dot">·</span>
+            <span>91 replies</span>
+            <span class="dot">·</span>
+            <span>$43K 30d</span>
+          </div>
+        </article>
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">Nostr</span><span class="sep">·</span><span>41 days old</span></span>
+          <h2 class="title serif">Nostr daily active users exceed one million before 2028.</h2>
+          <div class="by">by <span class="name">@mutiny</span><span class="dot">·</span><span class="pub">no publication</span></div>
+          <div class="meta">
+            <span class="price no">32¢ YES</span>
+            <span class="delta down">−4¢ 24h</span>
+            <span class="dot">·</span>
+            <span>308 trades</span>
+            <span class="dot">·</span>
+            <span>58 replies</span>
+            <span class="dot">·</span>
+            <span>$8.3K 30d</span>
+          </div>
+        </article>
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">Policy</span><span class="sep">·</span><span>1 hour old</span></span>
+          <h2 class="title serif">A US state passes an AI liability statute before year-end 2026.</h2>
+          <div class="by">by <span class="name">Isla Vesterbro</span><span class="dot">·</span><span class="pub">Policy &amp; the law</span></div>
+          <div class="meta">
+            <span class="price">62¢ YES</span>
+            <span class="delta up">+4¢ 24h</span>
+            <span class="dot">·</span>
+            <span>482 trades</span>
+            <span class="dot">·</span>
+            <span>22 replies</span>
+            <span class="dot">·</span>
+            <span>$2.9K 30d</span>
+          </div>
+        </article>
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">Sports</span><span class="sep">·</span><span>28 days old</span></span>
+          <h2 class="title serif">The Lakers make the Western Conference Finals in 2026.</h2>
+          <div class="by">by <span class="name">@pip</span><span class="dot">·</span><span class="pub">no publication</span></div>
+          <div class="meta">
+            <span class="price">56¢ YES</span>
+            <span class="delta up">+2¢ 24h</span>
+            <span class="dot">·</span>
+            <span>1,208 trades</span>
+            <span class="dot">·</span>
+            <span>12 replies</span>
+            <span class="dot">·</span>
+            <span>$4.5K 30d</span>
+          </div>
+        </article>
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">Geopolitics</span><span class="sep">·</span><span>88 days old</span></span>
+          <h2 class="title serif">Russia and Ukraine sign a formal ceasefire before year-end 2026.</h2>
+          <div class="by">by <span class="name">@kira</span><span class="dot">·</span><span class="pub">no publication</span></div>
+          <div class="meta">
+            <span class="price no">34¢ YES</span>
+            <span class="delta down">−3¢ 24h</span>
+            <span class="dot">·</span>
+            <span>1,244 trades</span>
+            <span class="dot">·</span>
+            <span>34 replies</span>
+            <span class="dot">·</span>
+            <span>$4.2K 30d</span>
+          </div>
+        </article>
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">Macro</span><span class="sep">·</span><span>56 days old</span></span>
+          <h2 class="title serif">The S&amp;P 500 closes above 7,000 at any point in H1 2026.</h2>
+          <div class="by">by <span class="name">@rhys</span><span class="dot">·</span><span class="pub">Equities &amp; carry</span></div>
+          <div class="meta">
+            <span class="price">58¢ YES</span>
+            <span class="delta flat">+0¢ 24h</span>
+            <span class="dot">·</span>
+            <span>720 trades</span>
+            <span class="dot">·</span>
+            <span>19 replies</span>
+            <span class="dot">·</span>
+            <span>$8.1K 30d</span>
+          </div>
+        </article>
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">Tech</span><span class="sep">·</span><span>21 days old</span></span>
+          <h2 class="title serif">Tesla's robotaxi network reaches 100,000 active vehicles.</h2>
+          <div class="by">by <span class="name">@fourier</span><span class="dot">·</span><span class="pub">no publication</span></div>
+          <div class="meta">
+            <span class="price no">18¢ YES</span>
+            <span class="delta down">−1¢ 24h</span>
+            <span class="dot">·</span>
+            <span>207 trades</span>
+            <span class="dot">·</span>
+            <span>9 replies</span>
+            <span class="dot">·</span>
+            <span>$780 30d</span>
+          </div>
+        </article>
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">Crypto</span><span class="sep">·</span><span>8 days old</span></span>
+          <h2 class="title serif">Solana flips Ethereum on monthly fees this year.</h2>
+          <div class="by">by <span class="name">@aria</span><span class="dot">·</span><span class="pub">no publication</span></div>
+          <div class="meta">
+            <span class="price">41¢ YES</span>
+            <span class="delta up">+5¢ 24h</span>
+            <span class="dot">·</span>
+            <span>487 trades</span>
+            <span class="dot">·</span>
+            <span>18 replies</span>
+            <span class="dot">·</span>
+            <span>$3.9K 30d</span>
+          </div>
+        </article>
+
+        <article class="mkt" onclick="location.href='04-market.html'">
+          <span class="eyebrow"><span class="cat">Policy</span><span class="sep">·</span><span>92 days old</span></span>
+          <h2 class="title serif">A G7 nation launches a retail CBDC before 2027.</h2>
+          <div class="by">by <span class="name">Halden Rask</span><span class="dot">·</span><span class="pub">Europe &amp; the election cycle</span></div>
+          <div class="meta">
+            <span class="price no">22¢ YES</span>
+            <span class="delta down">−2¢ 24h</span>
+            <span class="dot">·</span>
+            <span>482 trades</span>
+            <span class="dot">·</span>
+            <span>12 replies</span>
+            <span class="dot">·</span>
+            <span>$2.1K 30d</span>
+          </div>
+        </article>
+
+        </div>
+      </section>
+
+      <div class="more"><a href="#">Load 133 more markets</a></div>
+
+    </main>
+
+    <!-- Right rail — same cards Home uses, different content -->
+    <aside class="right">
+      <label class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+        <input placeholder="Search markets" />
+      </label>
+
+      <section class="rail-card">
+        <header class="rail-card-head">
+          <h3 class="tight">Moving today</h3>
+          <a href="#">See all</a>
+        </header>
+
+        <a class="up-item" href="../H-the-study/02-market.html">
+          <div>
+            <div class="pub-line"><span class="cat">Crypto</span></div>
+            <h4 class="serif">Solana flips Ethereum on monthly fees this year.</h4>
+            <div class="mini-meta"><span class="p">41¢</span><span>+5¢</span><span>$3.9K</span></div>
+          </div>
+          <div class="up-thumb">
+            <svg viewBox="0 0 72 56" preserveAspectRatio="none">
+              <polyline class="line" points="0,42 9,38 18,36 27,32 36,30 45,28 54,24 63,20 72,16"/>
+              <circle cx="72" cy="16" r="2" fill="#3ec48a"/>
+            </svg>
+          </div>
+        </a>
+
+        <a class="up-item" href="../H-the-study/02-market.html">
+          <div>
+            <div class="pub-line"><span class="cat">Nostr</span></div>
+            <h4 class="serif">Nostr DAU exceeds 1M before 2028.</h4>
+            <div class="mini-meta"><span class="p no">32¢</span><span>−4¢</span><span>$1.4K</span></div>
+          </div>
+          <div class="up-thumb">
+            <svg viewBox="0 0 72 56" preserveAspectRatio="none">
+              <polyline class="line no" points="0,16 9,20 18,24 27,28 36,32 45,36 54,40 63,44 72,48"/>
+              <circle cx="72" cy="48" r="2" fill="#e85d7a"/>
+            </svg>
+          </div>
+        </a>
+
+        <a class="up-item" href="../H-the-study/02-market.html">
+          <div>
+            <div class="pub-line"><span class="cat">Policy</span></div>
+            <h4 class="serif">A US state passes AI liability statute.</h4>
+            <div class="mini-meta"><span class="p">62¢</span><span>+4¢</span><span>1h old</span></div>
+          </div>
+          <div class="up-thumb">
+            <svg viewBox="0 0 72 56" preserveAspectRatio="none">
+              <polyline class="line" points="0,36 9,30 18,24 27,20 36,18 45,14 54,12 63,10 72,8"/>
+              <circle cx="72" cy="8" r="2" fill="#3ec48a"/>
+            </svg>
+          </div>
+        </a>
+
+        <a class="up-item" href="../H-the-study/02-market.html">
+          <div>
+            <div class="pub-line"><span class="cat">Geopolitics</span></div>
+            <h4 class="serif">Russia/Ukraine ceasefire by year-end.</h4>
+            <div class="mini-meta"><span class="p no">34¢</span><span>−3¢</span><span>$4.2K</span></div>
+          </div>
+          <div class="up-thumb">
+            <svg viewBox="0 0 72 56" preserveAspectRatio="none">
+              <polyline class="line no" points="0,20 9,22 18,26 27,30 36,34 45,36 54,40 63,42 72,44"/>
+              <circle cx="72" cy="44" r="2" fill="#e85d7a"/>
+            </svg>
+          </div>
+        </a>
+      </section>
+
+      <section class="rail-card">
+        <header class="rail-card-head">
+          <h3 class="tight">Most contested</h3>
+          <a href="#">See all</a>
+        </header>
+
+        <a class="up-item" href="../H-the-study/02-market.html">
+          <div>
+            <div class="pub-line"><span class="cat">Tech</span></div>
+            <h4 class="serif">Apple ships AI glasses before Meta.</h4>
+            <div class="mini-meta"><span class="p">49¢</span><span>spread 2¢</span><span>91 replies</span></div>
+          </div>
+          <div class="up-thumb">
+            <svg viewBox="0 0 72 56" preserveAspectRatio="none">
+              <polyline class="line" points="0,30 9,28 18,30 27,28 36,30 45,28 54,28 63,30 72,28"/>
+              <circle cx="72" cy="28" r="2" fill="#3ec48a"/>
+            </svg>
+          </div>
+        </a>
+
+        <a class="up-item" href="../H-the-study/02-market.html">
+          <div>
+            <div class="pub-line"><span class="cat">AI</span></div>
+            <h4 class="serif">Nvidia stays above $4T end-2026.</h4>
+            <div class="mini-meta"><span class="p">51¢</span><span>spread 2¢</span><span>44 replies</span></div>
+          </div>
+          <div class="up-thumb">
+            <svg viewBox="0 0 72 56" preserveAspectRatio="none">
+              <polyline class="line" points="0,28 9,26 18,28 27,26 36,28 45,26 54,27 63,27 72,26"/>
+              <circle cx="72" cy="26" r="2" fill="#3ec48a"/>
+            </svg>
+          </div>
+        </a>
+
+        <a class="up-item" href="../H-the-study/02-market.html">
+          <div>
+            <div class="pub-line"><span class="cat">AI</span></div>
+            <h4 class="serif">A model &gt;90% on Frontier Math.</h4>
+            <div class="mini-meta"><span class="p no">39¢</span><span>spread 22¢</span><span>9 replies</span></div>
+          </div>
+          <div class="up-thumb">
+            <svg viewBox="0 0 72 56" preserveAspectRatio="none">
+              <polyline class="line no" points="0,24 9,26 18,28 27,30 36,32 45,34 54,34 63,36 72,36"/>
+              <circle cx="72" cy="36" r="2" fill="#e85d7a"/>
+            </svg>
+          </div>
+        </a>
+      </section>
+
+    </aside>
+
+  </div>
+</body>
+</html>

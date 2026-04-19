@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Column / Subscriptions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0b0a09; --surface:#13120f; --elev:#1a1814; --border:#1c1b17; --border-strong:#2a2822;
+    --text:#ece7dc; --text-2:#8a8678; --text-3:#5c5849; --text-4:#3a362d;
+    --yes:#3ec48a; --no:#e85d7a;
+    --ink:#efe7d3;
+    --serif:'Fraunces','Source Serif 4',Georgia,serif;
+    --tight:'Inter Tight','Inter',sans-serif;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; letter-spacing: -.01em; }
+  .tight { font-family: var(--tight); letter-spacing: -.02em; }
+  .serif { font-family: var(--serif); }
+
+  /* Subscriptions is reading-shaped, so no right rail. Two columns only. */
+  .app { display: grid; grid-template-columns: 200px minmax(0, 1fr); max-width: 1080px; margin: 0 auto; min-height: 100vh; }
+  @media (max-width: 880px) { .app { grid-template-columns: 76px minmax(0, 1fr); } .rail .labels { display: none; } .rail .brand .mark { display: none; } }
+  @media (max-width: 640px) { .app { grid-template-columns: 1fr; } .rail { display: none; } }
+
+  /* --- Left rail (shared with Home) --- */
+  .rail { padding: 1rem 0 1rem; display: flex; flex-direction: column; gap: .3rem; position: sticky; top: 0; height: 100vh; border-right: 1px solid var(--border); }
+  .brand { padding: .5rem 1rem .6rem; display: flex; align-items: center; gap: .6rem; }
+  .brand .logo { width: 28px; height: 28px; background: var(--ink); border-radius: 6px; display: grid; place-items: center; color: #1a1610; font-family: var(--serif); font-weight: 700; font-size: 1.05rem; letter-spacing: -.03em; flex-shrink: 0; }
+  .brand .mark { font-family: var(--tight); font-weight: 700; font-size: 1.05rem; letter-spacing: -.025em; color: var(--ink); }
+  .rail-nav { display: flex; flex-direction: column; padding-top: .5rem; }
+  .rail-item { display: grid; grid-template-columns: 20px 1fr auto; gap: .9rem; align-items: center; padding: .6rem 1rem; color: var(--text-2); font-size: 1rem; }
+  .rail-item svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  .rail-item:hover { color: var(--text); }
+  .rail-item.active { color: var(--text); font-weight: 600; }
+  .rail-item.active svg { stroke-width: 2; fill: currentColor; }
+  .rail-item .badge { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .04em; padding: .12rem .4rem; background: var(--ink); color: #1a1610; border-radius: 999px; font-weight: 600; }
+  .rail-item .me-av { width: 22px; height: 22px; border-radius: 999px; background: linear-gradient(135deg, #6a5c7f 0%, #9b7a5e 100%); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .66rem; color: #1a1610; }
+  .rail-spacer { flex: 1; }
+  .rail-cta { margin: .4rem 1rem .6rem; padding: .7rem 1.2rem; background: var(--ink); color: #1a1610; font-weight: 700; font-size: .95rem; text-align: center; cursor: pointer; border: 0; border-radius: 6px; }
+  .rail-cta:hover { background: #fff; }
+  .rail-more { padding: .6rem 1rem; color: var(--text-3); display: flex; align-items: center; gap: .9rem; font-size: .92rem; }
+  .rail-more svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+
+  /* --- Center column --- */
+  .center { min-width: 0; padding: 0 2.2rem 4rem; }
+
+  .page-head { padding: 3rem 0 1rem; border-bottom: 1px solid var(--border); }
+  .page-head h1 { margin: 0; font-family: var(--tight); font-weight: 700; font-size: 1.9rem; letter-spacing: -.025em; color: var(--ink); line-height: 1; }
+  .page-head .sub { margin-top: .5rem; color: var(--text-3); font-size: .92rem; max-width: 56ch; }
+  .page-head .summary { margin-top: 1rem; font-family: 'JetBrains Mono', monospace; font-size: .74rem; color: var(--text-3); letter-spacing: .04em; display: flex; gap: 1rem; flex-wrap: wrap; align-items: baseline; }
+  .page-head .summary strong { color: var(--text-2); font-weight: 500; }
+
+  .subtabs { display: flex; gap: 1.5rem; padding-top: 1rem; font-size: .9rem; }
+  .subtab { color: var(--text-3); padding: .4rem 0; border-bottom: 1px solid transparent; }
+  .subtab.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .subtab:hover { color: var(--text-2); }
+  .subtab .c { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); margin-left: .3rem; }
+
+  /* --- Time groups --- */
+  .group { padding: 2.4rem 0 0; }
+  .group-label { font-family: 'JetBrains Mono', monospace; font-size: .64rem; color: var(--text-3); letter-spacing: .18em; text-transform: uppercase; margin-bottom: 1.2rem; display: flex; justify-content: space-between; align-items: baseline; }
+  .group-label .meta { letter-spacing: .04em; color: var(--text-4); }
+
+  /* --- Inbox item --- */
+  .item { padding: 1rem 0 2rem; border-bottom: 1px solid var(--border); position: relative; display: grid; grid-template-columns: auto 1fr; gap: 1rem; }
+  .item:hover .title { color: var(--ink); }
+  .item:hover { cursor: pointer; }
+  .item.read { opacity: .55; }
+  .item .av { width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .8rem; color: #1a1610; flex-shrink: 0; margin-top: .15rem; }
+  .av-N { background: linear-gradient(135deg, #a88a6e 0%, #6b4f3c 100%); }
+  .av-G { background: linear-gradient(135deg, #d4b97a 0%, #8a6b3e 100%); }
+  .av-K { background: linear-gradient(135deg, #6a8a7e 0%, #3e5248 100%); }
+  .av-S { background: linear-gradient(135deg, #7a6ca4 0%, #4a4068 100%); }
+  .av-Q { background: linear-gradient(135deg, #9a7a6e 0%, #5e3e36 100%); }
+  .av-I { background: linear-gradient(135deg, #c4a08a 0%, #7e5a48 100%); }
+  .av-T { background: linear-gradient(135deg, #8a8a6e 0%, #5a5a3e 100%); }
+  .body { min-width: 0; display: grid; gap: .35rem; }
+
+  .item.unread .av::after { content: ''; position: absolute; width: 8px; height: 8px; background: var(--ink); border-radius: 999px; border: 2px solid var(--bg); margin-left: 28px; margin-top: -4px; }
+
+  /* Author line — Substack signature */
+  .by { display: flex; align-items: baseline; gap: .5rem; font-size: .92rem; color: var(--text-2); flex-wrap: wrap; }
+  .by .name { color: var(--text); font-weight: 600; letter-spacing: -.005em; }
+  .by .pub { font-family: var(--serif); font-style: italic; color: var(--text-2); font-size: .92rem; }
+  .by .dot { color: var(--text-4); }
+  .by .time { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .04em; }
+
+  /* Kicker — type of post in this tab */
+  .kicker { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+  .kicker .cat { color: var(--yes); letter-spacing: .18em; }
+  .kicker .sep { color: var(--text-4); margin: 0 .4rem; }
+  .kicker .update { color: var(--ink); }
+  .kicker .new-chip { color: var(--ink); padding: .1rem .4rem; letter-spacing: .14em; font-weight: 600; border: 1px solid var(--ink); border-radius: 999px; margin-left: .3rem; font-size: .58rem; }
+
+  /* Title */
+  .title { margin: .3rem 0 .6rem; font-family: var(--serif); font-weight: 500; font-size: 1.9rem; line-height: 1.1; letter-spacing: -.022em; color: var(--text); max-width: 22ch; transition: color .15s; }
+
+  /* Excerpt — 1-2 sentences max */
+  .excerpt { font-family: var(--serif); font-size: 1.08rem; line-height: 1.6; color: var(--text-2); max-width: 56ch; margin: 0; }
+
+  /* Footer row */
+  .foot { display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap; font-size: .84rem; color: var(--text-3); margin-top: .7rem; }
+  .foot .price { font-family: 'JetBrains Mono', monospace; color: var(--yes); letter-spacing: -.01em; font-size: .9rem; }
+  .foot .price.no { color: var(--no); }
+  .foot .price small { color: var(--text-3); margin-left: .3rem; font-size: .72rem; letter-spacing: .04em; }
+  .foot .divider { color: var(--text-4); }
+  .foot a { color: var(--text-3); }
+  .foot a:hover { color: var(--text); }
+  .foot .read { color: var(--ink); }
+  .foot .read:hover { color: #fff; }
+  .foot .time-read { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .04em; }
+
+  .more { text-align: center; padding: 2.4rem 0; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .1em; text-transform: uppercase; }
+  .more a { color: var(--ink); }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <aside class="rail">
+      <div class="brand">
+        <span class="logo">C</span>
+        <span class="mark labels">Cascade</span>
+      </div>
+      <nav class="rail-nav">
+        <a class="rail-item" href="01-landing.html">
+          <svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9v9a2 2 0 01-2 2h-4v-7h-6v7H5a2 2 0 01-2-2z"/></svg>
+          <span class="labels">Home</span>
+        </a>
+        <a class="rail-item active" href="#">
+          <svg viewBox="0 0 24 24"><path d="M21 6H8M21 12H3M21 18h-7"/></svg>
+          <span class="labels">Subscriptions</span>
+          <span class="badge labels">6</span>
+        </a>
+        <a class="rail-item" href="03-markets.html">
+          <svg viewBox="0 0 24 24"><path d="M3 20h18M5 16l4-6 4 4 6-10"/></svg>
+          <span class="labels">Markets</span>
+        </a>
+        <a class="rail-item" href="#">
+          <svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1112 0c0 5 3 6 3 6H3s3-1 3-6zM10 20a2 2 0 004 0"/></svg>
+          <span class="labels">Activity</span>
+          <span class="badge labels">12</span>
+        </a>
+        <a class="rail-item" href="#">
+          <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+          <span class="labels">Bookmarks</span>
+        </a>
+        <a class="rail-item" href="#">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18"/></svg>
+          <span class="labels">Portfolio</span>
+        </a>
+        <a class="rail-item" href="04-profile.html">
+          <span class="me-av">pf</span>
+          <span class="labels">Profile</span>
+        </a>
+      </nav>
+      <button class="rail-cta labels" onclick="location.href='03-create.html'">＋ Publish a claim</button>
+      <div class="rail-spacer"></div>
+      <a class="rail-more labels" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+        <span>More</span>
+      </a>
+    </aside>
+
+    <main class="center">
+
+      <header class="page-head">
+        <h1 class="tight">Subscriptions</h1>
+        <p class="sub">New claims and case revisions from the writers you subscribe to. Long-form only — notes, trades, and replies live on Home.</p>
+        <div class="summary">
+          <span><strong>14</strong> subscriptions</span>
+          <span>·</span>
+          <span><strong>6</strong> unread this week</span>
+          <span>·</span>
+          <span><strong>4</strong> case revisions on claims you hold</span>
+        </div>
+        <nav class="subtabs" role="tablist">
+          <a class="subtab on" href="#">Unread<span class="c">6</span></a>
+          <a class="subtab" href="#">All</a>
+          <a class="subtab" href="#">Case revisions<span class="c">4</span></a>
+          <a class="subtab" href="#">Saved<span class="c">12</span></a>
+        </nav>
+      </header>
+
+      <!-- Today -->
+      <section class="group">
+        <div class="group-label">
+          <span>Today · Saturday, 18 April</span>
+          <span class="meta">2 new</span>
+        </div>
+
+        <article class="item unread">
+          <span class="av av-G">G</span>
+          <div class="body">
+            <div class="by">
+              <span class="name">Greta Maddox</span>
+              <span class="dot">·</span>
+              <span class="pub">Bitcoin, macro &amp; their entanglements</span>
+              <span class="time">4h</span>
+            </div>
+            <div class="kicker">
+              <span class="cat">Crypto</span>
+              <span class="sep">·</span>
+              <span>New claim · seeded $500 YES</span>
+              <span class="new-chip">New</span>
+            </div>
+            <h2 class="title">Bitcoin trades above $150,000 at any point before 1 July 2026.</h2>
+            <p class="excerpt">A market on a single print before mid-year, not a sustained level. On-chain accumulation at the $140K shelf has been steady for five weeks — the setup rhymes with Q3 2024.</p>
+            <div class="foot">
+              <span class="price">50¢<small>YES · opening</small></span>
+              <span class="divider">·</span>
+              <a class="read" href="../H-the-study/02-market.html">Read the case →</a>
+              <a href="#">Save</a>
+              <span class="time-read">3 min</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="item unread">
+          <span class="av av-N">N</span>
+          <div class="body">
+            <div class="by">
+              <span class="name">Nina Ortega</span>
+              <span class="dot">·</span>
+              <span class="pub">Corporate timing, weekly-ish</span>
+              <span class="time">28m</span>
+            </div>
+            <div class="kicker">
+              <span class="cat">AI</span>
+              <span class="sep">·</span>
+              <span class="update">Case revision — rev 3 on a claim you hold</span>
+            </div>
+            <h2 class="title">OpenAI will ship GPT-5 before Google ships Gemini 2 Pro.</h2>
+            <p class="excerpt">Three gates are now four. The Google counter-announcement window I was watching for has narrowed. Not adding above 75¢; not trimming until the 21st passes quietly.</p>
+            <div class="foot">
+              <span class="price">71¢<small>YES · +3¢ · you hold $220</small></span>
+              <span class="divider">·</span>
+              <a class="read" href="../H-the-study/02-market.html">See the revision →</a>
+              <a href="#">Save</a>
+              <span class="time-read">2 min</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- This week -->
+      <section class="group">
+        <div class="group-label">
+          <span>This week</span>
+          <span class="meta">3 new</span>
+        </div>
+
+        <article class="item unread">
+          <span class="av av-Q">Q</span>
+          <div class="body">
+            <div class="by">
+              <span class="name">Quincy Afolabi</span>
+              <span class="dot">·</span>
+              <span class="pub">The macro weekly</span>
+              <span class="time">Wed</span>
+            </div>
+            <div class="kicker">
+              <span class="cat">Macro</span>
+              <span class="sep">·</span>
+              <span>New claim · seeded $300 YES</span>
+            </div>
+            <h2 class="title">The Fed funds rate closes below 3% at any point in 2026.</h2>
+            <p class="excerpt">The last three speeches converged on a single word that hadn't appeared in the dot plot since 2021. The two-year is agreeing.</p>
+            <div class="foot">
+              <span class="price">64¢<small>YES · +13¢ since seed</small></span>
+              <span class="divider">·</span>
+              <a class="read" href="../H-the-study/02-market.html">Read the case →</a>
+              <a href="#">31 replies</a>
+              <span class="time-read">5 min</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="item unread">
+          <span class="av av-S">S</span>
+          <div class="body">
+            <div class="by">
+              <span class="name">Sono Yamada</span>
+              <span class="dot">·</span>
+              <span class="pub">East Asia watch</span>
+              <span class="time">Tue</span>
+            </div>
+            <div class="kicker">
+              <span class="cat">Geopolitics</span>
+              <span class="sep">·</span>
+              <span>Featured this week</span>
+            </div>
+            <h2 class="title">Taiwan holds a recognised national election in 2026 without a cross-strait military incident.</h2>
+            <p class="excerpt">The crowd has been holding this between 74¢ and 79¢ for six weeks, through two naval incidents and a cabinet reshuffle. Stubbornness usually means the market knows something the headlines don't.</p>
+            <div class="foot">
+              <span class="price">77¢<small>YES · +2¢ 24h</small></span>
+              <span class="divider">·</span>
+              <a class="read" href="../H-the-study/02-market.html">Read the case →</a>
+              <a href="#">28 replies</a>
+              <span class="time-read">6 min</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="item read">
+          <span class="av av-I">I</span>
+          <div class="body">
+            <div class="by">
+              <span class="name">Isla Vesterbro</span>
+              <span class="dot">·</span>
+              <span class="pub">Policy &amp; the law</span>
+              <span class="time">Mon</span>
+            </div>
+            <div class="kicker">
+              <span class="cat">Policy</span>
+              <span class="sep">·</span>
+              <span>Read 5 days ago</span>
+            </div>
+            <h2 class="title">A US state passes an AI liability statute before year-end 2026.</h2>
+            <p class="excerpt">California's SB-238 is out of committee. Texas has a competing bill actually further along.</p>
+            <div class="foot">
+              <span class="price">62¢<small>YES · +10¢ since you read</small></span>
+              <span class="divider">·</span>
+              <a class="read" href="../H-the-study/02-market.html">Revisit →</a>
+              <span class="time-read">4 min</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- Earlier -->
+      <section class="group">
+        <div class="group-label">
+          <span>Earlier in April</span>
+          <span class="meta">1 from your subscriptions</span>
+        </div>
+
+        <article class="item read">
+          <span class="av av-K">K</span>
+          <div class="body">
+            <div class="by">
+              <span class="name">Kamil Owada</span>
+              <span class="dot">·</span>
+              <span class="pub">AI infra briefing</span>
+              <span class="time">8 Apr</span>
+            </div>
+            <div class="kicker">
+              <span class="cat">AI</span>
+              <span class="sep">·</span>
+              <span>Read 9 days ago</span>
+            </div>
+            <h2 class="title">Nvidia stays above $4T market cap at end-2026.</h2>
+            <p class="excerpt">Hyperscaler capex guides held cleaner than analyst consensus. What's interesting is <em>where</em> the spend is going — less training, more inference.</p>
+            <div class="foot">
+              <span class="price">51¢<small>YES · +7¢ since seed</small></span>
+              <span class="divider">·</span>
+              <a class="read" href="../H-the-study/02-market.html">Revisit →</a>
+              <span class="time-read">7 min</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <div class="more">
+        <a href="#">Load 22 older dispatches</a>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

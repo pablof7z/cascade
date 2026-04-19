@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Column / Write a claim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0b0a09; --surface:#13120f; --elev:#1a1814; --border:#1c1b17; --border-strong:#2a2822;
+    --text:#ece7dc; --text-2:#8a8678; --text-3:#5c5849; --text-4:#3a362d;
+    --yes:#3ec48a; --yes-dim:rgba(62,196,138,.12); --yes-line:rgba(62,196,138,.45);
+    --no:#e85d7a; --no-dim:rgba(232,93,122,.12); --no-line:rgba(232,93,122,.45);
+    --ink:#efe7d3;
+    --serif:'Fraunces','Source Serif 4',Georgia,serif;
+    --tight:'Inter Tight','Inter',sans-serif;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; letter-spacing: -.01em; }
+  .tight { font-family: var(--tight); letter-spacing: -.02em; }
+  .serif { font-family: var(--serif); }
+
+  /* Focus mode: icon-only rail, no right rail, narrow centered column */
+  .app { display: grid; grid-template-columns: 76px minmax(0, 1fr); max-width: 860px; margin: 0 auto; min-height: 100vh; }
+  .rail .labels { display: none; }
+  .rail .brand .mark { display: none; }
+  @media (max-width: 640px) { .app { grid-template-columns: 1fr; } .rail { display: none; } }
+
+  /* Rail — identical across K pages */
+  .rail { padding: 1rem 0 1rem; display: flex; flex-direction: column; gap: .3rem; position: sticky; top: 0; height: 100vh; }
+  .brand { padding: .5rem 1rem .6rem; display: flex; align-items: center; gap: .6rem; }
+  .brand .logo { width: 28px; height: 28px; background: var(--ink); border-radius: 6px; display: grid; place-items: center; color: #1a1610; font-family: var(--serif); font-weight: 700; font-size: 1.05rem; letter-spacing: -.03em; }
+  .brand .mark { font-family: var(--tight); font-weight: 700; font-size: 1.05rem; letter-spacing: -.025em; color: var(--ink); }
+  .rail-nav { display: flex; flex-direction: column; padding-top: .5rem; }
+  .rail-item { display: grid; grid-template-columns: 20px 1fr auto; gap: .9rem; align-items: center; padding: .6rem 1rem; color: var(--text-2); font-size: 1rem; }
+  .rail-item svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  .rail-item:hover { color: var(--text); }
+  .rail-item.active { color: var(--text); font-weight: 600; }
+  .rail-item.active svg { stroke-width: 2; fill: currentColor; }
+  .rail-item .me-av { width: 22px; height: 22px; border-radius: 999px; background: linear-gradient(135deg, #6a5c7f 0%, #9b7a5e 100%); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .66rem; color: #1a1610; }
+  .rail-spacer { flex: 1; }
+  .rail-cta { margin: .4rem auto .6rem; width: 40px; height: 40px; padding: 0; background: var(--ink); color: #1a1610; display: grid; place-items: center; cursor: pointer; border: 0; border-radius: 8px; }
+  .rail-cta svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .rail-cta:hover { background: #fff; }
+  .rail-cta.active { background: var(--ink); color: #1a1610; }
+  .rail-more { padding: .6rem 1rem; color: var(--text-3); display: flex; align-items: center; gap: .9rem; font-size: .92rem; }
+  .rail-more svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+
+  /* Center */
+  .center { min-width: 0; padding: 0 2rem 7rem; }
+
+  .crumbs { padding: 1.4rem 0 .7rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .06em; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  .crumbs a { color: var(--text-2); }
+  .crumbs a:hover { color: var(--text); }
+  .crumbs .sep { color: var(--text-4); }
+  .crumbs .cur { color: var(--text-3); }
+
+  .draft-indicator { display: inline-flex; align-items: center; gap: .45rem; font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; margin-left: auto; }
+  .draft-indicator .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--yes); box-shadow: 0 0 0 3px var(--yes-dim); }
+
+  /* Steps */
+  .step { display: none; }
+  .step.active { display: block; }
+  .step-head { padding: .8rem 0 1.2rem; }
+  .step-head h2 { margin: 0; font-family: var(--tight); font-weight: 700; font-size: 1.75rem; letter-spacing: -.02em; color: var(--text); }
+
+  section.field { padding: 1.3rem 0; border-top: 1px solid var(--border); display: grid; gap: .7rem; }
+  section.field:first-of-type { border-top: 0; padding-top: 0; }
+  section.field > .head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  section.field > .head h3 { margin: 0; font-family: var(--tight); font-size: .78rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--text-2); }
+  section.field > .head .aux { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .04em; }
+  section.field .help { font-size: .87rem; color: var(--text-3); line-height: 1.5; max-width: 60ch; }
+
+  /* Claim input */
+  .claim-field { position: relative; padding: .6rem 0 .5rem; }
+  .claim-field textarea { width: 100%; resize: none; background: transparent; border: 0; border-bottom: 1px solid var(--border-strong); padding: .3rem 0 1rem; font-family: var(--serif); font-size: 2rem; line-height: 1.3; color: var(--text); letter-spacing: -.005em; min-height: 6rem; outline: none; }
+  .claim-field textarea:focus { border-bottom-color: var(--ink); }
+  .claim-field textarea::placeholder { color: var(--text-4); font-style: italic; }
+  .claim-meta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: .65rem; flex-wrap: wrap; }
+  .char-count { font-family: 'JetBrains Mono', monospace; font-size: .74rem; color: var(--text-3); letter-spacing: .04em; }
+  .char-count .on { color: var(--text); }
+  .rule-hints { display: flex; gap: .8rem; font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .02em; flex-wrap: wrap; }
+  .rule-hints .hint { display: inline-flex; align-items: center; gap: .3rem; }
+  .rule-hints .hint.ok { color: var(--yes); }
+  .rule-hints .hint .mk { font-family: 'JetBrains Mono', monospace; }
+
+  /* Category tabs */
+  .cat-tabs { display: flex; gap: 1.1rem; flex-wrap: wrap; font-size: .95rem; padding: .15rem 0; }
+  .cat-tabs a { color: var(--text-3); padding: .35rem 0; border-bottom: 1px solid transparent; cursor: pointer; }
+  .cat-tabs a.on { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+  .cat-tabs a:hover { color: var(--text); }
+
+  /* Similar claims accordion */
+  .similar { margin-top: .7rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); overflow: hidden; }
+  .similar .sim-head { padding: .7rem .95rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 1rem; }
+  .similar .sim-head .lbl { font-family: var(--tight); font-size: .82rem; font-weight: 600; color: var(--text); letter-spacing: -.005em; }
+  .similar .sim-head .aux { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .04em; }
+  .similar .sim-rows { border-top: 1px solid var(--border); }
+  .sim-row { display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; padding: .7rem .95rem; border-top: 1px solid var(--border); cursor: pointer; }
+  .sim-row:first-child { border-top: 0; }
+  .sim-row:hover { background: var(--elev); }
+  .sim-row .t { font-family: var(--serif); font-size: .95rem; color: var(--text); line-height: 1.35; letter-spacing: -.005em; }
+  .sim-row .t em { font-style: italic; color: var(--text-2); font-size: .85rem; padding-left: .4rem; }
+  .sim-row .p { font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: var(--text); }
+  .sim-row .arrow { color: var(--text-3); font-size: .9rem; }
+
+  /* Case textarea */
+  .case-wrap { display: grid; gap: .55rem; }
+  .case-ta { width: 100%; resize: vertical; min-height: 320px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.15rem 1.3rem; font-family: var(--serif); font-size: 1.02rem; line-height: 1.65; color: var(--text); outline: none; }
+  .case-ta:focus { border-color: var(--border-strong); }
+  .case-ta::placeholder { color: var(--text-4); font-style: italic; }
+  .case-meta { display: flex; justify-content: space-between; gap: 1rem; font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .04em; }
+
+  /* Linked markets */
+  .linked-list { display: grid; gap: .5rem; }
+  .linked-row { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; padding: .75rem .95rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .linked-row .t { font-family: var(--serif); font-size: .95rem; color: var(--text); letter-spacing: -.005em; }
+  .linked-row .m { font-family: 'JetBrains Mono', monospace; font-size: .75rem; color: var(--text-3); padding-top: .15rem; }
+  .linked-row button.rm { color: var(--text-3); font-size: 1.1rem; padding: .2rem .5rem; }
+  .linked-row button.rm:hover { color: var(--no); }
+  .linked-search { position: relative; margin-top: .3rem; }
+  .linked-search input { width: 100%; background: transparent; border: 1px dashed var(--border-strong); border-radius: 8px; padding: .7rem .95rem; font-family: 'Inter', sans-serif; font-size: .92rem; color: var(--text); outline: none; }
+  .linked-search input::placeholder { color: var(--text-3); }
+
+  /* Image uploader */
+  .img-up { display: grid; grid-template-columns: 176px 1fr; gap: 1.1rem; align-items: start; }
+  .img-preview { aspect-ratio: 4/5; border-radius: 10px; overflow: hidden; position: relative; background: var(--surface); border: 1px solid var(--border); display: grid; place-items: center; }
+  .img-preview.gradient { background: linear-gradient(135deg, #b4846a 0%, #84746e 30%, #5a6a84 70%, #4a4a64 100%); }
+  .img-preview .chart-svg { position: absolute; inset: 0; opacity: .35; }
+  .img-preview .cat { position: absolute; top: .7rem; left: .7rem; font-family: 'JetBrains Mono', monospace; font-size: .58rem; color: rgba(255,255,255,.7); letter-spacing: .14em; text-transform: uppercase; }
+  .img-options { display: grid; gap: .5rem; }
+  .img-opt-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: .58rem .9rem; border-radius: 8px; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: .8rem; font-size: .88rem; }
+  .img-opt-btn:hover { border-color: var(--border-strong); background: var(--elev); }
+  .img-opt-btn.on { border-color: var(--ink); color: var(--ink); }
+  .img-opt-btn .desc { color: var(--text-3); font-size: .8rem; }
+
+  /* AI summary */
+  .ai-summary { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 1rem 1.15rem; display: grid; gap: .75rem; }
+  .ai-summary .hd { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+  .ai-summary .hd .lbl { display: inline-flex; align-items: center; gap: .45rem; font-family: var(--tight); font-size: .72rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--text-2); }
+  .ai-summary .hd .lbl .spark { color: var(--ink); }
+  .ai-summary .hd .regen { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .04em; padding: .3rem .55rem; border: 1px solid var(--border-strong); border-radius: 6px; }
+  .ai-summary .hd .regen:hover { color: var(--text); border-color: var(--text-3); }
+  .ai-summary .body { font-family: var(--serif); font-size: 1.02rem; line-height: 1.55; color: var(--text); letter-spacing: -.005em; }
+  .ai-summary .foot { font-size: .8rem; color: var(--text-3); line-height: 1.45; }
+
+  /* Tags */
+  .tag-chips { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .tag-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .7rem; border: 1px solid var(--border); border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: .75rem; color: var(--text); background: var(--surface); }
+  .tag-chip.suggest { border-style: dashed; color: var(--text-3); cursor: pointer; }
+  .tag-chip.suggest:hover { border-color: var(--ink); color: var(--ink); border-style: solid; }
+  .tag-chip button.x { color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .85rem; padding: 0 0 0 .2rem; }
+  .tag-chip button.x:hover { color: var(--no); }
+
+  /* Seed section */
+  .seed-explainer { padding: 1rem 1.15rem; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-family: var(--serif); font-size: 1rem; line-height: 1.6; color: var(--text); letter-spacing: -.005em; max-width: 62ch; }
+  .seed-explainer strong { color: var(--ink); font-weight: 600; }
+  .seed-controls { display: grid; gap: 1rem; padding: 1.25rem 1.4rem; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .side-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding: .35rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+  .side-toggle button { padding: .75rem 1rem; border-radius: 6px; font-family: var(--tight); font-weight: 600; font-size: .94rem; color: var(--text-3); display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  .side-toggle button.on[data-side="yes"] { background: var(--yes-dim); color: var(--yes); border: 1px solid var(--yes-line); }
+  .side-toggle button.on[data-side="no"] { background: var(--no-dim); color: var(--no); border: 1px solid var(--no-line); }
+  .side-toggle button .p { font-family: 'JetBrains Mono', monospace; font-size: .82rem; }
+
+  .amount-row { display: grid; grid-template-columns: 1fr auto; gap: .9rem; align-items: center; }
+  .amount-input { position: relative; }
+  .amount-input .currency { position: absolute; left: .8rem; top: 50%; transform: translateY(-50%); font-family: 'JetBrains Mono', monospace; color: var(--text-3); font-size: 1.2rem; }
+  .amount-input input { width: 100%; padding: .95rem 1rem .95rem 2rem; font-family: 'JetBrains Mono', monospace; font-size: 1.35rem; background: var(--bg); border: 1px solid var(--border-strong); border-radius: 8px; color: var(--text); outline: none; letter-spacing: -.01em; }
+  .amount-input input:focus { border-color: var(--ink); }
+  .quick-picks { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .qp { padding: .5rem .75rem; border: 1px solid var(--border); background: var(--bg); border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: var(--text-2); }
+  .qp:hover { border-color: var(--text-3); color: var(--text); }
+  .qp.on { border-color: var(--ink); color: var(--ink); }
+
+  .live-math { padding: .85rem 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: var(--text); line-height: 1.7; letter-spacing: -.005em; }
+  .live-math .k { color: var(--text-3); }
+  .live-math .sep { color: var(--text-4); padding: 0 .35rem; }
+
+  .reassure { display: flex; gap: .6rem; align-items: flex-start; font-size: .85rem; color: var(--text-2); padding: .5rem .1rem; line-height: 1.5; }
+  .reassure svg { flex-shrink: 0; width: 16px; height: 16px; stroke: var(--yes); fill: none; stroke-width: 1.8; margin-top: .14rem; }
+
+  /* Invite friends */
+  .invite-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding-top: .3rem; }
+  .invite-card { display: grid; grid-template-columns: 32px 1fr auto; gap: .65rem; align-items: center; padding: .6rem .8rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .invite-card .av { width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .8rem; color: #1a1610; }
+  .invite-card .who { display: grid; gap: .05rem; min-width: 0; }
+  .invite-card .who .n { font-size: .88rem; color: var(--text); }
+  .invite-card .who .h { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); }
+  .invite-card button.invite { padding: .3rem .65rem; font-size: .8rem; border: 1px solid var(--border-strong); color: var(--text-2); border-radius: 6px; }
+  .invite-card button.invite:hover { color: var(--text); border-color: var(--text-3); }
+  .invite-card.invited { border-color: var(--yes-line); background: var(--yes-dim); }
+  .invite-card.invited button.invite { color: var(--yes); border-color: var(--yes-line); }
+  .invite-search { position: relative; margin-top: .2rem; }
+  .invite-search input { width: 100%; background: transparent; border: 1px dashed var(--border-strong); border-radius: 8px; padding: .65rem .95rem; font-family: 'Inter', sans-serif; font-size: .88rem; color: var(--text); outline: none; }
+  .invite-search input::placeholder { color: var(--text-3); }
+
+  .av-A{background:#c7a987;} .av-B{background:#9e8bb6;} .av-D{background:#b89275;} .av-G{background:#b8a788;} .av-H{background:#8fa89b;} .av-J{background:#c48b90;} .av-K{background:#9fa888;} .av-N{background:#a8a892;} .av-S{background:#c49088;} .av-M{background:#b0a590;}
+
+  /* Wizard footer */
+  .wizard-foot { position: sticky; bottom: 1rem; margin-top: 2rem; z-index: 20; }
+  .wizard-foot .foot-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem .85rem .75rem 1.15rem; background: rgba(19,18,15,.96); border: 1px solid var(--border-strong); border-radius: 999px; backdrop-filter: blur(8px); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+  .wizard-foot .back-btn { font-family: 'Inter', sans-serif; font-size: .88rem; color: var(--text-2); padding: .4rem .7rem; border-radius: 999px; }
+  .wizard-foot .back-btn:hover { color: var(--text); }
+  .wizard-foot .back-btn:disabled { opacity: .35; pointer-events: none; }
+  .wizard-foot .spacer { flex: 1; }
+  .wizard-foot .foot-dots { display: flex; gap: .4rem; align-items: center; }
+  .wizard-foot .foot-dots .fd { width: 24px; height: 24px; padding: 0; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--bg); color: var(--text-3); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-size: .72rem; font-weight: 600; cursor: pointer; }
+  .wizard-foot .foot-dots .fd:hover { color: var(--text); border-color: var(--text-3); }
+  .wizard-foot .foot-dots .fd.active { background: var(--ink); color: #1a1610; border-color: var(--ink); }
+  .wizard-foot .foot-dots .fd.done { background: var(--yes-dim); color: var(--yes); border-color: var(--yes-line); }
+  .wizard-foot .skip { color: var(--text-3); font-size: .85rem; padding: .4rem .7rem; }
+  .wizard-foot .skip:hover { color: var(--text-2); }
+  .wizard-foot .cont { padding: .65rem 1.3rem; background: var(--ink); color: #1a1610; font-weight: 700; font-size: .95rem; border-radius: 999px; font-family: var(--tight); letter-spacing: -.005em; display: inline-flex; align-items: center; gap: .5rem; }
+  .wizard-foot .cont:hover { background: #fff; }
+  .wizard-foot .cont.launch { padding-left: 1.5rem; }
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Left rail -->
+  <aside class="rail">
+    <div class="brand">
+      <div class="logo">C</div>
+      <div class="mark">Cascade</div>
+    </div>
+    <nav class="rail-nav">
+      <a class="rail-item" href="01-landing.html">
+        <svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
+        <span class="labels">Home</span>
+      </a>
+      <a class="rail-item" href="02-subscriptions.html">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M4 9h16M9 5v14"/></svg>
+        <span class="labels">Subscriptions</span>
+      </a>
+      <a class="rail-item" href="03-markets.html">
+        <svg viewBox="0 0 24 24"><path d="M4 19h16M7 16V9M12 16V5M17 16v-7"/></svg>
+        <span class="labels">Markets</span>
+      </a>
+      <a class="rail-item" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 13a4 4 0 008 0"/></svg>
+        <span class="labels">Notifications</span>
+      </a>
+      <a class="rail-item" href="#">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v5H4zM4 12h16v8H4z"/></svg>
+        <span class="labels">Portfolio</span>
+      </a>
+      <a class="rail-item" href="#">
+        <div class="me-av">PF</div>
+        <span class="labels">@pf</span>
+      </a>
+    </nav>
+    <button class="rail-cta active" title="Writing a claim">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <div class="rail-spacer"></div>
+  </aside>
+
+  <!-- Center -->
+  <main class="center">
+
+    <nav class="crumbs">
+      <a href="01-landing.html">Home</a>
+      <span class="sep">/</span>
+      <span class="cur">Write a claim</span>
+      <span class="draft-indicator"><span class="dot"></span>Draft saved · 34s ago</span>
+    </nav>
+
+    <!-- STEP 1 — Title & category -->
+    <div class="step active" data-step="1">
+      <div class="step-head">
+        <h2 class="tight">What&rsquo;s your claim?</h2>
+      </div>
+
+      <section class="field">
+        <div class="claim-field">
+          <textarea id="claim-text" placeholder="Bitcoin trades above $150,000 at any point in 2026.">Bitcoin trades above $150,000 at any point in 2026.</textarea>
+          <div class="claim-meta">
+            <span class="char-count"><span class="on">66</span> / 140</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="field">
+        <div class="cat-tabs">
+          <a>All</a>
+          <a class="on">Crypto</a>
+          <a>AI</a>
+          <a>Science</a>
+          <a>Policy</a>
+          <a>Markets</a>
+          <a>Geopolitics</a>
+          <a>Sports</a>
+          <a>Culture</a>
+        </div>
+      </section>
+
+      <section class="field">
+        <div class="similar">
+          <div class="sim-head">
+            <span class="lbl">3 similar claims already live</span>
+            <span class="aux">Pick one up · or keep going</span>
+          </div>
+          <div class="sim-rows">
+            <a class="sim-row" href="04-market.html">
+              <span class="t">Bitcoin breaks $200K before end of 2026. <em>@dover · Crypto macro</em></span>
+              <span class="p">34¢ YES</span>
+              <span class="arrow">→</span>
+            </a>
+            <a class="sim-row" href="#">
+              <span class="t">BTC spot ETF inflows surpass $100B cumulative by Dec 2026. <em>@sev · ETF flows</em></span>
+              <span class="p">62¢ YES</span>
+              <span class="arrow">→</span>
+            </a>
+            <a class="sim-row" href="#">
+              <span class="t">Bitcoin closes 2026 above $120K. <em>@anton · Crypto primer</em></span>
+              <span class="p">58¢ YES</span>
+              <span class="arrow">→</span>
+            </a>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- STEP 2 — Thesis + linked markets -->
+    <div class="step" data-step="2">
+      <div class="step-head">
+        <h2 class="tight">Make your case.</h2>
+      </div>
+
+      <section class="field">
+        <div class="case-wrap">
+          <textarea class="case-ta" id="case-text" placeholder="Start with the mechanism. Why is this claim more likely than the crowd says?">The claim rests on three gates, not a single forecast.
+
+First, miner revenue per hash is at a four-year low and the April halving has not yet shown up in spot flows. Historically the halving compresses supply well before spot price moves — we are three months into the window where that compression usually matures.
+
+Second, the ETF channel has turned from a narrative into a plumbing story. IBIT and FBTC together cleared a cumulative $40B in the first twelve months, and the dollar-weighted average cost basis sits around $58K. That cost basis functions as a soft floor: ETF holders have shown unusual patience versus spot holders, and have not sold into the last three rallies above 1.5× cost.
+
+Third, macro. The two-year is flattening into a cut cycle that the Street is still pricing conservatively. If the median Fed path moves even 25bp looser than the Dec SEP implies, real rates fall, and the unhedged long-duration assets — gold and bitcoin primarily — have historically rerated 18–34% in those windows.
+
+Put those three together and $150K is not a moonshot. It is the median outcome of the three gates coinciding at least once during a 12-month window. The crowd is at 71¢ YES. I think that&rsquo;s ten cents low.</textarea>
+          <div class="case-meta">
+            <span>218 words · ~1 min read</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="field">
+        <div class="linked-list">
+          <div class="linked-row">
+            <div>
+              <div class="t">10-year Treasury yield closes 2026 below 3.8%.</div>
+              <div class="m">@north · Macro · 58¢ YES</div>
+            </div>
+            <button class="rm" title="Remove">✕</button>
+          </div>
+          <div class="linked-row">
+            <div>
+              <div class="t">DXY prints below 98 at any point in 2026.</div>
+              <div class="m">@dover · FX · 41¢ YES</div>
+            </div>
+            <button class="rm" title="Remove">✕</button>
+          </div>
+        </div>
+        <div class="linked-search">
+          <input type="text" placeholder="＋ Link another market…" />
+        </div>
+      </section>
+    </div>
+
+    <!-- STEP 3 — Details (image + summary) -->
+    <div class="step" data-step="3">
+      <div class="step-head">
+        <h2 class="tight">Details.</h2>
+      </div>
+
+      <section class="field">
+        <div class="img-up">
+          <div class="img-preview gradient">
+            <span class="cat">Crypto</span>
+            <svg class="chart-svg" viewBox="0 0 240 300" preserveAspectRatio="none">
+              <polyline fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.4"
+                points="0,220 30,210 60,205 90,190 120,160 150,130 180,95 210,70 240,50" />
+              <g fill="rgba(255,255,255,.5)" font-family="monospace" font-size="10" letter-spacing="0.1em">
+                <text x="12" y="30">BTC</text>
+                <text x="12" y="46">2026</text>
+              </g>
+            </svg>
+          </div>
+          <div class="img-options">
+            <button class="img-opt-btn on">
+              <span>✓ Use Crypto gradient</span>
+              <span class="desc">Default</span>
+            </button>
+            <button class="img-opt-btn">
+              <span>↑ Upload image</span>
+              <span class="desc">PNG, JPG · max 4MB</span>
+            </button>
+            <button class="img-opt-btn">
+              <span>🖼 Use from URL</span>
+              <span class="desc">Nostr imeta</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="field">
+        <div class="ai-summary">
+          <div class="hd">
+            <span class="lbl"><span class="spark">✦</span> Draft summary · from your case</span>
+            <button class="regen">↻ Regenerate</button>
+          </div>
+          <div class="body">Three gates point the same way — a halving not yet reflected in spot, ETF cost-basis acting as a soft floor near $58K, and a cut cycle the Street is still underpricing. $150K in 2026 is the median, not the tail.</div>
+        </div>
+      </section>
+
+      <section class="field">
+        <div class="tag-chips">
+          <span class="tag-chip">bitcoin <button class="x" title="Remove">✕</button></span>
+          <span class="tag-chip">2026 <button class="x" title="Remove">✕</button></span>
+          <span class="tag-chip">price-target <button class="x" title="Remove">✕</button></span>
+          <span class="tag-chip suggest">+ halving</span>
+          <span class="tag-chip suggest">+ ETF</span>
+          <span class="tag-chip suggest">+ macro</span>
+          <span class="tag-chip suggest">+ rates</span>
+        </div>
+      </section>
+    </div>
+
+    <!-- STEP 4 — Launch -->
+    <div class="step" data-step="4">
+      <div class="step-head">
+        <h2 class="tight">Launch the market.</h2>
+      </div>
+
+      <section class="field">
+        <div class="seed-explainer">
+          A market goes live when <strong>you put real money on it.</strong> Pick a side, size it, and you&rsquo;re the first trade. This is what gives the claim price — and it&rsquo;s why we don&rsquo;t have a resolution oracle: you&rsquo;re here to argue, the crowd&rsquo;s here to disagree, and nobody needs a referee.
+        </div>
+      </section>
+
+      <section class="field">
+        <div class="seed-controls">
+          <div class="side-toggle">
+            <button class="on" data-side="yes"><span>Back YES</span><span class="p">71¢</span></button>
+            <button data-side="no"><span>Back NO</span><span class="p">29¢</span></button>
+          </div>
+          <div class="amount-row">
+            <label class="amount-input">
+              <span class="currency">$</span>
+              <input type="text" value="100" />
+            </label>
+          </div>
+          <div class="quick-picks">
+            <button class="qp">$25</button>
+            <button class="qp">$50</button>
+            <button class="qp on">$100</button>
+            <button class="qp">$250</button>
+            <button class="qp">$500</button>
+          </div>
+          <div class="live-math">
+            <span>you&rsquo;ll buy </span><span>141 YES</span><span class="sep">·</span><span class="k">avg</span> <span>70.9¢</span>
+            <br/>
+            <span class="k">opening crowd price</span> <span>71¢</span><span class="sep">·</span><span class="k">market liquidity</span> <span>$100</span>
+          </div>
+          <div class="reassure">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+            <span>You&rsquo;re not paying a fee. This is capital you control — the market holds it as your opening YES position. Cash out anytime.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="field">
+        <div class="head">
+          <h3>Bring your people</h3>
+          <span class="aux">Optional</span>
+        </div>
+        <div class="invite-grid">
+          <div class="invite-card invited">
+            <div class="av av-N">N</div>
+            <div class="who"><span class="n">Nina Ortega</span><span class="h">@north</span></div>
+            <button class="invite">✓ Invited</button>
+          </div>
+          <div class="invite-card invited">
+            <div class="av av-G">G</div>
+            <div class="who"><span class="n">Greta Maddox</span><span class="h">@greta</span></div>
+            <button class="invite">✓ Invited</button>
+          </div>
+          <div class="invite-card">
+            <div class="av av-D">D</div>
+            <div class="who"><span class="n">Samir Dover</span><span class="h">@dover</span></div>
+            <button class="invite">＋ Invite</button>
+          </div>
+          <div class="invite-card">
+            <div class="av av-S">S</div>
+            <div class="who"><span class="n">Sono Yamada</span><span class="h">@sono</span></div>
+            <button class="invite">＋ Invite</button>
+          </div>
+          <div class="invite-card">
+            <div class="av av-K">K</div>
+            <div class="who"><span class="n">Kamil Owada</span><span class="h">@kamil</span></div>
+            <button class="invite">＋ Invite</button>
+          </div>
+          <div class="invite-card">
+            <div class="av av-H">H</div>
+            <div class="who"><span class="n">Hana Pryce</span><span class="h">@hana</span></div>
+            <button class="invite">＋ Invite</button>
+          </div>
+        </div>
+        <div class="invite-search">
+          <input type="text" placeholder="Search followed users by name or @handle…" />
+        </div>
+      </section>
+    </div>
+
+    <!-- Wizard footer -->
+    <div class="wizard-foot">
+      <div class="foot-inner">
+        <button class="back-btn" id="back-btn" onclick="prevStep()" disabled>← Back</button>
+        <div class="spacer"></div>
+        <div class="foot-dots" id="foot-dots" role="tablist" aria-label="Progress">
+          <button class="fd active" data-step="1" onclick="goStep(1)" aria-label="Title and category">1</button>
+          <button class="fd" data-step="2" onclick="goStep(2)" aria-label="Make your case">2</button>
+          <button class="fd" data-step="3" onclick="goStep(3)" aria-label="Details">3</button>
+          <button class="fd" data-step="4" onclick="goStep(4)" aria-label="Launch">4</button>
+        </div>
+        <div class="spacer"></div>
+        <button class="skip" id="skip-btn" style="display:none" onclick="nextStep()">Skip</button>
+        <button class="cont" id="cont-btn" onclick="nextStep()">Continue →</button>
+      </div>
+    </div>
+
+  </main>
+
+</div>
+
+<script>
+  let currentStep = 1;
+  const totalSteps = 4;
+
+  function goStep(n) {
+    if (n < 1 || n > totalSteps) return;
+    currentStep = n;
+    document.querySelectorAll('.step').forEach(s => s.classList.toggle('active', parseInt(s.dataset.step) === n));
+    document.querySelectorAll('.foot-dots .fd').forEach(s => {
+      const sn = parseInt(s.dataset.step);
+      s.classList.toggle('active', sn === n);
+      s.classList.toggle('done', sn < n);
+    });
+    document.getElementById('back-btn').disabled = n === 1;
+    const contBtn = document.getElementById('cont-btn');
+    const skipBtn = document.getElementById('skip-btn');
+    if (n === totalSteps) {
+      contBtn.textContent = 'Launch market · $100 →';
+      contBtn.classList.add('launch');
+      skipBtn.style.display = 'none';
+    } else {
+      contBtn.textContent = 'Continue →';
+      contBtn.classList.remove('launch');
+      skipBtn.style.display = n === 3 ? 'inline-flex' : 'none';
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function nextStep() {
+    if (currentStep < totalSteps) goStep(currentStep + 1);
+    else window.location.href = '07-create-published.html';
+  }
+  function prevStep() {
+    if (currentStep > 1) goStep(currentStep - 1);
+  }
+  // side toggle
+  document.querySelectorAll('.side-toggle button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.side-toggle button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+    });
+  });
+  // quick picks
+  document.querySelectorAll('.qp').forEach(q => {
+    q.addEventListener('click', () => {
+      document.querySelectorAll('.qp').forEach(x => x.classList.remove('on'));
+      q.classList.add('on');
+    });
+  });
+  // invite toggle
+  document.querySelectorAll('.invite-card button.invite').forEach(b => {
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      const card = b.closest('.invite-card');
+      card.classList.toggle('invited');
+      b.textContent = card.classList.contains('invited') ? '✓ Invited' : '＋ Invite';
+    });
+  });
+</script>
+</body>
+</html>

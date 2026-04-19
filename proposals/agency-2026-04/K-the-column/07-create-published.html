@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Column / Published · share</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0b0a09; --surface:#13120f; --elev:#1a1814; --border:#1c1b17; --border-strong:#2a2822;
+    --text:#ece7dc; --text-2:#8a8678; --text-3:#5c5849; --text-4:#3a362d;
+    --yes:#3ec48a; --yes-dim:rgba(62,196,138,.12); --yes-line:rgba(62,196,138,.45);
+    --no:#e85d7a; --no-dim:rgba(232,93,122,.12); --no-line:rgba(232,93,122,.45);
+    --ink:#efe7d3;
+    --serif:'Fraunces','Source Serif 4',Georgia,serif;
+    --tight:'Inter Tight','Inter',sans-serif;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .tight { font-family: var(--tight); letter-spacing: -.02em; }
+
+  .app { display: grid; grid-template-columns: 200px minmax(0, 1fr); max-width: 1520px; margin: 0 auto; min-height: 100vh; }
+  @media (max-width: 1200px) { .app { grid-template-columns: 76px minmax(0, 1fr); } .rail .labels { display: none; } .rail .brand .mark { display: none; } }
+  @media (max-width: 640px) { .app { grid-template-columns: 1fr; } .rail { display: none; } }
+
+  /* Rail */
+  .rail { padding: 1rem 0 1rem; display: flex; flex-direction: column; gap: .3rem; position: sticky; top: 0; height: 100vh; }
+  .brand { padding: .5rem 1rem .6rem; display: flex; align-items: center; gap: .6rem; }
+  .brand .logo { width: 28px; height: 28px; background: var(--ink); border-radius: 6px; display: grid; place-items: center; color: #1a1610; font-family: var(--serif); font-weight: 700; font-size: 1.05rem; letter-spacing: -.03em; }
+  .brand .mark { font-family: var(--tight); font-weight: 700; font-size: 1.05rem; letter-spacing: -.025em; color: var(--ink); }
+  .rail-nav { display: flex; flex-direction: column; padding-top: .5rem; }
+  .rail-item { display: grid; grid-template-columns: 20px 1fr auto; gap: .9rem; align-items: center; padding: .6rem 1rem; color: var(--text-2); font-size: 1rem; }
+  .rail-item svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  .rail-item:hover { color: var(--text); }
+  .rail-item .me-av { width: 22px; height: 22px; border-radius: 999px; background: linear-gradient(135deg, #6a5c7f 0%, #9b7a5e 100%); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .66rem; color: #1a1610; }
+  .rail-item .badge { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .04em; padding: .12rem .4rem; background: var(--ink); color: #1a1610; border-radius: 999px; font-weight: 600; }
+  .rail-spacer { flex: 1; }
+  .rail-cta { margin: .4rem 1rem .6rem; padding: .7rem 1.2rem; background: var(--ink); color: #1a1610; font-weight: 700; font-size: .95rem; text-align: center; cursor: pointer; border: 0; border-radius: 6px; }
+  .rail-cta:hover { background: #fff; }
+  .rail-more { padding: .6rem 1rem; color: var(--text-3); display: flex; align-items: center; gap: .9rem; font-size: .92rem; }
+  .rail-more svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+
+  /* Main */
+  .main { min-width: 0; padding: 0 2.5rem 5rem; }
+
+  /* Hero: celebration + published claim reference */
+  .hero { padding: 2.5rem 0 2rem; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 1fr minmax(280px, 380px); gap: 3rem; align-items: start; }
+  @media (max-width: 980px) { .hero { grid-template-columns: 1fr; } }
+  .hero-l { display: grid; gap: 1.1rem; }
+  .hero .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: var(--yes); display: inline-flex; align-items: center; gap: .55rem; }
+  .hero .eyebrow .pulse { width: 8px; height: 8px; border-radius: 999px; background: var(--yes); box-shadow: 0 0 0 4px var(--yes-dim); }
+  .hero h1 { margin: 0; font-family: var(--tight); font-weight: 700; font-size: 2.3rem; line-height: 1.1; letter-spacing: -.03em; color: var(--text); max-width: 24ch; }
+  .hero .lede { font-size: 1.02rem; color: var(--text-2); line-height: 1.6; max-width: 54ch; }
+  .hero .lede strong { color: var(--ink); font-weight: 600; }
+  .hero .metrics { display: flex; gap: 1.8rem; padding: 1rem 0 0; flex-wrap: wrap; }
+  .hero .metric { display: grid; gap: .2rem; }
+  .hero .metric .k { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
+  .hero .metric .v { font-family: 'JetBrains Mono', monospace; font-size: 1.15rem; color: var(--text); letter-spacing: -.005em; }
+  .hero .metric .v.y { color: var(--yes); }
+  .hero .actions { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .6rem; }
+  .btn-p { padding: .65rem 1.2rem; background: var(--ink); color: #1a1610; font-family: 'Inter', sans-serif; font-weight: 700; font-size: .92rem; border: 0; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: .45rem; }
+  .btn-p:hover { background: #fff; }
+  .btn-p svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .btn-g { padding: .65rem 1.1rem; background: transparent; border: 1px solid var(--border-strong); color: var(--text-2); font-family: 'Inter', sans-serif; font-size: .9rem; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: .45rem; }
+  .btn-g:hover { color: var(--ink); border-color: var(--ink); }
+  .btn-g svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+
+  /* Hero-right: the published portrait card (same viz as Markets rail) */
+  .hero-r { justify-self: end; width: 100%; max-width: 260px; }
+  .pc { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); box-shadow: 0 18px 60px rgba(0,0,0,.5); transform: rotate(-1.2deg); }
+  .pc .img { aspect-ratio: 4/5; position: relative; }
+  .pc .img .grad { position: absolute; inset: 0; background: linear-gradient(135deg, #c4a078 0%, #5a3e28 100%); }
+  .pc .img .motif { position: absolute; inset: 0; display: grid; place-items: center; opacity: .4; }
+  .pc .img .motif svg { width: 60%; height: 60%; stroke: rgba(239,231,211,.45); fill: none; stroke-width: 1.2; }
+  .pc .img .tag { position: absolute; top: .7rem; left: .7rem; font-family: 'JetBrains Mono', monospace; font-size: .58rem; letter-spacing: .14em; color: var(--ink); background: rgba(11,10,9,.55); padding: .22rem .5rem; border-radius: 3px; text-transform: uppercase; }
+  .pc .body { padding: .85rem .9rem .95rem; display: grid; gap: .45rem; }
+  .pc h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.02rem; line-height: 1.25; color: var(--text); }
+  .pc .by { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: -.005em; }
+  .pc .by .p { font-family: var(--serif); font-style: italic; margin-left: .3rem; color: var(--text-3); }
+  .pc .meta { padding-top: .5rem; border-top: 1px solid var(--border); display: flex; gap: .6rem; font-family: 'JetBrains Mono', monospace; font-size: .7rem; align-items: baseline; }
+  .pc .meta .p { color: var(--yes); font-size: .92rem; }
+  .pc .meta .v { color: var(--text-3); margin-left: auto; }
+
+  /* Section head */
+  .sect-head { padding: 2.2rem 0 1rem; display: grid; gap: .25rem; }
+  .sect-head .label { font-family: 'JetBrains Mono', monospace; font-size: .68rem; letter-spacing: .18em; text-transform: uppercase; color: var(--text-3); }
+  .sect-head h2 { margin: 0; font-family: var(--tight); font-size: 1.45rem; font-weight: 700; letter-spacing: -.02em; color: var(--text); }
+  .sect-head .sub { font-size: .94rem; color: var(--text-2); line-height: 1.55; max-width: 64ch; margin-top: .15rem; }
+
+  /* Toolkit — two-column: cards grid + side actions */
+  .toolkit { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 2.5rem; padding: .4rem 0 1rem; align-items: start; }
+  @media (max-width: 1180px) { .toolkit { grid-template-columns: 1fr; } }
+
+  /* Share cards — pre-rendered to drag into socials */
+  .cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  @media (max-width: 640px) { .cards-grid { grid-template-columns: 1fr; } }
+  .share-card { border: 1px solid var(--border); background: var(--surface); border-radius: 10px; overflow: hidden; display: grid; grid-template-rows: auto auto; transition: border-color .2s; }
+  .share-card:hover { border-color: var(--border-strong); }
+  .share-card .canvas { position: relative; background: #1a1610; overflow: hidden; display: grid; place-items: center; }
+  .share-card .canvas .g { position: absolute; inset: 0; background: linear-gradient(135deg, #c4a078 0%, #5a3e28 100%); opacity: .6; }
+  .share-card .canvas .motif { position: absolute; inset: 0; opacity: .15; display: grid; place-items: center; }
+  .share-card .canvas .motif svg { width: 80%; height: 80%; stroke: var(--ink); fill: none; stroke-width: 1; }
+  .share-card .canvas .inner { position: relative; z-index: 1; padding: 1.3rem 1.4rem; color: var(--ink); display: grid; gap: .5rem; width: 100%; }
+  .share-card .canvas .logo-row { display: flex; align-items: center; gap: .5rem; font-family: var(--tight); font-size: .76rem; font-weight: 700; letter-spacing: -.02em; color: var(--ink); }
+  .share-card .canvas .logo-row .mk { width: 18px; height: 18px; background: var(--ink); color: #1a1610; border-radius: 3px; display: grid; place-items: center; font-family: var(--serif); font-weight: 700; font-size: .72rem; }
+  .share-card .canvas .cat-pill { font-family: 'JetBrains Mono', monospace; font-size: .56rem; letter-spacing: .16em; text-transform: uppercase; color: #caa36f; }
+  .share-card .canvas .claim { font-family: var(--serif); font-weight: 500; font-size: 1.02rem; line-height: 1.25; color: var(--ink); max-width: 32ch; }
+  .share-card .canvas .price-row { display: flex; gap: .9rem; align-items: baseline; font-family: 'JetBrains Mono', monospace; }
+  .share-card .canvas .price-row .p { color: var(--yes); font-size: 1.25rem; font-weight: 600; letter-spacing: -.005em; }
+  .share-card .canvas .price-row .lbl { font-size: .58rem; letter-spacing: .14em; text-transform: uppercase; color: rgba(239,231,211,.55); }
+  .share-card .canvas .footer { display: flex; justify-content: space-between; align-items: baseline; font-family: 'JetBrains Mono', monospace; font-size: .6rem; letter-spacing: .06em; color: rgba(239,231,211,.5); }
+
+  /* Landscape 1.91:1 for X/LinkedIn/OG */
+  .share-card.landscape .canvas { aspect-ratio: 1.91/1; }
+  .share-card.landscape .canvas .inner { max-width: 76%; }
+  /* Square for IG */
+  .share-card.square .canvas { aspect-ratio: 1/1; }
+  /* Portrait 9:16 for IG Story */
+  .share-card.portrait .canvas { aspect-ratio: 9/16; }
+  .share-card.portrait .canvas .inner { padding: 2rem 1.5rem; gap: 1.1rem; align-content: start; }
+  .share-card.portrait .canvas .claim { font-size: 1.35rem; max-width: 24ch; }
+
+  .share-card .foot { display: flex; align-items: center; justify-content: space-between; padding: .6rem .8rem; border-top: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .06em; color: var(--text-3); }
+  .share-card .foot .dim { color: var(--text-3); }
+  .share-card .foot .a { color: var(--text-2); cursor: pointer; display: inline-flex; align-items: center; gap: .35rem; }
+  .share-card .foot .a:hover { color: var(--ink); }
+  .share-card .foot .a svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+
+  /* Side panel */
+  .side { display: grid; gap: 1rem; position: sticky; top: 1rem; }
+  .side-card { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  .side-card .ph { padding: 1rem 1.1rem .4rem; display: flex; align-items: baseline; justify-content: space-between; }
+  .side-card .ph h3 { margin: 0; font-family: var(--tight); font-size: .82rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--text-2); }
+  .side-card .ph .aux { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .04em; }
+  .side-card .body { padding: .3rem 1.1rem 1rem; display: grid; gap: .6rem; }
+
+  .share-btn { display: grid; grid-template-columns: 20px 1fr auto; gap: .8rem; align-items: center; padding: .65rem .2rem; border-top: 1px solid var(--border); cursor: pointer; font-size: .92rem; color: var(--text); }
+  .share-btn:first-of-type { border-top: 0; }
+  .share-btn:hover { color: var(--ink); }
+  .share-btn svg.ic { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  .share-btn .sub { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .04em; }
+  .share-btn .arrow { color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .9rem; }
+
+  /* Copy variants */
+  .copy-tabs { display: flex; gap: 1rem; padding: 0 1.1rem .2rem; border-bottom: 1px solid var(--border); }
+  .copy-tabs a { padding: .5rem 0; font-size: .82rem; color: var(--text-3); border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
+  .copy-tabs a.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .copy-tabs a:hover { color: var(--text); }
+  .copy-box { padding: 1rem 1.1rem 1.1rem; display: grid; gap: .7rem; }
+  .copy-box .snippet { padding: .85rem .95rem; background: var(--elev); border: 1px solid var(--border); border-radius: 8px; font-family: 'Inter', sans-serif; font-size: .92rem; line-height: 1.55; color: var(--text); }
+  .copy-box .snippet .tag { color: var(--yes); }
+  .copy-box .snippet .link { color: var(--text-2); border-bottom: 1px dashed var(--text-3); }
+  .copy-box .actions { display: flex; gap: .55rem; justify-content: flex-end; }
+  .copy-box .copy-ok { color: var(--yes); font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .08em; margin-right: auto; align-self: center; display: inline-flex; align-items: center; gap: .3rem; opacity: 0; }
+
+  /* Embed code */
+  .embed-block { padding: .9rem 1.1rem 1rem; display: grid; gap: .7rem; }
+  .embed-tabs { display: flex; gap: 1rem; padding-bottom: .2rem; border-bottom: 1px solid var(--border); margin: 0 0 .4rem; }
+  .embed-tabs a { padding: .4rem 0; font-size: .8rem; color: var(--text-3); border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; font-family: 'JetBrains Mono', monospace; letter-spacing: .04em; }
+  .embed-tabs a.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .embed-code { padding: .8rem .9rem; background: var(--elev); border: 1px solid var(--border); border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: .74rem; color: var(--text); line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+  .embed-code .att { color: var(--yes); }
+  .embed-code .tag-n { color: #caa36f; }
+  .embed-code .str { color: var(--text-2); }
+
+  /* QR card */
+  .qr-row { display: grid; grid-template-columns: 92px 1fr; gap: 1rem; padding: 1rem 1.1rem 1.1rem; align-items: center; }
+  .qr { width: 92px; height: 92px; background: var(--ink); padding: 6px; border-radius: 6px; }
+  .qr svg { width: 100%; height: 100%; }
+  .qr-meta { display: grid; gap: .3rem; font-size: .84rem; color: var(--text-2); }
+  .qr-meta strong { color: var(--ink); font-weight: 600; font-size: .9rem; }
+  .qr-meta .url { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: -.005em; }
+  .qr-meta .ls { display: inline-flex; gap: .55rem; margin-top: .3rem; }
+  .qr-meta .ls a { font-size: .76rem; color: var(--text-2); border-bottom: 1px dashed var(--text-4); padding-bottom: 1px; cursor: pointer; }
+  .qr-meta .ls a:hover { color: var(--ink); border-bottom-color: var(--ink); }
+
+  /* Next steps strip */
+  .next-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1rem 0 0; }
+  @media (max-width: 900px) { .next-grid { grid-template-columns: 1fr; } }
+  .next-card { padding: 1.1rem 1.2rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); display: grid; gap: .35rem; }
+  .next-card .n { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+  .next-card h4 { margin: 0; font-family: var(--tight); font-size: 1rem; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
+  .next-card p { margin: 0; font-size: .85rem; color: var(--text-2); line-height: 1.5; }
+  .next-card a { font-size: .82rem; color: var(--text); border-bottom: 1px solid var(--border-strong); padding-bottom: 2px; display: inline-flex; align-items: center; gap: .3rem; width: max-content; }
+  .next-card a:hover { color: var(--ink); border-bottom-color: var(--ink); }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Rail -->
+    <aside class="rail">
+      <div class="brand"><span class="logo">C</span><span class="mark labels">Cascade</span></div>
+      <nav class="rail-nav">
+        <a class="rail-item" href="01-landing.html"><svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9v9a2 2 0 01-2 2h-4v-7h-6v7H5a2 2 0 01-2-2z"/></svg><span class="labels">Home</span></a>
+        <a class="rail-item" href="02-subscriptions.html"><svg viewBox="0 0 24 24"><path d="M21 6H8M21 12H3M21 18h-7"/></svg><span class="labels">Subscriptions</span><span class="badge labels">6</span></a>
+        <a class="rail-item" href="03-markets.html"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 16l4-6 4 4 6-10"/></svg><span class="labels">Markets</span></a>
+        <a class="rail-item" href="#"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1112 0c0 5 3 6 3 6H3s3-1 3-6zM10 20a2 2 0 004 0"/></svg><span class="labels">Activity</span><span class="badge labels">12</span></a>
+        <a class="rail-item" href="#"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span class="labels">Bookmarks</span></a>
+        <a class="rail-item" href="#"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18"/></svg><span class="labels">Portfolio</span></a>
+        <a class="rail-item" href="../H-the-study/04-profile.html"><span class="me-av">pf</span><span class="labels">Profile</span></a>
+      </nav>
+      <button class="rail-cta labels" onclick="location.href='06-create.html'">＋ Publish a claim</button>
+      <div class="rail-spacer"></div>
+      <a class="rail-more labels" href="#"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><span>More</span></a>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+
+      <!-- Hero -->
+      <header class="hero">
+        <div class="hero-l">
+          <span class="eyebrow"><span class="pulse"></span>Your claim is live</span>
+          <h1>Now help it find its readers.</h1>
+          <p class="lede">Your claim sits at <strong>71¢ YES</strong> with $100 of your own capital behind it. The price only moves when <em>other people</em> disagree. The more eyeballs you bring, the more signal the market gives you — and the more of your position remains. Everything you need to share this is pre-built below.</p>
+          <div class="metrics">
+            <div class="metric"><span class="k">Seed</span><span class="v y">$100 YES · 141 sh</span></div>
+            <div class="metric"><span class="k">Opening price</span><span class="v">71¢ YES</span></div>
+            <div class="metric"><span class="k">Link</span><span class="v">cscd.io/btc-150k-2026</span></div>
+          </div>
+          <div class="actions">
+            <button class="btn-p">Copy sharing link <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="1"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"/></svg></button>
+            <button class="btn-g">View live market <svg viewBox="0 0 24 24"><path d="M7 17L17 7M17 7H9m8 0v8"/></svg></button>
+          </div>
+        </div>
+        <div class="hero-r">
+          <article class="pc">
+            <div class="img">
+              <div class="grad"></div>
+              <div class="motif">
+                <svg viewBox="0 0 100 100"><path d="M10 80 L30 65 L45 70 L60 45 L75 50 L92 25" /><path d="M10 85 L92 85"/></svg>
+              </div>
+              <span class="tag">Crypto · live</span>
+            </div>
+            <div class="body">
+              <h3>Bitcoin closes above $150K at least once during calendar year 2026.</h3>
+              <div class="by">@pf<span class="p">· Market notes</span></div>
+              <div class="meta">
+                <span class="p">71¢</span>
+                <span>seed $100</span>
+                <span class="v">just now</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </header>
+
+      <!-- Share tools -->
+      <header class="sect-head">
+        <span class="label">the sharing toolkit</span>
+        <h2>Drop these into your channels</h2>
+        <p class="sub">Pre-rendered cards sized for each surface, three copy tones, embed code for your Substack or blog, a QR to print, and one-click share. Built specifically so you're not stuck doing the work yourself — your market going live <em>is</em> the work.</p>
+      </header>
+
+      <div class="toolkit">
+
+        <!-- Cards grid -->
+        <div>
+          <div class="cards-grid">
+
+            <!-- X / Twitter -->
+            <article class="share-card landscape">
+              <div class="canvas">
+                <div class="g"></div>
+                <div class="motif"><svg viewBox="0 0 100 100"><path d="M10 80 L30 65 L45 70 L60 45 L75 50 L92 25" /><path d="M10 85 L92 85"/></svg></div>
+                <div class="inner">
+                  <span class="cat-pill">Crypto · A live market on Cascade</span>
+                  <p class="claim">Bitcoin closes above $150K at least once during calendar year 2026.</p>
+                  <div class="price-row">
+                    <span class="p">71¢ YES</span><span class="lbl">Crowd price</span>
+                    <span class="p" style="color:var(--ink);opacity:.7;font-size:.92rem">$100 seeded</span><span class="lbl">by @pf</span>
+                  </div>
+                  <div class="footer"><span class="logo-row"><span class="mk">C</span>Cascade</span><span>cscd.io/btc-150k-2026</span></div>
+                </div>
+              </div>
+              <div class="foot">
+                <span class="dim">X / Twitter · 1200×675</span>
+                <a class="a"><svg viewBox="0 0 24 24"><path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>Download</a>
+              </div>
+            </article>
+
+            <!-- LinkedIn landscape -->
+            <article class="share-card landscape">
+              <div class="canvas">
+                <div class="g" style="background: linear-gradient(135deg, #5a6b4e 0%, #2a2a22 100%);"></div>
+                <div class="motif"><svg viewBox="0 0 100 100"><rect x="20" y="20" width="60" height="60"/><path d="M20 50h60M50 20v60"/></svg></div>
+                <div class="inner">
+                  <span class="cat-pill">A thesis, priced</span>
+                  <p class="claim">I think BTC clears $150K in 2026. Here's $100 on it.</p>
+                  <div class="price-row">
+                    <span class="p">71¢</span><span class="lbl">crowd now</span>
+                    <span class="p" style="color:var(--ink);opacity:.7;font-size:.92rem">Read the case</span>
+                  </div>
+                  <div class="footer"><span class="logo-row"><span class="mk">C</span>Cascade</span><span>cscd.io/btc-150k-2026</span></div>
+                </div>
+              </div>
+              <div class="foot">
+                <span class="dim">LinkedIn · 1200×627</span>
+                <a class="a"><svg viewBox="0 0 24 24"><path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>Download</a>
+              </div>
+            </article>
+
+            <!-- IG square -->
+            <article class="share-card square">
+              <div class="canvas">
+                <div class="g"></div>
+                <div class="motif"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="38"/><path d="M50 12v76M12 50h76"/></svg></div>
+                <div class="inner">
+                  <span class="logo-row"><span class="mk">C</span>Cascade</span>
+                  <span class="cat-pill">Crypto · live market</span>
+                  <p class="claim">Bitcoin closes above $150K at least once in 2026.</p>
+                  <div class="price-row"><span class="p">71¢</span><span class="lbl">crowd says YES</span></div>
+                  <div class="footer"><span>seeded $100 by @pf</span><span>cscd.io/btc-150k-2026</span></div>
+                </div>
+              </div>
+              <div class="foot">
+                <span class="dim">Instagram · 1080×1080</span>
+                <a class="a"><svg viewBox="0 0 24 24"><path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>Download</a>
+              </div>
+            </article>
+
+            <!-- IG Story portrait -->
+            <article class="share-card portrait">
+              <div class="canvas">
+                <div class="g" style="background: linear-gradient(180deg, #c4a078 0%, #2a1f18 100%);"></div>
+                <div class="motif"><svg viewBox="0 0 100 100"><path d="M10 80 L30 65 L45 70 L60 45 L75 50 L92 25" /><path d="M10 85 L92 85"/></svg></div>
+                <div class="inner">
+                  <span class="logo-row"><span class="mk">C</span>Cascade</span>
+                  <span class="cat-pill">A thesis, priced</span>
+                  <p class="claim">Bitcoin closes above $150K at least once during 2026.</p>
+                  <div class="price-row">
+                    <span class="p">71¢ YES</span>
+                  </div>
+                  <p style="font-family:var(--serif);font-style:italic;font-size:.88rem;line-height:1.45;color:rgba(239,231,211,.8);max-width:26ch;margin:0;">"The halving is behind us. What hasn't played out is the second-order effect: treasuries getting comfortable with the reallocation."</p>
+                  <div class="footer" style="margin-top:auto"><span>by @pf</span><span>cscd.io/btc-150k-2026</span></div>
+                </div>
+              </div>
+              <div class="foot">
+                <span class="dim">Instagram Story · 1080×1920</span>
+                <a class="a"><svg viewBox="0 0 24 24"><path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>Download</a>
+              </div>
+            </article>
+
+          </div>
+        </div>
+
+        <!-- Side panel: one-click share, copy variants, embed, QR -->
+        <aside class="side">
+
+          <section class="side-card">
+            <div class="ph"><h3>One-click share</h3><span class="aux">opens composer</span></div>
+            <div class="body" style="padding-top: 0;">
+              <a class="share-btn" href="#">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M4 4l16 16M20 4L4 20"/></svg>
+                <span>X / Twitter<span class="sub" style="display:block">opens with punchy copy</span></span>
+                <span class="arrow">→</span>
+              </a>
+              <a class="share-btn" href="#">
+                <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 10v8M8 6v.5M12 10v8M12 14a3 3 0 016 0v4"/></svg>
+                <span>LinkedIn<span class="sub" style="display:block">thoughtful copy preset</span></span>
+                <span class="arrow">→</span>
+              </a>
+              <a class="share-btn" href="#">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M3 6l9 7 9-7M3 6v12a1 1 0 001 1h16a1 1 0 001-1V6l-9 7-9-7z"/></svg>
+                <span>Email<span class="sub" style="display:block">mailto with your network</span></span>
+                <span class="arrow">→</span>
+              </a>
+              <a class="share-btn" href="#">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M8 12h8M12 8v8M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>
+                <span>Nostr · kind-1<span class="sub" style="display:block">broadcast to your relays</span></span>
+                <span class="arrow">→</span>
+              </a>
+              <a class="share-btn" href="#">
+                <svg class="ic" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="1"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"/></svg>
+                <span>Copy link<span class="sub" style="display:block">cscd.io/btc-150k-2026</span></span>
+                <span class="arrow">→</span>
+              </a>
+            </div>
+          </section>
+
+          <section class="side-card">
+            <div class="ph"><h3>Copy · three tones</h3><span class="aux">click to copy</span></div>
+            <nav class="copy-tabs">
+              <a class="on">Punchy</a>
+              <a>Thoughtful</a>
+              <a>Direct</a>
+            </nav>
+            <div class="copy-box">
+              <div class="snippet">
+                I put $100 down that <span class="tag">Bitcoin prints above $150K in 2026</span>. The crowd's at 71¢ YES. If you disagree, take the other side — the market's open.
+                <br /><br />
+                <span class="link">cscd.io/btc-150k-2026</span>
+              </div>
+              <div class="actions">
+                <button class="btn-g" style="padding: .35rem .7rem; font-size: .78rem;">Regenerate</button>
+                <button class="btn-p" style="padding: .35rem .8rem; font-size: .78rem;">Copy</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="side-card">
+            <div class="ph"><h3>Embed</h3><span class="aux">iframe · markdown · html</span></div>
+            <div class="embed-block">
+              <nav class="embed-tabs">
+                <a class="on">iframe</a>
+                <a>markdown</a>
+                <a>html</a>
+              </nav>
+              <div class="embed-code">&lt;<span class="tag-n">iframe</span> <span class="att">src</span>=<span class="str">"https://cascade.xyz/embed/btc-150k-2026"</span> <span class="att">width</span>=<span class="str">"100%"</span> <span class="att">height</span>=<span class="str">"340"</span> <span class="att">loading</span>=<span class="str">"lazy"</span> <span class="att">frameborder</span>=<span class="str">"0"</span>&gt;&lt;/<span class="tag-n">iframe</span>&gt;</div>
+              <div class="actions" style="display:flex; gap:.5rem; justify-content:flex-end;">
+                <button class="btn-p" style="padding: .35rem .8rem; font-size: .78rem;">Copy embed</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="side-card">
+            <div class="ph"><h3>QR · for print</h3><span class="aux">vector SVG</span></div>
+            <div class="qr-row">
+              <div class="qr">
+                <svg viewBox="0 0 33 33" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="33" height="33" fill="#0b0a09"/>
+                  <!-- Finder patterns -->
+                  <rect x="1" y="1" width="7" height="7" fill="#0b0a09" stroke="#0b0a09"/>
+                  <rect x="2" y="2" width="5" height="5" fill="#efe7d3"/>
+                  <rect x="3" y="3" width="3" height="3" fill="#0b0a09"/>
+                  <rect x="25" y="1" width="7" height="7" fill="#efe7d3"/>
+                  <rect x="26" y="2" width="5" height="5" fill="#0b0a09"/>
+                  <rect x="27" y="3" width="3" height="3" fill="#efe7d3"/>
+                  <rect x="1" y="25" width="7" height="7" fill="#efe7d3"/>
+                  <rect x="2" y="26" width="5" height="5" fill="#0b0a09"/>
+                  <rect x="3" y="27" width="3" height="3" fill="#efe7d3"/>
+                  <!-- Random modules to look like QR -->
+                  <g fill="#efe7d3">
+                    <rect x="10" y="2" width="1" height="1"/><rect x="12" y="2" width="1" height="1"/><rect x="14" y="2" width="1" height="1"/>
+                    <rect x="16" y="2" width="1" height="1"/><rect x="19" y="2" width="1" height="1"/><rect x="22" y="2" width="1" height="1"/>
+                    <rect x="10" y="4" width="2" height="1"/><rect x="14" y="4" width="1" height="2"/><rect x="17" y="4" width="1" height="1"/>
+                    <rect x="20" y="4" width="2" height="1"/>
+                    <rect x="11" y="6" width="1" height="1"/><rect x="13" y="6" width="2" height="1"/><rect x="18" y="6" width="1" height="1"/>
+                    <rect x="21" y="6" width="1" height="2"/>
+                    <rect x="2" y="10" width="1" height="1"/><rect x="4" y="10" width="1" height="1"/><rect x="6" y="10" width="1" height="1"/>
+                    <rect x="9" y="10" width="2" height="1"/><rect x="13" y="10" width="1" height="2"/><rect x="16" y="10" width="1" height="1"/>
+                    <rect x="19" y="10" width="1" height="1"/><rect x="22" y="10" width="2" height="1"/><rect x="26" y="10" width="1" height="1"/>
+                    <rect x="29" y="10" width="1" height="1"/><rect x="31" y="10" width="1" height="1"/>
+                    <rect x="3" y="12" width="1" height="1"/><rect x="5" y="12" width="2" height="1"/><rect x="10" y="12" width="1" height="2"/>
+                    <rect x="15" y="12" width="1" height="1"/><rect x="18" y="12" width="1" height="2"/><rect x="21" y="12" width="1" height="1"/>
+                    <rect x="24" y="12" width="1" height="1"/><rect x="27" y="12" width="2" height="1"/><rect x="30" y="12" width="1" height="1"/>
+                    <rect x="2" y="14" width="1" height="2"/><rect x="5" y="14" width="1" height="1"/><rect x="7" y="14" width="1" height="2"/>
+                    <rect x="11" y="14" width="1" height="1"/><rect x="13" y="14" width="2" height="1"/><rect x="17" y="14" width="1" height="1"/>
+                    <rect x="20" y="14" width="1" height="2"/><rect x="23" y="14" width="1" height="1"/><rect x="25" y="14" width="2" height="1"/>
+                    <rect x="29" y="14" width="1" height="2"/>
+                    <rect x="3" y="16" width="2" height="1"/><rect x="8" y="16" width="1" height="1"/><rect x="10" y="16" width="1" height="1"/>
+                    <rect x="12" y="16" width="1" height="2"/><rect x="15" y="16" width="1" height="1"/><rect x="17" y="16" width="2" height="1"/>
+                    <rect x="21" y="16" width="1" height="1"/><rect x="24" y="16" width="1" height="1"/><rect x="26" y="16" width="1" height="2"/>
+                    <rect x="28" y="16" width="1" height="1"/><rect x="31" y="16" width="1" height="1"/>
+                    <rect x="2" y="18" width="1" height="1"/><rect x="4" y="18" width="1" height="2"/><rect x="6" y="18" width="1" height="1"/>
+                    <rect x="9" y="18" width="1" height="1"/><rect x="11" y="18" width="1" height="2"/><rect x="14" y="18" width="1" height="1"/>
+                    <rect x="16" y="18" width="1" height="2"/><rect x="19" y="18" width="1" height="1"/><rect x="22" y="18" width="1" height="1"/>
+                    <rect x="23" y="18" width="1" height="2"/><rect x="27" y="18" width="1" height="1"/><rect x="30" y="18" width="2" height="1"/>
+                    <rect x="3" y="20" width="1" height="1"/><rect x="7" y="20" width="1" height="1"/><rect x="9" y="20" width="2" height="1"/>
+                    <rect x="13" y="20" width="1" height="2"/><rect x="15" y="20" width="1" height="1"/><rect x="18" y="20" width="1" height="1"/>
+                    <rect x="20" y="20" width="1" height="2"/><rect x="22" y="20" width="1" height="1"/><rect x="25" y="20" width="2" height="1"/>
+                    <rect x="29" y="20" width="1" height="1"/><rect x="31" y="20" width="1" height="2"/>
+                    <rect x="2" y="22" width="1" height="1"/><rect x="5" y="22" width="2" height="1"/><rect x="8" y="22" width="1" height="2"/>
+                    <rect x="10" y="22" width="1" height="1"/><rect x="12" y="22" width="1" height="1"/><rect x="16" y="22" width="2" height="1"/>
+                    <rect x="19" y="22" width="1" height="1"/><rect x="23" y="22" width="1" height="1"/><rect x="26" y="22" width="1" height="1"/>
+                    <rect x="28" y="22" width="1" height="2"/><rect x="30" y="22" width="1" height="1"/>
+                    <rect x="10" y="26" width="2" height="1"/><rect x="14" y="26" width="1" height="1"/><rect x="17" y="26" width="1" height="2"/>
+                    <rect x="20" y="26" width="1" height="1"/><rect x="22" y="26" width="1" height="2"/><rect x="25" y="26" width="1" height="1"/>
+                    <rect x="27" y="26" width="1" height="1"/><rect x="30" y="26" width="2" height="1"/>
+                    <rect x="11" y="28" width="1" height="1"/><rect x="13" y="28" width="2" height="1"/><rect x="16" y="28" width="1" height="1"/>
+                    <rect x="19" y="28" width="1" height="2"/><rect x="23" y="28" width="1" height="1"/><rect x="26" y="28" width="1" height="1"/>
+                    <rect x="28" y="28" width="2" height="1"/>
+                    <rect x="10" y="30" width="1" height="1"/><rect x="12" y="30" width="1" height="1"/><rect x="15" y="30" width="2" height="1"/>
+                    <rect x="18" y="30" width="1" height="1"/><rect x="21" y="30" width="1" height="1"/><rect x="24" y="30" width="2" height="1"/>
+                    <rect x="27" y="30" width="1" height="1"/><rect x="29" y="30" width="1" height="1"/><rect x="31" y="30" width="1" height="1"/>
+                  </g>
+                </svg>
+              </div>
+              <div class="qr-meta">
+                <strong>cscd.io/btc-150k-2026</strong>
+                <span class="url">Opens your claim on any device</span>
+                <span class="ls"><a>Download SVG</a><a>Download PNG</a></span>
+              </div>
+            </div>
+          </section>
+
+        </aside>
+      </div>
+
+      <!-- Next steps -->
+      <header class="sect-head">
+        <span class="label">after the share</span>
+        <h2>What usually happens next</h2>
+        <p class="sub">You brought the claim here. These are the moves people make in the first 48 hours that shape how the market forms.</p>
+      </header>
+
+      <div class="next-grid">
+        <article class="next-card">
+          <span class="n">1 · watch</span>
+          <h4>Check who's taking the other side</h4>
+          <p>Notifications fire when someone writes a counter-reply or puts a meaningful position on NO. Engaging there is what turns a claim into a thread.</p>
+          <a>Go to the market →</a>
+        </article>
+        <article class="next-card">
+          <span class="n">2 · write</span>
+          <h4>Publish a Note riffing on the claim</h4>
+          <p>A short post on Home that links back. Cascade's crowd scans Notes differently than claim embeds — both are worth firing.</p>
+          <a>Open compose →</a>
+        </article>
+        <article class="next-card">
+          <span class="n">3 · track</span>
+          <h4>Set a price-move alert</h4>
+          <p>You'll get a ping when the crowd price moves ±5¢ or when volume crosses $1K. Keeps you in the loop without making you refresh.</p>
+          <a>Set alert →</a>
+        </article>
+      </div>
+
+    </main>
+
+  </div>
+</body>
+</html>

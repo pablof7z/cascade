@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Column / Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0b0a09; --surface:#13120f; --elev:#1a1814; --border:#1c1b17; --border-strong:#2a2822;
+    --text:#ece7dc; --text-2:#8a8678; --text-3:#5c5849; --text-4:#3a362d;
+    --yes:#3ec48a; --no:#e85d7a;
+    --ink:#efe7d3;
+    --serif:'Fraunces','Source Serif 4',Georgia,serif;
+    --tight:'Inter Tight','Inter',sans-serif;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; letter-spacing: -.01em; }
+  .tight { font-family: var(--tight); letter-spacing: -.02em; }
+  .serif { font-family: var(--serif); }
+
+  /* --- Shell: 200 | 720 | 340 --- */
+  .app { display: grid; grid-template-columns: 200px minmax(0, 720px) 340px; max-width: 1320px; margin: 0 auto; min-height: 100vh; column-gap: 0; }
+  @media (max-width: 1200px) { .app { grid-template-columns: 76px minmax(0, 1fr) 320px; } .rail .labels { display: none; } .rail .brand .mark { display: none; } }
+  @media (max-width: 880px) { .app { grid-template-columns: 76px minmax(0, 1fr); } .rail .labels { display: none; } .right { display: none; } }
+  @media (max-width: 640px) { .app { grid-template-columns: 1fr; } .rail { display: none; } }
+
+  /* --- Left rail --- */
+  .rail { padding: 1rem 0 1rem; display: flex; flex-direction: column; gap: .3rem; position: sticky; top: 0; height: 100vh; }
+  .brand { padding: .5rem 1rem .6rem; display: flex; align-items: center; gap: .6rem; }
+  .brand .logo { width: 28px; height: 28px; background: var(--ink); border-radius: 6px; display: grid; place-items: center; color: #1a1610; font-family: var(--serif); font-weight: 700; font-size: 1.05rem; letter-spacing: -.03em; flex-shrink: 0; }
+  .brand .mark { font-family: var(--tight); font-weight: 700; font-size: 1.05rem; letter-spacing: -.025em; color: var(--ink); }
+
+  .rail-nav { display: flex; flex-direction: column; padding-top: .5rem; }
+  .rail-item { display: grid; grid-template-columns: 20px 1fr auto; gap: .9rem; align-items: center; padding: .6rem 1rem; color: var(--text-2); font-size: 1rem; border-radius: 0; position: relative; }
+  .rail-item svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  .rail-item:hover { color: var(--text); }
+  .rail-item.active { color: var(--text); font-weight: 600; }
+  .rail-item.active svg { stroke-width: 2; fill: currentColor; }
+  .rail-item .badge { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .04em; padding: .12rem .4rem; background: var(--ink); color: #1a1610; border-radius: 999px; font-weight: 600; }
+  .rail-item .me-av { width: 22px; height: 22px; border-radius: 999px; background: linear-gradient(135deg, #6a5c7f 0%, #9b7a5e 100%); border: 1px solid transparent; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .66rem; color: #1a1610; margin-left: -1px; }
+
+  .rail-spacer { flex: 1; }
+  .rail-cta { margin: .4rem 1rem .6rem; padding: .7rem 1.2rem; background: var(--ink); color: #1a1610; font-family: 'Inter', sans-serif; font-weight: 700; font-size: .95rem; text-align: center; cursor: pointer; border: 0; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: .4rem; }
+  .rail-cta:hover { background: #fff; }
+  .rail-cta svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.4; }
+  .rail-more { padding: .6rem 1rem; color: var(--text-3); display: flex; align-items: center; gap: .9rem; font-size: .92rem; }
+  .rail-more:hover { color: var(--text-2); }
+  .rail-more svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+
+  /* --- Center column --- */
+  .center { min-width: 0; padding: 1.1rem 0 3rem; }
+
+  /* Compose */
+  .compose { padding: 0 1.8rem 1.4rem; }
+  .compose-inner { display: grid; grid-template-columns: 40px 1fr; gap: .9rem; padding: 1rem 1.2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; align-items: start; }
+  .compose-inner .av { width: 40px; height: 40px; border-radius: 999px; background: linear-gradient(135deg, #6a5c7f 0%, #9b7a5e 100%); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .85rem; color: #1a1610; flex-shrink: 0; }
+  .compose-inner .prompt { width: 100%; background: transparent; border: 0; color: var(--text); font-family: 'Inter', sans-serif; font-size: 1.05rem; line-height: 1.5; padding: .5rem 0; outline: none; resize: none; }
+  .compose-inner .prompt::placeholder { color: var(--text-3); }
+  .compose-actions { padding: .5rem 1.2rem 0; display: flex; justify-content: space-between; align-items: center; }
+  .compose-actions .chips { display: flex; gap: .8rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .04em; }
+  .compose-actions .chips a { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem 0; }
+  .compose-actions .chips a:hover { color: var(--text-2); }
+  .compose-actions .chips svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+  .compose-actions .post-btn { padding: .42rem 1rem; border-radius: 999px; background: transparent; color: var(--text-3); border: 1px solid var(--border-strong); font-size: .82rem; font-weight: 500; cursor: pointer; font-family: 'Inter', sans-serif; }
+
+  /* Filter bar */
+  .filter-row { padding: .2rem 1.8rem .8rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); margin-bottom: .5rem; }
+  .filter { display: inline-flex; align-items: center; gap: .3rem; font-family: 'Inter', sans-serif; font-size: .92rem; color: var(--text-2); cursor: pointer; }
+  .filter svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .filter:hover { color: var(--text); }
+  .filter-row .view-switch { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .08em; }
+  .filter-row .view-switch a { padding: .25rem .4rem; color: var(--text-3); }
+  .filter-row .view-switch a.on { color: var(--text); }
+
+  /* Feed */
+  .feed { display: flex; flex-direction: column; }
+
+  /* Each item */
+  .item { padding: 1.3rem 1.8rem; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 40px 1fr; gap: .9rem; }
+  .item:hover { background: rgba(255,255,255,.015); cursor: pointer; }
+  .item .av { width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--border-strong); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .88rem; color: #1a1610; flex-shrink: 0; }
+  /* Author avatars with subtle gradients (Substack-like) */
+  .av-N { background: linear-gradient(135deg, #a88a6e 0%, #6b4f3c 100%); }
+  .av-G { background: linear-gradient(135deg, #d4b97a 0%, #8a6b3e 100%); }
+  .av-K { background: linear-gradient(135deg, #6a8a7e 0%, #3e5248 100%); }
+  .av-S { background: linear-gradient(135deg, #7a6ca4 0%, #4a4068 100%); }
+  .av-Q { background: linear-gradient(135deg, #9a7a6e 0%, #5e3e36 100%); }
+  .av-J { background: linear-gradient(135deg, #c4a08a 0%, #7e5a48 100%); }
+  .av-O { background: linear-gradient(135deg, #8a8a6e 0%, #5a5a3e 100%); }
+
+  .body { min-width: 0; display: grid; gap: .3rem; }
+
+  .line { display: flex; align-items: center; gap: .5rem; margin-bottom: .1rem; }
+  .line .name { color: var(--text); font-weight: 600; font-size: 1rem; letter-spacing: -.005em; }
+  .line .pub { font-family: var(--serif); font-style: italic; color: var(--text-2); font-size: .92rem; }
+  .line .check { color: var(--ink); font-size: .8rem; }
+  .line .time { color: var(--text-3); font-size: .88rem; margin-left: auto; }
+  .line .close, .line .more { color: var(--text-3); font-size: 1.1rem; cursor: pointer; width: 20px; text-align: center; }
+  .line .close:hover, .line .more:hover { color: var(--text); }
+
+  /* Stake chip, inline in the line when a note carries one */
+  .stake-chip { display: inline-flex; align-items: center; gap: .35rem; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--yes); padding: .12rem .4rem; border: 1px solid var(--yes); letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; }
+  .stake-chip.n { color: var(--no); border-color: var(--no); }
+  .stake-chip.exit { color: var(--text-2); border-color: var(--border-strong); }
+
+  /* Post body text */
+  .text { color: var(--text); font-size: 1rem; line-height: 1.6; }
+  .text p { margin: 0 0 .5rem; }
+  .text p:last-child { margin-bottom: 0; }
+
+  /* Inline emphasis */
+  .text .emph { color: var(--ink); font-weight: 500; }
+
+  /* Small meta line (for context-labels and compact tags) */
+  .meta-line { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .06em; }
+  .meta-line .cat { color: var(--yes); letter-spacing: .18em; text-transform: uppercase; }
+  .meta-line .sep { color: var(--text-4); margin: 0 .35rem; }
+
+  /* Embedded market card (link-preview style, Substack flavor) */
+  .market-embed { margin-top: .5rem; border: 1px solid var(--border); border-radius: 10px; padding: .8rem .95rem; display: grid; gap: .4rem; transition: border-color .12s; }
+  .market-embed:hover { border-color: var(--border-strong); }
+  .market-embed .cat { font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--yes); letter-spacing: .18em; text-transform: uppercase; }
+  .market-embed h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.08rem; line-height: 1.25; letter-spacing: -.005em; color: var(--text); }
+  .market-embed .row { display: flex; justify-content: space-between; align-items: baseline; padding-top: .4rem; border-top: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: .74rem; color: var(--text-3); letter-spacing: .04em; }
+  .market-embed .p { color: var(--yes); font-size: .95rem; font-weight: 500; letter-spacing: -.01em; }
+  .market-embed .p.no { color: var(--no); }
+  .market-embed .p .up { color: var(--yes); margin-left: .25rem; font-size: .78rem; }
+  .market-embed .p .dn { color: var(--no); margin-left: .25rem; font-size: .78rem; }
+
+  /* Claim announcement — bigger than a market embed */
+  .claim-embed { margin-top: .5rem; border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem 1.3rem; display: grid; gap: .7rem; }
+  .claim-embed:hover { border-color: var(--border-strong); }
+  .claim-embed .kicker { font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; display: flex; gap: .5rem; align-items: center; }
+  .claim-embed .kicker .cat { color: var(--yes); letter-spacing: .2em; }
+  .claim-embed .kicker .new-chip { background: var(--ink); color: #1a1610; padding: .1rem .4rem; border-radius: 999px; letter-spacing: .14em; font-weight: 600; }
+  .claim-embed h3 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.45rem; line-height: 1.15; letter-spacing: -.015em; color: var(--text); }
+  .claim-embed .sub { color: var(--text-2); font-family: var(--serif); font-size: .96rem; line-height: 1.5; margin: 0; max-width: 42ch; }
+  .claim-embed .row { display: flex; justify-content: space-between; align-items: baseline; padding-top: .6rem; border-top: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: .74rem; color: var(--text-3); }
+  .claim-embed .p { color: var(--yes); font-size: 1.35rem; line-height: 1; letter-spacing: -.015em; font-weight: 500; }
+  .claim-embed .p .lbl { color: var(--yes); margin-left: .4rem; font-size: .7rem; letter-spacing: .1em; }
+
+  /* Image/evidence embed */
+  .img-embed { margin-top: .5rem; border: 1px solid var(--border); border-radius: 10px; padding: .55rem; background: var(--surface); aspect-ratio: 16/9; max-width: 100%; overflow: hidden; display: grid; place-items: center; }
+  .img-embed svg { width: 100%; height: 100%; }
+
+  /* Restack quote */
+  .restack-quote { margin-top: .5rem; border-left: 2px solid var(--border-strong); padding: .5rem 0 .5rem 1rem; color: var(--text-2); font-size: .94rem; line-height: 1.55; font-family: var(--serif); }
+  .restack-quote .rq-by { font-family: 'Inter', sans-serif; font-style: normal; font-size: .78rem; color: var(--text-3); display: block; margin-bottom: .25rem; letter-spacing: .02em; }
+  .restack-quote .rq-by strong { color: var(--text-2); font-weight: 600; }
+
+  /* Action row */
+  .actions { display: flex; align-items: center; gap: 2.4rem; margin-top: .7rem; color: var(--text-3); font-family: 'Inter', sans-serif; font-size: .82rem; }
+  .actions a { display: inline-flex; align-items: center; gap: .38rem; padding: .2rem 0; cursor: pointer; }
+  .actions a svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  .actions a:hover { color: var(--text); }
+  .actions a.yes:hover { color: var(--yes); }
+  .actions a.no:hover { color: var(--no); }
+  .actions a.back { color: var(--text-3); }
+  .actions a.back .p { font-family: 'JetBrains Mono', monospace; margin-left: .25rem; opacity: .75; }
+
+  /* --- Right rail --- */
+  .right { padding: 1.1rem 1rem 2rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .right::-webkit-scrollbar { width: 6px; } .right::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .search { display: flex; align-items: center; gap: .55rem; height: 44px; padding: 0 .95rem; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; }
+  .search svg { width: 17px; height: 17px; stroke: var(--text-3); fill: none; stroke-width: 1.7; }
+  .search input { flex: 1; background: transparent; border: 0; color: var(--text); font-size: .9rem; outline: none; }
+  .search input::placeholder { color: var(--text-3); }
+
+  .rail-card { border: 1px solid var(--border); border-radius: 16px; background: transparent; overflow: hidden; }
+  .rail-card-head { display: flex; align-items: baseline; justify-content: space-between; padding: 1rem 1.2rem .5rem; }
+  .rail-card-head h3 { margin: 0; font-family: var(--tight); font-size: 1.05rem; font-weight: 700; letter-spacing: -.015em; }
+  .rail-card-head a { color: var(--text-3); font-size: .8rem; }
+  .rail-card-head a:hover { color: var(--text); }
+
+  /* Up next item */
+  .up-item { display: grid; grid-template-columns: 1fr 72px; gap: .9rem; padding: .85rem 1.2rem; align-items: start; border-top: 1px solid var(--border); cursor: pointer; }
+  .up-item:hover { background: var(--surface); }
+  .up-item .pub-line { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .06em; display: flex; align-items: center; gap: .35rem; margin-bottom: .3rem; }
+  .up-item .pub-line .sq { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+  .up-item h4 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: .98rem; line-height: 1.25; letter-spacing: -.005em; color: var(--text); max-width: 22ch; }
+  .up-item .meta { margin-top: .3rem; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .04em; }
+  .up-item .bookmark { margin-left: auto; color: var(--text-3); font-size: .9rem; padding-top: .2rem; }
+  .up-item .bookmark:hover { color: var(--text); }
+  /* Mini chart-thumbnail */
+  .up-thumb { width: 72px; height: 56px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); display: grid; place-items: center; overflow: hidden; }
+  .up-thumb svg { width: 100%; height: 100%; }
+
+  /* Bestseller list */
+  .best-item { display: grid; grid-template-columns: 20px auto 1fr auto; gap: .8rem; align-items: center; padding: .75rem 1.2rem; border-top: 1px solid var(--border); }
+  .best-item:hover { background: var(--surface); cursor: pointer; }
+  .best-item .n { font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: var(--text-3); letter-spacing: -.01em; }
+  .best-item .av { width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .78rem; color: #1a1610; }
+  .best-item .who { min-width: 0; display: grid; gap: 1px; }
+  .best-item .n2 { font-size: .95rem; font-weight: 600; letter-spacing: -.005em; display: flex; align-items: center; gap: .3rem; }
+  .best-item .n2 .check { color: var(--ink); font-size: .7rem; }
+  .best-item .p { font-family: var(--serif); font-style: italic; font-size: .82rem; color: var(--text-3); letter-spacing: -.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .best-item .sub-btn { font-size: .82rem; font-weight: 600; padding: .35rem .9rem; border-radius: 999px; background: var(--ink); color: #1a1610; border: 0; cursor: pointer; font-family: 'Inter', sans-serif; letter-spacing: -.005em; }
+  .best-item .sub-btn:hover { background: #fff; }
+
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- --- Left rail --- -->
+    <aside class="rail">
+      <div class="brand">
+        <span class="logo">C</span>
+        <span class="mark labels">Cascade</span>
+      </div>
+
+      <nav class="rail-nav">
+        <a class="rail-item active" href="#">
+          <svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9v9a2 2 0 01-2 2h-4v-7h-6v7H5a2 2 0 01-2-2z"/></svg>
+          <span class="labels">Home</span>
+        </a>
+        <a class="rail-item" href="02-subscriptions.html">
+          <svg viewBox="0 0 24 24"><path d="M21 6H8M21 12H3M21 18h-7"/></svg>
+          <span class="labels">Subscriptions</span>
+          <span class="badge labels">6</span>
+        </a>
+        <a class="rail-item" href="03-markets.html">
+          <svg viewBox="0 0 24 24"><path d="M3 20h18M5 16l4-6 4 4 6-10"/></svg>
+          <span class="labels">Markets</span>
+        </a>
+        <a class="rail-item" href="#">
+          <svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1112 0c0 5 3 6 3 6H3s3-1 3-6zM10 20a2 2 0 004 0"/></svg>
+          <span class="labels">Activity</span>
+          <span class="badge labels">12</span>
+        </a>
+        <a class="rail-item" href="#">
+          <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+          <span class="labels">Bookmarks</span>
+        </a>
+        <a class="rail-item" href="#">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18"/></svg>
+          <span class="labels">Portfolio</span>
+        </a>
+        <a class="rail-item" href="04-profile.html">
+          <span class="me-av">pf</span>
+          <span class="labels">Profile</span>
+        </a>
+      </nav>
+
+      <button class="rail-cta labels" onclick="location.href='03-create.html'">
+        ＋ Publish a claim
+      </button>
+
+      <div class="rail-spacer"></div>
+
+      <a class="rail-more labels" href="#">
+        <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+        <span>More</span>
+      </a>
+    </aside>
+
+    <!-- --- Center --- -->
+    <main class="center">
+
+      <!-- Compose -->
+      <div class="compose">
+        <div class="compose-inner">
+          <span class="av">pf</span>
+          <textarea class="prompt" rows="1" placeholder="What's on your mind?"></textarea>
+        </div>
+        <div class="compose-actions">
+          <div class="chips">
+            <a><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="1"/><circle cx="8.5" cy="10" r="1.5"/><path d="M4 17l5-5 5 5 3-3 4 4"/></svg> Add an image</a>
+            <a><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg> Link a market</a>
+            <a><svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"/></svg> Attach a stake</a>
+          </div>
+          <button class="post-btn">Post</button>
+        </div>
+      </div>
+
+      <!-- Filter -->
+      <div class="filter-row">
+        <span class="filter">For you <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
+        <span class="view-switch"><a class="on" href="#">All</a> · <a href="#">Notes</a> · <a href="#">Publications</a></span>
+      </div>
+
+      <!-- Feed -->
+      <section class="feed">
+
+        <!-- 1. Pure note (no stake, no embed) -->
+        <article class="item">
+          <span class="av av-G">G</span>
+          <div class="body">
+            <div class="line">
+              <span class="name">Greta Maddox</span>
+              <span class="check">◉</span>
+              <span class="pub">· Bitcoin, macro &amp; their entanglements</span>
+              <span class="time">2h</span>
+              <span class="more">⋯</span>
+              <span class="close">×</span>
+            </div>
+            <div class="text">
+              <p>The crowd looks underpriced on several 2026 macro claims. Something's off in the way the curve is pricing in the October meeting.</p>
+              <p>Either the macro writers are right and the rates market is late, or the claims are about to converge toward the curve. Someone's going to be wrong by June.</p>
+            </div>
+            <div class="actions">
+              <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> 14</a>
+              <a><svg viewBox="0 0 24 24"><path d="M17 4l3 3-3 3M20 7H8a4 4 0 00-4 4v1M7 20l-3-3 3-3M4 17h12a4 4 0 004-4v-1"/></svg> 3</a>
+              <a><svg viewBox="0 0 24 24"><path d="M12 20l-8-8 2-2 6 6 12-12 2 2z"/></svg> 42</a>
+              <a><svg viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v14"/></svg></a>
+            </div>
+          </div>
+        </article>
+
+        <!-- 2. Note with stake + embedded market -->
+        <article class="item">
+          <span class="av av-N">N</span>
+          <div class="body">
+            <div class="line">
+              <span class="name">Nina Ortega</span>
+              <span class="check">◉</span>
+              <span class="pub">· Corporate timing, weekly-ish</span>
+              <span class="stake-chip">Back YES · $200</span>
+              <span class="time">28m</span>
+              <span class="more">⋯</span>
+              <span class="close">×</span>
+            </div>
+            <div class="text">
+              <p>Added $200 at 71¢. Three gates became four. <span class="emph">Not adding above 75¢</span>, not trimming until the 21st passes quietly. The eight-week pattern still holds and I'd rather be in than out.</p>
+            </div>
+            <a class="market-embed" href="02-market.html">
+              <span class="cat">AI</span>
+              <h3>OpenAI will ship GPT-5 before Google ships Gemini 2 Pro.</h3>
+              <div class="row">
+                <span class="p">71¢ <span class="up">+3¢ 24h</span></span>
+                <span>2,814 trades · 24 replies · $74K 30d</span>
+              </div>
+            </a>
+            <div class="actions">
+              <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> 6</a>
+              <a><svg viewBox="0 0 24 24"><path d="M17 4l3 3-3 3M20 7H8a4 4 0 00-4 4v1M7 20l-3-3 3-3M4 17h12a4 4 0 004-4v-1"/></svg> 2</a>
+              <a class="back yes"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Back YES <span class="p">71¢</span></a>
+              <a><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg></a>
+            </div>
+          </div>
+        </article>
+
+        <!-- 3. Auto note: big trade alert -->
+        <article class="item">
+          <span class="av av-K">K</span>
+          <div class="body">
+            <div class="line">
+              <span class="name">Kamil Owada</span>
+              <span class="pub">· AI infra briefing</span>
+              <span class="stake-chip">Backed YES · $800 @ 58¢</span>
+              <span class="time">14m</span>
+              <span class="more">⋯</span>
+              <span class="close">×</span>
+            </div>
+            <div class="text">
+              <p>Scaling into BTC 150K. Pushed the crowd price from 56¢ to 58¢.</p>
+            </div>
+            <a class="market-embed" href="02-market.html">
+              <span class="cat">Crypto</span>
+              <h3>Bitcoin trades above $150,000 by Q3 2026.</h3>
+              <div class="row">
+                <span class="p">58¢ <span class="up">+2¢ post-trade</span></span>
+                <span>1,201 trades · 47 replies · $16K 24h</span>
+              </div>
+            </a>
+            <div class="actions">
+              <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Reply</a>
+              <a><svg viewBox="0 0 24 24"><path d="M17 4l3 3-3 3M20 7H8a4 4 0 00-4 4v1M7 20l-3-3 3-3M4 17h12a4 4 0 004-4v-1"/></svg></a>
+              <a class="back yes"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Back YES <span class="p">58¢</span></a>
+              <a><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg></a>
+            </div>
+          </div>
+        </article>
+
+        <!-- 4. New claim publication (bigger embed) -->
+        <article class="item">
+          <span class="av av-S">S</span>
+          <div class="body">
+            <div class="line">
+              <span class="name">Sono Yamada</span>
+              <span class="check">◉</span>
+              <span class="pub">· East Asia watch</span>
+              <span class="time">Tue</span>
+              <span class="more">⋯</span>
+              <span class="close">×</span>
+            </div>
+            <div class="text">
+              <p>Just published. The spread on this one is narrower than the news cycle suggests.</p>
+            </div>
+            <a class="claim-embed" href="02-market.html">
+              <span class="kicker">
+                <span class="cat">Geopolitics</span>
+                <span>New claim · seeded $500 YES</span>
+                <span class="new-chip">New</span>
+              </span>
+              <h3>Taiwan holds a recognised national election in 2026 without a cross-strait military incident.</h3>
+              <p class="sub">The crowd has been holding this between 74¢ and 79¢ for six weeks, through two naval incidents and a cabinet reshuffle. Stubbornness usually means the market knows something the headlines don't.</p>
+              <div class="row">
+                <span class="p">77¢<span class="lbl">YES · +2¢ 24h</span></span>
+                <span>218 traders · 28 replies · $42K 30d</span>
+              </div>
+            </a>
+            <div class="actions">
+              <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> 28</a>
+              <a><svg viewBox="0 0 24 24"><path d="M17 4l3 3-3 3M20 7H8a4 4 0 00-4 4v1M7 20l-3-3 3-3M4 17h12a4 4 0 004-4v-1"/></svg> 12</a>
+              <a class="back yes"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Back YES <span class="p">77¢</span></a>
+              <a><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg></a>
+            </div>
+          </div>
+        </article>
+
+        <!-- 5. Note with image/chart evidence -->
+        <article class="item">
+          <span class="av av-Q">Q</span>
+          <div class="body">
+            <div class="line">
+              <span class="name">Quincy Afolabi</span>
+              <span class="check">◉</span>
+              <span class="pub">· The macro weekly</span>
+              <span class="time">Wed</span>
+              <span class="more">⋯</span>
+              <span class="close">×</span>
+            </div>
+            <div class="text">
+              <p>The two-year agrees. This is the chart I keep coming back to.</p>
+            </div>
+            <div class="img-embed">
+              <!-- Faux chart image -->
+              <svg viewBox="0 0 520 280" preserveAspectRatio="xMidYMid meet">
+                <rect width="520" height="280" fill="#13120f"/>
+                <line x1="40" y1="240" x2="500" y2="240" stroke="#2a2822"/>
+                <line x1="40" y1="40" x2="40" y2="240" stroke="#2a2822"/>
+                <line x1="40" y1="80" x2="500" y2="80" stroke="#1c1b17" stroke-dasharray="3 4"/>
+                <line x1="40" y1="140" x2="500" y2="140" stroke="#1c1b17" stroke-dasharray="3 4"/>
+                <line x1="40" y1="200" x2="500" y2="200" stroke="#1c1b17" stroke-dasharray="3 4"/>
+                <polyline fill="none" stroke="#3ec48a" stroke-width="1.6" points="40,180 80,160 120,150 160,120 200,110 240,120 280,90 320,85 360,60 400,70 440,50 480,40"/>
+                <polyline fill="none" stroke="#e85d7a" stroke-width="1.6" stroke-dasharray="4 3" points="40,200 80,195 120,185 160,170 200,160 240,150 280,140 320,130 360,115 400,110 440,100 480,95"/>
+                <text x="440" y="35" fill="#3ec48a" font-family="JetBrains Mono, monospace" font-size="9">2Y YIELD</text>
+                <text x="440" y="90" fill="#e85d7a" font-family="JetBrains Mono, monospace" font-size="9">CASCADE · FED &lt;3%</text>
+                <text x="40" y="260" fill="#5d5849" font-family="JetBrains Mono, monospace" font-size="9">JAN</text>
+                <text x="500" y="260" fill="#5d5849" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="end">APR 17</text>
+              </svg>
+            </div>
+            <a class="market-embed" href="02-market.html">
+              <span class="cat">Macro</span>
+              <h3>The Fed funds rate closes below 3% at any point in 2026.</h3>
+              <div class="row">
+                <span class="p">64¢ <span class="up">+13¢ since seed</span></span>
+                <span>1,944 trades · 31 replies</span>
+              </div>
+            </a>
+            <div class="actions">
+              <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> 31</a>
+              <a><svg viewBox="0 0 24 24"><path d="M17 4l3 3-3 3M20 7H8a4 4 0 00-4 4v1M7 20l-3-3 3-3M4 17h12a4 4 0 004-4v-1"/></svg> 18</a>
+              <a class="back yes"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Back YES <span class="p">64¢</span></a>
+              <a><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg></a>
+            </div>
+          </div>
+        </article>
+
+        <!-- 6. Restack — quoting a reply with commentary -->
+        <article class="item">
+          <span class="av av-J">J</span>
+          <div class="body">
+            <div class="line">
+              <span class="name">Jules Henao</span>
+              <span class="pub">· restacked @north</span>
+              <span class="time">1h</span>
+              <span class="more">⋯</span>
+              <span class="close">×</span>
+            </div>
+            <div class="text">
+              <p>The signal is in what <span class="emph">isn't</span> happening.</p>
+            </div>
+            <div class="restack-quote">
+              <span class="rq-by"><strong>@north</strong> · Author · on <em>OpenAI ships GPT-5</em></span>
+              Safety eval cadence hasn't moved, which is informative by itself. If there was a hiccup, we'd see a pause in the posted DevDay slots — and we haven't. If you squint the gate cadence has <em>tightened</em> across the last three models.
+            </div>
+            <div class="actions">
+              <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> 4</a>
+              <a><svg viewBox="0 0 24 24"><path d="M17 4l3 3-3 3M20 7H8a4 4 0 00-4 4v1M7 20l-3-3 3-3M4 17h12a4 4 0 004-4v-1"/></svg> 9</a>
+              <a class="back yes"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Back YES <span class="p">71¢</span></a>
+              <a><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg></a>
+            </div>
+          </div>
+        </article>
+
+        <!-- 7. Cash-out note -->
+        <article class="item">
+          <span class="av av-O">O</span>
+          <div class="body">
+            <div class="line">
+              <span class="name">Neo Ravi</span>
+              <span class="pub">· trader, no publication</span>
+              <span class="stake-chip exit">Cashed out · $78 @ 70¢ · +$11.20</span>
+              <span class="time">4m</span>
+              <span class="more">⋯</span>
+              <span class="close">×</span>
+            </div>
+            <div class="text">
+              <p>Closed the GPT-5 YES at 70¢ for a +$11.20. Held 17 days, average entry 56¢. Rotating the capital into Greta's BTC claim.</p>
+            </div>
+            <a class="market-embed" href="02-market.html">
+              <span class="cat">AI</span>
+              <h3>OpenAI will ship GPT-5 before Google ships Gemini 2 Pro.</h3>
+              <div class="row">
+                <span class="p">71¢ <span class="up">+3¢ 24h</span></span>
+                <span>avg entry 56¢ · held 17d · +$11.20</span>
+              </div>
+            </a>
+            <div class="actions">
+              <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> 2</a>
+              <a><svg viewBox="0 0 24 24"><path d="M17 4l3 3-3 3M20 7H8a4 4 0 00-4 4v1M7 20l-3-3 3-3M4 17h12a4 4 0 004-4v-1"/></svg></a>
+              <a class="back yes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg> Follow Neo</a>
+              <a><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg></a>
+            </div>
+          </div>
+        </article>
+
+        <div style="text-align: center; padding: 2rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .1em; text-transform: uppercase;">
+          <a href="#" style="color: var(--ink);">Load 42 older posts</a>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- --- Right rail --- -->
+    <aside class="right">
+      <label class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+        <input placeholder="Search Cascade" />
+      </label>
+
+      <section class="rail-card">
+        <header class="rail-card-head">
+          <h3 class="tight">Up next</h3>
+          <a href="#">See all</a>
+        </header>
+
+        <a class="up-item" href="02-market.html">
+          <div>
+            <div class="pub-line">
+              <span class="sq" style="background: linear-gradient(135deg, #a88a6e 0%, #6b4f3c 100%);"></span>
+              <span>Nina Ortega · Corporate timing</span>
+            </div>
+            <h4 class="serif">OpenAI will ship GPT-5 before Google's Gemini 2 Pro.</h4>
+            <div class="meta">6 min read · 24 replies · you hold $220</div>
+          </div>
+          <div class="up-thumb">
+            <svg viewBox="0 0 72 56" preserveAspectRatio="none">
+              <path fill="#3ec48a" opacity=".1" d="M0,42 L8,40 L16,36 L24,30 L32,32 L40,26 L48,22 L56,18 L64,14 L72,10 L72,56 L0,56 Z"/>
+              <polyline fill="none" stroke="#3ec48a" stroke-width="1.2" points="0,42 8,40 16,36 24,30 32,32 40,26 48,22 56,18 64,14 72,10"/>
+              <circle cx="72" cy="10" r="2" fill="#3ec48a"/>
+            </svg>
+          </div>
+        </a>
+
+        <a class="up-item" href="02-market.html">
+          <div>
+            <div class="pub-line">
+              <span class="sq" style="background: linear-gradient(135deg, #9a7a6e 0%, #5e3e36 100%);"></span>
+              <span>Quincy Afolabi · The macro weekly</span>
+            </div>
+            <h4 class="serif">The Fed funds rate is below 3% at any point in 2026.</h4>
+            <div class="meta">5 min read · 31 replies · 1,944 trades</div>
+          </div>
+          <div class="up-thumb">
+            <svg viewBox="0 0 72 56" preserveAspectRatio="none">
+              <path fill="#3ec48a" opacity=".1" d="M0,48 L8,44 L16,40 L24,36 L32,32 L40,28 L48,22 L56,18 L64,14 L72,8 L72,56 L0,56 Z"/>
+              <polyline fill="none" stroke="#3ec48a" stroke-width="1.2" points="0,48 8,44 16,40 24,36 32,32 40,28 48,22 56,18 64,14 72,8"/>
+              <circle cx="72" cy="8" r="2" fill="#3ec48a"/>
+            </svg>
+          </div>
+        </a>
+
+        <a class="up-item" href="02-market.html">
+          <div>
+            <div class="pub-line">
+              <span class="sq" style="background: linear-gradient(135deg, #7a6ca4 0%, #4a4068 100%);"></span>
+              <span>Sono Yamada · East Asia watch</span>
+            </div>
+            <h4 class="serif">Taiwan holds a recognised national election without incident.</h4>
+            <div class="meta">6 min read · 28 replies · 218 traders</div>
+          </div>
+          <div class="up-thumb">
+            <svg viewBox="0 0 72 56" preserveAspectRatio="none">
+              <polyline fill="none" stroke="#3ec48a" stroke-width="1.2" points="0,22 12,24 24,20 36,18 48,17 60,15 72,14"/>
+              <circle cx="72" cy="14" r="2" fill="#3ec48a"/>
+            </svg>
+          </div>
+        </a>
+      </section>
+
+      <section class="rail-card">
+        <header class="rail-card-head">
+          <h3 class="tight">Writers to subscribe</h3>
+          <a href="#">See all</a>
+        </header>
+
+        <a class="best-item" href="04-profile.html">
+          <span class="n mono">1</span>
+          <span class="av" style="background: linear-gradient(135deg, #d4b97a 0%, #8a6b3e 100%);">A</span>
+          <div class="who">
+            <span class="n2">Ashe K. <span class="check">◉</span></span>
+            <span class="p">Hardware &amp; what it means</span>
+          </div>
+          <button class="sub-btn">Subscribe</button>
+        </a>
+        <a class="best-item" href="04-profile.html">
+          <span class="n mono">2</span>
+          <span class="av" style="background: linear-gradient(135deg, #c4a08a 0%, #7e5a48 100%);">H</span>
+          <div class="who">
+            <span class="n2">Halden R. <span class="check">◉</span></span>
+            <span class="p">Europe &amp; the election cycle</span>
+          </div>
+          <button class="sub-btn">Subscribe</button>
+        </a>
+        <a class="best-item" href="04-profile.html">
+          <span class="n mono">3</span>
+          <span class="av" style="background: linear-gradient(135deg, #8a8a6e 0%, #5a5a3e 100%);">M</span>
+          <div class="who">
+            <span class="n2">Meer L. <span class="check">◉</span></span>
+            <span class="p">Labor, prices, and the Fed</span>
+          </div>
+          <button class="sub-btn">Subscribe</button>
+        </a>
+        <a class="best-item" href="04-profile.html">
+          <span class="n mono">4</span>
+          <span class="av" style="background: linear-gradient(135deg, #6a8a7e 0%, #3e5248 100%);">I</span>
+          <div class="who">
+            <span class="n2">Isla V. <span class="check">◉</span></span>
+            <span class="p">Policy &amp; the law</span>
+          </div>
+          <button class="sub-btn">Subscribe</button>
+        </a>
+        <a class="best-item" href="04-profile.html">
+          <span class="n mono">5</span>
+          <span class="av" style="background: linear-gradient(135deg, #a88a6e 0%, #6b4f3c 100%);">T</span>
+          <div class="who">
+            <span class="n2">Tareq N. <span class="check">◉</span></span>
+            <span class="p">Crude, gas, and the grid</span>
+          </div>
+          <button class="sub-btn">Subscribe</button>
+        </a>
+      </section>
+
+    </aside>
+  </div>
+</body>
+</html>

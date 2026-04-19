@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Column / Market · Discussion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0b0a09; --surface:#13120f; --elev:#1a1814; --border:#1c1b17; --border-strong:#2a2822;
+    --text:#ece7dc; --text-2:#8a8678; --text-3:#5c5849; --text-4:#3a362d;
+    --yes:#3ec48a; --yes-dim:rgba(62,196,138,.12); --yes-line:rgba(62,196,138,.45);
+    --no:#e85d7a; --no-dim:rgba(232,93,122,.12); --no-line:rgba(232,93,122,.45);
+    --ink:#efe7d3;
+    --serif:'Fraunces','Source Serif 4',Georgia,serif;
+    --tight:'Inter Tight','Inter',sans-serif;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; letter-spacing: -.01em; }
+  .tight { font-family: var(--tight); letter-spacing: -.02em; }
+  .serif { font-family: var(--serif); }
+
+  .app { display: grid; grid-template-columns: 200px minmax(0, 720px) 340px; max-width: 1320px; margin: 0 auto; min-height: 100vh; }
+  @media (max-width: 1200px) { .app { grid-template-columns: 76px minmax(0, 1fr) 320px; } .rail .labels { display: none; } .rail .brand .mark { display: none; } }
+  @media (max-width: 880px) { .app { grid-template-columns: 76px minmax(0, 1fr); } .right { display: none; } }
+  @media (max-width: 640px) { .app { grid-template-columns: 1fr; } .rail { display: none; } }
+
+  /* Rail */
+  .rail { padding: 1rem 0 1rem; display: flex; flex-direction: column; gap: .3rem; position: sticky; top: 0; height: 100vh; }
+  .brand { padding: .5rem 1rem .6rem; display: flex; align-items: center; gap: .6rem; }
+  .brand .logo { width: 28px; height: 28px; background: var(--ink); border-radius: 6px; display: grid; place-items: center; color: #1a1610; font-family: var(--serif); font-weight: 700; font-size: 1.05rem; letter-spacing: -.03em; }
+  .brand .mark { font-family: var(--tight); font-weight: 700; font-size: 1.05rem; letter-spacing: -.025em; color: var(--ink); }
+  .rail-nav { display: flex; flex-direction: column; padding-top: .5rem; }
+  .rail-item { display: grid; grid-template-columns: 20px 1fr auto; gap: .9rem; align-items: center; padding: .6rem 1rem; color: var(--text-2); font-size: 1rem; }
+  .rail-item svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  .rail-item:hover { color: var(--text); }
+  .rail-item.active { color: var(--text); font-weight: 600; }
+  .rail-item.active svg { stroke-width: 2; fill: currentColor; }
+  .rail-item .badge { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .04em; padding: .12rem .4rem; background: var(--ink); color: #1a1610; border-radius: 999px; font-weight: 600; }
+  .rail-item .me-av { width: 22px; height: 22px; border-radius: 999px; background: linear-gradient(135deg, #6a5c7f 0%, #9b7a5e 100%); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .66rem; color: #1a1610; }
+  .rail-spacer { flex: 1; }
+  .rail-cta { margin: .4rem 1rem .6rem; padding: .7rem 1.2rem; background: var(--ink); color: #1a1610; font-weight: 700; font-size: .95rem; text-align: center; cursor: pointer; border: 0; border-radius: 6px; }
+  .rail-cta:hover { background: #fff; }
+  .rail-more { padding: .6rem 1rem; color: var(--text-3); display: flex; align-items: center; gap: .9rem; font-size: .92rem; }
+  .rail-more svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+
+  /* Center */
+  .center { min-width: 0; padding: 0 2rem 4rem; }
+
+  .crumbs { padding: 1.4rem 0 .7rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .06em; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  .crumbs a { color: var(--text-2); }
+  .crumbs a:hover { color: var(--text); }
+  .crumbs .sep { color: var(--text-4); }
+  .crumbs .cur { color: var(--text-3); max-width: 42ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Compact post head (smaller than Case tab — claim stays present, doesn't dominate) */
+  .post-head-compact { padding: .8rem 0 1rem; border-bottom: 1px solid var(--border); display: grid; gap: .6rem; }
+  .post-head-compact .eyebrow { display: flex; align-items: center; gap: .6rem; font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; }
+  .post-head-compact .eyebrow .cat { color: var(--yes); letter-spacing: .2em; }
+  .post-head-compact .eyebrow .sep { color: var(--text-4); }
+  .post-head-compact h1 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.7rem; line-height: 1.15; letter-spacing: -.018em; color: var(--text); max-width: 32ch; }
+  .post-head-compact h1 a { color: var(--text); }
+  .post-head-compact h1 a:hover { color: var(--ink); }
+  .post-head-compact .byline { display: flex; align-items: center; gap: .6rem; font-size: .88rem; color: var(--text-2); flex-wrap: wrap; }
+  .post-head-compact .byline .av-s { width: 24px; height: 24px; border-radius: 999px; background: linear-gradient(135deg, #a88a6e 0%, #6b4f3c 100%); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .66rem; color: #1a1610; }
+  .post-head-compact .byline .name { color: var(--text); font-weight: 600; letter-spacing: -.005em; }
+  .post-head-compact .byline .pub { font-family: var(--serif); font-style: italic; color: var(--text-3); font-size: .86rem; }
+  .post-head-compact .byline .dot { color: var(--text-4); }
+  .post-head-compact .byline .price { font-family: 'JetBrains Mono', monospace; color: var(--yes); font-size: .94rem; letter-spacing: -.005em; margin-left: auto; }
+  .post-head-compact .byline .delta { font-family: 'JetBrains Mono', monospace; color: var(--yes); font-size: .78rem; letter-spacing: .04em; }
+
+  /* View tabs */
+  .view-tabs { display: flex; gap: 1.6rem; border-bottom: 1px solid var(--border); padding: .2rem 0 0; }
+  .view-tabs a { padding: .8rem 0; color: var(--text-3); font-size: .92rem; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; align-items: baseline; gap: .35rem; }
+  .view-tabs a.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .view-tabs a:hover { color: var(--text-2); }
+  .view-tabs a .c { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .02em; }
+  .view-tabs a.on .c { color: var(--ink); opacity: .7; }
+
+  /* Discussion header (inside the tab) */
+  .disc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 1.6rem 0 .2rem; flex-wrap: wrap; }
+  .disc-head h2 { margin: 0; font-family: var(--tight); font-size: 1.2rem; font-weight: 600; letter-spacing: -.015em; color: var(--text); }
+  .disc-head h2 .meta { font-family: 'JetBrains Mono', monospace; font-size: .76rem; color: var(--text-3); font-weight: 400; margin-left: .6rem; letter-spacing: .02em; }
+  .sort-tabs { display: flex; gap: 1.2rem; font-size: .86rem; }
+  .sort-tabs a { color: var(--text-3); padding: .3rem 0; border-bottom: 1px solid transparent; }
+  .sort-tabs a.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .sort-tabs a:hover { color: var(--text-2); }
+
+  /* Split bar — shows YES/NO conviction weight */
+  .split-bar { padding: .9rem 0 1.1rem; border-bottom: 1px solid var(--border); margin-bottom: .8rem; }
+  .split-bar .labels { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: .7rem; margin-bottom: .3rem; letter-spacing: .04em; }
+  .split-bar .labels .y-label { color: var(--yes); }
+  .split-bar .labels .n-label { color: var(--no); }
+  .split-bar .bar { height: 5px; background: var(--elev); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; position: relative; }
+  .split-bar .bar .y { position: absolute; top: 0; bottom: 0; left: 0; background: var(--yes); opacity: .75; }
+  .split-bar .bar .n { position: absolute; top: 0; bottom: 0; right: 0; background: var(--no); opacity: .75; }
+  .split-bar .sub { margin-top: .35rem; font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .04em; }
+
+  /* Compose — expression only. No stake picker, no amount. Post = post. */
+  .compose { padding: 1.2rem 0 1.4rem; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 40px 1fr; gap: .85rem; align-items: start; }
+  .compose .av { width: 40px; height: 40px; border-radius: 999px; background: linear-gradient(135deg, #6a5c7f 0%, #9b7a5e 100%); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .85rem; color: #1a1610; }
+  .compose .body { min-width: 0; display: grid; gap: .65rem; }
+  .compose textarea { width: 100%; background: transparent; border: 0; color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 1rem; line-height: 1.55; padding: .55rem 0; outline: none; resize: vertical; min-height: 2.4rem; border-bottom: 1px solid var(--border); }
+  .compose textarea:focus { border-bottom-color: var(--border-strong); }
+  .compose textarea::placeholder { color: var(--text-3); }
+  .compose .controls { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .compose .chips { display: inline-flex; gap: 1rem; color: var(--text-3); font-family: 'Inter', sans-serif; font-size: .82rem; }
+  .compose .chips a { display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; padding: .25rem 0; }
+  .compose .chips a:hover { color: var(--text); }
+  .compose .chips svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+  .compose .post-btn { padding: .5rem 1.2rem; background: var(--ink); color: #1a1610; border: 0; font-family: 'Inter', sans-serif; font-weight: 600; font-size: .88rem; cursor: pointer; border-radius: 999px; letter-spacing: -.005em; }
+  .compose .post-btn:hover { background: #fff; }
+  .compose .hint { font-family: 'Inter', sans-serif; font-size: .8rem; color: var(--text-3); display: flex; align-items: center; gap: .4rem; }
+  .compose .hint .sep { color: var(--text-4); }
+  .compose .hint a { color: var(--text-2); border-bottom: 1px dashed var(--text-4); padding-bottom: 1px; }
+  .compose .hint a:hover { color: var(--ink); border-bottom-color: var(--ink); }
+
+  /* Thread list */
+  .threads { display: flex; flex-direction: column; }
+  .thread { padding: 1.5rem 0 1.1rem; border-bottom: 1px solid var(--border); }
+  .thread:last-child { border-bottom: 0; }
+  .reply { display: grid; grid-template-columns: 40px 1fr; gap: .85rem; align-items: start; position: relative; }
+  .reply.s-yes::before { content: ''; position: absolute; left: 46px; top: 42px; bottom: 0; width: 2px; background: var(--yes-line); }
+  .reply.s-no::before { content: ''; position: absolute; left: 46px; top: 42px; bottom: 0; width: 2px; background: var(--no-line); }
+  .reply .av { width: 40px; height: 40px; border-radius: 999px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .85rem; color: #1a1610; flex-shrink: 0; }
+  .av-J { background: linear-gradient(135deg, #c4a08a 0%, #7e5a48 100%); }
+  .av-M { background: linear-gradient(135deg, #6a8a7e 0%, #3e5248 100%); }
+  .av-N { background: linear-gradient(135deg, #a88a6e 0%, #6b4f3c 100%); }
+  .av-G { background: linear-gradient(135deg, #d4b97a 0%, #8a6b3e 100%); }
+  .av-A { background: linear-gradient(135deg, #7a6ca4 0%, #4a4068 100%); }
+  .av-K { background: linear-gradient(135deg, #8a8a6e 0%, #5a5a3e 100%); }
+  .av-I { background: linear-gradient(135deg, #9a7a6e 0%, #5e3e36 100%); }
+  .av-T { background: linear-gradient(135deg, #c4a08a 0%, #7e5a48 100%); }
+
+  .reply-body { min-width: 0; display: grid; gap: .4rem; }
+  .reply-head { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; }
+  .reply-head .name { color: var(--text); font-weight: 600; font-size: .95rem; letter-spacing: -.005em; }
+  .reply-head .check { color: var(--ink); font-size: .78rem; }
+  .reply-head .pub { font-family: var(--serif); font-style: italic; color: var(--text-3); font-size: .86rem; letter-spacing: -.005em; }
+  .reply-head .time { color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: .04em; margin-left: auto; }
+  /* Position badge — a standing state, not a reply chip. Derived from 983 trade events.
+     Only present for people with a documented position in this market. */
+  .reply-head .holds { font-family: 'JetBrains Mono', monospace; font-size: .78rem; letter-spacing: -.005em; }
+  .reply-head .holds.y { color: var(--yes); }
+  .reply-head .holds.n { color: var(--no); }
+  .reply-head .holds .label { opacity: .7; margin-right: .15rem; }
+  .reply-head .author-badge { font-family: 'JetBrains Mono', monospace; font-size: .58rem; padding: .15rem .4rem; border: 1px solid var(--ink); color: var(--ink); letter-spacing: .14em; text-transform: uppercase; border-radius: 999px; }
+
+  /* Anchor quote — a quote from the case, which IS serif. Keep it serif. */
+  .anchor-quote { padding: .5rem 0 .5rem .85rem; border-left: 2px solid var(--border-strong); color: var(--text-3); font-size: .92rem; font-style: italic; font-family: var(--serif); line-height: 1.45; max-width: 54ch; }
+  .anchor-quote::before { content: 'In reply to '; color: var(--text-4); font-style: normal; font-family: 'Inter', sans-serif; font-size: .72rem; letter-spacing: .02em; text-transform: none; display: block; margin-bottom: .2rem; }
+
+  /* Comments: sans-serif. Expression, not a published argument. */
+  .reply-text { font-family: 'Inter', system-ui, sans-serif; font-size: .98rem; line-height: 1.6; color: var(--text); max-width: 58ch; }
+  .reply-text p { margin: 0 0 .6rem; }
+  .reply-text p:last-child { margin-bottom: 0; }
+  .reply-text strong { color: var(--ink); font-weight: 600; }
+  .reply-text em { color: var(--text); font-style: italic; }
+
+  /* Nested — 1 level */
+  .nested { margin-top: .9rem; margin-left: 26px; padding-left: 20px; border-left: 2px solid var(--border); display: flex; flex-direction: column; gap: 1rem; }
+  .nested.yes-branch { border-left-color: var(--yes-line); }
+  .nested.no-branch { border-left-color: var(--no-line); }
+  .nested .reply { grid-template-columns: 30px 1fr; gap: .7rem; }
+  .nested .reply.s-yes::before, .nested .reply.s-no::before { left: 36px; top: 32px; }
+  .nested .reply .av { width: 30px; height: 30px; font-size: .74rem; }
+  .nested .reply-text { font-size: .98rem; line-height: 1.55; }
+  .nested .reply-head .name { font-size: .9rem; }
+
+  .continue-thread { margin-left: 26px; padding: .6rem 0 .4rem 22px; font-family: 'Inter', sans-serif; font-size: .82rem; color: var(--text-3); cursor: pointer; }
+  .continue-thread:hover { color: var(--ink); }
+  .continue-thread::before { content: '↳ '; color: var(--text-4); margin-right: .2rem; }
+
+  .reply-actions { display: flex; gap: 1.6rem; margin-top: .35rem; color: var(--text-3); font-family: 'Inter', sans-serif; font-size: .82rem; }
+  .reply-actions a { display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; padding: .2rem 0; }
+  .reply-actions a:hover { color: var(--text); }
+  .reply-actions a svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+
+  .more-replies { text-align: center; padding: 1.8rem 0; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; }
+  .more-replies a { color: var(--ink); }
+
+  /* Right rail */
+  .right { padding: 1.4rem 1rem 2rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .right::-webkit-scrollbar { width: 6px; } .right::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .search { display: flex; align-items: center; gap: .55rem; height: 42px; padding: 0 .95rem; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; }
+  .search svg { width: 16px; height: 16px; stroke: var(--text-3); fill: none; stroke-width: 1.7; }
+  .search input { flex: 1; background: transparent; border: 0; color: var(--text); font-size: .88rem; outline: none; }
+  .search input::placeholder { color: var(--text-3); }
+
+  .rail-card { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .rail-card-head { display: flex; align-items: baseline; justify-content: space-between; padding: 1rem 1.1rem .3rem; }
+  .rail-card-head h3 { margin: 0; font-family: var(--tight); font-size: 1rem; font-weight: 700; letter-spacing: -.015em; }
+  .rail-card-head a { color: var(--text-3); font-size: .8rem; }
+  .rail-card-head a:hover { color: var(--text); }
+  .rail-card-head .bal { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .04em; }
+
+  .trade-mod { padding: .6rem 1.1rem 1.1rem; display: grid; gap: .7rem; }
+  .trade-mod .sides { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border-strong); border-radius: 4px; overflow: hidden; }
+  .trade-mod .sides button { background: transparent; border: 0; padding: .55rem 0; color: var(--text-2); font-family: 'Inter', sans-serif; font-size: .86rem; font-weight: 500; cursor: pointer; }
+  .trade-mod .sides button.y { border-right: 1px solid var(--border-strong); }
+  .trade-mod .sides button.y.on { color: var(--yes); background: var(--yes-dim); font-weight: 600; }
+  .trade-mod .sides button.n.on { color: var(--no); background: var(--no-dim); font-weight: 600; }
+  .trade-mod .sides button .p { display: block; font-family: 'JetBrains Mono', monospace; font-size: .7rem; opacity: .8; margin-top: .1rem; }
+  .trade-mod .amt { display: grid; grid-template-columns: auto 1fr auto; border: 1px solid var(--border-strong); border-radius: 4px; align-items: stretch; }
+  .trade-mod .amt .lbl { padding: 0 .7rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .68rem; letter-spacing: .08em; display: grid; place-items: center; border-right: 1px solid var(--border-strong); }
+  .trade-mod .amt input { border: 0; background: transparent; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 1rem; padding: .55rem .7rem; text-align: right; outline: none; }
+  .trade-mod .amt .suf { padding: 0 .7rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .68rem; letter-spacing: .08em; border-left: 1px solid var(--border-strong); display: grid; place-items: center; }
+  .trade-mod .go { display: block; width: 100%; padding: .65rem 0; background: var(--ink); color: #1a1610; border: 0; font-family: 'Inter', sans-serif; font-weight: 600; font-size: .9rem; cursor: pointer; border-radius: 999px; letter-spacing: -.005em; }
+  .trade-mod .go:hover { background: #fff; }
+  .trade-mod .foot-n { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .04em; text-align: center; }
+
+  /* Top voices in the thread */
+  .voice-row { display: grid; grid-template-columns: auto 1fr auto; gap: .7rem; padding: .7rem 1.1rem; border-top: 1px solid var(--border); align-items: center; cursor: pointer; }
+  .voice-row:hover { background: var(--surface); }
+  .voice-row .av-s { width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .74rem; color: #1a1610; }
+  .voice-row .who { min-width: 0; display: grid; gap: 1px; }
+  .voice-row .who .n { font-size: .88rem; font-weight: 600; letter-spacing: -.005em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .voice-row .who .stake-sub { font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .04em; }
+  .voice-row .who .stake-sub.y { color: var(--yes); }
+  .voice-row .who .stake-sub.n { color: var(--no); }
+  .voice-row .who .stake-sub.none { color: var(--text-3); }
+  .voice-row .p { font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: var(--text-3); letter-spacing: .04em; }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Rail -->
+    <aside class="rail">
+      <div class="brand"><span class="logo">C</span><span class="mark labels">Cascade</span></div>
+      <nav class="rail-nav">
+        <a class="rail-item" href="01-landing.html"><svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9v9a2 2 0 01-2 2h-4v-7h-6v7H5a2 2 0 01-2-2z"/></svg><span class="labels">Home</span></a>
+        <a class="rail-item" href="02-subscriptions.html"><svg viewBox="0 0 24 24"><path d="M21 6H8M21 12H3M21 18h-7"/></svg><span class="labels">Subscriptions</span><span class="badge labels">6</span></a>
+        <a class="rail-item" href="03-markets.html"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 16l4-6 4 4 6-10"/></svg><span class="labels">Markets</span></a>
+        <a class="rail-item" href="#"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1112 0c0 5 3 6 3 6H3s3-1 3-6zM10 20a2 2 0 004 0"/></svg><span class="labels">Activity</span><span class="badge labels">12</span></a>
+        <a class="rail-item" href="#"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span class="labels">Bookmarks</span></a>
+        <a class="rail-item" href="#"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18"/></svg><span class="labels">Portfolio</span></a>
+        <a class="rail-item" href="../H-the-study/04-profile.html"><span class="me-av">pf</span><span class="labels">Profile</span></a>
+      </nav>
+      <button class="rail-cta labels" onclick="location.href='../H-the-study/03-create.html'">＋ Publish a claim</button>
+      <div class="rail-spacer"></div>
+      <a class="rail-more labels" href="#"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><span>More</span></a>
+    </aside>
+
+    <!-- Center -->
+    <main class="center">
+
+      <nav class="crumbs">
+        <a href="01-landing.html">Home</a><span class="sep">/</span>
+        <a href="03-markets.html">Markets</a><span class="sep">/</span>
+        <a href="#">AI</a><span class="sep">/</span>
+        <a href="04-market.html">OpenAI ships GPT-5 before Gemini 2 Pro</a><span class="sep">/</span>
+        <span class="cur">Discussion</span>
+      </nav>
+
+      <!-- Compact post header — claim stays anchored, author + price visible -->
+      <header class="post-head-compact">
+        <div class="eyebrow">
+          <span class="cat">AI</span><span class="sep">·</span>
+          <span>Corporate timing</span><span class="sep">·</span>
+          <span>Published 14 Mar · rev 3</span>
+        </div>
+        <h1><a href="04-market.html">OpenAI will ship GPT-5 before Google ships Gemini 2 Pro.</a></h1>
+        <div class="byline">
+          <span class="av-s">N</span>
+          <span class="name">Nina Ortega</span>
+          <span class="dot">·</span>
+          <span class="pub">Corporate timing, weekly-ish</span>
+          <span class="price">71¢ YES</span>
+          <span class="delta">+3¢ 24h</span>
+        </div>
+      </header>
+
+      <!-- Tabs -->
+      <nav class="view-tabs" role="tablist">
+        <a href="04-market.html">Case<span class="c">The argument</span></a>
+        <a class="on" href="#">Discussion<span class="c">24</span></a>
+        <a href="#">Trades<span class="c">2,814</span></a>
+        <a href="#">Linked<span class="c">3</span></a>
+      </nav>
+
+      <!-- Discussion heading -->
+      <header class="disc-head">
+        <h2 class="tight">24 replies<span class="meta">14 from YES holders · 5 from NO holders · 5 from observers</span></h2>
+        <nav class="sort-tabs" role="tablist">
+          <a class="on" href="#">Top</a>
+          <a href="#">Newest</a>
+          <a href="#">Controversial</a>
+          <a href="#">Holders only</a>
+        </nav>
+      </header>
+
+      <!-- Who's replying — composition of the discussion, derived from 983 events -->
+      <div class="split-bar">
+        <div class="labels">
+          <span class="y-label">14 repliers hold YES</span>
+          <span class="n-label">5 repliers hold NO</span>
+        </div>
+        <div class="bar">
+          <span class="y" style="width: 58%;"></span>
+          <span class="n" style="width: 21%;"></span>
+        </div>
+        <div class="sub">5 observers (no position) · market crowd price stands at 71¢ YES</div>
+      </div>
+
+      <!-- Compose — expression only. If you want to trade, use the Back a side panel on the right. -->
+      <form class="compose">
+        <span class="av">pf</span>
+        <div class="body">
+          <textarea rows="2" placeholder="Add your view. A question, an observation, a counter — whatever moves the thread."></textarea>
+          <div class="controls">
+            <div class="chips">
+              <a><svg viewBox="0 0 24 24"><path d="M10 13l8-8M4 20l8-8M4 4l16 16"/></svg> Quote a passage</a>
+              <a><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg> Link a market</a>
+              <a><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="1"/><circle cx="8.5" cy="10" r="1.5"/><path d="M4 17l5-5 5 5 3-3 4 4"/></svg> Image</a>
+            </div>
+            <button type="button" class="post-btn">Post reply</button>
+          </div>
+          <div class="hint">Replies are public and permanent.<span class="sep">·</span>Want to take a position? <a href="#">Use the trade panel →</a></div>
+        </div>
+      </form>
+
+      <!-- Threads -->
+      <div class="threads">
+
+        <!-- Thread 1: @jules — holds YES, long argument, anchored, with children -->
+        <article class="thread">
+          <div class="reply s-yes">
+            <span class="av av-J">J</span>
+            <div class="reply-body">
+              <div class="reply-head">
+                <span class="name">Jules Henao</span>
+                <span class="check">◉</span>
+                <span class="pub">· Commentary, unstaked</span>
+                <span class="holds y"><span class="label">holds</span>YES · $120</span>
+                <span class="time">2h</span>
+              </div>
+              <blockquote class="anchor-quote">The signal, as I've said before, is often in what isn't happening.</blockquote>
+              <div class="reply-text">
+                <p>This line is the whole argument, and it's right.</p>
+                <p>The eight-week pattern holds, and I think the floor is higher than 71¢ — I'm at <strong>78¢</strong> today, and I've been adding on every two-cent dip since 62¢. Safety eval cadence hasn't moved, which is informative by itself. If there was a hiccup, we'd see a pause in the posted DevDay slots — and we haven't.</p>
+                <p>What I disagree with is Nina's ceiling. If the 21st passes quietly, the next stop is 82¢, not 78¢, because the next news window after that is the JPM healthcare cadence and there isn't a plausible counter-signal from Google until June.</p>
+              </div>
+              <div class="reply-actions">
+                <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Reply</a>
+                <a><svg viewBox="0 0 24 24"><path d="M17 4l3 3-3 3M20 7H8a4 4 0 00-4 4v1M7 20l-3-3 3-3M4 17h12a4 4 0 004-4v-1"/></svg> Restack</a>
+                <a><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg> Save</a>
+                <a><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 11l8-4M8 13l8 4"/></svg> Share</a>
+              </div>
+
+              <div class="nested yes-branch">
+                <div class="reply s-yes">
+                  <span class="av av-G">G</span>
+                  <div class="reply-body">
+                    <div class="reply-head">
+                      <span class="name">Greta Maddox</span>
+                      <span class="check">◉</span>
+                      <span class="holds y"><span class="label">holds</span>YES · $50</span>
+                      <span class="time">1h</span>
+                    </div>
+                    <div class="reply-text">
+                      <p>78¢ floor is too high. You're assuming Altman's calendar is deterministic — it usually is, but GPT-4 Turbo ran a <em>six</em>-week cycle. Floor 73¢, ceiling 84¢, and the ceiling is where I trim.</p>
+                    </div>
+                    <div class="reply-actions">
+                      <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Reply</a>
+                      <a><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg> Save</a>
+                    </div>
+                  </div>
+                </div>
+                <div class="reply">
+                  <span class="av av-T">T</span>
+                  <div class="reply-body">
+                    <div class="reply-head">
+                      <span class="name">Tarek N.</span>
+                      <span class="pub">· no publication · observer</span>
+                      <span class="time">42m</span>
+                    </div>
+                    <div class="reply-text">
+                      <p>The "what isn't happening" framing is the most useful part of this thread. It's the correct frame for the NO case too — you have to argue why the <em>absence</em> of a pause is misleading.</p>
+                    </div>
+                    <div class="reply-actions">
+                      <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Reply</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="continue-thread">Continue thread · 1 more reply from @jules</div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Thread 2: @mark-s NO $15 counter-argument -->
+        <article class="thread">
+          <div class="reply s-no">
+            <span class="av av-M">M</span>
+            <div class="reply-body">
+              <div class="reply-head">
+                <span class="name">Mark Stone</span>
+                <span class="pub">· Contrarian</span>
+                <span class="holds n"><span class="label">holds</span>NO · $15</span>
+                <span class="time">41m</span>
+              </div>
+              <div class="reply-text">
+                <p>A gate is not a launch candidate. Three gates in six weeks is actually consistent with <strong>rework</strong>, not imminent shipping. I don't think this trades below 50¢, but I also don't think the eight-week pattern generalises to a generation change — a generation change historically runs closer to twelve.</p>
+                <p>Small NO here. I'll size up if it prints above 78¢ — that's the asymmetry I want.</p>
+              </div>
+              <div class="reply-actions">
+                <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Reply</a>
+                <a><svg viewBox="0 0 24 24"><path d="M17 4l3 3-3 3M20 7H8a4 4 0 00-4 4v1M7 20l-3-3 3-3M4 17h12a4 4 0 004-4v-1"/></svg> Restack</a>
+                <a><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg> Save</a>
+              </div>
+
+              <div class="nested no-branch">
+                <div class="reply s-yes">
+                  <span class="av av-J">J</span>
+                  <div class="reply-body">
+                    <div class="reply-head">
+                      <span class="name">Jules Henao</span>
+                      <span class="holds y"><span class="label">holds</span>YES · $120</span>
+                      <span class="time">33m</span>
+                    </div>
+                    <div class="reply-text">
+                      <p>"Gate = rework" is the first NO argument that actually moves me. But the gate <em>cadence</em> has tightened across the last three models, not loosened — which points the other way. If it was rework, the safety eval would be paused. It isn't.</p>
+                    </div>
+                    <div class="reply-actions">
+                      <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Reply</a>
+                    </div>
+                  </div>
+                </div>
+                <div class="reply s-yes">
+                  <span class="av av-N">N</span>
+                  <div class="reply-body">
+                    <div class="reply-head">
+                      <span class="name">Nina Ortega</span>
+                      <span class="check">◉</span>
+                      <span class="author-badge">Author</span>
+                      <span class="holds y"><span class="label">holds</span>YES · $2,400</span>
+                      <span class="time">22m</span>
+                    </div>
+                    <div class="reply-text">
+                      <p>The twelve-week generation figure is from GPT-3 → GPT-4. That window has compressed every cycle since. It's a fair point but I'd bet the compression continues, not reverses.</p>
+                    </div>
+                    <div class="reply-actions">
+                      <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Reply</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Thread 3: @arca NO $25 -->
+        <article class="thread">
+          <div class="reply s-no">
+            <span class="av av-A">A</span>
+            <div class="reply-body">
+              <div class="reply-head">
+                <span class="name">Arca V.</span>
+                <span class="pub">· Macro/policy</span>
+                <span class="holds n"><span class="label">holds</span>NO · $25</span>
+                <span class="time">7m</span>
+              </div>
+              <div class="reply-text">
+                <p>The tell is Google's hardware note on the 21st. If it lands with a date, this flips. If it lands without one, the crowd punishes and pushes 80¢+.</p>
+                <p>Either way, the market is mispriced <em>today</em>. I'm taking the cheap side.</p>
+              </div>
+              <div class="reply-actions">
+                <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Reply</a>
+                <a><svg viewBox="0 0 24 24"><path d="M17 4l3 3-3 3M20 7H8a4 4 0 00-4 4v1M7 20l-3-3 3-3M4 17h12a4 4 0 004-4v-1"/></svg> Restack</a>
+                <a><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg> Save</a>
+              </div>
+              <div class="nested no-branch">
+                <div class="reply s-yes">
+                  <span class="av av-N">N</span>
+                  <div class="reply-body">
+                    <div class="reply-head">
+                      <span class="name">Nina Ortega</span>
+                      <span class="check">◉</span>
+                      <span class="author-badge">Author</span>
+                      <span class="holds y"><span class="label">holds</span>YES · $2,400</span>
+                      <span class="time">4m</span>
+                    </div>
+                    <div class="reply-text">
+                      <p>That's the right frame — a priced-in bet against Google's counter-announcement. I'm watching the same date. If the 21st passes quietly, I trim at 78¢.</p>
+                    </div>
+                    <div class="reply-actions">
+                      <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Reply</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Thread 4: @kamil YES $80 evidence -->
+        <article class="thread">
+          <div class="reply s-yes">
+            <span class="av av-K">K</span>
+            <div class="reply-body">
+              <div class="reply-head">
+                <span class="name">Kamil Owada</span>
+                <span class="check">◉</span>
+                <span class="pub">· AI infra briefing</span>
+                <span class="holds y"><span class="label">holds</span>YES · $80</span>
+                <span class="time">3h</span>
+              </div>
+              <div class="reply-text">
+                <p>Two data points the case doesn't mention:</p>
+                <p>(1) OpenAI's inference fleet capacity rebalancing started mid-April — which only makes sense ahead of a launch. This is visible in public region-affinity metrics.</p>
+                <p>(2) The Anthropic/OpenAI hiring delta in the last eight weeks tilted sharply toward OpenAI retention. Both suggest someone's running a countdown internally.</p>
+                <p>I'm at 74¢ ceiling. Above that, the trade's done.</p>
+              </div>
+              <div class="reply-actions">
+                <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Reply</a>
+                <a><svg viewBox="0 0 24 24"><path d="M17 4l3 3-3 3M20 7H8a4 4 0 00-4 4v1M7 20l-3-3 3-3M4 17h12a4 4 0 004-4v-1"/></svg> Restack</a>
+                <a><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg> Save</a>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Thread 5: @iris — observer, no position, asking a question -->
+        <article class="thread">
+          <div class="reply">
+            <span class="av av-I">I</span>
+            <div class="reply-body">
+              <div class="reply-head">
+                <span class="name">Iris L.</span>
+                <span class="pub">· asking around · observer</span>
+                <span class="time">52m</span>
+              </div>
+              <div class="reply-text">
+                <p>Genuine question: does "ship" here mean public GA or does a limited preview count? Not clear from the claim text. If it's preview, 71¢ is too low. If it's GA, 71¢ might be too high.</p>
+              </div>
+              <div class="reply-actions">
+                <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Reply</a>
+                <a><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg> Save</a>
+              </div>
+              <div class="continue-thread">2 replies from the author</div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Thread 6: @tessa — newly placed a position, commenting on it -->
+        <article class="thread">
+          <div class="reply s-yes">
+            <span class="av av-T">T</span>
+            <div class="reply-body">
+              <div class="reply-head">
+                <span class="name">Tessa K.</span>
+                <span class="holds y"><span class="label">holds</span>YES · $40 (new)</span>
+                <span class="time">2s</span>
+              </div>
+              <div class="reply-text">
+                <p>Just took the YES side. Eight weeks ≥ shipping. That's the whole trade.</p>
+              </div>
+              <div class="reply-actions">
+                <a><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Reply</a>
+              </div>
+            </div>
+          </div>
+        </article>
+
+      </div>
+
+      <div class="more-replies"><a href="#">Show 17 older replies</a></div>
+
+    </main>
+
+    <!-- Right rail: trade module + top voices -->
+    <aside class="right">
+      <label class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+        <input placeholder="Search Cascade" />
+      </label>
+
+      <section class="rail-card">
+        <header class="rail-card-head"><h3 class="tight">Back a side</h3><span class="bal">$1,284 available</span></header>
+        <div class="trade-mod">
+          <div class="sides" role="tablist">
+            <button class="y on">Back YES<span class="p">71¢</span></button>
+            <button class="n">Back NO<span class="p">29¢</span></button>
+          </div>
+          <div class="amt"><span class="lbl">$</span><input type="text" value="25" /><span class="suf">USD</span></div>
+          <button class="go">Back YES · $25</button>
+          <div class="foot-n">Cash out anytime · no expiry</div>
+        </div>
+      </section>
+
+      <section class="rail-card">
+        <header class="rail-card-head"><h3 class="tight">Who's in the thread</h3><a href="#">See all</a></header>
+        <a class="voice-row" href="#">
+          <span class="av-s av-N">N</span>
+          <div class="who"><span class="n">Nina Ortega <span style="color:var(--ink); font-size:.7rem;">· author</span></span><span class="stake-sub y">holds YES · $2,400</span></div>
+          <span class="p">22m</span>
+        </a>
+        <a class="voice-row" href="#">
+          <span class="av-s av-J">J</span>
+          <div class="who"><span class="n">Jules Henao</span><span class="stake-sub y">holds YES · $120</span></div>
+          <span class="p">2h</span>
+        </a>
+        <a class="voice-row" href="#">
+          <span class="av-s av-K">K</span>
+          <div class="who"><span class="n">Kamil Owada</span><span class="stake-sub y">holds YES · $80</span></div>
+          <span class="p">3h</span>
+        </a>
+        <a class="voice-row" href="#">
+          <span class="av-s av-A">A</span>
+          <div class="who"><span class="n">Arca V.</span><span class="stake-sub n">holds NO · $25</span></div>
+          <span class="p">7m</span>
+        </a>
+        <a class="voice-row" href="#">
+          <span class="av-s av-M">M</span>
+          <div class="who"><span class="n">Mark Stone</span><span class="stake-sub n">holds NO · $15</span></div>
+          <span class="p">41m</span>
+        </a>
+        <a class="voice-row" href="#">
+          <span class="av-s av-I">I</span>
+          <div class="who"><span class="n">Iris L.</span><span class="stake-sub none">observer · no position</span></div>
+          <span class="p">52m</span>
+        </a>
+      </section>
+
+    </aside>
+
+  </div>
+</body>
+</html>

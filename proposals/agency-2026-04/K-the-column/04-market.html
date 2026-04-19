@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascade — The Column / Market · Case</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  :root {
+    --bg:#0b0a09; --surface:#13120f; --elev:#1a1814; --border:#1c1b17; --border-strong:#2a2822;
+    --text:#ece7dc; --text-2:#8a8678; --text-3:#5c5849; --text-4:#3a362d;
+    --yes:#3ec48a; --yes-dim:rgba(62,196,138,.12); --yes-line:rgba(62,196,138,.45);
+    --no:#e85d7a; --no-dim:rgba(232,93,122,.12); --no-line:rgba(232,93,122,.45);
+    --ink:#efe7d3;
+    --serif:'Fraunces','Source Serif 4',Georgia,serif;
+    --tight:'Inter Tight','Inter',sans-serif;
+  }
+  html,body { margin:0; padding:0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: 'tnum' 1; letter-spacing: -.01em; }
+  .tight { font-family: var(--tight); letter-spacing: -.02em; }
+  .serif { font-family: var(--serif); }
+
+  .app { display: grid; grid-template-columns: 200px minmax(0, 720px) 340px; max-width: 1320px; margin: 0 auto; min-height: 100vh; }
+  @media (max-width: 1200px) { .app { grid-template-columns: 76px minmax(0, 1fr) 320px; } .rail .labels { display: none; } .rail .brand .mark { display: none; } }
+  @media (max-width: 880px) { .app { grid-template-columns: 76px minmax(0, 1fr); } .right { display: none; } }
+  @media (max-width: 640px) { .app { grid-template-columns: 1fr; } .rail { display: none; } }
+
+  /* Rail */
+  .rail { padding: 1rem 0 1rem; display: flex; flex-direction: column; gap: .3rem; position: sticky; top: 0; height: 100vh; }
+  .brand { padding: .5rem 1rem .6rem; display: flex; align-items: center; gap: .6rem; }
+  .brand .logo { width: 28px; height: 28px; background: var(--ink); border-radius: 6px; display: grid; place-items: center; color: #1a1610; font-family: var(--serif); font-weight: 700; font-size: 1.05rem; letter-spacing: -.03em; }
+  .brand .mark { font-family: var(--tight); font-weight: 700; font-size: 1.05rem; letter-spacing: -.025em; color: var(--ink); }
+  .rail-nav { display: flex; flex-direction: column; padding-top: .5rem; }
+  .rail-item { display: grid; grid-template-columns: 20px 1fr auto; gap: .9rem; align-items: center; padding: .6rem 1rem; color: var(--text-2); font-size: 1rem; }
+  .rail-item svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  .rail-item:hover { color: var(--text); }
+  .rail-item.active { color: var(--text); font-weight: 600; }
+  .rail-item.active svg { stroke-width: 2; fill: currentColor; }
+  .rail-item .badge { font-family: 'JetBrains Mono', monospace; font-size: .64rem; letter-spacing: .04em; padding: .12rem .4rem; background: var(--ink); color: #1a1610; border-radius: 999px; font-weight: 600; }
+  .rail-item .me-av { width: 22px; height: 22px; border-radius: 999px; background: linear-gradient(135deg, #6a5c7f 0%, #9b7a5e 100%); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .66rem; color: #1a1610; }
+  .rail-spacer { flex: 1; }
+  .rail-cta { margin: .4rem 1rem .6rem; padding: .7rem 1.2rem; background: var(--ink); color: #1a1610; font-weight: 700; font-size: .95rem; text-align: center; cursor: pointer; border: 0; border-radius: 6px; }
+  .rail-cta:hover { background: #fff; }
+  .rail-more { padding: .6rem 1rem; color: var(--text-3); display: flex; align-items: center; gap: .9rem; font-size: .92rem; }
+  .rail-more svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+
+  /* Center */
+  .center { min-width: 0; padding: 0 2rem 4rem; }
+
+  .crumbs { padding: 1.4rem 0 .7rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .06em; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  .crumbs a { color: var(--text-2); }
+  .crumbs a:hover { color: var(--text); }
+  .crumbs .sep { color: var(--text-4); }
+  .crumbs .cur { color: var(--text-3); max-width: 42ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Post head (shared between case + discussion tabs) */
+  .post-head { padding: 1rem 0 1.4rem; }
+  .post-head .eyebrow { display: flex; align-items: center; gap: .6rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 1rem; }
+  .post-head .eyebrow .cat { color: var(--yes); letter-spacing: .2em; }
+  .post-head .eyebrow .sep { color: var(--text-4); }
+  .post-head h1 { margin: 0 0 1.1rem; font-family: var(--serif); font-weight: 500; font-size: clamp(2rem, 3.5vw, 2.8rem); line-height: 1.08; letter-spacing: -.025em; color: var(--text); max-width: 26ch; }
+  .byline { display: flex; align-items: center; gap: .75rem; padding: .3rem 0; }
+  .byline .av { width: 40px; height: 40px; border-radius: 999px; background: linear-gradient(135deg, #a88a6e 0%, #6b4f3c 100%); display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .9rem; color: #1a1610; }
+  .byline .who { display: grid; gap: 1px; }
+  .byline .who .line1 { display: flex; align-items: center; gap: .4rem; font-size: .95rem; }
+  .byline .who .name { color: var(--text); font-weight: 600; letter-spacing: -.005em; }
+  .byline .who .check { color: var(--ink); font-size: .8rem; }
+  .byline .who .pub { font-family: var(--serif); font-style: italic; color: var(--text-3); font-size: .88rem; letter-spacing: -.005em; margin-top: 1px; }
+  .byline .actions { margin-left: auto; display: flex; gap: .4rem; align-items: center; }
+  .byline .sub-btn { font-size: .82rem; font-weight: 600; padding: .4rem .85rem; border-radius: 999px; background: var(--ink); color: #1a1610; border: 0; cursor: pointer; }
+  .byline .sub-btn:hover { background: #fff; }
+  .byline .icon-btn { width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; color: var(--text-3); border: 1px solid var(--border-strong); background: transparent; cursor: pointer; }
+  .byline .icon-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+  .byline .icon-btn:hover { color: var(--text); border-color: var(--text-3); }
+
+  .post-meta { padding: 1rem 0; border-top: 1px solid var(--border); display: flex; align-items: baseline; gap: 1.1rem; flex-wrap: wrap; font-family: 'JetBrains Mono', monospace; font-size: .78rem; color: var(--text-3); letter-spacing: .02em; }
+  .post-meta .price { color: var(--yes); font-size: 1.05rem; letter-spacing: -.01em; }
+  .post-meta .price.no { color: var(--no); }
+  .post-meta .delta.up { color: var(--yes); }
+  .post-meta .delta.down { color: var(--no); }
+  .post-meta .dot { color: var(--text-4); }
+  .post-meta .strong { color: var(--text-2); }
+
+  /* Sub-tabs — the view switcher (Case / Discussion / Trades / Linked) */
+  .view-tabs { display: flex; gap: 1.6rem; border-bottom: 1px solid var(--border); padding: .2rem 0 0; margin-bottom: 0; }
+  .view-tabs a { padding: .8rem 0 .8rem; color: var(--text-3); font-size: .92rem; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; align-items: baseline; gap: .35rem; }
+  .view-tabs a.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .view-tabs a:hover { color: var(--text-2); }
+  .view-tabs a .c { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .02em; }
+  .view-tabs a.on .c { color: var(--ink); opacity: .7; }
+
+  /* Case body */
+  .case { padding: 1.8rem 0 1.4rem; border-bottom: 1px solid var(--border); }
+  .case p { margin: 0 0 1.1rem; font-family: var(--serif); font-size: 1.14rem; line-height: 1.7; color: var(--text); max-width: 56ch; }
+  .case p:first-of-type::first-letter { font-family: var(--serif); font-size: 3.5rem; font-weight: 500; float: left; line-height: .85; padding: .4rem .5rem 0 0; color: var(--ink); }
+  .case p strong { font-weight: 600; color: var(--ink); }
+  .case blockquote { margin: 1.8rem 0; padding: .3rem 0 .3rem 1.3rem; border-left: 2px solid var(--yes); font-family: var(--serif); font-style: italic; font-size: 1.25rem; line-height: 1.5; color: var(--ink); font-weight: 400; max-width: 52ch; }
+  .case .anchored { position: relative; background: linear-gradient(to right, rgba(239,231,211,.08), transparent 90%); padding: 0 .2em; border-bottom: 1px dotted var(--text-3); cursor: pointer; }
+  .case .anchored::after { content: attr(data-count) ' ↓'; position: absolute; right: -4.8em; top: 50%; transform: translateY(-50%); font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--ink); letter-spacing: .08em; padding: .1rem .4rem; border: 1px solid var(--ink); border-radius: 999px; white-space: nowrap; }
+  @media (max-width: 900px) { .case .anchored::after { display: none; } }
+
+  .case .signoff { display: flex; gap: 1rem; padding-top: .6rem; font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .04em; margin-top: 1rem; border-top: 1px dashed var(--border); flex-wrap: wrap; }
+
+  /* Linked markets */
+  .linked { padding: 1.4rem 0 1.6rem; border-bottom: 1px solid var(--border); }
+  .linked h3 { margin: 0 0 .8rem; font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .16em; text-transform: uppercase; font-weight: 500; }
+  .linked-row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .linked-row:last-child { border-bottom: 0; }
+  .linked-row:hover .t { color: var(--ink); }
+  .linked-row .t { font-family: var(--serif); font-size: 1.02rem; color: var(--text); line-height: 1.3; }
+  .linked-row .p { font-family: 'JetBrains Mono', monospace; font-size: .86rem; color: var(--yes); letter-spacing: -.005em; white-space: nowrap; }
+  .linked-row .p.no { color: var(--no); }
+
+  /* Featured discussion preview — curated, not full */
+  .featured-disc { padding: 1.4rem 0 1.4rem; border-bottom: 1px solid var(--border); }
+  .featured-disc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+  .featured-disc-head h3 { margin: 0; font-family: var(--tight); font-size: 1.05rem; font-weight: 600; letter-spacing: -.015em; }
+  .featured-disc-head h3 .c { font-family: 'JetBrains Mono', monospace; font-size: .8rem; color: var(--text-3); font-weight: 400; margin-left: .5rem; letter-spacing: .04em; }
+  .featured-disc-head .go-full { font-family: 'Inter', sans-serif; font-size: .86rem; color: var(--ink); font-weight: 500; }
+  .featured-disc-head .go-full:hover { color: #fff; }
+  .featured-disc-head .go-full .arr { color: var(--text-3); margin-left: .2rem; }
+
+  .f-reply { padding: 1.1rem 0 1rem; border-top: 1px solid var(--border); display: grid; grid-template-columns: 36px 1fr; gap: .8rem; }
+  .f-reply:first-of-type { border-top: 1px solid var(--border-strong); }
+  .f-reply .av { width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: .78rem; color: #1a1610; flex-shrink: 0; }
+  .av-J { background: linear-gradient(135deg, #c4a08a 0%, #7e5a48 100%); }
+  .av-M { background: linear-gradient(135deg, #6a8a7e 0%, #3e5248 100%); }
+  .av-N { background: linear-gradient(135deg, #a88a6e 0%, #6b4f3c 100%); }
+  .f-reply .fr-body { display: grid; gap: .35rem; min-width: 0; }
+  .f-reply .fr-head { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; font-size: .86rem; }
+  .f-reply .fr-head .name { color: var(--text); font-weight: 600; letter-spacing: -.005em; }
+  .f-reply .fr-head .check { color: var(--ink); font-size: .74rem; }
+  .f-reply .fr-head .pub { font-family: var(--serif); font-style: italic; color: var(--text-3); font-size: .82rem; }
+  .f-reply .fr-head .time { margin-left: auto; color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .7rem; letter-spacing: .04em; }
+  /* Position badge — derived from 983 events. Not a reply stake; a standing state. */
+  .f-reply .fr-head .holds { font-family: 'JetBrains Mono', monospace; font-size: .74rem; letter-spacing: -.005em; }
+  .f-reply .fr-head .holds.y { color: var(--yes); }
+  .f-reply .fr-head .holds.n { color: var(--no); }
+  .f-reply .fr-head .author-badge { font-family: 'JetBrains Mono', monospace; font-size: .56rem; padding: .14rem .4rem; border: 1px solid var(--ink); color: var(--ink); letter-spacing: .14em; text-transform: uppercase; border-radius: 999px; }
+  .f-reply .fr-head .pill-role { font-family: 'JetBrains Mono', monospace; font-size: .56rem; padding: .14rem .4rem; border: 1px solid var(--border-strong); color: var(--text-3); letter-spacing: .1em; text-transform: uppercase; border-radius: 999px; }
+
+  /* Anchor quote */
+  .anchor-quote { padding: .35rem 0 .35rem .75rem; border-left: 2px solid var(--border-strong); color: var(--text-3); font-size: .82rem; font-style: italic; font-family: var(--serif); line-height: 1.45; margin-bottom: .1rem; }
+  .anchor-quote::before { content: 'In reply to '; color: var(--text-4); font-style: normal; font-family: 'Inter', sans-serif; font-size: .68rem; letter-spacing: .02em; text-transform: none; display: block; margin-bottom: .15rem; }
+
+  /* Comments are sans-serif — reserved for expression, not reading-as-argument */
+  .fr-text { font-family: 'Inter', system-ui, sans-serif; font-size: .96rem; line-height: 1.6; color: var(--text); max-width: 56ch; }
+  .fr-text p { margin: 0 0 .55rem; }
+  .fr-text p:last-child { margin-bottom: 0; }
+  .fr-text strong { color: var(--ink); font-weight: 600; }
+  .fr-text em { font-style: italic; color: var(--text); }
+
+  .fr-more { font-family: 'JetBrains Mono', monospace; font-size: .7rem; color: var(--text-3); letter-spacing: .04em; margin-top: .3rem; display: flex; gap: 1rem; }
+  .fr-more a { color: var(--text-3); }
+  .fr-more a:hover { color: var(--ink); }
+
+  .featured-foot { margin-top: 1.2rem; padding: .9rem 0 .3rem; display: flex; justify-content: space-between; align-items: center; font-size: .9rem; gap: 1rem; }
+  .featured-foot .meta { color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .74rem; letter-spacing: .04em; }
+  .featured-foot .meta strong { color: var(--text-2); font-weight: 500; }
+  .featured-foot .go-all { color: var(--ink); font-weight: 500; border-bottom: 1px solid var(--ink); padding-bottom: 1px; }
+  .featured-foot .go-all:hover { color: #fff; border-bottom-color: #fff; }
+
+  /* Trade tape mini */
+  .tape { padding: 1.4rem 0 .3rem; }
+  .tape h3 { margin: 0 0 .6rem; font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: var(--text-3); letter-spacing: .16em; text-transform: uppercase; font-weight: 500; display: flex; justify-content: space-between; align-items: baseline; }
+  .tape h3 a { font-family: 'Inter', sans-serif; text-transform: none; font-size: .82rem; letter-spacing: 0; color: var(--text-3); font-weight: 400; }
+  .tape h3 a:hover { color: var(--ink); }
+  .tape-row { display: grid; grid-template-columns: 44px 100px 1fr auto; gap: .7rem; padding: .4rem 0; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: .78rem; align-items: baseline; }
+  .tape-row .t { color: var(--text-3); letter-spacing: .04em; }
+  .tape-row .s { letter-spacing: .1em; font-size: .64rem; text-transform: uppercase; }
+  .tape-row .s.y { color: var(--yes); }
+  .tape-row .s.n { color: var(--no); }
+  .tape-row .who { color: var(--text-2); font-family: 'Inter', sans-serif; font-size: .86rem; letter-spacing: -.005em; }
+  .tape-row .p { color: var(--text); text-align: right; }
+
+  /* Right rail */
+  .right { padding: 1.4rem 1rem 2rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .right::-webkit-scrollbar { width: 6px; } .right::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .search { display: flex; align-items: center; gap: .55rem; height: 42px; padding: 0 .95rem; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; }
+  .search svg { width: 16px; height: 16px; stroke: var(--text-3); fill: none; stroke-width: 1.7; }
+  .search input { flex: 1; background: transparent; border: 0; color: var(--text); font-size: .88rem; outline: none; }
+  .search input::placeholder { color: var(--text-3); }
+
+  .rail-card { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .rail-card-head { display: flex; align-items: baseline; justify-content: space-between; padding: 1rem 1.1rem .3rem; }
+  .rail-card-head h3 { margin: 0; font-family: var(--tight); font-size: 1rem; font-weight: 700; letter-spacing: -.015em; }
+  .rail-card-head .bal { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text-3); letter-spacing: .04em; }
+
+  .trade-mod { padding: .6rem 1.1rem 1.1rem; display: grid; gap: .7rem; }
+  .trade-mod .sides { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border-strong); border-radius: 4px; overflow: hidden; }
+  .trade-mod .sides button { background: transparent; border: 0; padding: .55rem 0; color: var(--text-2); font-family: 'Inter', sans-serif; font-size: .86rem; font-weight: 500; cursor: pointer; }
+  .trade-mod .sides button.y { border-right: 1px solid var(--border-strong); }
+  .trade-mod .sides button.y.on { color: var(--yes); background: var(--yes-dim); font-weight: 600; }
+  .trade-mod .sides button.n.on { color: var(--no); background: var(--no-dim); font-weight: 600; }
+  .trade-mod .sides button .p { display: block; font-family: 'JetBrains Mono', monospace; font-size: .7rem; opacity: .8; margin-top: .1rem; }
+  .trade-mod .amt { display: grid; grid-template-columns: auto 1fr auto; border: 1px solid var(--border-strong); border-radius: 4px; align-items: stretch; }
+  .trade-mod .amt .lbl { padding: 0 .7rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .68rem; letter-spacing: .08em; display: grid; place-items: center; border-right: 1px solid var(--border-strong); }
+  .trade-mod .amt input { border: 0; background: transparent; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 1rem; padding: .55rem .7rem; text-align: right; outline: none; }
+  .trade-mod .amt .suf { padding: 0 .7rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .68rem; letter-spacing: .08em; border-left: 1px solid var(--border-strong); display: grid; place-items: center; }
+  .trade-mod .quote { display: grid; grid-template-columns: 1fr auto; gap: .2rem .6rem; font-family: 'JetBrains Mono', monospace; font-size: .74rem; padding: .6rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .trade-mod .quote dt { color: var(--text-3); }
+  .trade-mod .quote dd { margin: 0; color: var(--text); }
+  .trade-mod .quote dd.up { color: var(--yes); }
+  .trade-mod .go { display: block; width: 100%; padding: .65rem 0; background: var(--ink); color: #1a1610; border: 0; font-family: 'Inter', sans-serif; font-weight: 600; font-size: .9rem; cursor: pointer; border-radius: 999px; letter-spacing: -.005em; }
+  .trade-mod .go:hover { background: #fff; }
+  .trade-mod .foot-n { font-family: 'JetBrains Mono', monospace; font-size: .66rem; color: var(--text-3); letter-spacing: .04em; text-align: center; }
+  .your-pos { padding: 0 1.1rem 1rem; display: flex; align-items: center; gap: .7rem; justify-content: space-between; border-top: 1px solid var(--border); padding-top: .8rem; }
+  .your-pos .who { display: grid; gap: 2px; }
+  .your-pos .side { font-family: 'JetBrains Mono', monospace; font-size: .66rem; padding: .12rem .38rem; border: 1px solid var(--yes); color: var(--yes); letter-spacing: .1em; border-radius: 999px; display: inline-block; }
+  .your-pos .stake { font-family: 'JetBrains Mono', monospace; font-size: .82rem; color: var(--text-2); margin-top: .25rem; }
+  .your-pos .pl { font-family: 'JetBrains Mono', monospace; font-size: 1rem; color: var(--yes); letter-spacing: -.005em; }
+  .linked-mini { padding: .5rem 1.1rem 1.1rem; }
+  .linked-row-mini { padding: .45rem 0; display: grid; grid-template-columns: 1fr auto; gap: .6rem; border-top: 1px solid var(--border); cursor: pointer; }
+  .linked-row-mini:first-child { border-top: 0; padding-top: 0; }
+  .linked-row-mini:hover .t { color: var(--ink); }
+  .linked-row-mini .t { font-family: var(--serif); font-size: .92rem; color: var(--text); line-height: 1.25; }
+  .linked-row-mini .p { font-family: 'JetBrains Mono', monospace; font-size: .78rem; color: var(--yes); letter-spacing: -.005em; }
+  .linked-row-mini .p.no { color: var(--no); }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Rail -->
+    <aside class="rail">
+      <div class="brand"><span class="logo">C</span><span class="mark labels">Cascade</span></div>
+      <nav class="rail-nav">
+        <a class="rail-item" href="01-landing.html"><svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9v9a2 2 0 01-2 2h-4v-7h-6v7H5a2 2 0 01-2-2z"/></svg><span class="labels">Home</span></a>
+        <a class="rail-item" href="02-subscriptions.html"><svg viewBox="0 0 24 24"><path d="M21 6H8M21 12H3M21 18h-7"/></svg><span class="labels">Subscriptions</span><span class="badge labels">6</span></a>
+        <a class="rail-item" href="03-markets.html"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 16l4-6 4 4 6-10"/></svg><span class="labels">Markets</span></a>
+        <a class="rail-item" href="#"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1112 0c0 5 3 6 3 6H3s3-1 3-6zM10 20a2 2 0 004 0"/></svg><span class="labels">Activity</span><span class="badge labels">12</span></a>
+        <a class="rail-item" href="#"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span class="labels">Bookmarks</span></a>
+        <a class="rail-item" href="#"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18"/></svg><span class="labels">Portfolio</span></a>
+        <a class="rail-item" href="../H-the-study/04-profile.html"><span class="me-av">pf</span><span class="labels">Profile</span></a>
+      </nav>
+      <button class="rail-cta labels" onclick="location.href='../H-the-study/03-create.html'">＋ Publish a claim</button>
+      <div class="rail-spacer"></div>
+      <a class="rail-more labels" href="#"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><span>More</span></a>
+    </aside>
+
+    <!-- Center -->
+    <main class="center">
+
+      <nav class="crumbs">
+        <a href="01-landing.html">Home</a><span class="sep">/</span>
+        <a href="03-markets.html">Markets</a><span class="sep">/</span>
+        <a href="#">AI</a><span class="sep">/</span>
+        <span class="cur">OpenAI ships GPT-5 before Gemini 2 Pro</span>
+      </nav>
+
+      <!-- Shared post header -->
+      <header class="post-head">
+        <div class="eyebrow">
+          <span class="cat">AI</span><span class="sep">·</span>
+          <span>Corporate timing</span><span class="sep">·</span>
+          <span>Published 14 Mar · rev 3</span>
+        </div>
+        <h1 class="serif">OpenAI will ship GPT-5 before Google ships Gemini 2 Pro.</h1>
+        <div class="byline">
+          <span class="av">N</span>
+          <div class="who">
+            <div class="line1"><span class="name">Nina Ortega</span><span class="check">◉</span></div>
+            <span class="pub">Corporate timing, weekly-ish · 48 claims · 65% drift</span>
+          </div>
+          <div class="actions">
+            <button class="icon-btn" title="Bookmark"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button>
+            <button class="icon-btn" title="Share"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 11l8-4M8 13l8 4"/></svg></button>
+            <button class="sub-btn">+ Subscribe</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="post-meta">
+        <span class="price">71¢ YES</span>
+        <span class="delta up">+3¢ · 24h</span>
+        <span class="dot">·</span>
+        <span><span class="strong">21¢</span> spread</span>
+        <span class="dot">·</span>
+        <span><span class="strong">2,814</span> trades</span>
+        <span class="dot">·</span>
+        <span><span class="strong">318</span> traders</span>
+        <span class="dot">·</span>
+        <span><span class="strong">$74,120</span> 30d</span>
+        <span class="dot">·</span>
+        <span>last 4s ago</span>
+      </div>
+
+      <!-- Sub-tabs -->
+      <nav class="view-tabs" role="tablist">
+        <a class="on" href="#">Case<span class="c">The argument</span></a>
+        <a href="05-discussion.html">Discussion<span class="c">24</span></a>
+        <a href="#">Trades<span class="c">2,814</span></a>
+        <a href="#">Linked<span class="c">3</span></a>
+      </nav>
+
+      <!-- The case -->
+      <div class="case">
+        <p>OpenAI has run three internal model gates on GPT-5 in the last six weeks. Their pattern since GPT-4 is roughly eight weeks from gate to launch. Google's Gemini 2 Pro remains gated behind Vertex AI preview, and the hardware pipeline for the internal TPU cycle slipped in April.</p>
+        <p>The compounding evidence is not subtle. The shape of Sam Altman's public appearances over the last four weeks, the cadence of DevDay pre-announcements in prior cycles, and the documented two-week window between the final safety eval and shipping. I put this at <strong>70–72¢</strong>. The market agrees — but not enough to close the door.</p>
+        <blockquote>What would move me? A Google hardware announcement on the week of 21 April with a Gemini 2 Pro date attached. Without that, OpenAI's lead compounds daily.</blockquote>
+        <p>What would a NO case look like? Gemini's Flash and Ultra variants shipped faster than OpenAI's competing Turbo generations. The preview → GA cadence has compressed materially since Gemini 1.5. If the crowd is wrong, it will be because it underweights Google's speed-to-GA in the last two generations.</p>
+        <p>I've been adding on every two-cent dip since 62¢. The market will be wrong at least once more before this is over. That's where the edge is. <span class="anchored" data-count="4 replies">The signal, as I've said before, is often in what isn't happening.</span></p>
+        <div class="signoff">
+          <span>Read by <strong style="color:var(--text-2);">4,214</strong></span>
+          <span>·</span>
+          <span><strong style="color:var(--yes);">$52,400</strong> on YES · <strong style="color:var(--no);">$21,720</strong> on NO across 318 traders</span>
+          <span>·</span>
+          <span>Author holds $2,400 YES @ avg 62¢</span>
+        </div>
+      </div>
+
+      <!-- Linked -->
+      <section class="linked">
+        <h3>Linked markets · informational only</h3>
+        <a class="linked-row" href="#"><span class="t">GPT-5 has native agent tool-use at launch.</span><span class="p">82¢ YES</span></a>
+        <a class="linked-row" href="#"><span class="t">Anthropic ships Claude 5 before end-2026.</span><span class="p">54¢ YES</span></a>
+        <a class="linked-row" href="#"><span class="t">A frontier model scores above 90% on Frontier Math.</span><span class="p no">39¢ YES</span></a>
+      </section>
+
+      <!-- Featured discussion preview: one YES, one NO, one from the author -->
+      <section class="featured-disc">
+        <header class="featured-disc-head">
+          <h3 class="tight">From the discussion<span class="c">3 of 24 · curated</span></h3>
+          <a class="go-full" href="05-discussion.html">Read all <span class="arr">→</span></a>
+        </header>
+
+        <!-- Top YES voice -->
+        <article class="f-reply">
+          <span class="av av-J">J</span>
+          <div class="fr-body">
+            <div class="fr-head">
+              <span class="name">Jules Henao</span>
+              <span class="check">◉</span>
+              <span class="pub">· Commentary, unstaked</span>
+              <span class="holds y">YES · $120</span>
+              <span class="pill-role">From a holder</span>
+              <span class="time">2h</span>
+            </div>
+            <blockquote class="anchor-quote">The signal, as I've said before, is often in what isn't happening.</blockquote>
+            <div class="fr-text">
+              <p>This line is the whole argument, and it's right. The eight-week pattern holds, and I think the floor is higher than 71¢ — I'm at <strong>78¢</strong> today. Safety eval cadence hasn't moved, which is informative by itself.</p>
+              <p>If the 21st passes quietly, the next stop is 82¢, not 78¢. The next news window after that is the JPM healthcare cadence, and there isn't a plausible counter-signal from Google until June.</p>
+            </div>
+            <div class="fr-more"><a>3 replies ↓</a><a>Restack</a></div>
+          </div>
+        </article>
+
+        <!-- Top NO voice -->
+        <article class="f-reply">
+          <span class="av av-M">M</span>
+          <div class="fr-body">
+            <div class="fr-head">
+              <span class="name">Mark Stone</span>
+              <span class="pub">· Contrarian</span>
+              <span class="holds n">NO · $15</span>
+              <span class="pill-role">From the other side</span>
+              <span class="time">41m</span>
+            </div>
+            <div class="fr-text">
+              <p>A gate is not a launch candidate. Three gates in six weeks is actually consistent with <strong>rework</strong>, not imminent shipping. I don't think this trades below 50¢, but I also don't think the eight-week pattern generalises to a generation change — a generation change historically runs closer to twelve.</p>
+              <p>Small NO here. Asymmetry is what I'm after — I'll revisit if this prints above 78¢.</p>
+            </div>
+            <div class="fr-more"><a>2 replies ↓</a><a>Restack</a></div>
+          </div>
+        </article>
+
+        <!-- Author's response -->
+        <article class="f-reply">
+          <span class="av av-N">N</span>
+          <div class="fr-body">
+            <div class="fr-head">
+              <span class="name">Nina Ortega</span>
+              <span class="check">◉</span>
+              <span class="author-badge">Author</span>
+              <span class="holds y">YES · $2,400</span>
+              <span class="pill-role">From the author</span>
+              <span class="time">22m</span>
+            </div>
+            <div class="fr-text">
+              <p>To Mark's point: the twelve-week generation figure is from GPT-3 → GPT-4. That window has compressed every cycle since. Fair point but I'd bet the compression continues, not reverses.</p>
+              <p>To the broader thread: I'm watching the 21st. If it passes quietly, I expect the crowd to push this into the high 70s without me needing to nudge it.</p>
+            </div>
+            <div class="fr-more"><a>5 replies ↓</a><a>Restack</a></div>
+          </div>
+        </article>
+
+        <footer class="featured-foot">
+          <span class="meta"><strong>24 replies</strong> · <strong>14</strong> from YES holders · <strong>5</strong> from NO holders · <strong>5</strong> from observers</span>
+          <a class="go-all" href="05-discussion.html">Continue the discussion →</a>
+        </footer>
+      </section>
+
+      <!-- Recent trades -->
+      <section class="tape">
+        <h3><span>Recent trades</span><a href="#">See the tape →</a></h3>
+        <div class="tape-row"><span class="t">2s</span><span class="s y">Back YES</span><span class="who">@tessa</span><span class="p">$40 · 71¢</span></div>
+        <div class="tape-row"><span class="t">41s</span><span class="s n">Back NO</span><span class="who">@mark-s</span><span class="p">$15 · 29¢</span></div>
+        <div class="tape-row"><span class="t">2m</span><span class="s y">Back YES</span><span class="who">@jules</span><span class="p">$120 · 70¢</span></div>
+        <div class="tape-row"><span class="t">4m</span><span class="s y">Cash out</span><span class="who">@neo</span><span class="p">$78 · 70¢</span></div>
+        <div class="tape-row"><span class="t">7m</span><span class="s n">Back NO</span><span class="who">@arca</span><span class="p">$25 · 30¢</span></div>
+      </section>
+
+    </main>
+
+    <!-- Right rail -->
+    <aside class="right">
+      <label class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+        <input placeholder="Search Cascade" />
+      </label>
+
+      <section class="rail-card">
+        <header class="rail-card-head"><h3 class="tight">Back a side</h3><span class="bal">$1,284 available</span></header>
+        <div class="trade-mod">
+          <div class="sides" role="tablist">
+            <button class="y on">Back YES<span class="p">71¢</span></button>
+            <button class="n">Back NO<span class="p">29¢</span></button>
+          </div>
+          <div class="amt"><span class="lbl">$</span><input type="text" value="25" /><span class="suf">USD</span></div>
+          <dl class="quote">
+            <dt>Shares</dt><dd>35</dd>
+            <dt>Avg fill</dt><dd>71.4¢</dd>
+            <dt>Fee (1%)</dt><dd>$0.25</dd>
+            <dt>If right</dt><dd class="up">+$10.28</dd>
+          </dl>
+          <button class="go">Back YES · $25</button>
+          <div class="foot-n">Cash out anytime · no expiry · no oracle</div>
+        </div>
+        <div class="your-pos">
+          <div class="who">
+            <span class="side">YES</span>
+            <span class="stake">$220 · avg 68¢ · 60 shares</span>
+          </div>
+          <span class="pl">+$6.60</span>
+        </div>
+      </section>
+
+      <section class="rail-card">
+        <header class="rail-card-head"><h3 class="tight">Related claims</h3><a href="#" style="color:var(--text-3);font-size:.8rem;">See all</a></header>
+        <div class="linked-mini">
+          <a class="linked-row-mini" href="#"><span class="t">GPT-5 has native agent tool-use at launch.</span><span class="p">82¢</span></a>
+          <a class="linked-row-mini" href="#"><span class="t">Anthropic ships Claude 5 before end-2026.</span><span class="p">54¢</span></a>
+          <a class="linked-row-mini" href="#"><span class="t">Frontier model scores &gt;90% on Frontier Math.</span><span class="p no">39¢</span></a>
+          <a class="linked-row-mini" href="#"><span class="t">Nvidia stays above $4T end-2026.</span><span class="p">51¢</span></a>
+        </div>
+      </section>
+
+    </aside>
+
+  </div>
+</body>
+</html>

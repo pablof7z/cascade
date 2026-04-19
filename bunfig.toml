@@ -1,0 +1,2 @@
+[test]
+pathIgnorePatterns = ["web/tests/e2e/**", "web/src/lib/wallet/localPositionBook.test.ts"]

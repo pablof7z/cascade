@@ -30,7 +30,7 @@ test('homepage and market surface keep perpetual-market copy without resolution 
 
   assert.match(
     homeSource,
-    /Take a position today\. Trading continues indefinitely, and you can exit whenever the price makes sense for you\./
+    /Take a position today, hold it for years, and exit whenever the price moves your way\./
   );
   assert.doesNotMatch(homeSource, /settled — or forever/);
   assert.match(marketSurfaceSource, /const tradingContext = \$derived\(/);

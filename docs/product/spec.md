@@ -13,7 +13,7 @@ Use these sources in order:
 ## Non-Negotiable Rules
 
 - Markets never expire.
-- There is no oracle and no admin close step.
+- There is no external adjudicator and no admin end step.
 - Price is set only by trading activity on that market.
 - Live uses market/trade kinds `982`/`983`.
 - Practice uses market/trade kinds `980`/`981`.
@@ -36,6 +36,7 @@ Use these sources in order:
 Current public routes in `web/`:
 
 - `/`
+- `/markets`
 - `/market/:slug`
 - `/market/:slug/discussion`
 - `/market/:slug/discussion/:threadId`
@@ -56,7 +57,8 @@ Current public routes in `web/`:
 
 Expected behavior:
 
-- homepage is both narrative and discovery
+- homepage remains the public entry surface until the Home feed rewrite lands
+- `/markets` is the global category-first browse surface over selected-edition relay market and trade events
 - market pages are the main trading surface
 - discussion is append-only
 - analytics and leaderboard are public read surfaces
@@ -146,7 +148,7 @@ The mint does not maintain a SQLite (or any) mirror of relay data for market dis
 - Market definitions live on relays. Live uses kind `982`; Practice uses kind `980`. The frontend reads them from relays.
 - Trade history lives on relays. Live uses kind `983`; Practice uses kind `981`. The frontend reads it from relays.
 - Search, activity feeds, and price history are relay queries or frontend-derived from relay data.
-- The mint database stores only what the mint needs for execution: LMSR state, keysets, proofs, quotes, funding state, trade settlement records, and risk/anti-abuse state.
+- The mint database stores only what the mint needs for execution: LMSR state, keysets, proofs, quotes, funding state, trade execution records, and risk/anti-abuse state.
 - There are no `/api/product/feed`, `/api/product/activity`, `/api/product/markets/search`, `/api/market/{id}`, or `/api/market/{id}/price-history` routes. Those concerns belong to relays and the frontend.
 - The only market state the mint exposes is what it needs for trade execution: current LMSR price (returned in trade quotes), market-scoped key discovery (`GET /{event_id}/v1/keys`), and the FX preview endpoint.
 

@@ -3,6 +3,7 @@
 
   const items = [
     { href: '/', label: 'Home', icon: 'home' },
+    { href: '/markets', label: 'Markets', icon: 'markets' },
     { href: '/activity', label: 'Activity', icon: 'activity' },
     { href: '/bookmarks', label: 'Bookmarks', icon: 'bookmark' },
     { href: '/portfolio', label: 'Portfolio', icon: 'portfolio' },
@@ -21,6 +22,10 @@
       {#if item.icon === 'home'}
         <svg class="rail-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8.5Z" />
+        </svg>
+      {:else if item.icon === 'markets'}
+        <svg class="rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 17.5 9 12l4 3.5L20 6M20 6v5.5M20 6h-5.5" />
         </svg>
       {:else if item.icon === 'activity'}
         <svg class="rail-icon" viewBox="0 0 24 24" aria-hidden="true">

@@ -32,6 +32,7 @@ search, account, and context chrome.
 Public product routes:
 
 - `/`
+- `/markets`
 - `/market/:slug`
 - `/market/:slug/discussion`
 - `/market/:slug/discussion/:threadId`
@@ -73,6 +74,7 @@ Legacy relay browser routes exist only as redirects away from the launch product
 
 - normal UX is USD-denominated
 - public discovery surfaces only link to markets after the first public trade exists
+- `/markets` is the global category browse route and shares the relay-backed market/trade data path used by `/`
 - thread detail SSR merges current relay discussion data so newly published threads can open without waiting for a later refresh
 - perpetual-market copy describes indefinite trading and voluntary exits, not external outcome processes or forced shutdown
 - `/portfolio` is the capital surface

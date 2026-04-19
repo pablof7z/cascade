@@ -58,9 +58,9 @@ Launch does not require:
 
 ## Non-Negotiable Product Rules
 
-- Markets never close.
-- There is no resolution event.
-- There is no oracle.
+- Markets trade indefinitely.
+- There is no external adjudication event.
+- There is no external adjudicator.
 - No expiry or countdown logic belongs in the product.
 - Linked markets are informational only.
 - Kind `982` creates markets.
@@ -86,6 +86,7 @@ seed-trade quote/buy carries the signed kind `982` when the mint has not seen th
 ### Canonical launch routes
 
 - `/`
+- `/markets`
 - `/market/:slug`
 - `/market/:slug/discussion`
 - `/market/:slug/discussion/:threadId`
@@ -204,7 +205,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Empty state for no markets points to builder and explains that the first market must be created.
 - [ ] Market cards show enough metadata to choose a click target without opening the full market.
 - [ ] Discussion snippets on the homepage link to market discussion and thread detail.
-- [ ] Homepage content is corrected for current mechanics and never mentions closure, winners, or settlement.
+- [ ] Homepage content is corrected for current mechanics and uses indefinite-trading and voluntary-exit language.
 
 ## Workstream 3: Discovery And Search
 
@@ -355,8 +356,8 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 ### `/how-it-works`
 
 - [ ] Explains the Cascade mental model in the current language.
-- [ ] Explicitly says markets never close.
-- [ ] Explicitly says there is no oracle and no resolution event.
+- [ ] Explains that markets trade indefinitely.
+- [ ] Explains that price comes only from trading activity.
 - [ ] Explains modules vs theses correctly.
 - [ ] Explains LMSR correctly.
 - [ ] Includes a human-and-agent section.
@@ -431,7 +432,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [x] Canonical public profile route exists.
 - [x] Route accepts preferred NIP-05, local-domain bare username shortcuts, and fallback npub-style identifier.
 - [x] Bare usernames resolve against the local managed NIP-05 domain when one is configured.
-- [x] Bare domains are passed through to NDK's root-NIP-05 resolution semantics without app-side rewriting.
+- [x] Bare domains are passed through to NDK's root-NIP-05 lookup semantics without app-side rewriting.
 - [x] Identity header exists.
 - [x] Created markets list exists.
 - [x] Public positions list exists.
@@ -473,7 +474,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Portfolio errors are explicit and recoverable.
 - [ ] Portfolio never doubles as a market-trading page.
 - [ ] The normal portfolio UI does not expose sats, msats, or Lightning invoices.
-- [ ] Off-platform bank payout is not required for launch.
+- [ ] Off-platform bank withdrawal is not required for launch.
 - [ ] No product copy implies that Cascade custody or server account balances exist.
 
 ## Workstream 14: Positions And PnL
@@ -493,7 +494,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Position rows link back to the relevant market.
 - [ ] Position rows support exiting/selling when appropriate.
 - [ ] Empty state routes users back to markets.
-- [ ] Copy reflects exits and sales, not payouts or settlement.
+- [ ] Copy reflects exits and sales.
 - [ ] Portfolio is derived from local/user-side state plus public market data, not from a private custody API.
 
 ## Workstream 15: Data, Auth, And Protocol Foundations
@@ -561,7 +562,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Portfolio proof storage and token import/export happen locally.
 - [ ] Portfolio proof storage is namespaced by edition so signet and mainnet proofs cannot collide.
 - [ ] Launch web trades execute through NIP-98-authenticated requests.
-- [ ] Normal web flows hide Lightning settlement details from the user.
+- [ ] Normal web flows hide Lightning payment details from the user.
 
 ### Agent machine interface
 
@@ -587,7 +588,7 @@ At the time of writing, `web/` already contains pieces of the launch product, bu
 - [ ] Remove or redirect leftover template routes that are not part of the Cascade product.
 - [ ] Remove public nav exposure for anything not in the canonical launch surface.
 - [ ] Remove copy that still says Contrarian.
-- [ ] Remove copy that implies resolution, payout, or expiry.
+- [ ] Remove copy that implies forced endings or expiry.
 - [ ] Remove dependence on legacy frontend snapshot code for launch-critical behavior.
 - [ ] Ensure all launch-critical docs point to `web/`, not a legacy frontend snapshot.
 - [ ] Ensure dashboard/workspace routes are not treated as launch-critical surfaces.

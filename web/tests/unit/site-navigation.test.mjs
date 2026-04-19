@@ -15,6 +15,7 @@ test('primary site navigation uses The Column rail items', () => {
   const source = read('src/lib/components/cascade/SiteNavigation.svelte');
 
   assert.match(source, /\{ href: '\/', label: 'Home', icon: 'home' \}/);
+  assert.match(source, /\{ href: '\/markets', label: 'Markets', icon: 'markets' \}/);
   assert.match(source, /\{ href: '\/bookmarks', label: 'Bookmarks', icon: 'bookmark' \}/);
   assert.match(source, /\{ href: '\/portfolio', label: 'Portfolio', icon: 'portfolio' \}/);
   assert.match(source, /\{ href: '\/profile', label: 'Profile', icon: 'profile' \}/);

@@ -31,10 +31,13 @@ test('app.css uses Tailwind v4 and DaisyUI theme config instead of the old :root
 
   assert.match(appCss, /@import\s+['"]tailwindcss['"];/);
   assert.match(appCss, /@plugin\s+['"]daisyui['"]/);
-  assert.match(appCss, /--color-base-100:\s*#0a0a0a/i);
-  assert.match(appCss, /--color-base-200:\s*#171717/i);
-  assert.match(appCss, /--color-primary:\s*#10b981/i);
-  assert.match(appCss, /--color-error:\s*#f43f5e/i);
+  assert.match(appCss, /--font-tight:\s*'Inter Tight'/);
+  assert.match(appCss, /--font-serif:\s*'Fraunces'/);
+  assert.match(appCss, /--color-base-100:\s*#0b0a09/i);
+  assert.match(appCss, /--color-base-200:\s*#13120f/i);
+  assert.match(appCss, /--color-primary:\s*#efe7d3/i);
+  assert.match(appCss, /--color-success:\s*#3ec48a/i);
+  assert.match(appCss, /--color-error:\s*#e85d7a/i);
   assert.doesNotMatch(appCss, /:root\s*\{/);
   assert.doesNotMatch(appCss, /\.button-primary\b/);
   assert.doesNotMatch(appCss, /\.button-secondary\b/);
@@ -147,7 +150,6 @@ const UNDEFINED_VARS = [
   /var\(--accent\b/,
   /var\(--radius-md\b/,
   /var\(--radius-sm\b/,
-  /var\(--font-serif\b/,
   /var\(--content-width\b/
 ];
 

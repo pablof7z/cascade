@@ -66,11 +66,15 @@ test('app html opts into the dark DaisyUI theme', () => {
 test('app css imports Tailwind and DaisyUI and defines the Cascade dark theme', () => {
   const appCss = read('src/app.css');
 
-  assert.match(appCss, /@theme\s*\{[\s\S]*--font-sans:[\s\S]*--font-mono:[\s\S]*\}/);
+  assert.match(appCss, /@theme\s*\{[\s\S]*--font-sans:[\s\S]*--font-tight:[\s\S]*--font-serif:[\s\S]*--font-mono:[\s\S]*\}/);
   assert.match(appCss, /@import\s+['\"]tailwindcss['\"]/);
   assert.match(appCss, /@plugin\s+['\"]daisyui['\"]/);
   assert.match(appCss, /\[data-theme=['\"]dark['\"]\][\s\S]*--color-base-100:/);
-  assert.match(appCss, /--color-primary:\s*#10b981/i);
+  assert.match(appCss, /--color-base-100:\s*#0b0a09/i);
+  assert.match(appCss, /--color-base-200:\s*#13120f/i);
+  assert.match(appCss, /--color-primary:\s*#efe7d3/i);
+  assert.match(appCss, /--color-success:\s*#3ec48a/i);
+  assert.match(appCss, /--color-error:\s*#e85d7a/i);
   assert.doesNotMatch(appCss, /:root\s*\{/);
   assert.doesNotMatch(appCss, /\.button-primary\b/);
   assert.doesNotMatch(appCss, /\.button-secondary\b/);

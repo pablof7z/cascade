@@ -83,9 +83,11 @@ test('app css imports Tailwind and DaisyUI and defines the Cascade dark theme', 
 });
 
 test('shared UI wrappers use DaisyUI classes for tabs, dialog, dropdowns, and avatar', () => {
-  // Tabs — TabNav uses DaisyUI tab classes directly
-  assert.match(read('src/lib/components/cascade/TabNav.svelte'), /tabs-bordered/);
-  assert.match(read('src/lib/components/cascade/TabNav.svelte'), /\btab\b/);
+  // Tabs — TabNav uses The Column text-only underline pattern (border-b, not DaisyUI tabs)
+  assert.match(read('src/lib/components/cascade/TabNav.svelte'), /border-b-2/);
+  assert.match(read('src/lib/components/cascade/TabNav.svelte'), /border-transparent/);
+  assert.match(read('src/lib/components/cascade/TabNav.svelte'), /text-base-content\/60/);
+  assert.doesNotMatch(read('src/lib/components/cascade/TabNav.svelte'), /tabs-bordered/);
   // Popover/overlay — SharePopover uses DaisyUI utility classes (no legacy modal wrappers)
   assert.doesNotMatch(read('src/lib/components/SharePopover.svelte'), /modal-box/);
   assert.doesNotMatch(read('src/lib/components/SharePopover.svelte'), /modal-backdrop/);

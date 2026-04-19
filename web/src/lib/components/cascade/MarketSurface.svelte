@@ -45,7 +45,7 @@
     discussions: DiscussionRecord[];
     relatedMarkets: MarketRecord[];
     profiles: Record<string, NDKUserProfile>;
-    tab?: 'overview' | 'discussion' | 'charts' | 'activity';
+    tab?: 'overview' | 'discussion' | 'charts' | 'activity' | 'trades' | 'linked';
   } = $props();
 
   const tradeSummary = $derived(buildTradeSummary(trades));
@@ -80,9 +80,11 @@
   const author = $derived(displayName(profiles[market.pubkey], 'Cascade user'));
   const tabs = $derived([
     { href: marketUrl(market.slug), label: 'Case', active: tab === 'overview' },
-    { href: marketDiscussionUrl(market.slug), label: 'Discussion', active: tab === 'discussion' },
+    { href: marketDiscussionUrl(market.slug), label: 'Discussion', active: tab === 'discussion', count: totalReplyCount },
     { href: marketChartsUrl(market.slug), label: 'Charts', active: tab === 'charts' },
-    { href: marketActivityUrl(market.slug), label: 'Activity', active: tab === 'activity' }
+    { href: marketActivityUrl(market.slug), label: 'Activity', active: tab === 'activity' },
+    { href: `/${market.slug}/trades/`, label: 'Trades', active: tab === 'trades', count: tradeSummary.tradeCount },
+    { href: `/${market.slug}/linked/`, label: 'Linked', active: tab === 'linked', count: relatedMarkets.length }
   ]);
 
   const orderedTrades = $derived([...trades].sort((left, right) => right.createdAt - left.createdAt));
@@ -790,6 +792,72 @@
           {/each}
         {:else}
           <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">No visible activity yet.</div>
+        {/if}
+      </div>
+    </div>
+
+    {@render tradeRail()}
+  </section>
+{/if}
+
+{#if tab === 'trades'}
+  <section class="grid gap-10 pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(290px,320px)]">
+    <div class="grid min-w-0 gap-5">
+      <div class="flex items-baseline justify-between gap-4">
+        <h3 class="font-tight text-lg font-semibold tracking-tight">Trades</h3>
+        <span class="text-sm text-base-content/50">{tradeSummary.tradeCount.toLocaleString()} trades</span>
+      </div>
+
+      <div class="grid gap-0 border-t border-base-300">
+        {#if orderedTrades.length > 0}
+          {#each orderedTrades as trade (trade.id)}
+            <div class="flex items-start justify-between gap-4 border-b border-base-300 py-3">
+              <div>
+                <strong class="text-sm font-semibold">{trade.direction === 'long' ? 'LONG' : 'SHORT'} {trade.type === 'buy' ? 'Buy' : 'Sell'}</strong>
+                <p class="mt-0.5 text-sm text-base-content/60">{formatProductAmount(trade.amount, 'usd')} at {formatProbability(trade.probability)}</p>
+                <p class="mt-0.5 text-xs text-base-content/40">by {authorLabel(trade.pubkey)}</p>
+              </div>
+              <div class="grid flex-none justify-items-end gap-1 text-xs text-base-content/50">
+                <span class={trade.direction === 'long' ? 'text-success' : 'text-error'}>{trade.direction === 'long' ? 'LONG' : 'SHORT'}</span>
+                <span>{formatRelativeTime(trade.createdAt)}</span>
+              </div>
+            </div>
+          {/each}
+        {:else}
+          <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">No trades yet.</div>
+        {/if}
+      </div>
+    </div>
+
+    {@render tradeRail()}
+  </section>
+{/if}
+
+{#if tab === 'linked'}
+  <section class="grid gap-10 pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(290px,320px)]">
+    <div class="grid min-w-0 gap-5">
+      <div class="flex items-baseline justify-between gap-4">
+        <h3 class="font-tight text-lg font-semibold tracking-tight">Linked markets</h3>
+        <span class="text-sm text-base-content/50">Informational context only</span>
+      </div>
+
+      <div class="grid gap-0 border-t border-base-300">
+        {#if relatedMarkets.length > 0}
+          {#each relatedMarkets as related (related.id)}
+            <a class="flex items-start justify-between gap-4 border-b border-base-300 py-4 hover:text-base-content" href={marketUrl(related.slug)}>
+              <div>
+                <strong class="text-sm font-semibold">{related.title}</strong>
+                <p class="mt-1 text-sm leading-relaxed text-base-content/60">{truncateText(sanitizeMarketCopy(related.description || related.body), 150)}</p>
+                <p class="mt-1 text-xs text-base-content/40">by {authorLabel(related.pubkey)}</p>
+              </div>
+              <div class="grid flex-none justify-items-end gap-1 text-xs">
+                <span class={related.latestPricePpm && related.latestPricePpm >= 500_000 ? 'text-success' : 'text-error'}>{priceCents((related.latestPricePpm ?? 500_000) / 1_000_000)} LONG</span>
+                <span class="text-base-content/50">{formatRelativeTime(related.createdAt)}</span>
+              </div>
+            </a>
+          {/each}
+        {:else}
+          <div class="rounded-md border border-base-300 p-6 text-center text-base-content/60">No linked markets.</div>
         {/if}
       </div>
     </div>

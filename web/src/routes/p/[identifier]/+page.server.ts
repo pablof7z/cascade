@@ -8,6 +8,7 @@ import {
   fetchPositionsByPubkey,
   fetchProfileContext
 } from '$lib/server/cascade';
+import { fetchRecentNotesByAuthor } from '$lib/server/nostr';
 
 export const load: PageServerLoad = async ({ locals, params, setHeaders, url }) => {
   const edition = locals.cascadeEdition;
@@ -20,17 +21,27 @@ export const load: PageServerLoad = async ({ locals, params, setHeaders, url }) 
     error(404, 'Profile not found');
   }
 
-  const discussionsPromise = fetchDiscussionsByPubkey(user.pubkey, 50, { edition });
-  const [markets, positions, discussions] = await Promise.all([
+  const [markets, positions, discussions, noteEvents] = await Promise.all([
     fetchMarketsByAuthor(user.pubkey, 48, { edition }),
     fetchPositionsByPubkey(user.pubkey, 120),
-    discussionsPromise
+    fetchDiscussionsByPubkey(user.pubkey, 50, { edition }),
+    fetchRecentNotesByAuthor(user.pubkey, 24)
   ]);
+
   const discussionMarkets = await fetchMarketsByIds(
     discussions.map((discussion) => discussion.marketId),
     { edition }
   );
-  const positionMarkets = await fetchMarketsByIds(positions.map((p) => p.marketId), { edition });
+  const positionMarkets = await fetchMarketsByIds(
+    positions.map((position) => position.marketId),
+    { edition }
+  );
+
+  const notes = noteEvents.map((event) => ({
+    id: event.id,
+    content: event.content,
+    createdAt: event.created_at ?? 0
+  }));
 
   return {
     identifier: params.identifier,
@@ -43,6 +54,8 @@ export const load: PageServerLoad = async ({ locals, params, setHeaders, url }) 
     discussions,
     discussionMarkets,
     positionMarkets,
+    notes,
+    hideRightRail: true,
     seo: buildProfileSeo({ url, pubkey: user.pubkey, profile })
   };
 };

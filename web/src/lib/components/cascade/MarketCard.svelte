@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { displayName } from '$lib/ndk/format';
+  import { displayName, profileHref } from '$lib/ndk/format';
   import { formatProductAmount } from '$lib/cascade/format';
   import {
     formatProbability,
@@ -9,7 +9,7 @@
     type MarketRecord,
     type MarketTradeSummary
   } from '$lib/ndk/cascade';
-  import type { NDKUserProfile } from '@nostr-dev-kit/ndk';
+  import { NDKUser, type NDKUserProfile } from '@nostr-dev-kit/ndk';
 
   let {
     market,
@@ -25,6 +25,14 @@
 
   const profile = $derived(profiles[market.pubkey]);
   const authorLabel = $derived(displayName(profile, 'Cascade user'));
+  const authorNpub = $derived.by(() => {
+    try {
+      return new NDKUser({ pubkey: market.pubkey }).npub;
+    } catch {
+      return market.pubkey;
+    }
+  });
+  const authorHref = $derived(profileHref(profile, authorNpub));
 </script>
 
 <article class="card card-border bg-base-200 transition-colors hover:bg-base-300">
@@ -60,7 +68,7 @@
     </div>
 
     <div class="flex items-center justify-between gap-4 text-xs text-base-content/50">
-      <span>by {authorLabel}</span>
+      <span>by <a class="hover:text-base-content" href={authorHref}>{authorLabel}</a></span>
       <a class="text-sm font-medium text-base-content hover:text-base-content/80" href={marketUrl(market.slug)}>Open market</a>
     </div>
   </div>

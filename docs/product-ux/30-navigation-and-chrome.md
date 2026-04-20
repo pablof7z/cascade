@@ -88,7 +88,7 @@ This is deliberate. A global topbar would add chrome without adding information.
 | Markets | Moving today (4 movers) | Most contested (3 items) |
 | Market / Case | Back a side (trade module) + Your position sub-block | Related claims (4 linked markets) |
 | Market / Discussion | Back a side (trade module, compact) | Who's in the thread (5–6 voice-rows) |
-| Profile (future) | Subscribe + track record block | Recent activity |
+| Profile | Open positions | Mutual ground (cross-view only) |
 
 ### Search
 

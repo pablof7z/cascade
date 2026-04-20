@@ -57,6 +57,7 @@ The pages that exist today. Each document describes purpose, layout, component c
 - [**42 — Markets**](./42-page-markets.md) — Category-first browsing.
 - [**43 — Market (case + discussion)**](./43-page-market.md) — The tabbed post-page: Case, Discussion, Trades, Linked.
 - [**44 — Write a claim (+ sharing toolkit)**](./44-page-create.md) — The composer and the post-publish sharing surface. Where author incentives and product growth align.
+- [**45 — Profile**](./45-page-profile.md) — A person's page. Activity-led, identity above, conviction in the rail. `/p/<nip05>` or `/p/<npub>`.
 
 ## Conduct
 

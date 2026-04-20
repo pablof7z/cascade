@@ -2,6 +2,7 @@
   import { NDKUser } from '@nostr-dev-kit/ndk';
   import type { NDKSvelte } from '@nostr-dev-kit/svelte';
   import { User } from '../../ui/user';
+  import { profileHref } from '../../format';
 
   export interface MentionProps {
     ndk: NDKSvelte;
@@ -16,12 +17,13 @@
 
   const href = $derived.by(() => {
     if (!user) return undefined;
-
+    let npub: string;
     try {
-      return `/p/${user.npub}`;
+      npub = user.npub;
     } catch {
-      return `/p/${user.pubkey}`;
+      npub = user.pubkey;
     }
+    return profileHref(user.profile, npub);
   });
 
   $effect(() => {

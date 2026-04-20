@@ -1,12 +1,13 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { ndk } from '$lib/ndk/client';
+  import { profileHref } from '$lib/ndk/format';
 
   const currentUser = $derived(ndk.$currentUser);
 
   $effect(() => {
     if (currentUser?.npub) {
-      void goto(`/p/${currentUser.npub}`, { replaceState: true });
+      void goto(profileHref(currentUser.profile, currentUser.npub), { replaceState: true });
     }
   });
 </script>

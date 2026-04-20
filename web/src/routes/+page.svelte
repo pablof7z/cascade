@@ -21,7 +21,7 @@
     type MarketTradeSummary,
     type TradeRecord
   } from '$lib/ndk/cascade';
-  import { displayName } from '$lib/ndk/format';
+  import { displayName, profileHref } from '$lib/ndk/format';
   import { filterLiveHomepageMarkets } from './homepage-market-search';
   import type { PageProps } from './$types';
 
@@ -248,7 +248,7 @@
   }
 
   function authorProfileUrl(pubkey: string): string {
-    return `/p/${encodeURIComponent(pubkey)}`;
+    return profileHref(profiles[pubkey], pubkey);
   }
 
   function categoryLabel(market: MarketRecord): string {

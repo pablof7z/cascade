@@ -144,6 +144,10 @@ export function profileIdentifier(profile: NDKUserProfile | undefined, fallback:
   return nip05 || fallback;
 }
 
+export function profileHref(profile: NDKUserProfile | undefined, npubFallback: string): string {
+  return `/p/${profileIdentifier(profile, npubFallback)}`;
+}
+
 function tagValue(tags: string[][], name: string): string | undefined {
   return tags.find((tag) => tag[0] === name)?.[1];
 }

@@ -8,20 +8,13 @@ What's not yet decided. What's explicitly next. Things we've deliberately deferr
 
 These exist in older directions (H-the-study, etc.) but haven't been rebuilt in The Column's visual language.
 
-### Profile / publication page
+### ~~Profile / publication page~~ — designed
 
-**What's missing:** A Column-native profile — a writer's publication view.
+**Status:** Designed. See [45-page-profile.md](./45-page-profile.md).
 
-**Requirements:**
-- Hero section: big avatar, name, tagline (italic Fraunces), subscribe button, subscriber count
-- A "track record" block with drift stat, coverage by category
-- Tabs: Dispatches (their published claims) · Notes · Followers · Followed
-- Each dispatch rendered as a compact inbox-style card
-- The publication tagline treated as the publication's "name" (e.g., *"Corporate timing, weekly-ish"*)
+The earlier "writer's publication view" framing was rejected during design. Cascade users are not writers, so the profile is a **person's page**, not a publication: activity-led, identity above as a thin band, Open positions in the right rail. No follower count, no drift stat, no italic Fraunces bio. The original prior art (`H-the-study/04-profile.html`) is documented as rejected in the spec.
 
-**Prior art:** `H-the-study/04-profile.html`.
-
-**Blocker:** None. Ready to design.
+Implementation pending — the page also introduces a cross-cutting **linkable-identity rule**: every avatar and name in the app must link to the canonical `/p/<nip05>` (or `/p/<npub>` if no NIP-05 is declared).
 
 ### Activity (notifications)
 

@@ -312,7 +312,7 @@
           />
         {:else if currentUser}
           <a class="btn btn-primary w-full" href="/portfolio">Add funds to trade</a>
-          <p class="text-sm leading-relaxed text-base-content/60">Funds live in your portfolio. Trading here mints LONG or SHORT market proofs.</p>
+
         {:else}
           <a class="btn btn-primary w-full" href="/join?from=/market/{market.slug}">Join to back a side</a>
           <p class="text-sm leading-relaxed text-base-content/60">Read the case first, then sign in when you are ready to spend USD.</p>
@@ -619,7 +619,7 @@
           {#if composeError}
             <p class="text-sm text-error">{composeError}</p>
           {/if}
-          <p class="text-xs text-base-content/50">Writing and trading stay separate. Use the rail to back a side.</p>
+
         </div>
       {:else}
         <p class="border-b border-base-300 pb-5 text-sm text-base-content/70">
@@ -661,7 +661,6 @@
       <article class="grid gap-5">
         <div class="flex items-baseline justify-between gap-4">
           <h3 class="font-tight text-lg font-semibold tracking-tight">Price curve</h3>
-          <span class="text-sm text-base-content/50">Based on public trade history</span>
         </div>
 
         {#if chronologicalTrades.length > 0}
@@ -838,7 +837,6 @@
     <div class="grid min-w-0 gap-5">
       <div class="flex items-baseline justify-between gap-4">
         <h3 class="font-tight text-lg font-semibold tracking-tight">Linked markets</h3>
-        <span class="text-sm text-base-content/50">Informational context only</span>
       </div>
 
       <div class="grid gap-0 border-t border-base-300">

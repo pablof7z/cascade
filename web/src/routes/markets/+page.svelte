@@ -109,7 +109,7 @@
     const sections = [
       {
         title: 'Most active',
-        detail: 'by total public volume',
+        detail: '',
         markets: [...markets].sort(compareByVolumeThenRecency).slice(0, 6)
       },
       {
@@ -226,9 +226,6 @@
 <section class="grid gap-8">
   <header class="grid gap-2 border-b border-base-300 pb-6">
     <h1 class="font-tight text-3xl font-bold text-base-content">Markets</h1>
-    <p class="max-w-xl text-base text-base-content/65">
-      Every live claim, across every category. Browse without following anyone.
-    </p>
     <p class="font-mono text-xs text-base-content/45">{summaryLine}</p>
   </header>
 
@@ -245,7 +242,7 @@
         <header class="flex items-baseline justify-between gap-4">
           <h2 class="font-tight text-lg font-bold text-base-content">
             {section.title}
-            <span class="ml-2 font-mono text-[0.68rem] font-normal text-base-content/40">{section.detail}</span>
+            {#if section.detail}<span class="ml-2 font-mono text-[0.68rem] font-normal text-base-content/40">{section.detail}</span>{/if}
           </h2>
           <a class="text-sm text-base-content/45 hover:text-base-content" href="#all-markets">All markets</a>
         </header>

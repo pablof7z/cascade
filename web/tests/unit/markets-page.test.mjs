@@ -25,7 +25,6 @@ test('/markets page renders The Column category browse surface', () => {
   const source = read('src/routes/markets/+page.svelte');
 
   assert.match(source, /<h1[^>]*>Markets<\/h1>/);
-  assert.match(source, /Every live claim, across every category/);
   assert.match(source, /Most active/);
   assert.match(source, /Contested/);
   assert.match(source, /Under the radar/);

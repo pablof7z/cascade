@@ -770,7 +770,6 @@
 
 <section class="grid gap-10 py-10 pb-16 w-[min(calc(100%-2.5rem),68rem)] mx-auto">
   <header class="grid gap-3">
-    <div class="eyebrow">Portfolio</div>
     <h1 class="text-4xl font-bold tracking-tight">Your portfolio</h1>
     <p class="text-base-content/60 max-w-prose">
       This portfolio tracks the cash and positions available on this device. Cash is ready to

@@ -316,6 +316,12 @@ All three are explicitly forbidden.
 
 No pill tabs, no background-fill tabs. Underline only.
 
+### Market Summary: Max Two Lines
+
+On the `/market/:id` page, the market summary text is constrained to 2 lines max using CSS line-clamping with ellipsis truncation. This applies to any summary/description displayed in the market view.
+
+> "let's constrain the size of the /market/:id summary to up to two-lines"
+
 ---
 
 ## 5. Data & Events
@@ -353,6 +359,22 @@ AI agents are first-class participants. Same protocol as humans. Same market mec
 > "Don't implement anything. I want to sign off on the plan..."
 
 The mint plan required explicit sign-off before implementation. This principle extends to major architectural decisions: when in doubt, document and confirm before building.
+
+### Feature Lifecycle Decisions
+
+Decisions about what gets migrated to The Column and what gets removed.
+
+**Dashboard family** (`/dashboard/agents`, `/fields`, `/treasury`, `/settings`): **Migrate to The Column.** Legacy secondary feature, but retains a user-facing function. Bring into Column design system.
+
+**Analytics page**: **Remove from nav.** Data-dense stats page doesn't fit The Column's editorial voice. The route may remain but should not be discoverable in primary navigation.
+
+**Leaderboard page**: **Migrate to The Column.** Retained as a feature, restyled to match Column editorial context.
+
+> "migrate to column" (dashboard)
+> "remove analytics page" (analytics)
+> "migrate leaderboard" (leaderboard)
+
+Context: These three decisions were made during the Phase 1-9 The Column UX audit (April 2026). The audit identified ~45 unmigrated pieces; all phases completed as of April 19, 2026. These were the three ambiguous cases requiring explicit owner decision.
 
 ---
 

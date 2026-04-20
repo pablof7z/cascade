@@ -24,7 +24,7 @@ Standard three-column shell.
 ### Center column
 
 1. **Page header** — `<h1>Markets</h1>` (sans Inter Tight — it's chrome), subtitle, summary line.
-2. **Five featured horizontally-scrollable rails** — Most Active · New · Contested · Biggest Moves · Under the Radar. Each rail contains 5–6 portrait cards with author-attached images.
+2. **Five featured horizontally-scrollable rails** — Most Active · New · Contested · Moving today · Under the Radar. Each rail contains 5–6 portrait cards with author-attached images.
 3. **"All markets"** block — category filter (text tabs) + flat list of all claims.
 4. **Load more** footer.
 
@@ -47,17 +47,17 @@ No sort tabs, no category chips at the top. Sort is expressed by the featured ra
 
 ### Featured rails
 
-Five sections, one per sort dimension: **Most Active · New · Contested · Biggest Moves · Under the Radar.**
+Five sections, one per sort dimension: **Most Active · New · Contested · Moving today · Under the Radar.**
 
 Each rail has:
-- A section header: title (Inter Tight 700, 1.1rem) + optional descriptor + **"See more →"** link on the right.
+- A section header: title (Inter Tight 700, 1.1rem) + optional descriptor + **"All markets"** link on the right.
 - A horizontally-scrollable row of portrait cards, scroll-snap enabled.
 
 ```html
 <section class="feat-section">
   <header class="feat-head">
     <h3>Most Active<span class="cnt">by 24h volume</span></h3>
-    <a class="see-more" href="#">See more <span class="arr">→</span></a>
+    <a class="all-markets-link" href="#">All markets</a>
   </header>
   <div class="rail-scroller">
     <a class="pcard">
@@ -126,7 +126,7 @@ Both use the same `up-item` composition as Home. See [principle #10](./02-design
 - **Most active** (default) — by 24h volume
 - **New** — by age, newest first
 - **Contested** — by tight spread (closer to 50¢ = more contested)
-- **Biggest moves** — by absolute 24h price change
+- **Moving today** — by absolute 24h price change
 - **Under the radar** — low volume + interesting divergence (bit algorithmic; calibrated with product)
 
 ---

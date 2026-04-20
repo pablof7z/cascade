@@ -367,7 +367,7 @@
     <div class="grid gap-4">
       <div class="eyebrow">{categoryLabel} claim</div>
       <h1 class="font-serif text-4xl font-semibold leading-[1.04] tracking-normal sm:text-5xl">{market.title}</h1>
-      <p class="max-w-[62ch] text-lg leading-relaxed text-base-content/70">
+      <p class="max-w-[62ch] line-clamp-2 overflow-hidden text-lg leading-relaxed text-base-content/70">
         {sanitizeMarketCopy(market.description) || 'No summary provided yet.'}
       </p>
     </div>

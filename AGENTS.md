@@ -38,6 +38,6 @@
 
 ## Repository Layout
 
-- `web/` is the only active frontend. Deployed on Vercel — no manual deploy step needed.
+- `web/` is the only active frontend. Deployed on Vercel — manually triggered.
 - `mint/` is the Rust mint workspace.
 - Nested `AGENTS.md` files refine the rules for their subtree.

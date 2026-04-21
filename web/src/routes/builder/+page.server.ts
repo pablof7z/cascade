@@ -11,11 +11,13 @@ export const load: PageServerLoad = async ({ locals, setHeaders }) => {
   try {
     const markets = await fetchRecentMarkets(200, { edition });
     return {
+      hideRightRail: true,
       markets: markets.map((market) => market.rawEvent as NostrEvent)
     };
   } catch (error) {
     console.warn('Builder market load failed', error);
     return {
+      hideRightRail: true,
       markets: []
     };
   }

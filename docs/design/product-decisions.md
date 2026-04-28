@@ -322,6 +322,22 @@ On the `/market/:id` page, the market summary text is constrained to 2 lines max
 
 > "let's constrain the size of the /market/:id summary to up to two-lines"
 
+### No Explanatory Text in the App Shell
+
+Do not embed explanatory or instructional copy into the shell of the app. UI chrome must not narrate itself.
+
+**Forbidden patterns:**
+- Mechanic explanations that restate what the UI shows (e.g. "Writing and trading stay separate. Use the rail to back a side.", "Funds live in your portfolio. Trading here mints LONG or SHORT market proofs.")
+- Redundant sub-headers that repeat the page title (e.g. "Portfolio" followed immediately by "Your portfolio")
+- Obvious category or sort labels that add nothing (e.g. "Based on public trade history", "Informational context only", "by total public volume")
+- Filler descriptors on browse surfaces (e.g. "Every live claim, across every category. Browse without following anyone.")
+
+When in doubt: if removing the text changes nothing about what the user can do, remove it.
+
+> "there's a lot of explanatory text embedded in the shell of the app that shouldn't exist" (conv `f8afb34469`, April 2026)
+
+**Implementation note:** A cleanup pass removed the known instances (commit `c49ba85`). Do not re-introduce this pattern.
+
 ---
 
 ## 5. Data & Events
